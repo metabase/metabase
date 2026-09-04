@@ -24,6 +24,7 @@
    [medley.core :as m]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations.llm-providers :as llm-providers]
+   [metabase.app-db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
@@ -129,6 +130,31 @@
         (log/errorf "Error parsing JSON: %s" (ex-message e))
         s))
     s))
+
+(defn- encrypted-json-in
+  "Serialize `v` to replace `stored`, the encrypted-json column value it was derived from, keeping the column as it
+  was: encrypted when `stored` decrypts with the current key, plaintext otherwise. A migration that rewrites a row
+  never changes whether it is encrypted at rest; the startup sweep does that, with a warning."
+  [stored v]
+  (cond-> (json-in v)
+    (encryption/decryptable-string? stored) encryption/encrypt))
+
+(defn- encrypted-json-out
+  "Lenient deserialize of an encrypted-json column that tolerates plaintext at rest, for reading legacy rows during
+  migrations. Mirrors [[metabase.models.interface/encrypted-json-in]]'s inverse from before that read became strict."
+  [v]
+  (try
+    (json/decode+kw (encryption/maybe-decrypt-accepting-plaintext v))
+    (catch Throwable e
+      (if (or (encryption/possibly-encrypted-string? v)
+              (encryption/possibly-encrypted-bytes? v))
+        (log/errorf "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?: %s" (ex-message e))
+        (log/errorf "Error parsing JSON: %s" (ex-message e)))  ; same message as in `json-out`
+      v)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                  MIGRATIONS                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private base-path-regex
   #"^(/db/\d+(?:/schema/(?:(?:[^\\/])|(?:\\/)|(?:\\\\))*(?:/table/\d+?)?)?/)((native/)|(query/(segmented/)?))?$")
@@ -701,7 +727,32 @@
                                                      [:like :object "%ref\\\\\\\",[\\\\\\\"field%"]]
                                                     [:like :object "%join-alias%"]]}))))
 
-(define-migration MigrateDatabaseOptionsToSettings)
+(define-reversible-migration MigrateDatabaseOptionsToSettings
+  (let [update-one! (fn [{:keys [id settings options]}]
+                      (let [stored       settings
+                            settings     (encrypted-json-out settings)
+                            options      (json-out options true)
+                            new-settings (encrypted-json-in stored (merge settings options))]
+                        (t2/query {:update :metabase_database
+                                   :set    {:settings new-settings}
+                                   :where  [:= :id id]})))]
+    (run! update-one! (t2/reducible-query {:select [:id :settings :options]
+                                           :from   [:metabase_database]
+                                           :where  [:and
+                                                    [:not= :options ""]
+                                                    [:not= :options "{}"]
+                                                    [:not= :options nil]]})))
+  (let [rollback-one! (fn [{:keys [id settings options]}]
+                        (let [stored   settings
+                              settings (encrypted-json-out settings)
+                              options  (json-out options true)]
+                          (when (some? (:persist-models-enabled settings))
+                            (t2/query {:update :metabase_database
+                                       :set    {:options (json/encode (select-keys settings [:persist-models-enabled]))
+                                                :settings (encrypted-json-in stored (dissoc settings :persist-models-enabled))}
+                                       :where  [:= :id id]}))))]
+    (run! rollback-one! (t2/reducible-query {:select [:id :settings :options]
+                                             :from   [:metabase_database]}))))
 
 ;;; Fix click through migration
 
@@ -1056,7 +1107,20 @@
                                            :from   [:revision]
                                            :where  [:= :model "Card"]})))))
 
-(define-migration DeleteScanFieldValuesTriggerForDBThatTurnItOff)
+(define-migration DeleteScanFieldValuesTriggerForDBThatTurnItOff
+  ;; If you config scan field values for a DB to either "Only when adding a new filter widget" or "Never, I’ll do this manually if I need to"
+  ;; then we shouldn't schedule a trigger for scan field values. Turns out it wasn't like that since forever, so we need
+  ;; this migraiton to remove triggers for any existing DB that have this option on.
+  ;; See #40715
+  (custom-migrations.util/with-temp-schedule! [scheduler]
+    (when-let [;; find all dbs which are configured not to scan field values
+               dbs (seq (filter #(and (-> % :details encrypted-json-out :let-user-control-scheduling)
+                                      (false? (:is_full_sync %)))
+                                (t2/select :metabase_database)))]
+      (doseq [db dbs]
+        (qs/delete-trigger scheduler (triggers/key (format "metabase.task.update-field-values.trigger.%d" (:id db)))))
+      ;; use the table, not model/Database because we don't want to trigger the hooks
+      (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil}))))
 
 (defn- hash-bcrypt
   "Hashes a given plaintext password using bcrypt.  Should be used to hash
@@ -1142,11 +1206,8 @@
                           (update-vals replace-temporals)
                           (dissoc :id))))))
 
-(define-migration CreateSampleContentV2)
-;; Does nothing. Superseded by [[CreateSampleContentV3]], which runs after `setting.value_with_aad` exists.
-
-(define-migration CreateSampleContentV3
-  ;; Adds sample content to a fresh install; runs once `setting.value_with_aad` exists, so it can write the setting whole. Adds curate permissions to the collection for the 'All Users' group.
+(define-migration CreateSampleContentV2
+  ;; Adds sample content to a fresh install. Adds curate permissions to the collection for the 'All Users' group.
   (when *create-sample-content*
     (when (and (config/load-sample-content?)
                (not (config/config-bool :mb-enable-test-endpoints)) ; skip sample content for e2e tests to avoid coupling the tests to the contents
@@ -1189,10 +1250,8 @@
                                           :collection_id example-collection-id}]}))
               ;; `example-dashboard-id` is encrypted at rest (`:setter :none` defaults to `:when-encryption-key-set`)
               (t2/query {:insert-into :setting
-                         :values      [{:key            "example-dashboard-id"
-                                        :value          (encryption/maybe-encrypt (str example-dashboard-id))
-                                        :value_with_aad (encryption/maybe-encrypt (str example-dashboard-id)
-                                                                                  {:aad (mdb.setting/setting-aad "example-dashboard-id")})}]})))))))
+                         :values      [{:key   "example-dashboard-id"
+                                        :value (encryption/maybe-encrypt (str example-dashboard-id))}]})))))))
 
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
@@ -1350,11 +1409,45 @@
                                                  :from   [:report_card]
                                                  :where  [:like :visualization_settings "%stackable%"]})))))
 
-(define-migration MigrateMetricsToV2)
+(define-reversible-migration MigrateMetricsToV2
+  (metrics-v2/migrate-up!)
+  (metrics-v2/migrate-down!))
 
-(define-migration MigrateUploadsSettings)
+(defn- raw-setting-value [key]
+  (some-> (t2/query-one {:select [:value], :from :setting, :where [:= :key key]})
+          :value
+          encryption/maybe-decrypt-accepting-plaintext))
 
-(define-migration DecryptCacheSettings)
+(define-reversible-migration MigrateUploadsSettings
+  (do (when (some-> (raw-setting-value "uploads-enabled") parse-boolean)
+        (when-let [db-id (some-> (raw-setting-value "uploads-database-id") parse-long)]
+          (let [uploads-table-prefix (raw-setting-value "uploads-table-prefix")
+                uploads-schema-name  (raw-setting-value "uploads-schema-name")]
+            (t2/query {:update :metabase_database
+                       :set    {:uploads_enabled      true
+                                :uploads_table_prefix uploads-table-prefix
+                                :uploads_schema_name  uploads-schema-name}
+                       :where  [:= :id db-id]}))))
+      (t2/query {:delete-from :setting
+                 :where       [:in :key ["uploads-enabled"
+                                         "uploads-database-id"
+                                         "uploads-schema-name"
+                                         "uploads-table-prefix"]]}))
+  (when-let [db (t2/query-one {:select [:*], :from :metabase_database, :where :uploads_enabled})]
+    (let [settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str (:id db)))}
+                    {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
+                    {:key "uploads-table-prefix", :value (encryption/maybe-encrypt (:uploads_table_prefix db))}
+                    {:key "uploads-schema-name",  :value (encryption/maybe-encrypt (:uploads_schema_name db))}]]
+      (->> settings
+           (filter :value)
+           (t2/insert! :setting)))))
+
+(define-migration DecryptCacheSettings
+  (let [decrypt! (fn [k]
+                   (t2/update! :setting :key k {:value (raw-setting-value k)}))]
+    (run! decrypt! ["query-caching-ttl-ratio"
+                    "query-caching-min-ttl"
+                    "enable-query-caching"])))
 
 (defn- column->column-key
   "Computes a modern viz setting column key for a `column`. The modern format is [\"name\",`name`]."
@@ -1680,7 +1773,42 @@
 (define-migration MigrateAlertToNotification
   (pulse-to-notification/migrate-alerts!))
 
-(define-migration MigrateClickHouseDetailsToMultiDB)
+(define-reversible-migration MigrateClickHouseDetailsToMultiDB
+  (let [update-one! (fn [{:keys [id details]}]
+                      (let [stored details
+                            decrypted-details (encrypted-json-out details)
+                            scan-all-databases? (boolean (:scan-all-databases decrypted-details))
+                            db-filters-type (if scan-all-databases? "all" "inclusion")
+                            dbname (:dbname decrypted-details)
+                            db-filters-patterns (if (and (string? dbname) (seq dbname))
+                                                  (str/join ", " (str/split (str/trim dbname) #" +"))
+                                                  "default")
+                            new-details (merge decrypted-details
+                                               {:enable-multiple-db true}
+                                               {:db-filters-type db-filters-type}
+                                               (when-not scan-all-databases?
+                                                 {:db-filters-patterns db-filters-patterns}))
+                            encrypted-details (encrypted-json-in stored new-details)]
+                        (t2/query {:update :metabase_database
+                                   :set    {:details encrypted-details}
+                                   :where  [:= :id id]})))]
+    (run! update-one! (t2/reducible-query {:select [:id :details]
+                                           :from   [:metabase_database]
+                                           :where  [:= :engine "clickhouse"]})))
+  (let [rollback-one! (fn [{:keys [id details]}]
+                        (let [stored details
+                              decrypted-details (encrypted-json-out details)
+                              new-details (dissoc decrypted-details
+                                                  :enable-multiple-db
+                                                  :db-filters-type
+                                                  :db-filters-patterns)
+                              encrypted-details (encrypted-json-in stored new-details)]
+                          (t2/query {:update :metabase_database
+                                     :set    {:details encrypted-details}
+                                     :where  [:= :id id]})))]
+    (run! rollback-one! (t2/reducible-query {:select [:id :details]
+                                             :from   [:metabase_database]
+                                             :where  [:= :engine "clickhouse"]}))))
 
 ;; This migration is purely to avoid breaking stats/dev instances that have existing transforms without a `type` field.
 ;; This was commented out before the 57 release since this was a migration purely to avoid any breakages internally.
@@ -1808,7 +1936,78 @@
           (t2/query {:update table
                      :set    {:source new-source}
                      :where  (into [:and] (map #(vector := % (get row %)) pks))}))))))
-(define-migration FixClickHouseUploadDBSchemaNames)
+(define-migration FixClickHouseUploadDBSchemaNames
+  "This data migration is meant to fix the issues seen in #69667, #68298 and #65945.
+   We made the driver feature `schemas` conditional on the `enable-multiple-db` DB connection setting.
+   So for DBs with `enable-multiple-db` set to false (such as our cloud hosted upload DBs), the `schemas` feature was
+   false. This meant that when a user disabled uploads, or changed their upload DBs, and then re-enabled uploads or
+   changed their upload DB back, the `uploads_schema_name` field of the DB was set to null. So any uploads made after
+   the `uploads_schema_name` field was set to null were created as tables with a null `schema`. For example:
+   ;; metabase_database
+   | id | engine     | name      | uploads_enabled | uploads_schema_name |
+   | 2  | clickhouse | upload_db | true            | null                | ;; `uploads_schema_name` set to null after disabling and re-enabling uploads
+   ;; metabase_table
+   | id | db_id | name | schema | active | is_upload |
+   | 1  | 2     | t1   | db_foo | true   | true      | ;; created before uploads_schema_name was set to null
+   | 2  | 2     | t2   | null   | true   | true      | ;; created after uploads_schema_name was set to null
+   On the clickhouse DB these tables are still created in a schema, particularly the one specified in the `dbname`
+   field of the DB `details`. This meant that the next time the DB sync ran, it would find this table under that
+   schema, and would not find that table with a null schema. So then it would create a new table with the same name
+   and a schema, and mark the old table with the null schema as inactive. For example:
+   ;; metabase_table
+   | id | db_id | name | schema | active | is_upload |
+   | 1  | 2     | t1   | db_foo | true   | true      | ;; this table has a schema so it's synced correctly
+   | 2  | 2     | t2   | null   | false  | true      | ;; this table is now inactive since it has a null schema and isn't found by sync
+   | 3  | 2     | t2   | db_foo | true   | false     | ;; this is the new table created by sync with the same name and a schema
+   We create models based on upload tables, and since the upload tables got marked as inactive, attempting to access
+   these models would give an inactive table error."
+  ;; Look for a clickhouse DB with uploads_enabled
+  (let [clickhouse-upload-db (t2/query {:select [:id :details :uploads_schema_name]
+                                        :from [:metabase_database]
+                                        :where [:and
+                                                [:= :engine "clickhouse"]
+                                                [:= :uploads_enabled true]]})
+        ;; If this DB has a null `uploads_schema_name`, then set the `uploads_schema_name` to the value of the `dbname`
+        set-uploads-schema-name! (fn [{:keys [id details uploads_schema_name]}]
+                                   (let [decrypted-details (encrypted-json-out details)
+                                         db-name (:dbname decrypted-details)]
+                                     (when (and db-name (not uploads_schema_name))
+                                       (t2/query {:update :metabase_database
+                                                  :set    {:uploads_schema_name db-name}
+                                                  :where  [:= :id id]}))))]
+    (if (< 1 (count clickhouse-upload-db))
+      (log/warn "FixClickHouseUploadDBSchemaNames: expected at most 1 ClickHouse upload database, found" (count clickhouse-upload-db))
+      (do
+        (run! set-uploads-schema-name! clickhouse-upload-db)
+        ;; Look for any inactive upload tables with a null schema
+        (let [inactive-upload-tables (t2/query {:select [:mt.id :mt.name :mt.db_id :md.uploads_schema_name]
+                                                :from [[:metabase_table :mt]]
+                                                :join [[:metabase_database :md] [:= :mt.db_id :md.id]]
+                                                :where [:and
+                                                        [:= :md.engine "clickhouse"]
+                                                        [:= :md.uploads_enabled true]
+                                                        [:not= :md.uploads_schema_name nil]
+                                                        [:= :mt.schema nil]
+                                                        [:= :mt.active false]
+                                                        [:= :mt.is_upload true]]})
+              retire-and-revive-upload-table! (fn [{:keys [id name db_id uploads_schema_name]}]
+                                                ;; Look for an active non-upload table with the same name and the correct `uploads_schema_name`
+                                                ;; Set it to be inactive and rename it to satisfy the (db_id, name, schema) unique key
+                                                (t2/query {:update :metabase_table
+                                                           :set {:active false
+                                                                 :name (str name "_retired_69667")}
+                                                           :where [:and
+                                                                   [:= :name name]
+                                                                   [:= :schema uploads_schema_name]
+                                                                   [:= :active true]
+                                                                   [:= :is_upload false]
+                                                                   [:= :db_id db_id]]})
+                                                ;; Set the inactive upload table to be active and set the schema to the correct `uploads_schema_name`
+                                                (t2/query {:update :metabase_table
+                                                           :set {:active true
+                                                                 :schema uploads_schema_name}
+                                                           :where [:= :id id]}))]
+          (run! retire-and-revive-upload-table! inactive-upload-tables))))))
 
 (defn- legacy-checkpoint-column-name
   "Extract the column name from a legacy column-unique-key string.
@@ -2030,7 +2229,27 @@
                                       [:not= :embed_url nil]
                                       [:= :embedding_hostname nil]]})))
 
-(define-migration BackfillMfaConfirmedAt)
+(define-migration BackfillMfaConfirmedAt
+  ;; MFA enrollment confirmation used to live only inside the credentials JSON — encrypted at
+  ;; rest when MB_ENCRYPTION_SECRET_KEY is set, and therefore invisible to SQL. Lift it into the
+  ;; new auth_identity.confirmed_at column so enrollment state is queryable (admin visibility of
+  ;; users without 2FA; Phase 2 mfa-required). The JSON keeps working as the source for rows
+  ;; written by older code; new code writes only the column.
+  (run! (fn [{:keys [id credentials]}]
+          (let [creds        (encrypted-json-out credentials)
+                confirmed-at (when (map? creds)
+                               (try
+                                 (some-> ^String (:confirmed_at creds) java.time.OffsetDateTime/parse)
+                                 (catch Exception _ nil)))]
+            (when confirmed-at
+              (t2/query {:update :auth_identity
+                         :set    {:confirmed_at confirmed-at}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :credentials]
+                             :from   [:auth_identity]
+                             :where  [:and
+                                      [:= :provider "totp"]
+                                      [:= :confirmed_at nil]]})))
 
 (define-reversible-migration MigrateLlmProviderSettings
   (llm-providers/migrate-up!)
@@ -2057,18 +2276,12 @@
                                                              :from   [[:auth_identity :ai]]
                                                              :where  [:and [:= :ai.user_id :u.id] [:= :ai.provider "password"]]}]]]})))
 
-;; The Encrypt* migrations below are no-ops: `metabase.app-db.encryption/encrypt-plaintext-columns!` encrypts these
-;; columns on every startup, which a one-shot migration cannot be relied on to do (see its docstring).
-(define-migration EncryptAuthIdentityCredentials)
-
-(define-migration EncryptApiKeys)
-
-(define-migration EncryptSettingsV58)
-
-(define-migration EncryptSetterNoneSettingsV58)
-
-(define-migration EncryptPublicUuids)
-
-(define-migration EncryptNotificationAndPulseChannelDetails)
-
-(define-migration EncryptRemainingColumns)
+(define-migration BackfillExampleDashboardIdValueWithAad
+  ;; `CreateSampleContentV2` runs before `setting.value_with_aad` exists, so it writes the setting's legacy `value` only.
+  (when-let [value (:value (t2/query-one {:select [:value]
+                                          :from   [:setting]
+                                          :where  [:and [:= :key "example-dashboard-id"] [:= :value_with_aad nil]]}))]
+    (t2/query {:update :setting
+               :set    {:value_with_aad (encryption/maybe-encrypt (encryption/maybe-decrypt value)
+                                                                  {:aad (mdb.setting/setting-aad "example-dashboard-id")})}
+               :where  [:= :key "example-dashboard-id"]})))

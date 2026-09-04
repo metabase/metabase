@@ -1267,29 +1267,6 @@ databaseChangeLog:
             constraintName: idx_unique_data_permissions
 
   - changeSet:
-      id: v58.2026-08-25T00:00:00
-      author: ranquild
-      comment: >-
-        Encrypt any plaintext auth_identity.credentials rows written by the v58 password/SSO backfill (raw SQL that
-        bypassed encryption), so the credentials column can be read strictly once MB_ENCRYPTION_SECRET_KEY is set.
-      changes:
-        - customChange:
-            class: metabase.app_db.custom_migrations.EncryptAuthIdentityCredentials
-
-  - changeSet:
-      id: v58.2026-08-25T00:00:01
-      author: ranquild
-      comment: >-
-        Encrypt any plaintext api_key.key bcrypt hashes at rest, so the column can be read strictly once
-        MB_ENCRYPTION_SECRET_KEY is set: authentication must only accept hashes written through the application, and
-        the strict read enforces that by rejecting a plaintext value written directly to the app DB.
-        Already-encrypted values are left untouched. On rollback the values are decrypted back to the plaintext hash,
-        so a downgrade to code that reads the column directly can still verify keys.
-      changes:
-        - customChange:
-            class: metabase.app_db.custom_migrations.EncryptApiKeys
-
-  - changeSet:
       id: v58.2026-08-25T00:00:02
       author: ranquild
       comment: Widen report_card.public_uuid so it can hold the encrypted value written by EncryptPublicUuids.
@@ -1542,70 +1519,6 @@ databaseChangeLog:
             UPDATE document SET public_uuid_prefix = NULL
 
   - changeSet:
-      id: v58.2026-08-25T00:00:18
-      author: ranquild
-      comment: >-
-        Encrypt any plaintext public_uuid values at rest for cards, dashboards, actions, and documents, so the column
-        can be read strictly once MB_ENCRYPTION_SECRET_KEY is set: public links must only resolve to values issued by
-        the application, and the strict read enforces that by rejecting a plaintext value written directly to the app
-        DB. Already-encrypted values are left untouched.
-      changes:
-        - customChange:
-            class: metabase.app_db.custom_migrations.EncryptPublicUuids
-
-  - changeSet:
-      id: v58.2026-08-25T00:00:19
-      author: ranquild
-      comment: >-
-        Encrypt at rest the details column of notification_recipient and pulse_channel, which stores raw external email
-        recipients for alerts and dashboard subscriptions, so a plaintext value written directly to the app DB is
-        rejected on the strict read once MB_ENCRYPTION_SECRET_KEY is set. Already-encrypted values are left untouched.
-        On rollback the values are decrypted back to plaintext.
-      changes:
-        - customChange:
-            class: metabase.app_db.custom_migrations.EncryptNotificationAndPulseChannelDetails
-
-  - changeSet:
-      id: v58.2026-08-28T00:00:00
-      author: ranquild
-      comment: >-
-        Encrypt at rest any plaintext value of the settings this release newly marks
-        :encryption :when-encryption-key-set (they were previously stored plaintext), so the strict decrypting read
-        added for encrypted settings accepts them once MB_ENCRYPTION_SECRET_KEY is set. Already-encrypted values are
-        left untouched. Rollback decrypts them again, so a downgraded version that reads them as :encryption :no
-        still sees the values.
-      changes:
-        - customChange:
-            class: metabase.app_db.custom_migrations.EncryptSettingsV58
-
-  - changeSet:
-      id: v58.2026-08-28T14:00:00
-      author: ranquild
-      comment: >-
-        Encrypt at rest any plaintext values left in the columns that were encrypted long before any backfill existed:
-        metabase_database details/settings, core_user.settings, channel.details, and secret.value.
-        Encryption used to be write-time only, and the old startup auto-encrypt and key rotation covered only some of
-        these columns, so an upgraded database can hold a mix of plaintext and encrypted rows that the strict reads
-        would reject. Already-encrypted values are left untouched; without MB_ENCRYPTION_SECRET_KEY this is a no-op.
-      changes:
-        - customChange:
-            class: metabase.app_db.custom_migrations.EncryptRemainingColumns
-
-  - changeSet:
-      id: v58.2026-08-30T00:00:00
-      author: ranquild
-      comment: >-
-        Encrypt at rest any plaintext value of the :setter :none settings. They default to
-        :encryption :when-encryption-key-set whatever their type, so the strict decrypting read applies to them, but
-        some were settable in older versions and stored plaintext back then (e.g. enable-query-caching, once an admin
-        toggle saved as a plaintext boolean); such a row made restoring the settings cache fail at startup.
-        Already-encrypted values are left untouched. No rollback: these settings were always meant to be encrypted,
-        and a downgraded version reads them either way. Without MB_ENCRYPTION_SECRET_KEY this is a no-op.
-      changes:
-        - customChange:
-            class: metabase.app_db.custom_migrations.EncryptSetterNoneSettingsV58
-
-  - changeSet:
       id: v58.2026-09-01T00:00:00
       author: ranquild
       comment: >-
@@ -1630,10 +1543,17 @@ databaseChangeLog:
   - changeSet:
       id: v58.2026-09-03T00:00:00
       author: ranquild
-      comment: Create the sample content once setting.value_with_aad exists, so example-dashboard-id is stored whole
+      comment: >-
+        Retire the Encrypt* backfill changesets: encrypting a value that a previous version stored unencrypted is the
+        startup sweep's job, which warns about it, and a one-shot migration cannot be relied on to have done it.
       changes:
-        - customChange:
-            class: "metabase.app_db.custom_migrations.CreateSampleContentV3"
+        - sql:
+            dbms: postgresql,h2
+            sql: DELETE FROM databasechangelog WHERE id IN ('v58.2026-08-25T00:00:00', 'v58.2026-08-25T00:00:01', 'v58.2026-08-25T00:00:18', 'v58.2026-08-25T00:00:19', 'v58.2026-08-28T00:00:00', 'v58.2026-08-28T14:00:00', 'v58.2026-08-30T00:00:00');
+        - sql:
+            dbms: mysql,mariadb
+            sql: DELETE FROM `DATABASECHANGELOG` WHERE id IN ('v58.2026-08-25T00:00:00', 'v58.2026-08-25T00:00:01', 'v58.2026-08-25T00:00:18', 'v58.2026-08-25T00:00:19', 'v58.2026-08-28T00:00:00', 'v58.2026-08-28T14:00:00', 'v58.2026-08-30T00:00:00');
+      rollback: []
 
   - changeSet:
       id: v58.2026-09-03T00:00:01
@@ -1677,6 +1597,14 @@ databaseChangeLog:
             dbms: h2
             sql: DELETE FROM setting WHERE "KEY" = 'encryption-check' AND "VALUE" = 'unencrypted';
       rollback: []
+
+  - changeSet:
+      id: v58.2026-09-03T00:00:04
+      author: ranquild
+      comment: Fill setting.value_with_aad for the example-dashboard-id row CreateSampleContentV2 wrote before the column existed
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.BackfillExampleDashboardIdValueWithAad"
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
