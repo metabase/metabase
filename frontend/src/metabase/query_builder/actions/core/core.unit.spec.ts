@@ -116,10 +116,16 @@ describe("QB Actions > apiCreateQuestion", () => {
     async ({ display, visualizationSettings }) => {
       const { store } = await setup({ display, visualizationSettings });
 
-      const { card } = store.getState().qb;
+      const { card, originalCard } = store.getState().qb;
       expect(card?.id).toBe(CREATED_CARD_ID);
       expect(card?.display).toBe(display);
-      expect(card?.visualization_settings).toEqual(visualizationSettings);
+      // the settings the model was created with, including persisted defaults
+      expect(card?.visualization_settings).toEqual(
+        originalCard?.visualization_settings,
+      );
+      expect(card?.visualization_settings).toEqual(
+        expect.objectContaining(visualizationSettings),
+      );
     },
   );
 });
