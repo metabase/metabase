@@ -378,7 +378,7 @@ export type VisualizationSettings = {
   /** Fixed y-axis maximum when auto range is disabled. */
   "graph.y_axis.max"?: number;
 
-  /** Goal line value: a number, or a reference to a column of this or another question, resolved before rendering. */
+  /** Goal line value: a number, or a reference to a numerical column of this or another question. */
   "graph.goal_value"?: GoalValue | null;
 
   /** Draw a goal line on supported cartesian charts. */
