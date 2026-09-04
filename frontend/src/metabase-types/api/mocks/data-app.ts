@@ -9,6 +9,7 @@ export const createMockDataApp = (opts?: Partial<DataApp>): DataApp => ({
   resource_collection_id: 1,
   permission_group_id: 1,
   table_ids: [],
+  has_user_permission_warnings: false,
   allowed_hosts: [],
   bundle_hash: "abc123",
   last_synced_sha: "0123456789abcdef",

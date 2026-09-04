@@ -267,6 +267,29 @@
                      (mt/user-http-request :crowberto :post 200 "apps/demo/user-permission-warnings"
                                            {:user_ids [user-id]}))))))))))
 
+(deftest data-app-list-includes-user-permission-warning-status-test
+  (mt/with-premium-features #{:data-apps-preview :advanced-permissions :sandboxes}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/with-no-data-perms-for-all-users!
+        (create-app!)
+        (let [{app-group-id :permission_group_id}
+              (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
+              table-id (mt/id :orders)
+              user-id  (mt/user->id :rasta)
+              warning? #(->> (mt/user-http-request :crowberto :get 200 "apps")
+                             (filter (comp #{"demo"} :name))
+                             first
+                             :has_user_permission_warnings)]
+          (mt/user-http-request :crowberto :put 200 "apps/demo/table-dependencies"
+                                {:table_ids [table-id]})
+          (perms/add-user-to-group! user-id app-group-id)
+          (is (true? (warning?)))
+          (perms/set-table-permission! (perms/all-users-group)
+                                       table-id
+                                       :perms/view-data
+                                       :unrestricted)
+          (is (false? (warning?))))))))
+
 (deftest non-superuser-cannot-read-user-permission-warnings-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp]

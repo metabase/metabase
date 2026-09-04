@@ -68,6 +68,7 @@
    [:resource_collection_id [:maybe ms/PositiveInt]]
    [:permission_group_id    [:maybe ms/PositiveInt]]
    [:table_ids       [:sequential ms/PositiveInt]]
+   [:has_user_permission_warnings {:optional true} :boolean]
    [:bundle_hash     [:maybe :string]]
    [:last_synced_sha [:maybe :string]]
    [:last_synced_at  [:maybe :any]]
@@ -190,6 +191,15 @@
     app
     (select-keys app [:name :display_name])))
 
+(defn- data-app-list-response
+  [app]
+  (cond-> (data-app-response app)
+    api/*is-superuser?*
+    (assoc :has_user_permission_warnings
+           (data-app.user-access/group-has-permission-warnings?
+            (:table_ids app)
+            (:permission_group_id app)))))
+
 (defn- read-check-data-app
   "Check whether the current user can access a data app. Viewing requires read access to the app's
    resource collection. An app with no linked resource collection has not been published yet: it is
@@ -214,7 +224,7 @@
                                                             [:= :enabled true]
                                                             [:= :sync_error nil]])))
        (map api/read-check)
-       (mapv data-app-response)))
+       (mapv data-app-list-response)))
 
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows
 ;; slashes inside a segment, so `/:slug` would otherwise swallow `/x/bundle`.

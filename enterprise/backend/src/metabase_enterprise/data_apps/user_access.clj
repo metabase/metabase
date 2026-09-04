@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-apps.user-access
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [toucan2.core :as t2]))
 
@@ -69,3 +70,15 @@
           unrestricted-pairs (unrestricted-user-table-pairs (map :id users) table-ids)]
       (into [] (keep #(user-warning % tables unrestricted-pairs)) users))
     []))
+
+(defn group-has-permission-warnings?
+  "Whether any member of `group-id` cannot access every table in `table-ids`."
+  [table-ids group-id]
+  (if (and (seq table-ids) group-id)
+    (let [user-ids (t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id group-id)
+          users    (if (seq user-ids)
+                     (->> (t2/select [:model/User :id :is_superuser :email] :id [:in user-ids])
+                          (remove #(str/ends-with? (:email %) "@api-key.invalid")))
+                     [])]
+      (boolean (seq (permission-warnings table-ids users))))
+    false))

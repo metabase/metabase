@@ -175,6 +175,33 @@ describe("ManageDataAppsPage", () => {
 
       expect(await screen.findByText("2 allowed hosts")).toBeInTheDocument();
     });
+
+    it("shows a warning when some app users are missing data access", async () => {
+      setup({
+        apps: [
+          createMockDataApp({
+            name: "customer-logo-wall",
+            display_name: "Customer Logo Wall",
+            has_user_permission_warnings: true,
+          }),
+        ],
+      });
+
+      const warning = await screen.findByLabelText(
+        "Some users are missing data access.",
+      );
+
+      expect(warning).toHaveAttribute(
+        "href",
+        "/admin/settings/apps/customer-logo-wall/users",
+      );
+
+      await userEvent.hover(warning);
+
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "Some users are missing data access.",
+      );
+    });
   });
 
   describe("actions", () => {

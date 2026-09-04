@@ -1,40 +1,47 @@
 import { skipToken } from "@reduxjs/toolkit/query";
-import { useMemo, useState } from "react";
-import { msgid, ngettext, t } from "ttag";
+import {
+  type ChangeEvent,
+  type ClipboardEvent,
+  type ReactNode,
+  useMemo,
+  useState,
+} from "react";
+import { t } from "ttag";
 
+import NoResults from "assets/img/no_results.svg";
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { userToColor } from "metabase/admin/people/colors";
-import { AddRow } from "metabase/admin/people/components/AddRow";
+import { getDatabaseFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import {
   useCreateMembershipMutation,
   useDeleteMembershipMutation,
   useGetPermissionsGroupQuery,
   useListUsersQuery,
 } from "metabase/api";
-import { Link } from "metabase/common/components/Link";
+import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { useToast } from "metabase/common/hooks";
 import { usePagination } from "metabase/common/hooks/use-pagination";
-import { useParams } from "metabase/router";
+import { Link, useParams } from "metabase/router";
 import {
   Alert,
+  Anchor,
+  Badge,
   Box,
   Button,
   Flex,
   HoverCard,
   Icon,
+  Input,
   Pill,
   Popover,
   Stack,
   Text,
-  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 import { getFullName } from "metabase/utils/user";
@@ -43,15 +50,77 @@ import {
   useGetDataAppUserPermissionWarningsQuery,
 } from "metabase-enterprise/api";
 import type {
-  DataAppMissingTable,
   DataAppUserPermissionWarning,
   Group,
   Member,
   User,
 } from "metabase-types/api";
 
+import S from "./ManageDataAppUsersPage.module.css";
+
 const PAGE_SIZE = 25;
 const MAX_PENDING_USERS = 100;
+
+type DataAppAddRowProps = {
+  value: string;
+  isValid: boolean;
+  hasCurrentUsers: boolean;
+  placeholder: string;
+  ariaLabel: string;
+  onPaste: (event: ClipboardEvent<HTMLInputElement>) => void;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onDone: () => void;
+  onCancel: () => void;
+  children?: ReactNode;
+};
+
+const DataAppAddRow = ({
+  value,
+  isValid,
+  hasCurrentUsers,
+  placeholder,
+  ariaLabel,
+  onPaste,
+  onChange,
+  onDone,
+  onCancel,
+  children,
+}: DataAppAddRowProps) => (
+  <Flex
+    p="0.5rem"
+    align="center"
+    bd="1px solid var(--mb-color-core-brand)"
+    style={{
+      borderRadius: hasCurrentUsers ? "0.5rem 0.5rem 0 0" : "0.5rem",
+      borderBottomWidth: hasCurrentUsers ? 0 : undefined,
+    }}
+  >
+    {children}
+    <Input
+      type="text"
+      variant="unstyled"
+      flex="1 0 auto"
+      fz="lg"
+      styles={{ input: { background: "transparent" } }}
+      value={value}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      autoFocus
+      onPaste={onPaste}
+      onChange={onChange}
+    />
+    <Button variant="subtle" bg="transparent" onClick={onCancel} mr="sm">
+      {t`Cancel`}
+    </Button>
+    <Button
+      variant={isValid ? "filled" : "outline"}
+      disabled={!isValid}
+      onClick={onDone}
+    >
+      {t`Add`}
+    </Button>
+  </Flex>
+);
 
 export const ManageDataAppUsersPage = () => {
   const { slug = "" } = useParams<{ slug: string }>();
@@ -138,74 +207,96 @@ const DataAppUsers = ({
   };
 
   return (
-    <Stack gap="md">
-      <Link to="/admin/settings/apps">
-        <Flex align="center" gap="xs">
-          <Icon name="chevronleft" size={14} />
-          <Text>{t`Data apps`}</Text>
-        </Flex>
-      </Link>
+    <Stack gap="xl">
+      <Box px="md">
+        <Breadcrumbs
+          crumbs={[[t`Data apps`, "/admin/settings/apps"], [appTitle]]}
+          size="large"
+        />
+      </Box>
 
-      <SettingsSection data-testid="data-app-users-card">
-        <AdminPaneLayout
-          title={t`Manage users for ${appTitle}`}
-          description={ngettext(
-            msgid`${members.length} user`,
-            `${members.length} users`,
-            members.length,
-          )}
-          titleActions={
-            <Button
-              variant="filled"
-              onClick={() => setIsAdding(true)}
-              disabled={isAdding}
-            >
-              {t`Add users`}
-            </Button>
-          }
-        >
-          <Stack data-testid="user-management-sections" gap="lg">
-            {memberWarnings.isError && <WarningRequestError />}
+      <AdminPaneLayout
+        title={
+          <Text component="span" fz="2rem" lh="2rem">
+            {t`Manage access to this app`}
+          </Text>
+        }
+        titleActions={
+          <Button
+            variant="filled"
+            onClick={() => setIsAdding(true)}
+            disabled={isAdding}
+          >
+            {t`Add users`}
+          </Button>
+        }
+      >
+        <Stack data-testid="user-management-sections" gap="lg">
+          {memberWarnings.isError && <WarningRequestError />}
 
-            {isAdding && (
-              <AddUsersSection
-                members={members}
-                selectedUsers={selectedUsers}
-                warnings={selectedWarnings.byUserId}
-                warningsFailed={selectedWarnings.isError}
-                onSelectedUsersChange={setSelectedUsers}
-                onCancel={() => {
-                  setSelectedUsers(new Map());
-                  setIsAdding(false);
-                }}
-                onDone={handleAddUsers}
-              />
-            )}
-
-            {members.length === 0 ? (
-              !isAdding && (
-                <Text c="text-secondary" ta="center" mt="xl">
-                  {t`Add users to give them access to this data app.`}
-                </Text>
-              )
-            ) : (
-              <Stack gap="sm">
-                <Text fw={700}>{t`Current users`}</Text>
-
-                <AdminContentTable
-                  columnTitles={[t`Name`, t`Email`, t`Data access`]}
+          {members.length === 0
+            ? !isAdding && (
+                <Box
+                  data-testid="data-app-users-empty-state"
+                  bg="background-secondary"
+                  bdrs="md"
+                  py="5rem"
                 >
+                  <EmptyState
+                    title={t`No one has access yet`}
+                    illustrationElement={
+                      <img
+                        src={NoResults}
+                        alt=""
+                        width={120}
+                        height={120}
+                        data-testid="data-app-users-empty-state-icon"
+                      />
+                    }
+                    spacing="sm"
+                  />
+                </Box>
+              )
+            : null}
+
+          {(isAdding || members.length > 0) && (
+            <Box
+              data-testid="data-app-users-card"
+              bd={members.length > 0 ? "1px solid var(--mb-color-border)" : 0}
+              bdrs="md"
+              bg="background-primary"
+              style={{ overflow: "hidden" }}
+            >
+              {isAdding && (
+                <AddUsersSection
+                  hasCurrentUsers={members.length > 0}
+                  members={members}
+                  selectedUsers={selectedUsers}
+                  warnings={selectedWarnings.byUserId}
+                  warningsFailed={selectedWarnings.isError}
+                  onSelectedUsersChange={setSelectedUsers}
+                  onCancel={() => {
+                    setSelectedUsers(new Map());
+                    setIsAdding(false);
+                  }}
+                  onDone={handleAddUsers}
+                />
+              )}
+
+              {members.length > 0 && (
+                <AdminContentTable className={S.userTable} columnTitles={[]}>
                   {visibleMembers.map((member) => (
                     <MemberRow
                       key={member.membership_id}
                       member={member}
-                      isAccessChecked={memberWarnings.isSuccess}
                       warning={memberWarnings.byUserId.get(member.user_id)}
                       onRemove={handleRemoveUser}
                     />
                   ))}
                 </AdminContentTable>
+              )}
 
+              {members.length > PAGE_SIZE && (
                 <Flex align="center" justify="flex-end" p="md">
                   <PaginationControls
                     page={page}
@@ -216,11 +307,11 @@ const DataAppUsers = ({
                     onPreviousPage={handlePreviousPage}
                   />
                 </Flex>
-              </Stack>
-            )}
-          </Stack>
-        </AdminPaneLayout>
-      </SettingsSection>
+              )}
+            </Box>
+          )}
+        </Stack>
+      </AdminPaneLayout>
     </Stack>
   );
 };
@@ -244,17 +335,14 @@ const useWarnings = (appName: string, userIds: number[]) => {
 
 const MemberRow = ({
   member,
-  isAccessChecked,
   warning,
   onRemove,
 }: {
   member: Member;
-  isAccessChecked: boolean;
   warning?: DataAppUserPermissionWarning;
   onRemove: (member: Member) => void;
 }) => {
   const name = getFullName(member) ?? member.email;
-  const adequateAccessLabel = t`Has view or sandboxed access to every table used by this app.`;
 
   return (
     <tr>
@@ -262,34 +350,40 @@ const MemberRow = ({
         <Text fw={700}>{name}</Text>
       </td>
       <td>{member.email}</td>
-      <td>
-        {warning ? (
-          <DataAccessWarning warning={warning} />
-        ) : (
-          isAccessChecked && (
-            <Tooltip label={adequateAccessLabel}>
-              <Icon
-                name="check"
-                c="feedback-positive"
-                aria-label={adequateAccessLabel}
-              />
-            </Tooltip>
-          )
-        )}
-      </td>
-      <Box component="td" ta="right">
-        <UnstyledButton
-          aria-label={t`Remove ${name}`}
-          onClick={() => onRemove(member)}
+      <Box component="td" w="1%" style={{ whiteSpace: "nowrap" }}>
+        <Flex
+          data-testid="data-app-user-actions"
+          align="center"
+          justify="flex-end"
+          gap="lg"
+          wrap="nowrap"
+          style={{ minWidth: "max-content" }}
         >
-          <Icon name="close" c="text-disabled" size={16} />
-        </UnstyledButton>
+          {warning && (
+            <DataAccessWarning
+              warning={warning}
+              userName={member.first_name || name}
+            />
+          )}
+          <UnstyledButton
+            aria-label={t`Remove ${name}`}
+            onClick={() => onRemove(member)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icon name="close" c="text-disabled" size={16} />
+          </UnstyledButton>
+        </Flex>
       </Box>
     </tr>
   );
 };
 
 const AddUsersSection = ({
+  hasCurrentUsers,
   members,
   selectedUsers,
   warnings,
@@ -298,6 +392,7 @@ const AddUsersSection = ({
   onCancel,
   onDone,
 }: {
+  hasCurrentUsers: boolean;
   members: Member[];
   selectedUsers: Map<number, User>;
   warnings: Map<number, DataAppUserPermissionWarning>;
@@ -323,7 +418,8 @@ const AddUsersSection = ({
         user.tenant_id == null &&
         !memberIds.has(user.id) &&
         !selectedUsers.has(user.id) &&
-        (user.common_name ?? "").toLowerCase().includes(input),
+        ((user.common_name ?? "").toLowerCase().includes(input) ||
+          user.email.toLowerCase().includes(input)),
     );
   }, [data, memberIds, selectedUsers, text]);
 
@@ -334,6 +430,46 @@ const AddUsersSection = ({
     onSelectedUsersChange(new Map(selectedUsers).set(user.id, user));
     setText("");
     setIsPickerOpen(false);
+  };
+
+  const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    const emails = event.clipboardData
+      .getData("text")
+      .split(",")
+      .map((email) => email.trim())
+      .filter(Boolean);
+
+    if (emails.length < 2) {
+      return;
+    }
+
+    const usersByEmail = new Map(
+      (data?.data ?? []).map((user) => [user.email.toLowerCase(), user]),
+    );
+    const nextUsers = new Map(selectedUsers);
+    const unmatchedEmails: string[] = [];
+
+    for (const email of emails) {
+      const user = usersByEmail.get(email.toLowerCase());
+      const canAdd =
+        user?.is_active &&
+        user.tenant_id == null &&
+        !memberIds.has(user.id) &&
+        nextUsers.size < MAX_PENDING_USERS;
+
+      if (user && canAdd) {
+        nextUsers.set(user.id, user);
+      } else {
+        unmatchedEmails.push(email);
+      }
+    }
+
+    if (nextUsers.size > selectedUsers.size) {
+      event.preventDefault();
+      onSelectedUsersChange(nextUsers);
+      setText(unmatchedEmails.join(", "));
+      setIsPickerOpen(false);
+    }
   };
 
   const removeUser = (user: User) => {
@@ -356,21 +492,24 @@ const AddUsersSection = ({
         }
         onChange={setIsPickerOpen}
         position="bottom-start"
-        withArrow
         shadow="md"
       >
         <Popover.Target>
-          <div>
-            <AddRow
+          <Box
+            mx={hasCurrentUsers ? "-1px" : 0}
+            mt={hasCurrentUsers ? "-1px" : 0}
+          >
+            <DataAppAddRow
               value={text}
               isValid={selectedUsers.size > 0}
-              placeholder={t`Julie McMemberson`}
+              hasCurrentUsers={hasCurrentUsers}
+              placeholder={t`Pick someone from the list, or paste a list of email addresses separated by commas`}
               ariaLabel={t`Search for a user to add`}
-              submitLabel={t`Save`}
               onChange={(event) => {
                 setText(event.target.value);
                 setIsPickerOpen(true);
               }}
+              onPaste={handlePaste}
               onDone={onDone}
               onCancel={onCancel}
             >
@@ -385,8 +524,8 @@ const AddUsersSection = ({
                   {user.common_name}
                 </Pill>
               ))}
-            </AddRow>
-          </div>
+            </DataAppAddRow>
+          </Box>
         </Popover.Target>
 
         <Popover.Dropdown>
@@ -446,17 +585,22 @@ const AddUsersSection = ({
               >
                 <Flex align="center" gap="sm" miw={0}>
                   <UserAvatar bg={userToColor(user)} user={user} />
+
                   <Stack gap={0} miw={0}>
                     <Text fw={700} truncate>
                       {user.common_name}
                     </Text>
+
                     <Text c="text-secondary" size="sm" truncate>
                       {user.email}
                     </Text>
                   </Stack>
                 </Flex>
 
-                <DataAccessWarning warning={warning} />
+                <DataAccessWarning
+                  warning={warning}
+                  userName={user.first_name || user.common_name}
+                />
               </Flex>
             ))}
           </Stack>
@@ -468,110 +612,116 @@ const AddUsersSection = ({
 
 const DataAccessWarning = ({
   warning,
+  userName,
 }: {
   warning: DataAppUserPermissionWarning;
+  userName: string;
 }) => {
-  const label = ngettext(
-    msgid`Missing access to ${warning.missing_tables.length} table`,
-    `Missing access to ${warning.missing_tables.length} tables`,
-    warning.missing_tables.length,
-  );
-  const duplicateNames = useMemo(() => {
-    const counts = warning.missing_tables.reduce<Record<string, number>>(
-      (result, table) => ({
-        ...result,
-        [table.name]: (result[table.name] ?? 0) + 1,
-      }),
-      {},
-    );
-    return new Set(
-      Object.entries(counts)
-        .filter(([, count]) => count > 1)
-        .map(([name]) => name),
-    );
-  }, [warning.missing_tables]);
+  const label = t`Missing data access`;
 
   return (
     <HoverCard
-      position="bottom-start"
+      position="bottom-end"
       openDelay={150}
       closeDelay={100}
-      withArrow
       shadow="md"
     >
       <HoverCard.Target>
-        <UnstyledButton aria-label={label}>
-          <Flex align="center" gap="xs" c="warning">
-            <Icon name="warning" />
-            <Text c="inherit">{label}</Text>
-          </Flex>
+        <UnstyledButton
+          className={S.dataAccessWarningButton}
+          aria-label={label}
+          style={{ flexShrink: 0 }}
+        >
+          <Badge
+            className={S.dataAccessWarningBadge}
+            size="sm"
+            c="text-primary"
+            bdrs="sm"
+            tt="none"
+          >
+            {label}
+          </Badge>
         </UnstyledButton>
       </HoverCard.Target>
 
       <HoverCard.Dropdown
         data-testid="data-access-warning-popover"
-        p="md"
-        w="22rem"
+        p="lg"
+        w="30rem"
       >
-        <Stack gap="md">
-          <Stack gap="xs">
-            <Text fw={700}>{t`Missing data access`}</Text>
-            <Text c="text-secondary" size="sm">
-              {t`This user might not see all data in this app.`}
-            </Text>
-          </Stack>
+        <Stack gap="lg">
+          <Text size="sm">
+            {t`${userName} doesn’t have permission to view these tables used in this app:`}
+          </Text>
 
-          <Stack gap="xs">
-            <Text fw={700} size="sm">{t`Tables without access`}</Text>
-            <Stack
-              component="ul"
-              data-testid="missing-tables-list"
-              gap={4}
-              m={0}
-              pl={0}
-              style={{ listStyle: "none" }}
-            >
-              {warning.missing_tables.map((table) => (
-                <Flex component="li" key={table.id} align="center" gap="xs">
-                  <Icon
-                    name="table"
-                    c="text-secondary"
-                    size={14}
-                    aria-hidden
-                    data-testid="missing-table-icon"
-                  />
-                  <Text size="sm">{tableLabel(table, duplicateNames)}</Text>
-                </Flex>
-              ))}
-            </Stack>
-          </Stack>
-
-          <Button
-            component={Link}
-            to="/admin/permissions/data/group"
-            variant="outline"
-            size="compact-sm"
-            w="fit-content"
-            rightSection={<Icon name="chevronright" size={12} aria-hidden />}
+          <Stack
+            component="ul"
+            data-testid="missing-tables-list"
+            gap="sm"
+            m={0}
+            pl={0}
+            style={{ listStyle: "none" }}
           >
-            {t`Review data permissions`}
-          </Button>
+            {warning.missing_tables.map((table) => {
+              const parts = [
+                {
+                  label: table.database_name,
+                  url: getDatabaseFocusPermissionsUrl({
+                    databaseId: table.database_id,
+                  }),
+                },
+                ...(table.schema
+                  ? [
+                      {
+                        label: table.schema,
+                        url: getDatabaseFocusPermissionsUrl({
+                          databaseId: table.database_id,
+                          schemaName: table.schema,
+                        }),
+                      },
+                    ]
+                  : []),
+                {
+                  label: table.name,
+                  url: getDatabaseFocusPermissionsUrl({
+                    databaseId: table.database_id,
+                    schemaName: table.schema ?? undefined,
+                    tableId: table.id,
+                  }),
+                },
+              ];
+
+              return (
+                <Flex
+                  component="li"
+                  key={table.id}
+                  align="center"
+                  gap={4}
+                  wrap="wrap"
+                >
+                  {parts.map((part, index) => (
+                    <Flex key={part.url} align="center" gap={4}>
+                      <Anchor component={Link} to={part.url} size="sm" fw={700}>
+                        {part.label}
+                      </Anchor>
+                      {index < parts.length - 1 && (
+                        <Icon
+                          name="chevronright"
+                          size={12}
+                          c="text-secondary"
+                          aria-hidden
+                        />
+                      )}
+                    </Flex>
+                  ))}
+                </Flex>
+              );
+            })}
+          </Stack>
         </Stack>
       </HoverCard.Dropdown>
     </HoverCard>
   );
-};
-
-const tableLabel = (
-  table: DataAppMissingTable,
-  duplicateNames: Set<string>,
-) => {
-  if (!duplicateNames.has(table.name)) {
-    return table.name;
-  }
-  return [table.database_name, table.schema, table.name]
-    .filter(Boolean)
-    .join(" > ");
 };
 
 const WarningRequestError = () => (

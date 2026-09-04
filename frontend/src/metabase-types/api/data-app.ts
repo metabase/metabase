@@ -21,6 +21,8 @@ export interface DataApp {
   permission_group_id: number | null;
   /** Tables used by the last successful resource synchronization. */
   table_ids: number[];
+  /** Whether any app member lacks access to a table used by this app. */
+  has_user_permission_warnings?: boolean;
   /**
    * External origins the app's sandboxed bundle may `fetch`/XHR, from its
    * `data_app.yaml`. Empty means none (Metabase data still flows through the

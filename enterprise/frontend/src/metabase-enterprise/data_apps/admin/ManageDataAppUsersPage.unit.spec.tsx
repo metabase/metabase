@@ -51,6 +51,7 @@ const setup = ({
     id: 5,
     first_name: "Another",
     last_name: "User",
+    email: "another.user@example.com",
   });
   const tenantCandidate = createMockUser({
     id: 4,
@@ -115,47 +116,83 @@ const setup = ({
 };
 
 describe("ManageDataAppUsersPage", () => {
-  it("places the Data apps back link above the management card", async () => {
+  it("shows the app name in the breadcrumb above the management page", async () => {
     setup();
 
-    const backLink = await screen.findByRole("link", { name: /Data apps/ });
-    const card = screen.getByTestId("data-app-users-card");
+    const breadcrumb = await screen.findByTestId("breadcrumbs");
+    const dataAppsLink = within(breadcrumb).getByRole("link", {
+      name: "Data apps",
+    });
+    const panel = screen.getByTestId("admin-panel");
 
-    expect(card).not.toContainElement(backLink);
-    expect(card).toContainElement(screen.getByTestId("admin-panel"));
+    expect(dataAppsLink).toHaveAttribute("href", "/admin/settings/apps");
+    expect(within(breadcrumb).getByText("Sales")).toBeInTheDocument();
+    expect(panel).not.toContainElement(breadcrumb);
+    expect(
+      screen.getByRole("heading", { name: "Manage access to this app" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows an illustrated empty state when no one has access", async () => {
+    setup({ members: [] });
+
+    const emptyState = await screen.findByTestId("data-app-users-empty-state");
+
+    expect(
+      within(emptyState).getByText("No one has access yet"),
+    ).toBeInTheDocument();
+    expect(
+      within(emptyState).getByTestId("data-app-users-empty-state-icon"),
+    ).toBeVisible();
   });
 
   it("shows missing table access for an existing user", async () => {
     setup();
 
     expect(
-      await screen.findByText("Manage users for Sales"),
+      await screen.findByText("Manage access to this app"),
     ).toBeInTheDocument();
-    await userEvent.hover(
-      await screen.findByRole("button", { name: "Missing access to 1 table" }),
-    );
+    const rowActions = await screen.findByTestId("data-app-user-actions");
+    const warningButton = await within(rowActions).findByRole("button", {
+      name: "Missing data access",
+    });
+
+    expect(
+      within(rowActions).getByRole("button", { name: "Remove Existing User" }),
+    ).toBeInTheDocument();
+
+    await userEvent.hover(warningButton);
 
     const popover = await screen.findByTestId("data-access-warning-popover");
 
-    expect(popover).toHaveStyle({ padding: "var(--mantine-spacing-md)" });
-    expect(screen.getByText("Missing data access")).toBeInTheDocument();
-    expect(await screen.findByText("Orders")).toBeInTheDocument();
-    const missingTables = screen.getByTestId("missing-tables-list");
-    const reviewLink = screen.getByRole("link", {
-      name: "Review data permissions",
-    });
-
-    expect(missingTables).toHaveStyle({ paddingLeft: "0rem" });
     expect(
-      within(missingTables).getByTestId("missing-table-icon"),
-    ).toBeVisible();
-    expect(reviewLink).toHaveAttribute("href", "/admin/permissions/data/group");
-    expect(reviewLink).toHaveAttribute("data-variant", "outline");
-    expect(reviewLink).toHaveAttribute("data-size", "compact-sm");
-    expect(reviewLink).toHaveStyle({ width: "fit-content" });
+      within(popover).getByText(
+        "Existing doesn’t have permission to view these tables used in this app:",
+      ),
+    ).toBeInTheDocument();
+    const missingTables = screen.getByTestId("missing-tables-list");
+
+    expect(
+      within(missingTables).getByRole("link", { name: "Sample Database" }),
+    ).toHaveAttribute("href", "/admin/permissions/data/database/2");
+    expect(
+      within(missingTables).getByRole("link", { name: "PUBLIC" }),
+    ).toHaveAttribute(
+      "href",
+      "/admin/permissions/data/database/2/schema/PUBLIC",
+    );
+    expect(
+      within(missingTables).getByRole("link", { name: "Orders" }),
+    ).toHaveAttribute(
+      "href",
+      "/admin/permissions/data/database/2/schema/PUBLIC/table/8",
+    );
+    expect(
+      screen.queryByRole("link", { name: "Review data permissions" }),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows a minimal status when an existing user has adequate access", async () => {
+  it("only shows a data access badge for users with missing access", async () => {
     setup({
       members: [
         createMockMember({
@@ -167,15 +204,10 @@ describe("ManageDataAppUsersPage", () => {
       ],
     });
 
-    const label =
-      "Has view or sandboxed access to every table used by this app.";
-    const status = await screen.findByLabelText(label);
-
-    expect(status).toHaveClass("Icon-check");
-
-    await userEvent.hover(status);
-
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(label);
+    expect(await screen.findByText("Covered User")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Missing data access" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a warning for a pending user and still submits the membership", async () => {
@@ -196,31 +228,40 @@ describe("ManageDataAppUsersPage", () => {
       name: "Search for a user to add",
     });
 
+    expect(searchInput).toHaveAttribute(
+      "placeholder",
+      "Pick someone from the list, or paste a list of email addresses separated by commas",
+    );
+
     await userEvent.type(searchInput, "Another");
     await userEvent.click(await screen.findByText("Another User"));
 
     const missingAccessUsers = screen.getByTestId("missing-data-access-users");
     const currentUsersTable = screen.getByTestId("admin-content-table");
-    const sections = screen.getByTestId("user-management-sections");
+    const usersCard = screen.getByTestId("data-app-users-card");
 
-    expect(sections).toHaveStyle("--stack-gap: var(--mantine-spacing-lg)");
-    expect(screen.getByText("Current users")).toBeInTheDocument();
-    expect(currentUsersTable).not.toContainElement(searchInput);
+    expect(usersCard).toContainElement(searchInput);
+    expect(usersCard).toContainElement(currentUsersTable);
     expect(currentUsersTable).not.toContainElement(missingAccessUsers);
+    expect(screen.queryByRole("columnheader")).not.toBeInTheDocument();
+
     expect(
       within(missingAccessUsers).getByText("Users missing data access"),
     ).toBeInTheDocument();
+
     expect(
       within(missingAccessUsers).getByText("Pending User"),
     ).toBeInTheDocument();
+
     expect(
       within(missingAccessUsers).queryByText("Another User"),
     ).not.toBeInTheDocument();
+
     expect(
-      await within(missingAccessUsers).findByText("Missing access to 1 table"),
+      await within(missingAccessUsers).findByText("Missing data access"),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
     await waitFor(() => {
       expect(
@@ -230,6 +271,24 @@ describe("ManageDataAppUsersPage", () => {
         }),
       ).toBe(true);
     });
+  });
+
+  it("adds users pasted as comma-separated email addresses", async () => {
+    setup();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Add users" }),
+    );
+
+    const searchInput = screen.getByRole("textbox", {
+      name: "Search for a user to add",
+    });
+
+    await userEvent.click(searchInput);
+    await userEvent.paste("pending@example.com, another.user@example.com");
+
+    expect(await screen.findByText("Pending User")).toBeInTheDocument();
+    expect(await screen.findByText("Another User")).toBeInTheDocument();
   });
 
   it("does not show the current users table while adding to an empty app", async () => {
@@ -242,7 +301,7 @@ describe("ManageDataAppUsersPage", () => {
     expect(
       screen.getByRole("textbox", { name: "Search for a user to add" }),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Current users")).not.toBeInTheDocument();
+
     expect(screen.queryByTestId("admin-content-table")).not.toBeInTheDocument();
   });
 
@@ -265,16 +324,19 @@ describe("ManageDataAppUsersPage", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: "Add users" }),
     );
+
     await userEvent.click(await screen.findByText("Pending User"));
 
     expect(
-      await screen.findByText(/couldn't check data access/i),
-    ).toBeInTheDocument();
+      (await screen.findAllByText(/couldn't check data access/i)).length,
+    ).toBeGreaterThan(0);
+
     expect(
       screen.queryByLabelText(
         "Has view or sandboxed access to every table used by this app.",
       ),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+
+    expect(screen.getByRole("button", { name: "Add" })).toBeEnabled();
   });
 });
