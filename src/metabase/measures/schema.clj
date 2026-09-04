@@ -14,5 +14,5 @@
    [:and
     ::lib-be.schema/maybe-legacy-query
     [:fn
-     {:error/message (deferred-tru "measure definition must have a source table")}
+     {:error/fn (fn [_ _] (str (deferred-tru "measure definition must have a source table")))}
      #(some? (lib/primary-source-table-id %))]]])

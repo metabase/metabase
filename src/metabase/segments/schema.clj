@@ -12,7 +12,7 @@
    [:and
     ::lib-be.schema/maybe-legacy-query
     [:fn
-     {:error/message (deferred-tru "a segment definition must be a single-stage query with a source table and filters, and without joins, expressions, breakouts, aggregations, fields, order by, or limit")}
+     {:error/fn (fn [_ _] (str (deferred-tru "a segment definition must be a single-stage query with a source table and filters, and without joins, expressions, breakouts, aggregations, fields, order by, or limit")))}
      (fn [query]
        (and (= (lib/stage-count query) 1)
             (some? (lib/primary-source-table-id query))
