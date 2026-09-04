@@ -3167,6 +3167,7 @@
    :api  #{metabase-enterprise.content-diagnostics.api
            metabase-enterprise.content-diagnostics.init}
    :uses #{api
+           app-db
            collections
            documents
            events
