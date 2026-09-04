@@ -130,7 +130,7 @@ Locked parameters are how you restrict data in a guest embed. Your server puts t
 
 ## Refreshing or initializing the JWT from your server
 
-JWTs that you sign for guest embeds have an expiration (`exp`). Once a token expires, the embed can't load fresh data, and any filter selections the viewer made in Metabase's widgets will reset on the next request. Values your page holds in the [`parameters` attribute](./parameters.md#control-values-from-your-app) stay put. To keep the embed alive without reloading the page, you can configure a guest token endpoint on your server to hand out fresh JWTs on demand.
+JWTs that you sign for guest embeds have an expiration (`exp`). Once a token expires, the embed can't load fresh data. Swapping in a new token from your page reloads the embed, which resets any filter selections the viewer made in Metabase's widgets, though values your page holds in the [`parameters` attribute](./parameters.md#control-values-from-your-app) are applied again. To keep the embed alive without reloading the page, you can configure a guest token endpoint on your server to hand out fresh JWTs on demand.
 
 The endpoint can serve two flows:
 

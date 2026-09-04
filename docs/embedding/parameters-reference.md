@@ -78,7 +78,7 @@ The payload passed to `onParametersChange` (SDK) and delivered as `event.detail`
 The payload's [`source`](./sdk/api/ParameterChangeSource.html) is `initial-state` once per load, `manual-change` when someone uses one of Metabase's widgets, or `auto-change` when Metabase normalized a value you pushed. Three things it doesn't spell out:
 
 - On dashboards, editing a widget without applying it doesn't fire `manual-change`.
-- `auto-change` fires when the applied values differ from what you pushed. Metabase stores values as arrays, so pushing `4` fires `auto-change` with `[4]`, and pushing `[4]` fires nothing. Leaving a slug out fires `auto-change` with `null` for that slug, not with its default.
+- `auto-change` fires when the applied values differ from what you pushed. Metabase stores values as arrays, so pushing `4` fires `auto-change` with `[4]`, and pushing `[4]` fires nothing. Leaving a slug out fires `auto-change` carrying that slug's resolved value: its default, or `null` if it has none.
 - Nothing fires when the applied values don't change, even if what you pushed looks different. Push `"3"` while `[3]` is applied and there's no callback.
 
 ## Params in a signed token

@@ -10,8 +10,6 @@ redirect_from:
 
 A parameter is a value that changes what data an embedded dashboard or chart shows: a [dashboard filter](../dashboards/filters.md), a [SQL variable or field filter](../questions/native-editor/sql-parameters.md), or a time grouping. Questions built with the query builder don't expose parameters in embeds; to filter one, add it to a dashboard and connect a filter to the card.
 
-A dashboard filter connected to a plain SQL variable can only use an equal-to operator. For "at least" or "between", put the comparison in the SQL (`WHERE rating >= {{min_rating}}`), or use a [field filter](../questions/native-editor/field-filters.md), which takes any operator.
-
 ## Choose parameter visibility in the embed wizard
 
 When you embed a dashboard or SQL question, the embedding wizard will offer different parameter options depending on which authentication method you pick. With **SSO** authentication, you can set a default value and choose whether to hide a parameters widget. With **guest** authentication, however, every parameter starts out **Disabled**, and for each parameter you can pick from:
@@ -114,7 +112,7 @@ SQL questions take `initialSqlParameters`:
 
 When your app needs to be the source of truth for filter values, use the controlled props. They work like a controlled `<input>` in React: you hold the values, the embed applies whatever you hand it, and it calls you back whenever they change. Use them to [build your own filter widgets](#build-your-own-filter-ui) or to sync filters with your app's URL.
 
-Controlled values work with either authentication method. On a [guest embed](./guest-embedding.md), they apply to parameters you've set to **Editable** in the embed wizard, and because your page holds the values, they survive a [token refresh](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server). To restrict data rather than just set a value, [lock the parameter](#restrict-data-with-locked-parameters) instead.
+Controlled values work with either authentication method. On a [guest embed](./guest-embedding.md), they apply to parameters you've set to **Editable** in the embed wizard, and because your page holds the values, the embed applies them again if you swap the `token` attribute and it reloads. To restrict data rather than just set a value, [lock the parameter](#restrict-data-with-locked-parameters) instead.
 
 Don't combine controlled values with starting values: if you pass both, the embed uses the controlled values and logs a warning to the console.
 
