@@ -2,6 +2,7 @@ import * as d3 from "d3";
 import type { MouseEvent } from "react";
 
 import { formatValue } from "metabase/value-formatting";
+import type { ResolvedGoalSegment } from "metabase/visualizations/lib/dynamic-goals";
 import type {
   ClickObject,
   VisualizationProps,
@@ -10,13 +11,12 @@ import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { INNER_RADIUS_RATIO, OUTER_RADIUS } from "./constants";
-import type { GaugeSegment } from "./types";
 
 interface Props {
   column?: DatasetColumn;
   end: number;
   fill: string | undefined;
-  segment?: GaugeSegment;
+  segment?: ResolvedGoalSegment;
   settings?: ComputedVisualizationSettings;
   start: number;
   testId?: string;

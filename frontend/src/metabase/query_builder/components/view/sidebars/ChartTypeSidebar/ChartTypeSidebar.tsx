@@ -8,6 +8,7 @@ import CS from "metabase/css/core/index.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
+import { hasUnresolvedGoalReferences } from "metabase/visualizations/lib/dynamic-goals";
 import {
   type GetSensibleVisualizationsProps,
   getSensibleVisualizations,
@@ -74,9 +75,13 @@ export const ChartTypeSidebar = ({
 
   const onUpdateQuestion = (newQuestion: Question) => {
     if (question) {
+      const { isEditable } = Lib.queryDisplayInfo(question.query());
       dispatch(
         updateQuestion(newQuestion, {
-          shouldUpdateUrl: Lib.queryDisplayInfo(question.query()).isEditable,
+          run:
+            isEditable &&
+            hasUnresolvedGoalReferences(newQuestion.card(), result?.data),
+          shouldUpdateUrl: isEditable,
         }),
       );
       dispatch(setUIControls({ isShowingRawTable: false }));

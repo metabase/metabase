@@ -5,6 +5,7 @@ import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import { resolveColorFromCssVariable } from "metabase/ui/utils/colors";
+import type { ResolvedGoalSegment } from "metabase/visualizations/lib/dynamic-goals";
 
 import {
   BASE_FONT_SIZE,
@@ -17,12 +18,7 @@ import {
   START_ANGLE,
   VALUE_MARGIN,
 } from "./constants";
-import type {
-  GaugeLabelData,
-  GaugeSegment,
-  Position,
-  TextAnchor,
-} from "./types";
+import type { GaugeLabelData, Position, TextAnchor } from "./types";
 
 export function populateDefaultColumnSettings(
   columnSettings?: NumberFormatOptions,
@@ -136,18 +132,21 @@ function calculateLeftXOffset(textAnchor: TextAnchor, labelWidth: number) {
   }
 }
 
-export function gaugeAccessor(segment: GaugeSegment) {
+export function gaugeAccessor(segment: ResolvedGoalSegment) {
   return segment.max - segment.min;
 }
 
 export function gaugeSorter(
-  thisSegment: GaugeSegment,
-  thatSegment: GaugeSegment,
+  thisSegment: ResolvedGoalSegment,
+  thatSegment: ResolvedGoalSegment,
 ) {
-  return thisSegment.min - thatSegment.min;
+  // a containing segment goes first so the segments nested in it are drawn on top
+  return thisSegment.min - thatSegment.min || thatSegment.max - thisSegment.max;
 }
 
-export function fixSwappedMinMax(segment: GaugeSegment): GaugeSegment {
+export function fixSwappedMinMax(
+  segment: ResolvedGoalSegment,
+): ResolvedGoalSegment {
   if (segment.min > segment.max) {
     return {
       ...segment,
@@ -160,7 +159,7 @@ export function fixSwappedMinMax(segment: GaugeSegment): GaugeSegment {
 }
 
 export function colorGetter(
-  pieArcDatum: PieArcDatum<GaugeSegment>,
+  pieArcDatum: PieArcDatum<ResolvedGoalSegment>,
   getColor: ColorGetter,
 ) {
   // Convert to hex due to Apache Batik limitations (SVG renderer for static viz)

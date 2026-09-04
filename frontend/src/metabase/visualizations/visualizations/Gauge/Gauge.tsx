@@ -2,11 +2,13 @@ import { useMounted } from "@mantine/hooks";
 import cx from "classnames";
 import * as d3 from "d3";
 import { useCallback, useEffect, useRef } from "react";
+import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { Center, Loader, Text } from "metabase/ui";
 import { formatValue } from "metabase/value-formatting";
+import { useResolvedGoalSegments } from "metabase/visualizations/hooks/use-resolved-goal-segments";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import { segmentIsValid } from "metabase/viz-core";
 
 import { GaugeArc } from "./GaugeArc";
 import { GaugeNeedle } from "./GaugeNeedle";
@@ -27,24 +29,21 @@ import {
   getSegmentLabelColor,
 } from "./constants";
 import { GAUGE_CHART_DEFINITION } from "./definition";
-import { isGaugeRange, isGaugeSegmentsArray } from "./types";
-import { getValue, radians } from "./utils";
+import { isGaugeRange } from "./types";
+import { getSegmentsRange, getValue, radians } from "./utils";
 
 function GaugeComponent({
   className,
   isSettings,
   height: heightProp,
-  series: [
-    {
-      data: { rows, cols },
-    },
-  ],
+  series: [{ card, data }],
   settings,
   visualizationIsClickable,
   width,
   onVisualizationClick,
   onHoverChange,
 }: VisualizationProps) {
+  const { rows, cols } = data;
   const labelRef = useRef<SVGTextElement>(null);
   const isMounted = useMounted();
 
@@ -67,12 +66,16 @@ function GaugeComponent({
 
   const showLabels = svgWidth > MIN_WIDTH_LABEL_THRESHOLD;
 
+  const goalSegments = useResolvedGoalSegments(
+    card.dataset_query,
+    data,
+    settings["gauge.segments"],
+  );
+  const segments =
+    goalSegments.status === "resolved" ? goalSegments.segments : [];
   const gaugeRange = settings["gauge.range"];
-  const range: number[] = isGaugeRange(gaugeRange) ? gaugeRange : [];
-  const gaugeSegments = settings["gauge.segments"];
-  const segments = isGaugeSegmentsArray(gaugeSegments)
-    ? gaugeSegments.filter((segment) => segmentIsValid(segment))
-    : [];
+  const range: number[] =
+    getSegmentsRange(segments) ?? (isGaugeRange(gaugeRange) ? gaugeRange : []);
 
   // value to angle in radians, clamped
   const angle = d3
@@ -141,6 +144,24 @@ function GaugeComponent({
   useEffect(() => {
     updateLabelSize();
   });
+
+  if (goalSegments.status === "resolving") {
+    return (
+      <Center className={className} h={heightProp}>
+        <Loader />
+      </Center>
+    );
+  }
+
+  if (goalSegments.status === "failed") {
+    return (
+      <Center className={className} h={heightProp} px="md">
+        <Text c="text-secondary" ta="center">
+          {t`Couldn't load a value one of this gauge's ranges depends on.`}
+        </Text>
+      </Center>
+    );
+  }
 
   return (
     <div className={cx(className, CS.relative)}>

@@ -1,3 +1,6 @@
+import type { CardId } from "./card";
+import type { MeasureId } from "./measure";
+
 // SmartScalar (Trend Chart)
 export type SmartScalarComparisonType =
   | "anotherColumn"
@@ -63,3 +66,34 @@ export interface TreemapRow {
   enabled: boolean;
   hidden: boolean;
 }
+
+export type GoalValue =
+  | GoalStaticValue
+  | GoalSelfColumnRef
+  | GoalForeignColumnRef;
+
+export type GoalStaticValue = number;
+
+// name of another column in the same question
+export type GoalSelfColumnRef = string;
+
+export type GoalForeignEntityRef =
+  | { type: "card"; id: CardId }
+  | { type: "measure"; id: MeasureId };
+
+export type GoalForeignColumnRef = GoalForeignEntityRef & { column: string };
+
+export type GoalSegment = {
+  // the pre-2022 segments editor could persist segments without a color
+  color?: string | null;
+  label?: string;
+  min: GoalValue | null;
+  max: GoalValue | null;
+};
+
+export type ScalarSegment = {
+  min: GoalStaticValue | null;
+  max: GoalStaticValue | null;
+  color: string;
+  label?: string;
+};

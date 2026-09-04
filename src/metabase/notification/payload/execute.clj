@@ -157,7 +157,7 @@
   (-> (select-keys qp-result [:status :row_count :database_id :error
                               :notification/truncated? :data.rows-file-size])
       (assoc :data (select-keys (:data qp-result)
-                                [:cols :rows :viz-settings :results_metadata :insights
+                                [:cols :rows :viz-settings :results_metadata :insights :referenced_entities
                                  :results_timezone :format-rows? :pivot-export-options]))))
 
 (def cells-to-disk-threshold

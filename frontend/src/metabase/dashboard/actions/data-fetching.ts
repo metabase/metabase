@@ -50,6 +50,7 @@ import {
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
 import { uuid } from "metabase/utils/uuid";
+import { hasUnansweredGoalReferences } from "metabase/visualizations/lib/dynamic-goals";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
@@ -270,9 +271,27 @@ export const fetchCardDataAction = createAsyncThunk<
 
     const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
     if (!reload) {
+      const savedDashcard =
+        editingDashboard != null
+          ? editingDashboard.dashcards.find(({ id }) => id === dashcard.id)
+          : dashcard;
+      const isMissingGoalReferences =
+        savedDashcard != null &&
+        hasUnansweredGoalReferences(
+          {
+            display: card.display,
+            visualization_settings: {
+              ...card.visualization_settings,
+              ...savedDashcard.visualization_settings,
+            },
+          },
+          lastResult?.data,
+        );
+
       // if reload not set, check to see if the last result has the same query dict and return that
       if (
         lastResult &&
+        !isMissingGoalReferences &&
         _.isEqual(
           getDatasetQueryParams(lastResult.json_query),
           getDatasetQueryParams(datasetQuery),

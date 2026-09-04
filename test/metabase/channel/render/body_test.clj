@@ -571,6 +571,30 @@
                             doc)]
             (is (not (render-error? pulse-body)))))))))
 
+(deftest render-gauge-with-dynamic-goals-test
+  (testing "Static-viz Gauge resolves a bound naming another column of the same query and fills a legacy colorless
+            segment with a default color instead of failing"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {card-id :id} {:display                :gauge
+                                                :dataset_query          (mt/mbql-query venues
+                                                                          {:aggregation [[:count] [:sum $price]]})
+                                                :visualization_settings {:gauge.segments
+                                                                         [{:min 0 :max "sum" :color "#84BB4C"}
+                                                                          {:min 0 :max "count"}]}}]
+        (let [doc        (render.tu/render-card-as-hickory! card-id)
+              pulse-body (hik.s/select (hik.s/class "pulse-body") doc)
+              arc-paths  (hik.s/select (hik.s/descendant (hik.s/class "visx-pie-arcs-group") (hik.s/tag :path))
+                                       doc)
+              arc-fills  (->> arc-paths
+                              (map (comp :fill :attrs))
+                              ;; the first arc is the full-range background arc
+                              rest)]
+          (is (not (render-error? pulse-body)))
+          (is (= 2 (count arc-fills)))
+          (is (some #{"#84BB4C"} arc-fills))
+          (is (every? #(re-matches #"#[0-9A-Fa-f]{6}" %) arc-fills)
+              "the colorless segment gets a resolved hex fill"))))))
+
 (def ^:private funnel-rows
   [["cart" 1500]
    ["checkout" 450]
