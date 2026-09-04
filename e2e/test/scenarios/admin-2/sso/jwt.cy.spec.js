@@ -1,11 +1,6 @@
 const { H } = cy;
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
-import {
-  checkGroupConsistencyAfterDeletingMappings,
-  crudGroupMappingsWidget,
-} from "./shared/group-mappings-widget";
-
 describe("scenarios > admin > settings > SSO > JWT", () => {
   beforeEach(() => {
     H.restore();
@@ -97,22 +92,121 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
       .should("exist");
   });
 
-  describe("Group Mappings Widget", () => {
+  describe("Group mapping", () => {
     beforeEach(() => {
-      cy.intercept("GET", "/api/setting").as("getSettings");
-      cy.intercept("GET", "/api/session/properties").as("getSessionProperties");
+      enableJwtAuth();
+      cy.intercept("GET", "/api/permissions/group").as("getGroups");
       cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
       cy.intercept("PUT", "/api/permissions/membership/*/clear").as(
         "clearGroup",
       );
+      cy.visit("/admin/settings/authentication/jwt");
+      cy.wait("@getGroups");
     });
 
     it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
-      crudGroupMappingsWidget("jwt");
+      cy.log("Every mapping is saved as soon as it is added");
+      selectGroupMappingMode("Manual");
+      addMapping("cn=People1", ["Administrators", "data", "nosql"]);
+      addMapping("cn=People2", ["collection", "readonly"]);
+
+      cy.log("Delete the first mapping together with its groups");
+      deleteMapping(
+        "cn=People1",
+        /delete the groups/i,
+        "Remove mapping and delete groups",
+      );
+      cy.wait(["@deleteGroup", "@deleteGroup"]);
+
+      cy.log("Deleted groups are no longer offered for new mappings");
+      newMappingButton().click();
+      groupsPicker().click();
+      cy.findByRole("listbox")
+        .should("contain", "collection")
+        .and("not.contain", "data")
+        .and("not.contain", "nosql");
+      cy.button("Cancel").click();
+
+      cy.log(
+        "Deleting the last mapping clears its groups and turns group mapping off",
+      );
+      deleteMapping(
+        "cn=People2",
+        /remove all members/i,
+        "Remove mapping and members",
+      );
+      cy.wait(["@clearGroup", "@clearGroup"]);
+      groupMappingSection()
+        .findByRole("radio", { name: "Off" })
+        .should("be.checked");
+
+      cy.log("Deleted groups are gone and cleared groups have no members");
+      cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
+        const names = groups.map((group) => group.name);
+        expect(names).to.include.members(["collection", "readonly"]);
+        expect(names).not.to.include("data");
+        expect(names).not.to.include("nosql");
+        const memberCount = (name) =>
+          groups.find((group) => group.name === name).member_count;
+        expect(memberCount("collection")).to.equal(0);
+        expect(memberCount("readonly")).to.equal(0);
+      });
     });
 
-    it("should allow deleting mappings with groups, while keeping remaining mappings consistent with their undeleted groups", () => {
-      checkGroupConsistencyAfterDeletingMappings("jwt");
+    it("should drop deleted groups from the remaining mappings and clear all mappings when switching to automatic", () => {
+      selectGroupMappingMode("Manual");
+      addMapping("cn=People1", ["Administrators", "data", "nosql"]);
+      addMapping("cn=People2", ["data", "collection"]);
+      addMapping("cn=People3", ["collection", "readonly"]);
+
+      cy.log(
+        "Deleting a mapping's groups removes them from the other mappings too",
+      );
+      deleteMapping(
+        "cn=People2",
+        /delete the groups/i,
+        "Remove mapping and delete groups",
+      );
+      cy.wait(["@deleteGroup", "@deleteGroup"]);
+      mappingRow("cn=People1").should("contain", "Administrators, nosql");
+      mappingRow("cn=People3")
+        .should("contain", "readonly")
+        .and("not.contain", "collection");
+
+      cy.log("The same mappings come back after a reload");
+      // the row assertions retry until the reloaded page has rendered, so there is nothing to wait on
+      cy.reload();
+      mappingRow("cn=People1").should("contain", "Administrators, nosql");
+      mappingRow("cn=People3")
+        .should("contain", "readonly")
+        .and("not.contain", "collection");
+
+      cy.log(
+        "Switching to automatic asks for confirmation and deletes the mappings",
+      );
+      selectGroupMappingMode("Automatic");
+      H.modal().within(() => {
+        cy.findByText("Switch to automatic group mapping?").should(
+          "be.visible",
+        );
+        cy.button("Delete mappings and switch").click();
+      });
+      cy.wait("@updateSettings").its("request.body").should("deep.equal", {
+        "jwt-group-sync": true,
+        "jwt-group-mappings": {},
+      });
+      groupMappingSection()
+        .findByRole("radio", { name: "Automatic" })
+        .should("be.checked");
+
+      cy.reload();
+      groupMappingSection()
+        .findByRole("radio", { name: "Automatic" })
+        .should("be.checked");
+      selectGroupMappingMode("Manual");
+      groupMappingSection()
+        .findByText("Add at least one mapping to use manual group mapping")
+        .should("be.visible");
     });
   });
 });
@@ -123,4 +217,42 @@ const getJwtCard = () => {
     .findByText("JWT")
     .parent()
     .parent();
+};
+
+const groupMappingSection = () => cy.findByTestId("jwt-group-schema");
+
+const mappingRow = (name) =>
+  cy.contains('[data-testid="jwt-group-mapping-row"]', name);
+
+const newMappingButton = () => cy.button("New mapping");
+
+const groupsPicker = () => cy.findByLabelText("Metabase groups");
+
+// the segmented control keeps its radio inputs hidden, so the visible label takes the click
+const selectGroupMappingMode = (mode) => {
+  groupMappingSection().findByText(mode).click();
+};
+
+// adding a mapping saves it right away, so wait for that write before moving on
+const addMapping = (name, groups) => {
+  newMappingButton().click();
+  cy.findByLabelText("JWT group name").type(name);
+  groupsPicker().click();
+  groups.forEach((group) => {
+    cy.findByRole("option", { name: group }).click();
+  });
+  cy.button("Add mapping").click();
+  cy.wait("@updateSettings");
+  mappingRow(name).should("contain", groups.join(", "));
+};
+
+const deleteMapping = (name, consequenceLabel, confirmLabel) => {
+  mappingRow(name).findByLabelText("Delete mapping").click();
+  H.modal().within(() => {
+    cy.findByText("Remove this group mapping?").should("be.visible");
+    cy.findByText(consequenceLabel).click();
+    cy.button(confirmLabel).click();
+  });
+  cy.wait("@updateSettings");
+  mappingRow(name).should("not.exist");
 };

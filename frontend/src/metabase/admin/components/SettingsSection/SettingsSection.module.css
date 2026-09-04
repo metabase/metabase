@@ -86,3 +86,19 @@
   line-height: inherit;
   word-break: normal;
 }
+
+/* disabled cards fade as a whole, the way the mocks show them before setup */
+.DisabledSection {
+  opacity: 0.5;
+}
+
+/* the card fades as a whole, so the disabled control must not fade a second time */
+.CollapsibleAccordion .CollapsibleControl:disabled {
+  opacity: 1;
+}
+
+/* a disabled card is a preview rather than a blocked action, so its header shows a plain cursor */
+.CollapsibleAccordion .CollapsibleControl:disabled,
+.CollapsibleAccordion .CollapsibleControl:disabled::after {
+  cursor: default;
+}
