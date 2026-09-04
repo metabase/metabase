@@ -22,6 +22,30 @@ inputs:
     description: Edition to test (oss or ee)
   quarantine-engine:
     required: false
+  runner-index:
+    required: false
+    description: >-
+      The index of this runner among those sharing a partitioned suite. See
+      `be-tests-bigquery-cloud-sdk-ee` in `.github/workflows/drivers.yml` for an example.
+  runner-count:
+    required: false
+    description: >-
+      How many runners share the suite. Recommended to set to `strategy.job-total` rather
+      than a literal so that it doesn't need updating if the `runner-index` matrix changes.
+  jvms-per-runner:
+    required: false
+    default: "1"
+    description: >-
+      Concurrent JVMs per runner. Recommended to raise above 1 for drivers whose tests
+      spend a lot of time waiting on a remote warehouse.
+  heap-per-jvm:
+    required: false
+    default: "4g"
+    description: >-
+      `-Xmx` per JVM, applied only when `jvms-per-runner` is more than 1 (otherwise the
+      the `:ci` alias's `-Xmx12g` is used). To size it: reserve ~1G for the OS and ~2G
+      of non-heap per JVM, then divide what's left. On a 16G runner that's ~4G each for
+      two JVMs.
   granular-rerun:
     required: false
     default: "true"
@@ -100,6 +124,7 @@ runs:
       # Otherwise run exactly as before. Quote the file so the whole `[ns/var ...]`
       # vector reaches clojure -X as a single argument.
       run: |
+        ALIASES="dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test"
         BASE="clojure -X:dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test"
         # `:profile-tests` overrides `:test`'s exec-fn, so it has to come last. See dev.profile-tests.
         # The `profiled` output is what the collection steps below key off, so that the decision is
@@ -117,12 +142,19 @@ runs:
           $BASE :only "$ONLY"
         elif [ "${{ inputs.granular-rerun }}" = "true" ] && [ "${{ github.run_attempt }}" != "1" ] && [ -s target/failed-tests ]; then
           echo "Granular rerun of previously-failed tests: $(cat target/failed-tests)"
-          $BASE :only "$(cat target/failed-tests)"
+          clojure -X:"$ALIASES" :only "$(cat target/failed-tests)"
+        elif [ -n "$TEST_RUNNER_INDEX" ]; then
+          CLOJURE_ALIASES="$ALIASES" ./.github/scripts/run-backend-test-jvms.sh ${{ inputs.test-args }}
         else
-          $BASE ${{ inputs.test-args }}
+          clojure -X:"$ALIASES" ${{ inputs.test-args }}
         fi
       shell: bash
       id: run-test
+      env:
+        TEST_RUNNER_INDEX: ${{ inputs.runner-index }}
+        TEST_RUNNER_COUNT: ${{ inputs.runner-count }}
+        TEST_JVMS_PER_RUNNER: ${{ inputs.jvms-per-runner }}
+        TEST_HEAP_PER_JVM: ${{ inputs.heap-per-jvm }}
       # Keep this step continue-on-error because the quarantine gate below controls whether it
       # ultimately fails.
       continue-on-error: true
@@ -186,7 +218,9 @@ runs:
       uses: actions/upload-artifact@v7
       with:
         name: ${{ format('test-logs-{0}{1}', github.job, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
-        path: logs/test-log.json
+        # Glob: a single-JVM run writes `logs/test-log.json`; a multi-JVM run merges one
+        # `logs/test-log-p<index>.json` per JVM.
+        path: logs/test-log*.json
         retention-days: 1
       # Failing to upload the artifact should never affect the outcome of the whole test run.
       continue-on-error: true
