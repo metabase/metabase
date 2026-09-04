@@ -77,8 +77,9 @@
     :valid   - a key is set and the sentinel decrypts to a UUID with it, so the key is correct
     :invalid - the sentinel exists but does not decrypt (wrong or unset key, corruption)
     :absent  - no sentinel: a `setting` table that does not exist yet (before migrations on a fresh database), no
-               row, or the plaintext \"unencrypted\" marker (written when the database is decrypted, and inserted by
-               versions before 58 on a new database) -- an explicit statement of the same thing a missing row means
+               row, or the plaintext \"unencrypted\" marker (written when the database is decrypted; a v53 changeset
+               also inserts it on a new database and a v58 one deletes it again) -- an explicit statement of the same
+               thing a missing row means
 
   Read raw, from the legacy `value` column: this runs before migrations, and `value` is the one column every version
   writes the sentinel to."
@@ -303,7 +304,7 @@
               (mdb.db/update-column-value! table column id (encrypt-bytes-fn decrypted)))))
         (mdb.db/reducible-column-values table column)))
 
-(defn legacy-unencrypted-string?
+(defn- legacy-unencrypted-string?
   "Whether `value`, read from an encrypted-at-rest string column, is legacy plaintext: MB_ENCRYPTION_SECRET_KEY is set
   and `value` is a string that does not decrypt with it (under `opts`, e.g. `:aad`), so a previous version of Metabase
   must have stored it unencrypted."
@@ -313,13 +314,6 @@
    (and (encryption/default-encryption-enabled?)
         (string? value)
         (not (encryption/decryptable-string? value opts)))))
-
-(defn legacy-unencrypted-bytes?
-  "[[legacy-unencrypted-string?]] for a `^bytes` column."
-  [^bytes value]
-  (and (encryption/default-encryption-enabled?)
-       (some? value)
-       (not (encryption/possibly-encrypted-bytes? value))))
 
 (defn- handle-legacy-unencrypted-values!
   "What happens when legacy values that a previous version of Metabase stored unencrypted are found in `location` (a
@@ -335,27 +329,36 @@
   transforms (e.g. notification seeding re-creates `notification_recipient.details` rows every boot), and
   `load-from-h2` copies a decrypted dump's values verbatim. A value that decrypts with the current key is left
   byte-identical; whether a value is encrypted is decided by [[encryption/decryptable-string?]] (actually decrypting),
-  never by shape. The `^bytes` columns are not scanned: every shipped version writes those encrypted, so they cannot
-  regress this way. No-op when MB_ENCRYPTION_SECRET_KEY is not set."
+  never by shape. Streams each column, warning once per column before its first row is encrypted. The `^bytes`
+  columns are not scanned: every shipped version writes those encrypted, so they cannot regress this way. No-op when
+  MB_ENCRYPTION_SECRET_KEY is not set."
   []
   (when (encryption/default-encryption-enabled?)
     (t2/with-transaction [_conn]
-      (doseq [[table column] encrypted-string-columns]
-        (let [plaintext (filterv (comp legacy-unencrypted-string? :value) (mdb.db/column-values table column))]
-          (when (seq plaintext)
-            (handle-legacy-unencrypted-values! (str (name table) "." (name column)))
-            (doseq [{:keys [id value]} plaintext]
-              (mdb.db/update-column-value! table column id (encryption/encrypt value))))))
-      ;; `setting.value_with_aad` is bound to its row, so it is checked and encrypted under each row's own AAD
-      (let [encrypt-setting-fn (encrypt-setting nil)
-            plaintext          (filterv (fn [{:keys [key value_with_aad]}]
-                                          (legacy-unencrypted-string? value_with_aad
-                                                                      {:aad (mdb.setting/setting-aad key)}))
-                                        (mdb.db/setting-values-with-aad))]
-        (when (seq plaintext)
-          (handle-legacy-unencrypted-values! "setting.value_with_aad")
-          (doseq [{:keys [key value_with_aad]} plaintext]
-            (mdb.db/update-setting-values! key nil (encrypt-setting-fn value_with_aad key))))))))
+      (letfn [(encrypt-legacy-values! [location legacy? encrypt-row! rows]
+                (reduce (fn [handled? row]
+                          (if (legacy? row)
+                            (do (when-not handled?
+                                  (handle-legacy-unencrypted-values! location))
+                                (encrypt-row! row)
+                                true)
+                            handled?))
+                        false
+                        rows))]
+        (doseq [[table column] encrypted-string-columns]
+          (encrypt-legacy-values! (str (name table) "." (name column))
+                                  (comp legacy-unencrypted-string? :value)
+                                  (fn [{:keys [id value]}]
+                                    (mdb.db/update-column-value! table column id (encryption/encrypt value)))
+                                  (mdb.db/reducible-column-values table column)))
+        ;; `setting.value_with_aad` is bound to its row, so it is checked and encrypted under each row's own AAD
+        (let [encrypt-setting-fn (encrypt-setting nil)]
+          (encrypt-legacy-values! "setting.value_with_aad"
+                                  (fn [{:keys [key value_with_aad]}]
+                                    (legacy-unencrypted-string? value_with_aad {:aad (mdb.setting/setting-aad key)}))
+                                  (fn [{:keys [key value_with_aad]}]
+                                    (mdb.db/update-setting-values! key {:value_with_aad (encrypt-setting-fn value_with_aad key)}))
+                                  (mdb.db/reducible-setting-values-with-aad)))))))
 
 (defn- do-encryption
   "Encrypt or decrypt the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
@@ -385,15 +388,14 @@
       (doseq [{:keys [key value value_with_aad]} (mdb.db/settings)]
         (case key
           "settings-last-updated" (let [now (mdb.query/current-timestamp-string db-type)]
-                                    (mdb.db/update-setting-values! key now (encrypt-setting-fn now key)))
+                                    (mdb.db/update-setting-values! key {:value now, :value_with_aad (encrypt-setting-fn now key)}))
           "encryption-check" nil
-          (let [aad-opts       {:aad (mdb.setting/setting-aad key)}
-                value          (when (seq value)
-                                 (encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext value)))
-                value-with-aad (when (seq value_with_aad)
-                                 (encrypt-setting-fn (encryption/maybe-decrypt-accepting-plaintext value_with_aad aad-opts) key))]
-            (when (or value value-with-aad)
-              (mdb.db/update-setting-values! key value value-with-aad)))))
+          (let [aad-opts {:aad (mdb.setting/setting-aad key)}
+                changes  (cond-> {}
+                           (seq value)          (assoc :value (encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext value)))
+                           (seq value_with_aad) (assoc :value_with_aad (encrypt-setting-fn (encryption/maybe-decrypt-accepting-plaintext value_with_aad aad-opts) key)))]
+            (when (seq changes)
+              (mdb.db/update-setting-values! key changes)))))
       (replace-encryption-check! (when encrypting? encrypt-str-fn) (when encrypting? encrypt-setting-fn))
       (doseq [[table column] encrypted-bytes-columns]
         (reencrypt-encrypted-bytes-column! table column encrypt-bytes-fn))

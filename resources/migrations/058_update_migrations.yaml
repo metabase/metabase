@@ -1544,31 +1544,14 @@ databaseChangeLog:
       id: v58.2026-09-03T00:00:00
       author: ranquild
       comment: >-
-        Retire the Encrypt* backfill changesets: encrypting a value that a previous version stored unencrypted is the
-        startup sweep's job, which warns about it, and a one-shot migration cannot be relied on to have done it.
+        Forget the changelog records of changesets this release removes: the Encrypt* backfills, since encrypting a
+        value that a previous version stored unencrypted is the startup sweep's job and a one-shot migration cannot be
+        relied on to have done it, and the SQL copy of password authentication into auth_identity, which
+        MigratePasswordAuthToAuthIdentity redoes with the credentials encrypted. Keeps the changelog table in step with
+        the changelog; a database that has not run them is unaffected either way.
       changes:
         - sql:
-            dbms: postgresql,h2
-            sql: DELETE FROM databasechangelog WHERE id IN ('v58.2026-08-25T00:00:00', 'v58.2026-08-25T00:00:01', 'v58.2026-08-25T00:00:18', 'v58.2026-08-25T00:00:19', 'v58.2026-08-28T00:00:00', 'v58.2026-08-28T14:00:00', 'v58.2026-08-30T00:00:00');
-        - sql:
-            dbms: mysql,mariadb
-            sql: DELETE FROM `DATABASECHANGELOG` WHERE id IN ('v58.2026-08-25T00:00:00', 'v58.2026-08-25T00:00:01', 'v58.2026-08-25T00:00:18', 'v58.2026-08-25T00:00:19', 'v58.2026-08-28T00:00:00', 'v58.2026-08-28T14:00:00', 'v58.2026-08-30T00:00:00');
-      rollback: []
-
-  - changeSet:
-      id: v58.2026-09-03T00:00:01
-      author: ranquild
-      comment: >-
-        Retire v58.2025-11-12T00:00:11, which copied password authentication into auth_identity with the credentials
-        unencrypted; MigratePasswordAuthToAuthIdentity does it encrypted. Removing the record lets a database that has
-        not run it yet skip straight to the replacement, and one that has re-runs nothing.
-      changes:
-        - sql:
-            dbms: postgresql,h2
-            sql: DELETE FROM databasechangelog WHERE id = 'v58.2025-11-12T00:00:11';
-        - sql:
-            dbms: mysql,mariadb
-            sql: DELETE FROM `DATABASECHANGELOG` WHERE id = 'v58.2025-11-12T00:00:11';
+            sql: DELETE FROM ${databasechangelog.name} WHERE id IN ('v58.2026-08-25T00:00:00', 'v58.2026-08-25T00:00:01', 'v58.2026-08-25T00:00:18', 'v58.2026-08-25T00:00:19', 'v58.2026-08-28T00:00:00', 'v58.2026-08-28T14:00:00', 'v58.2026-08-30T00:00:00', 'v58.2025-11-12T00:00:11');
       rollback: []
 
   - changeSet:

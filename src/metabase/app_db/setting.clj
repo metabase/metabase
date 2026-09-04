@@ -7,7 +7,6 @@
   (:require
    [buddy.core.codecs :as codecs]
    [metabase.app-db.db :as mdb.db]
-   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -29,16 +28,16 @@
   `value` says beside it -- nothing in this version reads `value`, and a version that does reconciles it at its own
   startup.
 
-  Reads and writes the table directly, never through the model: the model's read is the strict one this fills in
-  for, and the cloud-migration guard on Toucan DML reads `read-only-mode` through it before every update -- a row that
-  may itself be among those being filled in."
+  Whether a `value` is encrypted is decided by decrypting it, never by its shape: a plaintext value that merely looks
+  like ciphertext is a value too. Reads and writes the table directly, never through the model: the model's read is
+  the strict one this fills in for, and the cloud-migration guard on Toucan DML reads `read-only-mode` through it
+  before every update -- a row that may itself be among those being filled in."
   []
   (let [filled (atom 0)]
     (t2/with-transaction [_conn]
       (doseq [{:keys [key value]} (mdb.db/unmigrated-settings)
-              :let  [plain (u/ignore-exceptions (encryption/maybe-decrypt-accepting-plaintext value))]
-              :when (some? plain)]
+              :let  [plain (if (encryption/decryptable-string? value) (encryption/decrypt value) value)]]
         (swap! filled inc)
-        (mdb.db/update-setting-values! key nil (encryption/maybe-encrypt plain {:aad (setting-aad key)}))))
+        (mdb.db/update-setting-values! key {:value_with_aad (encryption/maybe-encrypt plain {:aad (setting-aad key)})})))
     (when (pos? @filled)
       (log/infof "Filled in the authenticated value of %d setting(s) from their value." @filled))))
