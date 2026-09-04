@@ -1272,10 +1272,19 @@
 
   Only same-type pairs merge. [[same-block?]] also pairs convertible types (a paragraph with a
   bulletList), where the old attrs describe a different node shape -- a heading's `level` has no
-  meaning on the paragraph it became -- so those keep the id-only carry."
+  meaning on the paragraph it became -- so those keep the id-only carry.
+
+  `:_id` goes the other way. Every other attr is parsed from the node's text, so a fresh value is
+  the edit's intent and has to win -- retargeting a card token to `id=1234` must not be undone by
+  the old `id=7`. But `:_id` is minted anew by [[parse]] on every node, never round-tripped, so a
+  fresh one is not intent, just a new identity. Letting it win would rename the block on every
+  splice and orphan the comments anchored to it, which is the guarantee [[reconcile-ids]] exists
+  to keep."
   [new-node old-node]
   (if (= (:type new-node) (:type old-node))
-    (update new-node :attrs #(merge (:attrs old-node) %))
+    (-> new-node
+        (update :attrs #(merge (:attrs old-node) %))
+        (carry-id old-node))
     (carry-id new-node old-node)))
 
 (defn- reconcile-ids
