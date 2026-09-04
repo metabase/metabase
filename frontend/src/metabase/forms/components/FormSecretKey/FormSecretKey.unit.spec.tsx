@@ -203,6 +203,24 @@ describe("FormSecretKey", () => {
         screen.getByRole("button", { name: "Set up key" }),
       ).toBeInTheDocument();
     });
+
+    it("cannot be dismissed with Escape", async () => {
+      setup({ initialValues: { secret: undefined } });
+
+      await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
+      const modal = await screen.findByRole("dialog", {
+        name: "Create a secret key",
+      });
+      expect(
+        within(modal).queryByRole("button", { name: "Close" }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.keyboard("{Escape}");
+
+      expect(
+        screen.getByRole("dialog", { name: "Create a secret key" }),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("when there is an existing value", () => {
@@ -245,6 +263,28 @@ describe("FormSecretKey", () => {
       expect(fetchMock.callHistory.calls("generate-random-token")).toHaveLength(
         0,
       );
+    });
+
+    it("cannot dismiss the regenerate confirmation with Escape", async () => {
+      setup({ initialValues: { secret: EXISTING_VALUE } });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Regenerate key" }),
+      );
+      const modal = await screen.findByRole("dialog", {
+        name: "Delete key and generate a new one?",
+      });
+      expect(
+        within(modal).queryByRole("button", { name: "Close" }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.keyboard("{Escape}");
+
+      expect(
+        screen.getByRole("dialog", {
+          name: "Delete key and generate a new one?",
+        }),
+      ).toBeInTheDocument();
     });
 
     it("keeps the current key when the confirmation is dismissed", async () => {
@@ -315,6 +355,22 @@ describe("FormSecretKey", () => {
       expect(
         screen.queryByRole("button", { name: "Cancel" }),
       ).not.toBeInTheDocument();
+    });
+
+    it("cannot dismiss the store step with Escape", async () => {
+      setup({ initialValues: { secret: EXISTING_VALUE } });
+
+      await regenerateKey();
+      const modal = screen.getByRole("dialog", { name: "Store your new key" });
+      expect(
+        within(modal).queryByRole("button", { name: "Close" }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.keyboard("{Escape}");
+
+      expect(
+        screen.getByRole("dialog", { name: "Store your new key" }),
+      ).toBeInTheDocument();
     });
   });
 
