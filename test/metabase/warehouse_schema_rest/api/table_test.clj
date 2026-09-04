@@ -274,11 +274,13 @@
                                        :database_is_auto_increment true
                                        :name_field                 {:base_type "type/Text",
                                                                     :display_name "Name",
+                                                                    :effective_type "type/Text",
                                                                     :fk_target_field_id nil,
                                                                     :has_field_values "list",
                                                                     :id (mt/id :users :name),
                                                                     :name "NAME",
                                                                     :semantic_type "type/Name",
+                                                                    :settings nil,
                                                                     :table_id (mt/id :users)})
                                 (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :name)))
                                        :semantic_type              "type/Name"
@@ -356,11 +358,13 @@
                                        :database_is_auto_increment true
                                        :name_field {:base_type "type/Text",
                                                     :display_name "Name",
+                                                    :effective_type "type/Text",
                                                     :fk_target_field_id nil,
                                                     :has_field_values "list",
                                                     :id (mt/id :users :name),
                                                     :name "NAME",
                                                     :semantic_type "type/Name",
+                                                    :settings nil,
                                                     :table_id (mt/id :users)})
                                 (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :name)))
                                        :table_id         (mt/id :users)
@@ -697,11 +701,13 @@
                                 :database_is_auto_increment true
                                 :name_field        {:base_type "type/Text",
                                                     :display_name "Name",
+                                                    :effective_type "type/Text",
                                                     :fk_target_field_id nil,
                                                     :has_field_values "list",
                                                     :id (mt/id :categories :name),
                                                     :name "NAME",
                                                     :semantic_type "type/Name",
+                                                    :settings nil,
                                                     :table_id (mt/id :categories)}})
                               (merge
                                (field-details (t2/select-one :model/Field :id (mt/id :categories :name)))
