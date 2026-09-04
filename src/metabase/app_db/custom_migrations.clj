@@ -2255,27 +2255,6 @@
   (llm-providers/migrate-up!)
   (llm-providers/migrate-down!))
 
-(define-migration MigratePasswordAuthToAuthIdentity
-  ;; Replaces the v58 SQL changeset that copied these rows with the credentials unencrypted, although
-  ;; `auth_identity.credentials` is encrypted at rest. Users that already have a password identity are skipped.
-  (run! (fn [{:keys [id email password password_salt date_joined]}]
-          (t2/query {:insert-into :auth_identity
-                     :values      [{:user_id     id
-                                    :provider    "password"
-                                    :provider_id (subs email 0 (min 255 (count email)))
-                                    :credentials (encryption/maybe-encrypt (json/encode {:password_hash password
-                                                                                         :password_salt password_salt}))
-                                    :metadata    nil
-                                    :created_at  (or date_joined :%now)
-                                    :updated_at  :%now}]}))
-        (t2/query {:select [:u.id :u.email :u.password :u.password_salt :u.date_joined]
-                   :from   [[:core_user :u]]
-                   :where  [:and
-                            [:not= :u.password nil]
-                            [:not [:exists ^:allow-subquery {:select [1]
-                                                             :from   [[:auth_identity :ai]]
-                                                             :where  [:and [:= :ai.user_id :u.id] [:= :ai.provider "password"]]}]]]})))
-
 (define-migration BackfillExampleDashboardIdValueWithAad
   ;; `CreateSampleContentV2` runs before `setting.value_with_aad` exists, so it writes the setting's legacy `value` only.
   (when-let [value (:value (t2/query-one {:select [:value]

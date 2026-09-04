@@ -161,6 +161,7 @@
       (mt/with-temp-empty-app-db [_conn driver/*driver*]
         (encryption-test/with-secret-key "key2"
           (mdb/setup-db! :create-sample-content? true)
+          (mdb/encrypt-plaintext-columns!)
           (is (encryption/decryptable-string? (t2/select-one-fn :value "setting" :key "encryption-check")))
           (is (encryption/decryptable-string? (t2/select-one-fn :details "metabase_database")))
           (testing "Re-running server works"
@@ -235,6 +236,11 @@
           (is (= [] (mt/with-log-messages-for-level [messages [metabase.app-db :warn]]
                       (mdb/setup-db! :create-sample-content? true)
                       (messages)))))
+        (testing "except the credentials the v58 SQL changesets copy into auth_identity bare, which the startup sweep encrypts"
+          (is (=? [{:message #"Encrypting legacy values in auth_identity\.credentials .*"}]
+                  (mt/with-log-messages-for-level [messages [metabase.app-db :warn]]
+                    (mdb/encrypt-plaintext-columns!)
+                    (messages)))))
         (testing "the sample content's example-dashboard-id setting is stored whole and encrypted"
           (let [{:keys [value value_with_aad]} (t2/select-one :setting :key "example-dashboard-id")]
             (is (= "1" (encryption/maybe-decrypt value)))
@@ -259,7 +265,7 @@
           (doseq [{k :key v :value_with_aad} (t2/select :setting {:where [:!= :value_with_aad nil]})]
             (testing k
               (is (encryption/decryptable-string? v {:aad (mdb.setting/setting-aad k)})))))
-        (testing "and the startup sweep then finds nothing left to encrypt"
+        (testing "and the startup sweep then has nothing left to encrypt"
           (is (= [] (mt/with-log-messages-for-level [messages [metabase.app-db :warn]]
                       (mdb/encrypt-plaintext-columns!)
                       (messages)))))))))
