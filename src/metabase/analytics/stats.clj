@@ -9,9 +9,9 @@
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.db :as analytics.db]
    [metabase.analytics.event :as analytics.event]
    [metabase.analytics.settings :as analytics.settings]
-   [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
@@ -19,19 +19,16 @@
    [metabase.internal-stats.core :as internal-stats]
    [metabase.lib-be.core :as lib-be]
    [metabase.models.humanization :as humanization]
-   [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.session.settings :as session.settings]
    [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.version.core :as version]
-   [toucan2.core :as t2]))
+   [metabase.version.core :as version]))
 
 (set! *warn-on-reflection* true)
 
@@ -132,7 +129,7 @@
    :slack_configured                     (setting/get :slack-configured?)
    :sso_configured                       (setting/get :google-auth-enabled)
    :instance_started                     (analytics.settings/instance-creation)
-   :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
+   :has_sample_data                      (analytics.db/sample-database-exists?)
    :enable_embedding                     (setting/get :enable-embedding)
    ;; Modular embedding, the SDK and guest embeds are one setting since 0.65.0. The three field names are kept so
    ;; existing reports keep resolving; they now all report that one flag.
@@ -167,8 +164,7 @@
   "Get metrics based on user records.
   TODO: get activity in terms of created questions, pulses and dashboards"
   []
-  {:users (merge-count-maps (for [user (t2/select [:model/User :is_active :is_superuser :last_login :sso_source]
-                                                  :type :personal)]
+  {:users (merge-count-maps (for [user (analytics.db/personal-user-stats-columns)]
                               {:total     1
                                :active    (:is_active    user)
                                :admin     (:is_superuser user)
@@ -178,7 +174,7 @@
 (defn- document-metrics
   "Get metrics based on documents."
   []
-  {:documents (merge-count-maps (for [document (t2/select [:model/Document :archived])]
+  {:documents (merge-count-maps (for [document (analytics.db/document-archived-flags)]
                                   {:total 1
                                    :archived (true? (:archived document))}))})
 
@@ -187,31 +183,24 @@
   []
   (letfn [(collection-and-descendant-ids [type]
             ;; Get collection and build location prefix for descendants (location like "<parent-location><id>/%")
-            (when-let [{:keys [id location]} (t2/select-one [:model/Collection :id :location] :type type)]
+            (when-let [{:keys [id location]} (analytics.db/collection-by-type type)]
               (let [children-location (str location id "/")
-                    descendant-ids    (t2/select-pks-set :model/Collection :location [:like (str children-location "%")])]
+                    descendant-ids    (analytics.db/descendant-collection-ids children-location)]
                 (conj (or descendant-ids #{}) id))))]
     (let [library-data-ids    (collection-and-descendant-ids "library-data")
           library-metrics-ids (collection-and-descendant-ids "library-metrics")]
       {:library_data    (if (seq library-data-ids)
-                          (t2/count :model/Table
-                                    {:where [:and
-                                             [:= :is_published true]
-                                             [:in :collection_id library-data-ids]]})
+                          (analytics.db/published-table-count-in-collections library-data-ids)
                           0)
        :library_metrics (if (seq library-metrics-ids)
-                          (t2/count :model/Card
-                                    {:where [:and
-                                             [:= :type "metric"]
-                                             [:= :archived false]
-                                             [:in :collection_id library-metrics-ids]]})
+                          (analytics.db/unarchived-metric-count-in-collections library-metrics-ids)
                           0)})))
 
 (defn- group-metrics
   "Get metrics based on groups:
   TODO characterize by # w/ sql access, # of users, no self-serve data access"
   []
-  {:groups (t2/count :model/PermissionsGroup)})
+  {:groups (analytics.db/permissions-group-count)})
 
 (defn- question-metrics
   "Get metrics based on questions
@@ -235,12 +224,8 @@
   "Get metrics based on dashboards
   TODO characterize by # of revisions, and created by an admin"
   []
-  (let [dashboards (t2/select [:model/Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params]
-                              {:where (mi/exclude-internal-content-hsql :model/Dashboard)})
-        dashcards  (t2/query {:select :dc.*
-                              :from [[(t2/table-name :model/DashboardCard) :dc]]
-                              :join [[(t2/table-name :model/Dashboard) :d] [:= :d.id :dc.dashboard_id]]
-                              :where (mi/exclude-internal-content-hsql :model/Dashboard :table-alias :d)})]
+  (let [dashboards (analytics.db/dashboard-stats-columns)
+        dashcards  (analytics.db/dashcards-of-dashboards)]
     {:dashboards         (count dashboards)
      :with_params        (count (filter (comp seq :parameters) dashboards))
      :num_dashs_per_user (medium-histogram dashboards :creator_id)
@@ -260,82 +245,51 @@
                                                 :with_disabled_params (contains? embedding-params-vals "disabled")})))}))
 
 (defn- db-frequencies
-  "Fetch the frequencies of a given `column` with a normal SQL `SELECT COUNT(*) ... GROUP BY` query. This is way more
-  efficient than fetching every single row and counting them in Clojure-land!
+  "Fetch the frequencies of a given `column` of the notification `model` rows (Pulses, or rows joined to their Pulse)
+  belonging to alerts when `alerts?`, or to pulses otherwise, with a normal SQL `SELECT COUNT(*) ... GROUP BY` query.
+  This is way more efficient than fetching every single row and counting them in Clojure-land!
 
-    (db-frequencies Database :engine)
-    ;; -> {\"h2\" 2, \"postgres\" 1, ...}
-
-    ;; include `WHERE` conditions or other arbitrary HoneySQL
-    (db-frequencies Database :engine {:where [:= :is_sample false]})
-    ;; -> {\"h2\" 1, \"postgres\" 1, ...}
+    (db-frequencies :model/PulseChannel :channel_type false)
+    ;; -> {\"email\" 2, \"slack\" 1, ...}
 
     ;; Generate a histogram:
-    (micro-histogram (vals (db-frequencies Database :engine)))
-    ;; -> {\"2\" 1, \"1\" 1, ...}
-
-    ;; Include `WHERE` clause that includes conditions for a Table related by an FK relationship:
-    ;; (Number of Tables per DB engine)
-    (db-frequencies Table (app-db/qualify Database :engine)
-      {:left-join [Database [:= (app-db/qualify Database :id)
-                                (app-db/qualify Table :db_id)]]})
-    ;; -> {\"googleanalytics\" 4, \"postgres\" 48, \"h2\" 9}"
-  [model column & [additonal-honeysql]]
-  (into {} (for [{:keys [k count]} (t2/select [model [column :k] [:%count.* :count]]
-                                              (merge {:group-by [column]}
-                                                     additonal-honeysql))]
+    (micro-histogram (vals (db-frequencies :model/PulseChannel :channel_type false)))
+    ;; -> {\"2\" 1, \"1\" 1, ...}"
+  [model column alerts?]
+  (into {} (for [{:keys [k count]} (case model
+                                     :model/PulseChannel (analytics.db/pulse-channel-frequencies-by-column column alerts?)
+                                     :model/Pulse         (analytics.db/pulse-frequencies-by-column column alerts?)
+                                     :model/PulseCard     (analytics.db/pulse-card-frequencies-by-column column alerts?))]
              [k count])))
-
-(defn- num-notifications-with-xls-or-csv-cards
-  "Return the number of Notifications that satisfy `where-conditions` that have at least one PulseCard with `include_xls` or
-  `include_csv`.
-
-     ;; Pulses only (filter out Alerts)
-     (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])"
-  [& where-conditions]
-  (-> (app-db/query {:select    [[[::h2x/distinct-count :pulse.id] :count]]
-                     :from      [:pulse]
-                     :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
-                     :where     (into
-                                 [:and
-                                  [:or
-                                   [:= :pulse_card.include_csv true]
-                                   [:= :pulse_card.include_xls true]]]
-                                 where-conditions)})
-      first
-      :count))
 
 (defn- pulse-metrics
   "Get metrics based on pulses
   TODO: characterize by non-user account emails, # emails"
   []
-  (let [pulse-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:= :pulse.alert_condition nil]}]
-    {:pulses               (t2/count :model/Pulse :alert_condition nil)
-     ;; "Table Cards" are Cards that include a Table you can download
-     :with_table_cards     (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])
-     :pulse_types          (db-frequencies :model/PulseChannel :channel_type  pulse-conditions)
-     :pulse_schedules      (db-frequencies :model/PulseChannel :schedule_type pulse-conditions)
-     :num_pulses_per_user  (medium-histogram (vals (db-frequencies :model/Pulse     :creator_id (dissoc pulse-conditions :left-join))))
-     :num_pulses_per_card  (medium-histogram (vals (db-frequencies :model/PulseCard :card_id    pulse-conditions)))
-     :num_cards_per_pulses (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   pulse-conditions)))}))
+  {:pulses               (analytics.db/pulse-count)
+   ;; "Table Cards" are Cards that include a Table you can download
+   :with_table_cards     (:count (analytics.db/notification-xls-or-csv-card-count false))
+   :pulse_types          (db-frequencies :model/PulseChannel :channel_type  false)
+   :pulse_schedules      (db-frequencies :model/PulseChannel :schedule_type false)
+   :num_pulses_per_user  (medium-histogram (vals (db-frequencies :model/Pulse     :creator_id false)))
+   :num_pulses_per_card  (medium-histogram (vals (db-frequencies :model/PulseCard :card_id    false)))
+   :num_cards_per_pulses (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   false)))})
 
 (defn- alert-metrics []
-  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (app-db/qualify :model/Pulse :alert_condition) nil]}]
-    {:alerts               (t2/count :model/Pulse :alert_condition [:not= nil])
-     :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
-     :first_time_only      (t2/count :model/Pulse :alert_condition [:not= nil], :alert_first_only true)
-     :above_goal           (t2/count :model/Pulse :alert_condition [:not= nil], :alert_above_goal true)
-     :alert_types          (db-frequencies :model/PulseChannel :channel_type alert-conditions)
-     :num_alerts_per_user  (medium-histogram (vals (db-frequencies :model/Pulse     :creator_id (dissoc alert-conditions :left-join))))
-     :num_alerts_per_card  (medium-histogram (vals (db-frequencies :model/PulseCard :card_id    alert-conditions)))
-     :num_cards_per_alerts (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   alert-conditions)))}))
+  {:alerts               (analytics.db/alert-count)
+   :with_table_cards     (:count (analytics.db/notification-xls-or-csv-card-count true))
+   :first_time_only      (analytics.db/first-time-only-alert-count)
+   :above_goal           (analytics.db/above-goal-alert-count)
+   :alert_types          (db-frequencies :model/PulseChannel :channel_type true)
+   :num_alerts_per_user  (medium-histogram (vals (db-frequencies :model/Pulse     :creator_id true)))
+   :num_alerts_per_card  (medium-histogram (vals (db-frequencies :model/PulseCard :card_id    true)))
+   :num_cards_per_alerts (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   true)))})
 
 (defn- collection-metrics
   "Get metrics on Collection usage."
   []
-  (let [collections (t2/count :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
-        cards       (t2/select [:model/Card :collection_id :card_schema] {:where
-                                                                          [:and (mi/exclude-internal-content-hsql :model/Card)]})]
+  (let [collections (analytics.db/collection-count)
+        cards       (analytics.db/card-collection-ids)]
     {:collections              collections
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
@@ -345,8 +299,7 @@
 (defn- database-metrics
   "Get metrics based on Databases."
   []
-  (let [databases (t2/select [:model/Database :is_full_sync :engine :dbms_version]
-                             {:where (mi/exclude-internal-content-hsql :model/Database)})]
+  (let [databases (analytics.db/database-stats-columns)]
     {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} databases]
                                     {:total    1
                                      :analyzed is-full-sync?}))
@@ -360,10 +313,7 @@
 (defn- table-metrics
   "Get metrics based on Tables."
   []
-  (let [tables (t2/query {:select [:t.db_id :t.schema]
-                          :from   [[(t2/table-name :model/Table) :t]]
-                          :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
-                          :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})]
+  (let [tables (analytics.db/table-database-and-schema)]
     {:tables           (count tables)
      :num_per_database (medium-histogram tables :db_id)
      :num_per_schema   (medium-histogram tables :schema)}))
@@ -371,77 +321,21 @@
 (defn- field-metrics
   "Get metrics based on Fields."
   []
-  (let [fields (t2/query {:select [:f.table_id]
-                          :from [[(t2/table-name :model/Field) :f]]
-                          :join [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]
-                                 [(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
-                          :where (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})]
+  (let [fields (analytics.db/field-table-ids)]
     {:fields        (count fields)
      :num_per_table (medium-histogram fields :table_id)}))
 
 (defn- segment-metrics
   "Get metrics based on Segments."
   []
-  {:segments (t2/count :model/Segment)})
+  {:segments (analytics.db/segment-count)})
 
 (defn- metric-metrics
   "Get metrics based on Metrics."
   []
-  {:metrics (t2/count :model/Card :type :metric :archived false)})
+  {:metrics (analytics.db/unarchived-metric-card-count)})
 
 ;;; Execution Metrics
-
-(defn- execution-metrics-sql []
-  ;; Postgres automatically adjusts for daylight saving time when performing time calculations on TIMESTAMP WITH TIME
-  ;; ZONE. This can cause discrepancies when subtracting 30 days if the calculation crosses a DST boundary (e.g., in the
-  ;; Pacific/Auckland timezone). To avoid this, we ensure all date computations are done in UTC on Postgres to prevent
-  ;; any time shifts due to DST. See PR #48204
-  (let [thirty-days-ago (case (app-db/db-type)
-                          :postgres "CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - INTERVAL '30 days'"
-                          :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP)"
-                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")
-        started-at      (case (app-db/db-type)
-                          :postgres "started_at AT TIME ZONE 'UTC'"
-                          :h2       "started_at"
-                          :mysql    "started_at")
-        timestamp-where (str started-at " > " thirty-days-ago)]
-    (str/join
-     "\n"
-     ["WITH user_executions AS ("
-      "    SELECT executor_id, COUNT(*) AS num_executions"
-      "    FROM query_execution"
-      "    WHERE " timestamp-where
-      "    GROUP BY executor_id"
-      "),"
-      "query_stats_1 AS ("
-      "    SELECT"
-      "        COUNT(*) AS executions,"
-      "        SUM(CASE WHEN error IS NULL OR length(error) = 0 THEN 1 ELSE 0 END) AS by_status__completed,"
-      "        SUM(CASE WHEN error IS NOT NULL OR length(error) > 0 THEN 1 ELSE 0 END) AS by_status__failed,"
-      "        COALESCE(SUM(CASE WHEN running_time = 0 THEN 1 ELSE 0 END), 0) AS num_by_latency__0,"
-      "        COALESCE(SUM(CASE WHEN running_time > 0 AND running_time < 1000 THEN 1 ELSE 0 END), 0) AS num_by_latency__lt_1,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 1000 AND running_time < 10000 THEN 1 ELSE 0 END), 0) AS num_by_latency__1_10,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 10000 AND running_time < 50000 THEN 1 ELSE 0 END), 0) AS num_by_latency__11_50,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 50000 AND running_time < 250000 THEN 1 ELSE 0 END), 0) AS num_by_latency__51_250,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 250000 AND running_time < 1000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__251_1000,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 1000000 AND running_time < 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__1001_10000,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__10000_plus"
-      "    FROM query_execution"
-      "    WHERE " timestamp-where
-      "),"
-      "query_stats_2 AS ("
-      "    SELECT"
-      "        COALESCE(SUM(CASE WHEN num_executions = 0 THEN 1 ELSE 0 END), 0) AS num_per_user__0,"
-      "        COALESCE(SUM(CASE WHEN num_executions > 0 AND num_executions < 1 THEN 1 ELSE 0 END), 0) AS num_per_user__lt_1,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 1 AND num_executions < 10 THEN 1 ELSE 0 END), 0) AS num_per_user__1_10,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 10 AND num_executions < 50 THEN 1 ELSE 0 END), 0) AS num_per_user__11_50,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 50 AND num_executions < 250 THEN 1 ELSE 0 END), 0) AS num_per_user__51_250,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 250 AND num_executions < 1000 THEN 1 ELSE 0 END), 0) AS num_per_user__251_1000,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 1000 AND num_executions < 10000 THEN 1 ELSE 0 END), 0) AS num_per_user__1001_10000,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 10000 THEN 1 ELSE 0 END), 0) AS num_per_user__10000_plus"
-      "    FROM user_executions"
-      ")"
-      "SELECT q1.*, q2.* FROM query_stats_1 q1, query_stats_2 q2;"])))
 
 (defn- execution-metrics
   "Get metrics based on QueryExecutions."
@@ -454,7 +348,7 @@
                              "251_1000"   "251-1000"
                              "1001_10000" "1001-10000"
                              "10000_plus" "10000+"} x x))
-        raw-results (-> (first (t2/query (execution-metrics-sql)))
+        raw-results (-> (analytics.db/execution-metrics)
                         ;; cast numbers to int because some DBs output bigdecimals
                         (update-vals #(some-> % int)))]
     (reduce (fn [acc [k v]]
@@ -475,7 +369,7 @@
 (defn- cache-metrics
   "Metrics based on use of the QueryCache."
   []
-  (let [{:keys [length count]} (t2/select-one [:model/QueryCache [[:avg [:length :results]] :length] [:%count.* :count]])]
+  (let [{:keys [length count]} (analytics.db/query-cache-stats)]
     {:average_entry_size (int (or length 0))
      :num_queries_cached (bin-small-number count)
      ;; this value gets used in the snowplow ping 'metrics' section.
@@ -562,26 +456,18 @@
   than or equal to `num-users`"
   [num-users]
   (let [users-in-activation-period
-        (t2/count :model/User {:where [:and
-                                       [:<=
-                                        :date_joined
-                                        (t/plus (t/offset-date-time (analytics.settings/instance-creation))
-                                                (t/days activation-days))]
-                                       (mi/exclude-internal-content-hsql :model/User)]
-                               :limit (inc num-users)})]
+        (analytics.db/user-count-joined-before (t/plus (t/offset-date-time (analytics.settings/instance-creation))
+                                                       (t/days activation-days))
+                                               (inc num-users))]
     (>= users-in-activation-period num-users)))
 
 (defn- sufficient-queries?
   "Returns a Boolean indicating whether the number of queries recorded over non-sample content is greater than or equal
   to `num-queries`"
   [num-queries]
-  (let [sample-db-id (t2/select-one-pk :model/Database :is_sample true)
+  (let [sample-db-id (analytics.db/sample-database-id)
         ;; QueryExecution can be large, so let's avoid counting everything
-        queries      (t2/select-fn-set :id :model/QueryExecution
-                                       {:where [:or
-                                                [:not= :database_id sample-db-id]
-                                                [:= :database_id nil]]
-                                        :limit (inc num-queries)})]
+        queries      (analytics.db/query-execution-ids-excluding-database sample-db-id (inc num-queries))]
     (>= (count queries) num-queries)))
 
 (defn- completed-activation-signals?
@@ -679,9 +565,8 @@
   "Returns transform usage metrics for the Snowplow stats ping."
   []
   (let [one-day-ago (->one-day-ago)]
-    {:transforms               (t2/count :model/Transform)
-     :transform_runs_last_24h  (t2/count :model/TransformRun
-                                         :start_time [:>= one-day-ago])}))
+    {:transforms               (analytics.db/transform-count)
+     :transform_runs_last_24h  (analytics.db/transform-run-count-since one-day-ago)}))
 
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
@@ -689,20 +574,13 @@
   (let [one-day-ago (->one-day-ago)
         total-translation-count (:total (get-translation-count))]
     (merge
-     {:models                          (t2/count :model/Card :type :model :archived false)
-      :new_embedded_dashboards         (t2/count :model/Dashboard
-                                                 :enable_embedding true
-                                                 :archived false
-                                                 :created_at [:>= one-day-ago])
-      :new_users_last_24h              (t2/count :model/User
-                                                 :is_active true
-                                                 :date_joined [:>= one-day-ago])
-      :pivot_tables                    (t2/count :model/Card :display :pivot :archived false)
-      :query_executions_last_24h       (t2/count :model/QueryExecution :started_at [:>= one-day-ago])
+     {:models                          (analytics.db/unarchived-model-count)
+      :new_embedded_dashboards         (analytics.db/new-embedded-dashboard-count-since one-day-ago)
+      :new_users_last_24h              (analytics.db/new-active-user-count-since one-day-ago)
+      :pivot_tables                    (analytics.db/unarchived-pivot-table-count)
+      :query_executions_last_24h       (analytics.db/query-execution-count-since one-day-ago)
       :entity_id_translations_last_24h total-translation-count
-      :scim_users_last_24h             (t2/count :model/User :sso_source :scim
-                                                 :is_active true
-                                                 :date_joined [:>= one-day-ago])}
+      :scim_users_last_24h             (analytics.db/new-scim-user-count-since one-day-ago)}
      (transform-metrics))))
 
 (mu/defn- snowplow-metrics
@@ -785,8 +663,7 @@
   (boolean
    (let [major-version (config/current-major-version)
          minor-version (config/current-minor-version)
-         engines       (t2/select-fn-set :engine :model/Database
-                                         {:where [:in :engine (map name (keys csv-upload-version-availability))]})]
+         engines       (analytics.db/database-engines-among (map name (keys csv-upload-version-availability)))]
      (when (and major-version minor-version)
        (some
         (fn [engine]
@@ -827,7 +704,7 @@
     :enabled   (sso/ldap-enabled)}
    {:name      :sample-data
     :available true
-    :enabled   (t2/exists? :model/Database, :is_sample true)}
+    :enabled   (analytics.db/sample-database-exists?)}
    {:name      :interactive-embedding
     :available (premium-features/hide-embed-branding?)
     :enabled   (and
@@ -839,15 +716,15 @@
     :enabled   (and
                 (setting/get :enable-embedding-modular)
                 (or
-                 (t2/exists? :model/Dashboard :enable_embedding true)
-                 (t2/exists? :model/Card :enable_embedding true)))}
+                 (analytics.db/embedded-dashboard-exists?)
+                 (analytics.db/embedded-card-exists?)))}
    {:name      :public-sharing
     :available true
     :enabled   (and
                 (setting/get :enable-public-sharing)
                 (or
-                 (t2/exists? :model/Dashboard :public_uuid [:not= nil])
-                 (t2/exists? :model/Card :public_uuid [:not= nil])))}
+                 (analytics.db/public-dashboard-exists?)
+                 (analytics.db/public-card-exists?)))}
    {:name      :whitelabel
     :available (premium-features/enable-whitelabeling?)
     :enabled   (whitelabeling-in-use?)}
@@ -855,10 +732,10 @@
     :available (premium-features/enable-custom-viz?)
     :enabled   (and config/ee-available?
                     (premium-features/enable-custom-viz?)
-                    (t2/exists? :model/CustomVizPlugin))}
+                    (analytics.db/custom-viz-plugin-exists?))}
    {:name      :csv-upload
     :available (csv-upload-available?)
-    :enabled   (t2/exists? :model/Database :uploads_enabled true)}
+    :enabled   (analytics.db/uploads-database-exists?)}
    {:name      :mb-analytics
     :available (premium-features/enable-audit-app?)
     :enabled   (premium-features/enable-audit-app?)}
@@ -870,10 +747,10 @@
     :enabled   (premium-features/enable-serialization?)}
    {:name      :official-collections
     :available (premium-features/enable-official-collections?)
-    :enabled   (t2/exists? :model/Collection :authority_level "official")}
+    :enabled   (analytics.db/official-collection-exists?)}
    {:name      :cache-granular-controls
     :available (premium-features/enable-cache-granular-controls?)
-    :enabled   (t2/exists? :model/CacheConfig)}
+    :enabled   (analytics.db/cache-config-exists?)}
    {:name      :attached-dwh
     :available (premium-features/has-attached-dwh?)
     :enabled   (premium-features/has-attached-dwh?)}
@@ -883,7 +760,7 @@
    {:name      :database-routing
     :available (premium-features/enable-database-routing?)
     :enabled   (if (premium-features/enable-database-routing?)
-                 (t2/exists? :model/DatabaseRouter)
+                 (analytics.db/database-router-exists?)
                  false)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
@@ -893,10 +770,10 @@
     :enabled   (premium-features/enable-content-translation?)}
    {:name      :content-verification
     :available (premium-features/enable-content-verification?)
-    :enabled   (t2/exists? :model/ModerationReview)}
+    :enabled   (analytics.db/moderation-review-exists?)}
    {:name      :dashboard-subscription-filters
     :available (premium-features/enable-content-verification?)
-    :enabled   (t2/exists? :model/Pulse {:where [:not= :parameters "[]"]})}
+    :enabled   (analytics.db/filtered-pulse-exists?)}
    {:name      :disable-password-login
     :available (premium-features/can-disable-password-login?)
     :enabled   (not (session.settings/enable-password-login))}
@@ -905,13 +782,13 @@
     :enabled   (not= (setting/get-value-of-type :keyword :user-visibility) :all)}
    {:name      :upload-management
     :available (premium-features/enable-upload-management?)
-    :enabled   (t2/exists? :model/Table :is_upload true)}
+    :enabled   (analytics.db/upload-table-exists?)}
    {:name      :snippet-collections
     :available (premium-features/enable-snippet-collections?)
-    :enabled   (t2/exists? :model/Collection :namespace "snippets")}
+    :enabled   (analytics.db/snippet-collection-exists?)}
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
-    :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}
+    :enabled   (analytics.db/preemptive-cache-config-exists?)}
    {:name      :remote-sync
     :available (premium-features/enable-remote-sync?)
     :enabled   (premium-features/enable-remote-sync?)}
@@ -923,7 +800,8 @@
     :available (premium-features/enable-tenants?)}
    {:name      :starburst-legacy-impersonation
     :available true
-    :enabled   (->> (t2/select-fn-set (comp :impersonation :details) :model/Database :engine "starburst")
+    :enabled   (->> (analytics.db/starburst-database-details)
+                    (map :impersonation)
                     (some identity)
                     boolean)}
    {:name      :table-data-editing

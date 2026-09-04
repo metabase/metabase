@@ -1,11 +1,12 @@
-;; Budgets for kondo suppressions: inline `:clj-kondo/ignore` forms per linter (:ignore-counts),
-;; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude
-;; entries). Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.
-;; CI rejects counts above a numeric budget; local tests require those counts to match exactly.
+;; Budgets for kondo suppressions: inline `:clj-kondo/ignore` forms per linter (:ignore-counts), and
+;; config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude entries).
+;; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.
+;; Checks fail when a count exceeds its numeric budget; unused budget is allowed.
 ;; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.
-;; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it
-;; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or
-;; widening the exemptions is a hand edit to defend in your PR.
+;; `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one.
+;; The workflow runs it on master, so feature branches do not need to record reductions.
+;; Raising or adding a budget (`--seed` for inline ignores, a manual edit for config) or widening the
+;; exemptions must be explained in the PR.
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
 {:ignore-counts  {:aliased-namespace-symbol                                            3
                   :case-symbol-test                                                    1
@@ -15,7 +16,7 @@
                   :deprecated-namespace                                                95
                   :deprecated-var                                                      96
                   :discouraged-java-method                                             4
-                  :discouraged-namespace                                               81
+                  :discouraged-namespace                                               71
                   :discouraged-var                                                     130
                   :duplicate-require                                                   1
                   :equals-true                                                         1

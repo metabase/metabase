@@ -381,6 +381,7 @@ config:
     usage-metadata-retention-days: 90
     usage-metadata-schedule: 0 0 2 * * ? *
     use-native-pivot-tables: false
+    use-tenants: false
     user-visibility: all
     warehouse-allowed-networks: null
 ```

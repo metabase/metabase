@@ -148,6 +148,10 @@ export function generalSettings() {
   return "/admin/settings/general";
 }
 
+export function domainsSettings() {
+  return "/admin/settings/domains";
+}
+
 export function uploadsSettings() {
   return "/admin/settings/uploads";
 }

@@ -3,7 +3,7 @@ import { useLatest } from "react-use";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { getMetadata } from "metabase/metadata-store";
-import { ResponsiveParametersList } from "metabase/querying/components/ResponsiveParametersList";
+import { ResponsiveParametersList } from "metabase/parameters/components/ResponsiveParametersList";
 import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";

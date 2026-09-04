@@ -8,6 +8,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDataStudioOpened } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
 import { canAccessEmbeddingHub as canAccessEmbeddingHubSelector } from "metabase/common/embedding-hub/selectors";
+import { useHelpLink } from "metabase/common/hooks";
 import { trackMonitorOpened } from "metabase/common/monitor/analytics";
 import { canAccessMonitor as canAccessMonitorSelector } from "metabase/common/monitor/selectors";
 import { prepareInitials } from "metabase/common/utils/user";
@@ -41,7 +42,6 @@ import { AboutModal } from "../AboutModal/AboutModal";
 
 import S from "./AppSwitcher.module.css";
 import { useGetCurrentApp } from "./useGetCurrentApp";
-import { useHelpLink } from "./useHelpLink";
 
 const CURRENT_APP_ICON_OVERRIDES: {
   name: IconName;

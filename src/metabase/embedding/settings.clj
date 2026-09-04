@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.analytics.core :as analytics]
+   [metabase.embedding.db :as embedding.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.server.settings :as server.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -11,8 +12,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.random :as u.random]
-   [toucan2.core :as t2]))
+   [metabase.util.random :as u.random]))
 
 (defsetting embedding-secret-key
   (deferred-tru "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.")
@@ -106,8 +106,8 @@
           (analytics/track-event! :snowplow/embed_share
                                   {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
                                    :embedding-app-origin-set   (embedding-app-origin-set?)
-                                   :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
-                                   :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
+                                   :number-embedded-questions  (embedding.db/count-embedded-cards)
+                                   :number-embedded-dashboards (embedding.db/count-embedded-dashboards)}))))))
 
 (defsetting ^:deprecated enable-embedding
   ;; To be removed in 0.53.0

@@ -1,6 +1,88 @@
+.PageTitle {
+  align-items: center;
+}
+
 .SettingsSection {
   background-color: var(--mb-color-background_page-primary);
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-radius-sm);
   padding: var(--mantine-spacing-xxl);
+}
+
+/* Accordion-backed collapsible card: neutralizes the app-wide Accordion
+   theme (brand label, circled chevron, item chrome) and applies the
+   settings-card look. Selectors are scoped under the root class, with
+   state variants repeated, to out-rank the theme classNames regardless
+   of stylesheet order. */
+.CollapsibleAccordion .CollapsibleItem,
+.CollapsibleAccordion .CollapsibleItem[data-active] {
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-sm);
+  padding: var(--mantine-spacing-xl) var(--mantine-spacing-xxl);
+}
+
+.CollapsibleHeader {
+  position: relative;
+
+  /* keep text clear of the absolutely-positioned chevron */
+  padding-right: var(--mantine-spacing-xxl);
+}
+
+.CollapsibleAccordion .CollapsibleControl,
+.CollapsibleAccordion .CollapsibleControl:hover {
+  padding: 0;
+  background-color: transparent;
+}
+
+/* the theme's Accordion styles remove the focus outline; restore it */
+.CollapsibleAccordion .CollapsibleControl.CollapsibleControl:focus-visible {
+  outline: 2px solid var(--mb-color-focus);
+}
+
+/* stretch the hit area over the whole header row, description included */
+.CollapsibleAccordion .CollapsibleControl::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+
+.CollapsibleAccordion .CollapsibleLabel {
+  padding: 0;
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-h4-font-size);
+  line-height: var(--mantine-h4-line-height);
+  font-weight: 700;
+}
+
+.CollapsibleAccordion .CollapsibleChevron,
+.CollapsibleAccordion .CollapsibleChevron[data-rotate] {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  color: var(--mb-color-text-primary);
+}
+
+.CollapsibleAccordion .CollapsibleChevron {
+  transform: translateY(-50%);
+}
+
+.CollapsibleAccordion .CollapsibleChevron[data-rotate] {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.CollapsibleAccordion .CollapsibleContent {
+  padding: var(--mantine-spacing-xl) 0 0;
+  border-top: 0;
+}
+
+.CollapsibleAccordion .CollapsiblePanel {
+  line-height: inherit;
+  word-break: normal;
 }

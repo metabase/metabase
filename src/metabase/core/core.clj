@@ -202,8 +202,6 @@
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
-  ;; runs before anything reads settings -- see its docstring
-  (setting/migrate-encrypted-settings!)
   (mdb/encrypt-plaintext-columns!)
   ;; In OSS, convert any Data Analysts group with members to a normal visible group
   (perms/sync-data-analyst-group-for-oss!)
