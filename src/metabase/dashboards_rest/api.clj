@@ -872,6 +872,9 @@
     ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731). Card ids the dashboard already
     ;; references are grandfathered, so pre-existing foreign internal cards don't block saving (UXW-4870).
     (assert-dashcards-are-not-internal-to-other-dashboards dashboard (concat to-create to-update))
+    ;; a dashcard's goal reference picks a query the server will run, so it needs the same gate a card's query gets
+    (doseq [dashcard (concat to-create to-update)]
+      (query-perms/check-goal-reference-permissions (:visualization_settings dashcard)))
     (when (seq to-update)
       (update-dashcards! dashboard to-update))
     {:deleted-dashcards (when (seq to-delete)

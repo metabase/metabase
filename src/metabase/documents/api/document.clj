@@ -81,6 +81,7 @@
   [{query :dataset_query :as card} creator]
   (api/create-check :model/Card {:collection_id (:collection_id card)})
   (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
+  (query-perms/check-goal-reference-permissions (:visualization_settings card))
   (card/check-parameter-source-card-permissions (:parameters card))
   (query-perms/check-parameter-field-permissions
    (into []
