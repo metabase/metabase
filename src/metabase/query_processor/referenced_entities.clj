@@ -181,7 +181,7 @@
 (defn viz-settings->goal-specs
   "Extract referenced-entity specs from merged viz settings; nil when there are none."
   [viz]
-  (when-let [sources (not-empty
+  (when-let [sources (perf/not-empty
                       (into []
                             (comp (keep dynamic-goals/goal-source)
                                   ;; a goal pointing at something we can't run is dropped rather than failing the request
