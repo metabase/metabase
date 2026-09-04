@@ -234,20 +234,31 @@ jobs:
             test-args: >-
               :only '"enterprise/backend/test"'
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
+          # hawk partitions by test-var count, so a namespace that spends minutes per var lands in a
+          # partition sized as if those vars were cheap. The ^:mb/app-db-migration-test namespaces each
+          # build a throwaway app DB and replay the Liquibase history per test, which on MySQL was 19 of
+          # Part 1's 31 minutes against 14 for Part 2. Running them as their own leg lets the remaining
+          # vars partition evenly, and isolates the migration cost on a job that can be tuned on its own.
+          - name: EE App DB Migration Tests
+            build-static-viz: true
+            test-args: >-
+              :only '"test"'
+              :only-tags '[:mb/app-db-migration-test]'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 0
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test :mb/app-db-migration-test'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 1
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test :mb/app-db-migration-test'
 
     services:
       mysql:

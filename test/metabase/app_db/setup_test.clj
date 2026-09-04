@@ -1,4 +1,4 @@
-(ns metabase.app-db.setup-test
+(ns ^:mb/app-db-migration-test metabase.app-db.setup-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]

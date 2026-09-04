@@ -1,4 +1,4 @@
-(ns ^:mb/old-migrations-test metabase.app-db.custom-migrations.metrics-v2-test
+(ns ^:mb/old-migrations-test ^:mb/app-db-migration-test metabase.app-db.custom-migrations.metrics-v2-test
   "These are 'old' tests now since this migration happened in 51."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
