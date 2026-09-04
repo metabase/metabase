@@ -115,7 +115,9 @@
     (doseq [model (keys @#'zai/supported-models)]
       (testing model
         (is (true? (zai/reasoning-model? model)))
-        (is (= {:type "enabled"}
+        ;; thinking-only models reject the directive and get none — their thinking is on
+        ;; server-side regardless, so the gate still holds
+        (is (= (if (@#'zai/thinking-only-models model) nil {:type "enabled"})
                (:thinking (zai/zai-request-body {:model model
                                                  :input [{:role :user :content "hi"}]})))))))
   (testing "a non-whitelisted model gates false and its thinking is explicitly disabled"

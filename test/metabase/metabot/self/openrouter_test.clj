@@ -256,7 +256,7 @@
                                "anthropic/claude-opus-4.7" "anthropic/claude-opus-4.6" "anthropic/claude-sonnet-5"
                                "anthropic/claude-sonnet-4.6" "deepseek/deepseek-v4-pro" "deepseek/deepseek-v4-pro-0813"
                                "deepseek/deepseek-v4-flash-0731" "mistralai/mistral-medium-3-5" "moonshotai/kimi-k3"
-                               "qwen/qwen3.8-max" "z-ai/glm-5.2"}
+                               "qwen/qwen3.8-max" "z-ai/glm-5.3" "z-ai/glm-5.2"}
           renderable-default #{"openai/gpt-5.6-sol" "openai/gpt-5.6-terra" "openai/gpt-5.6-luna" "openai/gpt-5.5"
                                "openai/gpt-5.5-pro" "openai/gpt-5.4-pro"}
           encrypted          #{"openai/gpt-5.4" "openai/gpt-5.4-mini"}

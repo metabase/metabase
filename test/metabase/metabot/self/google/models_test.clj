@@ -1,5 +1,6 @@
 (ns metabase.metabot.self.google.models-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.self.google.models :as models]))
@@ -14,6 +15,11 @@
     (is (false? (models/reasoning-model? nil)))))
 
 (deftest ^:parallel catalog-matches-connection-form-test
-  (testing "the adapter catalog offers the same models as the connection form, so neither can drift alone"
-    (is (= (set (map :id (:models (llm.provider/provider-type "google"))))
+  (testing "the adapter catalog offers the same Gemini models as the connection form, so neither can drift alone"
+    ;; the form also offers Anthropic partner models, which raw-predict serves; this catalog
+    ;; deliberately owns only the google/-publisher half
+    (is (= (->> (:models (llm.provider/provider-type "google"))
+                (map :id)
+                (filter #(str/starts-with? % "google/"))
+                set)
            (set (keys models/catalog))))))
