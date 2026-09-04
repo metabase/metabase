@@ -95,7 +95,9 @@ export interface IFieldValuesWidgetProps {
 
   parameter: Parameter;
   parameters?: Parameter[]; // linked parameters with values
-  fields: ParameterField[];
+  // a field filter parameter that has no mapped fields still renders this
+  // widget, so that it can query values by parameter instead
+  fields?: ParameterField[];
   dashboardId?: DashboardId;
   cardId?: CardId;
 
@@ -127,7 +129,7 @@ export const FieldValuesWidgetInner = forwardRef<
     disablePKRemappingForSearch,
     parameter,
     parameters,
-    fields,
+    fields = [],
     dashboardId,
     cardId,
     value,
