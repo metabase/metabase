@@ -17,7 +17,10 @@ export const ADMIN_PERMISSIONS_BASE_PATH = "/admin/permissions";
 let basePath = ADMIN_PERMISSIONS_BASE_PATH;
 let ownerId: string | null = null;
 
-export function setPermissionsBasePath(nextBasePath: string, nextOwnerId: string) {
+export function setPermissionsBasePath(
+  nextBasePath: string,
+  nextOwnerId: string,
+) {
   basePath = nextBasePath;
   ownerId = nextOwnerId;
 }
