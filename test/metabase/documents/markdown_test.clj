@@ -1119,3 +1119,31 @@
       (is (= 1234 (get-in out-card [:attrs :id])))
       (is (= "Other" (get-in out-card [:attrs :name])))
       (is (= "anchor-9" (get-in out-card [:attrs :child_target_id]))))))
+
+(deftest ^:parallel lone-cr-cannot-manufacture-a-card-embed-test
+  (testing "the scanner and the parser have to agree on where a line begins. `str/split-lines`
+           breaks on \\r?\\n and leaves a lone CR sitting inside the line it returns, but the parser
+           ends the line there — so a CR in a code fence's info line hides the fence from the
+           scanner while the parser still opens one, and a `{% card %}` the author fenced as code
+           is promoted to a real embed: a permission-scoped read of a card they never referenced."
+    (doseq [[label separator] parser-line-endings]
+      (let [fenced (str "```sql" separator "SELECT 1\n{% card id=999 %}\n```")]
+        (is (empty? (collect-type (md/parse fenced) "cardEmbed"))
+            (format "%s in a code fence info line manufactured a card embed" label))))))
+
+(deftest ^:parallel tab-indented-token-is-code-not-structure-test
+  (testing "a tab advances to the next 4-column tab stop, so a leading tab indents to column 4 and
+           opens an indented code block. The token and fence regexes bound their indent by
+           character count, which reads that same tab as one column of indent — the scanner
+           promotes to structure exactly what the parser reads as content."
+    (doseq [[label line] {"a tab"            (str \tab "{% card id=118 %}")
+                          "a space and tab"  (str \space \tab "{% card id=118 %}")
+                          "four spaces"      "    {% card id=118 %}"}]
+      (is (empty? (collect-type (md/parse line) "cardEmbed"))
+          (format "%s before a card token manufactured a card embed" label)))
+    (testing "and a container fence indented the same way is code too"
+      (is (empty? (collect-type (md/parse (str \tab "::: flex\n" \tab "{% card id=1 %}\n" \tab ":::"))
+                                "cardEmbed"))))
+    (testing "while a token indented within the parser's 3-column budget is still structure"
+      (is (= [7] (mapv #(get-in % [:attrs :id])
+                       (collect-type (md/parse "   {% card id=7 %}") "cardEmbed")))))))

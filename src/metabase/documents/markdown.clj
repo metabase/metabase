@@ -98,6 +98,18 @@
 (def ^:private resize-node-default-height 442)
 (def ^:private resize-node-default-min-height 280)
 
+(def ^:private line-ending-re
+  "The line endings the Markdown parser breaks a line on: CRLF, CR, LF (CommonMark 2.2). Prose
+  reaching the serializer is an arbitrary stored string, so it can hold any of them, and every
+  line the parser will see has to go through [[escape-line-start]] — a CR the serializer treats
+  as ordinary text is a line the parser reads as a fresh one, free to open a block.
+
+  The scanner splits on this too, and must: `clojure.string/split-lines` breaks on `\\r?\\n` and
+  leaves a lone CR inside the line it returns. flexmark would end the line there, so the two
+  disagree about where lines begin — and a `{% card %}` the author fenced as code lands on a
+  scanner line that no longer looks like a fence, promoting it to a real embed."
+  #"\r\n|\r|\n")
+
 (def ^:private max-nesting-depth
   "How deep a parse tree may get before parsing refuses the input. Conversion recurses once per
   level — `scan-segments` per container fence, `convert-block`/`convert-inline` per block and
@@ -249,6 +261,25 @@
    (when-let [[_ fence] (re-matches code-fence-close-re line)]
      (and (= ch (first fence)) (>= (count fence) (long len))))))
 
+(defn- indented-code-line?
+  "Whether CommonMark reads `line` as indented code, i.e. its content starts at column 4 or later.
+
+  The token and fence regexes bound their indent with `[ \\t]{0,3}`, which counts a tab as one
+  character. A tab advances to the next 4-column tab stop (CommonMark 2.2), so `\\t{% card id=1 %}`
+  is a one-character indent to those regexes and a code block to flexmark — the scanner promotes to
+  structure exactly what the parser reads as content. Measuring in columns is what makes the two
+  agree, and doing it here covers every token type at once."
+  [^String line]
+  (loop [idx (long 0) col (long 0)]
+    (if (>= idx (.length line))
+      false                                ; blank/whitespace-only: not code, just an empty line
+      (let [c (.charAt line idx)]
+        (cond
+          (>= col 4)   true
+          (= c \space) (recur (inc idx) (inc col))
+          (= c \tab)   (recur (inc idx) (long (+ col (- 4 (mod col 4)))))
+          :else        false)))))
+
 (defn- scan-segments
   "Scan `lines` from index `i` into segments. `open-fence` names the container fence being
   filled, or nil at the top level, and `depth` how many fences are open above this one — bounded,
@@ -272,6 +303,12 @@
           code-fence
           (recur (inc i) (conj md-lines line) segments
                  (when-not (code-fence-close? line code-fence) code-fence))
+
+          ;; Indented code is content, not structure — flexmark will read this line as a code
+          ;; block, so no token or fence on it may be promoted. Sits below the `code-fence` arm
+          ;; because a line inside an already-open fence is opaque whatever its indent.
+          (indented-code-line? line)
+          (recur (inc i) (conj md-lines line) segments nil)
 
           (code-fence-open line)
           (recur (inc i) (conj md-lines line) segments (code-fence-open line))
@@ -691,7 +728,10 @@
 
 (defn- parse-content
   [markdown-string]
-  (let [[segments _] (scan-segments (str/split-lines (or markdown-string "")) 0 nil 0)]
+  ;; Splits on [[line-ending-re]], not `str/split-lines`, so the scanner and flexmark agree on
+  ;; where every line begins — see that var for what a lone CR otherwise does to token opacity.
+  (let [lines (str/split (or markdown-string "") line-ending-re -1)
+        [segments _] (scan-segments lines 0 nil 0)]
     (into [] (mapcat segment->nodes) segments)))
 
 (defn- wrap-loose-embeds
@@ -778,13 +818,6 @@
         (str ws digits "\\" delim tail))
 
       :else (str ws body))))
-
-(def ^:private line-ending-re
-  "The line endings the Markdown parser breaks a line on: CRLF, CR, LF (CommonMark 2.2). Prose
-  reaching the serializer is an arbitrary stored string, so it can hold any of them, and every
-  line the parser will see has to go through [[escape-line-start]] — a CR the serializer treats
-  as ordinary text is a line the parser reads as a fresh one, free to open a block."
-  #"\r\n|\r|\n")
 
 (defn- escape-block-starts
   "Escape every line of `s` against being re-read as a block construct, normalizing the parser's

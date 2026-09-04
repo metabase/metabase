@@ -340,7 +340,12 @@
                                                                {:document document
                                                                 :content_type prose-mirror/prose-mirror-content-type}
                                                                cards-to-update-in-ast)))
-                             (u/prog1 (hydrate-document document-id)
+                             ;; `read-check`, but not `get-document`: creating is not viewing, so no
+                             ;; `:event/document-read` fires here. The check itself still has to run —
+                             ;; `can-read?` on a Document is collection permissions *and* the content
+                             ;; gate, and the gate adjudicates the warehouse data the body embeds, so
+                             ;; a document the creator may not read must not come back rendered.
+                             (u/prog1 (api/read-check (hydrate-document document-id))
                                (when (collections/remote-synced-collection? (:collection_id <>))
                                  (collections/check-non-remote-synced-dependencies <>)))))]
     ;; Publish event after successful creation
