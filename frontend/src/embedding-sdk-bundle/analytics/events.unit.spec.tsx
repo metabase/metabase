@@ -1,9 +1,11 @@
+const MOCK_REACT_VERSION = "18.3.1";
 // jest.mock is hoisted before imports, so jest.fn() must be defined inline.
 // External const refs (like `const mockFoo = jest.fn()`) cause TDZ errors.
 jest.mock("embedding-sdk-bundle/analytics/snowplow", () => ({
   trackSdkSimpleEvent: jest.fn(),
   getSdkAuthMethod: jest.fn(() => "sso"),
   getSdkLocaleUsed: jest.fn(() => false),
+  getHostReactVersion: jest.fn(() => MOCK_REACT_VERSION),
 }));
 
 jest.mock("embedding-sdk-shared/lib/get-build-info", () => ({
@@ -86,7 +88,12 @@ describe("useTrackSdkComponentMount", () => {
     expect(parseLastCallDetail()).toMatchObject({
       component: "StaticDashboard",
       properties: { with_title: "true" },
-      global: { auth_method: "sso", sdk_version: "1.2.3", locale_used: false },
+      global: {
+        auth_method: "sso",
+        sdk_version: "1.2.3",
+        locale_used: false,
+        react_version: MOCK_REACT_VERSION,
+      },
     });
   });
 

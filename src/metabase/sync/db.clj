@@ -2,6 +2,11 @@
   "Application database queries for the sync module. Every function here is a direct Toucan 2 call with no additional
   logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [clojure.set :as set]
+   [honey.sql :as sql]
+   [metabase.app-db.core :as app-db]
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
@@ -216,10 +221,61 @@
               :table_id :has_field_values]
              :id [:in field-ids]))
 
-(defn fields-where
-  "Up to `limit` Fields matching the Honey SQL `where`, ordered by ID."
-  [where limit]
-  (t2/select :model/Field {:where where, :order-by [[:id :asc]], :limit limit}))
+(defn- base-types->descendants
+  "Given a set of `base-types`, an expanded set including those types and all their descendants in the type
+  hierarchy, as qualified strings so HoneySQL doesn't confuse them for columns."
+  [base-types]
+  (into #{}
+        (comp (mapcat (fn [base-type] (cons base-type (descendants base-type))))
+              (map u/qualified-name))
+        base-types))
+
+(defn- fingerprint-version-clauses
+  "Honey SQL `:or` disjuncts, one per fingerprint version older than the latest that hasn't already been superseded,
+  matching Fields whose `base_type` (or a descendant) was re-fingerprinted at that version. `version->base-types` is
+  a map of fingerprint version to the set of base types re-fingerprinted at that version."
+  [version->base-types]
+  (let [versions+base-types (reverse (sort-by first (seq version->base-types)))
+        already-seen        (atom #{})]
+    (into [:or]
+          (keep (fn [[version base-types]]
+                  (let [not-yet-seen (set/difference (base-types->descendants base-types) @already-seen)]
+                    (when (seq not-yet-seen)
+                      (swap! already-seen set/union not-yet-seen)
+                      [:and
+                       [:< :fingerprint_version version]
+                       [:in :base_type not-yet-seen]]))))
+          versions+base-types)))
+
+(def ^:private fields-to-fingerprint-base-clause
+  [:and
+   [:= :active true]
+   [:or
+    [:not (app-db/isa :semantic_type :type/PK)]
+    [:= :semantic_type nil]]
+   [:not-in :visibility_type ["retired" "sensitive"]]
+   [:not-in :base_type (conj (app-db/type-keyword->descendants :type/fingerprint-unsupported)
+                             (u/qualified-name :type/*))]])
+
+(defn- needs-fingerprint-update-clause
+  "Honey SQL clause matching Fields whose fingerprint needs to be re-calculated: active, non-`PK`/no-semantic-type,
+  non-retired/sensitive-visibility, non-fingerprint-unsupported `base_type`, and, unless `refingerprint?`, without a
+  fingerprint or whose fingerprint version can be updated per `version->base-types` (a map of fingerprint version to
+  the set of base types that should be re-fingerprinted at that version)."
+  [refingerprint? version->base-types]
+  (cond-> fields-to-fingerprint-base-clause
+    (not refingerprint?) (conj (fingerprint-version-clauses version->base-types))))
+
+(defn fields-needing-fingerprint-update
+  "Up to `limit` active, visible Fields of the Table with `table-id` whose fingerprint needs to be re-calculated,
+  ordered by ID. See [[needs-fingerprint-update-clause]] for the full matching criteria."
+  [table-id refingerprint? version->base-types limit]
+  (t2/select :model/Field
+             {:where    [:and
+                         [:= :table_id table-id]
+                         (needs-fingerprint-update-clause refingerprint? version->base-types)]
+              :order-by [[:id :asc]]
+              :limit    limit}))
 
 (defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
@@ -345,9 +401,13 @@
   (t2/update! :model/Field :id [:in field-ids] {:fingerprint_version fingerprint-version}))
 
 (defn set-table-fields-indexed!
-  "Set `database_indexed` of the Fields of the Table with `table-id` to the SQL expression `indexed-expr`."
-  [table-id indexed-expr]
-  (t2/update! :model/Field {:table_id table-id} {:database_indexed indexed-expr}))
+  "Mark the Fields of the Table with `table-id` whose id is in `indexed-field-ids` as indexed, and all its other
+  Fields as not indexed."
+  [table-id indexed-field-ids]
+  (t2/update! :model/Field {:table_id table-id}
+              {:database_indexed (if (seq indexed-field-ids)
+                                   [:case [:in :id indexed-field-ids] true :else false]
+                                   false)}))
 
 (defn set-top-level-fields-indexed!
   "Set `database_indexed` of the top-level Fields with `field-ids` to `indexed?`."
@@ -375,10 +435,83 @@
                                       :where  [:and sync-tables-clause [:= :db_id database-id]]}]}
               {:last_analyzed :%now}))
 
-(defn execute-one!
-  "Run the SQL statement `sql` and return its single result."
-  [sql]
-  (t2/query-one sql))
+(defn- fk-field-id-subquery
+  "Subquery selecting the (lowest) id of the Field named `column-name` on the Table `[table-schema table-name]` in
+  the Database with `db-id`, excluding Fields with a user-set foreign key target or semantic type. `min` limits the
+  subquery to one result (MySQL disallows `LIMIT` in subqueries), needed because schema/table/column names can be
+  non-unique when lower-cased for some DBs."
+  [db-id table-schema table-name column-name]
+  ^:allow-subquery
+  {:select    [[[:min :f.id] :id]]
+   :from      [[:metabase_field :f]]
+   :join      [[:metabase_table :t] [:= :f.table_id :t.id]]
+   :left-join [[:metabase_field_user_settings :u] [:= :f.id :u.field_id]]
+   :where     [:and
+               [:= :u.fk_target_field_id nil]
+               [:= :u.semantic_type nil]
+               [:= :t.db_id db-id]
+               [:= [:lower :f.name] (u/lower-case-en column-name)]
+               [:= [:lower :t.name] (u/lower-case-en table-name)]
+               [:= [:lower :t.schema] (some-> table-schema u/lower-case-en)]
+               [:= :f.active true]
+               [:not= :f.visibility_type "retired"]
+               [:= :t.active true]
+               [:= :t.visibility_type nil]]})
+
+(defn- fk-target-changed-clause
+  "Honey SQL clause true when the Field's `fk_target_field_id` is not already `pk-id-expr`."
+  [pk-id-expr]
+  [:or
+   [:= :f.fk_target_field_id nil]
+   [:not= :f.fk_target_field_id pk-id-expr]])
+
+(defn- mark-fk-statement
+  "`[sql & params]` updating the `fk_target_field_id` of the Field at `[fk-table-schema fk-table-name
+  fk-column-name]` in the Database with `db-id` to the id of the Field at `[pk-table-schema pk-table-name
+  pk-column-name]`, unless it already points there, per the application DB's dialect."
+  [db-id fk-table-schema fk-table-name fk-column-name pk-table-schema pk-table-name pk-column-name]
+  (let [fk-field-id-query (fk-field-id-subquery db-id fk-table-schema fk-table-name fk-column-name)
+        pk-field-id-query (fk-field-id-subquery db-id pk-table-schema pk-table-name pk-column-name)
+        q (case (app-db/db-type)
+            :mysql
+            {:update [:metabase_field :f]
+             :join   [[fk-field-id-query :fk] [:= :fk.id :f.id]
+                      [pk-field-id-query :pk]
+                      (fk-target-changed-clause :pk.id)]
+             :set    {:fk_target_field_id :pk.id
+                      ;; We need to reset has_field_values when it is auto-list as FKs should not be marked as such
+                      :has_field_values   [:case [:= :has_field_values "auto-list"] nil :else :has_field_values]
+                      :semantic_type      "type/FK"}}
+            :postgres
+            {:update [:metabase_field :f]
+             :from   [[fk-field-id-query :fk]]
+             :join   [[pk-field-id-query :pk] true]
+             :set    {:fk_target_field_id :pk.id
+                      ;; We need to reset has_field_values when it is auto-list as FKs should not be marked as such
+                      :has_field_values   [:case [:= :has_field_values "auto-list"] nil :else :has_field_values]
+                      :semantic_type      "type/FK"}
+             :where  [:and
+                      [:= :fk.id :f.id]
+                      (fk-target-changed-clause :pk.id)]}
+            :h2
+            {:update [:metabase_field :f]
+             :set    {:fk_target_field_id pk-field-id-query
+                      ;; We need to reset has_field_values when it is auto-list as FKs should not be marked as such
+                      :has_field_values   [:case [:= :has_field_values "auto-list"] nil :else :has_field_values]
+                      :semantic_type      "type/FK"}
+             :where  [:and
+                      [:= :f.id fk-field-id-query]
+                      [:not= pk-field-id-query nil]
+                      (fk-target-changed-clause pk-field-id-query)]})]
+    (sql/format q :dialect (app-db/quoting-style (app-db/db-type)))))
+
+(defn mark-fk!
+  "Set the `fk_target_field_id` of the Field at `[fk-table-schema fk-table-name fk-column-name]` in the Database with
+  `db-id` to the id of the Field at `[pk-table-schema pk-table-name pk-column-name]`, unless it already points there.
+  Returns 1 if a Field was updated, 0 otherwise."
+  [db-id fk-table-schema fk-table-name fk-column-name pk-table-schema pk-table-name pk-column-name]
+  (t2/query-one (mark-fk-statement db-id fk-table-schema fk-table-name fk-column-name
+                                   pk-table-schema pk-table-name pk-column-name)))
 
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
 
@@ -387,13 +520,19 @@
   [field-id]
   (t2/exists? :model/FieldValues :field_id field-id))
 
+(defn- before-max-age-value
+  "Honey SQL `[:< …]` value expression matching a timestamp more than `max-age-days` days before now."
+  [max-age-days]
+  [:< (h2x/add-interval-honeysql-form (app-db/db-type) :%now (- max-age-days) :day)])
+
 (defn advanced-field-values-count-before
-  "The number of FieldValues of `types` for the Field with `field-id` created before the SQL expression
-  `created-before`."
-  [field-id types created-before]
-  (t2/count :model/FieldValues :field_id field-id :type [:in types] :created_at [:< created-before]))
+  "The number of FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago."
+  [field-id types max-age-days]
+  (t2/count :model/FieldValues :field_id field-id :type [:in types]
+            :created_at (before-max-age-value max-age-days)))
 
 (defn delete-advanced-field-values-before!
-  "Delete the FieldValues of `types` for the Field with `field-id` created before the SQL expression `created-before`."
-  [field-id types created-before]
-  (t2/delete! :model/FieldValues :field_id field-id :type [:in types] :created_at [:< created-before]))
+  "Delete the FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago."
+  [field-id types max-age-days]
+  (t2/delete! :model/FieldValues :field_id field-id :type [:in types]
+              :created_at (before-max-age-value max-age-days)))

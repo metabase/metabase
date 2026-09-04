@@ -517,7 +517,8 @@ Data apps are delivered by Git, not uploaded — you commit the app directory an
 
 > **Don't offer to "deploy" the app or ask how the bundle reaches a staging environment** — there is no separate deploy step, and the question only confuses users: Metabase imports the committed bundle straight from the connected repo on its next sync. Once the change is on the branch Metabase syncs from — however the user gets it there (a merged PR, or a push straight to that branch) — just tell them to pull it in and open the app in Metabase at `/apps/<slug>`.
 
-**To update:** commit a new build and pull again. **To remove:** a sync never deletes, so removing the app's directory from the repo does *not* remove the app — an admin removes it in Metabase (Admin → Data apps).
+- **To update:** commit a new build and pull again.
+- **To remove:** delete the app's directory from the repo and push — the next sync removes it. You can't delete a repo-managed app from the UI; the *Remove* action on the Data apps admin page appears only after the repo is disconnected, to clear out apps left behind.
 
 ## Common pitfalls
 

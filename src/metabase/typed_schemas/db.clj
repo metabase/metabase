@@ -2,6 +2,7 @@
   "Application database queries for the typed schemas module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.collections.models.collection :as collection]
    [toucan2.core :as t2]))
 
 (defn destination-database-ids
@@ -9,10 +10,28 @@
   [database-ids]
   (t2/select-fn-set :id :model/Database :id [:in database-ids] :router_database_id [:not= nil]))
 
+(defn- scope-filter-clause
+  "Compiles a resolved scope into a Honey SQL where-clause conjunct: a nil scope means unscoped (no clause), an
+  empty scope matches nothing."
+  [scope-ids column]
+  (when scope-ids
+    (if (seq scope-ids)
+      [:in column scope-ids]
+      ;; no row has id -1: a resolved-but-empty scope matches no rows
+      [:= column -1])))
+
 (defn cards-ordered-by-name
-  "The Cards matching the Honey SQL `where` clause, in name then id order."
-  [where]
-  (t2/select :model/Card {:where where, :order-by [[:name :asc] [:id :asc]]}))
+  "The readable, non-archived Cards of `card-type` among `database-ids` and/or `collection-ids` (either nil for
+  unscoped), in name then id order."
+  [card-type database-ids collection-ids]
+  (t2/select :model/Card
+             {:where    [:and
+                         [:= :type (name card-type)]
+                         [:= :archived false]
+                         (collection/visible-collection-filter-clause :collection_id)
+                         (scope-filter-clause database-ids :database_id)
+                         (scope-filter-clause collection-ids :collection_id)]
+              :order-by [[:name :asc] [:id :asc]]}))
 
 (defn field-ids-and-table-ids
   "The id and Table id of the Fields with `field-ids`."
@@ -41,16 +60,6 @@
   "The Table id of the Field with `field-id`, or nil."
   [field-id]
   (t2/select-one-fn :table_id :model/Field :id field-id))
-
-(defn- scope-filter-clause
-  "Compiles a resolved scope into a Honey SQL where-clause conjunct: a nil scope means unscoped (no clause), an
-  empty scope matches nothing."
-  [scope-ids column]
-  (when scope-ids
-    (if (seq scope-ids)
-      [:in column scope-ids]
-      ;; no row has id -1: a resolved-but-empty scope matches no rows
-      [:= column -1])))
 
 (defn active-tables-in-scope
   "The active Tables among `database-ids` and/or `table-ids` (either nil for unscoped), in name then id order."

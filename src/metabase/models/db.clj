@@ -203,6 +203,13 @@
   (when (seq field-names)
     (t2/select-one-pk :model/Field (field-in-path-query table-id field-names))))
 
+(defn field-in-path
+  "The Field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
+  `table-id`, or nil."
+  [table-id field-names]
+  (when (seq field-names)
+    (t2/select-one :model/Field (field-in-path-query table-id field-names))))
+
 (defn insert-inactive-field!
   "Insert an inactive, untyped Field named `field-name` under `parent-id` in the Table with `table-id` and return its
   id."

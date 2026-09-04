@@ -36,6 +36,10 @@
   "Schema for a valid `Field` visibility type."
   (into [:enum] (map name field/visibility-types)))
 
+(def ^:private FieldDataSensitivity
+  "Schema for a valid `Field` data sensitivity classification."
+  (into [:enum] (map name field/data-sensitivity-types)))
+
 (def ^:private max-field-ids-for-table-id-lookup
   1000)
 
@@ -152,6 +156,7 @@
                   [:semantic_type      {:optional true} [:maybe ms/FieldSemanticOrRelationTypeKeywordOrString]]
                   [:coercion_strategy  {:optional true} [:maybe ms/CoercionStrategyKeywordOrString]]
                   [:visibility_type    {:optional true} [:maybe FieldVisibilityType]]
+                  [:data_sensitivity   {:optional true} [:maybe FieldDataSensitivity]]
                   [:has_field_values   {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]
                   [:settings           {:optional true} [:maybe ms/Map]]
                   [:nfc_path           {:optional true} [:maybe [:sequential ms/NonBlankString]]]
@@ -198,7 +203,8 @@
           id
           (u/select-keys-when body
                               {:present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type
-                                          :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
+                                          :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding
+                                          :data_sensitivity}
                                :non-nil #{:display_name :visibility_type :settings}})))))
     (when (some? json-unfolding)
       (update-nested-fields-on-json-unfolding-change! field json-unfolding))
@@ -338,12 +344,16 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (analytics/track-event! :snowplow/simple_event {:event "field_manual_scan" :target_id id})
-  (let [field (api/write-check (warehouse-schema-rest.db/field id))]
-    ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
-    ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
-    ;; return any actual field values from this API. (#21764)
-    (request/as-admin
-      (field-values/create-or-update-full-field-values! field)))
+  (let [field  (api/write-check (warehouse-schema-rest.db/field id))
+        ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
+        ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
+        ;; return any actual field values from this API. (#21764)
+        result (request/as-admin
+                 (field-values/create-or-update-full-field-values! field))]
+    ;; a scan that fails leaves the existing FieldValues untouched, so reporting success would give the
+    ;; caller no way at all to tell it happened. The underlying error is already in the server logs.
+    (api/check (not= ::field-values/fv-fetch-failed result)
+               [500 (i18n/tru "Failed to scan field values. Check the server logs for the underlying error.")]))
   {:status :success})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
