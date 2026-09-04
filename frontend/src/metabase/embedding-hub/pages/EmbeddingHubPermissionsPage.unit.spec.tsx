@@ -1,8 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import {
-  getPermissionsBasePath,
-  resetPermissionsBasePath,
-} from "metabase/common/components/PermissionsBasePath/base-path";
+import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -35,10 +32,6 @@ function setup() {
 }
 
 describe("EmbeddingHubPermissionsPage", () => {
-  afterEach(() => {
-    resetPermissionsBasePath();
-  });
-
   it("renders the routed editor under its own title", async () => {
     setup();
 
