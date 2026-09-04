@@ -11,7 +11,8 @@
   :default    3600
   :doc        false
   :export?    false
-  :audit      :never)
+  :audit      :never
+  :sysadmin-only? true)
 
 (defsetting oauth-server-authorization-code-ttl
   (deferred-tru "Authorization code time-to-live in seconds for the embedded OAuth server.")
@@ -20,7 +21,8 @@
   :default    600
   :doc        false
   :export?    false
-  :audit      :never)
+  :audit      :never
+  :sysadmin-only? true)
 
 (defsetting oauth-server-refresh-token-ttl
   (deferred-tru "Refresh token time-to-live in seconds for the embedded OAuth server.")
@@ -29,7 +31,8 @@
   :default    2592000 ;; 30 days
   :doc        false
   :export?    false
-  :audit      :never)
+  :audit      :never
+  :sysadmin-only? true)
 
 ;; Gated on mcp-enabled? so registration is off whenever MCP is; stored override can still force false.
 (defsetting oauth-server-dynamic-registration-enabled
@@ -41,4 +44,5 @@
   :export?    false
   :audit      :getter
   :getter     #(and (mcp/mcp-enabled?)
-                    (setting/get-value-of-type :boolean :oauth-server-dynamic-registration-enabled)))
+                    (setting/get-value-of-type :boolean :oauth-server-dynamic-registration-enabled))
+  :sysadmin-only? true)

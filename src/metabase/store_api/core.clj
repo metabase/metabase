@@ -5,5 +5,4 @@
 
 (p/import-vars
  [metabase.store-api.settings
-  store-api-url
-  store-api-url!])
+  store-api-url])

@@ -123,7 +123,8 @@
   :feature    :whitelabel
   :audit      :getter
   :doc "The base URL where dashboard notitification links will point to instead of the Metabase base URL.
-        Only applicable for users who utilize interactive embedding and subscriptions.")
+        Only applicable for users who utilize interactive embedding and subscriptions."
+  :sysadmin-only? true)
 
 (defsetting email-from-address
   (deferred-tru "The email address you want to use for the sender of emails.")
@@ -326,11 +327,8 @@
   :default    :external-only
   :export?    false
   :deprecated-name :http-channel-host-strategy
-  :setter     (fn [new-value]
-                (when (some? new-value)
-                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
-                          (tru "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed.")))
-                (setting/set-value-of-type! :keyword :http-channel-allowed-networks new-value)))
+  :value-validator #{:external-only :allow-private :allow-all}
+  :sysadmin-only? true)
 
 (defsetting slack-configured?
   "Is Slack integration configured?"

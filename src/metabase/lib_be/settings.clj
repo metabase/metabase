@@ -1,21 +1,17 @@
 (ns metabase.lib-be.settings
   (:require
-   [environ.core :as env]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]))
 
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")
-  :type       :boolean
-  :default    true
-  :setter     :none
-  :visibility :authenticated
-  :export?    true
-  :getter     (fn enable-nested-queries-getter []
-                ;; only false if explicitly set `false` by the environment
-                (not= "false" (u/lower-case-en (env/env :mb-enable-nested-queries))))
-  :audit      :getter)
+  :type           :boolean
+  :default        true
+  :setter         :none
+  :visibility     :authenticated
+  :export?        false
+  :sysadmin-only? true
+  :audit          :getter)
 
 (defsetting breakout-bins-num
   (deferred-tru

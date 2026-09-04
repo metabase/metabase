@@ -8,15 +8,20 @@
   (testing "oauth-server settings work without any premium feature flag"
     (mt/with-temporary-setting-values [oauth-server-access-token-ttl 3600]
       (is (= 3600 (oauth-settings/oauth-server-access-token-ttl)))
-      (oauth-settings/oauth-server-access-token-ttl! 7200)
-      (is (= 7200 (oauth-settings/oauth-server-access-token-ttl))))))
+      (mt/with-temporary-setting-values [oauth-server-access-token-ttl 7200]
+        (is (= 7200 (oauth-settings/oauth-server-access-token-ttl))))))
+  (testing "token lifetimes are sysadmin-only: the admin API cannot change them"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"can only be set by the MB_OAUTH_SERVER_ACCESS_TOKEN_TTL environment variable"
+         (oauth-settings/oauth-server-access-token-ttl! 7200)))))
 
 (deftest refresh-token-ttl-setting-test
   (testing "oauth-server-refresh-token-ttl defaults to 30 days and can be changed"
     (mt/with-temporary-setting-values [oauth-server-refresh-token-ttl 2592000]
       (is (= 2592000 (oauth-settings/oauth-server-refresh-token-ttl)))
-      (oauth-settings/oauth-server-refresh-token-ttl! 86400)
-      (is (= 86400 (oauth-settings/oauth-server-refresh-token-ttl))))))
+      (mt/with-temporary-setting-values [oauth-server-refresh-token-ttl 86400]
+        (is (= 86400 (oauth-settings/oauth-server-refresh-token-ttl)))))))
 
 (deftest dynamic-registration-tracks-mcp-test
   (testing "oauth-server-dynamic-registration-enabled is AND-composed with mcp-enabled?"

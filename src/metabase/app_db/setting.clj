@@ -1,6 +1,7 @@
 (ns metabase.app-db.setting
   "How the application DB stores a setting's value: `setting.value_with_aad` holds it encrypted under additional
-  authenticated data naming the setting, so that a value moved between rows -- whose ciphertext alone says nothing
+  authenticated data naming the setting (and `setting.value_sysadmin`, a sysadmin-only setting's host-configured
+  value, under its own AAD), so that a value moved between rows -- whose ciphertext alone says nothing
   about which setting it belongs to -- fails to decrypt. The legacy `value` column holds it bare, for versions that
   predate the other. Lives here rather than with the Setting model because the encryption tooling here writes two rows
   the model never does: the `settings-last-updated` marker and the `encryption-check` sentinel."
@@ -16,6 +17,17 @@
 (def ^{:arglists '(^bytes [setting-key])} setting-aad
   "The additional authenticated data a setting's value is encrypted under: `setting.<key>`."
   (memoize (fn ^bytes [setting-key] (codecs/to-bytes (str "setting." setting-key)))))
+
+(def ^{:arglists '(^bytes [setting-key])} sysadmin-setting-aad
+  "The additional authenticated data a sysadmin-only setting's `value_sysadmin` is encrypted under: `sysadmin.<key>`.
+  Distinct from [[setting-aad]] so a `value_with_aad` ciphertext cannot be moved into the sysadmin column."
+  (memoize (fn ^bytes [setting-key] (codecs/to-bytes (str "sysadmin." (name setting-key))))))
+
+(defn sysadmin-aad-opts
+  "The `metabase.util.encryption` opts binding a `setting.value_sysadmin` ciphertext to `setting-key`'s row -- the one
+  place that pairing is spelled out, so every reader and writer of the column agrees on it."
+  [setting-key]
+  {:aad (sysadmin-setting-aad setting-key)})
 
 (defn migrate-settings!
   "Give every setting row that has no `value_with_aad` one, from the legacy `value` column beside it, stored the way

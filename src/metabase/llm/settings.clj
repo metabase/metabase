@@ -468,7 +468,8 @@ Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_
   :visibility       :internal
   :default          nil
   :export?          false
-  :doc              false)
+  :doc              false
+  :sysadmin-only?   true)
 
 (defsetting ai-service-base-url
   (deferred-tru "Base URL for the managed Metabase AI service.")
@@ -478,7 +479,8 @@ Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_
   :visibility       :internal
   :default          nil
   :export?          false
-  :doc              false)
+  :doc              false
+  :sysadmin-only?   true)
 
 (defsetting llm-proxy-configured?
   (deferred-tru "Whether the LLM proxy is configured for the managed Metabase AI service.")

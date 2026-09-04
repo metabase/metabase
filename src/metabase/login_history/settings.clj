@@ -10,6 +10,7 @@
   :type       :boolean
   :visibility :internal
   :setter     :none
+  :sysadmin-only? true
   :default    true
   :doc "This variable also controls the geocoding service that Metabase uses to know the location of your logged in users.
         Setting this variable to false also disables this reverse geocoding functionality.")

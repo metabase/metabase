@@ -34,6 +34,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
+   [metabase.settings.env-file :as setting.env-file]
    [metabase.settings.models.setting]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.task.core :as task]
@@ -497,22 +498,48 @@
       keyword))
 
 (defn do-with-temp-env-var-value!
-  "Impl for [[with-temp-env-var-value!]] macro."
-  [env-var-keyword value thunk]
+  "Impl for [[with-temp-env-var-value!]] macro. The Settings cache is flushed around `thunk` unless `flush-cache?` is
+  false: [[do-with-temporary-setting-value!]] passes false for a sysadmin-only setting, whose env var is the only
+  thing being changed and which the cache never holds."
+  [env-var-keyword value thunk & {:keys [flush-cache?] :or {flush-cache? true}}]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value!")
   ;; app DB needs to be initialized if we're going to play around with the Settings cache.
   (initialize/initialize-if-needed! :db)
-  (let [value (str value)]
+  ;; a real env var never carries a keyword's leading colon, so `str` would round-trip `:foo` as `::foo`
+  (let [value (if (keyword? value) (name value) (str value))]
     (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
       (try
         ;; temporarily override the underlying environment variable value
         (with-redefs [env/env (assoc env/env env-var-keyword value)]
           ;; flush the Setting cache so it picks up the env var value for the Setting (if applicable)
-          (setting.cache/restore-cache!)
+          (when flush-cache?
+            (setting.cache/restore-cache!))
           (thunk))
         (finally
           ;; flush the cache again so the original value of any env var Settings get restored
-          (setting.cache/restore-cache!))))))
+          (when flush-cache?
+            (setting.cache/restore-cache!)))))))
+
+(defn do-with-env-file-values!
+  "Impl for [[with-env-file-values!]]."
+  [values thunk]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-env-file-values!")
+  (let [original (setting.env-file/env-file-values)]
+    (try
+      (setting.env-file/reset-env-file-values! values)
+      (thunk)
+      (finally
+        (setting.env-file/reset-env-file-values! original)))))
+
+(defmacro with-env-file-values!
+  "Temporarily replace the contents of the `metabase.env` layer (see [[metabase.settings.env-file]]) with `values`, a
+  map of environ-style keywords to strings, and execute `body`. Values there act like env vars for every Setting that
+  can be set from the environment, losing only to a real env var.
+
+    (with-env-file-values! {:mb-site-name \"From the file\"}
+      ...)"
+  [values & body]
+  `(do-with-env-file-values! ~values (fn [] ~@body)))
 
 (defmacro with-temp-env-var-value!
   "Temporarily override the value of one or more environment variables and execute `body`. Resets the Setting cache so
@@ -619,8 +646,16 @@
                   (catch Exception e
                     (when-not raw-setting?
                       (throw e))))]
-    (if (and (not raw-setting?) (setting/env-var-value setting-k))
+    (cond
+      (and (not raw-setting?) (:sysadmin-only? setting))
+      ;; sysadmin-only settings reject every write, so the env var is the only way to give them a value; the cache
+      ;; never holds an env value, so there is nothing to flush -- and these settings are bound in hundreds of tests
+      (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk :flush-cache? false)
+
+      (and (not raw-setting?) (setting/env-var-value setting-k))
       (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk)
+
+      :else
       (let [original-value (if raw-setting?
                              (raw-setting setting-k)
                              (if skip-init?

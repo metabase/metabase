@@ -177,6 +177,8 @@
   []
   (log/infof "Starting Metabase version %s ..." config/mb-version-string)
   (log/infof "System info:\n %s" (pr-str (u.system-info/system-info)))
+  ;; before anything reads a setting: values in metabase.env act like env vars
+  (setting/load-env-file!)
   (perf/maybe-enable-monitoring!)
   (init-signal-logging!)
   (init-status/set-progress! 0.1)
@@ -219,6 +221,8 @@
   (let [new-install? (not (setup/has-user-setup))]
     ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
     (config-from-file/init-from-file-if-code-available!)
+    ;; after the config file, whose sysadmin-only values it must see as "set"
+    (setting/backfill-sysadmin-values!)
     (init-status/set-progress! 0.6)
     (if new-install?
       (do
@@ -249,6 +253,7 @@
   (database/check-health!)
   (startup/run-startup-logic!)
   (setting/log-deprecated-env-var-usage!)
+  (setting/log-unknown-env-file-keys!)
   (init-status/set-progress! 0.95)
   (task/start-scheduler!)
   (queue/start-listeners!)
@@ -290,6 +295,7 @@
       (System/exit 1))))
 
 (defn- run-cmd [cmd init-fn args]
+  (setting/load-env-file!)
   ((requiring-resolve 'metabase.cmd.core/run-cmd) cmd init-fn args))
 
 ;;; -------------------------------------------------- Tracing -------------------------------------------------------

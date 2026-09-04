@@ -51,6 +51,8 @@
   :encryption :no
   :visibility :internal
   :setter     :none
+  ;; audit suppression: shortening retention destroys the audit trail
+  :sysadmin-only? true
   :audit      :never
   :getter     #'-audit-max-retention-days
   :doc "Sets the maximum number of days Metabase preserves rows for the following application database tables:
@@ -66,6 +68,8 @@ If set to 0, Metabase will keep all rows.")
   (deferred-tru "Batch size to use for deletion of old rows for audit-related tables (like query_execution). Can be only set as an environment variable.")
   :visibility :internal
   :setter     :none
+  ;; audit suppression: pairs with audit-max-retention-days
+  :sysadmin-only? true
   :type       :integer
   :default    50000
   :audit      :never

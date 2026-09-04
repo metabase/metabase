@@ -9,10 +9,10 @@
   [setting-key]
   (t2/select-one-fn :value :model/Setting :key setting-key))
 
-(defn setting-values-by-key
-  "A map of key to stored value for every Setting."
+(defn all-settings
+  "Every Setting row, read through the model (so `value` and `value_sysadmin` come back decrypted)."
   []
-  (t2/select-fn->fn :key :value :model/Setting))
+  (t2/select :model/Setting))
 
 (defn insert-setting!
   "Insert a Setting row for `setting-key` holding `value` and return it."
@@ -45,3 +45,40 @@
   "Store `settings-json` as the user-local settings of the User with `user-id`."
   [user-id settings-json]
   (t2/update! :model/User user-id {:settings settings-json}))
+
+;;; sysadmin-only settings: `setting.value_sysadmin`
+
+(defn sysadmin-setting-value
+  "The stored `value_sysadmin` of the Setting with `setting-key`, or nil."
+  [setting-key]
+  (t2/select-one-fn :value_sysadmin :model/Setting :key setting-key))
+
+(defn update-sysadmin-setting-value!
+  "Store `value` as both the `value` and the `value_sysadmin` of the Setting with `setting-key`, returning the number
+  of rows updated: 0 when there is no such row."
+  [setting-key value]
+  (t2/update! :model/Setting :key setting-key {:value value, :value_sysadmin value}))
+
+(defn insert-sysadmin-setting-value!
+  "Insert a Setting row for `setting-key` holding `value` as both its `value` and its `value_sysadmin`."
+  [setting-key value]
+  (t2/insert! :model/Setting {:key setting-key, :value value, :value_sysadmin value}))
+
+(defn raw-setting-row
+  "The raw Setting row with `setting-key` -- every column as stored, no model hooks -- or nil."
+  [setting-key]
+  (t2/select-one :setting :key setting-key))
+
+(defn update-raw-value-sysadmin!
+  "Set the raw `value_sysadmin` of the Setting row with `setting-key`."
+  [setting-key value-sysadmin]
+  (t2/query {:update :setting, :set {:value_sysadmin value-sysadmin}, :where [:= :key setting-key]}))
+
+(defn insert-raw-setting-row-with-sysadmin!
+  "Insert a raw Setting row for `setting-key` holding `value`, `value-with-aad`, and `value-sysadmin`."
+  [setting-key value value-with-aad value-sysadmin]
+  (t2/query {:insert-into :setting
+             :values      [{:key            setting-key
+                            :value          value
+                            :value_with_aad value-with-aad
+                            :value_sysadmin value-sysadmin}]}))

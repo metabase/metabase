@@ -327,6 +327,7 @@
   :include-in-list? false
   :audit            :never
   :setter           :none
+  :sysadmin-only?   true
   :export?          false)
 
 (define-premium-feature security-center-enabled?

@@ -397,6 +397,7 @@ export interface SettingDefinition<
   key: Key;
   env_name?: string;
   is_env_setting?: boolean;
+  sysadmin_only?: boolean;
   value?: EnterpriseSettingValue<Key>;
   default?: EnterpriseSettingValue<Key>;
   display_name?: string;

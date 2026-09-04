@@ -15,7 +15,8 @@
   ;; Acceptable values have a lower bound of 30
   (mt/with-temp-env-var-value! [mb-audit-max-retention-days 1]
     (is (= 30 (audit.settings/audit-max-retention-days))))
-  (is (thrown-with-msg?
-       java.lang.UnsupportedOperationException
-       #"You cannot set audit-max-retention-days"
-       (setting/set! :audit-max-retention-days 30))))
+  (testing "sysadmin-only: cannot be set through the setter, even bypassing read-only"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Setting audit-max-retention-days can only be set by the MB_AUDIT_MAX_RETENTION_DAYS environment variable"
+         (setting/set! :audit-max-retention-days 30 :bypass-read-only? true)))))

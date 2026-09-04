@@ -51,7 +51,8 @@
   :visibility :internal
   :default    nil
   :doc        false
-  :export?    false)
+  :export?    false
+  :sysadmin-only? true)
 
 (defn- is-invalid-mb-version?
   "These variations are not valid Metabase versions that can be found in production. They are mostly used for local

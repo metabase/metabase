@@ -163,6 +163,7 @@ export const createMockSettingDefinition = <
 ): SettingDefinition<Key> => ({
   env_name: "",
   is_env_setting: false,
+  sysadmin_only: false,
   value: opts.value,
   ...opts,
 });

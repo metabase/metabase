@@ -151,3 +151,19 @@
     (reset-last-update-check!)
     (is (= "fr"
            (system/site-locale)))))
+
+(deftest sysadmin-cache-test
+  (testing "restore-cache! fills the sysadmin cache from value_sysadmin and leaves the legacy cache's shape alone"
+    (mt/with-temporary-raw-setting-values [toucan-name "Bird Can"]
+      (try
+        (t2/update! :model/Setting {:key "toucan-name"} {:value_sysadmin "Sys Can"})
+        (setting.cache/restore-cache!)
+        (is (= "Bird Can" (get (setting.cache/cache) "toucan-name")))
+        (is (= "Sys Can" (get (setting.cache/sysadmin-cache) "toucan-name")))
+        (testing "rows without a sysadmin value are absent from the sysadmin cache"
+          (is (not (contains? (setting.cache/sysadmin-cache) setting.cache/settings-last-updated-key))))
+        (testing "update-sysadmin-cache! with an empty value drops the entry"
+          (setting.cache/update-sysadmin-cache! "toucan-name" nil)
+          (is (not (contains? (setting.cache/sysadmin-cache) "toucan-name"))))
+        (finally
+          (t2/update! :model/Setting {:key "toucan-name"} {:value_sysadmin nil}))))))

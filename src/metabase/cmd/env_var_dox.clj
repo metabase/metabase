@@ -68,6 +68,7 @@
             (false? d)   "false"
             (nil? d)     "null"
             (keyword? d) (name d)
+            (fn? d)      "computed at runtime"
             :else        d)))))
 
 (defn- format-prefix
@@ -137,7 +138,10 @@
   [env-var]
   (cond
     (not (settable-in-config-file? env-var))
-    "Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md)."
+    "Environment variable or `metabase.env` only: you can't set this in the Admin settings or in a [configuration file](./config-file.md)."
+
+    (:sysadmin-only? env-var)
+    "Environment variable, `metabase.env`, or [configuration file](./config-file.md) only: you can't set this in the Admin settings."
 
     ;; an internal setting has no config-file name to give, and nothing else to say either
     (not= (:visibility env-var) :internal)

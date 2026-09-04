@@ -45,7 +45,8 @@
   :visibility :internal
   :type       :integer
   :default    48
-  :audit      :getter)
+  :audit      :getter
+  :sysadmin-only? true)
 
 (defsetting mfa-challenge-signing-key
   (deferred-tru "Key used to sign MFA challenge tokens. Generated automatically on first use.")
@@ -57,4 +58,5 @@
   ;; :init generates and persists on first access. Two nodes touching it simultaneously can still
   ;; race (last write wins; the loser's in-flight 5-min challenge tokens fail verification), but
   ;; the window is one first-ever MFA login. Generate eagerly at startup if this ever bites.
-  :init       (fn [] (codecs/bytes->hex (nonce/random-bytes 32))))
+  :init       (fn [] (codecs/bytes->hex (nonce/random-bytes 32)))
+  :sysadmin-only? true)

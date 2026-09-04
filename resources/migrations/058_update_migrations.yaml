@@ -1635,6 +1635,21 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.BackfillExampleDashboardIdValueWithAad"
 
+  - changeSet:
+      id: v58.2026-09-04T00:00:00
+      author: nvoxland
+      comment: Add setting.value_sysadmin column
+      changes:
+        - addColumn:
+            tableName: setting
+            columns:
+              - column:
+                  name: value_sysadmin
+                  type: ${text.type}
+                  remarks: Encrypted Value of a legacy-set sysadmin-only setting
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
