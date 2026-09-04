@@ -55,7 +55,6 @@
    [:cards {:optional true} [:maybe (cards-to-create-schema :int)]]
    [:archived {:optional true} [:maybe :boolean]]])
 
-
 (defn add-card-to-document!
   "Insert an embed for the already-created card with `card-id` into the prose-mirror ast of the
   document with `document-id` and persist it. `position` is a 0-based index among the document's

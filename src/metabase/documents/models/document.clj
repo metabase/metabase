@@ -323,11 +323,11 @@
                              (api/maybe-reconcile-collection-position! {:collection_id collection_id
                                                                         :collection_position collection_position}))
                            (let [document-id (documents.db/insert-document! {:name name
-                                                                              :collection_id collection_id
-                                                                              :collection_position collection_position
-                                                                              :document document
-                                                                              :content_type prose-mirror/prose-mirror-content-type
-                                                                              :creator_id api/*current-user-id*})
+                                                                             :collection_id collection_id
+                                                                             :collection_position collection_position
+                                                                             :document document
+                                                                             :content_type prose-mirror/prose-mirror-content-type
+                                                                             :creator_id api/*current-user-id*})
                                  cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
                                                                                           :collection_id collection_id
                                                                                           :document document
