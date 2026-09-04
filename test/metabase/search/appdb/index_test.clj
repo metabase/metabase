@@ -628,7 +628,7 @@
         (search.index/reset-index!)
         (let [orphan (search.index/gen-table-name)]
           (search.index/create-table! orphan)
-          (with-redefs [search.ingestion/searchable-documents #(throw (ex-info "Simulated connection loss" {}))]
+          (mt/with-dynamic-fn-redefs [search.ingestion/searchable-documents #(throw (ex-info "Simulated connection loss" {}))]
             (is (thrown-with-msg? Exception #"Simulated connection loss"
                                   (search.engine/reindex! :search.engine/appdb {}))))
           (testing "the orphan is dropped even though the reindex never reached activation"
@@ -638,7 +638,7 @@
             (is (search.index/exists? (#'search.index/pending-table)))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "orphan-cleanup-test")
-          (#'search.index/delete-obsolete-tables!))))))
+          (search.index/delete-obsolete-tables!))))))
 
 (deftest strip-junk-chars-test
   (let [strip @#'search.index/strip-junk-chars]
