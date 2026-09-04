@@ -1363,6 +1363,7 @@
            metrics
            models
            permissions
+           premium-features
            remote-sync
            search
            util}
@@ -2173,6 +2174,7 @@
            lib-be
            models
            permissions
+           premium-features
            remote-sync
            search
            util
