@@ -14,10 +14,10 @@ interface Props {
 }
 
 /**
- * Rendered under the SSO radio when embedding (`enable-embedding-modular`,
- * shared with the Guest radio) isn't enabled yet or the SSO-specific terms
- * haven't been accepted. Lets the admin enable the feature and accept the
- * terms in a single click from inside the wizard.
+ * Rendered under the SSO radio when modular embedding
+ * (`enable-embedding-modular`) isn't enabled yet or its terms haven't been
+ * accepted. Lets the admin enable the feature and accept the terms in a
+ * single click from inside the wizard.
  */
 export const EnableModularEmbeddingSection = ({
   isEnabled,
