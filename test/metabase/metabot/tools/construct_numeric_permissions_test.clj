@@ -6,15 +6,22 @@
   observe enforcement. These tests use a real application database and a real unprivileged user,
   so a missing check shows up as a leak rather than as a passing stub.
 
-  The invariant under test: on the numeric-id surface, naming a card the caller cannot read must
-  fail closed, and must not report anything about that card — including its column names."
+  The invariant under test: on the numeric-id surface, an LLM-authored integer must denote
+  something this query may actually reference — a card the caller can read, a table in the
+  query's own database, a column the warehouse exposes — and must fail closed, and quietly, when
+  it does not. The portable dialect gets all of that from resolving names through a
+  database-scoped provider; the numeric dialect has to ask for it explicitly."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -48,6 +55,7 @@
         (catch clojure.lang.ExceptionInfo e
           {:outcome   :threw
            :status    (:status-code (ex-data e))
+           :error     (:error (ex-data e))
            :available (:available (ex-data e))
            ;; Bounded: some pipeline messages embed a whole humanized schema explanation, which
            ;; is large enough to blow the regex engine's stack when scanned for leaked names.
@@ -131,3 +139,144 @@
              (is (thrown? clojure.lang.ExceptionInfo
                           (resolve.mp/card-by-id shared.content-store/default-store victim-id))
                  "an unreadable card must be denied by the store"))))))))
+
+;;; ============================================================
+;;; Numeric ids must denote something this query may reference
+;;; ============================================================
+
+(deftest numeric-source-table-from-another-database-is-rejected-test
+  (testing (str "a numeric `source-table` pulling a table from a DIFFERENT database into a query\n"
+                "must not resolve.\n\n"
+                "The interesting case is a MIXED query, which is why this uses a join: when the only\n"
+                "source is the foreign table, `resolve-database-id-from-first-stage` simply builds the\n"
+                "provider for that table's own database and the query is consistently about database\n"
+                "B — no boundary crossed. The bug is a query rooted in database A that reaches into B.\n\n"
+                "The portable path gets this for free: `find-table` compares the FK's db name to the\n"
+                "provider's and throws. A bare id skips that, and `api/query-check` does not close the\n"
+                "gap — it asks whether the caller may query that table, never whether the table belongs\n"
+                "to this query's database.")
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Database other     {:engine :h2 :name "OtherDB-xdb-test"}
+                     :model/Table    other-tbl {:db_id (:id other) :name "OTHER_TBL" :active true}]
+        (let [result (attempt-as-rasta
+                      {:lib/type "mbql/query"
+                       :database (db-name)
+                       :stages   [{:lib/type     "mbql.stage/mbql"
+                                   :source-table (mt/id :venues)
+                                   :joins        [{:lib/type   "mbql/join"
+                                                   :alias      "j"
+                                                   :stages     [{:lib/type     "mbql.stage/mbql"
+                                                                 :source-table (:id other-tbl)}]
+                                                   :conditions [["=" {}
+                                                                 ["field" {} (mt/id :venues :id)]
+                                                                 ["field" {} (mt/id :venues :id)]]]}]}]})]
+          (is (= :threw (:outcome result))
+              "a foreign-database table must not resolve")
+          (is (= :unknown-table-id (:error result))
+              "and it is reported as an unresolvable reference, not as a permission failure"))))))
+
+(deftest foreign-database-table-is-never-permission-checked-test
+  (testing (str "the security property behind the test above, asserted directly: a table id from\n"
+                "another database must never reach `api/query-check`.\n\n"
+                "This is the assertion that actually pins the fix. The query is refused either way —\n"
+                "downstream resolution fails on a table its provider cannot see — but WHERE it is\n"
+                "refused decides whether a permission check ever ran against a foreign row. Handing\n"
+                "such an id to `query-check` asks 'may this user query table N?' with no reference to\n"
+                "the query's own database, so it answers yes for anyone with access to the other\n"
+                "database, and the refusal downstream becomes incidental rather than a boundary.")
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Database other     {:engine :h2 :name "OtherDB-qcheck-test"}
+                     :model/Table    other-tbl {:db_id (:id other) :name "OTHER_TBL" :active true}]
+        (let [checked (atom [])
+              orig    api/query-check]
+          (with-redefs [api/query-check (fn [& args]
+                                          (swap! checked conj (vec args))
+                                          (apply orig args))]
+            (attempt-as-rasta
+             {:lib/type "mbql/query"
+              :database (db-name)
+              :stages   [{:lib/type     "mbql.stage/mbql"
+                          :source-table (mt/id :venues)
+                          :joins        [{:lib/type   "mbql/join"
+                                          :alias      "j"
+                                          :stages     [{:lib/type     "mbql.stage/mbql"
+                                                        :source-table (:id other-tbl)}]
+                                          :conditions [["=" {}
+                                                        ["field" {} (mt/id :venues :id)]
+                                                        ["field" {} (mt/id :venues :id)]]]}]}]}))
+          (is (not (contains? (set (map second @checked)) (:id other-tbl)))
+              (str "query-check must never see the foreign table id " (:id other-tbl)
+                   "; it was called with " (pr-str @checked))))))))
+
+(deftest numeric-field-id-for-sensitive-column-is-rejected-test
+  (testing (str "a numeric field id naming a `:sensitive` column must not resolve. `metadata-spec->\n"
+                "honey-sql` drops its visibility filter for by-id lookups (`active-only?` is\n"
+                "`(not (or id-set name-set))`), which is right for trusted callers asking for a\n"
+                "specific row and wrong for an agent-authored id — the portable dialect cannot name\n"
+                "these columns at all, because they are absent from the by-name fetch.")
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Field sensitive {:table_id        (mt/id :venues)
+                                             :name            "SSN"
+                                             :base_type       :type/Text
+                                             :database_type   "VARCHAR"
+                                             :visibility_type "sensitive"
+                                             :active          true}]
+        (let [result (attempt-as-rasta
+                      {:lib/type "mbql/query"
+                       :database (db-name)
+                       :stages   [{:lib/type     "mbql.stage/mbql"
+                                   :source-table (mt/id :venues)
+                                   :fields       [["field" {} (:id sensitive)]]}]})]
+          (is (= :threw (:outcome result))
+              "a sensitive column must not be referenceable by id")
+          (is (not (re-find #"SSN" (or (:message result) "")))
+              "and the rejection must not echo the column's name back"))))))
+
+(deftest numeric-field-id-for-inactive-column-is-rejected-test
+  (testing "the same holds for an inactive column, which the warehouse no longer has"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Field gone {:table_id      (mt/id :venues)
+                                        :name          "DROPPED_COL"
+                                        :base_type     :type/Text
+                                        :database_type "VARCHAR"
+                                        :active        false}]
+        (let [result (attempt-as-rasta
+                      {:lib/type "mbql/query"
+                       :database (db-name)
+                       :stages   [{:lib/type     "mbql.stage/mbql"
+                                   :source-table (mt/id :venues)
+                                   :fields       [["field" {} (:id gone)]]}]})]
+          (is (= :threw (:outcome result))))))))
+
+(deftest numeric-source-table-existence-is-not-an-oracle-test
+  (testing (str "GHY-4410: a table the caller has no data access to must be reported exactly as one\n"
+                "that does not exist. `resolve-database-id-from-first-stage` runs before any\n"
+                "permission check — it is what decides which database the provider is for — so\n"
+                "without a read check there, a bare `t2/select-one` answers \"exists\" for a table in\n"
+                "a database the caller cannot touch, and the id argument becomes a way to enumerate\n"
+                "table ids instance-wide.\n\n"
+                "Note the perms have to be revoked at the DATA level: collection permissions do not\n"
+                "gate warehouse tables, so `with-non-admin-groups-no-root-collection-perms` leaves\n"
+                "`mi/can-read?` on a Table returning true.")
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Database other     {:engine :h2 :name "OtherDB-oracle-test"}
+                     :model/Table    other-tbl {:db_id (:id other) :name "SECRET_TBL" :active true}]
+        (perms.test-util/with-no-data-perms-for-all-users!
+          ;; keep the query's own database usable so we are testing the *other* database's table,
+          ;; not a blanket denial
+          (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+          (let [forbidden   (attempt-as-rasta
+                             {:lib/type "mbql/query"
+                              :database (db-name)
+                              :stages   [{:lib/type "mbql.stage/mbql" :source-table (:id other-tbl)}]})
+                nonexistent (attempt-as-rasta
+                             {:lib/type "mbql/query"
+                              :database (db-name)
+                              :stages   [{:lib/type "mbql.stage/mbql" :source-table 999999999}]})]
+            (testing "both are refused"
+              (is (= :threw (:outcome forbidden)))
+              (is (= :threw (:outcome nonexistent))))
+            (testing "and they are indistinguishable — same status, and neither names the table"
+              (is (= (:status nonexistent) (:status forbidden)))
+              (is (not (re-find #"SECRET_TBL" (or (:message forbidden) "")))))))))))
