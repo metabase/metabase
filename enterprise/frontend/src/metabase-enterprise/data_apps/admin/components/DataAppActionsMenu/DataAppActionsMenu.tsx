@@ -77,7 +77,7 @@ export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
               component={Link}
               to={`/admin/settings/apps/${app.name}/users`}
             >
-              {t`Manage users`}
+              {t`Manage user access`}
             </Menu.Item>
           )}
 

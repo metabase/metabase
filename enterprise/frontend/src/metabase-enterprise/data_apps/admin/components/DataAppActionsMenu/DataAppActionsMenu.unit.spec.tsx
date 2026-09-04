@@ -56,7 +56,7 @@ describe("DataAppActionsMenu", () => {
     expect(menuItems).toHaveLength(3);
     expect(menuItems[0]).toHaveTextContent("View resources");
     expect(menuItems[0]).toHaveAttribute("href", "/collection/9");
-    expect(menuItems[1]).toHaveTextContent("Manage users");
+    expect(menuItems[1]).toHaveTextContent("Manage user access");
     expect(menuItems[1]).toHaveAttribute(
       "href",
       "/admin/settings/apps/sales/users",
@@ -80,7 +80,7 @@ describe("DataAppActionsMenu", () => {
     await openMenu();
 
     expect(
-      screen.queryByRole("menuitem", { name: "Manage users" }),
+      screen.queryByRole("menuitem", { name: "Manage user access" }),
     ).not.toBeInTheDocument();
   });
 
