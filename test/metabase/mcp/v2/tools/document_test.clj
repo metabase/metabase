@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.tools.content :as v2.content]
    [metabase.mcp.v2.tools.document :as v2.document]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -51,28 +52,25 @@
           (t2/delete! :model/Card :document_id id)
           (t2/delete! :model/Document :id id))))))
 
-;; TODO(slice-11/content): restore once `metabase.mcp.v2.tools.content/fetch-document` lands —
-;; this test calls it via `(#'v2.content/fetch-document ...)` to compare the tool's echo against a
-;; concise get_content read. See DEC-0001 and .private/decisions in the mcp-v2-foundation sidecar.
-#_(deftest create-clones-card-test
-    (mt/with-temp [:model/Card {card-id :id} {:name "Orders card"
-                                              :dataset_query (orders-query)}]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (with-tool-documents
-          (fn [created!]
-            (let [payload (created! (call {:method           "create"
-                                           :name             "Clone test"
-                                           :content_markdown (str "Intro paragraph.\n\n{% card id=" card-id " %}")}))
-                  cloned-id (some-> (re-find #"\{% card id=(\d+)" (:content_markdown payload)) second parse-long)]
-              (testing "the embedded foreign card is cloned and the response shows the clone's id"
-                (is (pos-int? cloned-id))
-                (is (not= card-id cloned-id))
-                (is (= (:id payload) (t2/select-one-fn :document_id :model/Card :id cloned-id))))
-              (testing "the original card is untouched"
-                (is (nil? (t2/select-one-fn :document_id :model/Card :id card-id))))
-              (testing "get_content returns the same Markdown body the tool returned"
-                (is (= (:content_markdown payload)
-                       (:content_markdown (#'v2.content/fetch-document (:id payload))))))))))))
+(deftest create-clones-card-test
+  (mt/with-temp [:model/Card {card-id :id} {:name "Orders card"
+                                            :dataset_query (orders-query)}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (with-tool-documents
+        (fn [created!]
+          (let [payload (created! (call {:method           "create"
+                                         :name             "Clone test"
+                                         :content_markdown (str "Intro paragraph.\n\n{% card id=" card-id " %}")}))
+                cloned-id (some-> (re-find #"\{% card id=(\d+)" (:content_markdown payload)) second parse-long)]
+            (testing "the embedded foreign card is cloned and the response shows the clone's id"
+              (is (pos-int? cloned-id))
+              (is (not= card-id cloned-id))
+              (is (= (:id payload) (t2/select-one-fn :document_id :model/Card :id cloned-id))))
+            (testing "the original card is untouched"
+              (is (nil? (t2/select-one-fn :document_id :model/Card :id card-id))))
+            (testing "get_content returns the same Markdown body the tool returned"
+              (is (= (:content_markdown payload)
+                     (:content_markdown (#'v2.content/fetch-document (:id payload))))))))))))
 
 (deftest create-collection-target-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -626,28 +624,25 @@
               (is (re-find #"clear" txt))
               (is (= "pinned doc" (t2/select-one-fn :name :model/Document :id (:id doc)))))))))))
 
-;; TODO(slice-11/content): restore once the `get_content` tool lands — this test calls it via
-;; `registry/call-tool ... "get_content"` to compare the write echo against a concise read. See
-;; DEC-0001 and .private/decisions in the mcp-v2-foundation sidecar.
-#_(deftest write-echo-and-read-name-the-body-alike-test
-    (testing "the write echo and a concise get_content read call the body `content_markdown`. They
+(deftest write-echo-and-read-name-the-body-alike-test
+  (testing "the write echo and a concise get_content read call the body `content_markdown`. They
               used to disagree — the read said `markdown` — so an agent doing the read-modify-write
               this tool's `edits`/`old_str` design encourages had to rename the field in between."
-      (mt/with-model-cleanup [:model/Document]
-        (mt/with-current-user (mt/user->id :crowberto)
-          (let [echo (-> (registry/call-tool #{"agent:content:write" "agent:content:read"} nil
-                                             "document_write"
-                                             {:method "create" :name "shared name"
-                                              :content_markdown "BODY TEXT"})
-                         :content first :text json/decode+kw)
-                read (-> (registry/call-tool #{"agent:content:read"} nil "get_content"
-                                             {:items [{:type "document" :id (:id echo)}]})
-                         :content first :text json/decode+kw :results first)]
-            (is (= "BODY TEXT" (:content_markdown echo)))
-            (is (= (:content_markdown echo) (:content_markdown read)))
-            (testing "and neither side still carries the old key"
-              (is (not (contains? echo :markdown)))
-              (is (not (contains? read :markdown)))))))))
+    (mt/with-model-cleanup [:model/Document]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [echo (-> (registry/call-tool #{"agent:content:write" "agent:content:read"} nil
+                                           "document_write"
+                                           {:method "create" :name "shared name"
+                                            :content_markdown "BODY TEXT"})
+                       :content first :text json/decode+kw)
+              read (-> (registry/call-tool #{"agent:content:read"} nil "get_content"
+                                           {:items [{:type "document" :id (:id echo)}]})
+                       :content first :text json/decode+kw :results first)]
+          (is (= "BODY TEXT" (:content_markdown echo)))
+          (is (= (:content_markdown echo) (:content_markdown read)))
+          (testing "and neither side still carries the old key"
+            (is (not (contains? echo :markdown)))
+            (is (not (contains? read :markdown)))))))))
 
 (deftest ^:parallel tools-list-discoverability-test
   (testing "a dynamically-registered client can discover and call document_write. Registration is

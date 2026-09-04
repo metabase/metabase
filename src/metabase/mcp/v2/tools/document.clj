@@ -29,21 +29,8 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------------ :document projection ------------------------------------------
-
-;; Relocated here from `content.clj` (slice 11), which hasn't landed yet: this tool is the first
-;; consumer of a `:document` response, and `document-response` below calls `projections/project
-;; :document`. content/11 drops its duplicate registration when it lands — the same
-;; projection-ownership dance used for metric/content in earlier slices.
-(def ^:private document-concise-keys
-  [:id :name :collection_id :archived :content_markdown])
-
-(def ^:private document-detailed-keys
-  (into document-concise-keys
-        [:entity_id :creator_id :created_at :updated_at]))
-
-(projections/register-key-projection! :document document-concise-keys
-                                      :detailed-keys document-detailed-keys)
+;; The `:document` projection is registered in `metabase.mcp.v2.projections`, which this ns
+;; requires — `document-response` below projects through it.
 
 ;;; ------------------------------------------------ Smart links ---------------------------------------------------
 

@@ -39,23 +39,9 @@
   (str "A metric needs exactly one aggregation and at most one grouping, in a single "
        "query stage."))
 
-;;; ---------------------------------------------- :metric projection ----------------------------------------------
-
-;; This tool's write echo is built from the `:metric` projection, so the registration lives here —
-;; with the type's owning tool — rather than as a load-order side effect of `content.clj` (whose
-;; get_content reads the same projection once it lands; on the foundation branch this registration
-;; sat in content.clj and loading metric without content silently yielded no projection).
-
-(def ^:private metric-concise-keys
-  [:id :name :type :description :collection_id :database_id :table_id :source_card_id
-   :archived :query_summary])
-
-(def ^:private metric-detailed-keys
-  (into metric-concise-keys
-        [:entity_id :display :creator_id :created_at :updated_at]))
-
-(projections/register-key-projection! :metric metric-concise-keys
-                                      :detailed-keys metric-detailed-keys)
+;; This tool's write echo is built from the `:metric` projection, which `get_content` reads too, so
+;; the registration lives in [[metabase.mcp.v2.projections]] — the namespace both require. Owning it
+;; from either tool leaves the other depending on `api.clj`'s require order for it.
 
 ;;; --------------------------------------------- Definition handling ----------------------------------------------
 
