@@ -10,6 +10,7 @@ import type {
   Card,
   Database,
   DatasetError,
+  DatasetErrorType,
   TokenFeatures,
 } from "metabase-types/api";
 import {
@@ -29,6 +30,8 @@ export interface SetupOpts {
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  errorType?: DatasetErrorType;
+  duration?: number;
 }
 
 export const setup = ({
@@ -38,6 +41,8 @@ export const setup = ({
   showMetabaseLinks = true,
   tokenFeatures = {},
   enterprisePlugins = [],
+  errorType,
+  duration = 0,
 }: SetupOpts) => {
   const state = createMockState({
     entities: createMockEntitiesState({
@@ -65,8 +70,9 @@ export const setup = ({
   renderWithProviders(
     <VisualizationError
       question={question}
-      duration={0}
+      duration={duration}
       error={error as DatasetError}
+      errorType={errorType}
       via={[]}
     />,
     { storeInitialState: state },
