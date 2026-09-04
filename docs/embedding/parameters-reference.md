@@ -1,11 +1,11 @@
 ---
 title: Embedding parameters reference
-summary: "Reference for parameter attributes, props, events, and payloads in modular embeds, how values resolve, the value formats each filter type accepts, and the rules for params in a signed token."
+summary: "Reference for parameters in modular embeds: which attribute or prop to use for each task, how web components parse parameter attributes, the value formats each filter type accepts, the change callback's source values, and the rules for params in a signed token."
 ---
 
 # Embedding parameters reference
 
-Reference material for parameters in embedded dashboards and charts. For how to use all this, check out [Embedding parameters](./parameters.md).
+Reference material for parameters in embedded dashboards and charts. For how to use all this, check out [Embedding parameters](./parameters.md). For each attribute's or prop's type and description, check out the generated tables in the [dashboard component reference](./dashboard-reference.md) and the [question component reference](./question-reference.md).
 
 ## Which props to use
 
@@ -21,27 +21,13 @@ Reference material for parameters in embedded dashboards and charts. For how to 
 
 Pass starting values or controlled values, not both. If you pass both, the embed uses the controlled values and logs a warning to the console.
 
-## Attributes and props
-
-For each attribute's or prop's type and description, check out the generated tables in the [dashboard component reference](./dashboard-reference.md) and the [question component reference](./question-reference.md).
-
-### Web component attributes
+## Web component attribute parsing
 
 The parameter attributes take JSON: an object keyed by slug, or for `hidden-parameters`, an array of slugs.
 
 Attribute values are parsed as [JSON5](https://json5.org/), so single quotes, unquoted keys, and trailing commas all work. Only values that start with `{` or `[` are parsed as JSON, so wrap even a single slug in `hidden-parameters` in `[]`. A value that starts with `{` or `[`, but that doesn't parse, will stay as a string, and Metabase will log an error.
 
 Changing `initial-parameters`, `initial-sql-parameters`, or `hidden-parameters` _after_ the embed has loaded re-renders the embed from scratch with the new values. Changing `parameters` or `sql-parameters` pushes the new values without a reload.
-
-## How values resolve
-
-These rules apply to starting values and controlled values alike, on both dashboards and SQL questions. For each slug:
-
-- **Set a value**: pass a string, or an array of strings for a multi-select filter. For other types, check out [Value formats by parameter type](#value-formats-by-parameter-type).
-- **Clear a value**: pass `null`. The filter is cleared, and its default isn't used.
-- **Reset to the default**: leave the slug out, or pass `undefined`. The embed falls back to the parameter's default, or to no value if it has none.
-
-On a web component, assigning `null` or `undefined` to the `parameters` or `sqlParameters` property removes the attribute altogether, which returns the element to uncontrolled mode with the last applied values in place.
 
 ## Value formats by parameter type
 
@@ -52,6 +38,12 @@ On a web component, assigning `null` or `undefined` to the `parameters` or `sqlP
 | Boolean            | `true` or `false`, or the strings `"true"` and `"false"`.                                                          | `true`                                    |
 | Date               | A string in one of the formats below.                                                                              | `"past30days"`, `"2024-01-01~2024-03-31"` |
 | Time grouping      | A unit name.                                                                                                       | `"month"`, `"week"`, `"quarter"`          |
+
+To clear a filter, pass `null` for its slug. To reset it to its default, leave the slug out.
+
+Whatever shape you push, the [change callback](#change-payload) hands values back as arrays: push `4` and you get `[4]`.
+
+The two-element between formats work with dashboard filters connected to a column or a field filter. A plain SQL variable can only be connected to an equal-to filter, so a between value never reaches one; put the comparison in the SQL instead.
 
 ### Date formats
 
@@ -81,30 +73,13 @@ The `exclude-` formats work with dashboard filters and field filters. A plain SQ
 
 ## Change payload
 
-### Dashboard change payload
+The payload passed to `onParametersChange` (SDK) and delivered as `event.detail` of the `parameters-change` event (web component) is a [`ParameterChangePayload`](./sdk/api/ParameterChangePayload.html). SQL questions get a [`SqlParameterChangePayload`](./sdk/api/SqlParameterChangePayload.html), which is the same minus `lastUsedParameters`.
 
-Delivered to `onParametersChange` (SDK) and as `event.detail` of the `parameters-change` event (web component).
+The payload's [`source`](./sdk/api/ParameterChangeSource.html) is `initial-state` once per load, `manual-change` when someone uses one of Metabase's widgets, or `auto-change` when Metabase normalized a value you pushed. Three things it doesn't spell out:
 
-- `parameters`: the values now applied.
-- `defaultParameters`: each parameter's default.
-- `lastUsedParameters`: the values the viewer last used on this dashboard.
-- `source`: why the callback fired. See [`source`](#source).
-
-The three value fields are [`ParameterValues`](./sdk/api/ParameterValues.html) objects. Full type: [`ParameterChangePayload`](./sdk/api/ParameterChangePayload.html).
-
-### SQL question change payload
-
-Delivered to `onSqlParametersChange` (SDK) and as `event.detail` of the `sql-parameters-change` event (web component). Same as the dashboard payload, minus `lastUsedParameters`.
-
-Type: [`SqlParameterChangePayload`](./sdk/api/SqlParameterChangePayload.html).
-
-### `source`
-
-| Value           | When                                                                                                                                                   |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `initial-state` | The embed loaded and applied its starting values. Once per load.                                                                                       |
-| `manual-change` | Someone applied a new value in one of Metabase's widgets. On dashboards, editing a widget without applying it doesn't fire.                            |
-| `auto-change`   | Metabase normalized a value you pushed and is handing back the applied version. If the applied values are identical to what you pushed, nothing fires. |
+- On dashboards, editing a widget without applying it doesn't fire `manual-change`.
+- `auto-change` fires when the applied values differ from what you pushed. Metabase stores values as arrays, so pushing `4` fires `auto-change` with `[4]`, and pushing `[4]` fires nothing. Leaving a slug out fires `auto-change` with `null` for that slug, not with its default.
+- Nothing fires when the applied values don't change, even if what you pushed looks different. Push `"3"` while `[3]` is applied and there's no callback.
 
 ## Params in a signed token
 
@@ -121,7 +96,7 @@ Other rules:
 - Always include `params`, even as `{}`. A token without it is rejected with `Token is missing value for keypath [:params]` before Metabase looks at any parameter.
 - A slug that isn't on the item at all is rejected with `Unknown parameter :slug.`
 - Pass values as arrays, one element per value: `{ category: ["Gadget", "Gizmo"] }`. A bare value like `{ category: "Gadget" }` works too, but arrays behave consistently everywhere, including in the dropdown values of editable widgets.
-- For a locked filter connected to a plain variable in a SQL question, Metabase substitutes the values as a comma-separated list. That works inside `IN ({{variable}})`, but after `=` it's a SQL error from your database, not a Metabase error, so pass one element unless the query is written for a list.
+- For a locked filter connected to a plain variable in a SQL question, Metabase substitutes the values as a comma-separated list. That works inside `IN ({{variable}})`, but after `=` it's a SQL error from your database, not a Metabase error, so pass one element unless the query is written for a list. If the server may send several values, connect the filter to a [field filter](../questions/native-editor/field-filters.md) instead, which expands to `IN (...)` on its own, and wrap the tag in `[[ ]]` so `[]` turns the clause off.
 - An empty array, `[]`, means "no value" and turns the filter off for that token.
 - A blank string, `""`, counts as no value at all. On a locked parameter that's the same as leaving it out, so the token is rejected.
 - Metabase substitutes token values into text cards on the server, so a [text card variable that's connected to the filter](../dashboards/filters.md#wiring-up-dashboard-filters-to-text-cards) shows the value even though the browser never receives it.

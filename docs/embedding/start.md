@@ -68,7 +68,7 @@ Set, control, hide, and lock dashboard filters and SQL variables in embedded das
 
 ### [Parameters reference](./parameters-reference.md)
 
-Every parameter attribute, prop, event, and payload, how values resolve, the value formats each filter type accepts, and the rules for params in a signed token.
+Which attribute or prop to use for each task, how web components parse parameter attributes, the value formats each filter type accepts, and the rules for params in a signed token.
 
 ### [Guest embedding](./guest-embedding.md)
 
