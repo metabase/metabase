@@ -1,33 +1,27 @@
 import { t } from "ttag";
 
 import {
-  getCartesianChartColumns,
-  hasValidColumnsSelected,
-} from "metabase/visualizations/lib/graph/columns";
-import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
-import {
+  type ComputedVisualizationSettings,
+  GRAPH_DATA_SETTINGS,
+  MAX_SERIES,
+  type VisualizationDefinition,
   getBreakoutCardinality,
+  getCartesianChartColumns,
+  getComputedSettingsForSeries,
+  getDefaultSize,
+  getMinSize,
+  getSeries,
+  hasValidColumnsSelected,
   validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
   validateGoalReferences,
   validateStacking,
-} from "metabase/visualizations/lib/settings/validation";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { MAX_SERIES } from "metabase/visualizations/lib/utils";
-import { getSeries } from "metabase/visualizations/shared/utils/data";
-import {
-  getDefaultSize,
-  getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationDefinition,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
-  Card,
   DatasetData,
+  SeriesCard,
   TransformedCard,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -129,6 +123,6 @@ export const ROW_CHART_DEFINITION: VisualizationDefinition = {
   },
 };
 
-function isTransformedCard(card: Card): card is TransformedCard {
+function isTransformedCard(card: SeriesCard): card is TransformedCard {
   return "_transformed" in card && card._transformed === true;
 }

@@ -67,7 +67,7 @@ const metabotRetryResponse = H.createMetabotSSEBody(
 describe("scenarios > embedding-sdk > metabot-question", () => {
   const setup = (response: string) => {
     signInAsAdminAndEnableEmbeddingSdk();
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
 
     H.mockMetabotResponse({
       statusCode: 200,
@@ -381,7 +381,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
 describe("scenarios > embedding-sdk > metabot-question > enablement", () => {
   it("should show an error when embedded-metabot-enabled? is false", () => {
     signInAsAdminAndEnableEmbeddingSdk();
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
 
     cy.log("Disable embedded metabot");
     H.updateEnterpriseSettings({ "embedded-metabot-enabled?": false });

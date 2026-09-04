@@ -6,9 +6,9 @@
    [metabase.actions.core :as actions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.typed-schemas.common :as common]
+   [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.typed-schemas.schema.common :as schema.common]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -46,10 +46,7 @@
 (defn- action-rows
   "Returns raw rows so we can detect actions that cannot be resolved to action details."
   [model-ids]
-  (t2/select [:model/Action :id :model_id :name :type]
-             :model_id [:in model-ids]
-             :archived false
-             :type [:not= "http"]))
+  (typed-schemas.db/model-actions model-ids))
 
 (defn- unresolved-action-rows
   "Returns action rows missing from resolved action details."
@@ -203,11 +200,7 @@
   [models]
   (let [model-ids (set (map :id models))]
     (try
-      (actions/select-actions
-       models
-       :model_id [:in model-ids]
-       :archived false
-       :type [:not= "http"])
+      (actions/select-actions-non-http-for-models models model-ids)
       (catch Exception exception
         (throw (ex-info (format "Failed to build action schemas for selected models: %s" (ex-message exception))
                         (error-data-with-cause-message

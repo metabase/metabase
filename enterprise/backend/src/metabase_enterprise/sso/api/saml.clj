@@ -7,6 +7,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]
    [saml20-clj.core :as saml]))
 
 (set! *warn-on-reflection* true)
@@ -27,7 +28,9 @@
                 [:saml-attribute-email               {:optional true} [:maybe :string]]
                 [:saml-attribute-firstname           {:optional true} [:maybe :string]]
                 [:saml-attribute-group               {:optional true} [:maybe :string]]
-                [:saml-attribute-group-mappings      {:optional true} [:maybe :map]]
+                ;; SAML group name -> the Metabase group ids it maps to, like `ldap-group-mappings`
+                [:saml-group-mappings                {:optional true} [:maybe [:map-of :keyword [:sequential ms/PositiveInt]]]]
+                [:saml-attribute-tenant              {:optional true} [:maybe :string]]
                 [:saml-attribute-lastname            {:optional true} [:maybe :string]]
                 [:saml-enabled                       {:optional true} [:maybe :boolean]]
                 [:saml-group-sync                    {:optional true} [:maybe :boolean]]

@@ -4,13 +4,19 @@ import type {
   ScheduleDayType,
   ScheduleFrameType,
   ScheduleSettings,
-  ScheduleType,
 } from "metabase-types/api";
 
+import { PM } from "./constants";
+import type {
+  CronString,
+  NormalizedScheduleValue,
+  ScheduleBuilderType,
+  ScheduleBuilderValue,
+  ScheduleValue,
+} from "./domain";
+import { isScheduleCronValue } from "./domain";
 import { Cron, getScheduleStrings } from "./strings";
-
-const AM = 0;
-const PM = 1;
+import type { AmPm } from "./types";
 
 const everyToCronSyntax = (every: number | string) =>
   `${Cron.EveryPrefix}${every}`;
@@ -18,6 +24,11 @@ export const isRepeatingEvery = (every: string) =>
   every.startsWith(Cron.EveryPrefix);
 export const cronUnitToNumber = (unit: string) =>
   parseInt(unit.replace(Cron.EveryPrefix, ""));
+
+const cronUnitToNumberOrNull = (unit: string) => {
+  const number = cronUnitToNumber(unit);
+  return Number.isNaN(number) ? null : number;
+};
 
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
   const { weekdays } = getScheduleStrings();
@@ -39,35 +50,35 @@ const frameFromCronMap: Record<string, ScheduleFrameType> = {
 const frameFromCron = (frameInCronFormat: string) =>
   frameFromCronMap[frameInCronFormat];
 
-export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
+export const formatCron = (schedule: ScheduleBuilderValue): CronString => {
   const second = "0";
   const year = "*";
-  let minute = settings.schedule_minute?.toString() ?? Cron.AllValues;
-  const hour = settings.schedule_hour?.toString() ?? Cron.AllValues;
-  let weekday = settings.schedule_day
-    ? dayToCron(settings.schedule_day).toString()
+  let minute = schedule.schedule_minute?.toString() ?? Cron.AllValues;
+  const hour = schedule.schedule_hour?.toString() ?? Cron.AllValues;
+  let weekday = schedule.schedule_day
+    ? dayToCron(schedule.schedule_day).toString()
     : Cron.NoSpecificValue;
   const month = Cron.AllValues;
-  let dayOfMonth: string = settings.schedule_day
+  let dayOfMonth: string = schedule.schedule_day
     ? Cron.NoSpecificValue
     : Cron.AllValues;
-  if (settings.schedule_type === "every_n_minutes") {
+  if (schedule.schedule_type === "every_n_minutes") {
     minute = everyToCronSyntax(minute);
-  } else if (settings.schedule_type === "monthly" && settings.schedule_frame) {
+  } else if (schedule.schedule_type === "monthly" && schedule.schedule_frame) {
     // There are two kinds of monthly schedule:
     // - weekday-based (e.g. "on the first Monday of the month")
     // - date-based (e.g. "on the 15th of the month")
-    if (settings.schedule_day) {
+    if (schedule.schedule_day) {
       // Handle weekday-based monthly schedule
-      const frameInCronFormat = frameToCron(settings.schedule_frame).replace(
+      const frameInCronFormat = frameToCron(schedule.schedule_frame).replace(
         /^1$/,
         "#1",
       );
-      const dayInCronFormat = dayToCron(settings.schedule_day);
+      const dayInCronFormat = dayToCron(schedule.schedule_day);
       weekday = `${dayInCronFormat}${frameInCronFormat}`;
     } else {
       // Handle date-based monthly schedule
-      dayOfMonth = frameToCron(settings.schedule_frame);
+      dayOfMonth = frameToCron(schedule.schedule_frame);
     }
   }
   const cronExpression = [
@@ -82,29 +93,25 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
   return cronExpression;
 };
 
-const defaultSchedule: ScheduleSettings = {
+const defaultSchedule: ScheduleBuilderValue = {
   schedule_type: "hourly",
   schedule_minute: 0,
 };
-export const defaultCron = scheduleSettingsToCron(defaultSchedule);
+export const defaultCron = formatCron(defaultSchedule);
 
-export const toCronString = (schedule: ScheduleSettings): string => {
-  const { schedule_type } = schedule;
-  const keepDay = schedule_type === "weekly" || schedule_type === "monthly";
-  const keepHour = keepDay || schedule_type === "daily";
-  return scheduleSettingsToCron({
-    ...schedule,
-    schedule_day: keepDay ? schedule.schedule_day : null,
-    schedule_frame: keepDay ? schedule.schedule_frame : null,
-    schedule_hour: keepHour ? schedule.schedule_hour : null,
-  });
+export const scheduleValueToCron = (
+  value: NormalizedScheduleValue,
+): CronString => {
+  if (isScheduleCronValue(value)) {
+    return value.cron;
+  }
+
+  return formatCron(value);
 };
 
-/** Returns null if we can't convert the cron expression to a ScheduleSettings object */
-export const cronToScheduleSettings_unmemoized = (
+export const cronToBuilderValue_unmemoized = (
   cron: string | null | undefined,
-  isCustomSchedule: boolean = false,
-): ScheduleSettings | null => {
+): ScheduleBuilderValue | null => {
   if (!cron) {
     return defaultSchedule;
   }
@@ -120,13 +127,11 @@ export const cronToScheduleSettings_unmemoized = (
 
   const [_second, minute, hour, dayOfMonth, month, weekday] = cron.split(" ");
 
-  if (month !== Cron.AllValues && !isCustomSchedule) {
+  if (month !== Cron.AllValues) {
     return null;
   }
-  let schedule_type: ScheduleType | undefined;
-  if (isCustomSchedule) {
-    schedule_type = "cron";
-  } else if (dayOfMonth === Cron.AllValues) {
+  let schedule_type: ScheduleBuilderType | undefined;
+  if (dayOfMonth === Cron.AllValues) {
     if (weekday === Cron.AllValues) {
       if (hour === Cron.AllValues) {
         schedule_type = isRepeatingEvery(minute) ? "every_n_minutes" : "hourly";
@@ -178,8 +183,9 @@ export const cronToScheduleSettings_unmemoized = (
   }
 
   const scheduleMinute =
-    minute === Cron.AllValues ? null : cronUnitToNumber(minute);
-  const scheduleHour = hour === Cron.AllValues ? null : cronUnitToNumber(hour);
+    minute === Cron.AllValues ? null : cronUnitToNumberOrNull(minute);
+  const scheduleHour =
+    hour === Cron.AllValues ? null : cronUnitToNumberOrNull(hour);
   return {
     schedule_type,
     schedule_minute: scheduleMinute,
@@ -188,19 +194,18 @@ export const cronToScheduleSettings_unmemoized = (
     schedule_frame,
   };
 };
-export const cronToScheduleSettings = memoize(
-  cronToScheduleSettings_unmemoized,
-  (cron, isCustomSchedule) => `${cron}_${isCustomSchedule}`,
-);
+export const cronToBuilderValue = memoize(cronToBuilderValue_unmemoized);
 
-const isValidAmPm = (amPm: number) => amPm === AM || amPm === PM;
+export const toScheduleBuilderValue = (
+  value: ScheduleValue,
+): ScheduleBuilderValue =>
+  isScheduleCronValue(value)
+    ? (cronToBuilderValue(value.cron) ?? defaultSchedule)
+    : value;
 
 export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
 
-export const hourTo24HourFormat = (hour: number, amPm: number): number => {
-  if (!isValidAmPm(amPm)) {
-    amPm = AM;
-  }
+export const hourTo24HourFormat = (hour: number, amPm: AmPm): number => {
   const hour24 = amPm === PM ? (hour % 12) + 12 : hour % 12;
   return hour24 === 24 ? 0 : hour24;
 };

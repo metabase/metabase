@@ -40,7 +40,7 @@ type SidesheetTab = "open" | "resolved";
 interface CommentsProps {
   commentTarget: CommentTarget;
   childTargetId: string;
-  onOpenComments?: () => void;
+  useCommentUrl: (opts: { childTargetId: string | null }) => string;
   onCloseComments?: () => void;
   title?: string;
   showCloseButton?: boolean;
@@ -53,7 +53,7 @@ interface CommentsProps {
 export const Comments = ({
   commentTarget,
   childTargetId,
-  onOpenComments,
+  useCommentUrl,
   onCloseComments,
   title,
   showCloseButton = true,
@@ -90,10 +90,6 @@ export const Comments = ({
   const closeSidebar = useCallback(() => {
     onCloseComments?.();
   }, [onCloseComments]);
-
-  useEffect(() => {
-    onOpenComments?.();
-  }, [onOpenComments]);
 
   const resolvedComments = useMemo(
     () =>
@@ -193,7 +189,7 @@ export const Comments = ({
     <Stack gap={0} h="100%">
       {(title || showCloseButton) && (
         <Flex
-          px="xl"
+          px="xxl"
           pt="1.25rem"
           pb="sm"
           justify="space-between"
@@ -232,18 +228,19 @@ export const Comments = ({
               onHoverChange={onHoverChange}
               targetId={commentTarget.target_id}
               targetType={commentTarget.target_type}
+              useCommentUrl={useCommentUrl}
               renderExtra={renderExtra}
             />
           )}
 
           {activeComments.length === 0 && childTargetId === "all" && (
             <Flex
-              p="xl"
+              p="xxl"
               pt="5rem"
               align="center"
               color="muted"
               direction="column"
-              gap="md"
+              gap="lg"
             >
               <Image
                 w={120}
@@ -257,7 +254,7 @@ export const Comments = ({
           )}
 
           {childTargetId !== "all" && (
-            <Box px="lg" py={activeComments.length === 0 ? "lg" : "xs"}>
+            <Box px="xl" py={activeComments.length === 0 ? "xl" : "xxs"}>
               <CommentEditor
                 autoFocus={activeComments.length === 0 && !disableAutoFocus}
                 data-testid="new-thread-editor"
@@ -275,6 +272,7 @@ export const Comments = ({
             comments={resolvedComments}
             targetId={commentTarget.target_id}
             targetType={commentTarget.target_type}
+            useCommentUrl={useCommentUrl}
             renderExtra={renderExtra}
           />
         </Tabs.Panel>

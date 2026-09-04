@@ -2,7 +2,7 @@ import {
   getUnansweredGoalEntitiesForValues,
   hasFailedGoalReferencesForValues,
   resolveGoalValue,
-} from "metabase/visualizations/lib/dynamic-goals";
+} from "metabase/viz-core";
 import type { DatasetData, DatasetQuery, GoalValue } from "metabase-types/api";
 
 import { useAnsweredGoalData } from "./use-answered-goal-data";

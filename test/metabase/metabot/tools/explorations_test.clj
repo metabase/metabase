@@ -11,7 +11,8 @@
    [metabase.util.json :as json]))
 
 (def ^:private exploration-tool-vars
-  [#'tools.explorations/get-research-candidates-tool
+  [#'tools.explorations/list-research-metrics-tool
+   #'tools.explorations/get-research-candidates-tool
    #'tools.explorations/add-research-groups-tool
    #'tools.explorations/remove-from-research-plan-tool
    #'tools.explorations/set-exploration-name-tool
@@ -39,21 +40,38 @@
   [result]
   (json/decode+kw (:output result)))
 
+(deftest ^:parallel get-research-candidates-requires-a-filter-test
+  (testing "an argument-less call is rejected with an instructive error (the unfiltered catalog is
+            the unbounded payload this tool's contract exists to prevent)"
+    (doseq [args [{} {:q nil} {:q ""} {:metric_ids nil} {:metric_ids []} {:q "  " :metric_ids []}]]
+      (testing (pr-str args)
+        (let [{:keys [output]} (tools.explorations/get-research-candidates-tool args)]
+          (is (str/starts-with? output "Error:"))
+          (is (str/includes? output "list_research_metrics")))))))
+
+(deftest ^:parallel get-research-candidates-caps-metric-ids-test
+  (testing "more than the per-call cap of metric_ids is rejected, naming the cap and the count"
+    (let [{:keys [output]} (tools.explorations/get-research-candidates-tool
+                            {:metric_ids (vec (range 21))})]
+      (is (str/starts-with? output "Error:"))
+      (is (str/includes? output "at most 20"))
+      (is (str/includes? output "got 21")))))
+
 (deftest ^:parallel remove-from-research-plan-tool-test
   (testing "echoes the block ids the agent asked to remove (pure-echo; the FE applies them)"
-    (is (= {:block_ids ["metric:42" "dim:7"] :members nil :timeline_ids nil}
+    (is (= {:block_ids ["metric:42" "metric:43"] :members nil :timeline_ids nil}
            (decoded-output
             (tools.explorations/remove-from-research-plan-tool
-             {:block_ids ["metric:42" "dim:7"]})))))
-  (testing "echoes member-level removals (deselect dimensions/metrics within a group)"
+             {:block_ids ["metric:42" "metric:43"]})))))
+  (testing "echoes member-level removals (deselect dimensions within a group)"
     (is (= {:block_ids    nil
             :members      [{:block_id "metric:42" :dimension_ids ["d1"]}
-                           {:block_id "dim:7" :metric_ids [43]}]
+                           {:block_id "metric:43" :dimension_ids ["d2" "d3"]}]
             :timeline_ids nil}
            (decoded-output
             (tools.explorations/remove-from-research-plan-tool
              {:members [{:block_id "metric:42" :dimension_ids ["d1"]}
-                        {:block_id "dim:7" :metric_ids [43]}]})))))
+                        {:block_id "metric:43" :dimension_ids ["d2" "d3"]}]})))))
   (testing "echoes timeline removals"
     (is (= {:block_ids nil :members nil :timeline_ids [7 9]}
            (decoded-output
@@ -98,24 +116,20 @@
 (deftest ^:parallel format-research-plan-test
   (let [plan {:name      "Why was revenue down?"
               :groups    [{:block_id   "metric:42"
-                           :anchor     "metric"
                            :metric     {:id 42 :name "Revenue"}
                            :dimensions [{:id "d1" :name "Region"}
                                         {:id "d2" :name "Plan"}]}
-                          {:block_id  "dim:7"
-                           :anchor    "dimension"
-                           :dimension {:id "d7" :name "Plan"}
-                           :metrics   [{:id 42 :name "Revenue"}
-                                       {:id 43 :name "Churn"}]}]
+                          {:block_id   "metric:43"
+                           :metric     {:id 43 :name "Churn"}
+                           :dimensions [{:id "d7" :name "Plan"}]}]
               :timelines [{:id 1 :name "Releases"}]}]
     (testing "renders groups with block ids, name, and timelines"
       (let [result (tools.explorations/format-research-plan {:research_plan plan})]
         (is (string? result))
         (is (str/includes? result "Why was revenue down?"))
-        ;; metric-anchored group surfaces its block id and selected dimensions with their ids
+        ;; each group surfaces its block id and selected dimensions with their ids
         (is (str/includes? result "[metric:42] Revenue, broken out by: Region (d1), Plan (d2)"))
-        ;; dimension-anchored group surfaces its block id and the metrics it slices with their ids
-        (is (str/includes? result "[dim:7] by Plan, slicing: Revenue (42), Churn (43)"))
+        (is (str/includes? result "[metric:43] Churn, broken out by: Plan (d7)"))
         (is (str/includes? result "Selected timelines: Releases (1)"))))
     (testing "returns nil when there is no plan in context"
       (is (nil? (tools.explorations/format-research-plan {}))))
@@ -133,7 +147,6 @@
     (let [profile (profiles/get-profile :explorations)
           plan    {:name   "Why was revenue down?"
                    :groups [{:block_id   "metric:42"
-                             :anchor     "metric"
                              :metric     {:id 42 :name "Revenue"}
                              :dimensions [{:id "d1" :name "Region"}]}]}
           content (:content (messages/build-system-message {:research_plan plan} profile {}))]

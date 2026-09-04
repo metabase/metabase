@@ -8,6 +8,7 @@ import {
   useDeleteMembershipMutation,
   useUpdateMembershipMutation,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useToast } from "metabase/common/hooks/use-toast";
 import {
@@ -57,9 +58,7 @@ export const GroupDetail = ({
         ),
       );
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      setAlertMessage(errorMessage);
+      setAlertMessage(getErrorMessage(error));
     }
   };
 
@@ -158,7 +157,7 @@ const GroupDescription = ({ group }: { group: Group }) => {
 
   if (isDefaultGroup(group)) {
     return (
-      <Box maw="38rem" mb="md">
+      <Box maw="38rem" mb="lg">
         <Text>
           {t`All users belong to the ${getGroupNameLocalized(
             group,
@@ -171,7 +170,7 @@ const GroupDescription = ({ group }: { group: Group }) => {
 
   if (isAdminGroup(group)) {
     return (
-      <Box maw="38rem" mb="md">
+      <Box maw="38rem" mb="lg">
         <Text>
           {t`This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the
         settings in the Admin Panel, including changing permissions! So, add people to this group with care.`}

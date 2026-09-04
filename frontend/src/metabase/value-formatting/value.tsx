@@ -1,0 +1,250 @@
+import cx from "classnames";
+
+import CS from "metabase/css/core/index.css";
+import { type Dayjs, dayjs } from "metabase/dayjs";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { formatNumber, removeNewLines } from "metabase/utils/formatting";
+import { parseNumber } from "metabase/utils/number";
+import {
+  isBoolean,
+  isCoordinate,
+  isDate,
+  isEmail,
+  isNumber,
+  isTime,
+  isURL,
+} from "metabase-lib/v1/types/utils/isa";
+import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
+import { clickBehaviorIsValid } from "metabase-types/guards";
+
+import { getDataFromClicked } from "./click-data";
+import { formatDateTimeWithUnit, formatRange } from "./date";
+import { formatEmail } from "./email";
+import { formatCoordinate } from "./geography";
+import { formatImage } from "./image";
+import { renderLinkTextForClick } from "./link";
+import { getJsxMarkdownRenderer } from "./registry";
+import { formatTime } from "./time";
+import { formatUrl } from "./url";
+
+export type FormatValueOptions = ColumnSettings & {
+  copyLinkUrl?: boolean;
+};
+
+export function formatValue(value: unknown, _options: FormatValueOptions = {}) {
+  let { prefix, suffix, ...options } = _options;
+  // avoid rendering <ExternalLink> if we have click_behavior set
+  if (
+    options.click_behavior &&
+    clickBehaviorIsValid(options.click_behavior) &&
+    options.view_as !== "image" // images don't conflict with click behavior
+  ) {
+    options = {
+      ...options,
+      view_as: null, // turns off any link rendering
+    };
+  }
+  const formatted = formatValueRaw(value, options);
+  let maybeJson = {};
+  try {
+    // Unjustified type cast. FIXME
+    maybeJson = JSON.parse(value as string);
+  } catch {
+    // do nothing
+  }
+  if (options.markdown_template) {
+    const renderJsxMarkdown = options.jsx
+      ? getJsxMarkdownRenderer()
+      : undefined;
+    if (renderJsxMarkdown) {
+      // inject the formatted value as "value" and the unformatted value as "raw"
+      return renderJsxMarkdown(options.markdown_template, {
+        value: formatted,
+        raw: value,
+        json: maybeJson,
+      });
+    }
+    // FIXME: render and get the innerText?
+    console.warn(
+      "formatValue: options.markdown_template not supported when options.jsx = false",
+    );
+    return formatted;
+  }
+  if ((prefix || suffix) && formatted != null) {
+    if (options.jsx && typeof formatted !== "string") {
+      return (
+        <span>
+          {prefix || ""}
+          {formatted}
+          {suffix || ""}
+        </span>
+      );
+    } else {
+      return `${prefix || ""}${formatted}${suffix || ""}`;
+    }
+  } else {
+    return formatted;
+  }
+}
+
+export function getRemappedValue(
+  value: string | number,
+  { remap, column }: ColumnSettings = {},
+) {
+  if (remap && column) {
+    if (column.hasRemappedValue && column.hasRemappedValue(value)) {
+      return column.remappedValue(value);
+    }
+    // or it may be a raw column object with a "remapping" object
+    if (column.remapping instanceof Map && column.remapping.has(value)) {
+      return column.remapping.get(value);
+    }
+    // TODO: get rid of one of these two code paths?
+  }
+}
+
+// fallback for formatting a string without a column semantic_type
+function formatStringFallback(value: any, options: ColumnSettings = {}) {
+  if (options.view_as !== null) {
+    value = formatUrl(value, options);
+    if (typeof value === "string") {
+      value = formatEmail(value, options);
+    }
+    if (typeof value === "string") {
+      value = formatImage(value, options);
+    }
+  }
+  if (typeof value === "string" && options.collapseNewlines) {
+    value = removeNewLines(value);
+  }
+  return value;
+}
+
+export function formatValueRaw(
+  value: unknown,
+  options: ColumnSettings = {},
+): React.ReactElement | string | number | null {
+  options = {
+    jsx: false,
+    remap: true,
+    ...options,
+  };
+
+  const { column } = options;
+
+  // Unjustified type cast. FIXME
+  const remapped = getRemappedValue(value as string | number, options);
+  if (remapped !== undefined && options.view_as !== "link") {
+    value = remapped;
+  }
+
+  if (value == null) {
+    return options.stringifyNull ? NULL_DISPLAY_VALUE : null;
+  } else if (
+    options.view_as !== "image" &&
+    options.click_behavior &&
+    clickBehaviorIsValid(options.click_behavior) &&
+    options.jsx
+  ) {
+    // Style this like a link if we're in a jsx context.
+    // It's not actually a link since we handle the click differently for dashboard and question targets.
+    return (
+      <span
+        data-testid="link-formatted-text"
+        className={cx(CS.link, CS.linkWrappable)}
+      >
+        {formatValueRaw(value, { ...options, jsx: false })}
+      </span>
+    );
+  } else if (
+    options.click_behavior &&
+    "linkTextTemplate" in options.click_behavior &&
+    options.click_behavior.linkTextTemplate
+  ) {
+    return renderLinkTextForClick(
+      options.click_behavior.linkTextTemplate,
+      getDataFromClicked(options.clicked),
+    );
+  } else if (
+    (isURL(column) && options.view_as == null) ||
+    options.view_as === "link"
+  ) {
+    // Unjustified type cast. FIXME
+    return formatUrl(value as string, options);
+  } else if (isEmail(column)) {
+    // Unjustified type cast. FIXME
+    return formatEmail(value as string, options);
+  } else if (isTime(column)) {
+    // Unjustified type cast. FIXME
+    return formatTime(value as Dayjs, column.unit, options);
+  } else if (column && column.unit != null) {
+    return formatDateTimeWithUnit(
+      // Unjustified type cast. FIXME
+      value as string | number,
+      column.unit,
+      options,
+    );
+  } else if (
+    isDate(column) ||
+    isDateValue(value) ||
+    dayjs.isDayjs(value) ||
+    // Unjustified type cast. FIXME
+    dayjs(value as string, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
+  ) {
+    // Unjustified type cast. FIXME
+    return formatDateTimeWithUnit(value as string | number, "minute", options);
+  } else if (typeof value === "string") {
+    // Check if we're looking for a number isNumber(column) and
+    // check that the value string is a valid number
+    // it could be a remap
+    // TODO(eric, 2025-12-23): The second check should probably be in parseNumber(),
+    // but it caused tests to fail so I put it here.
+    if (isNumber(column) && Number.isFinite(Number(value))) {
+      const number = parseNumber(value);
+      if (number != null) {
+        return formatNumber(number, options);
+      }
+    }
+    if (options.view_as === "image") {
+      return formatImage(value, options);
+    }
+    if (column?.semantic_type) {
+      return options.collapseNewlines ? removeNewLines(value) : value;
+    }
+    return formatStringFallback(value, options);
+  } else if (typeof value === "number" && isCoordinate(column)) {
+    const range = rangeForValue(value, column);
+    if (range && !options.noRange) {
+      return formatRange(range, formatCoordinate, options);
+    } else {
+      return formatCoordinate(value, options);
+    }
+  } else if (typeof value === "number" && isNumber(column)) {
+    const range = rangeForValue(value, column);
+    if (range && !options.noRange) {
+      return formatRange(range, formatNumber, options);
+    } else {
+      return formatNumber(value, options);
+    }
+  } else if (typeof value === "bigint" && isNumber(column)) {
+    return formatNumber(value, options);
+  } else if (typeof value === "boolean" && isBoolean(column)) {
+    return JSON.stringify(value);
+  } else if (typeof value === "object") {
+    // no extra whitespace for table cells
+    return JSON.stringify(value);
+  } else {
+    const strValue = String(value);
+    return options.collapseNewlines ? removeNewLines(strValue) : strValue;
+  }
+}
+
+function rangeForValue(value: unknown, column: DatasetColumn) {
+  if (typeof value === "number" && column?.binning_info?.bin_width) {
+    return [value, value + column.binning_info.bin_width];
+  }
+}
+
+function isDateValue(value: unknown): value is Date {
+  return Object.prototype.toString.call(value) === "[object Date]";
+}

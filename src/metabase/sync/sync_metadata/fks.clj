@@ -4,14 +4,14 @@
    [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
    [metabase.driver.util :as driver.u]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.models.table :as table]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.table :as table]))
 
 (defn ^:private mark-fk-sql
   "Returns [sql & params] for [[mark-fk!]] according to the application DB's dialect."
@@ -22,6 +22,7 @@
                  pk-table-schema
                  pk-column-name]}]
   (let [field-id-query (fn [db-id table-schema table-name column-name]
+                         ^:allow-subquery
                          {:select [[[:min :f.id] :id]]
                           ;; Cal 2024-03-04: We use `min` to limit this subquery to one result (limit 1 isn't allowed
                           ;; in subqueries in MySQL) because it's possible for schema, table, or column names to be
@@ -92,7 +93,7 @@
   "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
   [database :- i/DatabaseInstance
    metadata :- i/FKMetadataEntry]
-  (u/prog1 (t2/query-one (mark-fk-sql (:id database) metadata))
+  (u/prog1 (sync.db/execute-one! (mark-fk-sql (:id database) metadata))
     (when (= <> 1)
       (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
                                 (sync-util/table-name-for-logging :name (:fk-table-name metadata)

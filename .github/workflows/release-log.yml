@@ -45,40 +45,36 @@ jobs:
       - name: Install tsx
         run: npm i -g tsx
       - name: Get version number
+        id: get-version
         uses: actions/github-script@v9
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
         with:
           script: | # js
-            const {
-              getMajorVersionFromRef,
-              getMajorVersion,
-            } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { getMajorVersionFromRef } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             console.log({ context });
 
-            // if the version is explicitly set, use that
-            if (context.payload?.inputs?.version) {
-              core.exportVariable('VERSION', context.payload.inputs.version);
-              return;
-            }
+            const version = process.env.VERSION_INPUT || getMajorVersionFromRef(context.payload.ref);
 
-            // otherwise, get the version from the release branch name
-            const ref = context.payload.ref;
-            const majorVersion = getMajorVersionFromRef(ref);
-
-            console.log({ ref, majorVersion });
-            core.exportVariable('VERSION', majorVersion);
+            console.log({ version });
+            core.exportVariable('VERSION', version);
+            core.setOutput('version', version);
 
       - name: generate release Log
+        if: ${{ steps.get-version.outputs.version != '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cd release && tsx ./src/release-log-run.ts $VERSION > v$VERSION.html
+        run: cd release && tsx ./src/release-log-run.ts "$VERSION" > "v$VERSION.html"
       - name: upload release log to the web
+        if: ${{ steps.get-version.outputs.version != '' }}
         run: |
           aws s3 cp \
-          release/v$VERSION.html \
-          s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/v$VERSION.html
+          "release/v$VERSION.html" \
+          "s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/v$VERSION.html"
 
       - name: Create cloudfront invalidation
+        if: ${{ steps.get-version.outputs.version != '' }}
         run: |
           aws cloudfront create-invalidation \
           --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \

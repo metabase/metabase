@@ -1,0 +1,7 @@
+{:paths ["src"]
+
+ :aliases
+ {:test {:extra-paths ["test" "test-resources/protocol-reload" "test-resources/broken"]
+         :extra-deps  {com.cognitect/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"
+                                                  :sha     "209b64504cb3bd3b99ecfec7937b358a879f55c1"}}
+         :main-opts   ["-m" "cognitect.test-runner"]}}}

@@ -30,6 +30,13 @@
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
                                       ::sql.qp.empty-string-is-null/empty-string-is-null})
 
+(defmethod driver/host-carrying-parameters :vertica [_driver] ["backupservernode" "oauthdiscoveryurl"])
+
+(defmethod driver/non-host-parameters :vertica
+  [_driver]
+  ["failonmultinodeplans" "hostnameverifier" "kerberoshostname" "maxpooledconnectionspernode" "nodedownwaittime"
+   "preferredaddressfamily"])
+
 (doseq [[feature supported?] {:convert-timezone                 true
                               :database-routing                 false
                               :datetime-diff                    true

@@ -11,9 +11,9 @@ import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { getMetadata } from "metabase/metadata-store";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
 import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   Notification,
@@ -141,7 +141,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
     ).toBeInTheDocument();
   });
 
-  it("should show daily and 8am as default schedule settings", async () => {
+  it("should show daily schedule with no time selected by default", async () => {
     setup({
       isAdmin: true,
       isEmailSetup: true,
@@ -151,13 +151,32 @@ describe("CreateOrEditQuestionAlertModal", () => {
       expect(screen.getByText("New alert")).toBeInTheDocument();
     });
 
-    // Find the schedule type select (showing "daily")
     const scheduleTypeSelect = screen.getByTestId("select-frequency");
     expect(scheduleTypeSelect).toHaveValue("daily");
 
-    // Find the time selector (showing "8:00")
     const timeSelector = screen.getByTestId("select-time");
-    expect(timeSelector).toHaveValue("8:00");
+    expect(timeSelector).toHaveValue("");
+    expect(timeSelector).toHaveAttribute("placeholder", "HH:MM");
+    expect(
+      within(screen.getByTestId("select-am-pm")).getByRole("radio", {
+        name: "AM",
+      }),
+    ).toBeChecked();
+
+    expect(screen.getByRole("button", { name: /done/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /send now/i })).toBeEnabled();
+  });
+
+  it("should disable 'Send now' when there is nowhere to send the alert to", async () => {
+    setup({
+      isAdmin: true,
+      isEmailSetup: false,
+      isSlackSetup: true,
+    });
+
+    expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: /send now/i })).toBeDisabled();
   });
 
   it("should show the editing alert data when in edit mode", async () => {
@@ -269,13 +288,16 @@ describe("CreateOrEditQuestionAlertModal", () => {
     const scheduleTypeSelect = screen.getByTestId("select-frequency");
     expect(scheduleTypeSelect).toHaveValue("daily");
 
-    // Change time from default 9:00 to 8:00
+    expect(screen.getByRole("button", { name: /done/i })).toBeDisabled();
+
+    // Explicitly select 8:00 as the alert time
     const timeSelector = screen.getByTestId("select-time");
     await userEvent.click(timeSelector);
     const option8am = screen.getByRole("option", { name: /8:00/i });
     await userEvent.click(option8am);
 
     const saveButton = screen.getByRole("button", { name: /done/i });
+    expect(saveButton).toBeEnabled();
     await userEvent.click(saveButton);
 
     // Verify the API was called with the correct cron schedule for 8am
@@ -284,11 +306,44 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
-      // Unjustified type cast. FIXME
-      const subscription = JSON.parse(requestBody as string).subscriptions[0];
+      const subscription = JSON.parse(String(requestBody)).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
       expect(subscription.cron_schedule).toBe("0 0 8 * * ? *");
+    });
+
+    expect(onAlertCreatedMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("should create a new notification with hourly schedule", async () => {
+    fetchMock.postOnce("path:/api/notification", { body: { id: 123 } });
+    const onAlertCreatedMock = jest.fn();
+
+    setup({
+      isAdmin: true,
+      isEmailSetup: true,
+      onAlertCreatedMock,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("New alert")).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByTestId("select-frequency"));
+    await userEvent.click(screen.getByRole("option", { name: /hourly/i }));
+
+    const saveButton = screen.getByRole("button", { name: /done/i });
+    expect(saveButton).toBeEnabled();
+    await userEvent.click(saveButton);
+
+    const calls = fetchMock.callHistory.calls("path:/api/notification");
+    expect(calls.length).toBe(1);
+
+    await waitFor(async () => {
+      const requestBody = await calls[0].options?.body;
+      const subscription = JSON.parse(String(requestBody)).subscriptions[0];
+
+      expect(subscription.cron_schedule).toBe("0 0 * * * ? *");
     });
 
     expect(onAlertCreatedMock).toHaveBeenCalledTimes(1);
@@ -316,7 +371,8 @@ describe("CreateOrEditQuestionAlertModal", () => {
     const optionCustom = screen.getByRole("option", { name: /custom/i });
     await userEvent.click(optionCustom);
 
-    const cronInput = screen.getByDisplayValue("0 8 * * ?");
+    // A new alert has no hour picked yet, so the hour is left as a wildcard
+    const cronInput = screen.getByDisplayValue("0 * * * ?");
 
     await userEvent.clear(cronInput);
     await userEvent.type(cronInput, "0/10 8 * * ?");
@@ -330,8 +386,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
-      // Unjustified type cast. FIXME
-      const subscription = JSON.parse(requestBody as string).subscriptions[0];
+      const subscription = JSON.parse(String(requestBody)).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
       expect(subscription.cron_schedule).toBe("0 0/10 8 * * ? *");
@@ -445,14 +500,72 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
-      // Unjustified type cast. FIXME
-      const subscription = JSON.parse(requestBody as string).subscriptions[0];
+      const subscription = JSON.parse(String(requestBody)).subscriptions[0];
 
       // Verify the cron schedule is for Tuesday at 2pm (day 3)
       expect(subscription.cron_schedule).toBe("0 0 14 ? * 3 *");
     });
 
     expect(onAlertUpdatedMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("should keep the subscription identity when the schedule loses its time and gets a new one", async () => {
+    const notificationId = 42;
+    const subscriptionId = 7;
+    fetchMock.putOnce(`path:/api/notification/${notificationId}`, {
+      body: { id: notificationId },
+    });
+
+    const mockNotification = createMockNotification({
+      id: notificationId,
+      subscriptions: [
+        createMockNotificationCronSubscription({
+          id: subscriptionId,
+          notification_id: notificationId,
+          cron_schedule: "0 0 9 * * ?",
+        }),
+      ],
+    });
+
+    setup({
+      isAdmin: true,
+      isEmailSetup: true,
+      editingNotification: mockNotification,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Edit alert")).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByTestId("select-frequency"));
+    await userEvent.click(screen.getByRole("option", { name: /hourly/i }));
+
+    await userEvent.click(screen.getByTestId("select-frequency"));
+    await userEvent.click(screen.getByRole("option", { name: /daily/i }));
+
+    expect(
+      screen.getByRole("button", { name: /save changes/i }),
+    ).toBeDisabled();
+
+    await userEvent.click(screen.getByTestId("select-time"));
+    await userEvent.click(screen.getByRole("option", { name: /10:00/i }));
+
+    const saveButton = screen.getByRole("button", { name: /save changes/i });
+    expect(saveButton).toBeEnabled();
+    await userEvent.click(saveButton);
+
+    const calls = fetchMock.callHistory.calls(
+      `path:/api/notification/${notificationId}`,
+    );
+    expect(calls.length).toBe(1);
+
+    const subscription = JSON.parse(String(calls[0].options?.body))
+      .subscriptions[0];
+
+    expect(subscription.id).toBe(subscriptionId);
+    expect(subscription.notification_id).toBe(notificationId);
+    expect(subscription.cron_schedule).toBe("0 0 10 * * ? *");
+    expect(subscription.ui_display_type).toBe("cron/builder");
   });
 
   const OWNER_BLOCK_TITLE = /who owns this alert\?/i;
@@ -532,8 +645,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
-      // Unjustified type cast. FIXME
-      expect(JSON.parse(requestBody as string).creator_id).toBe(7);
+      expect(JSON.parse(String(requestBody)).creator_id).toBe(7);
     });
   });
 });

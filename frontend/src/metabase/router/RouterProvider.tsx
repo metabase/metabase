@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { type ReactNode, useLayoutEffect, useState } from "react";
 import {
   type DataRouter,
   RouterProvider as ReactRouterProvider,
@@ -53,9 +53,8 @@ function useLocationMirror(
 
 /**
  * Hosts the app as a data router. The whole route tree goes in as real data
- * routes, so there is no descendant `<Routes>` left. No route has a loader,
- * `lazy`, or middleware yet: adding those per subtree is what DEV-2291 does from
- * here.
+ * routes, so there is no descendant `<Routes>` left. Code-split subtrees carry a
+ * `route.lazy`; no route has a loader or middleware.
  *
  * `useTransitions={false}` keeps navigation committing synchronously.
  * react-router otherwise marks its own location update as a transition, which in
@@ -73,12 +72,14 @@ function useLocationMirror(
 export function RouterProvider({
   routes,
   onLocationChange,
+  hydrateFallback,
 }: {
   routes: RouteObject[];
   onLocationChange?: LocationMirror;
+  hydrateFallback?: ReactNode;
 }): JSX.Element {
   const [router] = useState(() =>
-    createAppRouter(routes, getBasename() || undefined),
+    createAppRouter(routes, getBasename() || undefined, hydrateFallback),
   );
   useLocationMirror(router, onLocationChange);
 
@@ -97,15 +98,22 @@ export function RouterProviderMemory({
   basename,
   routerHolder,
   onLocationChange,
+  hydrateFallback,
 }: {
   routes: RouteObject[];
   initialRoute: string;
   basename?: string;
   routerHolder?: MemoryTestRouterHolder;
   onLocationChange?: LocationMirror;
+  hydrateFallback?: ReactNode;
 }): JSX.Element {
   const [router] = useState(() => {
-    const created = createMemoryAppRouter(routes, initialRoute, basename);
+    const created = createMemoryAppRouter(
+      routes,
+      initialRoute,
+      basename,
+      hydrateFallback,
+    );
     if (routerHolder) {
       routerHolder.current = created;
     }

@@ -12,6 +12,12 @@ import type Table from "metabase-lib/v1/metadata/Table";
 
 import DataSelectorS from "./DataSelector/DataSelector.module.css";
 
+export type TriggerComponentProps = {
+  database?: Database | null;
+  table?: Table | null;
+  field?: Field | null;
+};
+
 export function Trigger({
   className,
   style,
@@ -23,7 +29,7 @@ export function Trigger({
   className?: string;
   style?: CSSProperties;
   showDropdownIcon?: boolean;
-  iconSize?: number;
+  iconSize?: number | string;
   isMantine?: boolean;
   children: ReactNode;
 }) {
@@ -56,13 +62,7 @@ export function Trigger({
   );
 }
 
-export function FieldTrigger({
-  database,
-  field,
-}: {
-  database: Database;
-  field: Field;
-}) {
+export function FieldTrigger({ database, field }: TriggerComponentProps) {
   const tc = useTranslateContent();
   if (!field || !field.table) {
     return <Text>{t`Select...`}</Text>;
@@ -81,7 +81,7 @@ export function FieldTrigger({
   );
 }
 
-export function DatabaseTrigger({ database }: { database: Database }) {
+export function DatabaseTrigger({ database }: TriggerComponentProps) {
   const tc = useTranslateContent();
   return database ? (
     <span
@@ -97,7 +97,7 @@ export function DatabaseTrigger({ database }: { database: Database }) {
   );
 }
 
-export function TableTrigger({ table }: { table: Table }) {
+export function TableTrigger({ table }: TriggerComponentProps) {
   const tc = useTranslateContent();
   return table ? (
     <span

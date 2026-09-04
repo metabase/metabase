@@ -6,9 +6,9 @@ import {
   useListUserMembershipsQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
 
 import { GroupDetail } from "../components/GroupDetail";
 

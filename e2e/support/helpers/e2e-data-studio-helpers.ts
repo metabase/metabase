@@ -21,6 +21,11 @@ export const DataStudio = {
   breadcrumbs: () => cy.findByTestId("data-studio-breadcrumbs"),
   Transforms: {
     header: () => cy.findByTestId("transforms-header"),
+    sectionHeader: () => cy.findByTestId("transforms-section-header"),
+    transformsTab: () =>
+      DataStudio.Transforms.sectionHeader().findByText("Transforms"),
+    jobsTab: () => DataStudio.Transforms.sectionHeader().findByText("Jobs"),
+    runsTab: () => DataStudio.Transforms.sectionHeader().findByText("Runs"),
     list: () => cy.findByTestId("transforms-list"),
     saveChangesButton: () => DataStudio.Transforms.queryEditor().button("Save"),
     editTransform: () => cy.findByRole("button", { name: "Edit" }),

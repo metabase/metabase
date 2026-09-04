@@ -24,6 +24,8 @@ on:
 
 jobs:
   check-milestone:
+    # Only run milestone check in https://github.com/metabase/metabase since this is the only place milestones are used.
+    if: github.repository == 'metabase/metabase'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:

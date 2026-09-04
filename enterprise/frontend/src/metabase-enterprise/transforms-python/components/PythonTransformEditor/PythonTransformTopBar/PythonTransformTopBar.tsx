@@ -3,7 +3,7 @@ import {
   useGetDatabaseQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { hasFeature } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import { DatabaseDataSelector } from "metabase/querying/common/components/DataSelector";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
@@ -78,7 +78,7 @@ export function PythonTransformTopBar({
       ) : (
         <Flex
           h="3rem"
-          p="md"
+          p="lg"
           ml="sm"
           align="center"
           data-testid="selected-database"
@@ -87,7 +87,7 @@ export function PythonTransformTopBar({
         </Flex>
       )}
       {showEditButton && (
-        <Flex ml="auto" mr="lg" align="center" h="3rem">
+        <Flex ml="auto" mr="xl" align="center" h="3rem">
           <EditDefinitionButton
             bg="transparent"
             fz="sm"

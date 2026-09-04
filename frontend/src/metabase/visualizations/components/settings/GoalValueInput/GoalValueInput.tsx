@@ -18,7 +18,7 @@ import {
 import {
   type GoalRefError,
   resolveGoalValue,
-} from "metabase/visualizations/lib/dynamic-goals";
+} from "metabase/viz-core";
 import type {
   CardId,
   DatasetData,

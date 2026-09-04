@@ -6,13 +6,13 @@ import { color as colorHex } from "metabase/ui/colors";
 import {
   hasFailedGoalReferences,
   resolveGoalSegments,
-} from "metabase/visualizations/lib/dynamic-goals";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
+} from "metabase/viz-core";
 import {
+  type VisualizationDefinition,
+  columnSettings,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { DEFAULT_GAUGE_RANGE } from "./constants";

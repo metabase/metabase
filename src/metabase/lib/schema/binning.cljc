@@ -29,9 +29,12 @@
 (mr/def ::binning
   "Schema for `:binning` options passed to a `:field` clause."
   [:and
-   [:map
-    {:decode/normalize lib.schema.common/normalize-map}
-    [:strategy [:ref ::strategy]]]
+   {:decode/normalize (fn [binning]
+                        (when-some [binning (lib.schema.common/normalize-map binning)]
+                          (cond-> binning
+                            (:strategy binning) (update :strategy lib.schema.common/normalize-keyword))))
+    :decode/api       lib.schema.common/remove-internal-keys
+    :encode/serialize lib.schema.common/remove-internal-keys}
    [:multi {:dispatch (fn [x]
                         (keyword (some #(get x %) [:strategy "strategy"])))
             :error/fn (fn [{:keys [value]} _]

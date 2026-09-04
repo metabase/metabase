@@ -10,6 +10,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
@@ -323,8 +324,6 @@
   [message {:keys [query viz-settings assertions endpoints user expected-status]}]
   (testing message
     (let [expected-status   (or expected-status 200)
-          query-json        (json/encode query)
-          viz-settings-json (some-> viz-settings json/encode)
           public-uuid       (str (random-uuid))
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
           user              (or user :rasta)]
@@ -346,9 +345,9 @@
                   (let [results (mt/user-http-request user :post expected-status
                                                       (format "dataset/%s" (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                      {:format_rows            true
-                                                       :query                  query-json
-                                                       :visualization_settings viz-settings-json})]
+                                                      (cond-> {:format_rows true
+                                                               :query       query}
+                                                        viz-settings (assoc :visualization_settings viz-settings)))]
                     ((-> assertions export-format) results))
 
                   :card
@@ -704,8 +703,8 @@
             [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}])))))
 
 (deftest ^:parallel export-column-order-test-5
-  (testing "if table-columns contains a column without a corresponding entry in cols, table-columns is ignored and
-           cols is used as the source of truth for column order (#19465)"
+  (testing "table-columns entries without a corresponding entry in cols are dropped per-entry; the matching cols are
+           still exported in cols order (#19465, #75791)"
     (is (= [0]
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}]
@@ -748,6 +747,20 @@
             [{::mb.viz/table-column-name "Col2" , ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-name "Col1" , ::mb.viz/table-column-enabled true}])))))
 
+(deftest ^:parallel export-column-order-orphan-entry-test
+  (testing "an unmatchable table-columns entry is ignored per-entry; visibility and ordering of the matching
+           entries are still applied (#75791)"
+    ;; Models the reporter's case: 4-col native query (ID TITLE CATEGORY PRICE), TITLE hidden, custom order, plus
+    ;; one stale orphan entry (EAN) left over from a previous version of the query.
+    (is (= [0 2 3]
+           (@#'qp.streaming/export-column-order
+            [{:name "ID"}, {:name "TITLE"}, {:name "CATEGORY"}, {:name "PRICE"}]
+            [{::mb.viz/table-column-name "ID"       , ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-name "EAN"      , ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-name "TITLE"    , ::mb.viz/table-column-enabled false}
+             {::mb.viz/table-column-name "CATEGORY" , ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-name "PRICE"    , ::mb.viz/table-column-enabled true}])))))
+
 ;; QP Nil Fix Tests
 ;; These tests verify that query cancellation returns proper results instead of nil
 
@@ -781,3 +794,38 @@
       ;; Should not throw any assertion errors
       (is (some? (qp.streaming/-streaming-response :csv "test" mock-qp-fn))
           "Streaming response should handle cancellation without assertion error"))))
+
+(deftest ^:parallel export-survives-malformed-model-column-settings-test
+  (testing (str "A model whose pinned result_metadata carries a malformed column `:settings` blob still exports. "
+                "Any user with collection-write could plant one and kill CSV/JSON/XLSX export of that model for "
+                "every later reader, including superusers and anonymous public viewers (SEC-868).")
+    (doseq [bad-click-behavior ["x" [1 2] 42]
+            export-format      [:csv :json :xlsx]]
+      (testing (str export-format ", click_behavior = " (pr-str bad-click-behavior))
+        (let [query (assoc (mt/native-query {:query "SELECT 1 AS N"})
+                           :info {:metadata/model-metadata
+                                  [{:name           "N"
+                                    :display_name   "N"
+                                    :base_type      :type/Integer
+                                    :effective_type :type/Integer
+                                    :field_ref      [:field "N" {:base-type :type/Integer}]
+                                    :source         :native
+                                    :settings       {:click_behavior bad-click-behavior}}]})
+              rows  (streaming.test-util/process-query-basic-streaming export-format query ["N"])]
+          (is (= 1 (count (cond-> rows (= export-format :csv) rest)))
+              "the export should contain the one data row, not die mid-stream"))))))
+
+(deftest ^:parallel export-survives-malformed-card-visualization-settings-test
+  (testing (str "A card whose `visualization_settings` carry a malformed value still exports. Same root cause as the "
+                "model `result_metadata[].settings` blob, on the sibling `db->norm` path — the card API validates "
+                "`visualization_settings` only as a map, so every value under it is attacker-controlled (SEC-868).")
+    (doseq [k             [:click_behavior :column_settings :table.columns]
+            bad-value     ["x" 42]
+            export-format [:csv :json :xlsx]]
+      (testing (str export-format ", " k " = " (pr-str bad-value))
+        (let [query (-> (mt/native-query {:query "SELECT 1 AS N"})
+                        (assoc :viz-settings {k bad-value}
+                               :middleware {:process-viz-settings? true}))
+              rows  (streaming.test-util/process-query-basic-streaming export-format query ["N"])]
+          (is (= 1 (count (cond-> rows (= export-format :csv) rest)))
+              "the export should contain the one data row, not die mid-stream"))))))

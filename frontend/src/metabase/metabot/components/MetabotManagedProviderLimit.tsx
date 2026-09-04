@@ -4,9 +4,9 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
+import { canAccessSettings } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
 import { dismissUndo } from "metabase/redux/undo";
-import { canAccessSettings } from "metabase/selectors/user";
 import {
   Button,
   Flex,
@@ -16,39 +16,36 @@ import {
   Text,
 } from "metabase/ui";
 
-import { AIProviderConfigurationForm } from "./AIProviderConfigurationForm";
+import { AIProviderSetup } from "./AIProviderConfigurationForm";
 
 const METABOT_MANAGED_PROVIDER_LIMIT_TOAST_ID =
   "metabot-managed-provider-limit";
 
 type MetabotManagedProviderLimitActionsProps = {
   inline?: boolean;
-  onConfigure?: VoidFunction;
   onConfigureClose?: VoidFunction;
 } & FlexProps;
 
 export const MetabotManagedProviderLimitActions = ({
   inline = false,
-  onConfigure,
   onConfigureClose,
   ...rest
 }: MetabotManagedProviderLimitActionsProps) => {
   const canConfigureAi = useSelector(canAccessSettings);
-  const [isOpen, { open, close }] = useDisclosure(false, {
+  const [isOpen, { open: handleConfigure, close }] = useDisclosure(false, {
     onClose: onConfigureClose,
   });
-  const handleConfigure = useCallback(() => {
-    (onConfigure ?? open)();
-  }, [onConfigure, open]);
 
+  // The managed connection is left exactly as it is: running out of included tokens is a reason to add a provider
+  // alongside it, not to cancel the subscription behind it.
   const configureModal = (
     <Modal
-      title={t`Connect to an AI provider`}
+      title={t`Add an AI provider`}
       onClose={close}
       opened={isOpen}
       size="lg"
     >
-      <AIProviderConfigurationForm isModal onClose={close} />
+      <AIProviderSetup startOnConnectionForm onDone={close} />
     </Modal>
   );
 
@@ -102,7 +99,7 @@ export const MetabotManagedProviderLimitActions = ({
   }
 
   return (
-    <Flex direction="column" align="start" gap="xs" {...rest}>
+    <Flex direction="column" align="start" gap="xxs" {...rest}>
       <Button
         variant="subtle"
         size="xs"
@@ -130,7 +127,7 @@ export const MetabotManagedProviderLimitHoverCard = () => {
       closeDelay={100}
       openDelay={150}
       position="top-start"
-      shadow="md"
+      shadow="sm"
       width="26rem"
     >
       <HoverCard.Target>
@@ -143,7 +140,7 @@ export const MetabotManagedProviderLimitHoverCard = () => {
           {t`You've run out of AI service tokens`}
         </Text>
       </HoverCard.Target>
-      <HoverCard.Dropdown p="md">
+      <HoverCard.Dropdown p="lg">
         <Flex direction="column" gap="sm">
           <Text fz="sm" lh={1.5}>
             {t`You've used all of your included AI service tokens. To keep using AI features you can either end your trial early and start your subscription, or stay in the trial and add your own AI provider API key.`}
@@ -163,7 +160,7 @@ const MetabotManagedProviderLimitToastContent = () => {
   }, [dispatch]);
 
   return (
-    <Flex direction="column" gap="xs">
+    <Flex direction="column" gap="xxs">
       <Text c="text-primary" fw={500} lh={1.4}>
         {t`You've run out of AI service tokens`}
       </Text>
@@ -188,7 +185,7 @@ export const getMetabotManagedProviderLimitToastProps = () => ({
   timeout: 0,
   style: {
     padding: "1rem",
-    width: "min(24rem, calc(100vw - 2 * var(--mantine-spacing-md)))",
+    width: "min(24rem, calc(100vw - 2 * var(--mantine-spacing-lg)))",
   },
   renderChildren: () => <MetabotManagedProviderLimitToastContent />,
 });

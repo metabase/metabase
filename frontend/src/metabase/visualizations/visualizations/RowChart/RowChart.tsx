@@ -5,40 +5,34 @@ import CS from "metabase/css/core/index.css";
 import { getFontFamilyValue } from "metabase/utils/fonts";
 import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
-import { extractRemappedColumns } from "metabase/visualizations";
 import {
   GoalFailedState,
   GoalResolvingState,
 } from "metabase/visualizations/components/GoalResolutionState";
 import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
-import {
-  getChartGoal,
-  getUnresolvedGoalMessage,
-} from "metabase/visualizations/lib/settings/goal";
-import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import type { RowChartProps } from "metabase/visualizations/shared/components/RowChart";
-import { RowChart as SharedRowChart } from "metabase/visualizations/shared/components/RowChart";
-import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
-import type {
-  GroupedDatum,
-  SeriesInfo,
-} from "metabase/visualizations/shared/types/data";
-import type { HoveredData } from "metabase/visualizations/shared/types/events";
-import {
-  getGroupedDataset,
-  trimData,
-} from "metabase/visualizations/shared/utils/data";
-import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
-import type {
-  RemappingHydratedChartData,
-  VisualizationProps,
-} from "metabase/visualizations/types";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   getClickData,
   getHoverData,
   getLegendClickData,
 } from "metabase/visualizations/visualizations/RowChart/utils/events";
 import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
+import {
+  type BarData,
+  type GroupedDatum,
+  type HoveredData,
+  type RemappingHydratedChartData,
+  type RowChartProps,
+  type SeriesInfo,
+  RowChart as SharedRowChart,
+  extractRemappedColumns,
+  getChartGoal,
+  getGroupedDataset,
+  getStackOffset,
+  getTwoDimensionalChartSeries,
+  getUnresolvedGoalMessage,
+  trimData,
+} from "metabase/viz-core";
 
 import {
   RowChartContainer,

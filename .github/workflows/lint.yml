@@ -1,0 +1,178 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - 'master'
+      - 'release-**'
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  files-changed:
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 10
+    outputs:
+      codeql: ${{ steps.changes.outputs.codeql }}
+      i18n: ${{ steps.changes.outputs.i18n }}
+      openapi: ${{ steps.changes.outputs.openapi }}
+      snowplow: ${{ steps.changes.outputs.snowplow }}
+      workflows: ${{ steps.changes.outputs.workflows }}
+      workflows_files: ${{ steps.changes.outputs.workflows_files }}
+      yaml: ${{ steps.changes.outputs.yaml }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Test which files changed
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+          list-files: shell
+
+  lint:
+    needs: files-changed
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup frontend env
+        if: |
+          needs.files-changed.outputs.yaml == 'true' ||
+          needs.files-changed.outputs.openapi == 'true'
+        uses: ./.github/actions/prepare-frontend
+
+      # Always required by whitespace linter, also used by OpenAPI spec validation
+      - name: Setup backend env
+        uses: ./.github/actions/prepare-backend
+
+      - name: Setup actionlint
+        if: needs.files-changed.outputs.workflows == 'true'
+        id: download
+        shell: bash
+        run: |
+          if command -v actionlint; then
+            echo "executable=actionlint" >> "$GITHUB_OUTPUT"
+          else
+            # script sets executable output, for details see: https://github.com/rhysd/actionlint/blob/main/docs/usage.md#use-actionlint-on-github-actions
+            bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash)
+          fi
+
+      - parallel:
+        # Deliberately ungated. This guards a coupling that drifts silently, so running it only when a
+        # path filter says .github changed would reintroduce the failure it exists to catch - and the
+        # filters here cover .github/workflows only, not the actions and scripts it also reads.
+        - name: Check cache-warm pre-resolves every alias combination CI uses
+          run: .github/scripts/check-preresolve-aliases.sh
+
+        # Lint whitespace, always runs
+        - name: Run Whitespace Linter
+          run: clojure -T:whitespace-linter lint :whitespace-linter/progress-bar false
+
+        # Lint YAML
+        - name: Lint YAML files
+          if: needs.files-changed.outputs.yaml == 'true'
+          run: bun run lint-yaml
+
+        # Lint Github Actions
+        - name: Run actionlint
+          if: needs.files-changed.outputs.workflows == 'true'
+          run: ${{ steps.download.outputs.executable }} --color --verbose ${{ needs.files-changed.outputs.workflows_files }}
+
+        - name: Check every workflow job sets a timeout
+          if: needs.files-changed.outputs.workflows == 'true'
+          run: .github/scripts/check-job-timeouts.sh ${{ needs.files-changed.outputs.workflows_files }}
+
+        # Generate and Lint OpenAPI spec
+        - name: Generate OpenAPI spec
+          if: needs.files-changed.outputs.openapi == 'true'
+          run: bun run generate-openapi
+
+      # Parallel steps run asynchronously, and explicitly waiting for a parallel step means "if" statements are ignored.
+      # Move OpenAPI validation outside the parallel block so that spec generation happens asynchronously without requiring
+      # an explicit "wait".
+      - name: Validate OpenAPI spec
+        if: needs.files-changed.outputs.openapi == 'true'
+        run: bun run lint-openapi
+
+  i18n:
+    needs: files-changed
+    if: needs.files-changed.outputs.i18n == 'true'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Install xgettext if necessary
+        run: |
+          if ! command -v xgettext > /dev/null; then
+            sudo apt install gettext
+          fi
+      - name: Check xgettext version
+        run: xgettext --version
+      - name: Check i18n tags/make sure template can be built
+        run: ./bin/i18n/update-translation-template
+      - name: Verify i18n translations (.po files)
+        run: ./bin/i18n/build-translation-resources
+
+  snowplow:
+    needs: files-changed
+    if: needs.files-changed.outputs.snowplow == 'true'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up Java
+        uses: actions/setup-java@v5.2.0
+        with:
+          distribution: temurin
+          java-version: 25
+      - name: Set up Babashka
+        uses: turtlequeue/setup-babashka@d78ec6570aea3b614bc695cafcceb82eb45c2af9 # v1.8.0
+        with:
+          babashka-version: 1.12.197
+      - name: Install igluctl
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/igluctl.zip" https://github.com/snowplow/igluctl/releases/download/0.13.0/igluctl_0.13.0.zip
+          echo "0eac19121fca1431dec44738ada8eacc4242811a95d015ee71e00deec2b4d748  $RUNNER_TEMP/igluctl.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/igluctl.zip" -d "$RUNNER_TEMP/igluctl"
+          chmod +x "$RUNNER_TEMP/igluctl/igluctl"
+          echo "$RUNNER_TEMP/igluctl" >> "$GITHUB_PATH"
+      - name: Lint (igluctl)
+        # igluctl recursively parses every file as JSON, so it chokes on colocated
+        # *.md docs and on two schemas whose internal `self.version` doesn't match
+        # the filename version (pending Snowcat audit). Stage a filtered copy and
+        # patch only the `self.version` mismatch so igluctl still lints the rest
+        # of those schemas.
+        run: |
+          set -euo pipefail
+          LINT_ROOT="$RUNNER_TEMP/iglu-lint"
+          rm -rf "$LINT_ROOT"
+          mkdir -p "$LINT_ROOT"
+          cp -r snowplow/iglu-client-embedded/schemas "$LINT_ROOT/"
+          find "$LINT_ROOT" -name '*.md' -delete
+          # TODO(BOT-1403): drop these patches once the Snowcat audit fixes the
+          # internal `self.version` mismatch on these two schemas. We rewrite
+          # only `self.version` in the staged copy so the file's path version
+          # matches what igluctl expects; every other lint rule still runs.
+          # Each `sed` invocation uses the schema's wrong/right pair, so it
+          # silently no-ops once the underlying schema is fixed.
+          sed -i 's/"version": "1-0-1"/"version": "1-0-2"/' \
+            "$LINT_ROOT/schemas/com.metabase/embed_share/jsonschema/1-0-2"
+          sed -i 's/"version": "1-0-0"/"version": "1-0-1"/' \
+            "$LINT_ROOT/schemas/com.metabase/serialization/jsonschema/1-0-1"
+          igluctl lint "$LINT_ROOT/schemas"
+      - name: Lint (Metabase schema rules)
+        run: ./bin/lint-snowplow-schemas.bb
+      - name: Test linter rules
+        run: ./bin/lint-snowplow-schemas-test.bb

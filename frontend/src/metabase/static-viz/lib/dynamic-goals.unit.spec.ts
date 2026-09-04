@@ -1,5 +1,5 @@
-import { isDynamicGoalSetting } from "metabase/visualizations/lib/dynamic-goals";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
+import { isDynamicGoalSetting } from "metabase/viz-core";
 import type { DatasetData } from "metabase-types/api";
 import {
   createMockColumn,
@@ -9,8 +9,8 @@ import {
 
 import { resolveGoalSettingsForStaticViz } from "./dynamic-goals";
 
-jest.mock("metabase/visualizations/lib/dynamic-goals", () => ({
-  ...jest.requireActual("metabase/visualizations/lib/dynamic-goals"),
+jest.mock("metabase/viz-core", () => ({
+  ...jest.requireActual("metabase/viz-core"),
   isDynamicGoalSetting: jest.fn(() => true),
 }));
 

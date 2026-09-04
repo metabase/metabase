@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
-import { isDynamicGoalSetting } from "metabase/visualizations/lib/dynamic-goals";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
+import { isDynamicGoalSetting } from "metabase/viz-core";
 import type { Card, DatasetData } from "metabase-types/api";
 import { isGoalStaticValue } from "metabase-types/guards";
 

@@ -305,25 +305,22 @@
         (is (=? {:error "unknown-stage-key"} response))
         (is (re-find #"aggregation" (:message response)))))))
 
-(deftest construct-query-rejects-legacy-envelope-test
+(deftest construct-query-ignores-legacy-envelope-test
   (testing (str "Legacy `source_entity` / `referenced_entities` envelope from the pre-repr program API "
-                "is rejected by the now-closed request schema, instead of being silently ignored. "
-                "This guards against a regression where the LLM's stale memory keeps sending the old "
-                "shape and we silently drop the extra keys.")
-    (is (=? {:specific-errors {:source_entity #(some (fn [s] (re-find #"disallowed key" s)) %)}}
-            (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                "is dropped by the request schema, so a caller still sending the old shape is served.")
+    (is (=? {:query string?}
+            (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                   {:query          (orders-query)
                                    :source_entity  {:type "table" :id (mt/id :orders)}}))))
-  (testing "`/v2/query` fresh-query branch rejects the legacy envelope as well"
-    (is (=? {:specific-errors {:referenced_entities #(some (fn [s] (re-find #"disallowed key" s)) %)}}
-            (mt/user-http-request :rasta :post 400 "agent/v2/query"
-                                  {:query               (orders-query :limit 5)
-                                   :referenced_entities []}))))
-  (testing "`/v2/query` continuation_token branch rejects extra keys (closed schema)"
-    (is (=? {:specific-errors {:query #(some (fn [s] (re-find #"disallowed key" s)) %)}}
-            (mt/user-http-request :rasta :post 400 "agent/v2/query"
-                                  {:continuation_token "not-a-real-token"
-                                   :query               (orders-query :limit 5)})))))
+  (testing "`/v2/query` fresh-query branch drops the legacy envelope as well"
+    (is (some? (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                     {:query               (orders-query :limit 5)
+                                      :referenced_entities []}))))
+  (testing "`/v2/query` stays on the continuation branch when a stray `:query` rides along"
+    (is (re-find #"base64-encoded JSON object"
+                 (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                       {:continuation_token "not-a-real-token"
+                                        :query              (orders-query :limit 5)})))))
 
 (deftest execute-query-test
   (testing "Executes a query and returns results with column metadata"
@@ -496,14 +493,16 @@
     (doseq [[label q] [["legacy top-level :type"
                         {:database (mt/id) :type "native" :native {:query "select 1"}}]
                        ["MBQL 5 native stage"
-                        {:lib/type "mbql/query"
+                        {:database (mt/id)
+                         :lib/type "mbql/query"
                          :stages   [{:lib/type "mbql.stage/native" :native "select 1"}]}]
-                       ["MBQL 5 native stage nested in a join"
-                        {:lib/type "mbql/query"
-                         :stages   [{:lib/type "mbql.stage/mbql"
-                                     :joins    [{:lib/type "mbql/join"
-                                                 :stages   [{:lib/type "mbql.stage/native"
-                                                             :native   "select 1"}]}]}]}]
+                       ["native source-query nested in a join"
+                        {:database (mt/id) :type "query"
+                         :query    {:source-table (mt/id :checkins)
+                                    :joins        [{:source-query {:native "select 1"}
+                                                    :alias        "j"
+                                                    :condition    [:= [:field (mt/id :checkins :id) nil]
+                                                                   [:field (mt/id :checkins :id) {:join-alias "j"}]]}]}}]
                        ["legacy nested native source-query"
                         {:database (mt/id) :type "query"
                          :query    {:source-query {:native "select 1"}}}]]]
@@ -1858,3 +1857,17 @@
       (is (= 1 (count (:resources resp))))
       (is (nil? (-> resp :resources first :content)))
       (is (some? (-> resp :resources first :error))))))
+
+(deftest decode-and-validate-query-strips-extra-keys-test
+  (testing "base64 query payloads are decoded, validated, and stripped of undeclared properties"
+    (let [encoded (u/encode-base64 (json/encode {:database (mt/id)
+                                                 :type     "query"
+                                                 :query    {:source-table (mt/id :orders)
+                                                            :a            1
+                                                            :a/b          2}}))
+          q       (#'agent-api.api/decode-and-validate-query encoded)]
+      (is (= :mbql/query (:lib/type q)))
+      (is (not (contains? q :a)))
+      (is (not (contains? q :a/b)))
+      (is (every? (fn [stage] (not (some #(contains? stage %) [:a :a/b]))) (:stages q))
+          "undeclared properties are stripped from every stage"))))

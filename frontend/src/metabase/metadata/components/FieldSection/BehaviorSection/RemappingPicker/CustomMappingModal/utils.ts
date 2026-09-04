@@ -1,4 +1,4 @@
-import type { Mapping } from "./types";
+import type { DraftMapping, Mapping } from "./types";
 
 export function areMappingsEqual(a: Mapping, b: Mapping): boolean {
   return (
@@ -6,7 +6,7 @@ export function areMappingsEqual(a: Mapping, b: Mapping): boolean {
   );
 }
 
-export function fillMissingMappings(mappings: Mapping): Mapping {
+export function fillMissingMappings(mappings: DraftMapping): Mapping {
   const remappings = new Map(
     [...mappings].map(([original, mappedOrUndefined]) => {
       // Use currently the original value as the "default custom mapping" as the current backend implementation

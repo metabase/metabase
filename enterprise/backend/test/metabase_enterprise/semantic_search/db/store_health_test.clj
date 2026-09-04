@@ -154,7 +154,7 @@
          semantic.db.datasource/pgvector-mode             #(throw (ex-info "must not probe" {}))]
         (is (=? {:mode :unavailable, :connected? false, :resolved? false} (probe)))))))
 
-(deftest ^:sequential live-probe-is-never-replaced-test
+(deftest ^:synchronized live-probe-is-never-replaced-test
   (testing "a probe stuck on an unresponsive database cannot be cancelled, so no replacement is admitted"
     (let [probe-future @#'semantic.store-health/readiness-probe-future
           request      @#'semantic.store-health/request-pgvector-readiness-refresh!
@@ -249,7 +249,7 @@
         (check)
         (is (= 2 @collects))))))
 
-(deftest ^:sequential pull-collector-refreshes-pgvector-metrics-on-each-instance-test
+(deftest ^:synchronized pull-collector-refreshes-pgvector-metrics-on-each-instance-test
   (let [probe-future @#'semantic.store-health/readiness-probe-future
         probe        @#'semantic.store-health/last-readiness-probe
         prior-probe  @probe

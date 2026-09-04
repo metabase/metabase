@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.serialization.db :as serialization.db]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
@@ -17,8 +18,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -97,7 +97,7 @@
   (log/infof "Exporting Metabase to %s" path)
   (mdb/setup-db! :create-sample-content? false)
   (check-premium-token!)
-  (t2/select :model/User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
+  (serialization.db/all-users) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (let [f (io/file path)]
     (.mkdirs f)
     (when-not (.canWrite f)
@@ -128,7 +128,7 @@
                              :data_model      (not (:no-data-model opts))
                              :settings        (not (:no-settings opts))
                              :field_values    (boolean (:include-field-values opts))
-                             :secrets         (boolean (:include-database-secrets opts))
+                             :secrets         false
                              :success         (nil? @err)
                              :error_message   (when @err
                                                 (u/strip-error @err nil))})

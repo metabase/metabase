@@ -18,7 +18,7 @@ An admin can turn 2FA on for your Metabase:
 1. Go to **Admin settings** > **Settings** > **Authentication**.
 2. Find the **Two-factor authentication** card.
 3. Toggle it to **Enabled**.
-Once enabled, a **Security** tab shows up in each person's account settings, where they can enroll in 2FA.
+   Once enabled, a **Two-factor authentication** section shows up in each person's account settings under the **Authentication** tab, where they can enroll in 2FA.
 
 If you configure Metabase through environment variables or a [config file](../configuring-metabase/config-file.md), the matching setting is [`MB_MFA_ENFORCEMENT`](../configuring-metabase/environment-variables.md#mb_mfa_enforcement). Set `MB_MFA_ENFORCEMENT` to `optional` to let people enroll, or `off` to turn 2FA off.
 

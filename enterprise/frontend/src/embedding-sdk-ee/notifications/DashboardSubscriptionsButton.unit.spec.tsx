@@ -7,6 +7,7 @@ import {
   setupNotificationChannelsEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import type { DashboardCard } from "metabase-types/api";
@@ -61,6 +62,11 @@ const setup = ({
     >
       <DashboardSubscriptionsButton />
     </DashboardContextProvider>,
+    {
+      storeInitialState: {
+        settings: mockSettings(),
+      },
+    },
   );
 };
 

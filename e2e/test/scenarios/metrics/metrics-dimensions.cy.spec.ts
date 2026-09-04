@@ -256,7 +256,11 @@ describe("scenarios > metrics > dimensions", () => {
   });
 
   it("uses a time dimension's configured bucket on the About page", () => {
-    cy.intercept("POST", "/api/metric/dataset").as("metricDataset");
+    cy.intercept("POST", "/api/metric/dataset", (request) => {
+      if (request.body.definition?.projections?.length > 0) {
+        request.alias = "metricDataset";
+      }
+    });
     cy.visit(`/metric/${metricId}/dimensions`);
     cy.wait("@listDimensions");
 

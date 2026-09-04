@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import ApiKeysEmptyIllustration from "assets/img/api-keys-empty.svg?component";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { useListApiKeysQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import {
   ActionIcon,
@@ -24,8 +23,10 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";
+import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { ApiKey } from "metabase-types/api";
+
+import { useListApiKeysQuery } from "../../api/api-key";
 
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
@@ -67,7 +68,7 @@ function ApiKeyActionsMenu({
   onDelete: (apiKey: ApiKey) => void;
 }) {
   return (
-    <Menu shadow="md" position="bottom-end">
+    <Menu shadow="sm" position="bottom-end">
       <Menu.Target>
         <ActionIcon
           variant="subtle"
@@ -253,7 +254,7 @@ export const ManageApiKeys = () => {
       <Group
         justify="space-between"
         align="flex-start"
-        gap="xl"
+        gap="xxl"
         data-testid="api-keys-settings-header"
       >
         <Box>
@@ -266,9 +267,9 @@ export const ManageApiKeys = () => {
           {t`Create an API key`}
         </Button>
       </Group>
-      <Card withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
+      <Card withBorder radius="sm" p={0} style={{ overflow: "hidden" }}>
         {showLoadingOrError ? (
-          <Box p="xl" mih="20rem">
+          <Box p="xxl" mih="20rem">
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Box>
         ) : hasKeys ? (

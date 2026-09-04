@@ -3,8 +3,11 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupCreateLlmProviderEndpoint,
+  setupLlmModelsEndpoint,
+  setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
   setupMetabaseManagedAiEndpoints,
-  setupMetabotSettingsEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -17,11 +20,16 @@ import {
 } from "metabase/redux/store/mocks";
 import type {
   EnterpriseSettings,
-  SettingDefinition,
+  LlmProviderConnection,
+  LlmProviderType,
   TokenFeatures,
 } from "metabase-types/api";
 import {
-  createMockSettingDefinition,
+  createMockLlmConnectionModels,
+  createMockLlmModel,
+  createMockLlmProviderConnection,
+  createMockLlmProviderField,
+  createMockLlmProviderType,
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
@@ -29,12 +37,68 @@ import {
 
 import { AIConfigStep } from "./AIConfigStep";
 
+const ANTHROPIC_TYPE = createMockLlmProviderType({
+  type: "anthropic",
+  label: "Anthropic",
+  fields: [
+    createMockLlmProviderField({
+      key: "api-key",
+      label: "API key",
+      type: "password",
+      required: true,
+      prefix: "sk-ant-",
+    }),
+  ],
+});
+
+const OPENAI_TYPE = createMockLlmProviderType({
+  type: "openai",
+  label: "OpenAI",
+  fields: [
+    createMockLlmProviderField({
+      key: "api-key",
+      label: "API key",
+      type: "password",
+      required: true,
+    }),
+  ],
+});
+
+const METABASE_TYPE = createMockLlmProviderType({
+  type: "metabase",
+  label: "Metabase AI service",
+  managed: true,
+  singleton: true,
+  fields: [],
+});
+
+const ANTHROPIC_CONNECTION = createMockLlmProviderConnection({
+  key: "anthropic",
+  type: "anthropic",
+  name: "Anthropic",
+});
+
+const OPENAI_CONNECTION = createMockLlmProviderConnection({
+  key: "openai",
+  type: "openai",
+  name: "OpenAI",
+});
+
+const METABASE_CONNECTION = createMockLlmProviderConnection({
+  key: "metabase",
+  type: "metabase",
+  name: "Metabase AI service",
+});
+
 interface SetupOpts {
   step?: SetupStep;
   settings?: Partial<EnterpriseSettings>;
   tokenFeatures?: Partial<TokenFeatures>;
   hasMetabotPlugin?: boolean;
-  settingOverrides?: SettingDefinition[];
+  providerTypes?: LlmProviderType[];
+  providerTypesFail?: boolean;
+  connections?: LlmProviderConnection[];
+  createdConnection?: LlmProviderConnection;
 }
 
 const setup = ({
@@ -42,72 +106,72 @@ const setup = ({
   settings = {},
   tokenFeatures = {},
   hasMetabotPlugin = false,
-  settingOverrides = [],
+  providerTypes = [ANTHROPIC_TYPE, OPENAI_TYPE],
+  providerTypesFail = false,
+  connections = [],
+  createdConnection = ANTHROPIC_CONNECTION,
 }: SetupOpts = {}) => {
-  const state = createMockState({
-    currentUser: createMockUser({ is_superuser: true }),
-    setup: createMockSetupState({ step, isAiConfigRequested: true }),
-    settings: mockSettings({
-      ...settings,
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    }),
-  });
+  fetchMock.removeRoutes();
+  fetchMock.clearHistory();
 
-  if (hasMetabotPlugin) {
-    setupEnterpriseOnlyPlugin("metabot");
-  }
-
-  // Served through closures so tests can mutate them to simulate the backend
-  // state changing after a connect.
   const sessionProperties = createMockSettings({
     ...settings,
     "token-features": createMockTokenFeatures(tokenFeatures),
   });
-  const settingDefinitions = [...settingOverrides];
 
-  fetchMock.get("path:/api/setting", () => settingDefinitions);
+  const state = createMockState({
+    currentUser: createMockUser({ is_superuser: true }),
+    setup: createMockSetupState({ step, isAiConfigRequested: true }),
+    settings: mockSettings(sessionProperties),
+  });
+
+  if (hasMetabotPlugin) {
+    setupEnterpriseOnlyPlugin("metabot");
+    setupMetabaseManagedAiEndpoints();
+    fetchMock.post("path:/api/premium-features/token/refresh", 200);
+  }
+
+  fetchMock.get("path:/api/setting", []);
   setupPropertiesEndpoints(sessionProperties);
+  if (providerTypesFail) {
+    fetchMock.get("path:/api/llm/provider-types", {
+      status: 500,
+      body: { message: "Provider types are unavailable" },
+    });
+  } else {
+    setupLlmProviderTypesEndpoint(providerTypes);
+  }
+  setupLlmProvidersEndpoint(connections);
+  setupLlmModelsEndpoint([
+    createMockLlmConnectionModels({
+      key: "anthropic",
+      name: "Anthropic",
+      type: "anthropic",
+      models: [
+        createMockLlmModel({
+          id: "claude-haiku-4-5",
+          display_name: "Claude Haiku 4.5",
+        }),
+      ],
+    }),
+  ]);
+  setupCreateLlmProviderEndpoint(createdConnection);
 
   renderWithProviders(<AIConfigStep stepLabel={5} />, {
     storeInitialState: state,
   });
-
-  return { sessionProperties, settingDefinitions };
 };
 
-const ANTHROPIC_MODELS = [
-  { id: "claude-haiku-4-5", display_name: "Claude Haiku 4.5" },
-  { id: "claude-sonnet-4-6", display_name: "Claude Sonnet 4.6" },
-];
-
-const connectAnthropic = async ({
-  sessionProperties,
-  settingDefinitions,
-}: ReturnType<typeof setup>) => {
-  setupMetabotSettingsEndpoint({
-    provider: "anthropic",
-    response: { value: "anthropic/claude-haiku-4-5", models: ANTHROPIC_MODELS },
-  });
-  fetchMock.put("path:/api/metabot/settings", () => {
-    sessionProperties["llm-metabot-provider"] = "anthropic/claude-haiku-4-5";
-    sessionProperties["llm-metabot-configured?"] = true;
-    settingDefinitions.push(
-      createMockSettingDefinition({
-        key: "llm-anthropic-api-key",
-        value: "**********ey",
-      }),
-    );
-    return { value: "anthropic/claude-haiku-4-5", models: ANTHROPIC_MODELS };
-  });
-
-  await userEvent.click(screen.getByLabelText("Provider"));
+const connectAnthropic = async () => {
   await userEvent.click(
-    await screen.findByRole("option", { name: "Anthropic" }),
+    await screen.findByRole("button", { name: "Anthropic" }),
   );
   await userEvent.type(
-    screen.getByLabelText("API key"),
+    screen.getByLabelText(/API key/),
     "sk-ant-api03-unit-test-key",
   );
+
+  setupLlmProvidersEndpoint([ANTHROPIC_CONNECTION]);
   await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 };
 
@@ -120,39 +184,38 @@ describe("AIConfigStep", () => {
     setup({ step: "db_connection" });
 
     expect(screen.getByText("Connect to an AI provider")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Anthropic" }),
+    ).not.toBeInTheDocument();
   });
 
   it("should not offer the managed provider without access to it", async () => {
     setup();
 
-    await userEvent.click(screen.getByLabelText("Provider"));
-
     expect(
-      await screen.findByRole("option", { name: "Anthropic" }),
+      await screen.findByRole("button", { name: "Anthropic" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: /OpenAI/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "OpenAI" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("option", { name: "Metabase" }),
+      screen.queryByRole("button", { name: "Metabase AI service" }),
     ).not.toBeInTheDocument();
   });
 
-  it("should not preselect a provider without access to the managed provider", () => {
-    setup();
-
-    expect(screen.getByLabelText("Provider")).toHaveValue("");
-  });
-
-  it("should suggest the managed provider when the instance has access to it", async () => {
-    setupMetabaseManagedAiEndpoints();
+  it("should offer the managed provider when the instance has access to it", async () => {
     setup({
       tokenFeatures: { "offer-metabase-ai-managed": true },
       hasMetabotPlugin: true,
+      providerTypes: [METABASE_TYPE, ANTHROPIC_TYPE, OPENAI_TYPE],
     });
 
-    expect(await screen.findByLabelText("Provider")).toHaveValue("Metabase");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Metabase AI service" }),
+    );
+
     expect(
-      await screen.findByText("About Metabase AI service"),
+      await screen.findByText(
+        /The simplest way to get started with AI in Metabase/,
+      ),
     ).toBeInTheDocument();
     expect(
       await screen.findByRole("checkbox", {
@@ -161,38 +224,18 @@ describe("AIConfigStep", () => {
     ).toBeInTheDocument();
   });
 
-  it("should show the existing connection instead of the managed suggestion when already connected", async () => {
-    setupMetabaseManagedAiEndpoints();
-    setupMetabotSettingsEndpoint({
-      provider: "anthropic",
-      response: { value: "anthropic/claude-haiku-4-5", models: [] },
-    });
+  it("should show the model picker instead of the provider picker when already connected", async () => {
     setup({
-      tokenFeatures: { "offer-metabase-ai-managed": true },
-      hasMetabotPlugin: true,
-      settings: {
-        "llm-metabot-configured?": true,
-        "llm-metabot-provider": "anthropic/claude-haiku-4-5",
-      },
-      settingOverrides: [
-        createMockSettingDefinition({
-          key: "llm-metabot-provider",
-          value: "anthropic/claude-haiku-4-5",
-        }),
-        createMockSettingDefinition({
-          key: "llm-anthropic-api-key",
-          value: "**********45",
-        }),
-      ],
+      connections: [ANTHROPIC_CONNECTION],
+      settings: { "llm-metabot-provider": "anthropic/claude-sonnet-4-6" },
     });
 
     expect(
       await screen.findByRole("button", { name: "Done" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText("About Metabase AI service"),
+      screen.queryByRole("button", { name: "Anthropic" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "I'll set this up later" }),
     ).not.toBeInTheDocument();
@@ -202,97 +245,138 @@ describe("AIConfigStep", () => {
     setup();
 
     await userEvent.click(
-      screen.getByRole("button", { name: "I'll set this up later" }),
+      await screen.findByRole("button", { name: "I'll set this up later" }),
     );
 
     expect(await screen.findByText("I'll set up AI later")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Anthropic" }),
+    ).not.toBeInTheDocument();
   });
 
   it("should show the model picker after connecting a provider", async () => {
-    const mocks = setup();
+    setup();
 
-    await connectAnthropic(mocks);
+    await connectAnthropic();
 
     expect(await screen.findByLabelText("Model")).toBeInTheDocument();
     expect(
       await screen.findByRole("button", { name: "Done" }),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "I'll set this up later" }),
-    ).not.toBeInTheDocument();
   });
 
   it("should advance to the next step after confirming the connection", async () => {
-    const mocks = setup();
+    // the properties the client refetches after connecting already carry the reference the
+    // backend wrote when it pointed Metabot at the new connection
+    setup({
+      settings: { "llm-metabot-provider": "anthropic/claude-sonnet-4-6" },
+    });
 
-    await connectAnthropic(mocks);
+    await connectAnthropic();
     await userEvent.click(await screen.findByRole("button", { name: "Done" }));
 
     expect(
       await screen.findByText("Connected to Anthropic"),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
   });
 
   it("should connect the managed provider and advance to the next step", async () => {
-    setupMetabaseManagedAiEndpoints();
-    fetchMock.post("path:/api/premium-features/token/refresh", 200);
-
-    const { sessionProperties } = setup({
+    setup({
+      settings: {
+        "llm-metabot-provider": "metabase/anthropic/claude-sonnet-4-6",
+      },
       tokenFeatures: {
         "offer-metabase-ai-managed": true,
         "metabase-ai-managed": true,
       },
       hasMetabotPlugin: true,
+      providerTypes: [METABASE_TYPE, ANTHROPIC_TYPE, OPENAI_TYPE],
+      createdConnection: METABASE_CONNECTION,
     });
 
-    fetchMock.put("path:/api/metabot/settings", () => {
-      sessionProperties["llm-metabot-provider"] =
-        "metabase/anthropic/claude-sonnet-4-6";
-      sessionProperties["llm-metabot-configured?"] = true;
-      return { value: "metabase/anthropic/claude-sonnet-4-6", models: [] };
-    });
-
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Metabase AI service" }),
+    );
     expect(
-      await screen.findByText("About Metabase AI service"),
+      await screen.findByText(
+        /The simplest way to get started with AI in Metabase/,
+      ),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("checkbox", {
-        name: /I agree with the Metabase AI Service/i,
-      }),
-    ).not.toBeInTheDocument();
 
+    setupLlmProvidersEndpoint([METABASE_CONNECTION]);
     await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
     expect(
-      await screen.findByText("Connected to Metabase"),
+      await screen.findByText("Connected to Metabase AI service"),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument();
     expect(
-      fetchMock.callHistory.called("path:/api/metabot/settings", {
-        method: "PUT",
-        body: { provider: "metabase", model: "" },
+      fetchMock.callHistory.called("path:/api/llm/providers", {
+        method: "POST",
+        body: { type: "metabase" },
       }),
     ).toBe(true);
   });
 
-  it("should show the connected provider when completed after connecting", () => {
+  it("should show the connected provider when completed after connecting", async () => {
     setup({
       step: "completed",
-      settings: {
-        "llm-metabot-configured?": true,
-        "llm-metabot-provider": "anthropic/claude-haiku-4-5",
-      },
+      connections: [ANTHROPIC_CONNECTION],
+      settings: { "llm-metabot-provider": "anthropic/claude-sonnet-4-6" },
     });
 
-    expect(screen.getByText("Connected to Anthropic")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Connected to Anthropic"),
+    ).toBeInTheDocument();
   });
 
-  it("should show the skipped title when completed without connecting", () => {
+  it("should report the provider the picked model belongs to, not the first usable connection", async () => {
+    setup({
+      step: "completed",
+      connections: [ANTHROPIC_CONNECTION, OPENAI_CONNECTION],
+      settings: { "llm-metabot-provider": "openai/gpt-5.4" },
+    });
+
+    expect(await screen.findByText("Connected to OpenAI")).toBeInTheDocument();
+  });
+
+  it("should show the skipped title when completed without connecting", async () => {
     setup({ step: "completed" });
 
-    expect(screen.getByText("I'll set up AI later")).toBeInTheDocument();
+    expect(await screen.findByText("I'll set up AI later")).toBeInTheDocument();
+  });
+
+  it("should report a failure to load the providers rather than an empty picker", async () => {
+    setup({ providerTypesFail: true });
+
+    expect(
+      await screen.findByText("Provider types are unavailable"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Anthropic" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should offer a way out when only an unusable connection is listed", async () => {
+    setup({
+      connections: [
+        createMockLlmProviderConnection({
+          key: "anthropic",
+          type: "anthropic",
+          name: "Anthropic",
+          usable: false,
+        }),
+      ],
+    });
+
+    expect(
+      await screen.findByRole("button", { name: "I'll set this up later" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Anthropic" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Done" }),
+    ).not.toBeInTheDocument();
   });
 });

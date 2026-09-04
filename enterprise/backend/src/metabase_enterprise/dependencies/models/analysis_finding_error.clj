@@ -3,6 +3,7 @@
    with source entity information. This enables querying errors by the data source that
    causes them (e.g., which cards are broken because table X removed column Y?)."
   (:require
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
@@ -51,32 +52,26 @@
    entity-id   :- ms/PositiveInt
    errors      :- [:sequential ::error-input]]
   (t2/with-transaction [_conn]
-    (t2/delete! :model/AnalysisFindingError
-                :analyzed_entity_type entity-type
-                :analyzed_entity_id entity-id)
+    (dependencies.db/delete-finding-errors-for-entity! entity-type entity-id)
     (when (seq errors)
-      (t2/insert! :model/AnalysisFindingError
-                  (mapv (fn [{:keys [error-type error-detail source-entity-type source-entity-id]}]
-                          {:analyzed_entity_type (name entity-type)
-                           :analyzed_entity_id entity-id
-                           :error_type error-type
-                           :error_detail error-detail
-                           :source_entity_type (some-> source-entity-type name)
-                           :source_entity_id source-entity-id})
-                        errors)))))
+      (dependencies.db/insert-finding-errors!
+       (mapv (fn [{:keys [error-type error-detail source-entity-type source-entity-id]}]
+               {:analyzed_entity_type (name entity-type)
+                :analyzed_entity_id entity-id
+                :error_type error-type
+                :error_detail error-detail
+                :source_entity_type (some-> source-entity-type name)
+                :source_entity_id source-entity-id})
+             errors)))))
 
 (mu/defn errors-by-source :- [:sequential ::analysis-finding-error]
   "Get all errors caused by a specific source entity."
   [source-entity-type :- [:maybe ::lib.schema.validate/source-entity-type]
    source-entity-id   :- ms/PositiveInt]
-  (t2/select :model/AnalysisFindingError
-             :source_entity_type source-entity-type
-             :source_entity_id source-entity-id))
+  (dependencies.db/finding-errors-from-source source-entity-type source-entity-id))
 
 (mu/defn errors-for-entity :- [:sequential ::analysis-finding-error]
   "Get all errors for a specific analyzed entity."
   [entity-type :- ::deps.dependency-types/dependency-types
    entity-id   :- ms/PositiveInt]
-  (t2/select :model/AnalysisFindingError
-             :analyzed_entity_type entity-type
-             :analyzed_entity_id entity-id))
+  (dependencies.db/finding-errors-for-entity entity-type entity-id))

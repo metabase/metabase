@@ -140,10 +140,43 @@
    query stage-number (cond-> clause
                         (expandable-temporal-expression? clause) expand-temporal-expression)))
 
+(defn- composite-clause-in-stages-0-to?
+  "True when any stage 0..`max-stage` contains an `:aggregation` or `:expressions` clause with
+  `:lib/uuid = target-uuid`. Searched latest-first since the originating aggregation is usually close to the
+  current stage."
+  [query max-stage target-uuid]
+  (loop [stage-number max-stage]
+    (cond
+      (neg? stage-number) false
+      (let [stage (lib.util/query-stage query stage-number)]
+        (some (fn [clause] (= (lib.options/uuid clause) target-uuid))
+              (concat (:aggregation stage) (:expressions stage)))) true
+      :else (recur (dec stage-number)))))
+
+(defn- restore-previous-stage-source-uuid
+  "Nominal `:field` refs into a previous stage lose the connection to their originating aggregation/expression
+  clause because `resolve-field-ref` overwrites `:lib/source-uuid` with the ref's own uuid. That breaks the
+  `:long` display-name traceback in [[metabase.lib.field]] (source-uuid → source clause), so two same-named
+  aggregations from different joins render identically (#76986). For expression-parts consumers we recover the
+  link: look up the previous-stage returned column by `:lib/deduplicated-name` and copy its `:lib/source-uuid`
+  onto the resolved col — but only when that uuid points at a composite (aggregation/expression) clause
+  somewhere upstream. Scoped to expression-parts; a broader display-name-level fix has a wider blast radius and
+  is deferred to the Column Heritage effort."
+  [query stage-number col]
+  (or (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+        (when-let [dedup-name (:lib/deduplicated-name col)]
+          (when-let [prev-col (m/find-first #(= (:lib/deduplicated-name %) dedup-name)
+                                            (lib.metadata.calculation/returned-columns query previous-stage-number))]
+            (when-let [prev-source-uuid (:lib/source-uuid prev-col)]
+              (when (composite-clause-in-stages-0-to? query previous-stage-number prev-source-uuid)
+                (assoc col :lib/source-uuid prev-source-uuid))))))
+      col))
+
 (defmethod expression-parts-method :field
   [query stage-number field-ref]
   (let [stripped-ref (lib.options/update-options field-ref #(dissoc % :lib/expression-name))]
-    (column-metadata-from-ref query stage-number stripped-ref)))
+    (->> (column-metadata-from-ref query stage-number stripped-ref)
+         (restore-previous-stage-source-uuid query stage-number))))
 
 (defmethod expression-parts-method :segment
   [query _stage-number segment-ref]

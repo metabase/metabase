@@ -3,10 +3,12 @@
   for a User - a User can have multiple AuthIdentities (e.g., password + SSO)."
   (:require
    [java-time.api :as t]
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.provider :as provider]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -37,8 +39,7 @@
 ;; `credentials` is encrypted at rest (whole column) so secrets stored in it — e.g. the TOTP
 ;; shared secret — survive `rotate-encryption-key`, which re-encrypts whole columns and cannot
 ;; reach fields nested inside JSON. The column is listed in
-;; `metabase.app-db.encryption/encrypted-json-columns`. Rows written before encryption was
-;; introduced are plaintext JSON; `maybe-decrypt` passes them through unchanged.
+;; `metabase.app-db.encryption/encrypted-string-columns`.
 (t2/deftransforms :model/AuthIdentity
   {:credentials {:in mi/encrypted-json-in
                  :out (comp parse-credentials-timestamps-out mi/encrypted-json-out)}
@@ -75,8 +76,11 @@
 
 (t2/define-before-insert :model/AuthIdentity
   [{:keys [provider] :as auth-identity}]
-  (provider/validate (provider/provider-string->keyword provider) auth-identity)
-  auth-identity)
+  (u/prog1 (cond-> auth-identity
+             (and (= provider "password")
+                  (contains? auth-identity :credentials))
+             (update :credentials hash-password-credentials))
+    (provider/validate (provider/provider-string->keyword provider) <>)))
 
 (t2/define-before-update :model/AuthIdentity
   [{:keys [provider] :as auth-identity}]
@@ -86,50 +90,46 @@
              (update :credentials hash-password-credentials))
     (provider/validate (provider/provider-string->keyword provider) <>)))
 
-(t2/define-after-insert :model/AuthIdentity
-  [{:keys [user_id provider credentials] :as auth-identity}]
-  (when (= provider "emailed-secret-password-reset")
-    (let [{:keys [token_hash expires_at consumed_at]} credentials]
-      ;; Only sync to User if token is not consumed
-      (when-not consumed_at
-        (log/debugf "Syncing emailed-secret-password-reset AuthIdentity insert to User %s" user_id)
-        ;; Calculate reset_triggered from expires_at (work backward from expiration)
-        (let [ttl-ms (* 48 60 60 1000) ; 48 hours in milliseconds
-              reset-triggered (-> (t/instant expires_at)
-                                  (t/minus (t/millis ttl-ms))
-                                  t/to-millis-from-epoch)]
-          (t2/update! :model/User user_id
-                      {:reset_token token_hash
-                       :reset_triggered reset-triggered})))))
-  auth-identity)
+(mu/defn set-password!
+  "Set `user-id`'s login password to plaintext `password`, creating or replacing their `password` AuthIdentity — the
+  authoritative credential store. This is the only supported way to set a user's password; the User model itself no
+  longer stores, hashes, or mirrors passwords.
 
-(t2/define-after-update :model/AuthIdentity
-  [{:keys [user_id provider credentials] :as auth-identity}]
-  (cond
-    ;; Handle password provider - sync to User table
-    (= provider "password")
-    (let [{:keys [password_hash password_salt]} credentials]
-      (when (and password_hash password_salt)
-        (t2/update! :model/User user_id
-                    {:password password_hash
-                     :password_salt password_salt})))
+  Always deletes the user's existing sessions: changing a password must invalidate every session authenticated with the
+  old one. A caller that wants the acting user to stay logged in should create a fresh session afterward.
 
-    ;; Handle emailed-secret-password-reset provider - sync reset tokens to User table
-    (= provider "emailed-secret-password-reset")
-    (let [{:keys [token_hash expires_at consumed_at]} credentials]
-      (log/debugf "Syncing emailed-secret-password-reset AuthIdentity update to User %s" user_id)
-      (if consumed_at
-        ;; Token consumed - clear User table
-        (t2/update! :model/User
-                    {:id user_id
-                     :reset_token [:not= nil]}
-                    {:reset_token nil
-                     :reset_triggered nil})
-        ;; Token updated - sync to User table
-        (let [ttl-ms (* 48 60 60 1000)
-              reset-triggered (t/to-millis-from-epoch (t/minus expires_at (t/millis ttl-ms)))]
-          (t2/update! :model/User
-                      {:id user_id}
-                      {:reset_token token_hash
-                       :reset_triggered reset-triggered})))))
-  auth-identity)
+  Also deletes the user's `emailed-secret-password-reset` AuthIdentity: this is called by the password-reset flow, so
+  once the password has been set the reset token must stop working — otherwise it could be replayed to reset the
+  password again until it expires.
+
+  `opts` may contain `:expires-at`, an instant after which the credential is no longer valid (used by time-limited
+  support-access grants)."
+  ([user-id  :- ms/PositiveInt
+    password :- ms/NonBlankString]
+   (set-password! user-id password nil))
+
+  ([user-id  :- ms/PositiveInt
+    password :- ms/NonBlankString
+    opts     :- [:maybe
+                 [:map
+                  [:expires-at {:optional true} [:maybe (ms/InstanceOfClass java.time.temporal.Temporal)]]]]]
+   ;; always write :expires_at (nil unless an expiry was requested) so setting a password clears any stale expiry a
+   ;; prior support-access grant left behind — otherwise `authenticate` would reject the new password as expired
+   ;; the credential write and the session delete must be atomic: if either fails the password must not change while
+   ;; sessions authenticated with the old one survive
+   (t2/with-transaction [_]
+     (let [attrs {:credentials {:plaintext_password password}
+                  :expires_at  (:expires-at opts)}]
+       (if-let [pw-auth-identity (auth-identity.db/auth-identity user-id "password")]
+         (auth-identity.db/update-auth-identity! (u/the-id pw-auth-identity) attrs)
+         (auth-identity.db/insert-auth-identity! (merge {:user_id user-id, :provider "password"} attrs))))
+     (auth-identity.db/delete-auth-identities! user-id "emailed-secret-password-reset")
+     (auth-identity.db/delete-sessions-for-user! user-id))))
+
+(mu/defn reset-token-hash :- [:maybe :string]
+  "The bcrypt hash of `user-id`'s current password-reset token, taken from their `emailed-secret-password-reset`
+  AuthIdentity (the authoritative store), or nil if they have none. Lets callers include the token in audit events
+  without reading the legacy `core_user.reset_token` column."
+  [user-id :- ms/PositiveInt]
+  (get-in (auth-identity.db/auth-identity user-id "emailed-secret-password-reset")
+          [:credentials :token_hash]))

@@ -1,7 +1,7 @@
-import dayjs from "dayjs";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { dayjs } from "metabase/dayjs";
 import type { DatesRangeValue } from "metabase/ui";
 import {
   DateInput,

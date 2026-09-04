@@ -3,7 +3,6 @@ import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
 
 import { isReducedMotionPreferred } from "metabase/utils/dom";
-import { extractRemappings } from "metabase/visualizations";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import {
@@ -11,28 +10,27 @@ import {
   GoalResolvingState,
 } from "metabase/visualizations/components/GoalResolutionState";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
-import {
-  getBoxPlotLayoutModel,
-  getBoxPlotModel,
-  getBoxPlotOption,
-  getBoxPlotTooltipOption,
-} from "metabase/visualizations/echarts/boxplot";
-import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
-import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-import {
-  useClickedStateTooltipSync,
-  useCloseTooltipOnScroll,
-} from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
-import { getUnresolvedGoalMessage } from "metabase/visualizations/lib/settings/goal";
-import { getDashboardAdjustedSettings } from "metabase/visualizations/shared/settings-adjustments";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
   CartesianChartRoot,
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
+import {
+  extractRemappings,
+  getBoxPlotLayoutModel,
+  getBoxPlotModel,
+  getBoxPlotOption,
+  getBoxPlotTooltipOption,
+  getChartLayout,
+  getDashboardAdjustedSettings,
+  getLegendItems,
+  getUnresolvedGoalMessage,
+  useClickedStateTooltipSync,
+  useCloseTooltipOnScroll,
+} from "metabase/viz-core";
 
 import { BOXPLOT_CHART_DEFINITION } from "./definition";
 import { useBoxPlotEvents } from "./events";
@@ -251,7 +249,6 @@ function BoxPlotInner({
         <ResponsiveEChartsRenderer
           key={hasValidOption ? "chart" : "measuring"}
           ref={containerRef}
-          display="boxplot"
           option={option ?? {}}
           eventHandlers={hasValidOption ? eventHandlers : undefined}
           onInit={handleInit}

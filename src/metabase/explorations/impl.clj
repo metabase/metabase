@@ -9,14 +9,14 @@
   (:require
    [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
+   [metabase.explorations.db :as explorations.db]
+   [metabase.explorations.models.exploration-block :as block]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
-   [metabase.queries.core :as queries]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,19 +26,11 @@
    a nil score (didn't score) are kept."
   0.1)
 
-;;; Columns we actually need from `Card`. We deliberately avoid pulling the full row
-;;; (which includes large blobs like `:result_metadata`, `:visualization_settings`,
-;;; `:parameter_mappings`, etc.) so the response stays small and JSON encoding is fast.
-(def ^:private metric-card-cols
-  [:id :name :description :collection_id :database_id :table_id :type :entity_id
-   :card_schema :dataset_query :dimensions :dimension_mappings])
-
 (defn- library-metrics-collection-ids
   "Set of collection ids (the library-metrics root + descendants) whose metric Cards should be sorted
    to the top of the /dimensions response."
   []
-  (when-let [root (t2/select-one [:model/Collection :id :location]
-                                 :type collection/library-metrics-collection-type)]
+  (when-let [root (explorations.db/library-metrics-root-collection collection/library-metrics-collection-type)]
     (conj (or (collection/descendant-ids root) #{}) (:id root))))
 
 (defn- metric-query
@@ -65,33 +57,21 @@
            :name)
       (catch Exception _ nil))))
 
-(defn- dimension-display-name
-  "Combination name shown in the UI for a dimension: '<group display name> - <dimension display name>'
-   when the dimension has a group, otherwise just the dimension's display name."
-  [d]
-  (let [dn       (or (:display-name d) (:name d) "")
-        group-dn (some-> d :group :display-name)]
-    (if (str/blank? group-dn)
-      dn
-      (str group-dn " - " dn))))
-
 (defn- metric-matches-search?
   "Case-insensitive match of `q-lower` against the metric's name or any of its dimensions'
-   *displayed* names — the `<group> - <dimension>` combination the picker shows (see
-   [[dimension-display-name]]), so searching a group name, a dimension name, or the combined
-   string all match what the user sees."
+   curated [[block/dimension-label]]s — the same text the picker surfaces."
   [metric q-lower]
   (or (str/includes? (u/lower-case-en (or (:name metric) "")) q-lower)
       (some (fn [d]
-              (str/includes? (u/lower-case-en (dimension-display-name d)) q-lower))
+              (str/includes? (u/lower-case-en (or (block/dimension-label d) "")) q-lower))
             (:dimensions metric))))
 
 (defn- group-dimensions
   "Collapse dimensions across the supplied metrics into a list of dimension groups. Dimensions that
    share at least one source entry are unioned into the same group (matching the semantics of
-   `lib-metric/same-source?`). Each group exposes the user-facing combination name, a representative
-   interestingness, and the list of underlying dimensions that callers must echo back to
-   `POST /api/exploration` when the user starts an exploration."
+   `lib-metric/same-source?`). Each group exposes the curated [[block/dimension-label]], a
+   representative interestingness, and the list of underlying dimensions that callers must echo
+   back to `POST /api/exploration` when the user starts an exploration."
   [metrics]
   (let [;; Flatten + filter once. Keep dims whose interestingness is nil (didn't score) or above
         ;; the threshold
@@ -105,7 +85,7 @@
          (mapv (fn [dims]
                  (let [head   (first dims)
                        scores (keep :dimension-interestingness dims)]
-                   {:name                      (dimension-display-name head)
+                   {:name                      (or (block/dimension-label head) "")
                     :dimension_interestingness (when (seq scores) (apply max scores))
                     :dimensions                (vec dims)})))
          (sort-by (fn [g]
@@ -120,17 +100,8 @@
    name. Optionally restricted to `metric-ids` (when non-nil), preserving access checks but
    filtering to that subset."
   [metric-ids library-ids]
-  (let [base-where  (queries/visible-metric-cards-where-clause)
-        where       (if (seq metric-ids)
-                      [:and base-where [:in :id (vec metric-ids)]]
-                      base-where)]
-    (->> (t2/select [:model/Card :id]
-                    {:where    where
-                     :order-by [[[:case
-                                  [:in :collection_id (or (seq library-ids) [-1])] 0
-                                  :else 1] :asc]
-                                [:name :asc]]})
-         (mapv :id))))
+  (->> (explorations.db/metric-card-ids metric-ids library-ids)
+       (mapv :id)))
 
 (defn- load-metric-cards
   "Load the metric Card rows for `card-ids` in a single batched SELECT, returning them
@@ -139,9 +110,7 @@
    visualization_settings, dataset_query, etc.) and dominates response size."
   [card-ids]
   (when (seq card-ids)
-    (let [rows   (t2/select (into [:model/Card] metric-card-cols)
-                            :id [:in card-ids]
-                            :type "metric")
+    (let [rows   (explorations.db/metric-cards-for-explorations card-ids)
           by-id  (u/index-by :id rows)]
       (into [] (keep by-id) card-ids))))
 
@@ -165,8 +134,7 @@
             (metrics/sync-dimensions! :metadata/metric id)
             (catch Throwable e
               (log/warnf e "Failed to sync dimensions for metric card %d" id))))
-        (let [healed (u/index-by :id (t2/select (into [:model/Card] metric-card-cols)
-                                                :id [:in broken-ids]))]
+        (let [healed (u/index-by :id (explorations.db/cards-for-explorations broken-ids))]
           (mapv #(or (get healed (:id %)) %) cards))))))
 
 (defn- simple-table-query?
@@ -251,39 +219,68 @@
       (assoc :dimension_ids (mapv :id (:dimensions m)))
       (dissoc :dimensions)))
 
+(defn- matching-metrics
+  "`metrics` restricted to those matching search `q`; all of them
+   when `q` is blank."
+  [q metrics]
+  (if (str/blank? q)
+    metrics
+    (let [q-lower (u/lower-case-en q)]
+      (filterv #(metric-matches-search? % q-lower) metrics))))
+
+(defn- catalog-metrics
+  "Permission-filtered metric Cards with their synced `:dimensions` inlined and each dimension
+   annotated with its Field's interestingness, restricted to `:metric-ids` (or all visible when
+   nil). Dimension targets are not resolved and `:result_column_name` is not computed."
+  [{:keys [metric-ids]}]
+  (let [library-ids (or (library-metrics-collection-ids) #{})
+        card-ids    (accessible-metric-ids metric-ids library-ids)
+        cards       (sync-missing-dimensions! (load-metric-cards card-ids))
+        ;; Filter dimensions by user permissions for all metrics at once (one set of queries
+        ;; for the whole batch, rather than per metric).
+        permitted   (metrics/filter-dimensions-for-user-batch cards)]
+    (->> permitted
+         (mapv #(assoc % :in_library (contains? library-ids (:collection_id %))))
+         (metrics/annotate-dimensions-with-field-data [:dimension_interestingness]))))
+
+(defn- resolve-metric-queries
+  "Drop each metric's dimensions whose target doesn't resolve against its own query and compute
+   `:result_column_name`. This is the expensive half of [[hydrated-metrics]] — every metric pays
+   a query build, and `lib/breakoutable-columns` on top of that."
+  [metrics]
+  (let [resolve-breakoutable (make-breakoutable-resolver)]
+    (mapv (fn [m]
+            ;; Build the metric's query once and reuse it for resolving dimension targets and
+            ;; computing the result column name. Breakoutable columns (the dominant cost) are
+            ;; shared across metrics that query the same table.
+            (let [query        (metric-query m)
+                  breakoutable (resolve-breakoutable m query)]
+              (-> m
+                  (filter-resolvable-dimensions query breakoutable)
+                  (assoc :result_column_name (result-column-name query))
+                  ;; dataset_query was only needed to build `query`.
+                  (dissoc :dataset_query))))
+          metrics)))
+
 (defn- hydrated-metrics
   "Permission-filtered, interestingness-annotated metric Cards with their candidate dimensions
    inlined as `:dimensions`, restricted to `:metric-ids` (or all visible when nil) and optionally
    filtered by search `:q`. Shared by [[exploration-data]], [[research-candidates]], and
    [[research-groups]]."
-  [{:keys [metric-ids q]}]
+  [{:keys [q] :as opts}]
   (lib-be/with-metadata-provider-cache
-    (let [library-ids (or (library-metrics-collection-ids) #{})
-          card-ids   (accessible-metric-ids metric-ids library-ids)
-          cards      (sync-missing-dimensions! (load-metric-cards card-ids))
-          ;; Filter dimensions by user permissions for all metrics at once (one set of queries
-          ;; for the whole batch, rather than per metric).
-          permitted  (metrics/filter-dimensions-for-user-batch cards)
-          resolve-breakoutable (make-breakoutable-resolver)
-          hydrated   (->> permitted
-                          (mapv (fn [m]
-                                  ;; Build the metric's query once and reuse it for resolving
-                                  ;; dimension targets and computing the result column name.
-                                  ;; Breakoutable columns (the dominant cost) are shared across
-                                  ;; metrics that query the same table.
-                                  (let [query        (metric-query m)
-                                        breakoutable (resolve-breakoutable m query)]
-                                    (-> m
-                                        (filter-resolvable-dimensions query breakoutable)
-                                        (assoc :result_column_name (result-column-name query)
-                                               :in_library (contains? library-ids (:collection_id m)))
-                                        ;; dataset_query was only needed to build `query`.
-                                        (dissoc :dataset_query)))))
-                          (metrics/annotate-dimensions-with-field-data [:dimension_interestingness]))]
-      (if (str/blank? q)
-        hydrated
-        (let [q-lower (u/lower-case-en q)]
-          (filterv #(metric-matches-search? % q-lower) hydrated))))))
+    (->> (catalog-metrics opts)
+         resolve-metric-queries
+         (matching-metrics q))))
+
+(defn- index-metrics
+  "[[hydrated-metrics]] minus [[resolve-metric-queries]], for callers that need only a metric's
+   identity and its dimension names. Skipping target resolution means a dimension the metric's
+   query can't actually break out on is still counted here — over-inclusive by design, since the
+   caller ([[research-metric-index]]) surfaces no dimension the user could act on."
+  [{:keys [q] :as opts}]
+  (lib-be/with-metadata-provider-cache
+    (matching-metrics q (catalog-metrics opts))))
 
 (defn- candidate-dimension?
   "Whether a dimension is surfaced as a research candidate: it scored at or above
@@ -352,100 +349,176 @@
   "Metric fields surfaced to Metabot in the research catalog."
   [:id :name :description :result_column_name])
 
-(def ^:private llm-dimension-cols
-  "Dimension fields surfaced to Metabot in the research catalog."
-  [:id :name :display-name :effective-type :semantic-type :dimension-interestingness])
+(def research-candidates-max-metrics
+  "Maximum metrics a single `get_research_candidates` response details. Explicit `:metric-ids`
+   requests are capped to this at the tool layer; `:q` requests matching more are truncated (with
+   a marker) so a broad search term can't recreate the unbounded catalog dump this bound exists
+   to prevent."
+  20)
+
+(def research-metric-index-max-metrics
+  "Maximum rows a single `list_research_metrics` response lists. Index rows are slim, but an
+   unfiltered index on an instance with thousands of metrics is still a prompt-straining blob
+   (measured ~130 bytes/row); above this the index is truncated and stamped with a marker so the
+   model knows to narrow with `q`."
+  500)
+
+(def ^:private catalog-description-max-length
+  "Character budget for a metric description in either research tool's payload — enough for scent,
+   short enough that a handful of essay-length descriptions can't dominate a response. A model
+   that needs the whole thing can `read_resource` the metric."
+  150)
+
+(defn- truncate-description
+  [description]
+  (when-let [d (some-> description str/trim not-empty)]
+    (if (> (count d) catalog-description-max-length)
+      (str (subs d 0 catalog-description-max-length) "…")
+      d)))
+
+(defn- metric-interestingness
+  "Ranking score for a metric: the max interestingness across its candidate dimensions, or nil
+   when none scored. Callers pass metrics already restricted to their candidate dimensions (see
+   [[with-candidate-dimensions]]), so a metric whose every dimension scored below
+   [[min-interestingness]] scores nil here rather than its best sub-threshold dimension."
+  [m]
+  (some->> (keep :dimension-interestingness (:dimensions m)) seq (apply max)))
+
+(defn- rank-metrics
+  "Order `metrics` library-first then by interestingness (unscored last) — the order both
+   research-tool caps clip in, so the best-curated content survives truncation."
+  [metrics]
+  (vec (sort-by (fn [m]
+                  [(if (:in_library m) 0 1)
+                   (- (or (metric-interestingness m) -1))])
+                metrics)))
+
+(defn research-metric-index
+  "Slim research catalog index for the `list_research_metrics` Metabot tool:
+   `{:metrics [{:id :name :description :in_library} ...]}` — one row per metric the user can
+   read, truncated `:description`, no dimensions. The model shortlists metric ids here, then
+   fetches their dimension detail via [[research-candidates]]. `:q` filters like
+   [[exploration-data]]'s — a case-insensitive substring match on metric names and dimension
+   display names.
+
+   Rows are always ordered by [[rank-metrics]], so a metric doesn't move just because the
+   instance grew past the cap. More than [[research-metric-index-max-metrics]] matches are
+   truncated and stamped `{:truncated true :shown <n> :matched <m>}` so the model knows to narrow
+   with `:q`. A metric with no candidate dimensions still gets a row — it can form a group on
+   its own — but ranks below every metric that has one."
+  [opts]
+  (let [ranked (rank-metrics (mapv with-candidate-dimensions (index-metrics opts)))
+        capped (vec (take research-metric-index-max-metrics ranked))
+        rows   (mapv (fn [m]
+                       {:id          (:id m)
+                        :name        (:name m)
+                        :description (truncate-description (:description m))
+                        :in_library  (:in_library m)})
+                     capped)]
+    (cond-> {:metrics rows}
+      (> (count ranked) (count capped))
+      (assoc :truncated true
+             :shown (count capped)
+             :matched (count ranked)))))
+
+(defn- llm-dimension-groups
+  "`groups` (from [[group-dimensions]] over `metrics`) in the `get_research_candidates` shape: the
+   descriptive fields stated once, plus the ids of the metrics the group can slice. The per-metric
+   dimension ids live on the metrics themselves (see [[llm-metric-dimensions]]).
+
+   `:effective_type`/`:semantic_type` appear only when every dimension in the group agrees on
+   them."
+  [metrics groups]
+  (let [dim->metrics (dimension-id->metric-ids metrics)]
+    (mapv (fn [g]
+            (let [dims  (:dimensions g)
+                  types (when (= 1 (count (distinct (map (juxt :effective-type :semantic-type) dims))))
+                          (first dims))]
+              (cond-> {:name            (:name g)
+                       :interestingness (:dimension_interestingness g)
+                       :metric_ids      (vec (sort (into #{} (mapcat #(dim->metrics (:id %))) dims)))}
+                types (assoc :effective_type (:effective-type types)
+                             :semantic_type  (:semantic-type types)))))
+          groups)))
+
+(defn- llm-metric-dimensions
+  "One metric's candidate dimensions in the `get_research_candidates` shape: the `:id` to echo to
+   `add_research_groups`, tagged with the `:group` whose descriptive fields describe it. `:name`
+   appears only when this metric calls the dimension something other than its group name — renames
+   are common, but repeating the group name on every member is most of the payload."
+  [m dim->group-name]
+  (mapv (fn [d]
+          (let [group-name (dim->group-name (:id d))
+                own-name   (or (block/dimension-label d) "")]
+            (cond-> {:id (:id d) :group group-name}
+              (not= own-name group-name) (assoc :name own-name))))
+        (:dimensions m)))
 
 (defn research-candidates
-  "Metabot-facing research catalog: each metric with its candidate dimensions inlined
-   (`:id`, `:name`, `:dimension_interestingness`, ...), plus dimension groups annotated with the
-   dimension ids they bundle and the metric ids they can slice. Shaped for the
-   `get_research_candidates` tool so the LLM can pick valid metric/dimension ids before authoring
-   groups; the FE does not consume this. Accepts the same `:metric-ids`/`:q` options as
-   [[exploration-data]]."
-  [opts]
-  (let [filtered     (mapv with-candidate-dimensions (hydrated-metrics opts))
-        dim->metrics (dimension-id->metric-ids filtered)]
-    {:metrics          (mapv (fn [m]
-                               (assoc (select-keys m llm-metric-cols)
-                                      :dimensions (mapv #(select-keys % llm-dimension-cols)
-                                                        (:dimensions m))))
-                             filtered)
-     :dimension_groups (mapv (fn [g]
-                               (let [dim-ids (mapv :id (:dimensions g))]
-                                 {:name                      (:name g)
-                                  :dimension_interestingness (:dimension_interestingness g)
-                                  :dimension_ids             dim-ids
-                                  :metric_ids                (into [] (distinct)
-                                                                   (mapcat dim->metrics dim-ids))}))
-                             (group-dimensions filtered))}))
+  "Metabot-facing research catalog detail for the `get_research_candidates` tool: the requested
+   metrics, each carrying the dimension ids it can be sliced by, plus the dimension groups those
+   ids belong to. Descriptive dimension fields are stated once per group rather than once per
+   metric. The FE does not consume this.
+
+   Accepts the same `:metric-ids`/`:q` options as [[exploration-data]]; callers pass at least one
+   (the tool layer enforces it). An explicit `:metric-ids` request returns exactly those metrics
+   (the tool caps the id count), stamping any that didn't come back — unknown or unreadable — as
+   `:missing_metric_ids`. A `:q` request matching more than [[research-candidates-max-metrics]]
+   metrics is truncated in [[rank-metrics]] order and stamped
+   `{:truncated true :shown <n> :matched <m>}` so the model knows to narrow the search."
+  [{:keys [metric-ids] :as opts}]
+  (let [filtered  (mapv with-candidate-dimensions (hydrated-metrics opts))
+        capped    (if (seq metric-ids)
+                    filtered
+                    (vec (take research-candidates-max-metrics (rank-metrics filtered))))
+        groups    (group-dimensions capped)
+        dim-group (into {} (for [g groups, d (:dimensions g)] [(:id d) (:name g)]))
+        missing   (vec (distinct (remove (set (map :id capped)) metric-ids)))]
+    (cond-> {:metrics          (mapv (fn [m]
+                                       (-> (select-keys m llm-metric-cols)
+                                           (update :description truncate-description)
+                                           (assoc :dimensions (llm-metric-dimensions m dim-group))))
+                                     capped)
+             :dimension_groups (llm-dimension-groups capped groups)}
+      (> (count filtered) (count capped))
+      (assoc :truncated true
+             :shown (count capped)
+             :matched (count filtered))
+
+      (seq missing)
+      (assoc :missing_metric_ids missing))))
 
 (defn research-groups
   "Validate Metabot's chosen research groups and return the FE picker payload for them.
 
-   `:groups` is a sequence of maps, each either
-     `{:anchor \"metric\"    :metric_id <int> :dimension_ids [<str> ...]}` (`:dimension_ids` optional)
-   or `{:anchor \"dimension\" :dimension_id <str>}`.
+   `:groups` is a sequence of `{:metric_id <int> :dimension_ids [<str> ...]}` maps
+   (`:dimension_ids` optional).
 
-   Hard-errors (throws) on any unknown/inaccessible metric id, unknown dimension id, or a
-   dimension id that isn't a candidate of its metric — one bad id fails the whole batch.
+   Hard-errors (throws) on any unknown/inaccessible metric id or a dimension id that isn't a
+   candidate of its metric — one bad id fails the whole batch.
 
    On success returns `{:metrics [...] :dimension_groups [...] :groups [...]}`, where
    `:metrics`/`:dimension_groups` are the [[exploration-data]] hydration restricted to the
-   referenced metrics (a metric anchor pulls its metric; a dimension anchor pulls every metric
-   exposing any dimension in that dimension's group), and `:groups` echoes the validated specs
-   for the FE to turn into picker blocks."
+   referenced metrics, and `:groups` echoes the validated specs for the FE to turn into picker
+   blocks."
   [{:keys [groups]}]
   (let [all          (mapv with-candidate-dimensions (hydrated-metrics {}))
-        metric-by-id (u/index-by :id all)
-        dim->metrics (dimension-id->metric-ids all)
-        all-dim-ids  (set (keys dim->metrics))
-        ;; dimension id -> the set of dimension ids in its group (same-source bundle)
-        dim->group   (into {} (mapcat (fn [g]
-                                        (let [ids (set (map :id (:dimensions g)))]
-                                          (map (fn [id] [id ids]) ids)))
-                                      (group-dimensions all)))]
+        metric-by-id (u/index-by :id all)]
     (doseq [g groups]
-      (case (:anchor g)
-        "metric"
-        (let [metric-id (:metric_id g)
-              metric    (get metric-by-id metric-id)]
-          (when (nil? metric-id)
-            (throw (ex-info "A metric-anchored group requires a metric_id" {:group g})))
-          (when-not metric
-            (throw (ex-info (format "Unknown or inaccessible metric id %s" metric-id)
-                            {:anchor "metric" :metric_id metric-id})))
-          (when (and (:replace_default_dimensions g) (empty? (:dimension_ids g)))
-            (throw (ex-info "replace_default_dimensions requires at least one dimension_id"
-                            {:anchor "metric" :metric_id metric-id})))
-          (let [valid (set (map :id (:dimensions metric)))]
-            (doseq [d (:dimension_ids g)]
-              (when-not (contains? valid d)
-                (throw (ex-info (format "Dimension %s is not a candidate of metric %s" d metric-id)
-                                {:anchor "metric" :metric_id metric-id :dimension_id d}))))))
-        "dimension"
-        (let [dimension-id (:dimension_id g)]
-          (when (nil? dimension-id)
-            (throw (ex-info "A dimension-anchored group requires a dimension_id" {:group g})))
-          (when-not (contains? all-dim-ids dimension-id)
-            (throw (ex-info (format "Unknown dimension id %s" dimension-id)
-                            {:anchor "dimension" :dimension_id dimension-id})))
-          (when-let [mids (seq (:metric_ids g))]
-            (let [related (into #{} (mapcat dim->metrics) (dim->group dimension-id))]
-              (doseq [mid mids]
-                (when-not (contains? related mid)
-                  (throw (ex-info (format "Metric %s is not related to dimension %s" mid dimension-id)
-                                  {:anchor "dimension" :dimension_id dimension-id :metric_id mid})))))))
-        (throw (ex-info (format "Unknown anchor %s" (:anchor g)) {:group g}))))
-    (let [relevant         (reduce (fn [acc g]
-                                     (case (:anchor g)
-                                       "metric"    (conj acc (:metric_id g))
-                                       "dimension" (let [related (into #{} (mapcat dim->metrics)
-                                                                       (dim->group (:dimension_id g)))]
-                                                     (into acc (if-let [mids (seq (:metric_ids g))]
-                                                                 (filter related mids)
-                                                                 related)))))
-                                   #{} groups)
+      (let [metric-id (:metric_id g)
+            metric    (get metric-by-id metric-id)]
+        (when-not metric
+          (throw (ex-info (format "Unknown or inaccessible metric id %s" metric-id)
+                          {:metric_id metric-id})))
+        (when (and (:replace_default_dimensions g) (empty? (:dimension_ids g)))
+          (throw (ex-info "replace_default_dimensions requires at least one dimension_id"
+                          {:metric_id metric-id})))
+        (let [valid (set (map :id (:dimensions metric)))]
+          (doseq [d (:dimension_ids g)]
+            (when-not (contains? valid d)
+              (throw (ex-info (format "Dimension %s is not a candidate of metric %s" d metric-id)
+                              {:metric_id metric-id :dimension_id d})))))))
+    (let [relevant         (into #{} (map :metric_id) groups)
           relevant-metrics (filterv #(contains? relevant (:id %)) all)]
       {:metrics          (mapv slim-metric relevant-metrics)
        :dimension_groups (group-dimensions relevant-metrics)

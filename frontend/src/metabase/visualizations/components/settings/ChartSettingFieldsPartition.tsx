@@ -15,8 +15,8 @@ import {
 import { Sortable } from "metabase/common/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import { Box, Text } from "metabase/ui";
-import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type { Partition } from "metabase/visualizations/visualizations/PivotTable/partitions";
+import type { RemappingHydratedDatasetColumn } from "metabase/viz-core";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   ColumnNameColumnSplitSetting,
@@ -169,7 +169,7 @@ const PartitionContainer = ({
   const droppableDisabled = partitionType !== sourcePartitionType;
 
   return (
-    <Box py="md" className={partitionIndex > 0 ? CS.borderTop : undefined}>
+    <Box py="lg" className={partitionIndex > 0 ? CS.borderTop : undefined}>
       <Text c="text-secondary">{title}</Text>
 
       <SortableContext

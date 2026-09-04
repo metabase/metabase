@@ -1,4 +1,7 @@
-import type { LocalFieldReference } from "@metabase/embedding-sdk-react/data-app";
+import type {
+  LocalFieldReference,
+  QuestionColumnReference,
+} from "@metabase/embedding-sdk-react/data-app";
 
 /**
  * The config a spec injects into a data-app fixture (via `H.mockDataApp`'s
@@ -52,6 +55,22 @@ export type DataAppTestEnv = {
     breakoutField: LocalFieldReference;
   };
   /**
+   * `/card-source` page: exercises a saved-question source with filters,
+   * aggregations, and breakouts. Each clause set runs against both sources and
+   * the page reports whether they agree, so `source` must be an unfiltered copy
+   * of `tableSource`. `*Field` addresses the table, `*Column` the question's
+   * result columns.
+   */
+  cardSource?: {
+    source: CardSource;
+    tableSource: TableSource;
+    filterField: LocalFieldReference;
+    filterColumn: QuestionColumnReference;
+    filterValue: number;
+    breakoutField: LocalFieldReference;
+    breakoutColumn: QuestionColumnReference;
+  };
+  /**
    * `/actions` page: the id of the action the spec creates and `useAction`
    * executes, so it can't be hard-coded in the app. Left out to exercise the "no
    * action id" path, where the hook must not request anything.
@@ -71,4 +90,5 @@ export type DataAppTestEnv = {
 // The queries use the SDK's `source` API (`{ type: "table", id }`); the database
 // is resolved from the SDK's metadata store, so no databaseId is passed.
 type TableSource = { type: "table"; id: number };
+type CardSource = { type: "card"; id: number };
 type CountAggregation = { type: "operator"; operator: "count"; args: [] };

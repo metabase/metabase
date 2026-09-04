@@ -1,6 +1,6 @@
 import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/metadata-store";
 import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { createMockField } from "metabase-types/api/mocks";
 import {
   REVIEWS_ID,

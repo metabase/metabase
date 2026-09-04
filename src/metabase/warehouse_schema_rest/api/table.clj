@@ -2,10 +2,10 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
+   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as app-db]
+   [metabase.collections.core :as collections]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -25,12 +25,13 @@
    [metabase.sync.core :as sync]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.xrays.core :as xrays]
@@ -87,41 +88,20 @@
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
        [:can-write {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
-  (let [like       (fn [field pattern]
-                     (case (app-db/db-type)
-                       (:h2 :postgres) [:ilike field pattern]
-                       [:raw [:like field pattern] " COLLATE " [:inline "utf8mb4_unicode_ci"]]))
-        pattern    (some-> term
-                           (str/replace "\\" "\\\\")
-                           (str/replace "_" "\\_")
-                           (str/replace "%" "\\%")
-                           (str/replace "*" "%")
-                           (cond-> (not (str/ends-with? term "%")) (str "%")))
-        where      (cond-> [:and (if include-transform-targets
-                                   [:or [:= :active true] [:= :transform_target true]]
-                                   [:= :active true])]
-                     (not (str/blank? term)) (conj [:or
-                                                    (like :name pattern)
-                                                    (like :display_name pattern)
-                                                    ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
-                                                    (like :display_name (str "% " pattern))])
-                     visibility-type         (conj [:= :visibility_type visibility-type])
-                     data-layer              (conj [:= :data_layer      (name data-layer)])
-                     data-source             (conj [:= :data_source     (name data-source)])
-                     owner-user-id           (conj [:= :owner_user_id   owner-user-id])
-                     owner-email             (conj [:= :owner_email     owner-email])
-                     orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
-                     published-only          (conj [:= :is_published true])
-                     (and unused-only (premium-features/has-feature? :dependencies))
-                     (conj [:not-exists {:select [:*]
-                                         :from   [[:dependency :d]]
-                                         :where  [:and
-                                                  [:= :d.to_entity_id :metabase_table.id]
-                                                  [:= :d.to_entity_type "table"]]}]))
-        query      {:where where, :order-by [[:name :asc]]}
-        hydrations (cond-> [:db]
+  (let [hydrations (cond-> [:db]
                      (premium-features/any-transforms-enabled?) (conj :transform))]
-    (as-> (t2/select :model/Table query) tables
+    (as-> (warehouse-schema-rest.db/matching-tables
+           {:term                       term
+            :visibility-type            visibility-type
+            :data-layer                 data-layer
+            :data-source                data-source
+            :owner-user-id              owner-user-id
+            :owner-email                owner-email
+            :orphan-only?               orphan-only
+            :published-only?            published-only
+            :check-unused?              (and unused-only (premium-features/has-feature? :dependencies))
+            :include-transform-targets? include-transform-targets})
+          tables
       (apply t2/hydrate tables hydrations)
       (do (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                           :table-ids (into #{} (map :id) tables)})
@@ -164,7 +144,7 @@
 (api.macros/defendpoint :get "/:table-id/data"
   "Get the data for the given table"
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]]
-  (let [table (t2/select-one :model/Table :id table-id)
+  (let [table (warehouse-schema-rest.db/table table-id)
         db-id (:db_id table)]
     (api/query-check table)
     (qp.store/with-metadata-provider db-id
@@ -202,8 +182,8 @@
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]
-    (t2/update! :model/Table id changes))
-  (let [updated-table        (t2/select-one :model/Table :id id)
+    (warehouse-schema-rest.db/update-table! id changes))
+  (let [updated-table        (warehouse-schema-rest.db/table id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
       (do
@@ -220,7 +200,7 @@
     (quick-task/submit-task!
      (fn []
        (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
-         (let [database (t2/select-one :model/Database db-id)]
+         (let [database (warehouse-schema-rest.db/database db-id)]
            ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
            ;; purposes of creating a new H2 database.
            (if (binding [driver.settings/*allow-testing-h2-connections* true
@@ -232,11 +212,21 @@
              (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
                                        (:id database))))))))))
 
+(defn- check-can-publish-tables-to-collection!
+  [tables collection-id]
+  (api/check-data-analyst)
+  (let [collection (api/check-404 (warehouse-schema-rest.db/collection collection-id))]
+    (api/check-400 (= (:type collection) collections/library-data-collection-type)
+                   (tru "Tables can only be published to Library/Data collections."))
+    (api/check-403 (every? mi/can-query? tables))))
+
 (defn- update-tables!
-  [ids {:keys [visibility_type] :as body}]
-  (let [existing-tables (t2/select :model/Table :id [:in ids])]
+  [ids {:keys [collection_id visibility_type] :as body}]
+  (let [existing-tables (warehouse-schema-rest.db/tables-by-ids ids)]
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check existing-tables)
+    (when collection_id
+      (check-can-publish-tables-to-collection! existing-tables collection_id))
     (let [updated-tables (t2/with-transaction [_conn] (mapv #(update-table!* % body) existing-tables))
           newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
@@ -303,7 +293,6 @@
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
@@ -365,17 +354,18 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
-  (when-let [field-ids (seq (t2/select-pks-set :model/Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
-    (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)
-          :let [origin-field (-> (t2/hydrate origin-field [:table :db])
-                                 (update :table schema.table/present-table))]
-          :when (-> origin-field :table :active)]
+  (when-let [field-ids (seq (warehouse-schema-rest.db/active-unretired-field-ids-for-table id))]
+    (for [origin-field (warehouse-schema-rest.db/active-fields-targeting field-ids)
+          :let [origin-field (t2/hydrate origin-field [:table :db])]
+          :when (and (-> origin-field :table :active)
+                     (mi/can-read? origin-field))
+          :let [origin-field (update origin-field :table schema.table/present-table)]]
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
        :origin_id      (:id origin-field)
        :origin         origin-field
        :destination_id (:fk_target_field_id origin-field)
-       :destination    (t2/hydrate (t2/select-one :model/Field :id (:fk_target_field_id origin-field)) :table)})))
+       :destination    (t2/hydrate (warehouse-schema-rest.db/field (:fk_target_field_id origin-field)) :table)})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -389,7 +379,7 @@
    are eligible for FieldValues."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [table (api/write-check (t2/select-one :model/Table :id id))]
+  (let [table (api/write-check (warehouse-schema-rest.db/table id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
@@ -413,9 +403,9 @@
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/write-check (t2/select-one :model/Table :id id))
-  (when-let [field-ids (t2/select-pks-set :model/Field :table_id id)]
-    (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids]))
+  (api/write-check (warehouse-schema-rest.db/table id))
+  (when-let [field-ids (warehouse-schema-rest.db/field-ids-for-table id)]
+    (warehouse-schema-rest.db/delete-field-values-for-fields! field-ids))
   {:status :success})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -426,7 +416,7 @@
   "Return related entities."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (-> (t2/select-one :model/Table :id id) api/read-check xrays/related))
+  (-> (warehouse-schema-rest.db/table id) api/read-check xrays/related))
 
 (api.macros/defendpoint :put "/:id/fields/order" :- [:map
                                                      [:success [:= true]]]
@@ -439,7 +429,7 @@
             [:sequential ms/PositiveInt]
             [:map [:field_order [:sequential ms/PositiveInt]]]]]
   (let [field-order (if (map? body) (:field_order body) body)]
-    (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field-order)))
+    (-> (warehouse-schema-rest.db/table id) api/write-check (table/custom-order-fields! field-order)))
   {:success true})
 
 (mu/defn- update-csv!
@@ -459,6 +449,21 @@
                              (tru "There was an error uploading the file"))}})
     (finally (io/delete-file (:file options) :silently))))
 
+(def ^:private CsvUploadParts
+  "The multipart parts a CSV upload may carry. A part under any other name is rejected rather than dropped, so a second
+  file cannot be smuggled past the upload: `::mc/default` keeps the extra parts, and the check below refuses them."
+  [:and
+   [:map
+    [:file
+     [:map
+      [:filename :string]
+      [:tempfile (ms/InstanceOfClass java.io.File)]]]
+    [:collection_id {:optional true} :string]
+    [::mc/default [:map-of :keyword :any]]]
+   (mu/with-api-error-message
+    [:fn (fn [parts] (every? #{:file :collection_id} (keys parts)))]
+    (deferred-tru "unexpected multipart part"))])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -473,20 +478,10 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   _body
-   ;; Closed so a file part smuggled under another part name is rejected; collection_id is the text field the
-   ;; frontend sends alongside the file.
-   {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params
-                                                 [:map {:closed true}
-                                                  ["file"
-                                                   [:map
-                                                    [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]
-                                                  ["collection_id" {:optional true} :string]]]]]
+   {:keys [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
-                :filename (get-in multipart-params ["file" :filename])
-                :file     (get-in multipart-params ["file" :tempfile])
+                :filename (:filename file)
+                :file     (:tempfile file)
                 :action   :metabase.upload/append}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -503,20 +498,10 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   _body
-   ;; Closed so a file part smuggled under another part name is rejected; collection_id is the text field the
-   ;; frontend sends alongside the file.
-   {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params
-                                                 [:map {:closed true}
-                                                  ["file"
-                                                   [:map
-                                                    [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]
-                                                  ["collection_id" {:optional true} :string]]]]]
+   {:keys [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
-                :filename (get-in multipart-params ["file" :filename])
-                :file     (get-in multipart-params ["file" :tempfile])
+                :filename (:filename file)
+                :file     (:tempfile file)
                 :action   :metabase.upload/replace}))
 
 (defn- sync-schema-async!
@@ -535,10 +520,8 @@
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [table    (api/check-404 (t2/select-one :model/Table :id id))
-        database (api/check-404 (t2/select-one :model/Database
-                                               :id (:db_id table)
-                                               :router_database_id nil))]
+  (let [table    (api/check-404 (warehouse-schema-rest.db/table id))
+        database (api/check-404 (warehouse-schema-rest.db/non-destination-database (:db_id table)))]
     (api/check-403
      (perms/user-has-permission-for-table?
       api/*current-user-id*

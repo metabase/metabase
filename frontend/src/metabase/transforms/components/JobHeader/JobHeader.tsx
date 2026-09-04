@@ -62,6 +62,9 @@ export function JobHeader({
       py={0}
       breadcrumbs={
         <DataStudioBreadcrumbs>
+          <Link key="data-transformation" to={Urls.transformList()}>
+            {t`Data transformation`}
+          </Link>
           <Link key="transform-job-list" to={Urls.transformJobList()}>
             {t`Jobs`}
           </Link>

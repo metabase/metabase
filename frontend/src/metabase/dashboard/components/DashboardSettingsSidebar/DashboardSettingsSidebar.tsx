@@ -41,7 +41,6 @@ export function DashboardSettingsSidebar() {
         isOpen={state.caching}
         onClose={closeSidebar}
         onBack={() => close("caching")}
-        pt="md"
       />
     );
   }

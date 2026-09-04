@@ -5,7 +5,7 @@ import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import { resolveColorFromCssVariable } from "metabase/ui/utils/colors";
-import type { ResolvedGoalSegment } from "metabase/visualizations/lib/dynamic-goals";
+import type { ResolvedGoalSegment } from "metabase/viz-core";
 
 import {
   BASE_FONT_SIZE,

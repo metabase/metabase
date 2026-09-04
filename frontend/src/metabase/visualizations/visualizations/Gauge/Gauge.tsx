@@ -5,12 +5,12 @@ import { useCallback, useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { formatValue } from "metabase/value-formatting";
 import {
   GoalFailedState,
   GoalResolvingState,
 } from "metabase/visualizations/components/GoalResolutionState";
 import { useResolvedGoalSegments } from "metabase/visualizations/hooks/use-resolved-goal-segments";
-import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { GaugeArc } from "./GaugeArc";

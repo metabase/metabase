@@ -6,6 +6,7 @@
    [malli.error :as me]
    [malli.transform :as mtx]
    [medley.core :as m]
+   [metabase.models.db :as models.db]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -138,7 +139,7 @@
                                    (sanitize-row row)))]
     ;; Update the parent row if needed
     (when (or force-update? updates-needed?)
-      (t2/update! model (id-col row) (sanitize-row row-with-refs)))
+      (models.db/update-entity! model (id-col row) (sanitize-row row-with-refs)))
     ;; Handle non-ref nested models
     (when nested-specs
       (let [nested-without-refs (non-ref-nested-models nested-specs row)]
@@ -166,7 +167,7 @@
             (let [;; Process any ref-in-parent models first
                   parent-updates (handle-refs-in-parent! nil row nested-specs path)
                   row-with-refs  (merge row parent-updates)
-                  parent-id (t2/insert-returning-pk! model (sanitize-row row-with-refs))]
+                  parent-id (models.db/insert-entity-returning-pk! model (sanitize-row row-with-refs))]
               (log/debugf "%s created a new entity %s %s" (format-path path) model parent-id)
               ;; Only process non-ref nested models
               (let [nested-without-refs (non-ref-nested-models nested-specs row)]
@@ -179,11 +180,11 @@
         (do
           (log/tracef "%s no nested spec found, batch creating %d new rows of %s" (format-path path) (count to-create) model)
           (let [rows (map sanitize-row to-create)]
-            (t2/insert! model rows)))))
+            (models.db/insert-entities! model rows)))))
     (when (seq to-delete)
       ;; TODO: cascade deletes?
       (log/debugf "%s deleting %d rows with ids %s" (format-path path) (count to-delete) (str/join ", " (map id-col to-delete)))
-      (t2/delete! model id-col [:in (map id-col to-delete)]))
+      (models.db/delete-entities-with-ids! model id-col (map id-col to-delete)))
     (when (seq to-update)
       (log/tracef "%s Attempt updating %s rows of %s" (format-path path) (count to-update) model)
       (doseq [row to-update]
@@ -222,13 +223,13 @@
       (nil? new-data)
       (do
         (log/debugf "%s Deleting" (format-path (conj path existing-id)))
-        (t2/delete! model existing-id)
+        (models.db/delete-entity! model existing-id)
         (handle-nested! existing-data new-data existing-id)
         nil)
 
       ;; create
       (nil? existing-data)
-      (let [parent-id (t2/insert-returning-pk! model new-data-sanitized)
+      (let [parent-id (models.db/insert-entity-returning-pk! model new-data-sanitized)
             path      (conj path parent-id)]
         (log/debugf "%s Created a new entity %s %s" (format-path path) model parent-id)
         (handle-nested! nil new-data parent-id)
@@ -239,8 +240,8 @@
       (do
         (log/debugf "%s ID changed from %s to %s - deleting and recreating"
                     (format-path path) existing-id (id-col new-data))
-        (t2/delete! model existing-id)
-        (let [parent-id (t2/insert-returning-pk! model new-data-sanitized)
+        (models.db/delete-entity! model existing-id)
+        (let [parent-id (models.db/insert-entity-returning-pk! model new-data-sanitized)
               path      (conj path parent-id)]
           (log/debugf "%s Created a new entity %s %s" (format-path path) model parent-id)
           (handle-nested! nil new-data parent-id)
@@ -250,7 +251,7 @@
       (not= (compare-row new-data-sanitized) (compare-row existing-data-sanitized))
       (do
         (log/debugf "%s Updating" (format-path (conj path existing-id)))
-        (t2/update! model existing-id new-data-sanitized)
+        (models.db/update-entity! model existing-id new-data-sanitized)
         (handle-nested! existing-data new-data existing-id)
         existing-id)
 

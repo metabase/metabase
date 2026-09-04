@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupDatabaseEndpoints,
   setupFieldSearchValuesEndpoint,
   setupFieldsValuesEndpoints,
 } from "__support__/server-mocks";
@@ -62,6 +63,7 @@ function setup({
   const onBack = jest.fn();
 
   setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES, PRODUCT_VENDOR_VALUES]);
+  setupDatabaseEndpoints(database);
 
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [database] }),
@@ -254,7 +256,11 @@ describe("StringFilterPicker", () => {
       });
 
       await setOperator("Contains");
-      expect(screen.queryByLabelText("Case sensitive")).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(
+          screen.queryByLabelText("Case sensitive"),
+        ).not.toBeInTheDocument(),
+      );
     });
 
     it("should add a filter with multiple values", async () => {

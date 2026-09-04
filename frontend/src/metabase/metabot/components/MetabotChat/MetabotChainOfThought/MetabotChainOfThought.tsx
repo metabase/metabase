@@ -30,7 +30,7 @@ export const MetabotChainOfThought = ({
 }) => {
   const { open, toggle } = useAutoCollapseOnSettle(isStreaming);
   const now = useNow(isStreaming);
-  const preview = useMeteredLabel(latestPreviewLabel(message.steps));
+  const preview = useMeteredLabel(latestPreviewLabel(message.steps), !open);
 
   const renderableItems = buildDisplayItems(message.steps);
 
@@ -78,22 +78,13 @@ export const MetabotChainOfThought = ({
         onClick={toggle}
         data-testid="metabot-chain-of-thought-header"
       >
-        <Text
-          component="span"
-          className={cx(S.headerLabel, isStreaming && S.shimmer)}
-          c="currentColor"
-        >
+        <Text component="span" className={S.headerLabel} c="currentColor">
           {headerContent}
         </Text>
         <Icon
           name="chevronright"
           size={10}
-          className={cx(
-            S.chevron,
-            Animation.fadeIn,
-            isStreaming && S.chevronShimmer,
-            open && S.chevronOpen,
-          )}
+          className={cx(S.chevron, Animation.fadeIn, open && S.chevronOpen)}
         />
       </UnstyledButton>
       <Collapse in={open}>

@@ -1,10 +1,10 @@
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import {
   getUnansweredGoalEntitiesForValues,
   hasFailedGoalReferencesForValues,
   isDynamicGoalSetting,
   resolveGoalValue,
-} from "metabase/visualizations/lib/dynamic-goals";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import type { SingleSeries } from "metabase-types/api";
 import { isGoalStaticValue } from "metabase-types/guards";
 

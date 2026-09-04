@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import * as dataAppVirtualModules from "build-configs/embedding-sdk/constants/data-app-virtual-modules";
 
 import {
+  DATA_APP_BUILD_ID_HEADER,
   DATA_APP_BUNDLE_URL,
   DATA_APP_REBUILT_EVENT,
 } from "../constants/bundle";
@@ -71,6 +72,7 @@ export const loadDataAppVirtualModule = (
       `export const allowedHosts = ${JSON.stringify(allowedHosts)};`,
       `export const appSlug = ${JSON.stringify(appSlug)};`,
       `export const bundleUrl = ${JSON.stringify(DATA_APP_BUNDLE_URL)};`,
+      `export const buildIdHeader = ${JSON.stringify(DATA_APP_BUILD_ID_HEADER)};`,
       `export const rebuiltEvent = ${JSON.stringify(DATA_APP_REBUILT_EVENT)};`,
       `export const diagnosticsChangedEvent = ${JSON.stringify(DATA_APP_DIAGNOSTICS_CHANGED_EVENT)};`,
       `export const sdkVersion = ${JSON.stringify(readInstalledSdkVersion(process.cwd()))};`,

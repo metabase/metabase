@@ -2,8 +2,8 @@ import fetchMock from "fetch-mock";
 
 import { setupCardDataset } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import { isDynamicGoalSetting } from "metabase/visualizations/lib/dynamic-goals";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
+import { isDynamicGoalSetting } from "metabase/viz-core";
 import type { Card, DatasetData } from "metabase-types/api";
 import {
   createMockCard,
@@ -13,8 +13,8 @@ import {
 
 import { useResolvedGoalSettings } from "./use-resolved-goal-settings";
 
-jest.mock("metabase/visualizations/lib/dynamic-goals", () => ({
-  ...jest.requireActual("metabase/visualizations/lib/dynamic-goals"),
+jest.mock("metabase/viz-core", () => ({
+  ...jest.requireActual("metabase/viz-core"),
   isDynamicGoalSetting: jest.fn(() => false),
 }));
 

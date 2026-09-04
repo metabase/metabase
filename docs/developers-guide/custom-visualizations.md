@@ -420,9 +420,9 @@ For uploading and managing plugins, see [Custom visualizations](../questions/vis
 
 ## Versioning and compatibility
 
-The Custom Visualizations SDK works with Metabase 1.62 and newer. Declare the versions your plugin supports with `metabase.version` in `metabase-plugin.json`, using [npm semver range](https://github.com/npm/node-semver#ranges) syntax — for example, `">=1.62 <1.64"`. Keep the range closed on both ends: an open-ended range like `">=1.62.0"` claims compatibility with future Metabase versions your plugin has never run against. Write the range against the full version number (`">=1.62 <1.64"`), not a bare major version (`">=62 <64"`), which won't match.
+Metabase runs two compatibility checks on a plugin, and neither one blocks anything (the plugin uploads and runs either way). When a check fails, Metabase shows a [compatibility warning](../questions/visualizations/custom.md#compatibility-warnings-are-heads-ups-not-errors) on the **Manage visualizations** page.
 
-If a plugin's declared range doesn't include the Metabase version it's installed on — at upload time, or later after a Metabase upgrade — the plugin still uploads and runs, and Metabase shows a warning on the **Manage visualizations** page.
+The second check is the Metabase version, which you declare yourself. Set `metabase.version` in `metabase-plugin.json` to an [npm semver range](https://github.com/npm/node-semver#ranges) like `">=1.62 <1.64"`, closed on both ends. Metabase versions are [license.major.minor](https://www.metabase.com/version-support), so include the license prefix: a bare `">=62 <64"` won't match anything.
 
 ## Custom visualization limitations
 
@@ -437,15 +437,15 @@ Metabase runs plugin code in an isolated sandbox, so a visualization works only 
 - **Navigation and the rest of the app**: history changes, the host page's URL and referrer, and any DOM outside the plugin's own container.
 - **Unsafe DOM and timing APIs**: `document.write`, `execCommand`, constructable stylesheets, raw HTML parsers (`DOMParser`, `setHTMLUnsafe`, `XSLTProcessor`), and resource-timing APIs that expose other requests the page has made.
 
-### When embedding, custom visualizations are only available in the SDK
+### Custom visualizations only work in authenticated embeds
 
-The [Modular embedding SDK](../embedding/sdk/introduction.md) renders custom visualizations when you allowlist them with the [`allowedCustomVisualizations` prop](../embedding/sdk/config.md#custom-visualizations) on `MetabaseProvider`.
+[Modular embeds](../embedding/modular-embedding.md) can render custom visualizations when you allowlist them with the `allowedCustomVisualizations` setting, both with web components and with the [React SDK](../embedding/sdk/introduction.md). See [Custom visualizations in embeds](../embedding/custom-visualizations.md).
 
-Other embedding types don't render custom visualizations. In [modular embedding](../embedding/modular-embedding.md) with web components and [public links](../embedding/public-links.md), any card that uses a custom visualization falls back to the default visualization for the query's results.
+In [guest embeds](../embedding/introduction.md) and [public links](../embedding/public-links.md), any question that uses a custom visualization falls back to the default visualization for the query's results.
 
 ### Custom visualizations don't render in exports and subscriptions
 
-Static renders—like charts in alerts or dashboard subscriptions—fall back to a default visualization for the card's data shape.
+Static renders (like charts in alerts or dashboard subscriptions) fall back to a default visualization for the query's data shape.
 
 ## Example plugins
 

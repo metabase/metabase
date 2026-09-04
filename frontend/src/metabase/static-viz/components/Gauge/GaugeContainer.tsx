@@ -2,18 +2,18 @@ import { CHAR_SIZES_FONT_WEIGHT } from "metabase/static-viz/constants/char-sizes
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
 import type { ColorGetter } from "metabase/ui/colors/types";
-import {
-  type GoalData,
-  getUnansweredGoalEntities,
-  hasFailedGoalReferences,
-  resolveGoalSegments,
-} from "metabase/visualizations/lib/dynamic-goals";
-import { truncateText } from "metabase/visualizations/lib/text";
 import { DEFAULT_GAUGE_RANGE } from "metabase/visualizations/visualizations/Gauge/constants";
 import {
   getSegmentsRange,
   getValue,
 } from "metabase/visualizations/visualizations/Gauge/utils";
+import {
+  type GoalData,
+  getUnansweredGoalEntities,
+  hasFailedGoalReferences,
+  resolveGoalSegments,
+} from "metabase/viz-core";
+import { truncateText } from "metabase/viz-core";
 
 import Gauge from "./Gauge";
 import {

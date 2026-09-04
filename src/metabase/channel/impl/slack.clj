@@ -16,6 +16,11 @@
    [metabase.util.malli :as mu]
    [metabase.util.markdown :as markdown]))
 
+(def SlackDetails
+  "Schema for the connection `:details` of a `:channel/slack` channel."
+  [:map {:closed true}
+   [:channel :string]])
+
 (defn- notification-recipient->channel
   "Returns the Slack channel target for a raw-value notification recipient.
   Prefers the immutable `:channel_id` (e.g. \"C0ABC123\") over the display `:value`
@@ -77,7 +82,7 @@
 
 (defn- text->markdown-section
   [text]
-  (let [mrkdwn (markdown/process-markdown text :slack)]
+  (let [mrkdwn (markdown/process-markdown text :slack (system/site-url))]
     (when (not (str/blank? mrkdwn))
       {:type "section"
        :text {:type "mrkdwn"

@@ -3,11 +3,11 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,7 +19,7 @@
   [{:keys [table_id model_id metric_id query_id report_id]} memory]
   (cond
     table_id
-    (let [table (t2/select-one :model/Table :id table_id)]
+    (let [table (metabot.db/table table_id)]
       (when-not table
         (throw (ex-info (str "Table not found with ID: " table_id)
                         {:agent-error? true :table-id table_id})))
@@ -27,7 +27,7 @@
        :path (str "/auto/dashboard/table/" table_id)})
 
     model_id
-    (let [model (t2/select-one :model/Card :id model_id :type :model)]
+    (let [model (metabot.db/card-of-type model_id :model)]
       (when-not model
         (throw (ex-info (str "Model not found with ID: " model_id)
                         {:agent-error? true :model-id model_id})))
@@ -35,7 +35,7 @@
        :path (str "/auto/dashboard/model/" model_id)})
 
     metric_id
-    (let [metric (t2/select-one :model/Card :id metric_id :type :metric)]
+    (let [metric (metabot.db/card-of-type metric_id :metric)]
       (when-not metric
         (throw (ex-info (str "Metric not found with ID: " metric_id)
                         {:agent-error? true :metric-id metric_id})))
@@ -43,7 +43,7 @@
        :path (str "/auto/dashboard/metric/" metric_id)})
 
     report_id
-    (let [report (t2/select-one :model/Card :id report_id :type :question)]
+    (let [report (metabot.db/card-of-type report_id :question)]
       (when-not report
         (throw (ex-info (str "Report/Question not found with ID: " report_id)
                         {:agent-error? true :report-id report_id})))

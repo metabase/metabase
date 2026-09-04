@@ -1,20 +1,10 @@
-import { getUnansweredGoalEntitiesForValues } from "metabase/visualizations/lib/dynamic-goals";
-import type { DatasetData, DatasetQuery, GoalValue } from "metabase-types/api";
+import {
+  type ChartSettingGoalValueProps,
+  getUnansweredGoalEntitiesForValues,
+} from "metabase/viz-core";
 
 import { ChartSettingInputNumeric } from "./ChartSettingInputNumeric";
 import { GoalValueInput, StaticGoalValueInput } from "./GoalValueInput";
-
-export type ChartSettingGoalValueProps = {
-  id: string;
-  value: GoalValue | null | undefined;
-  onChange: (value: GoalValue | null | undefined) => void;
-  data?: DatasetData;
-  datasetQuery?: DatasetQuery;
-  // false keeps the plain numeric input of displays that don't resolve references yet
-  isDynamic?: boolean;
-  placeholder?: string;
-  showSelfColumns?: boolean;
-};
 
 export const ChartSettingGoalValue = ({
   id,

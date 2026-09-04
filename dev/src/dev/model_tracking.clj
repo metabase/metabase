@@ -40,7 +40,7 @@
                                (= b :id) 1
                                :else (compare a b)))) m))
 
-#_:clj-kondo/ignore ;; printlns
+#_{:clj-kondo/ignore [:discouraged-var]} ;; printlns
 (defn on-change
   "When a change occurred, execute this function.
 
