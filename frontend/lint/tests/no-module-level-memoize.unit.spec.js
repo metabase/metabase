@@ -1,6 +1,6 @@
 import { RuleTester } from "eslint";
 
-import rule from "../eslint-plugin-metabase/rules/no-module-level-underscore-memoize";
+import rule from "../eslint-plugin-metabase/rules/no-module-level-memoize";
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -11,9 +11,11 @@ const ruleTester = new RuleTester({
 });
 
 const error = { messageId: "noModuleLevelUnderscoreMemoize" };
+const utilError = { messageId: "noModuleLevelUtilMemoize" };
+const UTIL_FILE = "/repo/frontend/src/metabase/utils/thing.ts";
 const FILE = "/repo/frontend/src/metabase/thing/new-file.ts";
 
-ruleTester.run("no-module-level-underscore-memoize", rule, {
+ruleTester.run("no-module-level-memoize", rule, {
   valid: [
     {
       name: "inside a plain function",
@@ -68,10 +70,28 @@ ruleTester.run("no-module-level-underscore-memoize", rule, {
       `,
     },
     {
-      name: "memoize from our own util at module scope",
+      name: "our own util inside a function",
       filename: FILE,
       code: `
         import { memoize } from "metabase/utils/memoize";
+        export function build() {
+          return memoize((x) => x);
+        }
+      `,
+    },
+    {
+      name: "memoizeClass at module scope is keyed on the instance",
+      filename: FILE,
+      code: `
+        import { memoizeClass } from "metabase/utils/memoize";
+        export const Wrapped = memoizeClass("render")(Thing);
+      `,
+    },
+    {
+      name: "an unrelated module that happens to be named memoize",
+      filename: "/repo/frontend/src/metabase/other/place.ts",
+      code: `
+        import { memoize } from "./memoize";
         export const f = memoize((x) => x);
       `,
     },
@@ -93,6 +113,35 @@ ruleTester.run("no-module-level-underscore-memoize", rule, {
     },
   ],
   invalid: [
+    {
+      name: "our own util at module scope",
+      filename: FILE,
+      code: `
+        import { memoize } from "metabase/utils/memoize";
+        export const f = memoize((x) => x);
+      `,
+      errors: [utilError],
+    },
+    {
+      name: "our own util imported relatively from inside utils",
+      filename: UTIL_FILE,
+      code: `
+        import { memoize } from "./memoize";
+        export const f = memoize((x) => x);
+      `,
+      errors: [utilError],
+    },
+    {
+      name: "both sources in one file",
+      filename: FILE,
+      code: `
+        import _ from "underscore";
+        import { memoize } from "metabase/utils/memoize";
+        export const f = _.memoize((x) => x);
+        export const g = memoize((y) => y);
+      `,
+      errors: [error, utilError],
+    },
     {
       name: "module scope namespace call",
       filename: FILE,
