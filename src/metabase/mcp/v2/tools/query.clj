@@ -244,7 +244,7 @@
    [:query_handle {:optional true}
     [:maybe [:string {:min 1 :description "A query_handle from a previous call — re-validates and re-runs the exact stored query. Exactly one of query | query_handle | cursor."}]]]
    [:cursor {:optional true}
-    [:maybe [:string {:min 1 :description "The next_cursor from a previous truncated response — fetches the next page. Pass it alone. Exactly one of query | query_handle | cursor."}]]]
+    [:maybe [:string {:min 1 :description "The next_cursor from a previous truncated response — fetches the next page. Exactly one of query | query_handle | cursor, but row_limit may accompany it and sets this page's size."}]]]
    [:prompt {:optional true}
     [:maybe [:string {:min 1 :max 10000 :description "The user's original request, stored with the minted query_handle and carried along its cursor pages."}]]]
    [:validate_only {:optional true}

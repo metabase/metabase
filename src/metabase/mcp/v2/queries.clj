@@ -153,9 +153,18 @@
 
 (defn check-execute-sql-enabled!
   "Throw a 403 unless the instance-level `mcp-execute-sql-enabled` kill switch is on. `subject`
-   opens the refusal sentence, naming what the instance refused. Every v2 path that runs or stores
-   raw SQL consults this one gate — a switch an admin turned off must not be reachable by a
-   second route."
+   opens the refusal sentence, naming what the instance refused.
+
+   The gate covers every v2 path on which the AGENT AUTHORS the SQL — `execute_sql` itself, and
+   `question_write` / `transform_write` storing agent-authored native SQL — so a switch an admin
+   turned off is not reachable by a second route to the same capability.
+
+   It deliberately does not cover running SQL that already exists as a saved, permission-checked
+   artifact: `run_saved_question` executes a stored native card without consulting it, as does
+   `execute_query` over a `:source-card` naming one. That matches the setting's own scope —
+   \"Whether the MCP `execute_sql` tool is available\" — and the read check on the card is what
+   guards those. Turning the switch off removes the agent's ability to write SQL, not the
+   instance's ability to run questions it already has."
   [subject]
   (when-not (agent-api.settings/mcp-execute-sql-enabled)
     (throw (ex-info (format (str "%s is disabled on this instance — an admin can re-enable it "
