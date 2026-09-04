@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.core
   (:require
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.settings :as settings]
@@ -334,7 +335,7 @@
   Unlike [[collections/check-non-remote-synced-dependencies]] this reports every offending collection
   rather than throwing on the first, so an admin sees the whole picture in one pass. Realized eagerly:
   eligibility only reads correctly against the pending updates, so nothing may be left for
-  [[describe-dependency-failure]] to force after the transaction rolls back."
+  [[describe-required-syncs]] to force after the transaction rolls back."
   [collections-to-sync]
   (vec
    (for [collection collections-to-sync
@@ -354,10 +355,41 @@
          :when (seq dependents)]
      {:collection collection :dependents (vec dependents)})))
 
-(defn- describe-dependency-failure
-  [{:keys [collection dependencies]}]
-  {:collection   (select-keys collection [:id :name])
-   :dependencies (describe-dependencies dependencies)})
+(defn- group-remedy
+  "The remedy an entry is keyed on. A `:none` remedy carries the collection the dependency lives in —
+  the only one there is to name — keeping that key's own distinction, where nil is the root collection
+  and an absent key is a collection we could not resolve."
+  [{:keys [remedy] :as described}]
+  (if (= :none (:type remedy))
+    (cond-> remedy
+      (contains? described :collection) (assoc :collection (:collection described)))
+    remedy))
+
+(defn- remedy-syncable?
+  "Whether an admin can switch this remedy on from the settings list. A personal collection is named so
+  the refusal makes sense, but it can never be synced."
+  [{:keys [type collection]}]
+  (boolean (and (= :collection type) (not (:personal collection)))))
+
+(defn- describe-required-syncs
+  "The refusal as clients render it: one entry per collection an admin would act on, carrying the
+  dependencies it covers and the selected collections it unblocks. Grouping by remedy rather than by
+  selection is what collapses a dependency that blocks two selected collections into a single entry."
+  [failures]
+  (let [entries   (vec (for [{:keys [collection dependencies]} failures
+                             described (describe-dependencies dependencies)]
+                         {:remedy (group-remedy described)
+                          :blocks (select-keys collection [:id :name])
+                          :dep    (dissoc described :remedy)}))
+        by-remedy (group-by :remedy entries)]
+    ;; Ordered by first appearance rather than by `group-by`, whose order isn't guaranteed.
+    (mapv (fn [remedy]
+            (let [group (get by-remedy remedy)]
+              {:remedy       remedy
+               :syncable     (remedy-syncable? remedy)
+               :blocks       (vec (distinct (map :blocks group)))
+               :dependencies (into [] (m/distinct-by (juxt :model :id)) (map :dep group))}))
+          (distinct (map :remedy entries)))))
 
 (defn- describe-dependent-failure
   [{:keys [collection dependents]}]
@@ -375,7 +407,7 @@
       (ex-info (ex-message e)
                {:status-code 400
                 :error_code  "unsynced-dependencies"
-                :errors      {:collections (mapv describe-dependency-failure unsynced-dependencies)}})
+                :errors      {:required (describe-required-syncs unsynced-dependencies)}})
 
       remote-synced-dependents
       (ex-info (ex-message e)

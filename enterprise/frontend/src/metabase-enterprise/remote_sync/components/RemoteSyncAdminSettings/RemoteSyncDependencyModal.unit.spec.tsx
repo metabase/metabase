@@ -6,6 +6,7 @@ import { screen, waitFor, within } from "__support__/ui";
 import type {
   RemoteSyncDependencyErrorResponse,
   RemoteSyncIneligibleDependency,
+  RemoteSyncRequiredSync,
 } from "metabase-types/api";
 import { createMockCollectionItemFromCollection } from "metabase-types/api/mocks";
 
@@ -21,70 +22,64 @@ const SYNCABLE_DEPENDENCY: RemoteSyncIneligibleDependency = {
   name: "Seats over time",
   collection: REQUIRED_COLLECTION,
   display: "bar",
-  remedy: {
-    type: "collection",
-    collection: { ...REQUIRED_COLLECTION, type: null, personal: false },
-  },
   used_by: [{ model: "dashboard", id: 7, name: "Q3 Review" }],
 };
 
-const PERSONAL_DEPENDENCY: RemoteSyncIneligibleDependency = {
-  model: "card",
-  id: 417,
-  name: "Draft",
-  collection: REQUIRED_COLLECTION,
-  remedy: {
+const requiredSync = (
+  remedy: RemoteSyncRequiredSync["remedy"],
+  syncable = false,
+  dependencies = [SYNCABLE_DEPENDENCY],
+): RemoteSyncRequiredSync => ({
+  remedy,
+  syncable,
+  blocks: [BLOCKED_COLLECTION],
+  dependencies,
+});
+
+const SYNCABLE_REQUIRED = requiredSync(
+  {
     type: "collection",
-    collection: { id: 5, name: "Nick's stuff", type: null, personal: true },
+    collection: { ...REQUIRED_COLLECTION, type: null, personal: false },
   },
-  used_by: [],
-};
+  true,
+);
+
+const PERSONAL_REQUIRED = requiredSync({
+  type: "collection",
+  collection: { id: 5, name: "Nick's stuff", type: null, personal: true },
+});
 
 // `collection: null` is the root collection
-const ROOT_DEPENDENCY: RemoteSyncIneligibleDependency = {
-  model: "card",
-  id: 512,
-  name: "Orphaned",
-  collection: null,
-  remedy: { type: "none" },
-  used_by: [],
-};
+const ROOT_REQUIRED = requiredSync({ type: "none", collection: null });
 
+// The Library is an ordinary collection, so a snippet points at it like any other remedy.
 const LIBRARY_COLLECTION = { id: 2, name: "Library" };
-const LIBRARY_DEPENDENCY: RemoteSyncIneligibleDependency = {
-  model: "snippet",
-  id: 3,
-  name: "active_users",
-  remedy: {
+const LIBRARY_REQUIRED = requiredSync(
+  {
     type: "collection",
     collection: { ...LIBRARY_COLLECTION, type: "library", personal: false },
   },
-  used_by: [],
-};
+  true,
+  [{ model: "snippet", id: 3, name: "active_users", used_by: [] }],
+);
 
 // ...unless the instance has no Library yet, leaving nothing to switch on.
-const SNIPPET_DEPENDENCY: RemoteSyncIneligibleDependency = {
-  model: "snippet",
-  id: 4,
-  name: "monthly_cutoff",
-  remedy: { type: "library" },
-  used_by: [],
-};
+const LIBRARY_MISSING_REQUIRED = requiredSync({ type: "library" }, false, [
+  { model: "snippet", id: 4, name: "monthly_cutoff", used_by: [] },
+]);
 
 const createRefusal = (
-  ...dependencies: RemoteSyncIneligibleDependency[]
+  ...required: RemoteSyncRequiredSync[]
 ): RemoteSyncDependencyErrorResponse => ({
   error: "Uses content that is not remote synced.",
   error_code: "unsynced-dependencies",
-  errors: {
-    collections: [{ collection: BLOCKED_COLLECTION, dependencies }],
-  },
+  errors: { required },
 });
 
 // The first save is refused with `body`; later ones succeed unless `refuseRetry`, so the second PUT
 // shows what the modal staged.
 const setupRefusedSave = async ({
-  body = createRefusal(SYNCABLE_DEPENDENCY),
+  body = createRefusal(SYNCABLE_REQUIRED),
   refuseRetry = false,
 }: {
   body?: RemoteSyncDependencyErrorResponse;
@@ -265,21 +260,21 @@ describe("RemoteSyncDependencyModal", () => {
   it.each([
     [
       "personal",
-      PERSONAL_DEPENDENCY,
+      PERSONAL_REQUIRED,
       "Nick's stuff",
       /saved in a personal collection/,
     ],
     [
       "root",
-      ROOT_DEPENDENCY,
+      ROOT_REQUIRED,
       "Our analytics",
       /can.t be synced where it currently lives/,
     ],
   ])(
     "explains a %s blocker and lists it beside the collection that can be switched on",
-    async (_label, dependency, unsyncableName, message) => {
+    async (_label, requiredEntry, unsyncableName, message) => {
       await setupRefusedSave({
-        body: createRefusal(SYNCABLE_DEPENDENCY, dependency),
+        body: createRefusal(SYNCABLE_REQUIRED, requiredEntry),
       });
 
       const modal = await screen.findByRole("dialog");
@@ -296,7 +291,7 @@ describe("RemoteSyncDependencyModal", () => {
   );
 
   it("offers the Library as a switchable row, like any other collection", async () => {
-    await setupRefusedSave({ body: createRefusal(LIBRARY_DEPENDENCY) });
+    await setupRefusedSave({ body: createRefusal(LIBRARY_REQUIRED) });
 
     const modal = await screen.findByRole("dialog");
     await userEvent.click(
@@ -317,22 +312,17 @@ describe("RemoteSyncDependencyModal", () => {
   });
 
   it.each([
-    [
-      "a personal collection",
-      PERSONAL_DEPENDENCY,
-      /Nick's stuff/,
-      "person icon",
-    ],
+    ["a personal collection", PERSONAL_REQUIRED, /Nick's stuff/, "person icon"],
     [
       "the Library",
-      LIBRARY_DEPENDENCY,
+      LIBRARY_REQUIRED,
       new RegExp(LIBRARY_COLLECTION.name),
       "repository icon",
     ],
   ])(
     "icons %s by what kind of collection it is",
-    async (_label, dependency, name, expectedIcon) => {
-      await setupRefusedSave({ body: createRefusal(dependency) });
+    async (_label, entry, name, expectedIcon) => {
+      await setupRefusedSave({ body: createRefusal(entry) });
 
       const modal = await screen.findByRole("dialog");
       const row = within(modal).getByRole("button", { name });
@@ -345,7 +335,7 @@ describe("RemoteSyncDependencyModal", () => {
   );
 
   it("explains a Library blocker with nothing to switch on, when there is no Library yet", async () => {
-    await setupRefusedSave({ body: createRefusal(SNIPPET_DEPENDENCY) });
+    await setupRefusedSave({ body: createRefusal(LIBRARY_MISSING_REQUIRED) });
 
     const modal = await screen.findByRole("dialog");
     expect(

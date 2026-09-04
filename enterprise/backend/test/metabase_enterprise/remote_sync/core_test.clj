@@ -100,16 +100,20 @@
       (let [ex (is (thrown? clojure.lang.ExceptionInfo
                             (core/bulk-set-remote-sync {synced-id true})))]
         (is (=? {:status-code 400
-                 :errors      {:collections [{:collection   {:id synced-id :name "Synced"}
-                                              :dependencies [{:model      "card"
-                                                              :id         source-card-id
-                                                              :name       "Source Card"
-                                                              :collection {:id regular-id :name "Regular"}
-                                                              :remedy     {:type       :collection
-                                                                           :collection {:id       regular-id
-                                                                                        :name     "Regular"
-                                                                                        :personal false}}}]}]}}
-                (ex-data ex)))))))
+                 :errors      {:required [{:remedy       {:type       :collection
+                                                          :collection {:id       regular-id
+                                                                       :name     "Regular"
+                                                                       :personal false}}
+                                           :syncable     true
+                                           :blocks       [{:id synced-id :name "Synced"}]
+                                           :dependencies [{:model      "card"
+                                                           :id         source-card-id
+                                                           :name       "Source Card"
+                                                           :collection {:id regular-id :name "Regular"}}]}]}}
+                (ex-data ex)))
+        (testing "the remedy is the entry's own, not repeated on every dependency under it"
+          (is (not (contains? (get-in (ex-data ex) [:errors :required 0 :dependencies 0])
+                              :remedy))))))))
 
 (deftest bulk-set-remote-sync-dependency-names-what-uses-it-test
   (testing "each dependency names the entity that references it, not only the collection it lives in"
@@ -125,10 +129,10 @@
                                                         :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
       (let [ex (is (thrown? clojure.lang.ExceptionInfo
                             (core/bulk-set-remote-sync {synced-id true})))]
-        (is (=? {:errors {:collections [{:dependencies [{:id      source-card-id
-                                                         :used_by [{:model "card"
-                                                                    :id    dependent-card-id
-                                                                    :name  "Dependent Card"}]}]}]}}
+        (is (=? {:errors {:required [{:dependencies [{:id      source-card-id
+                                                      :used_by [{:model "card"
+                                                                 :id    dependent-card-id
+                                                                 :name  "Dependent Card"}]}]}]}}
                 (ex-data ex)))))))
 
 (deftest bulk-set-remote-sync-dependency-used-by-drops-nested-models-test
@@ -143,7 +147,7 @@
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id source-card-id}]
       (let [ex    (is (thrown? clojure.lang.ExceptionInfo
                                (core/bulk-set-remote-sync {synced-id true})))
-            [dep] (get-in (ex-data ex) [:errors :collections 0 :dependencies])]
+            [dep] (get-in (ex-data ex) [:errors :required 0 :dependencies])]
         (is (= source-card-id (:id dep)))
         (is (= [{:model "dashboard" :id dashboard-id :name "Revenue"}] (:used_by dep)))))))
 
@@ -165,8 +169,8 @@
                                       :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
           (let [ex (is (thrown? clojure.lang.ExceptionInfo
                                 (core/bulk-set-remote-sync {synced-id true})))]
-            (is (=? {:errors {:collections [{:dependencies [{:model expected
-                                                             :id    source-card-id}]}]}}
+            (is (=? {:errors {:required [{:dependencies [{:model expected
+                                                          :id    source-card-id}]}]}}
                     (ex-data ex)))))))))
 
 (deftest bulk-set-remote-sync-dependency-remedy-is-top-level-ancestor-test
@@ -186,10 +190,11 @@
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
       (let [ex (is (thrown? clojure.lang.ExceptionInfo
                             (core/bulk-set-remote-sync {synced-id true})))]
-        (is (=? {:errors {:collections [{:dependencies [{:id         source-card-id
-                                                         :collection {:id child-id :name "Nested"}
-                                                         :remedy     {:type       :collection
-                                                                      :collection {:id root-id :name "Root Regular"}}}]}]}}
+        (is (=? {:errors {:required [{:remedy       {:type       :collection
+                                                     :collection {:id root-id :name "Root Regular"}}
+                                      ;; The dependency keeps the sub-collection it actually lives in.
+                                      :dependencies [{:id         source-card-id
+                                                      :collection {:id child-id :name "Nested"}}]}]}}
                 (ex-data ex)))))))
 
 (deftest bulk-set-remote-sync-root-dependency-collection-is-explicit-nil-test
@@ -203,14 +208,15 @@
                                   :collection_id synced-id
                                   :database_id (mt/id)
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
-      (let [ex    (is (thrown? clojure.lang.ExceptionInfo
-                               (core/bulk-set-remote-sync {synced-id true})))
-            [dep] (get-in (ex-data ex) [:errors :collections 0 :dependencies])]
-        (is (= source-card-id (:id dep)))
-        (is (= {:type :none} (:remedy dep)))
+      (let [ex         (is (thrown? clojure.lang.ExceptionInfo
+                                    (core/bulk-set-remote-sync {synced-id true})))
+            [required] (get-in (ex-data ex) [:errors :required])]
+        (is (= [source-card-id] (map :id (:dependencies required))))
+        (is (false? (:syncable required)))
+        (testing "the entry is keyed on where the content lives, since there is no remedy to name"
+          (is (= {:type :none :collection nil} (:remedy required))))
         (testing "the key is present and nil, so clients can tell root from unresolvable"
-          (is (contains? dep :collection))
-          (is (nil? (:collection dep))))))))
+          (is (contains? (:remedy required) :collection)))))))
 
 (deftest bulk-set-remote-sync-snippet-dependency-remedy-is-library-test
   (testing "a snippet dependency names the Library collection, which an admin switches on like any other"
@@ -232,16 +238,16 @@
                                                                         :id           (str (random-uuid))}}})}]
           (let [ex (is (thrown? clojure.lang.ExceptionInfo
                                 (core/bulk-set-remote-sync {synced-id true})))]
-            (is (=? {:errors {:collections [{:dependencies [{:model  "snippet"
-                                                             :id     snippet-id
-                                                             :name   "active_users"
-                                                             ;; The collection `type` is what lets clients
-                                                             ;; give the Library its own icon.
-                                                             :remedy {:type       :collection
-                                                                      :collection {:id       (:id library)
-                                                                                   :name     (:name library)
-                                                                                   :type     "library"
-                                                                                   :personal false}}}]}]}}
+            ;; The collection `type` is what lets clients give the Library its own icon.
+            (is (=? {:errors {:required [{:remedy       {:type       :collection
+                                                         :collection {:id       (:id library)
+                                                                      :name     (:name library)
+                                                                      :type     "library"
+                                                                      :personal false}}
+                                          :syncable     true
+                                          :dependencies [{:model "snippet"
+                                                          :id    snippet-id
+                                                          :name  "active_users"}]}]}}
                     (ex-data ex)))))))))
 
 (deftest bulk-set-remote-sync-dependency-remedy-carries-collection-type-test
@@ -261,10 +267,10 @@
                                       :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
           (let [ex (is (thrown? clojure.lang.ExceptionInfo
                                 (core/bulk-set-remote-sync {synced-id true})))]
-            (is (=? {:errors {:collections [{:dependencies [{:id     source-card-id
-                                                             :remedy {:type       :collection
-                                                                      :collection {:id   (:id library)
-                                                                                   :type "library"}}}]}]}}
+            (is (=? {:errors {:required [{:remedy       {:type       :collection
+                                                         :collection {:id   (:id library)
+                                                                      :type "library"}}
+                                          :dependencies [{:id source-card-id}]}]}}
                     (ex-data ex)))))))))
 
 (defn- link-to-dashboard-dashcard
@@ -277,9 +283,11 @@
                                              :targetId target-id}}})
 
 (defn- reported-dependencies
-  "The `[model id]` pairs a refused sync reports for its first failing collection."
+  "The `[model id]` pairs a refused sync reports, across every required sync it names."
   [ex]
-  (set (map (juxt :model :id) (get-in (ex-data ex) [:errors :collections 0 :dependencies]))))
+  (set (for [required (get-in (ex-data ex) [:errors :required])
+             dep      (:dependencies required)]
+         [(:model dep) (:id dep)])))
 
 (deftest bulk-set-remote-sync-dependency-prunes-the-contents-of-a-linked-dashboard-test
   (testing "a dashboard reached by click behaviour is reported alone — syncing its collection covers the cards it holds"
@@ -315,11 +323,12 @@
       (let [ex (is (thrown? clojure.lang.ExceptionInfo
                             (core/bulk-set-remote-sync {synced-id true})))]
         (is (= #{["dashboard" linked-id] ["card" held-card-id]} (reported-dependencies ex)))
-        (testing "each names the collection that actually covers it"
-          (is (=? {"Regular" {:type :collection}
-                   "Other"   {:type :collection}}
-                  (into {} (for [{:keys [remedy]} (get-in (ex-data ex) [:errors :collections 0 :dependencies])]
-                             [(get-in remedy [:collection :name]) remedy])))))))))
+        (testing "each gets its own entry, naming the collection that actually covers it"
+          (is (= {"Regular" ["dashboard" linked-id]
+                  "Other"   ["card" held-card-id]}
+                 (into {} (for [{:keys [remedy dependencies]} (get-in (ex-data ex) [:errors :required])]
+                            [(get-in remedy [:collection :name])
+                             (first (map (juxt :model :id) dependencies))])))))))))
 
 (deftest bulk-set-remote-sync-dependency-pruning-keeps-a-mutually-linked-pair-reachable-test
   (testing "dashboards that link to each other don't prune each other away, leaving nothing to report"
@@ -336,8 +345,8 @@
         ;; Only `First` is reached from the synced collection, so only it survives — but something must.
         (is (= #{["dashboard" first-id]} (reported-dependencies ex)))))))
 
-(deftest bulk-set-remote-sync-reports-every-failing-collection-test
-  (testing "every collection with unsynced dependencies is reported, not just the first to fail"
+(deftest bulk-set-remote-sync-reports-every-blocked-collection-test
+  (testing "one entry covers both selected collections it unblocks, rather than repeating per selection"
     (mt/with-temp [:model/Collection {synced-a-id :id} {:name "Synced A" :location "/" :is_remote_synced false}
                    :model/Collection {synced-b-id :id} {:name "Synced B" :location "/" :is_remote_synced false}
                    :model/Collection {regular-id :id} {:name "Regular" :location "/" :is_remote_synced false}
@@ -353,10 +362,14 @@
                                   :collection_id synced-b-id
                                   :database_id (mt/id)
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
-      (let [ex (is (thrown? clojure.lang.ExceptionInfo
-                            (core/bulk-set-remote-sync {synced-a-id true synced-b-id true})))]
-        (is (= #{"Synced A" "Synced B"}
-               (into #{} (map (comp :name :collection)) (get-in (ex-data ex) [:errors :collections]))))))))
+      (let [ex         (is (thrown? clojure.lang.ExceptionInfo
+                                    (core/bulk-set-remote-sync {synced-a-id true synced-b-id true})))
+            [required] (get-in (ex-data ex) [:errors :required])]
+        ;; Both selections resolve to the same remedy, so it is offered once and names what it unblocks.
+        (is (= 1 (count (get-in (ex-data ex) [:errors :required]))))
+        (is (= #{"Synced A" "Synced B"} (into #{} (map :name) (:blocks required))))
+        (testing "the shared dependency is listed once, not once per selection"
+          (is (= [source-card-id] (map :id (:dependencies required)))))))))
 
 (deftest bulk-set-remote-sync-dependent-failure-is-structured-test
   (testing "disabling a collection something still depends on fails with a structured payload, not a bare message"

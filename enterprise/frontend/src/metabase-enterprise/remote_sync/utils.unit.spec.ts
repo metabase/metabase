@@ -1,6 +1,7 @@
 import type {
-  RemoteSyncDependencyFailure,
+  RemoteSyncDependencyRemedy,
   RemoteSyncIneligibleDependency,
+  RemoteSyncRequiredSync,
 } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
@@ -8,8 +9,8 @@ import {
   buildCollectionMap,
   getBlockedReason,
   getCollectionPathSegments,
-  getRequiredCollectionRows,
-  getRequiredCollections,
+  getListedRequiredSyncs,
+  getRequiredSyncRow,
   isTableChildModel,
 } from "./utils";
 
@@ -227,168 +228,39 @@ describe("remote_sync utils", () => {
   });
 
   describe("unsynced dependency failures", () => {
-    // Two blocked collections whose dependencies resolve to the same remedy collection, plus a
-    // snippet (Library remedy) and a dependency with no actionable remedy.
-    const FAILURES: RemoteSyncDependencyFailure[] = [
-      {
-        collection: { id: 14, name: "Marketing" },
-        dependencies: [
-          {
-            model: "card",
-            id: 416,
-            name: "Seats over time",
-            collection: { id: 7, name: "Finance" },
-            remedy: {
-              type: "collection",
-              collection: {
-                id: 7,
-                name: "Finance",
-                type: null,
-                personal: false,
-              },
-            },
-            used_by: [],
-          },
-          {
-            model: "snippet",
-            id: 3,
-            name: "active_users",
-            remedy: { type: "library" },
-            used_by: [],
-          },
-        ],
-      },
-      {
-        collection: { id: 22, name: "Ops" },
-        dependencies: [
-          {
-            model: "dashboard",
-            id: 91,
-            name: "Weekly review",
-            collection: { id: 9, name: "Nested" },
-            // Same top-level remedy as the card above, reached from a different collection.
-            remedy: {
-              type: "collection",
-              collection: {
-                id: 7,
-                name: "Finance",
-                type: null,
-                personal: false,
-              },
-            },
-            used_by: [],
-          },
-          {
-            model: "card",
-            id: 512,
-            name: "Orphaned",
-            remedy: { type: "none" },
-            used_by: [],
-          },
-        ],
-      },
-    ];
-
-    describe("getRequiredCollections", () => {
-      it("flattens remedies across every failure and dedupes by id", () => {
-        expect(getRequiredCollections(FAILURES)).toEqual([
-          { id: 7, name: "Finance", type: null, personal: false },
-        ]);
-      });
-
-      it("ignores a Library-less remedy, and non-actionable ones", () => {
-        const libraryOnly = [
-          {
-            collection: { id: 14, name: "Marketing" },
-            dependencies: [
-              {
-                model: "snippet" as const,
-                id: 3,
-                name: "active_users",
-                remedy: { type: "library" as const },
-                used_by: [],
-              },
-            ],
-          },
-        ];
-
-        expect(getRequiredCollections(libraryOnly)).toEqual([]);
-      });
-
-      it("keeps personal collections so callers can flag them as unsyncable", () => {
-        const personal = [
-          {
-            collection: { id: 14, name: "Marketing" },
-            dependencies: [
-              {
-                model: "card" as const,
-                id: 1,
-                name: "Draft",
-                remedy: {
-                  type: "collection" as const,
-                  collection: {
-                    id: 5,
-                    name: "Nick's stuff",
-                    type: null,
-                    personal: true,
-                  },
-                },
-                used_by: [],
-              },
-            ],
-          },
-        ];
-
-        expect(getRequiredCollections(personal)).toEqual([
-          { id: 5, name: "Nick's stuff", type: null, personal: true },
-        ]);
-      });
-    });
-
-    const SYNCABLE_DEPENDENCY: RemoteSyncIneligibleDependency = {
+    const dependency = (
+      overrides: Partial<RemoteSyncIneligibleDependency> = {},
+    ): RemoteSyncIneligibleDependency => ({
       model: "card",
       id: 1,
       name: "Seats over time",
-      remedy: {
+      used_by: [],
+      ...overrides,
+    });
+
+    const requiredSync = (
+      remedy: RemoteSyncDependencyRemedy,
+      syncable = false,
+    ): RemoteSyncRequiredSync => ({
+      remedy,
+      syncable,
+      blocks: [{ id: 31, name: "Drafts" }],
+      dependencies: [dependency()],
+    });
+
+    const SYNCABLE = requiredSync(
+      {
         type: "collection",
         collection: { id: 7, name: "Finance", type: null, personal: false },
       },
-      used_by: [],
-    };
-    const PERSONAL_DEPENDENCY: RemoteSyncIneligibleDependency = {
-      model: "card",
-      id: 2,
-      name: "Draft",
-      remedy: {
-        type: "collection",
-        collection: { id: 5, name: "Personal", type: null, personal: true },
-      },
-      used_by: [],
-    };
-    const ROOT_DEPENDENCY: RemoteSyncIneligibleDependency = {
-      model: "card",
-      id: 3,
-      name: "Orphaned",
-      collection: null,
-      remedy: { type: "none" },
-      used_by: [],
-    };
-
-    // No remedy, but it does live somewhere — the backend couldn't resolve a syncable ancestor.
-    const UNRESOLVED_DEPENDENCY: RemoteSyncIneligibleDependency = {
-      model: "card",
-      id: 6,
-      name: "Stranded",
-      collection: { id: 9, name: "Dangling" },
-      remedy: { type: "none" },
-      used_by: [],
-    };
-    // The Library is an ordinary collection, so a snippet points at it like any other remedy.
-    const LIBRARY_DEPENDENCY: RemoteSyncIneligibleDependency = {
-      model: "snippet",
-      id: 4,
-      name: "active_users",
-      remedy: {
+      true,
+    );
+    const PERSONAL = requiredSync({
+      type: "collection",
+      collection: { id: 5, name: "Personal", type: null, personal: true },
+    });
+    const LIBRARY_COLLECTION = requiredSync(
+      {
         type: "collection",
         collection: {
           id: 2,
@@ -397,165 +269,114 @@ describe("remote_sync utils", () => {
           personal: false,
         },
       },
-      used_by: [],
-    };
-    // ...unless the instance has no Library yet, leaving nothing to name.
-    const SNIPPET_DEPENDENCY: RemoteSyncIneligibleDependency = {
-      model: "snippet",
-      id: 5,
-      name: "monthly_cutoff",
-      remedy: { type: "library" },
-      used_by: [],
-    };
-
-    const failureWith = (
-      ...dependencies: RemoteSyncIneligibleDependency[]
-    ): RemoteSyncDependencyFailure[] => [
-      { collection: { id: 31, name: "Drafts" }, dependencies },
-    ];
+      true,
+    );
+    // No Library exists at all, so the remedy names nothing.
+    const LIBRARY_MISSING = requiredSync({ type: "library" });
+    const ROOT = requiredSync({ type: "none", collection: null });
+    const NAMED_NONE = requiredSync({
+      type: "none",
+      collection: { id: 9, name: "Dangling" },
+    });
+    const UNRESOLVED = requiredSync({ type: "none" });
 
     describe("getBlockedReason", () => {
       it("is linked-collections when every remedy is a collection the admin can sync", () => {
-        expect(getBlockedReason(failureWith(SYNCABLE_DEPENDENCY))).toBe(
-          "linked-collections",
-        );
+        expect(getBlockedReason([SYNCABLE])).toBe("linked-collections");
       });
 
       it("is library-missing when a snippet has no Library to point at", () => {
-        expect(
-          getBlockedReason(
-            failureWith(SYNCABLE_DEPENDENCY, SNIPPET_DEPENDENCY),
-          ),
-        ).toBe("library-missing");
+        expect(getBlockedReason([SYNCABLE, LIBRARY_MISSING])).toBe(
+          "library-missing",
+        );
       });
 
       // Once a Library exists the snippet carries an ordinary collection remedy, like anything else.
       it("is linked-collections when a snippet points at an existing Library", () => {
-        expect(
-          getBlockedReason(
-            failureWith(SYNCABLE_DEPENDENCY, LIBRARY_DEPENDENCY),
-          ),
-        ).toBe("linked-collections");
-      });
-
-      it("ranks root content above a missing Library, since it can't be synced at all", () => {
-        expect(
-          getBlockedReason(failureWith(SNIPPET_DEPENDENCY, ROOT_DEPENDENCY)),
-        ).toBe("unsyncable-content");
-      });
-
-      it("ranks personal content above every other reason", () => {
-        expect(
-          getBlockedReason(
-            failureWith(
-              SNIPPET_DEPENDENCY,
-              ROOT_DEPENDENCY,
-              PERSONAL_DEPENDENCY,
-            ),
-          ),
-        ).toBe("personal-content");
-      });
-    });
-
-    describe("getRequiredCollectionRows", () => {
-      it("marks a syncable remedy as actionable", () => {
-        expect(
-          getRequiredCollectionRows(failureWith(SYNCABLE_DEPENDENCY)),
-        ).toEqual([
-          {
-            id: 7,
-            name: "Finance",
-            type: null,
-            personal: false,
-            syncable: true,
-          },
-        ]);
-      });
-
-      it("keeps a personal remedy in the list but not as actionable", () => {
-        expect(
-          getRequiredCollectionRows(failureWith(PERSONAL_DEPENDENCY)),
-        ).toEqual([
-          {
-            id: 5,
-            name: "Personal",
-            type: null,
-            personal: true,
-            syncable: false,
-          },
-        ]);
-      });
-
-      // The type is what lets the row show the Library's own icon rather than a plain folder.
-      it("makes the Library actionable, carrying its collection type", () => {
-        expect(
-          getRequiredCollectionRows(failureWith(LIBRARY_DEPENDENCY)),
-        ).toEqual([
-          {
-            id: 2,
-            name: "Library",
-            type: "library",
-            personal: false,
-            syncable: true,
-          },
-        ]);
-      });
-
-      it("names the collection a stranded dependency actually lives in", () => {
-        expect(
-          getRequiredCollectionRows(failureWith(UNRESOLVED_DEPENDENCY)),
-        ).toEqual([
-          {
-            id: 9,
-            name: "Dangling",
-            type: null,
-            personal: false,
-            syncable: false,
-          },
-        ]);
-      });
-
-      it("adds Our analytics for a root dependency, which carries no remedy of its own", () => {
-        expect(getRequiredCollectionRows(failureWith(ROOT_DEPENDENCY))).toEqual(
-          [
-            {
-              id: "root",
-              name: "Our analytics",
-              type: null,
-              personal: false,
-              syncable: false,
-            },
-          ],
+        expect(getBlockedReason([SYNCABLE, LIBRARY_COLLECTION])).toBe(
+          "linked-collections",
         );
       });
 
-      it("lists the syncable remedy alongside Our analytics", () => {
-        expect(
-          getRequiredCollectionRows(
-            failureWith(SYNCABLE_DEPENDENCY, ROOT_DEPENDENCY),
-          ),
-        ).toEqual([
-          {
-            id: 7,
-            name: "Finance",
-            type: null,
-            personal: false,
-            syncable: true,
-          },
-          {
-            id: "root",
-            name: "Our analytics",
-            type: null,
-            personal: false,
-            syncable: false,
-          },
+      it("ranks root content above a missing Library, since it can't be synced at all", () => {
+        expect(getBlockedReason([LIBRARY_MISSING, ROOT])).toBe(
+          "unsyncable-content",
+        );
+      });
+
+      it("ranks personal content above every other reason", () => {
+        expect(getBlockedReason([LIBRARY_MISSING, ROOT, PERSONAL])).toBe(
+          "personal-content",
+        );
+      });
+    });
+
+    describe("getListedRequiredSyncs", () => {
+      it("lists every entry that names a collection", () => {
+        expect(getListedRequiredSyncs([SYNCABLE, PERSONAL, ROOT])).toEqual([
+          SYNCABLE,
+          PERSONAL,
+          ROOT,
         ]);
       });
 
-      it("is empty when the instance has no Library to switch on", () => {
-        expect(
-          getRequiredCollectionRows(failureWith(SNIPPET_DEPENDENCY)),
-        ).toEqual([]);
+      // The message says to create it; there is no row to draw.
+      it("drops an entry for a Library that doesn't exist", () => {
+        expect(getListedRequiredSyncs([SYNCABLE, LIBRARY_MISSING])).toEqual([
+          SYNCABLE,
+        ]);
+      });
+    });
+
+    describe("getRequiredSyncRow", () => {
+      it("offers a syncable collection, keeping the type its icon needs", () => {
+        expect(getRequiredSyncRow(LIBRARY_COLLECTION)).toEqual({
+          key: "collection:2",
+          name: "Library",
+          type: "library",
+          personal: false,
+          syncableId: 2,
+          collectionId: 2,
+        });
+      });
+
+      it("names a personal collection but offers nothing to switch on", () => {
+        expect(getRequiredSyncRow(PERSONAL)).toEqual({
+          key: "collection:5",
+          name: "Personal",
+          type: null,
+          personal: true,
+          syncableId: null,
+          collectionId: 5,
+        });
+      });
+
+      it("calls the root collection Our analytics", () => {
+        expect(getRequiredSyncRow(ROOT)).toMatchObject({
+          key: "root",
+          name: "Our analytics",
+          syncableId: null,
+          collectionId: "root",
+        });
+      });
+
+      it("names the collection unsyncable content actually lives in", () => {
+        expect(getRequiredSyncRow(NAMED_NONE)).toMatchObject({
+          key: "none:9",
+          name: "Dangling",
+          syncableId: null,
+          collectionId: 9,
+        });
+      });
+
+      // Reported rather than dropped, but there is nothing to name and nowhere to link.
+      it("still shows a collection the backend couldn't resolve", () => {
+        expect(getRequiredSyncRow(UNRESOLVED)).toMatchObject({
+          key: "unresolved",
+          name: "Unknown collection",
+          syncableId: null,
+          collectionId: null,
+        });
       });
     });
   });

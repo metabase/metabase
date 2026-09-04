@@ -154,7 +154,7 @@ export type RemoteSyncRemedyCollection = RemoteSyncCollectionRef & {
 export type RemoteSyncDependencyRemedy =
   | { type: "collection"; collection: RemoteSyncRemedyCollection }
   | { type: "library" }
-  | { type: "none" };
+  | { type: "none"; collection?: RemoteSyncCollectionRef | null };
 
 export type RemoteSyncDependentModel =
   | RemoteSyncDependencyModel
@@ -172,15 +172,16 @@ export type RemoteSyncIneligibleDependency = {
   model: RemoteSyncDependencyModel;
   id: number;
   name: string;
-  /** `null` is the root collection; absent means the backend couldn't resolve one. */
+  /** Where it lives — `null` is the root collection, absent means we couldn't resolve one. */
   collection?: RemoteSyncCollectionRef | null;
   display?: CardDisplayType;
-  remedy: RemoteSyncDependencyRemedy;
   used_by: RemoteSyncDependencyEntity[];
 };
 
-export type RemoteSyncDependencyFailure = {
-  collection: RemoteSyncCollectionRef;
+export type RemoteSyncRequiredSync = {
+  remedy: RemoteSyncDependencyRemedy;
+  syncable: boolean;
+  blocks: RemoteSyncCollectionRef[];
   dependencies: RemoteSyncIneligibleDependency[];
 };
 
@@ -190,7 +191,7 @@ export type RemoteSyncDependencyErrorResponse = {
   error_code: typeof UNSYNCED_DEPENDENCIES_ERROR_CODE;
   error: string;
   errors: {
-    collections: RemoteSyncDependencyFailure[];
+    required: RemoteSyncRequiredSync[];
   };
 };
 
