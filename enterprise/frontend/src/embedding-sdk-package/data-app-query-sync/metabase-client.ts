@@ -76,10 +76,21 @@ export class MetabaseClient {
     );
   }
 
+  updateTableDependencies(slug: string, tableIds: number[]) {
+    return this.request<DataAppMetadata>(
+      `apps/${encodeURIComponent(slug)}/table-dependencies`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ table_ids: tableIds }),
+      },
+    );
+  }
+
   async resolveQuery(slug: string, query: Record<string, unknown>) {
     const resolved = await this.request<{
       database_id: number;
       dataset_query: Record<string, unknown>;
+      table_ids: number[];
       metrics?: DataAppMetric[];
     }>(`apps/${encodeURIComponent(slug)}/query`, {
       method: "POST",
