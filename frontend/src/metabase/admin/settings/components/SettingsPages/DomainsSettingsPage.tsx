@@ -27,7 +27,6 @@ import { Box, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { reload } from "metabase/utils/dom";
 
-
 import {
   type DomainsSettings,
   isDomainSettingsDirty,
