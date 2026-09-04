@@ -189,8 +189,11 @@ const config = {
     }),
   },
 
-  // we override it for dev mode below
-  devtool: "source-map",
+  // A locale chunk is data, so a source map for it maps JSON onto itself and
+  // costs about 800 kb each. `devtool` is all or nothing, so production uses
+  // SourceMapDevToolPlugin instead, which takes an exclude. Dev mode sets
+  // `devtool` below and skips the plugin, since the two cannot both be active.
+  devtool: isDevMode ? "source-map" : false,
 
   externals: {
     canvg: "canvg",
@@ -346,6 +349,14 @@ const config = {
   },
 
   plugins: [
+    ...(isDevMode
+      ? []
+      : [
+          new rspack.SourceMapDevToolPlugin({
+            filename: "[file].map",
+            exclude: /^locale-/,
+          }),
+        ]),
     ...bundleStatsPlugins("stats-main.json"),
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({

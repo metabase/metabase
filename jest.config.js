@@ -49,6 +49,10 @@ const baseConfig = {
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
+    // The real catalogues are a build artifact, so tests resolve a small fixture
+    // per locale instead. `frontend/src/metabase/api/localization.ts` imports
+    // these rather than fetching them.
+    "^locales/(.*)\\.json$": "<rootDir>/frontend/test/__mocks__/locales/$1.json",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.tsx",
     "csv-parse/browser/esm/sync":

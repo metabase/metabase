@@ -1,4 +1,3 @@
-import { getBasename } from "metabase/utils/basename";
 import {
   type LocaleDataWithLanguage,
   setLocalization,
@@ -17,9 +16,16 @@ export async function loadLocalization(
         // which will make the browser do the pre-flight request on the SDK.
         // The backend doesn't seem to support pre-flight request on the static assets, but even
         // if it supported them it's more performant to skip the pre-flight request
-        await fetch(`${getBasename()}/app/locales/${locale}.json`).then(
-          (response) => response.json(),
-        )
+        // Imported rather than fetched so the catalogues go through the same
+        // pipeline as every other asset: rspack hashes each one, emits it as
+        // its own chunk under `app/dist`, writes the `.br` and `.gz` siblings,
+        // and resolves the URL at runtime. `cacheable?` already grants
+        // far-future headers to a hashed file there, which a fetch of
+        // `app/locales/<locale>.json` never qualified for.
+        await import(
+          /* webpackChunkName: "locale-[request]" */
+          `locales/${locale.replace(/-/g, "_")}.json`
+        ).then((module) => module.default)
       : // We don't serve en.json. Instead, use this object to fall back to the literals.
         {
           headers: {

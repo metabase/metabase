@@ -1,4 +1,3 @@
-import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
@@ -98,17 +97,6 @@ export async function setup(
     }),
   );
 
-  if (hash.locale) {
-    fetchMock.get(`path:/app/locales/${hash.locale}.json`, {
-      headers: {
-        language: "ko",
-        "plural-forms": "nplurals=1; plural=0;",
-      },
-      translations: {
-        "": {},
-      },
-    });
-  }
 
   renderWithProviders(
     <Route
