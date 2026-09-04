@@ -124,7 +124,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
             .should("have.attr", "target", "_blank");
 
           cy.findByText(
-            /To continue, enable guest embeds and agree to the/,
+            "To continue, enable embedding and agree to the usage conditions.",
           ).should("not.exist");
         });
 
@@ -152,7 +152,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
 
         getEmbedSidebar()
           .contains(
-            "To continue, enable guest embeds and agree to the usage conditions.",
+            "To continue, enable embedding and agree to the usage conditions.",
           )
           .should("not.exist");
       });
@@ -173,7 +173,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
 
         embedModalEnableEmbeddingCard().within(() => {
           cy.findByText(
-            "To continue, enable guest embeds and agree to the usage conditions.",
+            "To continue, enable embedding and agree to the usage conditions.",
           ).should("not.exist");
         });
 
