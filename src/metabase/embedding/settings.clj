@@ -202,8 +202,8 @@
                        {:event        (keyword (str "modular-embedding" (if new-value "-enabled" "-disabled")))
                         :event-detail (json/encode
                                        {:embedding_app_origin_set   (embedding-app-origin-set?)
-                                        :number_embedded_questions  (t2/count :model/Card :enable_embedding true)
-                                        :number_embedded_dashboards (t2/count :model/Dashboard :enable_embedding true)})}))))))
+                                        :number_embedded_questions  (embedding.db/count-embedded-cards)
+                                        :number_embedded_dashboards (embedding.db/count-embedded-dashboards)})}))))))
 
 (defsetting enable-embedding-interactive
   (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
