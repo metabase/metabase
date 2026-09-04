@@ -3,6 +3,7 @@ export type {
   EChartsTooltipModel,
   EChartsTooltipRow,
 } from "./components/ChartTooltip/EChartsTooltip/EChartsTooltip";
+export { registerEChartsModules } from "./echarts";
 export {
   getBoxPlotClickData,
   isBoxPlotSeriesEvent,
@@ -32,6 +33,7 @@ export type {
   ChartLayout,
   TicksDimensions,
 } from "./echarts/cartesian/layout/types";
+export { getCartesianChartModel } from "./echarts/cartesian/model";
 export { getDatasetKey } from "./echarts/cartesian/model/dataset";
 export {
   isBreakoutSeries,
@@ -39,7 +41,6 @@ export {
   isQuarterInterval,
   isTimeSeriesAxis,
 } from "./echarts/cartesian/model/guards";
-export { getCartesianChartModel } from "./echarts/cartesian/model";
 export { getLegendItems } from "./echarts/cartesian/model/legend";
 export { getOtherSeriesAggregationLabel } from "./echarts/cartesian/model/other-series";
 export {
@@ -66,14 +67,14 @@ export type {
   WaterfallChartModel,
 } from "./echarts/cartesian/model/types";
 export { getFormattingOptionsWithoutScaling } from "./echarts/cartesian/model/util";
-export { createAxisVisibilityOption } from "./echarts/cartesian/option/axis";
-export { GOAL_LINE_DASH } from "./echarts/cartesian/option/goal-line";
 export {
   buildBrushMirrorGraphics,
   buildClearBrushMirrorGraphics,
   getCartesianChartOption,
   getTimelineSelectionSeries,
 } from "./echarts/cartesian/option";
+export { createAxisVisibilityOption } from "./echarts/cartesian/option/axis";
+export { GOAL_LINE_DASH } from "./echarts/cartesian/option/goal-line";
 export { TREND_LINE_DASH } from "./echarts/cartesian/option/trend-line";
 export { getScatterPlotModel } from "./echarts/cartesian/scatter/model";
 export { getScatterPlotOption } from "./echarts/cartesian/scatter/option";
@@ -96,8 +97,8 @@ export {
 export { getWaterfallChartModel } from "./echarts/cartesian/waterfall/model";
 export { getWaterfallChartOption } from "./echarts/cartesian/waterfall/option";
 export { getSankeyLayout } from "./echarts/graph/sankey/layout";
-export { getSankeyChartColumns } from "./echarts/graph/sankey/model/dataset";
 export { getSankeyChartModel } from "./echarts/graph/sankey/model";
+export { getSankeyChartColumns } from "./echarts/graph/sankey/model/dataset";
 export type {
   ColumnKey,
   SankeyChartColumns,
@@ -163,7 +164,6 @@ export {
   HOVER_OVERLAY_Z,
   TREEMAP_HOVER_OVERLAY_FILL,
 } from "./echarts/graph/treemap/style";
-export { registerEChartsModules } from "./echarts";
 export { DIMENSIONS, OTHER_SLICE_KEY } from "./echarts/pie/constants";
 export { getPieChartFormatters } from "./echarts/pie/format";
 export type { PieChartFormatters } from "./echarts/pie/format";
@@ -172,15 +172,14 @@ export type { PieChartModel, SliceTreeNode } from "./echarts/pie/model/types";
 export { getPieChartOption } from "./echarts/pie/option";
 export type { EChartsSunburstSeriesMouseEvent } from "./echarts/pie/types";
 export {
-  createHexToAccentNumberMap,
-  getPickerColorAlias,
-} from "./echarts/pie/util/colors";
-export {
   getArrayFromMapValues,
   getSliceKeyPath,
   getSliceTreeNodesFromPath,
 } from "./echarts/pie/util";
-export { formatValueForTooltip } from "./echarts/tooltip/format";
+export {
+  createHexToAccentNumberMap,
+  getPickerColorAlias,
+} from "./echarts/pie/util/colors";
 export {
   ECHARTS_TOOLTIP_CONTAINER_CLASS,
   getMarkerColorClass,
@@ -193,6 +192,7 @@ export {
   usePieChartValuesColorsClasses,
   useSankeyChartColorsClasses,
 } from "./echarts/tooltip";
+export { formatValueForTooltip } from "./echarts/tooltip/format";
 export {
   getPercent,
   getSortedRows,
@@ -232,6 +232,7 @@ export {
   needsAnswer,
   resolveGoalSegments,
   resolveGoalValue,
+  supportsDynamicGoals,
   toReferencedEntity,
 } from "./lib/dynamic-goals";
 export type {
