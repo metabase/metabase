@@ -372,7 +372,7 @@
                       qp.pivot/run-pivot-query
                       (or qp process-query-for-card-default-qp))
         ;; wrapping the qp (rather than the `:make-run`) covers every card/dashcard/embed/public endpoint
-        qp          (qp.referenced-entities/maybe-wrap-qp-for-goals qp merged-viz)
+        qp          (qp.referenced-entities/maybe-wrap-qp-for-goals qp merged-viz export-format)
         runner      (make-run qp export-format)
         query       (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                         (assoc :viz-settings merged-viz)

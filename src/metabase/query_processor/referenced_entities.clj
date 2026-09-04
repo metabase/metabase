@@ -4,8 +4,13 @@
 
   An entity that returns more rows than its caller asked for fails that entity, never the main query.
 
-  Referenced queries must run before the main query's QP store is bound: a store holds one database, so a nested run
-  against a different one would be rejected.
+  Permissions are inherited from the endpoint's bindings rather than checked here: a signed-in caller gets a real
+  read-check and soft-fails without it, alerts resolve as their creator, and public/embed run under their existing
+  root-perms binding. So publishing a card deliberately exposes whatever its goals read, even an entity that is not
+  itself shared (GDGT-2824).
+
+  Each referenced query runs under its own QP store ([[qp.store/with-fresh-store]]): a store holds one database, so
+  a nested run against a different one would otherwise be rejected.
 
   The runner knows nothing about what the specs are for. One row is the dynamic-goal consumer's requirement, not the
   runner's, so it's declared in the second section below along with the rest of the goal-aware code."
@@ -16,7 +21,11 @@
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   ;; only to escape the caller's store, so a referenced entity on another database can open its own
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -59,14 +68,15 @@
     data))
 
 (defn- referenced-query
-  [query id max-rows]
+  [query entity-type id max-rows]
   (assoc query
          ;; one over the limit, so an entity returning too much can be rejected instead of silently truncated. a
          ;; query with its own `:limit` under this still comes back short, which is how you ask for "the first N".
          :constraints {:max-results (inc max-rows), :max-results-bare-rows (inc max-rows)}
          ;; no :executed-by; it'd require a :query-hash for the query remark
-         :info {:context :question
-                :card-id id}))
+         :info (cond-> {:context :question}
+                 ;; :card-id ends up in the warehouse query remark, so a measure must not borrow the key
+                 (= entity-type "card") (assoc :card-id id))))
 
 (defn- runnable-query
   "The query to run for `entity`. A metric's breakouts group it for display; a reference wants its value, so
@@ -91,16 +101,21 @@
 
 (defn- run-referenced-entity
   "Never throws: any failure becomes `{:status \"failed\" :error ...}`."
-  [{entity-type :type, :keys [id columns max_rows]} default-max-rows]
+  [{entity-type :type, :keys [id columns max_rows]} default-max-rows canceled-chan]
   (let [max-rows (or max_rows default-max-rows)
         {:keys [model query-key]} (entity-types entity-type)]
     (try
       (let [entity (api/read-check model id)
             ;; a nested run inside the outer streaming response must return an in-memory map,
             ;; not write to the outer stream
-            result (binding [qp.pipeline/*result*        qp.pipeline/default-result-handler
-                             qp.pipeline/*canceled-chan* (child-canceled-chan qp.pipeline/*canceled-chan*)]
-                     (qp/process-query (referenced-query (runnable-query entity query-key) id max-rows)))
+            result (qp.store/with-fresh-store
+                     (binding [qp.pipeline/*result*        qp.pipeline/default-result-handler
+                               qp.pipeline/*canceled-chan* canceled-chan
+                               ;; a referenced card is a saved question, so reading it is enough. unbound, the
+                               ;; perms check takes the ad-hoc branch and demands create-queries on its tables.
+                               ;; measures have no equivalent yet, so they stay on the ad-hoc branch.
+                               qp.perms/*card-id*          (when (= entity-type "card") id)]
+                       (qp/process-query (referenced-query (runnable-query entity query-key) entity-type id max-rows))))
             data   (:data result)]
         (if (> (count (:rows data)) max-rows)
           (do
@@ -118,17 +133,19 @@
          :error  (or (ex-message e) (tru "Failed to run referenced query"))}))))
 
 (defn- referenced-entities-result
-  "Run each spec and return `{type-string {id-string result}}`, nil when there are none. Must run before the main
-  query's QP store is bound."
+  "Run each spec and return `{type-string {id-string result}}`, nil when there are none."
   [specs max-rows]
   (when (seq specs)
-    (perf/not-empty
-     (reduce (fn [acc {entity-type :type, :keys [id] :as spec}]
-               ;; string keys so the map serializes to JSON as `{"card": {"1": {...}}}`
-               (assoc-in acc [entity-type (str id)] (run-referenced-entity spec max-rows)))
-             {}
-             ;; don't start the next one if the client already hung up
-             (take-while (fn [_] (not (qp.pipeline/canceled?))) specs)))))
+    ;; one child chan for the whole batch. the runs are sequential, so a chan each would only park a go block
+    ;; per goal for the life of the request.
+    (let [canceled-chan (child-canceled-chan qp.pipeline/*canceled-chan*)]
+      (perf/not-empty
+       (reduce (fn [acc {entity-type :type, :keys [id] :as spec}]
+                 ;; string keys so the map serializes to JSON as `{"card": {"1": {...}}}`
+                 (assoc-in acc [entity-type (str id)] (run-referenced-entity spec max-rows canceled-chan)))
+               {}
+               ;; don't start the next one if the client already hung up
+               (take-while (fn [_] (not (qp.pipeline/canceled?))) specs))))))
 
 (defn- inject-referenced-entities
   [rff result]
@@ -137,11 +154,14 @@
    (fn [response] (assoc-in response [:data :referenced_entities] result))))
 
 (defn- maybe-wrap-qp
-  "Wrap a qp fn `(fn [query rff])` to inject the results of `specs` under `data.referenced_entities`."
+  "Wrap a qp fn `(fn [query rff])` to inject the results of `specs` under `data.referenced_entities`. The specs run
+  when the qp is invoked, which for a card endpoint is inside the streaming body rather than on the request thread."
   [qp specs max-rows]
-  (if-let [result (referenced-entities-result specs max-rows)]
+  (if (seq specs)
     (fn [query rff]
-      (qp query (inject-referenced-entities rff result)))
+      (if-let [result (referenced-entities-result specs max-rows)]
+        (qp query (inject-referenced-entities rff result))
+        (qp query rff)))
     qp))
 
 ;;; ---------------------------------------------------------------------------------------------------------
@@ -163,7 +183,7 @@
 (defn viz-settings->goal-specs
   "Extract referenced-entity specs from merged viz settings; nil when there are none."
   [viz]
-  (when-let [sources (not-empty
+  (when-let [sources (perf/not-empty
                       (into []
                             (comp (keep dynamic-goals/goal-source)
                                   ;; a goal pointing at something we can't run is dropped rather than failing the request
@@ -176,6 +196,9 @@
                (group-by (juxt :type :id) sources))))
 
 (defn maybe-wrap-qp-for-goals
-  "Derive specs from a card's merged `viz` settings and wrap `qp` to inject their values."
-  [qp viz]
-  (maybe-wrap-qp qp (viz-settings->goal-specs viz) goal-max-rows))
+  "Derive specs from a card's merged `viz` settings and wrap `qp` to inject their values. Only `:api` responses
+  render goals; a CSV or XLSX export would run the referenced queries and throw the values away."
+  [qp viz export-format]
+  (if (= export-format :api)
+    (maybe-wrap-qp qp (viz-settings->goal-specs viz) goal-max-rows)
+    qp))
