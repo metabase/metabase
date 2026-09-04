@@ -31,6 +31,22 @@
   (when (> size max-file-size-bytes)
     (format "File '%s' exceeds %dMB size limit" name (quot max-file-size-bytes (* 1024 1024)))))
 
+(defn- upload-error-message
+  "Failure text safe to hand to the model. Deliberate upload errors, 4xx `ex-info`s
+   whose message was written for the user, pass through; raw driver and JDBC errors
+   can name hosts or accounts, so they get a generic line and stay in the logs. A 4xx
+   whose message contains its cause's text is a relabeled raw error, not an authored
+   one. A relabel that drops its cause entirely reads as authored and passes through."
+  [e]
+  (let [{:keys [status-code]} (ex-data e)
+        cause-message         (some-> (ex-cause e) ex-message)]
+    (if (and status-code
+             (<= 400 status-code 499)
+             (not (and (seq cause-message)
+                       (str/includes? (str (ex-message e)) cause-message))))
+      (ex-message e)
+      "the upload failed with an internal error on the Metabase server; details are in the server logs")))
+
 (defn- upload-settings
   "Get upload settings map. Returns nil if uploads are not enabled."
   []
@@ -64,9 +80,9 @@
              :model-id (:id result)
              :model-name (:name result)}))
         (catch Exception e
-          (log/warnf "[slackbot] File upload failed: error=%s" (ex-message e))
+          (log/warnf e "[slackbot] File upload failed: error=%s" (ex-message e))
           (analytics/inc! :metabase-slackbot/file-uploads {:result "error"})
-          {:error (ex-message e) :filename name})
+          {:error (upload-error-message e) :filename name})
         (finally
           (io/delete-file temp-file true))))))
 
