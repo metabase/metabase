@@ -4,6 +4,11 @@
 
   An entity that returns more rows than its caller asked for fails that entity, never the main query.
 
+  Permissions are inherited from the endpoint's bindings rather than checked here: a signed-in caller gets a real
+  read-check and soft-fails without it, alerts resolve as their creator, and public/embed run under their existing
+  root-perms binding. So publishing a card deliberately exposes whatever its goals read, even an entity that is not
+  itself shared (GDGT-2824).
+
   Each referenced query runs under its own QP store ([[qp.store/with-fresh-store]]): a store holds one database, so
   a nested run against a different one would otherwise be rejected.
 
