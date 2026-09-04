@@ -47,19 +47,8 @@
                      ;; inline script in init.html to handle errors when grabbing app scripts
                      "frontend_client/inline_js/asset_loading_error.js"])))
 
-(defn- keep-existing-last-modified
-  "Drops our `Last-Modified` when `response-headers` already carries one."
-  [response-headers headers]
-  (cond-> headers
-    (get response-headers "Last-Modified") (dissoc "Last-Modified")))
-
 (defn- cache-prevention-headers
-  "Headers that tell browsers not to cache a response.
-
-  `Last-Modified` is the time of this response, which is what a dynamic response
-  wants: it has no earlier version to be compared against. A static resource does
-  have one, and ring already reports it, so [[add-security-headers*]] keeps that
-  rather than replacing it with now."
+  "Headers that tell browsers not to cache a response."
   []
   {"Cache-Control" "max-age=0, no-cache, must-revalidate, proxy-revalidate"
    "Expires"        "Tue, 03 Jul 2001 06:00:00 GMT"
@@ -656,11 +645,7 @@
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"
                         "Access-Control-Allow-Methods" "*"})]
-    ;; `Last-Modified` is the one header the response may know better than we do.
-    ;; Ring reports a static resource's real modification time, and replacing it
-    ;; with now leaves the client nothing to revalidate against, so every
-    ;; conditional request has to be answered with the whole body again.
-    (update response :headers #(merge %2 (keep-existing-last-modified %2 %1) cors-headers) headers)))
+    (update response :headers #(merge %2 %1 cors-headers) headers)))
 
 (defn add-security-headers
   "Middleware that adds HTTP security and cache-busting headers."
