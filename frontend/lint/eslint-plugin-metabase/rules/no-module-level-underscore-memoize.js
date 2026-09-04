@@ -3,8 +3,6 @@
  * cache lives for the life of the tab.
  */
 
-const ALLOWLIST = require("../../module-level-underscore-memoize-allowlist");
-
 const ERROR_MESSAGE = [
   "underscore's memoize never evicts and never releases: its cache is a plain",
   "object on the returned function. At module scope that cache lives for the",
@@ -13,11 +11,6 @@ const ERROR_MESSAGE = [
   "WeakMap keyed on a long-lived object, or a cache built inside the component",
   "or instance that uses it.",
 ].join(" ");
-
-function isAllowlisted(filename) {
-  const normalized = filename.split("\\").join("/");
-  return ALLOWLIST.some((entry) => normalized.endsWith(entry.file));
-}
 
 /**
  * True when the call runs once, as the module is evaluated. A call inside a
@@ -43,10 +36,6 @@ module.exports = {
     },
   },
   create(context) {
-    if (isAllowlisted(context.filename)) {
-      return {};
-    }
-
     // Names bound to underscore's memoize by a named import in this file.
     const namedImports = new Set();
     // Names bound to the underscore namespace, usually `_`.
