@@ -11,7 +11,7 @@ import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/Add
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/current-user";
-import { getMetadata } from "metabase/metadata-store";
+import { useMetadataProviderFactory } from "metabase/metadata-store";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import {
   PLUGIN_AUDIT,
@@ -84,7 +84,7 @@ function MetricToolbarButtons({
   showDataStudioLink: showDataStudioLinkProp,
   onOpenModal,
 }: MetricToolbarButtonsProps) {
-  const metadata = useSelector(getMetadata);
+  const getMetadataProvider = useMetadataProviderFactory();
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
   const { data: bookmarks = [] } = useListBookmarksQuery();
   const { data: questionNotifications, isLoading: isNotificationsLoading } =
@@ -95,7 +95,10 @@ function MetricToolbarButtons({
   const [createBookmark] = useCreateBookmarkMutation();
   const [deleteBookmark] = useDeleteBookmarkMutation();
   const moderationMenuItems = PLUGIN_MODERATION.useCardMenuItems(card);
-  const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);
+  const query = Lib.fromJsQuery(
+    getMetadataProvider(card.dataset_query.database),
+    card.dataset_query,
+  );
   const queryInfo = Lib.queryDisplayInfo(query);
 
   const isBookmarked = bookmarks.some(

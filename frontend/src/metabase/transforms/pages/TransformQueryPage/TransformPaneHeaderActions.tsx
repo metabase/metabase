@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
-import { getMetadata } from "metabase/metadata-store";
+import { useMetadataProviderFactory } from "metabase/metadata-store";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { getValidationResult } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
@@ -31,11 +30,14 @@ export const TransformPaneHeaderActions = (props: Props) => {
     transform,
     readOnly,
   } = props;
-  const metadata = useSelector(getMetadata);
+  const getMetadataProvider = useMetadataProviderFactory();
 
   const { validationResult, isNative } = useMemo(() => {
     if (source.type === "query") {
-      const libQuery = Lib.fromJsQueryAndMetadata(metadata, source.query);
+      const libQuery = Lib.fromJsQuery(
+        getMetadataProvider(source.query.database),
+        source.query,
+      );
       const validationResult = getValidationResult(libQuery);
       return {
         validationResult,
@@ -48,7 +50,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
         PLUGIN_TRANSFORMS_PYTHON.getPythonSourceValidationResult(source),
       isNative: false,
     };
-  }, [source, metadata]);
+  }, [source, getMetadataProvider]);
   const isPythonTransform = source.type === "python";
 
   if (!readOnly && !isPythonTransform && !isNative && !isEditMode) {

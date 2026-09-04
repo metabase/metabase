@@ -13,13 +13,11 @@ import type {
   MetricPageProps,
   MetricUrls,
 } from "metabase/common/metrics/types";
-import { getMetadata } from "metabase/metadata-store";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
 import { Card } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { Card as CardApiType } from "metabase-types/api";
 
 import { MetricPageCard } from "../../components/MetricPageCard";
@@ -63,15 +61,15 @@ function MetricQueryPageBody({
   showAppSwitcher,
   showDataStudioLink,
 }: MetricQueryPageBodyProps) {
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
   const [datasetQuery, setDatasetQuery] = useState(card.dataset_query);
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const question = useMemo(() => {
-    return new Question(card, metadata).setDatasetQuery(datasetQuery);
-  }, [card, metadata, datasetQuery]);
+    return buildQuestion(card).setDatasetQuery(datasetQuery);
+  }, [card, buildQuestion, datasetQuery]);
 
   const resultMetadata = useMemo(() => {
     return getResultMetadata(

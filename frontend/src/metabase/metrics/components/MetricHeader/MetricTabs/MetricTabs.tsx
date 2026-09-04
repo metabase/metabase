@@ -8,12 +8,11 @@ import {
 } from "metabase/common/components/PillTabNavigation";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { getUserIsAdmin, getUserIsAnalyst } from "metabase/current-user";
-import { getMetadata } from "metabase/metadata-store";
+import { useMetadataProviderFactory } from "metabase/metadata-store";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";
 
 interface MetricTabsProps {
@@ -22,23 +21,31 @@ interface MetricTabsProps {
 }
 
 export function MetricTabs({ card, urls }: MetricTabsProps) {
-  const metadata = useSelector(getMetadata);
+  const getMetadataProvider = useMetadataProviderFactory();
   const { data: metric } = useGetMetricQuery(card.id);
   const hasDimensions =
     metric?.dimensions != null && metric.dimensions.length > 0;
   const canSeeDependencies = useSelector(
     (state) => getUserIsAdmin(state) || getUserIsAnalyst(state),
   );
+  const query = useMemo(
+    () =>
+      Lib.fromJsQuery(
+        getMetadataProvider(card.dataset_query.database),
+        card.dataset_query,
+      ),
+    [card, getMetadataProvider],
+  );
   const tabs = useMemo(
-    () => getTabs(card, metadata, urls, hasDimensions, canSeeDependencies),
-    [card, metadata, urls, hasDimensions, canSeeDependencies],
+    () => getTabs(card, query, urls, hasDimensions, canSeeDependencies),
+    [card, query, urls, hasDimensions, canSeeDependencies],
   );
   return <PillTabNavigation tabs={tabs} />;
 }
 
 function getTabs(
   card: Card,
-  metadata: Metadata,
+  query: Lib.Query,
   urls: MetricUrls,
   hasDimensions: boolean,
   canSeeDependencies: boolean,
@@ -50,7 +57,6 @@ function getTabs(
     },
   ];
 
-  const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);
   const queryInfo = Lib.queryDisplayInfo(query);
 
   if (queryInfo.isEditable) {

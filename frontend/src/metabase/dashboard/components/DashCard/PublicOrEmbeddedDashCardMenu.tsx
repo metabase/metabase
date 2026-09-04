@@ -6,19 +6,20 @@ import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownl
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
-import { getMetadata } from "metabase/metadata-store";
-import { useSelector, useStore } from "metabase/redux";
+import { useQuestionFromCard } from "metabase/metadata-store";
+import { useStore } from "metabase/redux";
 import { Icon, Menu } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import Question from "metabase-lib/v1/Question";
-import type { DashboardCard, Dataset } from "metabase-types/api";
+import type { Dataset, QuestionDashboardCard } from "metabase-types/api";
 
 import { DashCardMenuButton } from "./DashCardMenu/DashCardMenuButton";
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
 
 type PublicOrEmbeddedDashCardMenuProps = {
   result: Dataset;
-  dashcard: DashboardCard;
+  // Every caller gates on `isQuestionCard(dashcard.card)`, so a virtual
+  // dashcard never reaches this menu.
+  dashcard: QuestionDashboardCard;
 };
 
 export const PublicOrEmbeddedDashCardMenu = ({
@@ -37,10 +38,10 @@ export const PublicOrEmbeddedDashCardMenu = ({
     },
   });
 
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
   const question = useMemo(
-    () => new Question(dashcard.card, metadata),
-    [dashcard.card, metadata],
+    () => buildQuestion(dashcard.card),
+    [dashcard.card, buildQuestion],
   );
 
   // by the time we reach this code,  dashboardId really should not be null.

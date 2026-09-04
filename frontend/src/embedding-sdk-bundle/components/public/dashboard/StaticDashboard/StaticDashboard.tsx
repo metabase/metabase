@@ -5,7 +5,7 @@ import { EmbeddingSdkStaticMode } from "embedding-sdk-bundle/lib/modes/Embedding
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
-import { isQuestionCard } from "metabase/utils/dashboard";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
@@ -69,7 +69,7 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
       navigateToNewCardFromDashboard={null}
       dashcardMenu={({ dashcard, result }) =>
         withDownloads &&
-        isQuestionCard(dashcard.card) &&
+        isQuestionDashCard(dashcard) &&
         !!result?.data &&
         !result?.error && (
           <PublicOrEmbeddedDashCardMenu result={result} dashcard={dashcard} />
