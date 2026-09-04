@@ -2231,3 +2231,40 @@
                   :let [source-col (col-by-name (:remapped_from col))]]
             (is (= (:name col)
                    (:remapped_to source-col)))))))))
+
+(deftest attr-value->param-value-test
+  (testing "coercions that succeed keep working unchanged"
+    (is (= 50 (#'sandboxing/attr-value->param-value :type/Integer "50")))
+    (is (= 34.1018 (#'sandboxing/attr-value->param-value :type/Float "34.1018")))
+    (is (= 50 (#'sandboxing/attr-value->param-value :type/Integer 50)))
+    (is (= "a" (#'sandboxing/attr-value->param-value :type/Text "a"))))
+  (testing "un-coercible values throw instead of silently producing nil (#81821)"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"cannot be compared with an integer column"
+         (#'sandboxing/attr-value->param-value :type/Integer "a")))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"cannot be compared with a float column"
+         (#'sandboxing/attr-value->param-value :type/Float "a")))))
+
+(deftest e2e-uncomparable-attribute-fails-closed-test
+  (mt/test-drivers (e2e-test-drivers)
+    (testing (str "When a user attribute cannot be coerced to the type of the column it is compared against, the "
+                  "sandbox must fail closed (#81821): previously the unparseable value became a `nil` parameter "
+                  "value, parameter expansion silently dropped it, and the sandbox filter disappeared entirely - "
+                  "returning ALL rows")
+      (testing "integer column, non-numeric attribute value"
+        (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" "a"}}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"cannot be compared with an integer column"
+               (run-venues-count-query)))))
+      (testing "float column, non-numeric attribute value"
+        (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)
+                                           :remappings {:cat ["variable" [:field (mt/id :venues :latitude) nil]]}}}
+                          :attributes {"cat" "a"}}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"cannot be compared with a float column"
+               (run-venues-count-query))))))))
