@@ -220,6 +220,25 @@ export {
 export { getColorScale } from "./lib/color-scales";
 export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
 export {
+  getReferencedEntitiesFromVizSettings,
+  getSegmentColor,
+  getUnansweredGoalEntities,
+  hasFailedGoalReferences,
+  hasUnansweredGoalReferences,
+  hasUnresolvedGoalReferences,
+  needsAnswer,
+  resolveGoalSegments,
+  resolveGoalValue,
+  supportsDynamicGoals,
+  toReferencedEntity,
+} from "./lib/dynamic-goals";
+export type {
+  GoalData,
+  GoalRefError,
+  ResolvedGoalSegment,
+  ResolvedGoalValue,
+} from "./lib/dynamic-goals";
+export {
   ChartSettingsError,
   getDatasetError,
   getDatasetPermissionError,

@@ -6,7 +6,7 @@ import {
   getUnansweredGoalEntities,
   hasFailedGoalReferences,
   resolveGoalSegments,
-} from "metabase/visualizations/lib/dynamic-goals";
+} from "metabase/viz-core";
 import type {
   DatasetData,
   DatasetQuery,
