@@ -3259,7 +3259,12 @@
   enterprise/data-sensitivity
   {:team "Graphy"
    :api  #{}
-   :uses #{driver util warehouse-schema}
+   :uses #{config
+           driver
+           lib
+           metabot
+           util
+           warehouse-schema}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldUserSettings
