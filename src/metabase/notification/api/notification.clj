@@ -34,23 +34,18 @@
     [:channel    {:optional true} [:maybe ::models.channel/Channel]]
     [:recipients {:optional true} [:sequential recipient-schema]]]])
 
-(mr/def ::NotificationApiInput
-  "Notification schema for API input. Like FullyHydratedNotification but restricts templates
-  to user-provided types only (no handlebars-resource)."
-  (models.notification/hydrated-notification-schema
-   (handler-api-input ::models.notification/NotificationHandler
-                      ::models.notification/NotificationRecipient)))
-
 (mr/def ::CreateNotificationParams
-  "[[::NotificationApiInput]] for a create request: no `:id` at any level, so a caller cannot pick a primary key."
+  "Notification schema for a create request, or for sending one that was never saved. Like
+  FullyHydratedNotification but restricts templates to user-provided types only (no handlebars-resource),
+  and carries no ids since the body has no row of its own."
   (models.notification/hydrated-notification-schema
    (handler-api-input ::models.notification/CreateNotificationHandlerParams
                       ::models.notification/CreateNotificationRecipientParams)
    {:with-id? false}))
 
 (mr/def ::NotificationApiUpdateInput
-  "::NotificationApiInput restricted to what `notification-update-spec` writes. On PUT the URL,
-  not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped."
+  "Notification schema for an update request, restricted to what `notification-update-spec` writes. On PUT
+  the URL, not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped."
   (models.notification/hydrated-notification-schema
    (handler-api-input ::models.notification/NotificationHandler
                       ::models.notification/NotificationRecipient)
@@ -326,7 +321,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/send"
   "Send an unsaved notification."
-  [_route _query body :- ::NotificationApiInput]
+  [_route _query body :- ::CreateNotificationParams]
   (check-no-resource-templates! (:handlers body))
   (check-inline-channels! (:handlers body))
   (api/create-check :model/Notification body)
