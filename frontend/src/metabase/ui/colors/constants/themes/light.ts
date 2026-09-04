@@ -129,13 +129,41 @@ const actualColors = {
   "border-filter": baseColors.filter[20],
   "border-highlight": baseColors.brand[30],
   "border-neutral": baseColors.orion[20],
+  "border-neutral-inverse-strong": baseColors.orionAlphaInverse[30],
   "border-neutral-strong": baseColors.orionAlpha[30],
   "border-neutral-strongest": baseColors.orionAlpha[50],
   "border-neutral-subtle": baseColors.orionAlpha[10],
   "border-on_dark": baseColors.orionAlphaInverse[20],
+  "button-default-neutral-default":
+    "var(--mb-color-background_surface-primary)",
+  "button-default-neutral-hover":
+    "var(--mb-color-background_surface-primary-hover)",
+  "button-default-neutral-pressed":
+    "var(--mb-color-background_surface-primary-pressed)",
+  "button-filled-brand-default": baseColors.brand[60],
+  "button-filled-brand-hover": baseColors.brand[70],
+  "button-filled-brand-pressed": baseColors.brand[80],
+  "button-filled-negative-default": baseColors.lobster[60],
+  "button-filled-negative-hover": baseColors.lobster[70],
+  "button-filled-negative-pressed": baseColors.lobster[80],
   "button-label-on_dark-disabled": baseColors.orionAlphaInverse[40],
   "button-label-on_dark-primary": baseColors.orionAlpha[80],
   "button-label-on_dark-secondary": baseColors.white,
+  "button-light-brand-default":
+    "color-mix(in srgb, var(--mb-color-core-brand) 7%, transparent)",
+  "button-light-brand-hover":
+    "color-mix(in srgb, var(--mb-color-core-brand) 21%, transparent)",
+  "button-light-brand-pressed":
+    "color-mix(in srgb, var(--mb-color-core-brand) 45%, transparent)",
+  "button-light-negative-default": baseColors.lobsterAlpha[10],
+  "button-light-negative-hover": baseColors.lobsterAlpha[20],
+  "button-light-negative-pressed": baseColors.lobsterAlpha[30],
+  "button-light-neutral-default":
+    "var(--mb-color-background_surface-secondary)",
+  "button-light-neutral-hover":
+    "var(--mb-color-background_surface-secondary-hover)",
+  "button-light-neutral-pressed":
+    "var(--mb-color-background_surface-secondary-pressed)",
   "button-on_dark-disabled": baseColors.orionAlphaInverse[10],
   "button-on_dark-primary-default": baseColors.white,
   "button-on_dark-primary-hover": baseColors.orion[20],
@@ -143,6 +171,32 @@ const actualColors = {
   "button-on_dark-secondary-default": baseColors.orionAlphaInverse[10],
   "button-on_dark-secondary-hover": baseColors.orionAlphaInverse[20],
   "button-on_dark-secondary-pressed": baseColors.orionAlphaInverse[10],
+  "button-subtle-brand-default": "transparent",
+  "button-subtle-brand-hover":
+    "color-mix(in srgb, var(--mb-color-core-brand) 21%, transparent)",
+  "button-subtle-brand-pressed":
+    "color-mix(in srgb, var(--mb-color-core-brand) 45%, transparent)",
+  "button-subtle-negative-default": "transparent",
+  "button-subtle-negative-hover": baseColors.lobsterAlpha[20],
+  "button-subtle-negative-pressed": baseColors.lobsterAlpha[30],
+  "button-subtle-neutral-default": "transparent",
+  "button-subtle-neutral-hover":
+    "var(--mb-color-background_surface-primary-hover)",
+  "button-subtle-neutral-pressed":
+    "var(--mb-color-background_surface-primary-pressed)",
+  "button_label-default-neutral-default": "var(--mb-color-text-primary)",
+  "button_label-filled-brand-default": baseColors.white,
+  "button_label-filled-negative-default": baseColors.white,
+  "button_label-light-brand-default": baseColors.brand[60],
+  "button_label-light-brand-hover": baseColors.brand[70],
+  "button_label-light-negative-default": baseColors.lobster[70],
+  "button_label-light-negative-hover": baseColors.lobster[80],
+  "button_label-light-neutral-default": "var(--mb-color-text-primary)",
+  "button_label-subtle-brand-default": baseColors.brand[60],
+  "button_label-subtle-brand-hover": baseColors.brand[70],
+  "button_label-subtle-negative-default": baseColors.lobster[70],
+  "button_label-subtle-negative-hover": baseColors.lobster[80],
+  "button_label-subtle-neutral-default": "var(--mb-color-text-primary)",
   "core-blue-saturated": baseColors.ocean[60],
   "core-brand-hover": baseColors.brand[50],
   "core-gold": baseColors.gold,
