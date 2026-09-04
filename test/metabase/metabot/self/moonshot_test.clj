@@ -230,28 +230,35 @@
 
 (deftest ^:parallel moonshot-reasoning-conv-test
   (testing "reasoning_content deltas stream as a reasoning block ahead of the text"
-    ;; No captured kimi-k3 stream exists yet — chunk shapes follow the official streaming example
-    ;; (flat `delta.reasoning_content`, always ahead of content:
-    ;; https://platform.kimi.ai/docs/guide/use-thinking-models); verify against a live capture once
-    ;; Moonshot credentials exist. The empty-string opener chunk must not open a reasoning block.
-    (let [chunks [{:id      "chatcmpl-synthetic-k3"
+    ;; Condensed from a live kimi-k3 stream captured 2026-09-04 (32 events, reasoning_effort
+    ;; "low"): an empty-content opener, one empty reasoning_content delta — neither may open a
+    ;; block — then flat reasoning deltas, one content delta, and a finish whose usage rides both
+    ;; the finishing choice and a final top-level chunk (one :usage part must come out).
+    (let [usage  {:prompt_tokens             103
+                  :completion_tokens         44
+                  :total_tokens              147
+                  :completion_tokens_details {:reasoning_tokens 28}}
+          chunks [{:id      "chatcmpl-6a9ab5d84cc66eeecb5c4827"
                    :model   "kimi-k3"
                    :choices [{:index 0 :delta {:role "assistant" :content ""} :finish_reason nil}]}
                   {:choices [{:index 0 :delta {:reasoning_content ""} :finish_reason nil}]}
-                  {:choices [{:index 0 :delta {:reasoning_content "Let me think"} :finish_reason nil}]}
-                  {:choices [{:index 0 :delta {:reasoning_content " about it"} :finish_reason nil}]}
-                  {:choices [{:index 0 :delta {:content "Answer"} :finish_reason nil}]}
-                  {:choices [{:index 0 :delta {} :finish_reason "stop"}]}
-                  {:choices [] :usage {:prompt_tokens 10 :completion_tokens 50 :total_tokens 60}}]]
+                  {:choices [{:index 0 :delta {:reasoning_content "17*23 = 391."} :finish_reason nil}]}
+                  {:choices [{:index 0 :delta {:reasoning_content " 391 < 400."} :finish_reason nil}]}
+                  {:choices [{:index 0 :delta {:reasoning_content " So 400 is bigger."} :finish_reason nil}]}
+                  {:choices [{:index 0 :delta {:content "400"} :finish_reason nil}]}
+                  {:choices [{:index 0 :delta {} :finish_reason "stop" :usage usage}]}
+                  {:choices [] :usage usage}]]
       (testing "chunk stream: :start first, then one reasoning block, then text"
-        (is (= [:start :reasoning-start :reasoning-delta :reasoning-delta :reasoning-end
-                :text-start :text-delta :text-end :usage]
+        (is (= [:start :reasoning-start :reasoning-delta :reasoning-delta :reasoning-delta
+                :reasoning-end :text-start :text-delta :text-end :usage]
                (into [] (comp (moonshot/moonshot->aisdk-chunks-xf) (map :type)) chunks))))
       (testing "through the full pipeline: one reasoning part ahead of the text"
         (is (=? [{:type :start}
-                 {:type :reasoning :text "Let me think about it"}
-                 {:type :text :text "Answer"}
-                 {:type :usage}]
+                 {:type :reasoning :text "17*23 = 391. 391 < 400. So 400 is bigger."}
+                 {:type :text :text "400"}
+                 {:type  :usage
+                  :usage {:promptTokens 103 :completionTokens 44}
+                  :finish-reason "stop"}]
                 (into [] (comp (moonshot/moonshot->aisdk-chunks-xf) (self.core/aisdk-xf)) chunks)))))))
 
 (deftest ^:parallel moonshot-tool-call-conv-test
