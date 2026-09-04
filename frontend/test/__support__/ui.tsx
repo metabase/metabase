@@ -17,6 +17,7 @@ import {
 import {
   Children,
   Fragment,
+  type JSX,
   isValidElement,
   useCallback,
   useMemo,
@@ -441,7 +442,7 @@ function createTestRouter(holder: MemoryTestRouterHolder): TestRouter {
 
 function childrenAreRouteTree(children: React.ReactNode): boolean {
   return Children.toArray(children).some((child) => {
-    if (!isValidElement(child)) {
+    if (!isValidElement<{ children?: React.ReactNode }>(child)) {
       return false;
     }
     if (child.type === Route) {

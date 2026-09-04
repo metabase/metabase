@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { type JSX, memo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";

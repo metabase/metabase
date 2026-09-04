@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 import { t } from "ttag";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";

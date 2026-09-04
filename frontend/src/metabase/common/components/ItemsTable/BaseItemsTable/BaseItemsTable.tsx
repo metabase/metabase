@@ -1,4 +1,4 @@
-import type { HTMLAttributes, PropsWithChildren } from "react";
+import type { HTMLAttributes, JSX, PropsWithChildren } from "react";
 import { useMemo } from "react";
 
 import type { CollectionContentTableColumnsMap } from "metabase/common/collections/columns";

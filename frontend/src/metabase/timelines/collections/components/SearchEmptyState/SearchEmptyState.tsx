@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import EmptyFolder from "assets/img/empty-states/collection.svg";

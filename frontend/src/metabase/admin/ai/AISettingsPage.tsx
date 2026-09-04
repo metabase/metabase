@@ -259,7 +259,7 @@ function DisabledSection({
       gap="xl"
       opacity={disabled ? 0.4 : 1}
       aria-disabled={disabled || undefined}
-      {...(disabled ? { inert: "" } : {})}
+      {...(disabled ? { inert: true } : {})}
     >
       {children}
     </Stack>

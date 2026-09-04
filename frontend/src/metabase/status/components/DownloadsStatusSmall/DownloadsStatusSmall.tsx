@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import type { Download } from "metabase/redux/store";

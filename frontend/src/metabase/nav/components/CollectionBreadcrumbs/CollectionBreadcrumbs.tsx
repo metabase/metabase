@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type JSX } from "react";
 import { t } from "ttag";
 
 import { CollectionBadge } from "metabase/common/collections/components/CollectionBadge";

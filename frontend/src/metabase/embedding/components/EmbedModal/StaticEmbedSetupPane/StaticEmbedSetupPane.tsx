@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo, useState } from "react";
+import { type JSX, useMemo, useState } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 

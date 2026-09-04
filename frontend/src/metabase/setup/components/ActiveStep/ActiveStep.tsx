@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { useSelector } from "metabase/redux";
 import { getShouldShowStepNumber } from "metabase/setup";

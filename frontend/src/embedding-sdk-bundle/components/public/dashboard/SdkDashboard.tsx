@@ -370,7 +370,8 @@ const SdkDashboardInner = ({
     : renderModeState;
 
   // Now only used when rerendering the dashboard after creating a new question from the dashboard.
-  const dashboardContextProviderRef = useRef<DashboardContextProviderHandle>();
+  const dashboardContextProviderRef =
+    useRef<DashboardContextProviderHandle>(undefined);
 
   const [newDashboardQuestionId, setNewDashboardQuestionId] =
     useState<number>();

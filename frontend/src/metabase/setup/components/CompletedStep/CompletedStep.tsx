@@ -1,4 +1,4 @@
-import { type ChangeEvent, useState } from "react";
+import { type ChangeEvent, type JSX, useState } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/redux";

@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, JSX } from "react";
 
 import { Markdown } from "metabase/common/components/Markdown";
 import { Tooltip } from "metabase/ui";

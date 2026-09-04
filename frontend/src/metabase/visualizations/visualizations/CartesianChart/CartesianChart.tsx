@@ -106,7 +106,7 @@ function CartesianChartInner(props: VisualizationProps) {
   );
   useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
-  const chartRef = useRef<EChartsType>();
+  const chartRef = useRef<EChartsType>(undefined);
   // Mirror the ECharts instance into state so that effects depending on it
   // (e.g. brush setup) re-run once it becomes available. The renderer renders
   // nothing until ExplicitSize has measured it, which it does a tick after

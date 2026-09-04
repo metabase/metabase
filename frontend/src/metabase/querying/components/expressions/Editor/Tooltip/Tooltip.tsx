@@ -36,7 +36,7 @@ export function Tooltip({
   expressionMode: Lib.ExpressionMode;
 
   // from tooltip extension
-  tooltipRef: RefObject<HTMLDivElement>;
+  tooltipRef: RefObject<HTMLDivElement | null>;
   state: EditorState;
   view: EditorView;
 }) {

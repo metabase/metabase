@@ -19,8 +19,8 @@ const findBestMatchingChild = (
   let bestLen = 0;
 
   for (const child of children) {
-    // Unjustified type cast. FIXME
-    const childPath = child?.props?.path as string | undefined;
+    // The route children carry an optional `path` prop.
+    const childPath = (child?.props as { path?: string } | undefined)?.path;
     if (!childPath) {
       continue;
     }
@@ -70,7 +70,8 @@ export function SettingsNavItem({
     >
       {children.length > 0
         ? children.map((child) =>
-            child?.props?.path
+            // Route children carry an optional `path` prop.
+            (child?.props as { path?: string } | undefined)?.path
               ? // Unjustified type cast. FIXME
                 React.cloneElement(child, {
                   active: child === bestChild,
