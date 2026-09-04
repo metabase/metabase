@@ -7,8 +7,6 @@ summary: Overview of all the ways you can use AI with Metabase.
 
 AI in Metabase is optional. You can use Metabase without AI at all. But if you do want to use AI to interact with Metabase, we have you covered.
 
-> Join us for AI Analytics Week: three live sessions on trusting AI answers, rolling out AI safely, and building on top of AI. [Details and registration →](https://metaba.se/ai-analytics-week)
-
 Here are the different ways to use AI with Metabase:
 
 - [Metabot](#metabot)

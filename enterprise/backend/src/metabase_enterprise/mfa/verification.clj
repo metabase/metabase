@@ -4,7 +4,7 @@
   one-time code, atomically consuming whichever credential is presented so a replayed or
   concurrently submitted credential can never pass twice.
 
-  Row-level helpers (`provider-name`, `totp-identity`, `confirmed?`, `stored-secret`) live here
+  Row-level helpers (`totp-identity`, `confirmed?`, `stored-secret`) live here
   as the lower layer; `metabase-enterprise.mfa.enrollment` requires this namespace for them.
 
   One-time-use state lives in the same `:credentials` JSON column as the enrollment secret:
@@ -13,6 +13,7 @@
   - `:recovery_codes` — bcrypt hashes of unused recovery codes; removed on use.
   - `:email_otp`      — `{:hash ... :exp ...}` bcrypt hash of a pending emailed code; removed on use."
   (:require
+   [metabase-enterprise.mfa.db :as mfa.db]
    [metabase-enterprise.mfa.recovery-codes :as recovery-codes]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase.util.password :as u.password]
@@ -26,12 +27,10 @@
 ;; validation accepts its rows (the default `validate` method applies).
 (derive :provider/totp :metabase.auth-identity.provider/provider)
 
-(def ^:private provider-name "totp")
-
 (defn totp-identity
   "The AuthIdentity row for `user-id`'s TOTP enrollment, or nil."
   [user-id]
-  (t2/select-one :model/AuthIdentity :user_id user-id :provider provider-name))
+  (mfa.db/totp-identity user-id))
 
 (defn confirmed?
   "Has `auth-identity` been confirmed (i.e. is it a usable second factor)?
@@ -74,8 +73,7 @@
   the successful verification — otherwise it would stay valid for its remaining ~10-minute TTL,
   including as re-auth for disable/regenerate."
   [auth-identity credentials jti]
-  (t2/update! :model/AuthIdentity (:id auth-identity)
-              {:credentials (-> credentials (dissoc :email_otp) (consume-jti jti))}))
+  (mfa.db/update-auth-identity! (:id auth-identity) {:credentials (-> credentials (dissoc :email_otp) (consume-jti jti))}))
 
 (defn- totp-attempt!
   "When `code` is a valid, not-yet-used TOTP code: consume its time step (RFC 6238 §5.2) and return
@@ -130,10 +128,7 @@
   On successful verification the AuthIdentity associated with the second factor is returned, else nil"
   [user-id code jti]
   (t2/with-transaction [_conn]
-    (when-let [auth-identity (t2/select-one :model/AuthIdentity
-                                            :user_id user-id
-                                            :provider provider-name
-                                            {:for :update})]
+    (when-let [auth-identity (mfa.db/lock-totp-identity user-id)]
       (when (and (confirmed? auth-identity)
                  (not (jti-used? (:credentials auth-identity) jti)))
         (when (or (totp-attempt! auth-identity code jti)
@@ -147,15 +142,12 @@
   code for the caller to email, or nil when the user has no confirmed enrollment."
   [user-id]
   (t2/with-transaction [_conn]
-    (when-let [auth-identity (t2/select-one :model/AuthIdentity
-                                            :user_id user-id
-                                            :provider provider-name
-                                            {:for :update})]
+    (when-let [auth-identity (mfa.db/lock-totp-identity user-id)]
       (when (confirmed? auth-identity)
         (let [code (format "%06d" (.nextInt (SecureRandom.) 1000000))]
-          (t2/update! :model/AuthIdentity (:id auth-identity)
-                      {:credentials (assoc (:credentials auth-identity)
-                                           :email_otp {:hash (u.password/hash-bcrypt code)
-                                                       :exp  (+ (quot (System/currentTimeMillis) 1000)
-                                                                (* 10 60))})})
+          (mfa.db/update-auth-identity! (:id auth-identity)
+                                        {:credentials (assoc (:credentials auth-identity)
+                                                             :email_otp {:hash (u.password/hash-bcrypt code)
+                                                                         :exp  (+ (quot (System/currentTimeMillis) 1000)
+                                                                                  (* 10 60))})})
           code)))))

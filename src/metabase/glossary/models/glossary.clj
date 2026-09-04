@@ -1,5 +1,6 @@
 (ns metabase.glossary.models.glossary
   (:require
+   [metabase.glossary.db :as glossary.db]
    [metabase.models.serialization :as serdes]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -17,8 +18,7 @@
   (if-not (seq glossary-entries)
     glossary-entries
     (let [creator-ids (into #{} (map :creator_id) glossary-entries)
-          id->creator (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
-                                        :id [:in creator-ids])]
+          id->creator (glossary.db/users-by-id creator-ids)]
       (for [entry glossary-entries]
         (assoc entry :creator (get id->creator (:creator_id entry)))))))
 
@@ -36,7 +36,7 @@
 
 (defmethod serdes/load-find-local "Glossary"
   [path]
-  (t2/select-one :model/Glossary :term (:id (first path))))
+  (glossary.db/glossary-entry-by-term (:id (first path))))
 
 (defmethod serdes/make-spec "Glossary" [_model-name _opts]
   {:copy      [:term :definition]

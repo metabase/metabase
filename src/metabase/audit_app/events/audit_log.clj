@@ -1,11 +1,11 @@
 (ns metabase.audit-app.events.audit-log
   "This namespace is responsible for publishing events to the audit log. "
   (:require
+   [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.events.core :as events]
    [metabase.util :as u]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (events/derive! ::event :metabase/event)
 
@@ -35,9 +35,9 @@
   ;; we expect that the object has just a dashboard :id at the top level
   ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
   (let [cards   (when (seq dashcards)
-                  (t2/select-fn->fn :id #(select-keys % [:name :description])
-                                    :model/Card
-                                    :id [:in (map :card_id dashcards)]))
+                  (into {}
+                        (map (juxt :id #(select-keys % [:name :description])))
+                        (audit-app.db/cards (map :card_id dashcards))))
         details (-> (select-keys object [:description :name :id])
                     (assoc :dashcards (for [{:keys [id card_id]} dashcards]
                                         (-> (cards card_id)
@@ -213,7 +213,7 @@
 
 (methodical/defmethod events/publish-event! ::install-event
   [topic _event]
-  (when-not (t2/exists? :model/AuditLog :topic "install")
+  (when-not (audit-app.db/audit-log-topic-exists? "install")
     (audit-log/record-event! topic {})))
 
 (events/derive! ::database-event ::event)
