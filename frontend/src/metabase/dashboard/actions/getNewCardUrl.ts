@@ -3,7 +3,7 @@ import _ from "underscore";
 import { getStructuredQuestionUrlWithParameters } from "metabase/dashboard/click-behavior/question-url";
 import type { StoreDashboard } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
-import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
+import { getCardAfterVisualizationClick } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -16,6 +16,7 @@ import type {
   ParameterId,
   ParameterValueOrArray,
   QuestionDashboardCard,
+  SeriesCard,
   TemplateTag,
   VirtualCard,
 } from "metabase-types/api";
@@ -40,7 +41,7 @@ export const getNewCardUrl = ({
     ParameterId,
     ParameterValueOrArray | undefined | null
   >;
-  nextCard: Card | VirtualCard;
+  nextCard: SeriesCard | VirtualCard;
   previousCard: Card | VirtualCard;
   dashcard: QuestionDashboardCard;
   objectId?: number | string;

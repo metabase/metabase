@@ -184,9 +184,9 @@
                     "table" clause
                     "search-index" [:or
                                     [:= :search_index.model nil]
-                                    [:!= :search_index.model [:inline "table"]]
+                                    [:!= :search_index.model "table"]
                                     [:and
-                                     [:= :search_index.model [:inline "table"]]
+                                     [:= :search_index.model "table"]
                                      clause]])))))
 
 (mu/defn add-collection-join-and-where-clauses
@@ -373,9 +373,9 @@
 
 (def ^:private dashboardcard-count-col
   "Subselect to get the count of associated DashboardCards"
-  [{:select [:%count.*]
-    :from   [:report_dashboardcard]
-    :where  [:= :report_dashboardcard.card_id :card.id]}
+  [^:allow-subquery {:select [:%count.*]
+                     :from   [:report_dashboardcard]
+                     :where  [:= :report_dashboardcard.card_id :card.id]}
    :dashboardcard_count])
 
 (def ^:private table-columns
@@ -497,7 +497,7 @@
    [:table.description :table_description]
    [:table.collection_id :collection_id]
    [[:case [:and [:= :table.collection_id nil] [:= :table.is_published true]]
-     [:inline "Our analytics"]
+     "Our analytics"
      :else
      :collection.name] :collection_name]
    [:collection.authority_level :collection_authority_level]
@@ -555,9 +555,9 @@
                           ;; from the collection picker or when browsing, so it shouldn't be visible in search either.
                           (when (:include-dashboard-questions? search-ctx)
                             [:exists
-                             {:select 1
-                              :from [:report_dashboardcard]
-                              :where [:= :card_id :card.id]}])])
+                             ^:allow-subquery {:select 1
+                                               :from [:report_dashboardcard]
+                                               :where [:= :card_id :card.id]}])])
       (add-collection-join-and-where-clauses "card" search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
       (with-last-editing-info "card")
@@ -604,6 +604,8 @@
                              [:and
                               [:= :bookmark.document_id :document.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
+      ;; documents in Explorations are never searchable
+      (sql.helpers/where [:= nil :document.exploration_id])
       (add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "exploration"
@@ -693,10 +695,12 @@
                                         (assoc search-ctx :models search.config/all-models))]
                              (search-query-for-model model search-ctx)))
         {:keys [ctes queries]} (extract-and-hoist-ctes raw-queries)
-        nested-queries (mapv #(hash-map :nest (sql.helpers/limit % 1)) queries)
+        nested-queries (mapv #(vary-meta (hash-map :nest (vary-meta (sql.helpers/limit % 1) assoc :allow-subquery true))
+                                         assoc :allow-subquery true)
+                             queries)
         query          (when (pos-int? (count nested-queries))
                          (cond-> {:select [:*]
-                                  :from   [[{:union-all nested-queries} :dummy_alias]]}
+                                  :from   [[^:allow-subquery {:union-all nested-queries} :dummy_alias]]}
                            (seq ctes) (assoc :with ctes)))]
     (into #{} (map :model) (some-> query mdb/query))))
 
@@ -719,9 +723,10 @@
                                      :let [query (search-query-for-model model search-ctx)]
                                      :when (seq query)]
                                  query))
-            {:keys [ctes queries]} (extract-and-hoist-ctes model-queries)]
+            {:keys [ctes queries]} (extract-and-hoist-ctes model-queries)
+            queries (mapv #(vary-meta % assoc :allow-subquery true) queries)]
         (cond-> {:select   [:*]
-                 :from     [[{:union-all queries} :alias_is_required_by_sql_but_not_needed_here]]
+                 :from     [[^:allow-subquery {:union-all queries} :alias_is_required_by_sql_but_not_needed_here]]
                  :order-by order-clause
                  :limit    search.config/*db-max-results*}
           (seq ctes) (assoc :with ctes))))))

@@ -1,19 +1,13 @@
 import type {
-  BreakoutChartColumns,
-  MultipleMetricsChartColumns,
-} from "metabase/visualizations/lib/graph/columns";
-import type {
   BarData,
-  Series,
-} from "metabase/visualizations/shared/components/RowChart/types";
-import type {
+  BreakoutChartColumns,
   GroupedDatum,
-  SeriesInfo,
-} from "metabase/visualizations/shared/types/data";
-import type {
+  MultipleMetricsChartColumns,
   RemappingHydratedDatasetColumn,
+  Series,
+  SeriesInfo,
   TooltipRowModel,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,

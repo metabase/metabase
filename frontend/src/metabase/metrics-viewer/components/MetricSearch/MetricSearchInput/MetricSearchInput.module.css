@@ -42,7 +42,7 @@
   color: var(--mb-color-feedback-negative);
   background: var(--mb-color-background_page-primary);
   border: 1px solid var(--mb-color-feedback-negative);
-  border-radius: var(--mantine-radius-sm, 4px);
+  border-radius: var(--mantine-radius-xs, 4px);
   max-width: 20rem;
   white-space: normal;
   pointer-events: none;

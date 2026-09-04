@@ -77,7 +77,7 @@ const SUBCOLLECTION = createMockCollection({
 });
 
 const PERSONAL_COLLECTION = createMockCollection({
-  id: CURRENT_USER.personal_collection_id,
+  id: CURRENT_USER.personal_collection_id ?? undefined,
   name: "My personal collection",
   personal_owner_id: CURRENT_USER.id,
   can_write: true,

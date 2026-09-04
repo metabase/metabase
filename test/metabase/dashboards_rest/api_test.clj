@@ -141,6 +141,11 @@
 (defmacro ^:private with-dashboards-in-writeable-collection! [dashboards-or-ids & body]
   `(do-with-dashboards-in-a-collection! perms/grant-collection-readwrite-permissions! ~dashboards-or-ids (fn [] ~@body)))
 
+(defn- move-cards-to-dashboard-collection!
+  [dashboard-or-id card-ids]
+  (t2/update! :model/Card {:id [:in card-ids]}
+              {:collection_id (t2/select-one-fn :collection_id :model/Dashboard :id (u/the-id dashboard-or-id))}))
+
 (defn- implicit-fk-column-ref
   "The legacy `[:field id {:source-field fk-id}]` ref for the column with `target-field-id`, as reached implicitly via
   an FK from `from-table-key` (e.g. `products.category` reached via `orders.product_id`)."
@@ -2262,7 +2267,6 @@
                                                                    :size_y                 4
                                                                    :parameter_mappings     [{:parameter_id "abc"
                                                                                              :card_id      123
-                                                                                             :hash         "abc"
                                                                                              :target       [:dimension [:template-tag "foo"]]}]
                                                                    :visualization_settings {}}]
                                                       :tabs      []}))]
@@ -2275,7 +2279,7 @@
                    :row                        4
                    :series                     []
                    :dashboard_tab_id           nil
-                   :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target ["dimension" ["template-tag" "foo"]]}]
+                   :parameter_mappings         [{:parameter_id "abc" :card_id 123, :target ["dimension" ["template-tag" "foo"]]}]
                    :visualization_settings     {}
                    :created_at                 true
                    :updated_at                 true
@@ -2289,7 +2293,7 @@
                    :size_y                 4
                    :col                    4
                    :row                    4
-                   :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target [:dimension [:template-tag "foo"]]}]
+                   :parameter_mappings     [{:parameter_id "abc", :card_id 123, :target [:dimension [:template-tag "foo"]]}]
                    :visualization_settings {}}]
                  (map (partial into {})
                       (t2/select [:model/DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
@@ -2411,14 +2415,14 @@
       (do-with-add-card-parameter-mapping-permissions-fixtures!
        (fn [{:keys [card-id mappings add-card! dashcards]}]
          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-         (is (=? {:message "You must have data permissions to add a parameter referencing the Table \"VENUES\"."}
-                 (add-card! 403)))
+         (is (= "You must have data permissions to add a parameter referencing this Field."
+                (add-card! 403)))
          (is (= []
                 (dashcards)))
          (testing "Permissions for a different table in the same DB should not count"
            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/create-queries :query-builder)
-           (is (=? {:message  "You must have data permissions to add a parameter referencing the Table \"VENUES\"."}
-                   (add-card! 403)))
+           (is (= "You must have data permissions to add a parameter referencing this Field."
+                  (add-card! 403)))
            (is (= []
                   (dashcards))))
          (testing "If they have data permissions, it should be ok"
@@ -2445,7 +2449,6 @@
                                                          :size_y                 4
                                                          :parameter_mappings     [{:parameter_id "abc"
                                                                                    :card_id      123
-                                                                                   :hash         "abc"
                                                                                    :target       [:dimension [:template-tag "foo"]]}]
                                                          :visualization_settings {}}]
                                             :tabs      []}))))))
@@ -2461,6 +2464,7 @@
                    :model/DashboardCard {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}
                    :model/Card          {series-id-1 :id}   {:name "Series Card"}]
       (with-dashboards-in-writeable-collection! [dashboard-id]
+        (move-cards-to-dashboard-collection! dashboard-id [card-id series-id-1])
         (is (= {:size_x                     4
                 :size_y                     4
                 :col                        0
@@ -2531,8 +2535,8 @@
       (do-with-update-cards-parameter-mapping-permissions-fixtures!
        (fn [{:keys [dashboard-id card-id original-mappings update-mappings! update-size! new-dashcard-info new-mappings]}]
          (testing "Should *NOT* be allowed to update the `:parameter_mappings` without proper data permissions"
-           (is (=? {:message  "You must have data permissions to add a parameter referencing the Table \"VENUES\"."}
-                   (update-mappings! 403)))
+           (is (= "You must have data permissions to add a parameter referencing this Field."
+                  (update-mappings! 403)))
            (is (= original-mappings
                   (t2/select-one-fn :parameter_mappings :model/DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
          (testing "Changing another column should be ok even without data permissions."
@@ -2560,6 +2564,7 @@
                                                        :card_id model-id}
                      :model/DashboardCard question-card {:dashboard_id dashboard-id, :card_id model-id}]
         (with-dashboards-in-writeable-collection! [dashboard-id]
+          (move-cards-to-dashboard-collection! dashboard-id [model-id model-id-2])
           ;; TODO adds test for return
           ;; Update **both** cards to use the new card id
           (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
@@ -2602,6 +2607,7 @@
                      :model/DashboardCardSeries _                    {:dashboardcard_id dashcard-id-1, :card_id series-id-2, :position 1}
                      :model/DashboardCardSeries _                    {:dashboardcard_id dashcard-id-3, :card_id series-id-1, :position 0}]
         (with-dashboards-in-writeable-collection! [dashboard-id]
+          (move-cards-to-dashboard-collection! dashboard-id [card-id series-id-1 series-id-2])
           (is (= 3
                  (count (t2/select-pks-set :model/DashboardCard, :dashboard_id dashboard-id))))
           (is (=? {:dashcards [{:id     dashcard-id-3
@@ -3480,7 +3486,11 @@
 (deftest chain-filter-should-use-cached-field-values-test
   (testing "Chain filter endpoints should use cached FieldValues if applicable (#13832)"
     ;; ignore the cache entries added by #23699
-    (mt/with-temp-vals-in-db :model/FieldValues (t2/select-one-pk :model/FieldValues :field_id (mt/id :categories :name) :hash_key nil) {:values ["Good" "Bad"]}
+    ;; Request the complete FieldValues instead of relying on another test to create it. The row is lazy, and
+    ;; creating it within `with-temp` rolls it back afterward.
+    (mt/with-temp-vals-in-db :model/FieldValues (field-values/get-or-create-full-field-values!
+                                                 (t2/select-one :model/Field :id (mt/id :categories :name)))
+                             {:values ["Good" "Bad"]}
       (with-chain-filter-fixtures [{:keys [dashboard]}]
         (testing "GET /api/dashboard/:id/params/:param-key/values"
           (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_")]
@@ -3806,7 +3816,7 @@
 
 (deftest dashboard-card-query-metric-sourced-from-inaccessible-model-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query with a metric sourced from a model"
-    (testing "runs for a user without collection access to the source model"
+    (testing "is refused for a caller without collection access to the source model"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection    model-coll {}
                        :model/Collection    dash-coll  {}
@@ -3823,10 +3833,10 @@
                        :model/DashboardCard dashcard   {:dashboard_id (u/the-id dashboard)
                                                         :card_id      (u/the-id metric)}]
           (perms/grant-collection-read-permissions! (perms-group/all-users) dash-coll)
-          (is (= [[18760]]
-                 (mt/rows (mt/user-http-request :rasta :post 202
-                                                (dashboard-card-query-url
-                                                 (u/the-id dashboard) (u/the-id metric) (u/the-id dashcard)))))))))
+          (is (re-find #"You do not have permissions to view Card"
+                       (str (mt/user-http-request :rasta :post 403
+                                                  (dashboard-card-query-url
+                                                   (u/the-id dashboard) (u/the-id metric) (u/the-id dashcard)))))))))
     (testing "runs for a user without query-building data perms"
       (mt/with-temp [:model/Collection    coll      {}
                      :model/Card          model     {:type          :model
@@ -3878,7 +3888,7 @@
                                          {:parameters [{:id    "_THIS_PARAMETER_DOES_NOT_EXIST_"
                                                         :value 3}]}))))
           (testing "Should return sensible error message for invalid parameter input"
-            (is (= {:errors {:parameters "nullable sequence of value must be a parameter map with an 'id' key"},
+            (is (= {:errors {:parameters "nullable sequence of parameter must be a map with an :id key"},
                     :specific-errors {:parameters ["invalid type, received: {:_PRICE_ 3}"]}}
                    (mt/user-http-request :rasta :post 400 url
                                          {:parameters {"_PRICE_" 3}}))))
@@ -5125,8 +5135,6 @@
           (mt/user-http-request :crowberto :get 200
                                 (format "dashboard/%d/query_metadata?dashboard_load_id=%s" (:id d) load-id))))
       (testing "Call count for :metadata/table is smaller with caching in place"
-        ;; with disabled can_run_adhoc_query these numbers might now match. Without disabled it was 5, with disabling
-        ;; it is 1
         (is (<= @cached-calls-count @uncached-calls-count)))
       ;; If we need more for _some reason_, this test should be updated accordingly.
       (testing "At most 1 db call should be executed for :metadata/tables"
@@ -5458,6 +5466,7 @@
                                                                       :values_source_type   "static-list"
                                                                       :values_source_config {:values ["A" "B" "C"]}}]}]
       (with-dashboards-in-writeable-collection! [dashboard-id]
+        (move-cards-to-dashboard-collection! dashboard-id [source-card-id])
         (testing "Initial parameter cards are created for card-sourced parameters only"
           (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
                              :parameterized_object_id dashboard-id))))
@@ -5475,6 +5484,26 @@
               (is (= (count original-param-cards) (count updated-param-cards)))
               (is (= (set (map :id original-param-cards))
                      (set (map :id updated-param-cards)))))))))))
+
+(deftest dashboard-update-preserves-widget-shape-parameter-keys-test
+  (testing "PUT /api/dashboard/:id round-trips the parameter keys that decide how the widget renders"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
+        (let [parameter {:name          "Title"
+                         :display-name  "Title"
+                         :slug          "title"
+                         :id            "_TITLE_"
+                         :type          "string/contains"
+                         :sectionId     "string"
+                         :isMultiSelect false
+                         :options       {:case-sensitive false}
+                         :value         ["Awesome"]}]
+          (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                {:parameters [parameter]})
+          (is (= [(-> parameter
+                      (update :type keyword)
+                      (assoc :sectionId "string"))]
+                 (:parameters (t2/select-one :model/Dashboard :id dashboard-id)))))))))
 
 (deftest dashboard-update-mixed-parameter-changes-test
   (testing "PUT /api/dashboard/:id correctly handles mix of unchanged and changed parameters"
@@ -5497,6 +5526,7 @@
                                                                       :values_source_type   "card"
                                                                       :values_source_config {:card_id source-card-id-1}}]}]
       (with-dashboards-in-writeable-collection! [dashboard-id]
+        (move-cards-to-dashboard-collection! dashboard-id [source-card-id-1 source-card-id-2])
         (testing "Initial parameter cards are created"
           (is (= 2 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
                              :parameterized_object_id dashboard-id))))
@@ -5827,7 +5857,7 @@
                                                 {:dashcards [{:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4
                                                               :parameter_mappings mapping}]
                                                  :tabs      []}))]
-            (is (=? {:message #"(?i).*data permissions.*PRODUCTS.*"} (put! 403)))
+            (is (= "You must have data permissions to add a parameter referencing this Field." (put! 403)))
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/view-data :unrestricted)
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/create-queries :query-builder)
             (is (=? [{:parameter_mappings [{:parameter_id "_ID_"
@@ -6204,22 +6234,6 @@
                                  :tabs []})
           (is (=? [{:target target}]
                   (t2/select-one-fn :parameter_mappings :model/DashboardCard :id dc-id))))))))
-
-(deftest swap-dashcard-card-id-requires-no-card-permission-test
-  (testing "PUT /api/dashboard/:id swapping a dashcard's card_id needs no data/read perms on the new card"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Collection {coll-id :id} {}
-                       :model/Dashboard {dash-id :id} {:collection_id coll-id}
-                       :model/Card {c1-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
-                       :model/Card {c2-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
-                       :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id c1-id}]
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
-          (mt/with-no-data-perms-for-all-users!
-            (is (=? [{:card_id c2-id}]
-                    (:dashcards (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dash-id)
-                                                      {:dashcards [{:id dc-id :card_id c2-id :row 0 :col 0 :size_x 4 :size_y 4}]
-                                                       :tabs []}))))))))))
 
 (deftest update-card-id-preserves-mismatched-stale-parameter-mappings-test
   (testing "PUT /api/dashboard/:id changing a dashcard's card_id does not validate/prune stale parameter_mappings"

@@ -1,13 +1,7 @@
 import { t } from "ttag";
 
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type {
-  Card,
-  Dashboard,
-  Database,
-  DatabaseFeature,
-  DatabaseId,
-} from "metabase-types/api";
+import type { Card, Dashboard, Database, DatabaseId } from "metabase-types/api";
 
 export const isDbModifiable = (
   database:
@@ -34,13 +28,6 @@ export const getDbNotModifiableMessage = (
     ? t`The sample database cannot be edited.`
     : // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin-only: must name Metabase Cloud to distinguish it from a whitelabeled instance
       t`This database is managed by Metabase Cloud and cannot be modified.`;
-};
-
-export const hasFeature = (
-  database: Pick<Database, "features">,
-  feature: DatabaseFeature,
-) => {
-  return database.features?.includes(feature) ?? false;
 };
 
 export const hasActionsEnabled = (database: Pick<Database, "settings">) => {

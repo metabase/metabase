@@ -1,5 +1,3 @@
-import { updateMetadata } from "metabase/redux/metadata";
-import { QueryMetadataSchema } from "metabase/schema";
 import type {
   CardQueryMetadata,
   Dataset,
@@ -17,7 +15,6 @@ import {
   provideAdhocQueryMetadataTags,
   provideParameterValuesTags,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
 
 interface IgnorableError {
   ignore_error?: boolean;
@@ -106,10 +103,6 @@ export const datasetApi = Api.injectEndpoints({
       }),
       providesTags: (metadata) =>
         metadata ? provideAdhocQueryMetadataTags(metadata) : [],
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, QueryMetadataSchema)),
-        ),
     }),
     getNativeDataset: builder.query<NativeDatasetResponse, DatasetQuery>({
       query: (body) => ({

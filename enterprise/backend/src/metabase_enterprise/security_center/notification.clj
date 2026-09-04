@@ -10,6 +10,7 @@
    as a recipient when set, but only if `security-center-email-recipients`
    targets the admin group (i.e. \"Send to all instance admins\" is on)."
   (:require
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase-enterprise.security-center.settings :as settings]
    [metabase.analytics.core :as analytics]
    [metabase.channel.settings :as channel.settings]
@@ -168,8 +169,7 @@
      (try
        (notification/send-notification! notif :notification/sync? true)
        (track-notification-sent! notif triggered-from "success")
-       (t2/update! :model/SecurityAdvisory (:id advisory)
-                   {:last_notified_at (mi/now)})
+       (security-center.db/update-advisory! (:id advisory) {:last_notified_at (mi/now)})
        (catch Exception e
          (track-notification-sent! notif triggered-from "failure")
          (throw e))))))

@@ -8,7 +8,6 @@ import {
   useGetDatabaseQuery,
   useGetFieldTableIdsQuery,
   useGetTableQuery,
-  useSubmitMetabotSourceFeedbackMutation,
 } from "metabase/api";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -43,6 +42,8 @@ import type {
   NativeDatasetQuery,
   TemplateTags,
 } from "metabase-types/api";
+
+import { useSubmitMetabotSourceFeedbackMutation } from "../../api";
 
 import S from "./MetabotAgentDataPartMessage.module.css";
 
@@ -242,17 +243,17 @@ const SourceItemSkeleton = ({ hasFeedback }: { hasFeedback?: boolean }) => {
     >
       <Flex direction="column" gap="0.375rem" miw={0} maw="100%">
         <Flex gap="sm" align="center" miw={0} maw="100%">
-          <Skeleton w={12} h={12} radius="xs" />
-          <Skeleton w="7rem" h="0.75rem" radius="xs" />
+          <Skeleton w={12} h={12} radius="xxs" />
+          <Skeleton w="7rem" h="0.75rem" radius="xxs" />
         </Flex>
         <Flex pl="1.25rem">
-          <Skeleton w="10rem" h="0.75rem" radius="xs" />
+          <Skeleton w="10rem" h="0.75rem" radius="xxs" />
         </Flex>
       </Flex>
       {hasFeedback && (
-        <Flex gap="xs" align="center" style={{ flexShrink: 0 }}>
-          <Skeleton w={24} h={24} radius="sm" />
-          <Skeleton w={24} h={24} radius="sm" />
+        <Flex gap="xxs" align="center" style={{ flexShrink: 0 }}>
+          <Skeleton w={24} h={24} radius="xs" />
+          <Skeleton w={24} h={24} radius="xs" />
         </Flex>
       )}
     </Flex>
@@ -294,7 +295,7 @@ const SourceFeedbackButtons = ({
   };
 
   return (
-    <Flex gap="xs" align="center" style={{ flexShrink: 0 }}>
+    <Flex gap="xxs" align="center" style={{ flexShrink: 0 }}>
       <Tooltip label={t`Source is correct`}>
         <ActionIcon
           aria-label={t`Source is correct`}
@@ -302,7 +303,7 @@ const SourceFeedbackButtons = ({
           variant="default"
           className={S.sourceFeedbackButton}
           data-active={feedback === true || undefined}
-          bdrs="sm"
+          bdrs="xs"
           style={{
             boxShadow: "0 1px 3px 0 #00000012",
           }}
@@ -321,7 +322,7 @@ const SourceFeedbackButtons = ({
           variant="default"
           className={S.sourceFeedbackButton}
           data-active={feedback === false || undefined}
-          bdrs="sm"
+          bdrs="xs"
           style={{
             boxShadow: "0 1px 3px 0 #00000012",
           }}

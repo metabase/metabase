@@ -5,16 +5,15 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import { useNavigate } from "metabase/router";
 import DeleteTimelineModal from "metabase/timelines/common/components/DeleteTimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
 
 function DeleteTimelineModalContainer({
   params,
+  onClose,
   ...props
 }: ModalComponentProps) {
-  const navigate = useNavigate();
   const [deleteTimeline] = useDeleteTimelineMutation();
   const id = Urls.extractEntityId(params.timelineId);
   const {
@@ -31,12 +30,13 @@ function DeleteTimelineModalContainer({
 
   const handleSubmit = async (timeline: Timeline) => {
     await deleteTimeline(timeline.id).unwrap();
-    navigate(Urls.timelinesArchiveInCollection(timeline.collection));
+    onClose();
   };
 
   return (
     <DeleteTimelineModal
       {...props}
+      onClose={onClose}
       timeline={timeline}
       onSubmit={handleSubmit}
     />

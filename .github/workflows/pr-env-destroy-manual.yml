@@ -14,11 +14,15 @@ on:
 
 jobs:
   approve:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     environment: pr-env-admin
     steps:
       - name: Approved
-        run: echo "Destroying PR environment for PR #${{ inputs.pr_number }}"
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          echo "Destroying PR environment for PR #${PR_NUMBER}"
 
   destroy:
     needs: approve

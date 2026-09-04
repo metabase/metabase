@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.app-db.core :as mdb]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.metabot.task.suggested-prompts-refresh :as metabot.suggested-prompts-refresh]
    [metabase.metabot.tools.util :as metabot.tools.u]
@@ -25,7 +26,7 @@
   "List configured metabot instances"
   []
   (api/check-superuser)
-  {:items (t2/select :model/Metabot {:order-by [[:name :asc]]})})
+  {:items (metabot.db/metabots-by-name)})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -35,7 +36,7 @@
   "Retrieve one metabot instance"
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/Metabot :id id)))
+  (api/check-404 (metabot.db/metabot id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -49,18 +50,18 @@
                        [:use_verified_content {:optional true} :boolean]
                        [:collection_id {:optional true} [:maybe pos-int?]]]]
   (api/check-superuser)
-  (api/check-404 (t2/exists? :model/Metabot :id id))
-  (let [old-metabot (t2/select-one :model/Metabot :id id)]
+  (api/check-404 (metabot.db/metabot-exists? id))
+  (let [old-metabot (metabot.db/metabot id)]
     ;; Prevent enabling verified content without the premium feature
     (when (:use_verified_content metabot-updates)
       (premium-features/assert-has-feature :content-verification (tru "Content verification")))
     (let [old-vals (select-keys old-metabot (keys metabot-updates))]
       (when (not= old-vals metabot-updates)
-        (t2/update! :model/Metabot id metabot-updates)
+        (metabot.db/update-metabot! id metabot-updates)
         ;; Content scope changed, so the suggested prompts are stale. Regenerate in the background so
         ;; the toggle returns instantly; the job re-reads the saved scope and debounces rapid toggles.
         (metabot.suggested-prompts-refresh/schedule-refresh! id))
-      (t2/select-one :model/Metabot :id id))))
+      (metabot.db/metabot id))))
 
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
   :- [:multi {:dispatch :status}
@@ -79,7 +80,7 @@
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
-    (api/check-404 (t2/exists? :model/Metabot :id id))
+    (api/check-404 (metabot.db/metabot-exists? id))
     (metabot.usage/check-metabase-managed-free-limit!)
     (metabot.suggested-prompts/delete-all-metabot-prompts id)
     (metabot.suggested-prompts/generate-sample-prompts id)))
@@ -103,9 +104,9 @@
         rand-fn (case (mdb/db-type)
                   :postgres :random
                   :rand)
-        base-query (cond-> {:join  [[{:select [:id :name :type]
-                                      :from   [[(metabot.tools.u/metabot-metrics-and-models-query id)
-                                                :scope]]}
+        base-query (cond-> {:join  [[^:allow-subquery {:select [:id :name :type]
+                                                       :from   [[(metabot.tools.u/metabot-metrics-and-models-query id)
+                                                                 :scope]]}
                                      :card]
                                     [:and
                                      [:= :card.id :metabot_prompt.card_id]]]
@@ -113,23 +114,16 @@
                                     [:= :metabot_prompt.metabot_id id]]}
                      model    (update :where conj [:= :card.type model])
                      model_id (update :where conj [:= :card.id model_id]))
-        total (t2/count :model/MetabotPrompt base-query)
+        total (metabot.db/prompt-count-where base-query)
         order-by (if sample
                    [[[rand-fn]]]
                    [[:card.name :asc]
                     [:id :asc]])
-        prompts (t2/select [:model/MetabotPrompt
-                            :id
-                            :prompt
-                            :model
-                            [:card_id :model_id]
-                            [:card.name :model_name]
-                            :created_at
-                            :updated_at]
-                           (cond-> base-query
-                             true             (assoc :order-by order-by)
-                             (request/limit)  (assoc :limit    (request/limit))
-                             offset           (assoc :offset   offset)))]
+        prompts (metabot.db/prompts-where
+                 (cond-> base-query
+                   true             (assoc :order-by order-by)
+                   (request/limit)  (assoc :limit    (request/limit))
+                   offset           (assoc :offset   offset)))]
     {:prompts prompts
      :limit   (request/limit)
      :offset  offset
@@ -156,9 +150,7 @@
                               [:id pos-int?]
                               [:prompt-id pos-int?]]]
   (api/check-superuser)
-  (t2/delete! :model/MetabotPrompt {:where [:and
-                                            [:= :id prompt-id]
-                                            [:= :metabot_id id]]})
+  (metabot.db/delete-metabot-prompt! id prompt-id)
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

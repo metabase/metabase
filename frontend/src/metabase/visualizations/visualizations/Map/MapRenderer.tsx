@@ -6,8 +6,8 @@ import { PinMap } from "../../components/PinMap";
 import { isPinMapType } from "./utils";
 
 // Renders the actual leaflet-backed map. This module (and everything it pulls
-// in, including leaflet) is loaded lazily by Map.tsx so it stays out of the
-// initial bundle.
+// in, including leaflet) is only reachable from the map's own chunk, so it
+// stays out of the initial bundle.
 export function MapRenderer(props: VisualizationProps) {
   const type = props.settings["map.type"];
 

@@ -17,15 +17,16 @@ on:
 
 jobs:
   setup-oss:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     outputs:
       modules: ${{ steps.get-modules.outputs.modules }}
     steps:
       - uses: actions/checkout@v6
       - id: get-modules
         run: |
-          modules=$(ls -1d src/metabase/*/ | xargs -n1 basename | tr '_' '-' | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          echo "modules=$modules" >> $GITHUB_OUTPUT
+          modules=$(for d in src/metabase/*/; do basename "$d"; done | tr '_' '-' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "modules=$modules" >> "$GITHUB_OUTPUT"
 
   be-linter-cloverage:
     needs: setup-oss
@@ -64,15 +65,16 @@ jobs:
           flags: back-end
 
   setup-ee:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     outputs:
       modules: ${{ steps.get-modules.outputs.modules }}
     steps:
       - uses: actions/checkout@v6
       - id: get-modules
         run: |
-          modules=$(ls -1d enterprise/backend/src/metabase_enterprise/*/ | xargs -n1 basename | tr '_' '-' | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          echo "modules=$modules" >> $GITHUB_OUTPUT
+          modules=$(for d in enterprise/backend/src/metabase_enterprise/*/; do basename "$d"; done | tr '_' '-' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "modules=$modules" >> "$GITHUB_OUTPUT"
 
   be-linter-cloverage-enterprise:
     needs: setup-ee

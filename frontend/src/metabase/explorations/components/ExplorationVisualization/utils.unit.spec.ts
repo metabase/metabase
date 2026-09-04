@@ -1,11 +1,18 @@
-import { OTHER_BUCKET_LABEL } from "metabase/explorations/constants";
+import {
+  CARTESIAN_SERIES_COL_NAME,
+  HEAT_MAP_SEGMENT_COL_NAME,
+  OTHER_BUCKET_LABEL,
+  fallbackSegmentName,
+} from "metabase/explorations/constants";
 import { createQuery } from "metabase/explorations/test-utils";
+import type { HighlightedCommentState } from "metabase/redux/store/explorations";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { registerVisualizations } from "metabase/visualizations/register";
+import type { ClickObject } from "metabase/visualizations/types";
 import type {
-  ClickObject,
+  ComputedVisualizationSettings,
   HighlightedObject,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import type {
   Dataset,
   ExplorationQuery,
@@ -17,15 +24,18 @@ import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockDatetimeColumn,
 } from "metabase-types/api/mocks";
 
 import {
-  type SeriesGroup,
+  buildCommentHighlightContext,
+  buildHighlightLabel,
   buildSeriesGroup,
   canExploreFurther,
-  getCommentLabel,
+  composeChartsForGroup,
   getExploreFurtherFilters,
   getHeatMapSeries,
+  resolveHighlightForSeries,
 } from "./utils";
 
 registerVisualizations();
@@ -166,20 +176,14 @@ function makeClickObject(
 }
 
 describe("canExploreFurther", () => {
-  it("returns false when there are no dimensions", () => {
-    expect(
-      canExploreFurther(
-        makeClickObject({ dimensions: [] }),
-        "metric",
-        "default",
-      ),
-    ).toBe(false);
+  it("returns false when queryType is omitted", () => {
+    expect(canExploreFurther(makeClickObject())).toBe(false);
   });
 
-  it("returns false for dimension blocks", () => {
-    expect(canExploreFurther(makeClickObject(), "dimension", "default")).toBe(
-      false,
-    );
+  it("returns false when there are no dimensions", () => {
+    expect(
+      canExploreFurther(makeClickObject({ dimensions: [] }), "default"),
+    ).toBe(false);
   });
 
   it("returns false for top-n-other clicks on the Other bucket", () => {
@@ -196,16 +200,13 @@ describe("canExploreFurther", () => {
             },
           ],
         }),
-        "metric",
         "top-n-other",
       ),
     ).toBe(false);
   });
 
   it("returns true for eligible metric-block clicks with real dimension values", () => {
-    expect(canExploreFurther(makeClickObject(), "metric", "default")).toBe(
-      true,
-    );
+    expect(canExploreFurther(makeClickObject(), "default")).toBe(true);
   });
 
   it("returns true when multiple dimensions are present", () => {
@@ -226,7 +227,27 @@ describe("canExploreFurther", () => {
             },
           ],
         }),
-        "metric",
+        "default",
+      ),
+    ).toBe(true);
+  });
+
+  it("returns true for brush clicks with a field_ref on metric blocks", () => {
+    expect(
+      canExploreFurther(
+        {
+          brushRange: {
+            type: "temporal",
+            start: "2020-01-01T00:00:00",
+            end: "2020-03-01T00:00:00",
+          },
+          column: createMockDatetimeColumn({
+            name: "CREATED_AT",
+            field_ref: ["field", 20, null],
+          }),
+          event: new MouseEvent("click"),
+          settings: {},
+        },
         "default",
       ),
     ).toBe(true);
@@ -258,11 +279,13 @@ describe("getExploreFurtherFilters", () => {
 
     expect(getExploreFurtherFilters(clicked)).toEqual([
       {
+        operator: "=",
         field_ref: ["field", 10, null],
         value: "Gadget",
         display_value: "Gadget",
       },
       {
+        operator: "=",
         field_ref: ["field", 11, null],
         value: "Affiliate",
         display_value: "Affiliate",
@@ -286,15 +309,602 @@ describe("getExploreFurtherFilters", () => {
 
     expect(getExploreFurtherFilters(clicked)).toEqual([
       {
+        operator: "=",
         field_ref: ["field", 10, null],
         value: null,
         display_value: NULL_DISPLAY_VALUE,
       },
     ]);
   });
+
+  it("clamps a temporal brush range to the dots inside the brush", () => {
+    const column = createMockDatetimeColumn({
+      name: "CREATED_AT",
+      source: "breakout",
+      unit: "month",
+      field_ref: ["field", 20, { "temporal-unit": "month" }],
+    });
+    // Brush from mid-Jan to mid-Mar: Jan's dot (Jan 1) is outside, so the
+    // filter clamps to Feb 1 – Mar 1 (same as Lib.updateTemporalFilter).
+    const clicked: ClickObject = {
+      brushRange: {
+        type: "temporal",
+        start: "2020-01-15T14:30:00",
+        end: "2020-03-10T09:05:00",
+      },
+      column,
+      event: new MouseEvent("click"),
+      settings: {
+        column: () => ({ column, date_abbreviate: true }),
+      },
+    };
+
+    expect(getExploreFurtherFilters(clicked)).toEqual([
+      {
+        operator: "between",
+        field_ref: ["field", 20, { "temporal-unit": "month" }],
+        values: ["2020-02-01T00:00:00", "2020-03-01T00:00:00"],
+        display_value: "Feb 2020 – Mar 2020",
+      },
+    ]);
+  });
+
+  it("keeps an aligned temporal brush start instead of rounding it up a unit", () => {
+    const column = createMockDatetimeColumn({
+      name: "CREATED_AT",
+      source: "breakout",
+      unit: "month",
+      field_ref: ["field", 20, { "temporal-unit": "month" }],
+    });
+    // Start is exactly Jan 1, the January bar's tick, so the filter includes it
+    // (same as Lib.updateTemporalFilter).
+    const clicked: ClickObject = {
+      brushRange: {
+        type: "temporal",
+        start: "2020-01-01T00:00:00",
+        end: "2020-03-10T09:05:00",
+      },
+      column,
+      event: new MouseEvent("click"),
+      settings: {
+        column: () => ({ column, date_abbreviate: true }),
+      },
+    };
+
+    expect(getExploreFurtherFilters(clicked)).toEqual([
+      {
+        operator: "between",
+        field_ref: ["field", 20, { "temporal-unit": "month" }],
+        values: ["2020-01-01T00:00:00", "2020-03-01T00:00:00"],
+        display_value: "Jan 2020 – Mar 2020",
+      },
+    ]);
+  });
+
+  it("returns an equality filter when a temporal brush covers a single dot", () => {
+    const column = createMockDatetimeColumn({
+      name: "CREATED_AT",
+      source: "breakout",
+      unit: "month",
+      field_ref: ["field", 20, { "temporal-unit": "month" }],
+    });
+    const clicked: ClickObject = {
+      brushRange: {
+        type: "temporal",
+        // After clamp: start = Feb 1, end = Feb 1
+        start: "2020-01-15T14:30:00",
+        end: "2020-02-20T09:05:00",
+      },
+      column,
+      event: new MouseEvent("click"),
+      settings: {
+        column: () => ({ column, date_abbreviate: true }),
+      },
+    };
+
+    expect(getExploreFurtherFilters(clicked)).toEqual([
+      {
+        operator: "=",
+        field_ref: ["field", 20, { "temporal-unit": "month" }],
+        value: "2020-02-01T00:00:00",
+        display_value: "Feb 2020",
+      },
+    ]);
+  });
+
+  it("returns an equality filter when an aligned temporal brush start and end collapse to one dot", () => {
+    const column = createMockDatetimeColumn({
+      name: "CREATED_AT",
+      source: "breakout",
+      unit: "month",
+      field_ref: ["field", 20, { "temporal-unit": "month" }],
+    });
+    const clicked: ClickObject = {
+      brushRange: {
+        type: "temporal",
+        start: "2020-02-01T00:00:00",
+        end: "2020-02-20T09:05:00",
+      },
+      column,
+      event: new MouseEvent("click"),
+      settings: {
+        column: () => ({ column, date_abbreviate: true }),
+      },
+    };
+
+    expect(getExploreFurtherFilters(clicked)).toEqual([
+      {
+        operator: "=",
+        field_ref: ["field", 20, { "temporal-unit": "month" }],
+        value: "2020-02-01T00:00:00",
+        display_value: "Feb 2020",
+      },
+    ]);
+  });
+
+  it("returns no filters when a temporal brush covers no dots", () => {
+    const column = createMockDatetimeColumn({
+      name: "CREATED_AT",
+      source: "breakout",
+      unit: "month",
+      field_ref: ["field", 20, { "temporal-unit": "month" }],
+    });
+    const clicked: ClickObject = {
+      brushRange: {
+        type: "temporal",
+        // Entirely within January after the Jan 1 dot
+        start: "2020-01-15T14:30:00",
+        end: "2020-01-20T09:05:00",
+      },
+      column,
+      event: new MouseEvent("click"),
+      settings: {},
+    };
+
+    expect(getExploreFurtherFilters(clicked)).toEqual([]);
+    expect(canExploreFurther(clicked, "default")).toBe(false);
+  });
+
+  it("projects a numeric brush range into a between explore filter", () => {
+    const column = createMockColumn({
+      name: "PRICE",
+      source: "breakout",
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+      field_ref: ["field", 21, null],
+    });
+    const clicked: ClickObject = {
+      brushRange: {
+        type: "numeric",
+        start: 1,
+        end: 4,
+      },
+      column,
+      event: new MouseEvent("click"),
+      settings: {},
+    };
+
+    expect(getExploreFurtherFilters(clicked)).toEqual([
+      {
+        operator: "between",
+        field_ref: ["field", 21, null],
+        values: [1, 4],
+        display_value: "1 - 4",
+      },
+    ]);
+  });
 });
 
-describe("getCommentLabel", () => {
+describe("resolveHighlightForSeries", () => {
+  const categoryColumn = createMockColumn({
+    name: "category",
+    base_type: "type/Text",
+  });
+  const countColumn = createMockColumn({
+    name: "count",
+    source: "aggregation",
+  });
+  const seriesColumn = createMockColumn({
+    name: CARTESIAN_SERIES_COL_NAME,
+    source: "breakout",
+  });
+  const segmentColumn = createMockColumn({
+    name: HEAT_MAP_SEGMENT_COL_NAME,
+    source: "breakout",
+  });
+
+  const queries = [
+    makeQuery({ id: 101, segment_name: "US" }),
+    makeQuery({ id: 102, segment_name: "EU" }),
+  ];
+  const queriesById = Object.fromEntries(queries.map((q) => [q.id, q]));
+
+  function commentState(
+    queryIds: number[],
+    highlighted: HighlightedObject = {
+      columnName: "count",
+      dimensions: [{ columnName: "category", value: "Gadget" }],
+    },
+  ): HighlightedCommentState {
+    return {
+      childTargetId: "7",
+      highlighted,
+      explorationQueryIds: queryIds,
+    };
+  }
+
+  function pageSeries(cardIds: number[]): SingleSeries[] {
+    return cardIds.map((id) => ({
+      card: createMockCard({ id, display: "line" }),
+      data: createMockDatasetData({
+        cols: [categoryColumn, countColumn],
+        rows: [["Gadget", 10]],
+      }),
+    }));
+  }
+
+  function embedSeries(
+    display: "line" | "bar" | "table",
+    discriminator: "Series" | "Segment",
+  ): SingleSeries[] {
+    const discCol = discriminator === "Series" ? seriesColumn : segmentColumn;
+    return [
+      {
+        card: createMockCard({ id: 999, display }),
+        data: createMockDatasetData({
+          cols: [categoryColumn, countColumn, discCol],
+          rows: [["Gadget", 10, "EU"]],
+        }),
+      },
+    ];
+  }
+
+  it("returns null when state or series is missing", () => {
+    expect(
+      resolveHighlightForSeries(null, pageSeries([101]), [101], queriesById),
+    ).toBeNull();
+    expect(
+      resolveHighlightForSeries(commentState([101]), [], [101], queriesById),
+    ).toBeNull();
+  });
+
+  it("sets the target cardId for a matching single-query chart", () => {
+    expect(
+      resolveHighlightForSeries(
+        commentState([101]),
+        pageSeries([101]),
+        [101],
+        queriesById,
+      ),
+    ).toEqual({
+      columnName: "count",
+      dimensions: [{ columnName: "category", value: "Gadget" }],
+      cardId: 101,
+      shouldShowTooltip: true,
+    });
+  });
+
+  it("picks the matching series on a multi-series page", () => {
+    expect(
+      resolveHighlightForSeries(
+        commentState([102]),
+        pageSeries([101, 102]),
+        [101, 102],
+        queriesById,
+      ),
+    ).toEqual({
+      columnName: "count",
+      dimensions: [{ columnName: "category", value: "Gadget" }],
+      cardId: 102,
+      shouldShowTooltip: false,
+    });
+  });
+
+  it("synthesizes a Series dimension for a composite embed", () => {
+    expect(
+      resolveHighlightForSeries(
+        commentState([102]),
+        embedSeries("bar", "Series"),
+        [101, 102],
+        queriesById,
+      ),
+    ).toEqual({
+      columnName: "count",
+      dimensions: [
+        { columnName: "category", value: "Gadget" },
+        { columnName: CARTESIAN_SERIES_COL_NAME, value: "EU" },
+      ],
+      cardId: 999,
+      shouldShowTooltip: false,
+    });
+  });
+
+  it("strips a Series dimension when resolving onto a page series", () => {
+    expect(
+      resolveHighlightForSeries(
+        commentState([102], {
+          columnName: "count",
+          dimensions: [
+            { columnName: "category", value: "Gadget" },
+            { columnName: CARTESIAN_SERIES_COL_NAME, value: "EU" },
+          ],
+        }),
+        pageSeries([101, 102]),
+        [101, 102],
+        queriesById,
+      ),
+    ).toEqual({
+      columnName: "count",
+      dimensions: [{ columnName: "category", value: "Gadget" }],
+      cardId: 102,
+      shouldShowTooltip: false,
+    });
+  });
+
+  it("keeps a Segment dimension on a heatmap composite", () => {
+    const highlighted: HighlightedObject = {
+      columnName: "count",
+      dimensions: [
+        { columnName: "category", value: "Gadget" },
+        { columnName: HEAT_MAP_SEGMENT_COL_NAME, value: "EU" },
+      ],
+    };
+
+    expect(
+      resolveHighlightForSeries(
+        commentState([102], highlighted),
+        embedSeries("table", "Segment"),
+        [101, 102],
+        queriesById,
+      ),
+    ).toEqual({
+      columnName: "count",
+      dimensions: highlighted.dimensions,
+      cardId: 999,
+      shouldShowTooltip: false,
+    });
+  });
+
+  it("falls back to (All) when synthesizing without segment_name", () => {
+    const noSegmentQueries = {
+      101: makeQuery({ id: 101 }),
+      102: makeQuery({ id: 102 }),
+    };
+
+    expect(
+      resolveHighlightForSeries(
+        commentState([101]),
+        embedSeries("bar", "Series"),
+        [101, 102],
+        noSegmentQueries,
+      )?.dimensions,
+    ).toEqual([
+      { columnName: "category", value: "Gadget" },
+      { columnName: CARTESIAN_SERIES_COL_NAME, value: fallbackSegmentName() },
+    ]);
+  });
+
+  it("returns null for a sibling map embed with a different query id", () => {
+    expect(
+      resolveHighlightForSeries(
+        commentState([102]),
+        pageSeries([999]),
+        [101],
+        queriesById,
+      ),
+    ).toBeNull();
+  });
+
+  it("returns null when composite synthesis cannot find the discriminator", () => {
+    const noDiscriminator: SingleSeries[] = [
+      {
+        card: createMockCard({ id: 999, display: "bar" }),
+        data: createMockDatasetData({
+          cols: [categoryColumn, countColumn],
+          rows: [["Gadget", 10]],
+        }),
+      },
+    ];
+
+    expect(
+      resolveHighlightForSeries(
+        commentState([102]),
+        noDiscriminator,
+        [101, 102],
+        queriesById,
+      ),
+    ).toBeNull();
+  });
+
+  it("derives shouldShowTooltip from the target display", () => {
+    const lineTarget = pageSeries([101]);
+    const barTarget = [
+      {
+        card: createMockCard({ id: 101, display: "bar" }),
+        data: createMockDatasetData({
+          cols: [categoryColumn, countColumn],
+          rows: [["Gadget", 10]],
+        }),
+      },
+    ];
+
+    expect(
+      resolveHighlightForSeries(
+        commentState([101]),
+        lineTarget,
+        [101],
+        queriesById,
+      )?.shouldShowTooltip,
+    ).toBe(true);
+    expect(
+      resolveHighlightForSeries(
+        commentState([101]),
+        barTarget,
+        [101],
+        queriesById,
+      )?.shouldShowTooltip,
+    ).toBe(false);
+  });
+});
+
+describe("comment highlight create ↔ resolve contract", () => {
+  const categoryColumn = createMockColumn({
+    name: "category",
+    base_type: "type/Text",
+    source: "breakout",
+  });
+  const countColumn = createMockColumn({
+    name: "count",
+    source: "aggregation",
+  });
+  const seriesColumn = createMockColumn({
+    name: CARTESIAN_SERIES_COL_NAME,
+    source: "breakout",
+  });
+
+  const queries = [
+    makeQuery({ id: 101, segment_name: "US" }),
+    makeQuery({ id: 102, segment_name: "EU" }),
+  ];
+  const queriesById = Object.fromEntries(queries.map((q) => [q.id, q]));
+  const seriesQueryIds = [101, 102];
+
+  function pageSeries(): SingleSeries[] {
+    return seriesQueryIds.map((id) => ({
+      card: createMockCard({ id, display: "line" }),
+      data: createMockDatasetData({
+        cols: [categoryColumn, countColumn],
+        rows: [["Gadget", 10]],
+      }),
+    }));
+  }
+
+  function compositeEmbed(): SingleSeries[] {
+    return [
+      {
+        card: createMockCard({ id: 999, display: "bar" }),
+        data: createMockDatasetData({
+          cols: [categoryColumn, countColumn, seriesColumn],
+          rows: [["Gadget", 10, "EU"]],
+        }),
+      },
+    ];
+  }
+
+  function toState(
+    ctx: NonNullable<ReturnType<typeof buildCommentHighlightContext>>,
+  ): HighlightedCommentState {
+    return {
+      childTargetId: "7",
+      highlighted: ctx.highlighted,
+      explorationQueryIds: ctx.exploration_query_ids,
+    };
+  }
+
+  it("stores a single query id from a page click and resolves on the composite embed", () => {
+    const clicked: ClickObject = {
+      value: 10,
+      column: countColumn,
+      dimensions: [{ column: categoryColumn, value: "Gadget" }],
+      settings: {},
+      cardId: 102,
+    };
+    const ctx = buildCommentHighlightContext(
+      clicked,
+      seriesQueryIds,
+      queriesById,
+    );
+
+    expect(ctx?.exploration_query_ids).toEqual([102]);
+    expect(ctx?.highlighted.cardId).toBeUndefined();
+    expect(ctx?.highlight_label).toBe("Gadget, EU");
+
+    expect(
+      resolveHighlightForSeries(
+        toState(ctx!),
+        compositeEmbed(),
+        seriesQueryIds,
+        queriesById,
+      ),
+    ).toEqual({
+      columnName: "count",
+      dimensions: [
+        { columnName: "category", value: "Gadget" },
+        { columnName: CARTESIAN_SERIES_COL_NAME, value: "EU" },
+      ],
+      cardId: 999,
+      shouldShowTooltip: false,
+    });
+  });
+
+  it("stores a single query id from a composite click and resolves on the page", () => {
+    const clicked: ClickObject = {
+      value: 10,
+      column: countColumn,
+      dimensions: [
+        { column: categoryColumn, value: "Gadget" },
+        { column: seriesColumn, value: "EU" },
+      ],
+      settings: {},
+      cardId: 999,
+    };
+    const ctx = buildCommentHighlightContext(
+      clicked,
+      seriesQueryIds,
+      queriesById,
+    );
+
+    expect(ctx?.exploration_query_ids).toEqual([102]);
+    expect(ctx?.highlighted.cardId).toBeUndefined();
+
+    expect(
+      resolveHighlightForSeries(
+        toState(ctx!),
+        pageSeries(),
+        seriesQueryIds,
+        queriesById,
+      ),
+    ).toEqual({
+      columnName: "count",
+      dimensions: [{ columnName: "category", value: "Gadget" }],
+      cardId: 102,
+      shouldShowTooltip: false,
+    });
+  });
+
+  it("stores the embed query id even when clicked.cardId is ephemeral", () => {
+    const clicked: ClickObject = {
+      value: 10,
+      column: countColumn,
+      dimensions: [{ column: categoryColumn, value: "Gadget" }],
+      settings: {},
+      cardId: 999,
+    };
+    const ctx = buildCommentHighlightContext(clicked, [101], {
+      101: queriesById[101],
+    });
+
+    expect(ctx?.exploration_query_ids).toEqual([101]);
+    expect(
+      resolveHighlightForSeries(
+        toState(ctx!),
+        [
+          {
+            card: createMockCard({ id: 999, display: "line" }),
+            data: createMockDatasetData({
+              cols: [categoryColumn, countColumn],
+              rows: [["Gadget", 10]],
+            }),
+          },
+        ],
+        [101],
+        { 101: queriesById[101] },
+      )?.cardId,
+    ).toBe(999);
+  });
+});
+
+describe("buildHighlightLabel", () => {
   const categoryColumn = createMockColumn({
     name: "category",
     base_type: "type/Text",
@@ -304,143 +914,81 @@ describe("getCommentLabel", () => {
     base_type: "type/DateTime",
     unit: "month",
   });
-
-  function makeSeriesGroup(
-    series: SingleSeries[],
-    legendItems: SeriesGroup["legendItems"],
-  ): SeriesGroup {
-    return {
-      series,
-      legendItems,
-      isTimeseries: false,
-    };
-  }
-
-  it("returns null when highlighted or series group is missing", () => {
-    const group = makeSeriesGroup([], []);
-    expect(getCommentLabel(undefined, group)).toBeNull();
-    expect(
-      // Unjustified type cast. FIXME
-      getCommentLabel({ cardId: 1 } as HighlightedObject, undefined),
-    ).toBeNull();
+  const totalColumn = createMockColumn({
+    name: "total",
+    base_type: "type/Float",
+    semantic_type: "type/Currency",
   });
 
-  it("formats a single-series label from dimension values", () => {
-    const card = createMockCard({ id: 101, name: "Revenue" });
-    const seriesGroup = makeSeriesGroup(
-      [
-        {
-          card,
-          data: createMockDatasetData({
-            cols: [categoryColumn, createMockColumn({ name: "count" })],
-            rows: [["Gadget", 10]],
-          }),
-        },
-      ],
-      [{ name: "(All)", color: "#000" }],
-    );
-    const highlighted: HighlightedObject = {
+  it("formats dimension values from the click", () => {
+    const clicked: ClickObject = {
+      value: 10,
+      column: createMockColumn({ name: "count", source: "aggregation" }),
+      dimensions: [{ column: categoryColumn, value: "Gadget" }],
+      settings: {},
       cardId: 101,
-      columnName: "count",
-      dimensions: [{ columnName: "category", value: "Gadget" }],
     };
 
-    expect(getCommentLabel(highlighted, seriesGroup)).toBe("Gadget");
+    expect(buildHighlightLabel(clicked)).toBe("Gadget");
   });
 
-  it("appends the segment name for multi-series groups", () => {
-    const seriesGroup = makeSeriesGroup(
-      [
-        {
-          card: createMockCard({ id: 101, name: "US" }),
-          data: createMockDatasetData({
-            cols: [categoryColumn, createMockColumn({ name: "count" })],
-            rows: [["Gadget", 10]],
-          }),
-        },
-        {
-          card: createMockCard({ id: 102, name: "EU" }),
-          data: createMockDatasetData({
-            cols: [categoryColumn, createMockColumn({ name: "count" })],
-            rows: [["Gadget", 20]],
-          }),
-        },
-      ],
-      [
-        { name: "US", color: "#111" },
-        { name: "EU", color: "#222" },
-      ],
-    );
+  it("formats through the chart's column settings, not the raw value", () => {
+    const clicked: ClickObject = {
+      value: 10,
+      column: createMockColumn({ name: "count", source: "aggregation" }),
+      dimensions: [{ column: totalColumn, value: 0 }],
+      settings: {},
+      cardId: 101,
+    };
 
-    const highlighted: HighlightedObject = {
+    // `buildHighlightLabel` only ever reaches for `.column`, so a stub of that one accessor stands
+    // in for the ~100-key computed settings object a real chart would hand it.
+    const settings = {
+      column: () => ({
+        column: totalColumn,
+        currency: "USD",
+        currency_style: "symbol",
+        number_style: "currency",
+      }),
+    } as unknown as ComputedVisualizationSettings;
+
+    // the bug this guards: without the settings the label is the bare "0" the server would derive
+    expect(buildHighlightLabel(clicked, undefined)).toBe("0");
+    expect(buildHighlightLabel(clicked, settings)).toBe("$0");
+  });
+
+  it("appends a segment name for multi-series pages", () => {
+    const clicked: ClickObject = {
+      value: 10,
+      column: createMockColumn({ name: "count", source: "aggregation" }),
+      dimensions: [{ column: categoryColumn, value: "Gadget" }],
+      settings: {},
       cardId: 102,
-      columnName: "count",
-      dimensions: [{ columnName: "category", value: "Gadget" }],
     };
 
-    expect(getCommentLabel(highlighted, seriesGroup)).toBe("Gadget, EU");
+    expect(buildHighlightLabel(clicked, undefined, "EU")).toBe("Gadget, EU");
   });
 
-  it("formats dates and null values for display", () => {
-    const seriesGroup = makeSeriesGroup(
-      [
-        {
-          card: createMockCard({ id: 101 }),
-          data: createMockDatasetData({
-            cols: [tsColumn, createMockColumn({ name: "count" })],
-            rows: [["2025-01-01T00:00:00Z", 10]],
-          }),
-        },
-      ],
-      [{ name: "(All)", color: "#000" }],
-    );
-
+  it("formats dates and null values", () => {
     expect(
-      getCommentLabel(
-        {
-          cardId: 101,
-          columnName: "count",
-          dimensions: [{ columnName: "ts", value: "2025-01-01T00:00:00Z" }],
-        },
-        seriesGroup,
-      ),
+      buildHighlightLabel({
+        value: 10,
+        column: createMockColumn({ name: "count" }),
+        dimensions: [{ column: tsColumn, value: "2025-01-01T00:00:00Z" }],
+        settings: {},
+        cardId: 101,
+      }),
     ).toMatch(/Jan/);
 
     expect(
-      getCommentLabel(
-        {
-          cardId: 101,
-          columnName: "count",
-          dimensions: [{ columnName: "ts", value: null }],
-        },
-        seriesGroup,
-      ),
+      buildHighlightLabel({
+        value: 10,
+        column: createMockColumn({ name: "count" }),
+        dimensions: [{ column: tsColumn, value: null }],
+        settings: {},
+        cardId: 101,
+      }),
     ).toBe("(empty)");
-  });
-
-  it("skips missing columns and unknown card ids", () => {
-    const seriesGroup = makeSeriesGroup(
-      [
-        {
-          card: createMockCard({ id: 101 }),
-          data: createMockDatasetData({
-            cols: [categoryColumn],
-            rows: [["Gadget"]],
-          }),
-        },
-      ],
-      [{ name: "(All)", color: "#000" }],
-    );
-
-    expect(
-      getCommentLabel(
-        {
-          cardId: 999,
-          dimensions: [{ columnName: "missing", value: "x" }],
-        },
-        seriesGroup,
-      ),
-    ).toBe("");
   });
 });
 
@@ -569,6 +1117,7 @@ describe("buildSeriesGroup", () => {
     });
 
     expect(seriesGroup.series).toHaveLength(1);
+    expect(seriesGroup.queryIds).toEqual([2]);
     expect(seriesGroup.legendItems.map((item) => item.name)).toEqual(["EU"]);
   });
 
@@ -591,5 +1140,102 @@ describe("buildSeriesGroup", () => {
       smallTimeFacetDataset,
     );
     expect(group.series[0].card.display).toBe("row");
+  });
+});
+
+describe("composeChartsForGroup", () => {
+  it("expands a multi-series map group into one entry per map", () => {
+    const group = buildSeriesGroup({
+      queriesWithDatasets: [
+        {
+          ...makeQuery({ id: 101, name: "US sessions", segment_id: 1 }),
+          dataset: stateDataset,
+        },
+        {
+          ...makeQuery({ id: 102, name: "EU sessions", segment_id: 2 }),
+          dataset: stateDataset,
+        },
+        {
+          ...makeQuery({ id: 103, name: "APAC sessions", segment_id: 3 }),
+          dataset: stateDataset,
+        },
+      ],
+    });
+
+    const charts = composeChartsForGroup(group);
+
+    expect(charts).toHaveLength(3);
+    expect(charts.map((c) => c.queryIds)).toEqual([[101], [102], [103]]);
+    expect(charts.map((c) => c.display)).toEqual(["map", "map", "map"]);
+  });
+
+  it("keeps a multi-series cartesian group as one composite entry", () => {
+    const group = buildSeriesGroup({
+      queriesWithDatasets: [
+        {
+          ...makeQuery({ id: 1, name: "Q1", segment_id: 1 }),
+          dataset: tsDataset,
+        },
+        {
+          ...makeQuery({ id: 2, name: "Q2", segment_id: 2 }),
+          dataset: tsDataset,
+        },
+      ],
+    });
+
+    const charts = composeChartsForGroup(group);
+
+    expect(charts).toHaveLength(1);
+    expect(charts[0].queryIds).toEqual([1, 2]);
+    expect(charts[0].display).toBe("line");
+    expect(charts[0].visualization_settings["graph.dimensions"]).toEqual([
+      "ts",
+      "Series",
+    ]);
+  });
+
+  it("keeps a single-series map as one entry", () => {
+    const group = buildSeriesGroup({
+      queriesWithDatasets: [
+        {
+          ...makeQuery({ id: 42, name: "World sessions" }),
+          dataset: stateDataset,
+        },
+      ],
+    });
+
+    const charts = composeChartsForGroup(group);
+
+    expect(charts).toHaveLength(1);
+    expect(charts[0]).toMatchObject({
+      queryIds: [42],
+      display: "map",
+    });
+  });
+
+  it("skips empty datasets when expanding multi-series maps", () => {
+    const emptyDataset = makeDataset([STATE_COL, COUNT_COL], []);
+    const group = buildSeriesGroup({
+      queriesWithDatasets: [
+        {
+          ...makeQuery({ id: 1, name: "Empty", segment_id: 1 }),
+          dataset: emptyDataset,
+        },
+        {
+          ...makeQuery({ id: 2, name: "US", segment_id: 2 }),
+          dataset: stateDataset,
+        },
+        {
+          ...makeQuery({ id: 3, name: "EU", segment_id: 3 }),
+          dataset: stateDataset,
+        },
+      ],
+    });
+
+    const charts = composeChartsForGroup(group);
+
+    expect(charts).toHaveLength(2);
+    expect(charts.map((c) => c.queryIds)).toEqual([[2], [3]]);
+    expect(charts.map((c) => c.label)).toEqual(["US", "EU"]);
   });
 });

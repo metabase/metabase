@@ -5,9 +5,9 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndGenericErrorWrapper } from "metabase/common/components/LoadingAndGenericErrorWrapper";
+import { getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import { isSyncInProgress } from "metabase/utils/syncing";
 

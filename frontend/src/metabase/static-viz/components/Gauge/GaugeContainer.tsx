@@ -8,12 +8,12 @@ import {
   hasFailedGoalReferences,
   resolveGoalSegments,
 } from "metabase/visualizations/lib/dynamic-goals";
-import { truncateText } from "metabase/visualizations/lib/text";
 import { DEFAULT_GAUGE_RANGE } from "metabase/visualizations/visualizations/Gauge/constants";
 import {
   getSegmentsRange,
   getValue,
 } from "metabase/visualizations/visualizations/Gauge/utils";
+import { truncateText } from "metabase/viz-core";
 
 import Gauge from "./Gauge";
 import {

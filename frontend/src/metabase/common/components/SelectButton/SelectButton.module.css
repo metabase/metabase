@@ -1,0 +1,84 @@
+/*
+ * Spacing is pixel-matched to the md Select input.
+ */
+.root {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  min-width: 104px;
+  min-height: 2.5rem;
+  padding: 0 0.75rem 0 0.6875rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-xxs);
+  background-color: var(--mb-color-background_page-primary);
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-font-size-md);
+  font-weight: normal;
+  line-height: 1.5rem;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    border-color: var(--mb-color-core-brand);
+  }
+
+  &:focus {
+    border-color: var(--mb-color-core-brand);
+    outline: 2px solid var(--mb-color-input-focus);
+  }
+
+  &:not(:focus-visible) {
+    outline: none;
+  }
+
+  &:disabled {
+    background-color: var(--mb-color-background_surface-disabled);
+    color: var(--mb-color-text-disabled);
+    pointer-events: none;
+  }
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.noValue {
+  color: var(--mb-color-text-disabled);
+}
+
+.highlighted {
+  border-color: var(--mb-color-core-brand);
+  background-color: var(--mb-color-core-brand);
+  color: var(--mb-color-text-primary-inverse);
+}
+
+.content {
+  min-width: 0;
+  margin-right: 0.6875rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.contentClearable {
+  margin-right: 0.4375rem;
+}
+
+.icon {
+  display: flex;
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--mb-color-text-primary);
+}
+
+.icon + .icon {
+  margin-left: var(--mantine-spacing-sm);
+}
+
+.iconHighlighted {
+  color: var(--mb-color-text-primary-inverse);
+}
+
+.iconDisabled {
+  color: var(--mb-color-text-disabled);
+}

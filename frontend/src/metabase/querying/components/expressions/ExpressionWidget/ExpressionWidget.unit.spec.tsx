@@ -9,10 +9,10 @@ import { ExpressionWidget } from "./ExpressionWidget";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 
 describe("ExpressionWidget", () => {
-  it("should render proper controls", () => {
+  it("should render proper controls", async () => {
     setup();
     expect(
-      screen.getByTestId("custom-expression-query-editor"),
+      await screen.findByTestId("custom-expression-query-editor"),
     ).toBeInTheDocument();
     expect(screen.getByText("Cancel")).toBeInTheDocument();
     expect(screen.getByText("Done")).toBeInTheDocument();

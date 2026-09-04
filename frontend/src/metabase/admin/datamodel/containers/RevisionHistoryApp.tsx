@@ -3,10 +3,10 @@ import { useEffect } from "react";
 import { useGetSegmentQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
+import { getUser } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { useParams } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
 import { checkNotNull } from "metabase/utils/types";
 
 import { RevisionHistory } from "../components/revisions/RevisionHistory";

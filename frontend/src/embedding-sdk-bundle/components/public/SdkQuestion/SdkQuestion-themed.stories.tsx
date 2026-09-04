@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { storybookSdkAuthDefaultConfig } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
 import { questionIds } from "embedding-sdk-bundle/test/storybook-id-args";
-import { storybookThemes } from "embedding-sdk-bundle/test/storybook-themes";
+import { storybookThemes } from "embedding-sdk-shared/test/storybook-themes";
 import {
   type MetabaseTheme,
   defineMetabaseTheme,
@@ -34,7 +34,7 @@ const Wrapper = ({
   theme: MetabaseTheme;
 }) => (
   <ComponentProvider theme={theme} authConfig={storybookSdkAuthDefaultConfig}>
-    <Box p="xl" bg="background_page-primary">
+    <Box p="xxl" bg="background_page-primary">
       {children}
     </Box>
   </ComponentProvider>

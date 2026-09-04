@@ -16,6 +16,31 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- escape-like-pattern
+  "Escape `%`, `_` and the escape character `!` so `s` matches literally in a `LIKE` pattern."
+  ^String [^String s]
+  (str/replace s #"([!%_])" "!$1"))
+
+(defn like-pattern
+  "`LIKE` right-hand side matching `s` literally, with an explicit `ESCAPE` clause so it behaves the same on every app DB.
+  `wrap` receives the escaped string and returns the final pattern (string or HoneySQL expr), e.g. to add wildcards."
+  ([s]
+   (like-pattern s identity))
+  ([s wrap]
+   ;; `::literal` rather than [:inline "!"]: with a driver bound, inline strings compile via driver-specific
+   ;; `inline-value` (MySQL emits `_utf8mb4 X'21'`, whose collation can clash with LIKE's other operands)
+   [:escape (wrap (escape-like-pattern s)) [::literal "!"]]))
+
+(defn like-substring
+  "`LIKE` right-hand side matching `s` case-insensitively as a literal substring; compare it against a lowercased column."
+  [s]
+  (like-pattern (u/lower-case-en s) #(str "%" % "%")))
+
+(defn like-prefix
+  "`LIKE` right-hand side matching `s` case-insensitively as a literal prefix; compare it against a lowercased column."
+  [s]
+  (like-pattern (u/lower-case-en s) #(str % "%")))
+
 ;;; `[:inline <clojure.lang.Ratio>] should emit something wrapped in parens. Because otherwise the result could be
 ;;; something unintended. e.g.
 ;;;
@@ -100,6 +125,16 @@
 
 (sql/register-fn! ::percentile-cont #'format-percentile-cont)
 
+(defn- format-collate
+  [_fn [expr collation]]
+  (when-not (re-matches #"\w+" (name collation))
+    (throw (ex-info (str "Invalid collation: " (pr-str collation)) {:collation collation})))
+  (let [[expr-sql & expr-args] (sql/format-expr expr)]
+    (into [(clojure.core/format "%s COLLATE %s" expr-sql (name collation))]
+          expr-args)))
+
+(sql/register-fn! ::collate #'format-collate)
+
 (def IdentifierType
   "Malli schema for valid [[identifier]] types."
   [:enum
@@ -172,7 +207,7 @@
 
 (defn- escape-and-quote-literal [s]
   (as-> s s
-    (str/replace s #"(?<![\\'])'(?![\\'])"  "''")
+    (str/replace s "'" "''")
     (str \' s \')))
 
 (defn- format-literal [_tag [s]]
@@ -245,7 +280,9 @@
     (:database-type type-info)
     (update :database-type (comp u/lower-case-en name))))
 
-(defn- typed? [x]
+(defn typed?
+  "Whether `x` is a typed Honey SQL form, i.e. a `[::typed <expr> <type-info>]` vector."
+  [x]
   (and (vector? x)
        (= (first x) ::typed)))
 
@@ -342,21 +379,23 @@
 (def ^:private TypedExpression
   [:fn {:error/message "::h2x/typed Honey SQL form"} typed?])
 
+(def ^:private raw-cast-type-name-re
+  #"(?i)[a-z][a-z0-9_ ]*(?:\(\d+(?:, ?\d+)?\))?")
+
+(defn raw-type-name?
+  "Whether `sql-type` is a plain SQL type name — letters, digits, underscores, and spaces with an optional precision
+  suffix, e.g. `varchar(10)` or `double precision` — and is therefore safe to splice into SQL unquoted. Cast targets
+  that don't match (e.g. a `database-type` coming from field metadata) must be quoted as identifiers or rejected
+  instead of being emitted raw."
+  [sql-type]
+  (boolean (re-matches raw-cast-type-name-re (name sql-type))))
+
 (mu/defn cast :- TypedExpression
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
-  [db-type expr]
-  (-> [:cast expr [:raw (name db-type)]]
-      (with-database-type-info db-type)))
-
-(mu/defn quoted-cast :- TypedExpression
-  "Generate a statement like `cast(expr AS \"sql-type\")`.
-
-  Like `cast` but quotes `sql-type`. This is useful for cases where we deal with user-defined types or other types
-  that may have a space in the name, for example Postgres enum types.
-
-  Returns a typed HoneySQL form."
-  [sql-type :- ms/NonBlankString expr]
-  (-> [:cast expr (identifier :type-name sql-type)]
+  [sql-type expr]
+  (-> (if (raw-type-name? sql-type)
+        [:cast expr ^:allow-raw-sql [:raw (name sql-type)]]
+        [:cast expr (identifier :type-name (name sql-type))])
       (with-database-type-info sql-type)))
 
 (mu/defn maybe-cast :- TypedExpression
@@ -505,12 +544,30 @@
       (-> (+ hsql-form (pg-interval amount unit))
           (with-type-info (type-info hsql-form))))))
 
+(def ^:private mysql-interval-units
+  #{:second :minute :hour :day :week :month :quarter :year})
+
+(defn- format-mysql-interval
+  [_fn [amount unit]]
+  (when-not (number? amount)
+    (throw (ex-info "Invalid interval amount" {:amount amount})))
+  (when-not (contains? mysql-interval-units unit)
+    (throw (ex-info (str "Invalid temporal unit: " (pr-str unit)) {:unit unit})))
+  [(clojure.core/format "INTERVAL %s %s" (num amount) (name unit))])
+
+(sql/register-fn! ::mysql-interval #'format-mysql-interval)
+
 (defmethod add-interval-honeysql-form :mysql
   [db-type hsql-form amount unit]
   ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
   (if (= unit :millisecond)
     (recur db-type hsql-form (clojure.core// amount 1000.0) :second)
-    [:date_add hsql-form [:raw (clojure.core/format "INTERVAL %s %s" amount (name unit))]]))
+    (do
+      (when-not (contains? mysql-interval-units unit)
+        (throw (ex-info (str "Invalid temporal unit: " (pr-str unit)) {:unit unit})))
+      (when-not (number? amount)
+        (throw (ex-info "Invalid interval amount" {:amount amount})))
+      [:date_add hsql-form [::mysql-interval amount unit]])))
 
 (defn- dateadd-h2 [unit amount expr]
   (let [expr (cast-unless-type-in "datetime" #{"datetime" "timestamp" "timestamp with time zone" "date"} expr)]
@@ -571,7 +628,7 @@
 
 (defmethod calculate-interval-honeysql-form :mysql
   [_db-type end-form start-form]
-  [:timestampdiff [:raw "MICROSECOND"] start-form end-form])
+  [:timestampdiff ^:allow-raw-sql [:raw "MICROSECOND"] start-form end-form])
 
 (defmethod calculate-interval-honeysql-form :h2
   [_db-type end-form start-form]

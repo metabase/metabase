@@ -1,5 +1,6 @@
-import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
+
+import { dayjs } from "metabase/dayjs";
 
 export enum DateValueTimezoneFormat {
   Always,

@@ -1,44 +1,169 @@
-import type { NavLinkProps } from "@mantine/core";
+import type { StoryFn } from "@storybook/react";
+import { Fragment, type ReactNode } from "react";
 
-import { Icon, NavLink } from "metabase/ui";
+import {
+  Box,
+  Icon,
+  NavLink,
+  NavLinkBadge,
+  NavLinkButton,
+  type NavLinkProps,
+  Stack,
+  Text,
+} from "metabase/ui";
+import { StoryJsx, StoryShowcase } from "metabase/ui/stories/showcase";
+
+const LABEL = "Label";
+
+type ContentColumn = {
+  key: string;
+  header: string;
+  rightSection: ReactNode;
+};
+
+const COLUMNS: ContentColumn[] = [
+  {
+    key: "plain",
+    header: `<NavLink leftSection={<Icon />} />`,
+    rightSection: null,
+  },
+  {
+    key: "icon",
+    header: `<NavLink rightSection={<Icon />} />`,
+    rightSection: <Icon name="chevronright" />,
+  },
+  {
+    key: "button",
+    header: `<NavLink rightSection={<NavLinkButton />} />`,
+    rightSection: <NavLinkButton>Button</NavLinkButton>,
+  },
+  {
+    key: "badge",
+    header: `<NavLink rightSection={<NavLinkBadge />} />`,
+    rightSection: <NavLinkBadge>3</NavLinkBadge>,
+  },
+];
+
+type NavLinkState = {
+  id: string;
+  label: string;
+  active?: boolean;
+  disabled?: boolean;
+};
+
+const STATES: NavLinkState[] = [
+  { id: "default", label: "Default" },
+  { id: "hover", label: "Hover" },
+  { id: "pressed", label: "Pressed" },
+  { id: "selected", label: "Selected", active: true },
+  { id: "disabled", label: "Disabled", disabled: true },
+];
+
+const VARIANTS = [
+  { variant: "primary", title: "NavLink — primary" },
+  { variant: "secondary", title: "NavLink — secondary" },
+] as const;
+
+const rowSelector = (id: string) => `[data-state-row="${id}"]`;
+
+const PSEUDO_STATE_PARAMETERS = {
+  pseudo: {
+    hover: [rowSelector("hover")],
+    active: [rowSelector("pressed")],
+  },
+};
+
+type VariantMatrixProps = {
+  variant: NavLinkProps["variant"];
+  title: string;
+};
+
+function VariantMatrix({ variant, title }: VariantMatrixProps) {
+  return (
+    <StoryShowcase title={title}>
+      <Box
+        style={{
+          display: "grid",
+          gridTemplateColumns: `10rem repeat(${COLUMNS.length}, minmax(13rem, max-content))`,
+          columnGap: "2rem",
+          rowGap: "0.75rem",
+          alignItems: "center",
+        }}
+      >
+        <div />
+        {COLUMNS.map((column) => (
+          <StoryJsx key={column.key}>{column.header}</StoryJsx>
+        ))}
+
+        {STATES.map((state) => (
+          <Fragment key={state.id}>
+            <Text size="sm" c="text-secondary">
+              {state.label}
+            </Text>
+            {COLUMNS.map((column) => (
+              <NavLink
+                key={column.key}
+                component="div"
+                data-state-row={state.id}
+                variant={variant}
+                label={LABEL}
+                leftSection={<Icon name="home" />}
+                rightSection={column.rightSection}
+                active={state.active ?? false}
+                disabled={state.disabled ?? false}
+              />
+            ))}
+          </Fragment>
+        ))}
+      </Box>
+    </StoryShowcase>
+  );
+}
+
+const OverviewTemplate: StoryFn<NavLinkProps> = () => (
+  <Stack gap="xxl" align="flex-start">
+    {VARIANTS.map(({ variant, title }) => (
+      <VariantMatrix key={variant} variant={variant} title={title} />
+    ))}
+  </Stack>
+);
+
+const RIGHT_SECTIONS: Record<string, ReactNode> = {
+  none: null,
+  icon: <Icon name="chevronright" />,
+  button: <NavLinkButton>Button</NavLinkButton>,
+  badge: <NavLinkBadge>3</NavLinkBadge>,
+};
 
 const args: Partial<NavLinkProps> = {
-  label: "Label",
+  variant: "secondary",
+  label: LABEL,
+  active: false,
   disabled: false,
   leftSection: "icon",
-  rightSection: null,
-  mod: "inactive",
+  rightSection: "none",
 };
 
 const argTypes = {
+  variant: {
+    control: "inline-radio",
+    options: ["secondary", "primary"],
+  },
   leftSection: {
     control: "select",
-    options: [null, "icon"],
+    options: ["none", "icon"],
     mapping: {
-      null: null,
-      icon: <Icon name="chevronright" size="10" />,
+      none: null,
+      icon: <Icon name="home" />,
     },
   },
   rightSection: {
     control: "select",
-    options: [null, "icon"],
-    mapping: {
-      null: null,
-      icon: <Icon name="ai" />,
-    },
+    options: ["none", "icon", "button", "badge"],
+    mapping: RIGHT_SECTIONS,
   },
-  mod: {
-    control: "inline-radio",
-    options: ["active", "inactive"],
-    mapping: {
-      active: { active: true },
-      inactive: { active: false },
-    },
-  },
-  variant: {
-    control: "inline-radio",
-    options: ["default", "mb-light"],
-  },
+  active: { control: "boolean" },
+  disabled: { control: "boolean" },
 };
 
 export default {
@@ -48,29 +173,12 @@ export default {
   argTypes,
 };
 
-export const Default = {
-  args: {
-    variant: "default",
-    mod: "inactive",
-  },
-};
-export const DefaultActive = {
-  args: {
-    variant: "default",
-    mod: "active",
-  },
-};
+export const Default = {};
 
-export const MBLightInactive = {
-  args: {
-    variant: "mb-light",
-    mod: "inactive",
-  },
-};
-
-export const MBLightActive = {
-  args: {
-    variant: "mb-light",
-    mod: "active",
+export const Overview = {
+  render: OverviewTemplate,
+  parameters: {
+    ...PSEUDO_STATE_PARAMETERS,
+    controls: { include: [] },
   },
 };

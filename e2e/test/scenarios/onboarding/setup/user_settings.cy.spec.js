@@ -53,13 +53,14 @@ describe("user > settings", () => {
     cy.get("@membership.all").should("have.length", 0);
   });
 
-  it("should have a change password tab", () => {
+  it("should have an authentication tab", () => {
     cy.intercept("GET", "/api/user/current").as("getUser");
 
     cy.visit("/account/profile");
     cy.wait("@getUser");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Password").should("exist");
+    cy.findByTestId("account-header")
+      .findByRole("tab", { name: "Authentication" })
+      .should("be.visible");
   });
 
   it("should redirect to the login page when the user has signed out but tries to visit `/account/profile` (metabase#15471)", () => {

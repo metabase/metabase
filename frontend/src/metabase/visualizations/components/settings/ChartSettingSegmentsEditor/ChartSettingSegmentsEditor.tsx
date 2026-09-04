@@ -19,24 +19,13 @@ import {
   getSegmentColor,
   getUnansweredGoalEntities,
 } from "metabase/visualizations/lib/dynamic-goals";
-import type {
-  DatasetData,
-  DatasetQuery,
-  GoalSegment,
-} from "metabase-types/api";
+import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
+import type { GoalSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
 
 import { SegmentBoundInput } from "./SegmentBoundInput";
 import { ICON_BUTTON_SIZE } from "./constants";
-
-export type ChartSettingSegmentsEditorProps = {
-  data?: DatasetData;
-  datasetQuery?: DatasetQuery;
-  value: GoalSegment[];
-  onChange: (value: GoalSegment[]) => void;
-  canRemoveAll?: boolean;
-};
 
 export const ChartSettingSegmentsEditor = ({
   data,

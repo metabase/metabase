@@ -7,9 +7,9 @@
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.config :as search.config]
+   [metabase.search.db :as search.db]
    [metabase.search.scoring :as search.scoring]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (defn all-scores
   "Score stats for each scorer"
@@ -18,9 +18,9 @@
 
 (defn- view-count-percentiles*
   [p-value]
-  (into {} (for [{:keys [model vcp]} (t2/query (specialization/view-count-percentile-query
-                                                (search.index/active-table)
-                                                p-value))]
+  (into {} (for [{:keys [model vcp]} (search.db/rows (specialization/view-count-percentile-query
+                                                      (search.index/active-table)
+                                                      p-value))]
              [(keyword model) vcp])))
 
 (def ^{:private true
@@ -34,7 +34,7 @@
 (defn- view-count-expr [percentile]
   (let [views (view-count-percentiles percentile)
         cases (for [[sm v] views]
-                [[:= :search_index.model [:inline (name sm)]] (max (or v 0) 1)])]
+                [[:= :search_index.model (name sm)] (max (or v 0) 1)])]
     (search.scoring/size :view_count (if (seq cases)
                                        (into [:case] cat cases)
                                        1))))

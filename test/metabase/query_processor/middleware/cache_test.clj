@@ -10,6 +10,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.cache.core]
+   [metabase.cache.models.cache-config :as cache-config]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -24,6 +25,7 @@
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.test :as qp]
@@ -43,6 +45,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; one-time DB init; a :once fixture runs before any tests, parallel or not
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :once (fn [thunk]
                       (initialize/initialize-if-needed! :db)
@@ -147,7 +150,7 @@
   {:type             :ttl
    :multiplier       60
    :avg-execution-ms 1000
-   :min-duration-ms  *query-caching-min-ttl*})
+   :min_duration_ms  *query-caching-min-ttl*})
 
 (defn- test-query [query-kvs]
   (merge {:cache-strategy (ttl-strategy)
@@ -241,6 +244,7 @@
 
 (deftest refresh-lease-test
   (testing "try-acquire-refresh-lease! (the db backend) elects a single refresher across processes via a conditional UPDATE"
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
                                                                :results    (byte-array [0])
@@ -257,6 +261,7 @@
                 "updated_at means 'when the results blob was last written' -- freshness, purging, and the EE refresh "
                 "scheduler all read it that way. Bumping it on lease claim makes a crashed refresh look freshly "
                 "written, so the stale row is treated as fresh for a full additional cache window.")
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (let [original-updated-at (t/offset-date-time "2020-01-01T00:00Z")]
       (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
@@ -272,6 +277,7 @@
 
 (deftest delete-entry-test
   (testing "delete-entry! (the db backend) removes the cache entry, and with it any held refresh lease"
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
                                                                :results    (byte-array [0])
@@ -312,8 +318,21 @@
             (is (= :not-cached
                    (run-query :cache-strategy strategy)))))))))
 
+(deftest cancellation-mid-flight-does-not-throw-assertion-test
+  (testing (str "a cache-miss query canceled between the driver's respond callback and the reducer "
+                "returns nil silently #66655.")
+    (with-mock-cache! []
+      (let [qp (cache/maybe-return-cached-results qp.pipeline/*run*)]
+        (binding [driver.settings/*query-timeout-ms* 2000
+                  qp.pipeline/*canceled-chan*        (a/promise-chan)
+                  qp.pipeline/*execute*              (fn [_driver _query respond]
+                                                       (a/>!! qp.pipeline/*canceled-chan* ::test-cancel)
+                                                       (respond {} [[:toucan 1]]))]
+          (driver/with-driver :h2
+            (is (nil? (qp (test-query {}) qp.reducible/default-rff)))))))))
+
 (deftest not-eligible-refresh-deletes-outdated-entry-test
-  (testing "when the lease winner's rerun is no longer cache-eligible (ran under min-duration-ms), the expired entry
+  (testing "when the lease winner's rerun is no longer cache-eligible (ran under min_duration_ms), the expired entry
             is deleted so other processes recompute instead of serving it stale for the rest of the lease window"
     (with-mock-cache! [save-chan]
       (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1))
@@ -497,6 +516,25 @@
         (mt/wait-for-result save-chan)
         (is (= :cached
                (run-query)))))))
+
+(deftest min-duration-honored-from-stored-config-test
+  (testing (str "a fast query is not cached when a stored `:ttl` config sets `min_duration_ms` above its runtime "
+                "(regression for #78340)")
+    (mt/with-model-cleanup [:model/CacheConfig]
+      (cache-config/store! (mt/user->id :crowberto)
+                           {:model    "root"
+                            :model_id 0
+                            :strategy {:type :ttl :multiplier 60 :min_duration_ms 20000}})
+      (with-mock-cache! [save-chan]
+        (let [strategy (-> (cache-config/root-strategy)
+                           cache-config/row->config
+                           :strategy
+                           (assoc :avg-execution-ms 1000))]
+          (run-query :cache-strategy strategy)
+          (is (= :metabase.test.util.async/timed-out
+                 (mt/wait-for-result save-chan)))
+          (is (= :not-cached
+                 (run-query :cache-strategy strategy))))))))
 
 (deftest invalid-cache-entry-test
   (testing "We should handle invalid cache entries gracefully"

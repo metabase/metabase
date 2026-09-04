@@ -3,16 +3,14 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import {
-  useMetabotAgent,
+  useMetabotConversation,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import type { MetabotAgentId } from "metabase/metabot/state";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
   ActionIcon,
@@ -27,6 +25,8 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import { useGetSuggestedMetabotPromptsQuery } from "../../api";
+
 import S from "./MetabotGreeting.module.css";
 
 const SUGGESTED_PROMPTS_LIMIT = 4;
@@ -40,12 +40,12 @@ const getTitleText = () => {
 };
 
 interface MetabotGreetingProps {
-  agentId: MetabotAgentId;
+  conversationId: string;
   suggestionModels: SuggestionModel[];
 }
 
 export const MetabotGreeting = ({
-  agentId,
+  conversationId,
   suggestionModels,
 }: MetabotGreetingProps) => {
   const [title] = useState(getTitleText);
@@ -56,7 +56,7 @@ export const MetabotGreeting = ({
       open: openAiProviderConfigurationModal,
     },
   ] = useDisclosure(false);
-  const metabot = useMetabotAgent(agentId);
+  const metabot = useMetabotConversation(conversationId);
   const { canUseNlq, hasNlqAccess } = useUserMetabotPermissions();
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(
@@ -75,7 +75,7 @@ export const MetabotGreeting = ({
 
   return (
     <Box className={S.page}>
-      <Stack gap="lg" className={S.inputWrapper}>
+      <Stack gap="xl" className={S.inputWrapper}>
         <Flex align="center" justify="space-between" mt="3.5rem">
           <Text fz="xl" fw={600} c="text-primary">
             {title}
@@ -84,7 +84,7 @@ export const MetabotGreeting = ({
             component={ForwardRefLink}
             to={Urls.newExploration()}
             bd="none"
-            leftSection={<Icon name="learn" c="brand" />}
+            leftSection={<Icon name="telescope" c="brand" />}
           >
             {t`Research`}
           </Button>

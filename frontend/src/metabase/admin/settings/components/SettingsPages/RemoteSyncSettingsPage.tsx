@@ -1,8 +1,7 @@
 import { UpsellRemoteSync } from "metabase/admin/upsells";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { getPlan, isProPlan } from "metabase/common/utils/plan";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useSetting } from "metabase/settings";
+import { getPlan, isProPlan, useSetting } from "metabase/settings";
 
 export function RemoteSyncSettingsPage() {
   const hasRemoteSync = useHasTokenFeature("remote_sync");

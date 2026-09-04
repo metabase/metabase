@@ -6,8 +6,8 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Center, Loader, Text } from "metabase/ui";
+import { formatValue } from "metabase/value-formatting";
 import { useResolvedGoalSegments } from "metabase/visualizations/hooks/use-resolved-goal-segments";
-import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { GaugeArc } from "./GaugeArc";

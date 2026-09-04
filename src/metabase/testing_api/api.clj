@@ -14,7 +14,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -22,12 +21,12 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.task.search-index :as task.search-index]
    [metabase.session.api :as session.api]
+   [metabase.testing-api.db :as testing-api.db]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (java.util Queue)
@@ -153,7 +152,7 @@
   [_route-params
    {:keys [fail]} :- [:map
                       [:fail {:default false} ms/BooleanValue]]
-   body]
+   body :- ms/Map]
   (if fail
     {:status 400
      :body {:error-code "oops"}}
@@ -215,8 +214,8 @@
                                       {:status 400}))))
                (t/minus (t/local-date) (t/months 7)))]
     (case model
-      "card"      (t2/update! :model/Card :id id {:last_used_at date})
-      "dashboard" (t2/update! :model/Dashboard :id id {:last_viewed_at date}))))
+      "card"      (testing-api.db/set-card-last-used-at! id date)
+      "dashboard" (testing-api.db/set-dashboard-last-viewed-at! id date))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -266,10 +265,13 @@
   "Creates a query from a test query spec."
   [_route-params
    _query-params
-   {:keys [database], :as query-spec} :- [:merge
-                                          [:map
-                                           [:database ::lib.schema.id/database]]
-                                          [:ref ::lib.schema.test-spec/test-query-spec]]]
+   {:keys [database], :as query-spec} :- [:map
+                                          ;; open: clients send the spec in camelCase and `lib/test-query` re-parses
+                                          ;; it with its own coercer, which kebab-cases the keys and validates the
+                                          ;; result. Declaring `::lib.schema.test-spec/test-query-spec` here would
+                                          ;; strip every camelCase key before that coercer ever saw it.
+                                          {:closed false}
+                                          [:database ::lib.schema.id/database]]]
   (-> (lib-be/application-database-metadata-provider database)
       (lib/test-query query-spec)))
 
@@ -295,17 +297,20 @@
    _query-params
    {:keys [advisories]} :- [:map
                             [:advisories [:sequential TestAdvisory]]]]
-  (t2/delete! :model/SecurityAdvisory)
-  (t2/insert-returning-instances! :model/SecurityAdvisory advisories))
+  (testing-api.db/delete-all-security-advisories!)
+  (testing-api.db/insert-security-advisories! advisories))
 
 (api.macros/defendpoint :post "/native-query" :- ::lib.schema/query
   "Creates a native query from a test query spec."
   [_route-params
    _query-params
-   {:keys [database], :as native-query-spec} :- [:merge
-                                                 [:map
-                                                  [:database ::lib.schema.id/database]]
-                                                 [:ref ::lib.schema.test-spec/test-native-query-spec]]]
+   {:keys [database], :as native-query-spec} :- [:map
+                                                 ;; open, for the same reason as `POST /query` above:
+                                                 ;; `lib/test-native-query` re-parses and validates the spec itself,
+                                                 ;; and it is the only thing that understands the camelCase keys
+                                                 ;; (`templateTags`, ...) clients send.
+                                                 {:closed false}
+                                                 [:database ::lib.schema.id/database]]]
   (-> (lib-be/application-database-metadata-provider database)
       (lib/test-native-query native-query-spec)))
 
@@ -330,48 +335,48 @@
 
 (defn- e2e-usage-auditing-group-id!
   []
-  (or (t2/select-one-pk :model/PermissionsGroup :name e2e-usage-auditing-group-name)
-      (t2/insert-returning-pk! :model/PermissionsGroup {:name e2e-usage-auditing-group-name})))
+  (or (testing-api.db/permissions-group-id e2e-usage-auditing-group-name)
+      (testing-api.db/insert-permissions-group! e2e-usage-auditing-group-name)))
 
 (defn- ensure-seeded-usage-auditing-group-membership!
   [user-id]
   (let [group-id (e2e-usage-auditing-group-id!)]
-    (when-not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)
+    (when-not (testing-api.db/group-membership-exists? user-id group-id)
       (perms/add-user-to-group! user-id group-id))))
 
 (defn- delete-seeded-usage-auditing-data!
   []
-  (t2/delete! :model/AiUsageLog {:where [:in :conversation_id e2e-usage-auditing-conversation-ids]})
-  (t2/delete! :model/MetabotConversation {:where [:in :id e2e-usage-auditing-conversation-ids]}))
+  (testing-api.db/delete-ai-usage-logs-for-conversations! e2e-usage-auditing-conversation-ids)
+  (testing-api.db/delete-metabot-conversations! e2e-usage-auditing-conversation-ids))
 
 (defn- insert-seeded-usage-auditing-conversation!
   [{:keys [id user-id created-at source profile-id prompt-tokens completion-tokens total-tokens roles ip-address tenant-id]}]
-  (t2/insert! :model/MetabotConversation
-              {:id         id
-               :user_id    user-id
-               :title      "E2E usage auditing conversation"
-               :created_at created-at
-               :ip_address ip-address})
+  (testing-api.db/insert-metabot-conversation!
+   {:id         id
+    :user_id    user-id
+    :title      "E2E usage auditing conversation"
+    :created_at created-at
+    :ip_address ip-address})
   (doseq [role roles]
-    (t2/insert! :model/MetabotMessage
-                {:conversation_id id
-                 :user_id         user-id
-                 :role            role
-                 :profile_id      profile-id
-                 :data            []
-                 :data_version    2
-                 :total_tokens    0
-                 :created_at      created-at}))
-  (t2/insert! :model/AiUsageLog
-              (cond-> {:source            source
-                       :model             "anthropic/claude-sonnet-4-6"
-                       :conversation_id   id
-                       :user_id           user-id
-                       :prompt_tokens     prompt-tokens
-                       :completion_tokens completion-tokens
-                       :total_tokens      total-tokens
-                       :created_at        created-at}
-                tenant-id (assoc :tenant_id tenant-id))))
+    (testing-api.db/insert-metabot-message!
+     {:conversation_id id
+      :user_id         user-id
+      :role            role
+      :profile_id      profile-id
+      :data            []
+      :data_version    2
+      :total_tokens    0
+      :created_at      created-at}))
+  (testing-api.db/insert-ai-usage-log!
+   (cond-> {:source            source
+            :model             "anthropic/claude-sonnet-4-6"
+            :conversation_id   id
+            :user_id           user-id
+            :prompt_tokens     prompt-tokens
+            :completion_tokens completion-tokens
+            :total_tokens      total-tokens
+            :created_at        created-at}
+     tenant-id (assoc :tenant_id tenant-id))))
 
 (defn- seed-usage-auditing-data!
   ([user-id second-user-id]
@@ -401,9 +406,9 @@
      (ensure-seeded-usage-auditing-group-membership! user-id)
      (ensure-seeded-usage-auditing-group-membership! second-user-id)
      (when tenant-id
-       (t2/update! :model/User user-id {:tenant_id tenant-id}))
+       (testing-api.db/set-user-tenant! user-id tenant-id))
      (when second-tenant-id
-       (t2/update! :model/User second-user-id {:tenant_id second-tenant-id}))
+       (testing-api.db/set-user-tenant! second-user-id second-tenant-id))
      (delete-seeded-usage-auditing-data!)
      (doseq [conversation [{:id                (nth e2e-usage-auditing-conversation-ids 0)
                             :user-id           user-id
@@ -532,13 +537,13 @@
                                [:user_id ms/PositiveInt]
                                [:count   ms/PositiveInt]]]
   (dotimes [_ count]
-    (t2/insert! :model/AiUsageLog
-                {:source            e2e-usage-source
-                 :model             "test/model"
-                 :prompt_tokens     0
-                 :completion_tokens 0
-                 :total_tokens      0
-                 :user_id           user_id}))
+    (testing-api.db/insert-ai-usage-log!
+     {:source            e2e-usage-source
+      :model             "test/model"
+      :prompt_tokens     0
+      :completion_tokens 0
+      :total_tokens      0
+      :user_id           user_id}))
   (clear-metabot-limit-cache!)
   {:inserted count})
 
@@ -550,7 +555,7 @@
    _query-params
    {:keys [user_id]} :- [:map
                          [:user_id ms/PositiveInt]]]
-  (let [deleted (t2/delete! :model/AiUsageLog :user_id user_id :source e2e-usage-source)]
+  (let [deleted (testing-api.db/delete-ai-usage-logs-for-user-and-source! user_id e2e-usage-source)]
     (clear-metabot-limit-cache!)
     {:deleted deleted}))
 

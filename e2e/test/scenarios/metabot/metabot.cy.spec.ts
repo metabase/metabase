@@ -10,7 +10,7 @@ describe("Metabot UI", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
     cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
       "xrayCandidates",
@@ -123,20 +123,11 @@ describe("Metabot UI", () => {
       cy.signInAsAdmin();
       H.enableTracking();
       H.activateToken("pro-self-hosted");
-      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+      H.setupAnthropicLlmProvider();
     });
 
     afterEach(() => {
       H.expectNoBadSnowplowEvents();
-    });
-
-    it("should track Metabot chart explainer", () => {
-      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      cy.findByLabelText("Explain this chart").should("be.visible").click();
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "metabot_explain_chart_clicked",
-      });
     });
 
     describe("Metabot chat", () => {
@@ -217,7 +208,7 @@ describe("Metabot in full-app embedding", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
   });
 
   it("should show the metabot button when embedded-metabot-enabled? is true", () => {
@@ -229,7 +220,6 @@ describe("Metabot in full-app embedding", () => {
     });
 
     H.appBar().icon("metabot").should("be.visible");
-    cy.findByLabelText("Explain this chart").should("not.exist");
   });
 
   it("should not show the metabot button when embedded-metabot-enabled? is false", () => {
@@ -245,7 +235,6 @@ describe("Metabot in full-app embedding", () => {
 
     cy.log("Assert metabot buttons are not rendered");
     H.appBar().icon("metabot").should("not.exist");
-    cy.findByLabelText("Explain this chart").should("not.exist");
   });
 });
 

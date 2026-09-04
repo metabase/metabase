@@ -10,7 +10,7 @@ type DataSelectorDataBucketPickerProps = {
   onChangeDataBucket: (id: DataTypeInfoItem["id"]) => void;
 };
 
-const DataSelectorDataBucketPicker = ({
+export const DataSelectorDataBucketPicker = ({
   dataTypes,
   onChangeDataBucket,
 }: DataSelectorDataBucketPickerProps) => (
@@ -59,7 +59,7 @@ const DataBucketListItem = ({
         {name}
       </Box>
     </Flex>
-    <Box mt="xs">
+    <Box mt="xxs">
       <Box
         component="span"
         className={DataSelectorDataBucketPickerS.DataBucketListItemDescription}
@@ -69,6 +69,3 @@ const DataBucketListItem = ({
     </Box>
   </SelectList.BaseItem>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataSelectorDataBucketPicker;

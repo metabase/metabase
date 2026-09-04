@@ -52,6 +52,7 @@ import type { HeaderWidthType, PivotTableClicked } from "./types";
 import {
   getCellWidthsForSection,
   getLeftHeaderWidths,
+  getTopHeaderRowsCount,
   leftHeaderCellSizeAndPositionGetter,
   topHeaderCellSizeAndPositionGetter,
 } from "./utils";
@@ -332,8 +333,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       columnsWithoutPivotGroup,
     } = pivoted;
 
-    const topHeaderRows =
-      columnIndexes.length + (valueIndexes.length > 1 ? 1 : 0) || 1;
+    const topHeaderRows = getTopHeaderRowsCount(columnIndexes, valueIndexes);
 
     const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
     const bodyHeight = height - topHeaderHeight;
@@ -348,32 +348,36 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       }
 
       // The CLJS code adds `colIdx` to the objects used for click handling instead of the entire column
-      // to avoid duplicate column metadata conversions from CLJS data structures to JS objects
+      // to avoid duplicate column metadata conversions from CLJS data structures to JS objects.
+      // A value-cell click carries a top-level `colIdx` (identifying the aggregation column) AND
+      // a pre-built `data` array, so column-setting and data-enrichment must be independent (#79023).
       const { colIdx, ...updatedClicked } = clicked;
       if (typeof colIdx === "number") {
         updatedClicked.column = columnsWithoutPivotGroup[colIdx];
-        updatedClicked.data ??= [
-          {
-            value: updatedClicked.value,
-            col: columnsWithoutPivotGroup[colIdx] || null,
-          },
-        ];
-      } else if (updatedClicked.data) {
+      }
+      if (updatedClicked.data) {
         updatedClicked.data = updatedClicked.data.map(
           ({ colIdx, ...item }) => ({
             ...item,
             col: colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null,
           }),
         );
+      } else if (typeof colIdx === "number") {
+        updatedClicked.data = [
+          {
+            value: updatedClicked.value,
+            col: columnsWithoutPivotGroup[colIdx] || null,
+          },
+        ];
       }
 
       if (updatedClicked.dimensions) {
-        updatedClicked.dimensions = updatedClicked.dimensions.map(
-          ({ colIdx, ...item }) => ({
-            ...item,
-            column:
-              colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null,
-          }),
+        updatedClicked.dimensions = updatedClicked.dimensions.flatMap(
+          ({ colIdx, ...item }) => {
+            const column =
+              colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null;
+            return column ? [{ ...item, column }] : [];
+          },
         );
       }
 

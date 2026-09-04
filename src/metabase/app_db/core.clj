@@ -17,6 +17,7 @@
    [metabase.app-db.env :as mdb.env]
    [metabase.app-db.format]
    [metabase.app-db.h2 :as mdb.h2]
+   [metabase.app-db.honeysql-guard]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.query]
@@ -29,6 +30,7 @@
 (set! *warn-on-reflection* true)
 
 (comment metabase.app-db.format/keep-me
+         metabase.app-db.honeysql-guard/keep-me
          metabase.app-db.query/keep-me
          metabase.app-db.query-cancelation/keep-me)
 
@@ -40,6 +42,7 @@
   do-before-commit
   do-after-commit
   in-transaction?
+  quartz-data-source
   quoting-style
   unique-identifier
   transaction-state
@@ -56,7 +59,9 @@
   clob->str]
  [mdb.encryption
   decrypt-db
-  encrypt-db]
+  encrypt-db
+  encryption-check-status
+  encrypt-plaintext-columns!]
  [metabase.app-db.format
   format-sql]
  [mdb.setup
@@ -68,6 +73,7 @@
   spec]
  [metabase.app-db.query
   compile
+  current-timestamp-string
   isa
   join
   qualify
@@ -113,8 +119,8 @@
 
   Skips:
   - Liquibase migrations.
-  - [[metabase.app-db.setup/check-encryption]], whose auto-encrypt branch can silently rewrite
-    every encrypted `setting` row when an encryption key is configured."
+  - [[metabase.app-db.setup/check-encryption]], which may write the `encryption-check` sentinel or
+    refuse to start when an encryption key is configured."
   []
   (when-not (db-is-set-up?)
     (verify-application-db-connection!)
@@ -131,8 +137,12 @@
   database migrations. If DB is already set up, this function will no-op. Thread-safe.
   Callers must explicitly decide whether or not to create sample content during migrations with the
   `create-sample-content?` keyword argument. This should usually be `true` but is `false` for load-from-h2,
-  serialization imports, and in some tests because the sample content makes tests slow enough to cause timeouts."
-  [& {:keys [create-sample-content?]}]
+  serialization imports, and in some tests because the sample content makes tests slow enough to cause timeouts.
+
+  `manage-encryption-state?` (default `true`) verifies MB_ENCRYPTION_SECRET_KEY against the database before migrations
+  run and records the resulting encryption state afterwards; it is `false` for the commands that handle the
+  encryption state themselves (`enable-encryption`, [[metabase.cmd.copy/copy!]])."
+  [& {:keys [create-sample-content? manage-encryption-state?] :or {manage-encryption-state? true}}]
   {:pre [(some? create-sample-content?)]}
   (when-not (db-is-set-up?)
     ;; It doesn't really matter too much what we lock on, as long as the lock is per-application-DB e.g. so we can run
@@ -144,7 +154,9 @@
         (let [db-type       (db-type)
               data-source   (data-source)
               auto-migrate? (config/config-bool :mb-db-automigrate)]
-          (mdb.setup/setup-db! db-type data-source auto-migrate? create-sample-content?))
+          (mdb.setup/setup-db! db-type data-source {:auto-migrate?          auto-migrate?
+                                                    :create-sample-content? create-sample-content?
+                                                    :manage-encryption-state?      manage-encryption-state?}))
         (finish-db-setup!))))
   :done)
 

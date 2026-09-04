@@ -1,22 +1,29 @@
 import type { Table } from "@tanstack/react-table";
 import cx from "classnames";
-import { msgid, ngettext } from "ttag";
+import type { ReactNode } from "react";
+import { msgid, ngettext, t } from "ttag";
 
-import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
-import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
 import { FOOTER_HEIGHT } from "metabase/data-grid/constants";
-import { PaginationFooter } from "metabase/visualizations/components/PaginationFooter/PaginationFooter";
+
+import { PaginationFooter } from "../PaginationFooter/PaginationFooter";
 
 import S from "./Footer.module.css";
+
+export interface PaginationMessageParams {
+  start: number;
+  end: number;
+  total: number;
+}
 
 export interface FooterProps<TData> {
   table: Table<TData>;
   enablePagination?: boolean;
   showRowsCount?: boolean;
-  rowsTruncated?: number;
   style?: React.CSSProperties;
   className?: string;
   tableFooterExtraButtons?: React.ReactNode;
+  formatRowsCountMessage?: (total: number) => ReactNode;
+  formatPaginationMessage?: (params: PaginationMessageParams) => ReactNode;
 }
 
 export const Footer = <TData,>({
@@ -26,9 +33,9 @@ export const Footer = <TData,>({
   className,
   style,
   tableFooterExtraButtons,
-  rowsTruncated,
+  formatRowsCountMessage,
+  formatPaginationMessage,
 }: FooterProps<TData>) => {
-  const formatNumber = useNumberFormatter();
   const wrapperAttributes = {
     "data-testid": "table-footer",
     className: cx(S.root, className),
@@ -42,6 +49,9 @@ export const Footer = <TData,>({
     const start = pagination.pageIndex * pagination.pageSize;
     const end =
       Math.min((pagination.pageIndex + 1) * pagination.pageSize, total) - 1;
+    const message = formatPaginationMessage
+      ? formatPaginationMessage({ start, end, total })
+      : t`Rows ${start + 1}-${end + 1} of ${total}`;
     return (
       <div {...wrapperAttributes}>
         {tableFooterExtraButtons}
@@ -49,6 +59,7 @@ export const Footer = <TData,>({
           start={start}
           end={end}
           total={total}
+          message={message}
           onPreviousPage={table.previousPage}
           onNextPage={table.nextPage}
         />
@@ -61,19 +72,9 @@ export const Footer = <TData,>({
       <div {...wrapperAttributes}>
         {tableFooterExtraButtons}
         <span className={S.rowsCount}>
-          {rowsTruncated !== undefined
-            ? getRowCountMessage(
-                {
-                  data: { rows_truncated: rowsTruncated ?? 0 },
-                  row_count: total,
-                },
-                formatNumber,
-              )
-            : ngettext(
-                msgid`${formatNumber(total)} row`,
-                `${formatNumber(total)} rows`,
-                total,
-              )}
+          {formatRowsCountMessage
+            ? formatRowsCountMessage(total)
+            : ngettext(msgid`${total} row`, `${total} rows`, total)}
         </span>
       </div>
     );

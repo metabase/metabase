@@ -1,7 +1,5 @@
-import visualizations from "metabase/visualizations";
+import { visualizations } from "metabase/viz-core";
 import type { VisualizationDisplay } from "metabase-types/api";
-
-export const DEFAULT_VISUALIZER_DISPLAY = "bar";
 
 export function isVisualizerSupportedVisualization(
   display: VisualizationDisplay | null | undefined,

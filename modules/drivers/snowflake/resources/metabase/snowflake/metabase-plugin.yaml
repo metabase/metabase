@@ -35,6 +35,13 @@ driver:
       visible-if:
         use-password: false
       required: true
+    - name: private-key-passphrase
+      display-name: Private key passphrase
+      helper-text: Only needed if your private key is encrypted.
+      type: password
+      placeholder: "********"
+      visible-if:
+        use-password: false
     - merge:
       - password
       - visible-if:

@@ -9,6 +9,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.data :as data]
+   [metabase.test.data.impl :as data.impl]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.visualization-settings.core :as mb.viz]
@@ -78,7 +79,10 @@
      (with-open [_conn (.getConnection data-source)]
        (next.jdbc/execute! data-source ["RUNSCRIPT FROM ?" (str @data/h2-app-db-script)])
        (with-db data-source (mdb/finish-db-setup!))
-       (f data-source)))))
+       ;; These app DBs should contain only data loaded by the test. Prevent `with-temp` from prewarming the
+       ;; test-data Database, which would add an unexpected Database to serialization extracts.
+       (binding [data.impl/*skip-dataset-prewarm?* true]
+         (f data-source))))))
 
 (defn do-with-dbs
   "Given a function with the given arity, create an in-memory db for each argument and then call the fn with these dbs"

@@ -2,15 +2,15 @@ import { t } from "ttag";
 
 import { useUnresolvedCommentsCount } from "metabase/comments/hooks/use-unresolved-comments-count";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { type Path, useLocation, useNavigate } from "metabase/router";
 import { Ellipsified, Group, Indicator, Stack } from "metabase/ui";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import type {
   ExplorationId,
   ExplorationPageNodeId,
   HydratedExplorationExploreFilter,
 } from "metabase-types/api";
+
+import { ExploreFilterPills } from "../ExploreFilterPills";
 
 interface ExplorationVisualizationHeaderProps {
   name: string;
@@ -31,7 +31,7 @@ export function ExplorationVisualizationHeader({
 }: ExplorationVisualizationHeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const nextCommentsUrl = getNextCommentsUrl(location);
+  const nextCommentsUrl = getNextCommentsUrl(location, pageId);
   const { allCommentsCount } = useUnresolvedCommentsCount({
     target:
       explorationId != null
@@ -61,17 +61,6 @@ export function ExplorationVisualizationHeader({
     />
   ) : null;
 
-  const filterPills =
-    exploreFilters != null && exploreFilters.length > 0 ? (
-      <Group gap="sm" wrap="wrap">
-        {exploreFilters.map((filter, index) => (
-          <FilterPill key={index} readOnly>
-            {getExploreFilterPillLabel(filter)}
-          </FilterPill>
-        ))}
-      </Group>
-    ) : null;
-
   return (
     <Stack gap="sm" style={{ flexShrink: 0 }}>
       <Group h="2rem" justify="space-between" wrap="nowrap" miw={0}>
@@ -80,7 +69,16 @@ export function ExplorationVisualizationHeader({
         </Ellipsified>
         <Group align="center" gap="sm" style={{ flexShrink: 0 }}>
           {allCommentsCount > 0 ? (
-            <Indicator label={allCommentsCount} size={16} color="core-info">
+            <Indicator
+              label={allCommentsCount}
+              size={16}
+              color="core-info"
+              styles={{
+                indicator: {
+                  paddingInline: "calc(var(--mantine-spacing-xxs) / 2)",
+                },
+              }}
+            >
               {commentsButton}
             </Indicator>
           ) : (
@@ -88,27 +86,20 @@ export function ExplorationVisualizationHeader({
           )}
         </Group>
       </Group>
-      {filterPills}
+      <ExploreFilterPills filters={exploreFilters ?? []} />
     </Stack>
   );
 }
 
-function getExploreFilterPillLabel(
-  filter: HydratedExplorationExploreFilter,
-): string {
-  const value =
-    filter.display_value ??
-    (filter.value == null ? NULL_DISPLAY_VALUE : String(filter.value));
-  if (filter.dimension_name) {
-    return `${filter.dimension_name}: ${value}`;
-  }
-  return value;
-}
-
-function getNextCommentsUrl(location: Pick<Path, "pathname" | "search">) {
+function getNextCommentsUrl(
+  location: Pick<Path, "pathname" | "search">,
+  pageId?: ExplorationPageNodeId,
+) {
   const search = new URLSearchParams(location.search);
-  if (search.get("comments") === "true") {
+  if (search.get("comments") != null) {
     search.delete("comments");
+  } else if (pageId != null) {
+    search.set("comments", String(pageId));
   } else {
     search.set("comments", "true");
   }

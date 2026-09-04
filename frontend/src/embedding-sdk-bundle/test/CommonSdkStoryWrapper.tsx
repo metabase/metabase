@@ -6,12 +6,12 @@ import { useMemo } from "react";
 import "embedding-sdk-bundle";
 
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
+import { storybookThemes } from "embedding-sdk-shared/test/storybook-themes";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
 import { USERS } from "../../../../e2e/support/cypress_data";
 
-import { storybookThemes } from "./storybook-themes";
 const METABASE_INSTANCE_URL =
   // Unjustified type cast. FIXME
   (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";

@@ -24,7 +24,7 @@ export const MultiStepPopoverStory = {
     const Page = ({ page }: { page: number }) => {
       return (
         <Paper>
-          <Group mb="lg">
+          <Group mb="xl">
             <Button onClick={handlers.decrement}>Prev Step</Button>
             <Button onClick={handlers.increment}>Next Step</Button>
           </Group>

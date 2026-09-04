@@ -61,6 +61,59 @@
 ;;; confound your tests with data from your dev appdb, remember to eagerly
 ;;; `(into [] (extract/extract ...))` in these tests.
 
+(defn- cause-chain-messages
+  "Messages of `e` and every exception beneath it, skipping any that have none."
+  [e]
+  ;; `keep`, not `map` - an exception with a nil message would NPE the callers' `re-find` and hide the real failure
+  (into [] (keep ex-message) (take-while some? (iterate ex-cause e))))
+
+(defn- load-failure-messages!
+  "Loads `ingestion`, expecting it to throw, and returns the thrown exception's cause-chain messages."
+  [ingestion]
+  (try
+    (serdes.load/load-metabase! ingestion)
+    ["load-metabase! unexpectedly succeeded"]
+    (catch Exception e
+      (cause-chain-messages e))))
+
+(deftest schema-validation-opt-out-reaches-import-test
+  (testing (str "GHY-4241: MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION has to travel env var -> Setting -> the binding "
+                "in load-metabase! -> import-mbql. Nothing else covers that chain, so dropping the binding would "
+                "silently disable the opt-out.")
+    (let [extracted (atom nil)]
+      (mt/with-empty-h2-app-db!
+        (let [db   (ts/create! :model/Database :name "my-db")
+              coll (ts/create! :model/Collection :name "Some collection")
+              card (ts/create! :model/Card
+                               :name          "Native with a variable"
+                               :collection_id (:id coll)
+                               :dataset_query {:database (:id db)
+                                               :type     :native
+                                               :native   {:template-tags {"id" {:id           "e2d15f07-37b3-01fc-3944-2ff860a5eb46"
+                                                                                :name         "id"
+                                                                                :display-name "ID"
+                                                                                :type         :number}}
+                                                          :query         "SELECT 1 WHERE x = {{id}}"}})]
+          (reset! extracted {:db   (serdes/extract-one "Database" {} db)
+                             :coll (serdes/extract-one "Collection" {} coll)
+                             :card (serdes/extract-one "Card" {} card)})))
+      ;; a tag type this version has no representation for - what an export from a newer Metabase that introduced
+      ;; one would look like
+      (let [{:keys [db coll card]} @extracted
+            bad-card  (assoc-in card [:dataset_query :stages 0 :template-tags]
+                                {"id" {:type :tag-type-from-the-future :name "id" :display-name "ID" :id "abc-123"}})
+            ingestion #(ingestion-in-memory [db coll bad-card])
+            ours?     #(some (partial re-find #"does not match this Metabase's query schema") %)]
+        (testing "by default the schema check is what refuses the import"
+          (mt/with-empty-h2-app-db!
+            (is (ours? (load-failure-messages! (ingestion))))))
+        (testing "with the opt-out set the schema check is skipped, so the import fails downstream instead"
+          (mt/with-empty-h2-app-db!
+            (mt/with-temp-env-var-value! [mb-serialization-skip-schema-validation "true"]
+              (let [messages (load-failure-messages! (ingestion))]
+                (is (some (partial re-find #"Invalid input.*:template-tags") messages))
+                (is (not (ours? messages)))))))))))
+
 (deftest load-basics-test
   (testing "a simple, fresh collection is imported"
     (let [serialized (atom nil)
@@ -694,6 +747,7 @@
                        :database (:id @db1d)}
                       (:definition @msr1d))))))))))
 
+;; full serdes round-trip: source graph, export, load, then cross-check remapped IDs -- one indivisible flow
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-card-test
   ;; DashboardCard.parameter_mappings and Card.parameter_mappings are JSON-encoded lists of parameter maps, which
@@ -2007,16 +2061,11 @@
                          (t2/select-one-fn :details :model/Database)))))))))
       (mt/with-temp [:model/Database   _ {:name    "My Database"
                                           :details {:some "secret"}}]
-        (testing "with :include-database-secrets"
+        (testing "connection details are never exported, even when :include-database-secrets is requested"
           (let [extracted (vec (serdes.extract/extract {:no-settings true :include-database-secrets true}))
                 dbs       (filterv #(= "Database" (:model (last (serdes/path %)))) extracted)]
             (is (= 1 (count dbs)))
-            (is (every? :details dbs))
-            (ts/with-db dest-db
-              (testing "Details are imported if provided"
-                (serdes.load/load-metabase! (ingestion-in-memory extracted))
-                (is (= (:details (first dbs))
-                       (t2/select-one-fn :details :model/Database)))))))))))
+            (is (not-any? :details dbs))))))))
 
 (deftest unique-dimensions-test
   (ts/with-dbs [source-db dest-db]
@@ -2852,3 +2901,40 @@
                     (is (= (:id data-dest) (:id data-after))))
                   (testing "permissions are unchanged after import"
                     (is (= perms-before perms-after))))))))))))
+
+(deftest dynamic-goals-round-trip-test
+  (testing "a card goal referencing another card round-trips onto the destination card's id"
+    (let [serialized (atom nil)
+          coll1s     (atom nil)
+          source1s   (atom nil)
+          card1s     (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (reset! coll1s   (ts/create! :model/Collection :name "Goals"))
+          (reset! source1s (ts/create! :model/Card :name "Target Revenue" :collection_id (:id @coll1s)))
+          (reset! card1s   (ts/create! :model/Card
+                                       :name "Revenue"
+                                       :collection_id (:id @coll1s)
+                                       :visualization_settings
+                                       {:graph.goal_value {:id (:id @source1s) :type "card" :column "total"}}))
+          (reset! serialized (into [] (serdes.extract/extract {}))))
+        (testing "the exported goal carries the referenced card's entity id"
+          (is (= {:graph.goal_value {:id (:entity_id @source1s) :type "card" :column "total"}}
+                 (-> (filter #(= "Revenue" (:name %)) (by-model @serialized "Card"))
+                     first
+                     :visualization_settings
+                     (select-keys [:graph.goal_value])))))
+        (testing "the referenced card is declared as a dependency"
+          (is (contains? (set (serdes/deserialization-dependencies
+                               {:visualization_settings
+                                {:graph.goal_value {:id (:entity_id @source1s) :type "card" :column "total"}}
+                                :serdes/meta [{:model "Card" :id (:entity_id @card1s)}]}))
+                         [{:model "Card" :id (:entity_id @source1s)}])))
+        (testing "loading remaps the goal onto the destination card's id"
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (let [source1d (t2/select-one :model/Card :name "Target Revenue")
+                  card1d   (t2/select-one :model/Card :name "Revenue")]
+              (is (pos-int? (:id source1d)))
+              (is (= {:id (:id source1d) :type "card" :column "total"}
+                     (:graph.goal_value (:visualization_settings card1d)))))))))))

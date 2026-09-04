@@ -5,10 +5,11 @@ on:
 
 jobs:
   check-source-branch:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    if: github.head_ref == 'master'
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     steps:
       - name: Block master branch PRs
-        if: github.head_ref == 'master'
         run: |
-          echo "PRs from `master` branches are not allowed, please use a new branch name for your PR."
+          echo "PRs from \`master\` branches are not allowed, please use a new branch name for your PR."
           exit 1

@@ -1,15 +1,15 @@
 import type { UploadMode } from "metabase/redux/store/upload";
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
-  BookmarkId,
-  BookmarkType,
   CardId,
   Collection,
   CollectionAuthorityLevel,
   CollectionId,
   CollectionItem,
   CollectionType,
+  CreateBookmarkRequest,
   Dashboard,
+  DeleteBookmarkRequest,
   IconName,
   TableId,
 } from "metabase-types/api";
@@ -68,14 +68,10 @@ export type OnPin = () => void | null;
 export type OnArchive = (() => Promise<any>) | null;
 export type OnRestore = (() => Promise<any> | void) | null;
 export type OnDeletePermanently = (() => Promise<any> | void) | null;
-export type OnTogglePreview = () => void | null;
 export type OnToggleBookmark = () => void | null;
 export type OnDrop = () => void;
 export type OnToggleSelected = () => void | null;
 export type OnToggleSelectedWithItem = (item: CollectionItem) => void;
-export type CreateBookmark = (id: BookmarkId, collection: BookmarkType) => void;
-export type DeleteBookmark = (id: BookmarkId, type: BookmarkType) => void;
+export type CreateBookmark = (request: CreateBookmarkRequest) => void;
+export type DeleteBookmark = (request: DeleteBookmarkRequest) => void;
 export type OnFileUpload = (props: CollectionOrTableIdProps) => void;
-export type UploadFile = (
-  props: { file: File } & CollectionOrTableIdProps,
-) => void;

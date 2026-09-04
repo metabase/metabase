@@ -10,7 +10,7 @@ import {
   getPreviousQueryBuilderMode,
   getQueryBuilderMode,
   getQuestion,
-} from "../selectors";
+} from "../store/selectors";
 
 import { updateQuestion } from "./core";
 
