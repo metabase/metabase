@@ -12,7 +12,7 @@ The Metabase CLI (`mb`) is a command-line client for Metabase. `mb` logs in to a
 ## Requirements
 
 - Node.js 20.6 or later, to install the CLI from npm.
-- A Metabase instance on version 58 or later. Some command groups need a newer Metabase. For example, transforms need version 59, Remote Sync needs version 60, and browser login needs version 63. The CLI checks your Metabase's version before running a command and tells you if it's too old.
+- A Metabase instance on version 58 or later. Some command groups need a newer Metabase. For example, transforms and measures need version 59, Remote Sync needs version 60, and browser login needs version 63. Commands that need a newer Metabase check the version the CLI recorded when you logged in, and stop with a message if your Metabase is too old.
 - A Pro or Enterprise plan for some command groups. For example, `git-sync` needs the premium [Remote Sync](./remote-sync.md) feature, and `content-translation` needs [translation dictionaries](../embedding/translations.md).
 
 ## Install the CLI
@@ -39,7 +39,7 @@ Log in once per Metabase instance:
 mb auth login --url https://metabase.example.com
 ```
 
-On Metabase 63 or later, the CLI opens Metabase in your browser. Sign in with your password or SSO and approve the CLI. The CLI stores a token that refreshes itself, so you never paste a secret. If you'd rather use an API key, pick **With an API key** at the prompt.
+On Metabase 63 or later, the CLI opens Metabase in your browser. Sign in with your password or SSO and approve the CLI. The CLI stores a token that refreshes itself, so you never paste a secret. If you'd rather use an API key, pick **With an API key** at the prompt. If the `MB_API_KEY` environment variable is set, the CLI uses that key and skips the browser.
 
 On older versions of Metabase, the CLI skips the browser and asks for an [API key](../people-and-groups/api-keys.md#create-an-api-key).
 
@@ -51,7 +51,7 @@ To log in from a script or CI, give the CLI an API key. Pipe the key on stdin or
 echo "$MB_API_KEY" | mb auth login --url https://metabase.example.com
 ```
 
-You can set `MB_URL` instead of passing `--url`. There's also an `--api-key` flag, but the key ends up in your shell history, so prefer stdin or the environment variable.
+You can set `MB_URL` instead of passing `--url`. There's also an `--api-key` flag, but the key ends up in your shell history, so prefer stdin or the environment variable. The older `METABASE_API_KEY` and `METABASE_URL` names still work, but the CLI warns you to switch to the `MB_` names.
 
 ### Check or clear your login
 
@@ -74,7 +74,7 @@ mb auth list
 
 Add `--profile <name>` (or `-p <name>`) to any command to run it against that instance. To change the default profile, set the `MB_PROFILE` environment variable.
 
-The CLI stores secrets in your operating system's keychain when it can. Profile details like the URL and login method live in `profiles.json` in the CLI's config directory (`~/.config/metabase-cli` on macOS and Linux).
+The CLI stores secrets in your operating system's keychain when it can. If no keychain is available, it stores the secret in the profiles file and warns you. Profile details like the URL and login method live in `profiles.json` in the CLI's config directory (`~/.config/metabase-cli` on macOS and Linux, `%APPDATA%\metabase-cli` on Windows).
 
 ## Use the CLI with an AI agent
 
