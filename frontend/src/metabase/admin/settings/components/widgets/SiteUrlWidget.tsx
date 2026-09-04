@@ -4,12 +4,10 @@ import { t } from "ttag";
 import { InputWithSelectPrefix } from "metabase/common/components/InputWithSelectPrefix";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useAdminSetting } from "metabase/settings";
+import { SetByEnvVarWrapper } from "metabase/settings-components/AdminSettingInput";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import { Box, Text } from "metabase/ui";
 import type { GenericErrorResponse } from "metabase/utils/errors";
-
-import { SettingHeader } from "../SettingHeader";
-
-import { SetByEnvVarWrapper } from "./AdminSettingInput";
 
 export function SiteUrlWidget() {
   const { value, updateSetting, description, isLoading, settingDetails } =

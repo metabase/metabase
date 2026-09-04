@@ -2,7 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 import { jt, t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import {
   ButtonLink,
@@ -11,6 +10,7 @@ import {
 import { Markdown } from "metabase/common/components/Markdown";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
+import { SettingsSection } from "metabase/settings-components/SettingsSection";
 import {
   Badge,
   Box,

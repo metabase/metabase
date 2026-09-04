@@ -5,10 +5,9 @@ import { trackCustomHomepageDashboardEnabled } from "metabase/common/analytics";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector";
 import { PLUGIN_HOMEPAGE_SETTING } from "metabase/plugins";
 import { useAdminSetting } from "metabase/settings";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import { Box, Radio, Stack, Text } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
-
-import { SettingHeader } from "../SettingHeader";
 
 type Mode = "default" | "dashboard" | "url";
 

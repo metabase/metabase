@@ -1,11 +1,11 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useAdminSetting } from "metabase/settings";
+import { SettingsSection } from "metabase/settings-components/SettingsSection";
 import { Alert, Anchor, Group, Switch, Text } from "metabase/ui";
 import { useGetMfaAdminOverviewQuery } from "metabase-enterprise/api";
 import type { MfaAdminOverview } from "metabase-types/api";

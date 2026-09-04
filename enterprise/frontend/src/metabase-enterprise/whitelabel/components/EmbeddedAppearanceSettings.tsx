@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
+import { SettingsSection } from "metabase/settings-components/SettingsSection";
 
 import { getLoadingMessageOptions } from "../lib/loading-message";
 

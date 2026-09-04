@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import {
   useGetPermissionsGroupQuery,
   useListUserMembershipsQuery,
@@ -9,6 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
+import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
 
 import { GroupDetail } from "../components/GroupDetail";
 

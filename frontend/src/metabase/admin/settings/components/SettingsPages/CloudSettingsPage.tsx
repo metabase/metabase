@@ -1,15 +1,15 @@
 import { t } from "ttag";
 
+import { ButtonLink } from "metabase/common/components/ExternalLink";
+import { useHasTokenFeature, useStoreUrl } from "metabase/common/hooks";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { ButtonLink } from "metabase/common/components/ExternalLink";
-import { useHasTokenFeature, useStoreUrl } from "metabase/common/hooks";
+} from "metabase/settings-components/SettingsSection";
 import { Box, Icon } from "metabase/ui";
 
 import { CloudPanel } from "../CloudPanel";
-import { SettingHeader } from "../SettingHeader";
 
 export function CloudSettingsPage() {
   const isHosted = useHasTokenFeature("hosting");

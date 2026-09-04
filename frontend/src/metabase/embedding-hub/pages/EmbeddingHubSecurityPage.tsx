@@ -1,14 +1,5 @@
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { EmbeddingMethodsCard } from "metabase/admin/settings/components/EmbeddingSettings";
-import { EmbeddingSecretKeyWidget } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget";
-import { CorsInputWidget } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget";
-import { SameSiteSelectWidget } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget";
-import { SettingTitle } from "metabase/admin/settings/components/SettingHeader";
 import { EmbeddedResources } from "metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources";
 import {
   useListEmbeddableCardsQuery,
@@ -16,10 +7,19 @@ import {
 } from "metabase/api";
 import { UpsellBanner } from "metabase/common/components/upsells/components";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { EmbeddingMethodsCard } from "metabase/embedding/settings/EmbeddingMethodsCard";
+import { EmbeddingSecretKeyWidget } from "metabase/embedding/settings/EmbeddingSecretKeyWidget";
+import { CorsInputWidget } from "metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget";
+import { SameSiteSelectWidget } from "metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { useSetting } from "metabase/settings";
+import { SettingTitle } from "metabase/settings-components/SettingHeader";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components/SettingsSection";
 import { Box } from "metabase/ui";
 
 const UPSELL_CAMPAIGN = "embedding-hub";

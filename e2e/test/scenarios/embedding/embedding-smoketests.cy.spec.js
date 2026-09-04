@@ -6,7 +6,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const standalonePath = "/admin/embedding/guest";
+const standalonePath = "/embedding/security";
 
 // These tests will run on both OSS and EE instances. Both without a token!
 describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
@@ -39,14 +39,14 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     });
 
     it("should show the sdk upsell link in oss", () => {
-      cy.visit("/admin/embedding");
+      cy.visit("/embedding/security");
 
       mainPage().within(() => {
-        cy.findByRole("link", { name: "Upgrade" })
+        cy.findByRole("link", { name: "Try Metabase Pro" })
           .should("have.attr", "href")
           .and(
             "eq",
-            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embedding-page&source_plan=oss&utm_users=10&utm_campaign=embedding-methods",
+            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=embedding-hub&utm_content=embedding-hub-security&source_plan=oss&utm_users=10",
           );
       });
     });
@@ -181,9 +181,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         cy.visit(standalonePath);
         cy.wait("@currentlyEmbeddedObject");
 
-        mainPage()
-          .findAllByText(/No (questions|dashboards) have been embedded yet./)
-          .should("have.length", 2);
+        mainPage().findByTestId("embedded-resources").should("not.exist");
       });
     });
 
@@ -323,5 +321,5 @@ function visitAndEnableSharing(object, unpublishBeforeOpen = true) {
 }
 
 function mainPage() {
-  return cy.findByTestId("admin-layout-content");
+  return cy.findByTestId("embedding-hub-main");
 }

@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { ButtonLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import { Alert, Anchor, Box, Icon } from "metabase/ui";
 import type { BillingInfo as IBillingInfo } from "metabase-types/api";
 

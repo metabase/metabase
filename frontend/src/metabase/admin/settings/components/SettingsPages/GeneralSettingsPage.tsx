@@ -1,16 +1,19 @@
 import { t } from "ttag";
 
+import { CollectUserDataInput } from "metabase/admin/settings/components/widgets/UsageTracking/CollectUserDataInput";
+import { UpsellDevInstances } from "metabase/admin/upsells";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { PLUGIN_EMBEDDING_SDK, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
+import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { CollectUserDataInput } from "metabase/admin/settings/components/widgets/UsageTracking/CollectUserDataInput";
-import { UpsellDevInstances } from "metabase/admin/upsells";
-import { useHasTokenFeature } from "metabase/common/hooks";
-import { PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
+} from "metabase/settings-components/SettingsSection";
+import { Group, Icon, Text } from "metabase/ui";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
-import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { HomepageSetting } from "../widgets/HomepageSetting";
 import { HttpsOnlyWidget } from "../widgets/HttpsOnlyWidget";
 import { SiteUrlWidget } from "../widgets/SiteUrlWidget";
@@ -20,6 +23,8 @@ export function GeneralSettingsPage() {
   const hasHostingFeature = useHasTokenFeature("hosting");
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
   const enableAnonymousTracking = !hasHostingFeature;
+  const isReactSdkFeatureAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
+  const isHosted = useSetting("is-hosted?");
 
   return (
     <SettingsPageWrapper title={t`General`}>
@@ -76,6 +81,21 @@ export function GeneralSettingsPage() {
           {enableAnonymousTracking && <AnonymousTrackingInput />}
 
           {hasAuditAppFeature && <CollectUserDataInput />}
+        </SettingsSection>
+      )}
+
+      {isReactSdkFeatureAvailable && isHosted && (
+        <SettingsSection title={t`Version pinning`}>
+          <Text c="text-secondary" lh="lg" mb="sm">
+            {t`Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.`}
+          </Text>
+
+          <ExternalLink href="mailto:help@metabase.com">
+            <Group gap="sm" fw="bold" w="fit-content">
+              <Icon name="mail" size={14} aria-hidden />
+              <span>{t`Request version pinning`}</span>
+            </Group>
+          </ExternalLink>
         </SettingsSection>
       )}
 

@@ -1,6 +1,6 @@
 import { embedModalEnableEmbeddingCard } from "e2e/support/helpers";
 
-import { getEmbedSidebar } from "./helpers";
+import { clickNewEmbedButton, getEmbedSidebar } from "./helpers";
 
 const { H } = cy;
 
@@ -26,13 +26,9 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
         H.updateSetting("enable-embedding-modular", false);
         H.updateSetting("show-static-embed-terms", true);
 
-        cy.visit("/admin/embedding");
+        cy.visit("/embedding/security");
 
-        cy.findAllByTestId("guest-embeds-setting-card")
-          .first()
-          .within(() => {
-            cy.findByText("New embed").click();
-          });
+        clickNewEmbedButton();
 
         embedModalEnableEmbeddingCard().should(
           "contain.text",
@@ -102,13 +98,9 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
         H.updateSetting("enable-embedding-modular", true);
         H.updateSetting("show-static-embed-terms", true);
 
-        cy.visit("/admin/embedding");
+        cy.visit("/embedding/security");
 
-        cy.findAllByTestId("guest-embeds-setting-card")
-          .first()
-          .within(() => {
-            cy.findByText("New embed").click();
-          });
+        clickNewEmbedButton();
 
         embedModalEnableEmbeddingCard()
           .should("contain.text", "Agree to the")
@@ -142,13 +134,9 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
         H.updateSetting("enable-embedding-modular", true);
         H.updateSetting("show-static-embed-terms", false);
 
-        cy.visit("/admin/embedding");
+        cy.visit("/embedding/security");
 
-        cy.findAllByTestId("guest-embeds-setting-card")
-          .first()
-          .within(() => {
-            cy.findByText("New embed").click();
-          });
+        clickNewEmbedButton();
 
         getEmbedSidebar()
           .contains(
@@ -163,13 +151,9 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
         H.updateSetting("enable-embedding-modular", false);
         H.updateSetting("show-modular-embed-terms", true);
 
-        cy.visit("/admin/embedding");
+        cy.visit("/embedding/security");
 
-        cy.findAllByTestId("guest-embeds-setting-card")
-          .first()
-          .within(() => {
-            cy.findByText("New embed").click();
-          });
+        clickNewEmbedButton();
 
         embedModalEnableEmbeddingCard().within(() => {
           cy.findByText(

@@ -3,10 +3,10 @@ import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import { Box, Text, TextInput } from "metabase/ui";
 
 import { useUpdateSlackSettingsMutation } from "../api/slack";
-import { SettingHeader } from "../components/SettingHeader";
 
 const getSlackError = (err: unknown): string =>
   // Unjustified type cast. FIXME

@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/constants";
+
 import {
   useCompletedSetupGuideSteps,
   useGetSetupGuideSteps,
@@ -60,7 +62,12 @@ export const SetupGuide = ({ returnTo }: { returnTo?: string } = {}) => {
         const stepId = action.stepId ?? step.id;
 
         const clickAction: StepperCardClickAction | undefined = match(action)
-          .with({ to: P.string }, ({ to }) => ({ type: "link" as const, to }))
+          .with({ to: P.string }, ({ to }) => ({
+            type: "link" as const,
+            to: returnTo
+              ? `${to}?${RETURN_TO_SETUP_GUIDE_PARAM}=${encodeURIComponent(returnTo)}`
+              : to,
+          }))
           .with({ onClick: P.nonNullable }, ({ onClick }) => ({
             type: "click" as const,
             onClick,
@@ -91,7 +98,7 @@ export const SetupGuide = ({ returnTo }: { returnTo?: string } = {}) => {
         };
       }),
     }));
-  }, [embeddingSteps, completedSteps, lockedSteps, setOpenedModal]);
+  }, [embeddingSteps, completedSteps, lockedSteps, setOpenedModal, returnTo]);
 
   return (
     <>

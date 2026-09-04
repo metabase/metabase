@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import { Box } from "metabase/ui";
 
 import S from "./MCPServerUrlSection.module.css";

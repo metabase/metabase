@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/settings";
+import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
 import { Group, Stack, Title } from "metabase/ui";
 
 import { AiFeatureAccessTable } from "./components/AiFeatureAccessTable";

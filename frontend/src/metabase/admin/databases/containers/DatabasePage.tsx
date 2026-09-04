@@ -2,9 +2,9 @@ import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
+import { SettingsSection } from "metabase/settings-components/SettingsSection";
 import {
   Box,
   Button,

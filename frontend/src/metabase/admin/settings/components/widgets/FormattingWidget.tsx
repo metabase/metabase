@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
+import { SettingsSection } from "metabase/settings-components/SettingsSection";
 import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import {
   getCurrencyOptions,

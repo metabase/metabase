@@ -11,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { Route } from "metabase/router";
 import type { SettingKey } from "metabase-types/api";
 import {
@@ -34,21 +35,44 @@ const generalSettings = {
   "redirect-all-requests-to-https": false,
   "humanization-strategy": "simple",
   "enable-xrays": false,
+  "csp-img-enabled": true,
   "search-engine": "appdb",
+  "custom-viz-enabled": false,
 } as const;
 
 const setup = async ({
   isCloudPlan,
   hasAuditApp,
+  cspImgEnabled,
+  customVizEnabled,
+  isHosted,
+  hasEmbeddingSdk,
+  hasSimpleEmbedding,
 }: {
   isCloudPlan?: boolean;
   hasAuditApp?: boolean;
+  cspImgEnabled?: boolean;
+  customVizEnabled?: boolean;
+  isHosted?: boolean;
+  hasEmbeddingSdk?: boolean;
+  hasSimpleEmbedding?: boolean;
 } = {}) => {
+  // Direct control, bypassing hasPremiumFeature/MetabaseSettings singleton
+  // timing -- deterministic regardless of what earlier tests in this worker
+  // left behind.
+  PLUGIN_EMBEDDING_SDK.isEnabled = () => hasEmbeddingSdk ?? false;
+
   const settings = createMockSettings({
     ...generalSettings,
+    "csp-img-enabled": cspImgEnabled ?? generalSettings["csp-img-enabled"],
+    "custom-viz-enabled":
+      customVizEnabled ?? generalSettings["custom-viz-enabled"],
+    "is-hosted?": isHosted ?? false,
     "token-features": createMockTokenFeatures({
       hosting: isCloudPlan ?? false,
       audit_app: hasAuditApp ?? true,
+      embedding_sdk: hasEmbeddingSdk ?? false,
+      embedding_simple: hasSimpleEmbedding ?? false,
     }),
   });
 
@@ -235,6 +259,40 @@ describe("GeneralSettingsPage", () => {
       await setup({ isCloudPlan: false, hasAuditApp: true });
 
       expect(screen.getByText("Usage tracking")).toBeInTheDocument();
+    });
+  });
+
+  describe("Version pinning", () => {
+    it("should offer users version pinning when they have a cloud instance with the SDK", async () => {
+      await setup({ isHosted: true, hasEmbeddingSdk: true });
+
+      expect(screen.getByText("Version pinning")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /Metabase Cloud instances are automatically upgraded to new releases/i,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Request version pinning" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not offer version pinning on self-hosted instances", async () => {
+      await setup({ isHosted: false, hasEmbeddingSdk: true });
+
+      expect(screen.queryByText("Version pinning")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Request version pinning" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not offer version pinning without the SDK feature", async () => {
+      await setup({ isHosted: true, hasEmbeddingSdk: false });
+
+      expect(screen.queryByText("Version pinning")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Request version pinning" }),
+      ).not.toBeInTheDocument();
     });
   });
 });

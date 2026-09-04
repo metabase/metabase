@@ -49,12 +49,36 @@ const UNLICENSED_STEP_ORDER = [
   "Create a custom theme",
 ];
 
+// Every plan sees every tab; the gem marks the ones its token can't unlock.
+// OSS and Starter lack all four gated features, so they expect the same.
+const TAB_GEMS_WITHOUT_PAID_FEATURES = [
+  { label: "Get started", hasGem: false },
+  { label: "Security", hasGem: false },
+  { label: "Authentication", hasGem: true },
+  { label: "Permissions", hasGem: false },
+  { label: "Tenancy", hasGem: true },
+  { label: "Appearance", hasGem: true },
+  { label: "Localization", hasGem: true },
+];
+
 function assertStepOrder(titles: string[]) {
   cy.findAllByTestId(CARD)
     .should("have.length", titles.length)
     .each(($card, index) => {
       cy.wrap($card).should("contain.text", titles[index]);
     });
+}
+
+function assertHubTabs(tabs: { label: string; hasGem: boolean }[]) {
+  cy.findByRole("navigation", { name: "Embedding hub" }).within(() => {
+    for (const { label, hasGem } of tabs) {
+      cy.findByRole("link", { name: label })
+        .findByTestId("upsell-gem")
+        .should(hasGem ? "exist" : "not.exist");
+    }
+
+    cy.findByRole("link", { name: "Guest embeds" }).should("not.exist");
+  });
 }
 
 describe("scenarios > embedding > embedding hub > get started", () => {
@@ -95,7 +119,7 @@ describe("scenarios > embedding > embedding hub > get started", () => {
 
       cy.location("pathname").should(
         "eq",
-        "/embedding/get-started/permissions-setup",
+        "/embedding/get-started/permissions",
       );
 
       cy.log(
@@ -130,7 +154,7 @@ describe("scenarios > embedding > embedding hub > get started", () => {
         },
       );
 
-      cy.visit("/embedding/get-started/permissions-setup");
+      cy.visit("/embedding/get-started/permissions");
 
       cy.log("the Summary step closes the wizard out");
       cy.findByRole("button", { name: "Done" }).click();
@@ -143,7 +167,7 @@ describe("scenarios > embedding > embedding hub > get started", () => {
       cy.log("JWT configured is what unlocks the two steps after it");
       enableJwtAuth();
 
-      cy.visit("/embedding/get-started/sso-setup");
+      cy.visit("/embedding/get-started/sso");
 
       cy.findByRole("button", { name: "Next" }).click();
 
@@ -289,6 +313,66 @@ describe("scenarios > embedding > embedding hub > security", () => {
       cy.visit("/embedding/security");
 
       assertPublishedDashboardIsListed();
+    });
+  });
+
+  describe("oss", { tags: "@OSS" }, () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.updateSetting("show-modular-embed-terms", false);
+    });
+
+    it("shows the Pro upsell banner and the CORS setting", () => {
+      cy.visit("/embedding/security");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        cy.findByText(
+          "Upgrade to Metabase Pro to access the SDK for React and more advanced options.",
+        ).should("be.visible");
+        // OSS leaves PLUGIN_ADMIN_SETTINGS.useUpsellFlow without a trigger, so
+        // UpsellCta renders the store link; paid builds get a button that
+        // opens the in-app flow instead.
+        cy.findByRole("link", { name: "Try Metabase Pro" }).should(
+          "be.visible",
+        );
+
+        cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
+      });
+    });
+
+    it("shows every hub tab, gemming the ones this plan lacks", () => {
+      cy.visit("/embedding/security");
+
+      assertHubTabs(TAB_GEMS_WITHOUT_PAID_FEATURES);
+    });
+  });
+
+  describe("starter", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("starter");
+      H.updateSetting("show-modular-embed-terms", false);
+    });
+
+    it("shows the Pro upsell banner and the CORS setting", () => {
+      cy.visit("/embedding/security");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        // Starter is below Pro too -- SDK access is still gated.
+        cy.findByRole("button", { name: "Try Metabase Pro" }).should(
+          "be.visible",
+        );
+
+        cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
+      });
+    });
+
+    it("shows every hub tab, gemming the ones this plan lacks", () => {
+      cy.visit("/embedding/security");
+
+      assertHubTabs(TAB_GEMS_WITHOUT_PAID_FEATURES);
     });
   });
 });

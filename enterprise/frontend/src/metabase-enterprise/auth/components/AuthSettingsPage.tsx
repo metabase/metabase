@@ -1,18 +1,18 @@
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
 import { GoogleAuthCard } from "metabase/admin/settings/auth/containers/GoogleAuthCard";
 import { LdapAuthCard } from "metabase/admin/settings/auth/containers/LdapAuthCard";
 import { ManageApiKeys } from "metabase/admin/settings/components/ApiKeys/ManageApiKeys";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   type AuthSettingsPageProps,
   PLUGIN_AUTH_PROVIDERS,
 } from "metabase/plugins";
+import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components/SettingsSection";
 import { AdminAuthCard } from "metabase-enterprise/multi_factor_auth/components/AdminAuthCard";
 
 import { JwtAuthCard } from "../containers/JwtAuthCard";
