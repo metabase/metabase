@@ -1146,4 +1146,33 @@
                                 "cardEmbed"))))
     (testing "while a token indented within the parser's 3-column budget is still structure"
       (is (= [7] (mapv #(get-in % [:attrs :id])
-                       (collect-type (md/parse "   {% card id=7 %}") "cardEmbed")))))))
+                       (collect-type (md/parse "   {% card id=7 %}") "cardEmbed")))))
+    (testing "and a blank line separates blocks however wide its whitespace — measuring the indent
+             must not turn one into a code block"
+      (doseq [[label blank] {"four spaces"  "    "
+                             "eight spaces" "        "
+                             "one tab"      "\t"
+                             "two tabs"     "\t\t"}]
+        (is (= (strip-ids (:content (md/parse "para one\n\npara two")))
+               (strip-ids (:content (md/parse (str "para one\n" blank "\npara two")))))
+            (format "a blank line parsed differently from an empty one: %s" label))))))
+
+(deftest ^:parallel indented-code-line?-measures-the-first-content-column-test
+  (testing "a line is indented code when its first non-whitespace character sits at column 4 or
+           later, counting a tab to the next 4-column stop"
+    (are [expected line] (= expected (#'md/indented-code-line? line))
+      true  "    x"
+      true  "\tx"
+      true  " \tx"
+      true  "     x"
+      false "   x"
+      false "x"))
+  (testing "a whitespace-only line is blank however wide — it separates blocks rather than opening
+           a code block, so the column test must run on a content character, not on entry"
+    (are [line] (false? (#'md/indented-code-line? line))
+      ""
+      "   "
+      "    "
+      "        "
+      "\t"
+      "\t\t")))

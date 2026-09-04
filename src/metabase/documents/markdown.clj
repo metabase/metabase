@@ -272,13 +272,15 @@
   [^String line]
   (loop [idx (long 0) col (long 0)]
     (if (>= idx (.length line))
-      false                                ; blank/whitespace-only: not code, just an empty line
+      ;; Ran out of line while still counting indent: the line is blank. A blank line separates
+      ;; blocks rather than opening a code block, however wide its whitespace is — so the column
+      ;; test belongs on the first non-whitespace character, not on entry to each iteration.
+      false
       (let [c (.charAt line idx)]
         (cond
-          (>= col 4)   true
           (= c \space) (recur (inc idx) (inc col))
           (= c \tab)   (recur (inc idx) (long (+ col (- 4 (mod col 4)))))
-          :else        false)))))
+          :else        (>= col 4))))))
 
 (defn- scan-segments
   "Scan `lines` from index `i` into segments. `open-fence` names the container fence being
