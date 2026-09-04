@@ -25,7 +25,7 @@
 (def ^:private usage-part
   {:type :usage :usage {:promptTokens 100 :completionTokens 20 :cacheReadTokens 5 :cacheCreationTokens 0}})
 
-(defn- canned-llm
+(defn canned-llm
   "A stand-in for `call-llm-structured-with-trace` that answers with `(entry-fn field-name)` for every rendered
   field, dropping fields for which it returns nil."
   [entry-fn]
@@ -41,7 +41,9 @@
                             (field-names-in-message messages))}
      :parts  [usage-part]}))
 
-(defn- do-with-llm! [call-fn thunk]
+(defn do-with-llm!
+  "Run `thunk` with `call-fn` standing in for the structured LLM call and every instance gate open."
+  [call-fn thunk]
   (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace call-fn
                               metabot.settings/metabot-enabled?           (constantly true)
                               metabot.settings/llm-metabot-configured?    (constantly true)

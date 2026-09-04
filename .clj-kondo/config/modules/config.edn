@@ -3258,8 +3258,9 @@
 
   enterprise/data-sensitivity
   {:team "Graphy"
-   :api  #{}
-   :uses #{config
+   :api  #{metabase-enterprise.data-sensitivity.api}
+   :uses #{api
+           config
            database-routing
            driver
            lib
