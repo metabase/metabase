@@ -38,7 +38,8 @@
    [toucan2.core :as t2])
   (:import
    (com.google.common.cache Cache)
-   (com.mchange.v2.c3p0 DataSources)
+   (com.mchange.v2.c3p0 C3P0ProxyConnection ComboPooledDataSource DataSources)
+   (java.sql DriverManager)
    (org.h2.tools Server)))
 
 (set! *warn-on-reflection* true)
@@ -1026,3 +1027,38 @@
     (is (integer? (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver/*driver*))))
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc :-fns [has-default-port?]})
     (is (nil? (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver/*driver*)))))
+
+(def ^:private raw-connection-to-string-method
+  (.getMethod Object "toString" (make-array Class 0)))
+
+(defn- raw-connection-identity
+  "Identify the physical Connection behind a c3p0 proxy, to tell a recycled connection from a freshly acquired one."
+  [^C3P0ProxyConnection conn]
+  (.rawConnectionOperation conn
+                           raw-connection-to-string-method
+                           C3P0ProxyConnection/RAW_CONNECTION
+                           (make-array Object 0)))
+
+(deftest discard-pooled-connection-test
+  (testing "discarding destroys the physical Connection, so the pool acquires a fresh one rather than recycling it"
+    (with-open [ds (doto (ComboPooledDataSource.)
+                     (.setJdbcUrl "jdbc:h2:mem:discard-pooled-connection-test;DB_CLOSE_DELAY=-1")
+                     (.setInitialPoolSize 1)
+                     (.setMinPoolSize 1)
+                     (.setMaxPoolSize 1))]
+      (letfn [(checked-out-identity []
+                (with-open [conn (.getConnection ds)]
+                  (raw-connection-identity conn)))]
+        (let [before (checked-out-identity)]
+          (testing "a plain check-in/check-out cycle hands back the same physical Connection"
+            (is (= before (checked-out-identity))))
+          (with-open [conn (.getConnection ds)]
+            (sql-jdbc.conn/discard-pooled-connection! conn))
+          (testing "after discarding, the next checkout is a different physical Connection"
+            (is (not= before (checked-out-identity)))))))))
+
+(deftest discard-pooled-connection-leaves-unpooled-connection-alone-test
+  (testing "a Connection with no pool behind it has no next query to poison, so it is left open"
+    (with-open [conn (DriverManager/getConnection "jdbc:h2:mem:discard-unpooled-test;DB_CLOSE_DELAY=-1")]
+      (sql-jdbc.conn/discard-pooled-connection! conn)
+      (is (not (.isClosed conn))))))
