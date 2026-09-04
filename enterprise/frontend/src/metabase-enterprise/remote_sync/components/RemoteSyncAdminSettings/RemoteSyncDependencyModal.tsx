@@ -20,46 +20,41 @@ import {
 import { collection as collectionUrl } from "metabase/urls";
 import type {
   CollectionSyncPreferences,
-  RemoteSyncDependencyFailure,
-  RemoteSyncIneligibleDependency,
+  RemoteSyncRequiredSync,
 } from "metabase-types/api";
 
 import { COLLECTIONS_KEY } from "../../constants";
 import type { RemoteSyncSettingsFormState } from "../../types";
-import type { RequiredCollectionRow } from "../../utils";
 import {
   getBlockedMessage,
-  getRequiredCollectionRows,
-  getRowDependencies,
-  isSyncableRow,
+  getListedRequiredSyncs,
+  getRequiredSyncRow,
 } from "../../utils";
 
 import S from "./RemoteSyncDependencyModal.module.css";
 
 interface RemoteSyncDependencyModalProps {
-  /** Why the last save was refused, one entry per collection. */
-  failures?: RemoteSyncDependencyFailure[];
+  /** Why the last save was refused, one entry per collection that has to be synced. */
+  required?: RemoteSyncRequiredSync[];
 }
 
 export const RemoteSyncDependencyModal = ({
-  failures,
+  required,
 }: RemoteSyncDependencyModalProps) => {
   const { values, setFieldValue } =
     useFormikContext<RemoteSyncSettingsFormState>();
   // RTK returns a new error object per request, so identity separates fresh from dismissed.
-  const [dismissedFailures, setDismissedFailures] =
-    useState<RemoteSyncDependencyFailure[]>();
+  const [dismissedRequired, setDismissedRequired] =
+    useState<RemoteSyncRequiredSync[]>();
 
-  if (!failures?.length || failures === dismissedFailures) {
+  if (!required?.length || required === dismissedRequired) {
     return null;
   }
 
-  // Rows are for display and can include Our analytics; only real remedies are safe to switch on.
-  const requiredCollectionRows = getRequiredCollectionRows(failures);
-  const rowDependencies = getRowDependencies(failures);
+  const listedRequiredSyncs = getListedRequiredSyncs(required);
   const syncedCollections = values[COLLECTIONS_KEY] ?? {};
 
-  const handleDismiss = () => setDismissedFailures(failures);
+  const handleDismiss = () => setDismissedRequired(required);
 
   // Nested path, so the write survives the form reinitializing under the modal.
   const handleToggle = (id: number, checked: boolean) =>
@@ -74,9 +69,9 @@ export const RemoteSyncDependencyModal = ({
       withCloseButton={false}
     >
       <Stack gap="xl" pt="lg">
-        <Text>{getBlockedMessage(failures)}</Text>
+        <Text>{getBlockedMessage(required)}</Text>
 
-        {requiredCollectionRows.length > 0 && (
+        {listedRequiredSyncs.length > 0 && (
           <Accordion
             multiple
             chevronPosition="left"
@@ -89,11 +84,10 @@ export const RemoteSyncDependencyModal = ({
               content: S.content,
             }}
           >
-            {requiredCollectionRows.map((row) => (
-              <RequiredCollectionRowItem
-                key={row.id}
-                row={row}
-                dependencies={rowDependencies.get(row.id) ?? []}
+            {listedRequiredSyncs.map((requiredSync) => (
+              <RequiredSyncItem
+                key={getRequiredSyncRow(requiredSync).key}
+                requiredSync={requiredSync}
                 syncedCollections={syncedCollections}
                 onToggle={handleToggle}
               />
@@ -111,24 +105,23 @@ export const RemoteSyncDependencyModal = ({
   );
 };
 
-interface RequiredCollectionRowItemProps {
-  row: RequiredCollectionRow;
-  dependencies: RemoteSyncIneligibleDependency[];
+interface RequiredSyncItemProps {
+  requiredSync: RemoteSyncRequiredSync;
   syncedCollections: CollectionSyncPreferences;
   onToggle: (id: number, checked: boolean) => void;
 }
 
-const RequiredCollectionRowItem = ({
-  row,
-  dependencies,
+const RequiredSyncItem = ({
+  requiredSync,
   syncedCollections,
   onToggle,
-}: RequiredCollectionRowItemProps) => {
+}: RequiredSyncItemProps) => {
   const getIcon = PLUGIN_COLLECTIONS.useGetIcon();
-  const syncableId = isSyncableRow(row) ? row.id : null;
+  const { dependencies } = requiredSync;
+  const row = getRequiredSyncRow(requiredSync);
+  const { syncableId } = row;
   const isSynced = syncableId != null && !!syncedCollections[syncableId];
-  // Same inputs CollectionSyncRow gives it, so a row reads the same here as in the settings list.
-  // `location` because a remedy is always top-level, which is where a personal one earns its icon.
+
   const icon = getIcon({
     model: "collection",
     type: row.type,
@@ -139,7 +132,7 @@ const RequiredCollectionRowItem = ({
   });
 
   return (
-    <Accordion.Item value={String(row.id)} mt="sm">
+    <Accordion.Item value={row.key} mt="sm">
       {/* The switch sits outside the control, so flipping it doesn't also toggle the panel. */}
       <Group
         gap="sm"
@@ -207,16 +200,18 @@ const RequiredCollectionRowItem = ({
           ))}
         </Card>
 
-        <Anchor
-          component={Link}
-          to={collectionUrl({ id: row.id, name: row.name })}
-          target="_blank"
-        >
-          <Group gap="xs">
-            {t`Go to collection`}
-            <Icon name="external" />
-          </Group>
-        </Anchor>
+        {row.collectionId != null && (
+          <Anchor
+            component={Link}
+            to={collectionUrl({ id: row.collectionId, name: row.name })}
+            target="_blank"
+          >
+            <Group gap="xs">
+              {t`Go to collection`}
+              <Icon name="external" />
+            </Group>
+          </Anchor>
+        )}
       </Accordion.Panel>
     </Accordion.Item>
   );

@@ -13,24 +13,20 @@ const UNSYNCED_DEPENDENCIES_BODY: RemoteSyncDependencyErrorResponse = {
   error: "Uses content that is not remote synced.",
   error_code: "unsynced-dependencies",
   errors: {
-    collections: [
+    required: [
       {
-        collection: { id: 14, name: "New Collection" },
+        remedy: {
+          type: "collection",
+          collection: { id: 7, name: "Regular", type: null, personal: false },
+        },
+        syncable: true,
+        blocks: [{ id: 20, name: "Marketing" }],
         dependencies: [
           {
             model: "card",
             id: 416,
             name: "Subscription seats over time",
             collection: { id: 7, name: "Regular" },
-            remedy: {
-              type: "collection",
-              collection: {
-                id: 7,
-                name: "Regular",
-                type: null,
-                personal: false,
-              },
-            },
             used_by: [],
           },
         ],

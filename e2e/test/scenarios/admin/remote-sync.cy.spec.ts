@@ -638,8 +638,12 @@ describe("Remote Sync", () => {
           saveAndExpectRefusal().then((interception) => {
             const body: RemoteSyncDependencyErrorResponse =
               interception.response?.body;
+
+            expect(body.errors.required).to.have.length(1);
             expect(
-              body.errors.collections.map((failure) => failure.collection.name),
+              body.errors.required[0].blocks.map(
+                (collection) => collection.name,
+              ),
             ).to.have.members([
               BLOCKED_COLLECTION_NAME,
               SECOND_BLOCKED_COLLECTION_NAME,
@@ -705,15 +709,17 @@ describe("Remote Sync", () => {
           saveAndExpectRefusal().then((interception) => {
             const body: RemoteSyncDependencyErrorResponse =
               interception.response?.body;
-            const [failure] = body.errors.collections;
+            const [required] = body.errors.required;
 
-            expect(failure.collection.id).to.eq(blocked.id);
-            expect(failure.dependencies).to.have.length(1);
-            expect(failure.dependencies[0].model).to.eq("snippet");
-            expect(failure.dependencies[0].name).to.eq(SNIPPET_NAME);
-            expect(failure.dependencies[0].remedy).to.deep.equal({
-              type: "library",
-            });
+            expect(required.blocks.map((collection) => collection.id)).to.eql([
+              blocked.id,
+            ]);
+            // With no Library there is no collection to name, so the remedy carries only its type.
+            expect(required.remedy).to.deep.equal({ type: "library" });
+            expect(required.syncable).to.be.false;
+            expect(required.dependencies).to.have.length(1);
+            expect(required.dependencies[0].model).to.eq("snippet");
+            expect(required.dependencies[0].name).to.eq(SNIPPET_NAME);
           });
 
           H.modal().within(() => {

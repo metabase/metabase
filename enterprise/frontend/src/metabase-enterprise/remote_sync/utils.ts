@@ -5,11 +5,8 @@ import type {
   Collection,
   CollectionType,
   IconName,
-  RemoteSyncDependencyEntity,
-  RemoteSyncDependencyFailure,
   RemoteSyncEntityStatus,
-  RemoteSyncIneligibleDependency,
-  RemoteSyncRemedyCollection,
+  RemoteSyncRequiredSync,
   SettingDefinition,
 } from "metabase-types/api";
 
@@ -171,133 +168,72 @@ export const parseSyncError = (exportError: SyncError | null): ParsedError => {
   };
 };
 
-// Deduped because remedies point at top-level collections, so dependencies collapse onto the same one.
-export const getRequiredCollections = (
-  failures: RemoteSyncDependencyFailure[],
-): RemoteSyncRemedyCollection[] => {
-  const collections = failures
-    .flatMap((failure) => failure.dependencies)
-    .flatMap((dependency) =>
-      dependency.remedy.type === "collection"
-        ? [dependency.remedy.collection]
-        : [],
-    );
-
-  const byId = new Map<number, RemoteSyncRemedyCollection>(
-    collections.map((collection) => [collection.id, collection]),
-  );
-
-  return [...byId.values()];
-};
-
-/** Identity for a dependency or one of its referrers — neither is unique on `id` alone. */
-export const getEntityKey = ({
-  model,
-  id,
-}: Pick<RemoteSyncDependencyEntity, "model" | "id">): string =>
-  `${model}:${id}`;
-
 export const ROOT_COLLECTION_ROW_ID = "root";
 
-export type RequiredCollectionRow = {
-  id: number | typeof ROOT_COLLECTION_ROW_ID;
+export type RequiredSyncRow = {
+  key: string;
   name: string;
-  /** Drives the icon, so the Library and friends read the same here as in the settings list. */
   type: CollectionType;
   personal: boolean;
-  syncable: boolean;
+  syncableId: number | null;
+  collectionId: number | typeof ROOT_COLLECTION_ROW_ID | null;
 };
 
-const getUnsyncableRows = (
-  failures: RemoteSyncDependencyFailure[],
-): RequiredCollectionRow[] => {
-  const rows = failures
-    .flatMap((failure) => failure.dependencies)
-    .filter((dependency) => dependency.remedy.type === "none")
-    .flatMap((dependency): RequiredCollectionRow[] => {
-      const { collection } = dependency;
-
-      // Absent means the backend couldn't resolve one, so there is nothing honest to name.
-      if (collection === undefined) {
-        return [];
-      }
-      // The dependency only tells us where it lives, not what kind of collection that is.
-      return collection === null
-        ? [
-            {
-              id: ROOT_COLLECTION_ROW_ID,
-              name: t`Our analytics`,
-              type: null,
-              personal: false,
-              syncable: false,
-            },
-          ]
-        : [{ ...collection, type: null, personal: false, syncable: false }];
-    });
-
-  return [...new Map(rows.map((row) => [row.id, row])).values()];
-};
-
-export const getRequiredCollectionRows = (
-  failures: RemoteSyncDependencyFailure[],
-): RequiredCollectionRow[] => [
-  ...getRequiredCollections(failures).map(({ id, name, type, personal }) => ({
-    id,
-    name,
-    type,
-    personal,
-    syncable: !personal,
-  })),
-  ...getUnsyncableRows(failures),
-];
-
-export const isSyncableRow = (
-  row: RequiredCollectionRow,
-): row is RequiredCollectionRow & { id: number } =>
-  row.syncable && typeof row.id === "number";
-
-const getUniqueDependencies = (
-  failures: RemoteSyncDependencyFailure[],
-): RemoteSyncIneligibleDependency[] => [
-  ...new Map(
-    failures
-      .flatMap((failure) => failure.dependencies)
-      .map((dependency) => [getEntityKey(dependency), dependency]),
-  ).values(),
-];
-
-const getDependencyRowId = ({
+export const getRequiredSyncRow = ({
   remedy,
-  collection,
-}: RemoteSyncIneligibleDependency): RequiredCollectionRow["id"] | null => {
+  syncable,
+}: RemoteSyncRequiredSync): RequiredSyncRow => {
   if (remedy.type === "collection") {
-    return remedy.collection.id;
+    const { id, name, type, personal } = remedy.collection;
+
+    return {
+      key: `collection:${id}`,
+      name,
+      type,
+      personal,
+      syncableId: syncable ? id : null,
+      collectionId: id,
+    };
   }
-  // The Library carries no id of its own, and an unresolved collection gives us nothing to name.
-  if (remedy.type === "library" || collection === undefined) {
-    return null;
+
+  const unsyncable = { type: null, personal: false, syncableId: null };
+
+  if (remedy.type === "library") {
+    return {
+      ...unsyncable,
+      key: "library",
+      name: t`Library`,
+      collectionId: null,
+    };
   }
-  return collection === null ? ROOT_COLLECTION_ROW_ID : collection.id;
+  if (remedy.collection === null) {
+    return {
+      ...unsyncable,
+      key: ROOT_COLLECTION_ROW_ID,
+      name: t`Our analytics`,
+      collectionId: ROOT_COLLECTION_ROW_ID,
+    };
+  }
+  if (remedy.collection === undefined) {
+    return {
+      ...unsyncable,
+      key: "unresolved",
+      name: t`Unknown collection`,
+      collectionId: null,
+    };
+  }
+  return {
+    ...unsyncable,
+    key: `none:${remedy.collection.id}`,
+    name: remedy.collection.name,
+    collectionId: remedy.collection.id,
+  };
 };
 
-export const getRowDependencies = (
-  failures: RemoteSyncDependencyFailure[],
-): Map<RequiredCollectionRow["id"], RemoteSyncIneligibleDependency[]> => {
-  const byRow = new Map<
-    RequiredCollectionRow["id"],
-    RemoteSyncIneligibleDependency[]
-  >();
-
-  getUniqueDependencies(failures).forEach((dependency) => {
-    const rowId = getDependencyRowId(dependency);
-
-    if (rowId != null) {
-      byRow.set(rowId, [...(byRow.get(rowId) ?? []), dependency]);
-    }
-  });
-
-  return byRow;
-};
+export const getListedRequiredSyncs = (
+  required: RemoteSyncRequiredSync[],
+): RemoteSyncRequiredSync[] =>
+  required.filter(({ remedy }) => remedy.type !== "library");
 
 export type BlockedReason =
   | "personal-content"
@@ -307,15 +243,15 @@ export type BlockedReason =
 
 // Ordered so content that can't be synced at all outranks content that can.
 export const getBlockedReason = (
-  failures: RemoteSyncDependencyFailure[],
+  required: RemoteSyncRequiredSync[],
 ): BlockedReason => {
-  if (isBlockedByPersonalContent(failures)) {
+  if (isBlockedByPersonalContent(required)) {
     return "personal-content";
   }
-  if (requiresContentMove(failures)) {
+  if (requiresContentMove(required)) {
     return "unsyncable-content";
   }
-  if (isBlockedByMissingLibrary(failures)) {
+  if (isBlockedByMissingLibrary(required)) {
     return "library-missing";
   }
   return "linked-collections";
@@ -323,41 +259,26 @@ export const getBlockedReason = (
 
 // `personal` sits on the remedy — the top-level ancestor — not the collection the dependency is in.
 const isBlockedByPersonalContent = (
-  failures: RemoteSyncDependencyFailure[],
+  required: RemoteSyncRequiredSync[],
 ): boolean =>
-  failures.some((failure) =>
-    failure.dependencies.some(
-      (dependency) =>
-        dependency.remedy.type === "collection" &&
-        dependency.remedy.collection.personal,
-    ),
+  required.some(
+    ({ remedy }) => remedy.type === "collection" && remedy.collection.personal,
   );
 
 // A `library` remedy is the backend saying this instance has no Library at all — once one exists a
 // snippet points at it as an ordinary collection remedy, like anything else.
 const isBlockedByMissingLibrary = (
-  failures: RemoteSyncDependencyFailure[],
-): boolean =>
-  failures.some((failure) =>
-    failure.dependencies.some(
-      (dependency) => dependency.remedy.type === "library",
-    ),
-  );
+  required: RemoteSyncRequiredSync[],
+): boolean => required.some(({ remedy }) => remedy.type === "library");
 
 // A `none` remedy leaves nothing to switch on, so the content has to move instead.
-const requiresContentMove = (
-  failures: RemoteSyncDependencyFailure[],
-): boolean =>
-  failures.some((failure) =>
-    failure.dependencies.some(
-      (dependency) => dependency.remedy.type === "none",
-    ),
-  );
+const requiresContentMove = (required: RemoteSyncRequiredSync[]): boolean =>
+  required.some(({ remedy }) => remedy.type === "none");
 
 export const getBlockedMessage = (
-  failures: RemoteSyncDependencyFailure[],
+  required: RemoteSyncRequiredSync[],
 ): string => {
-  switch (getBlockedReason(failures)) {
+  switch (getBlockedReason(required)) {
     case "personal-content":
       return t`Dashboards or questions in this collection rely on content saved in a personal collection, which can’t be synced. Move that content to a shared collection to continue.`;
     case "unsyncable-content":
