@@ -1,8 +1,8 @@
 import { Fragment, type ReactNode, useState } from "react";
 import { t } from "ttag";
 
+import { CollectionBadge } from "metabase/common/collections/components/CollectionBadge";
 import { Breadcrumb } from "metabase/common/components/Breadcrumb";
-import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
 import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
 import type { CollectionEssentials, IconName } from "metabase-types/api";
 
