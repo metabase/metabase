@@ -223,7 +223,7 @@ In the embedding wizard, this corresponds to the **Allow people to save new ques
 
 Customizing click behavior is only available in the [Modular embedding SDK](./sdk/introduction.md) for now.
 
-When people click a data point in an interactive chart, Metabase shows a menu of actions. The [`mapQuestionClickActions`](./sdk/plugins.md) plugin lets you customize this: open the default menu, add custom actions, or perform an immediate action without a menu.
+When people click a data point in an interactive chart, Metabase shows a menu of actions. The [`mapQuestionClickActions`](./sdk/api/MetabasePluginsConfig.html#mapquestionclickactions) [plugin](./sdk/plugins.md) lets you customize this: add custom actions alongside the default ones, perform an immediate action without a menu, or prevent default actions from happening.
 
 Use it globally on `MetabaseProvider`, or on individual `InteractiveQuestion` components:
 
