@@ -1,5 +1,4 @@
 import { DatePicker } from "@mantine/dates";
-import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { useLocale } from "metabase/common/hooks";
@@ -106,7 +105,6 @@ describe("getLocaleToUse", () => {
 
 describe("LocaleProvider", () => {
   it("should make Mantine components use correct locale", async () => {
-    mockLocaleJsonResponse("de");
 
     renderWithProviders(
       <LocaleProvider locale="de">
@@ -114,9 +112,8 @@ describe("LocaleProvider", () => {
       </LocaleProvider>,
     );
 
-    await waitForLocaleJson("de");
-
-    // `waitFor` to ensure the component has time to re-render
+    // The catalogue is imported rather than fetched, so this waits for it to load
+    // and be applied, not just for a re-render.
     await waitFor(() => {
       expect(screen.getByText("Januar 2020")).toBeInTheDocument();
     });
@@ -128,44 +125,17 @@ describe("LocaleProvider", () => {
       return <div>{locale}</div>;
     };
 
-    mockLocaleJsonResponse("de");
-
     renderWithProviders(
       <LocaleProvider locale="de">
         <TestComponent />
       </LocaleProvider>,
     );
 
-    await waitForLocaleJson("de");
-
-    // `waitFor` to ensure the component has time to re-render
+    // The catalogue is imported rather than fetched, so this waits for it to load
+    // and be applied, not just for a re-render.
     await waitFor(() => {
       expect(screen.getByText("de")).toBeInTheDocument();
     });
   });
 });
 
-const mockLocaleJsonResponse = (locale: string) => {
-  fetchMock.get(`/app/locales/${locale}.json`, {
-    charset: "utf-8",
-    headers: {
-      language: locale,
-      // `plural-forms` is required otherwise the loading fails
-      "plural-forms": "nplurals=2; plural=(n != 1);",
-    },
-    translations: {
-      // at least a key is required otherwise the loading fails
-      "": {
-        "": {},
-      },
-    },
-  });
-};
-
-async function waitForLocaleJson(locale: string) {
-  await waitFor(() => {
-    expect(fetchMock.callHistory.done(`/app/locales/${locale}.json`)).toBe(
-      true,
-    );
-  });
-}
