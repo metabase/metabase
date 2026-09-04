@@ -20,7 +20,7 @@ import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/qu
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
-import { createSnowplowTracker } from "metabase/analytics";
+import { startSnowplowTracker } from "metabase/analytics";
 import { type OnBeforeRequestHandler, PLUGIN_API } from "metabase/api/client";
 import { getUserId } from "metabase/current-user";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
@@ -79,7 +79,7 @@ const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
 };
 
 const store = getSdkStore();
-createSnowplowTracker(() => getUserId(store.getState()));
+startSnowplowTracker(() => getUserId(store.getState()));
 
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus({

@@ -24,6 +24,10 @@ jest.mock("metabase/utils/metaplow", () => ({
 // Re-import the module under test so its module-scoped init guard resets per test.
 const loadModule = () => import("./snowplow");
 
+// The facade loads the trackers with `import()` once the browser goes idle, so
+// the work it queues lands a tick later than the call that queued it.
+const settleTrackers = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 function makeStore(overrides: Partial<EnterpriseSettings> = {}) {
   // Seed the `getSessionProperties` RTK Query cache.
   const state = createMockState({ sdk: createMockSdkState() });
@@ -48,6 +52,12 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.resetModules();
+    // jsdom has no requestIdleCallback, and the fallback would hold every test
+    // for its delay. Run the callback as soon as it is scheduled instead.
+    window.requestIdleCallback = (callback) => {
+      callback({ didTimeout: false, timeRemaining: () => 0 });
+      return 0;
+    };
   });
 
   describe("initSdkTracker", () => {
@@ -66,6 +76,7 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
         store: makeStore(),
       });
 
+      await settleTrackers();
       expect(mockNewTracker).toHaveBeenCalledTimes(1);
       // Only assert important config keys
       expect(mockNewTracker).toHaveBeenCalledWith(
@@ -96,6 +107,7 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
         store: makeStore(),
       });
 
+      await settleTrackers();
       expect(mockNewTracker).toHaveBeenCalledTimes(1);
     });
 
@@ -135,6 +147,7 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
         }),
       });
 
+      await settleTrackers();
       const [, , config] = mockNewTracker.mock.lastCall!;
       const [plugin] = config.plugins;
       const contexts = plugin.contexts();
@@ -205,6 +218,7 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
         }),
       });
 
+      await settleTrackers();
       expect(mockTrackSelfDescribingEvent).toHaveBeenCalledWith(
         {
           event: {
@@ -233,6 +247,7 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
         event_detail: "",
       });
 
+      await settleTrackers();
       expect(mockTrackMetaplowEvent).not.toHaveBeenCalled();
     });
 
@@ -251,6 +266,7 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
         event_detail: "",
       });
 
+      await settleTrackers();
       expect(mockTrackMetaplowEvent).not.toHaveBeenCalled();
     });
 
@@ -275,6 +291,7 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
         }),
       });
 
+      await settleTrackers();
       expect(mockTrackMetaplowEvent).toHaveBeenCalledWith(
         "embedding_sdk_initialized",
         {

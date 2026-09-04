@@ -5,6 +5,7 @@ jest.mock("embedding-sdk-bundle/analytics/component-events", () => ({
 
 jest.mock("embedding-sdk-bundle/analytics/snowplow", () => ({
   initSdkTracker: jest.fn(),
+  startSdkMetaplow: jest.fn(),
   trackSdkSimpleEvent: jest.fn(),
   getSdkAuthMethod: jest.fn(),
   getSdkLocaleUsed: jest.fn(),
