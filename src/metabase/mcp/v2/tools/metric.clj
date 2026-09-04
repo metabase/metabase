@@ -34,6 +34,16 @@
        "execute_query takes — or the older name-based dialect, still resolved on input. "
        "Alternatively pass a query_handle from an execute tool instead of `definition`."))
 
+(def ^:private accepted-displays
+  "Card display types `display` accepts. Enumerated so an LLM-invented value is an argument error
+   instead of junk persisted on the card."
+  ["table" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
+   "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
+
+(def ^:private default-display
+  "The display a created metric gets when the caller names none."
+  :scalar)
+
 (def ^:private shape-rule
   "The metric shape rule, quoted verbatim in every gate error so the caller learns it once."
   (str "A metric needs exactly one aggregation and at most one grouping, in a single "
@@ -121,14 +131,17 @@
 
 (defn- write-result
   "The created/updated metric echoed to the caller: the `:metric` concise read projection, plus
-   `:entity_id` (a portable id to update by), `:archived`, and the metric's URL. The echo confirms
-   what was written rather than standing in for a read — `:query_summary` is derived from the query
-   at read time rather than stored on the card, so it is the one concise key the echo never carries.
-   Read the metric back through `get_content` if you need it."
+   `:entity_id` (a portable id to update by), `:archived`, `:display`, and the metric's URL. The
+   echo confirms what was written rather than standing in for a read — `:query_summary` is derived
+   from the query at read time rather than stored on the card, so it is the one concise key the
+   echo never carries. Read the metric back through `get_content` if you need it."
   [card]
+  ;; :display is a detailed-projection key, echoed here anyway: it is the one written field a
+  ;; caller can set without naming it, so the echo is where a defaulted :scalar becomes visible.
   (assoc (projections/project :metric :concise card)
          :entity_id (:entity_id card)
          :archived  (boolean (:archived card))
+         :display   (:display card)
          :url       (common/frontend-url (channel.urls/metric-path (:id card)))))
 
 ;;; -------------------------------------------------- Create ------------------------------------------------------
@@ -136,7 +149,7 @@
 (defn- create!
   "Run the shared REST create check stack on the resolved query and target collection, then save a
    `metric` card. An omitted `collection_id` means the caller's personal collection."
-  [{:keys [name description collection_position] :as args} session-id]
+  [{:keys [name description display collection_position] :as args} session-id]
   (let [dataset-query (or (resolve-definition args session-id)
                           (common/throw-teaching-error
                            "Pass the metric's query: `definition` (inline) or `query_handle` (from an execute tool)."))
@@ -148,9 +161,9 @@
           {:name                   name
            :type                   :metric
            :dataset_query          dataset-query
-           ;; REST requires both on create; a metric has no display picker in the tool's contract,
-           ;; so it gets the app's default for a single aggregation.
-           :display                :scalar
+           ;; REST requires both on create, so an omitted `display` falls back to the app's default
+           ;; for a single aggregation rather than being left off the insert.
+           :display                (if display (keyword display) default-display)
            :visualization_settings {}
            :description            description
            :collection_id          collection-id
@@ -173,7 +186,7 @@
   "Write-check the existing metric, patch only the caller-supplied fields, then run the shared REST
    update check stack before persisting. A `definition`/`query_handle` re-runs the metric shape
    gate; omitting both leaves the stored query untouched."
-  [id {:keys [name description collection_position archived] :as args} session-id]
+  [id {:keys [name description display collection_position archived] :as args} session-id]
   (let [card-before  (v2.resolve/resolve-and-read-with
                       :model/Card id
                       ;; Hydrated like PUT /api/card/:id hydrates it: `update-card!` un-verifies a
@@ -190,6 +203,7 @@
         raw-updates  (cond-> {}
                        (contains? args :name)                (assoc :name name)
                        (contains? args :description)         (assoc :description description)
+                       (contains? args :display)             (assoc :display (keyword display))
                        (contains? args :collection_id)       (assoc :collection_id new-coll-id)
                        (contains? args :collection_position) (assoc :collection_position collection_position)
                        (contains? args :archived)            (assoc :archived (boolean archived))
@@ -228,6 +242,13 @@
                                                "that ran. Pass this or definition, not both.")}]]]
    [:description {:optional true}
     [:maybe [:string {:description "Optional human-readable description."}]]]
+   [:display {:optional true}
+    [:maybe (into [:enum {:description
+                          (str "How the metric's result is visualized. Defaults to \"scalar\" — right for a "
+                               "single number, wrong for a metric with a grouping, which usually wants "
+                               "\"line\" (a grouping over time) or \"bar\" (a grouping over categories). "
+                               "Editable on update.")}]
+                  accepted-displays)]]
    [:collection_id {:optional true}
     [:maybe [:or
              [:int {:description "Numeric id of the collection to save the metric in."}]
@@ -258,8 +279,9 @@
   takes and get_content's \"definition\" include returns) or as a query_handle from
   execute_query — one or the other, not both. The query must have exactly one aggregation (count, sum, average…) and
   at most one grouping; anything else is a teaching error, so build it with execute_query first. Native
-  SQL cannot be a metric — save it with question_write. Optional: description, collection_id (omit to save to your
-  personal collection; pass \"root\" for the root collection), collection_position to pin. Updating a card that is a
+  SQL cannot be a metric — save it with question_write. Optional: description, display (how the result is visualized;
+  defaults to \"scalar\", so a metric with a grouping usually wants \"line\" or \"bar\"), collection_id (omit to save
+  to your personal collection; pass \"root\" for the root collection), collection_position to pin. Updating a card that is a
   question or a model is refused rather than retyping it. Requires write permission on the metric and curate
   permission on the target collection."
   {:name         "metric_write"
