@@ -16,6 +16,7 @@
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util.i18n :refer [tru]]
@@ -100,7 +101,11 @@
             ;; a nested run inside the outer streaming response must return an in-memory map,
             ;; not write to the outer stream
             result (binding [qp.pipeline/*result*        qp.pipeline/default-result-handler
-                             qp.pipeline/*canceled-chan* (child-canceled-chan qp.pipeline/*canceled-chan*)]
+                             qp.pipeline/*canceled-chan* (child-canceled-chan qp.pipeline/*canceled-chan*)
+                             ;; a referenced card is a saved question, so reading it is enough. unbound, the
+                             ;; perms check takes the ad-hoc branch and demands create-queries on its tables.
+                             ;; measures have no equivalent yet, so they stay on the ad-hoc branch.
+                             qp.perms/*card-id*          (when (= entity-type "card") id)]
                      (qp/process-query (referenced-query (runnable-query entity query-key) entity-type id max-rows)))
             data   (:data result)]
         (if (> (count (:rows data)) max-rows)

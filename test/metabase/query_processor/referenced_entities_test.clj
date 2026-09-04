@@ -302,6 +302,24 @@
         (is (= "completed" (:status goal)))
         (is (= [[100]] (get-in goal [:data :rows])))))))
 
+(deftest referenced-card-needs-only-read-perms-test
+  (testing "a referenced card resolves for a user who can read it but has no ad-hoc query perms on its table"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Card {chart-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
+                                               :display       :line
+                                               :visualization_settings
+                                               {:graph.goal_value {:id     goal-id
+                                                                   :type   "card"
+                                                                   :column "count"}}}]
+      (mt/with-perm-for-group-and-table! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no
+        (let [response (mt/user-http-request :rasta :post 202 (format "card/%d/query" chart-id))
+              goal     (ref-entity response :card goal-id)]
+          (testing "the card itself runs, since reading a saved question is enough"
+            (is (= "completed" (:status response))))
+          (testing "and so does the card its goal points at"
+            (is (= "completed" (:status goal)))
+            (is (= [[100]] (get-in goal [:data :rows])))))))))
+
 (deftest dataset-endpoint-unreadable-measure-test
   (testing "a referenced measure whose table the caller can't read fails softly without failing the main query"
     ;; measure perms delegate to its table, a different route from the collection perms a card goes through
