@@ -15,7 +15,6 @@ import {
   listTag,
   provideUserListTags,
   provideUserTags,
-  tag,
 } from "./tags";
 
 export const userApi = Api.injectEndpoints({
@@ -49,8 +48,7 @@ export const userApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/user/current",
       }),
-      providesTags: (user) =>
-        user ? [tag("current-user"), idTag("current-user", user.id)] : [],
+      providesTags: (user) => (user ? [idTag("current-user", user.id)] : []),
       // Don't garbage-collect the current user from the cache
       // since it's used in many places and we don't want to refetch it unnecessarily.
       keepUnusedDataFor: Infinity,
