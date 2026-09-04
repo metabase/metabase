@@ -95,7 +95,7 @@ export const RemoteSyncSettingsForm = ({
 
           return (
             <Form disabled={!dirty}>
-              <Stack gap="xl" maw="52rem">
+              <Stack gap="xxl" maw="52rem">
                 {!isModalVariant && !isRemoteSyncEnabled && <SetupGuideLink />}
 
                 <GitSettingsSection />
@@ -130,7 +130,7 @@ export const RemoteSyncSettingsForm = ({
                     )}
                   </Box>
 
-                  <Flex align="center" gap="md">
+                  <Flex align="center" gap="lg">
                     <FormErrorMessage />
                     {onCancel && (
                       <Button

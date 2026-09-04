@@ -38,7 +38,7 @@ An admin sets up embedded Metabot in your Metabase:
 
 The collection you pick narrows what embedded chat finds when it searches for something to build on: that collection and everything under it. It doesn't limit what embedded chat can query, since people can still get to any data they have [permissions](../permissions/embedding.md) for. And once you set a collection, tables drop out of the chat's search results, so pick a collection with the metrics and models you want people building on.
 
-The **Embedded** tab configures Metabot in an embedded context, which is separate from the [Metabot](../ai/settings.md) in your own Metabase (which lives on the **Internal** tab). Both tabs control what each Metabot can see, not what it runs on: the AI provider, API key, and model are set once for the whole instance, above the **Metabot settings** card, and both Metabots use them.
+The **Embedded** tab configures Metabot in an embedded context, which is separate from the [Metabot](../ai/settings.md) in your own Metabase (which lives on the **Internal** tab). Both tabs control what each Metabot can see, not what it runs on: your [AI provider connections](../ai/settings.md#choose-ai-provider) and the [model each feature runs on](../ai/settings.md#pick-the-model-each-ai-feature-runs-on) are set once for the whole instance, above the **Metabot settings** card, and both Metabots use them.
 
 With embedded Metabot set up, there are two ways to add the chat to your app:
 

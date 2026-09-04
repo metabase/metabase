@@ -3,19 +3,18 @@
 
   How do authenticated API requests work? There are two main paths to authentication: a session or an API key.
 
-  For session authentication, Metabase first looks for a cookie called `metabase.SESSION`. This is the normal way of
+  For session authentication, Metabase looks for a cookie called `metabase.SESSION`. This is the normal way of
   doing things; this cookie gets set automatically upon login. `metabase.SESSION` is an HttpOnly cookie and thus can't
   be viewed by FE code. If the session is a full-app embedded session, then the cookie is `metabase.EMBEDDED_SESSION`
   instead.
 
-  Finally we'll check for the presence of a `X-Metabase-Session` header. If that isn't present, you don't have a
-  Session ID.
+  If present, the `X-Metabase-Session` header is used for authentication instead of cookies - the `metabase.SESSION` and
+  `metabase.EMBEDDED_SESSION` cookies are ignored in this case.
 
   The second main path to authentication is an API key. For this, we look at the `X-Api-Key` header. If that matches
   an ApiKey in our database, you'll be authenticated as that ApiKey's associated User."
   (:require
    [clojure.string :as str]
-   [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [malli.error :as me]
    [medley.core :as m]
@@ -23,7 +22,6 @@
    [metabase.api-keys.core :as api-key]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.api.macros.scope :as scope]
-   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
    [metabase.mcp.core :as mcp]
@@ -31,20 +29,18 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.request.schema :as request.schema]
+   [metabase.server.db :as server.db]
    [metabase.session.core :as session]
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]
-   [metabase.util.string :as string]
-   [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline]))
+   [metabase.util.string :as string]))
 
 (set! *warn-on-reflection* true)
 
@@ -84,12 +80,12 @@
   (some
    (fn [strategy]
      (wrap-session-key-with-strategy strategy request))
-   [:embedded-cookie :normal-cookie :header]))
+   [:header :embedded-cookie :normal-cookie]))
 
 (defn wrap-session-key
   "Middleware that sets the `:metabase-session-key` keyword on the request if a session id can be found.
-  We first check the request :cookies for `metabase.SESSION`, then if no cookie is found we look in the http headers
-  for `X-METABASE-SESSION`. If neither is found then no keyword is bound to the request."
+  We first check the http headers for `X-METABASE-SESSION`, then if no header is found we look in the request
+  :cookies for `metabase.SESSION`. If neither is found then no keyword is bound to the request."
   [handler]
   (fn [request respond raise]
     (let [request (or (wrap-session-key-with-strategy :best request)
@@ -99,110 +95,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             wrap-current-user-info                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; Because this query runs on every single API request it's worth it to optimize it a bit and only compile it to SQL
-;; once rather than every time
-(defn- oldest-allowed-expr
-  "Build a database-specific expression for `NOW() - interval`."
-  [db-type amount unit]
-  (let [now (h2x/current-datetime-honeysql-form db-type)]
-    (case db-type
-      :postgres [:- now [::h2x/postgres-interval amount unit]]
-      :h2       [:dateadd (h2x/literal (name unit))
-                 [:inline (- amount)]
-                 now]
-      :mysql    [:- now [::h2x/mysql-interval amount unit]])))
-
-(def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds])} session-with-id-query
-  (mdb/memoize-for-application-db
-   (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds]
-     (first
-      (t2.pipeline/compile*
-       (cond-> {:select    [[:session.user_id :metabase-user-id]
-                            [:user.is_superuser :is-superuser?]
-                            [:user.is_data_analyst :is-data-analyst?]
-                            [:user.locale :user-locale]
-                            [:auth_identity.provider :auth-provider]]
-                :from      [[:core_session :session]]
-                :left-join [[:core_user :user] [:= :session.user_id :user.id]
-                            [:tenant] [:= :tenant.id :user.tenant_id]
-                            [:auth_identity] [:= :auth_identity.id :session.auth_identity_id]]
-                :where     (into [:and
-                                  (if enable-tenants?
-                                    [:or [:= :tenant.id nil] :tenant.is_active]
-                                    [:= :tenant.id nil])
-                                  [:= :user.is_active true]
-                                  [:= :session.key_hashed ^:allow-raw-sql [:raw "?"]]
-                                  [:> :session.created_at (oldest-allowed-expr db-type max-age-minutes :minute)]
-                                  [:or [:= :session.expires_at nil]
-                                   [:> :session.expires_at (h2x/current-datetime-honeysql-form db-type)]]
-                                  [:= :session.anti_csrf_token (case session-type
-                                                                 :normal         nil
-                                                                 :full-app-embed ^:allow-raw-sql [:raw "?"])]]
-                                 (when session-timeout-seconds
-                                   [[:> [:coalesce :session.last_active_at :session.created_at]
-                                     (oldest-allowed-expr db-type session-timeout-seconds :second)]]))
-                :limit     [:inline 1]}
-         enable-advanced-permissions?
-         (->
-          (sql.helpers/select
-           [:pgm.is_group_manager :is-group-manager?])
-          (sql.helpers/left-join
-           [:permissions_group_membership :pgm] [:and
-                                                 [:= :pgm.user_id :user.id]
-                                                 [:is :pgm.is_group_manager true]]))))))))
-
-;; See above: because this query runs on every single API request (with an API Key) it's worth it to optimize it a bit
-;; and only compile it to SQL once rather than every time
-(def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-api-key-prefix-query
-  (mdb/memoize-for-application-db
-   (fn [enable-advanced-permissions?]
-     (first
-      (t2.pipeline/compile*
-       (cond-> {:select    [[:api_key.user_id :metabase-user-id]
-                            [:api_key.key :api-key]
-                            [:user.is_superuser :is-superuser?]
-                            [:user.is_data_analyst :is-data-analyst?]
-                            [:user.locale :user-locale]]
-                :from      :api_key
-                :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
-                :where     [:and
-                            [:= :user.is_active true]
-                            [:= :api_key.key_prefix ^:allow-raw-sql [:raw "?"]]]
-                :limit     [:inline 1]}
-         enable-advanced-permissions?
-         (->
-          (sql.helpers/select
-           [:pgm.is_group_manager :is-group-manager?])
-          (sql.helpers/left-join
-           [:permissions_group_membership :pgm] [:and
-                                                 [:= :pgm.user_id :user.id]
-                                                 [:is :pgm.is_group_manager true]]))))))))
-
-;; Like the session/api-key queries above, this runs on every OAuth-bearer-authenticated API request, so
-;; compile it to SQL once. Keyed on the resolved user id from the OAuth access token.
-(def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-id-query
-  (mdb/memoize-for-application-db
-   (fn [enable-advanced-permissions?]
-     (first
-      (t2.pipeline/compile*
-       (cond-> {:select    [[:user.id :metabase-user-id]
-                            [:user.is_superuser :is-superuser?]
-                            [:user.is_data_analyst :is-data-analyst?]
-                            [:user.locale :user-locale]]
-                :from      [[:core_user :user]]
-                :where     [:and
-                            [:= :user.is_active true]
-                            [:= :user.id ^:allow-raw-sql [:raw "?"]]]
-                :limit     [:inline 1]}
-         enable-advanced-permissions?
-         (->
-          (sql.helpers/select
-           [:pgm.is_group_manager :is-group-manager?])
-          (sql.helpers/left-join
-           [:permissions_group_membership :pgm] [:and
-                                                 [:= :pgm.user_id :user.id]
-                                                 [:is :pgm.is_group_manager true]]))))))))
 
 (defn- valid-session-key?
   "Validates that the given session-key looks like a session key (a UUID string). Session keys are only ever compared
@@ -214,20 +106,15 @@
   "Return User ID and superuser status for Session with `session-key` if it is valid and not expired."
   [session-key anti-csrf-token]
   (when (and session-key (valid-session-key? session-key) (init-status/complete?))
-    (let [timeout (request/enabled-session-timeout-seconds)
-          sql     (session-with-id-query (mdb/db-type)
+    (some-> (server.db/session-user-info (session/hash-session-key session-key)
+                                         anti-csrf-token
                                          (config/config-int :max-session-age)
-                                         (if (seq anti-csrf-token) :full-app-embed :normal)
                                          (premium-features/enable-advanced-permissions?)
                                          (and (premium-features/enable-tenants?)
                                               (setting/get :use-tenants))
-                                         timeout)
-          params  (concat [(session/hash-session-key session-key)]
-                          (when (seq anti-csrf-token)
-                            [anti-csrf-token]))]
-      (some-> (t2/query-one (cons sql params))
-              ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
-              (update :is-group-manager? boolean)))))
+                                         (request/enabled-session-timeout-seconds))
+            ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
+            (update :is-group-manager? boolean))))
 
 (def ^:private api-key-that-should-never-match (str (random-uuid)))
 (def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
@@ -266,9 +153,8 @@
           (log/error "Ignoring invalid API Key")
           (log/errorf "Ignoring invalid API Key: %s" error))
         nil)
-      (let [user-info (-> (t2/query-one (cons (user-data-for-api-key-prefix-query
-                                               (premium-features/enable-advanced-permissions?))
-                                              [(api-key/prefix api-key)]))
+      (let [user-info (-> (server.db/api-key-user-info (api-key/prefix api-key)
+                                                       (premium-features/enable-advanced-permissions?))
                           (m/update-existing :is-group-manager? boolean))]
         (when (matching-api-key? user-info api-key)
           (-> user-info
@@ -305,14 +191,19 @@
   (when (init-status/complete?)
     (when-let [token (oauth-server/extract-bearer-token request)]
       (when-let [{:keys [user-id scopes]} (oauth-server/resolve-access-token token)]
-        (some-> (t2/query-one (cons (user-data-for-id-query (premium-features/enable-advanced-permissions?))
-                                    [user-id]))
+        (some-> (server.db/oauth-user-info user-id (premium-features/enable-advanced-permissions?))
                 (m/update-existing :is-group-manager? boolean)
                 (assoc :token-scopes (oauth-token->token-scopes scopes)))))))
 
 (def ^:private mcp-ui-request-surface
   "The complete API surface used by the MCP visualization iframe. A UI credential
-   is deliberately not a general Metabase API credential."
+   is deliberately not a general Metabase API credential.
+
+   This is the surface the credential may PASS THROUGH, not the privilege it carries — see the
+   `::scope/mcp-ui` stamp below. The distinction matters because this set is an inventory of what the
+   embedded app happens to call rather than a decision about what it should reach: the credential is
+   installed as app-wide auth on the client (`installMcpUiCredential`), so anything the SDK adds lands here
+   by default. GHY-4400 tracks replacing this with a purpose-built surface."
   #{[:get  "/api/user/current"]
     [:get  "/api/session/properties"]
     [:post "/api/dataset"]
@@ -330,11 +221,20 @@
              (contains? mcp-ui-request-surface [(:request-method request) (:uri request)]))
     (when-let [{:keys [uid sid] :as claims}
                (mcp/resolve-ui-credential (get-in request [:headers "x-metabase-mcp-ui-auth"]))]
-      (some-> (t2/query-one (cons (user-data-for-id-query (premium-features/enable-advanced-permissions?)) [uid]))
+      (some-> (server.db/oauth-user-info uid (premium-features/enable-advanced-permissions?))
               (m/update-existing :is-group-manager? boolean)
-              ;; Endpoint scope middleware treats this as session-like auth, but the
-              ;; route allowlist above is the actual authorization boundary.
-              (assoc :token-scopes #{::scope/unrestricted}
+              ;; `::scope/mcp-ui`, NOT `::scope/unrestricted`. The allowlist decides which routes this
+              ;; credential may pass through; it must not also decide what privilege it arrives with. Stamped
+              ;; unrestricted, a credential that reached anything off the list — a routing change, a new alias,
+              ;; a mistake in the set — arrived with full session privilege. `::mcp-ui` satisfies no endpoint's
+              ;; declared `:scope`, and `ensure-scopes-checked` refuses it where none is declared, so the same
+              ;; mistake now fails closed.
+              ;;
+              ;; `:token-scopes-checked` is what lets the allowlisted routes serve it: they declare no `:scope`
+              ;; of their own, and annotating them would push MCP vocabulary into `users-rest`, `session` and
+              ;; `query-processor`, deepening exactly the coupling GHY-4400 exists to remove.
+              (assoc :token-scopes #{::scope/mcp-ui}
+                     :token-scopes-checked true
                      :mcp-ui-session-id sid
                      :mcp-ui-credential claims)))))
 
@@ -415,9 +315,7 @@
     (let [hashed (session/hash-session-key session-key)]
       (when (session/record-session-activity-update! hashed)
         (try
-          (t2/query-one {:update (t2/table-name :model/Session)
-                         :set    {:last_active_at :%now}
-                         :where  [:= :key_hashed hashed]})
+          (server.db/touch-session! hashed)
           (catch Exception e
             (log/warnf "Failed to update session last_active_at: %s" (ex-message e))))))))
 

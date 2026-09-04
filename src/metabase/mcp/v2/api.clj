@@ -56,14 +56,18 @@
         ;; RC clients carry their identity per-call in `_meta`; the usage recorder falls back to
         ;; the session's stored identity when it's absent.
         client-info      (get-in params [:_meta :io.modelcontextprotocol/clientInfo])
-        supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
-    (transport/jsonrpc-response id (registry/call-tool token-scopes
-                                                       session-id
-                                                       tool-name
-                                                       arguments
-                                                       {:client-info      client-info
-                                                        :supports-mcp-ui? supports-mcp-ui?
-                                                        :request-context  request-context}))))
+        supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)
+        {:keys [error result]}
+        (registry/call-tool token-scopes
+                            session-id
+                            tool-name
+                            arguments
+                            {:client-info      client-info
+                             :supports-mcp-ui? supports-mcp-ui?
+                             :request-context  request-context})]
+    (if-let [{:keys [code message]} error]
+      (transport/jsonrpc-error id code message)
+      (transport/jsonrpc-response id result))))
 
 (defn- handle-resources-list [id _params token-scopes]
   (transport/jsonrpc-response id (v2.resources/list-resources token-scopes)))

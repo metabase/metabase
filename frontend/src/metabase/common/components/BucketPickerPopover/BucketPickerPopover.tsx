@@ -149,7 +149,7 @@ export function BucketPickerPopover({
               variant="subtle"
               color="core-brand"
               fullWidth
-              px="md"
+              px="lg"
               py="sm"
               styles={{
                 inner: { display: "flex", justifyContent: "flex-start" },

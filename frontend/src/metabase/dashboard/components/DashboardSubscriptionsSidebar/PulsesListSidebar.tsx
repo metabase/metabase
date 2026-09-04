@@ -109,7 +109,7 @@ function _PulsesListSidebar({
               key={pulse.id}
               className={cx(S.pulseCard, { [S.pulseCardEditable]: canEdit })}
               p={0}
-              radius="md"
+              radius="sm"
               shadow="none"
               withBorder
               onClick={() =>
