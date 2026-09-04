@@ -28,17 +28,38 @@
 
 (defn visible-columns
   "The columns a rendered table shows, in result order: hidden columns dropped, and remap
-  targets dropped because their source column already occupies a slot."
+  targets dropped because their source column already occupies a slot.
+
+  Mirrors the frontend's `extractRemappedColumns`
+  (`frontend/src/metabase/viz-core/lib/remapping.ts`): the source column keeps its own identity
+  and carries the target it was remapped to as `:remapped_to_column`. Everything keyed by column
+  name -- per-column styles, colour lookups, the `column_title` setting -- therefore resolves
+  against the column the user configured, while the name to show and the type to align by are
+  still reachable through the attached target.
+
+  A column whose remap target is missing keeps its own identity rather than throwing, as the
+  frontend does."
   [cols]
   (let [remapping-lookup (create-remapping-lookup cols)]
     (into []
           (comp (filter show-in-table?)
                 (remove :remapped_from)
                 (map (fn [col]
-                       (if (:remapped_to col)
-                         (nth cols (get remapping-lookup (:name col)))
+                       (if-let [target-idx (get remapping-lookup (:name col))]
+                         (assoc col :remapped_to_column (nth cols target-idx))
                          col))))
           cols)))
+
+(defn remapped-display-name
+  "The name to show for a column: the remap target's name, else the column's own. Mirrors the
+  frontend's `displayNameForColumn` (`frontend/src/metabase/value-formatting/column.ts`).
+
+  The same rule is translated for the pivot path in `metabase.pivot.core/display-name-for-col`.
+  That one cannot be reused here, because it also gates the remap on `format-values?`, which the
+  frontend rule does not."
+  [col]
+  (or (:display_name (:remapped_to_column col))
+      (:display_name col)))
 
 (defn prepare-table-data
   "Prepare query results for table rendering.

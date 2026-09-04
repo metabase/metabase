@@ -108,7 +108,7 @@
     (name (or (when-let [[_ id] (:field_ref col)]
                 (get-in col-settings [{::mb.viz/field-id id} ::mb.viz/column-title]))
               (get-in col-settings [{::mb.viz/column-name (:name col)} ::mb.viz/column-title])
-              (:display_name col)
+              (table-data/remapped-display-name col)
               (:name col)))))
 
 (defn- query-results->header-row
@@ -116,8 +116,13 @@
   [card cols]
   {:row
    (for [col      (table-data/visible-columns cols)
-         :let     [col-name (column-name card col)]]
-     (if (isa? ((some-fn :effective_type :base_type) col) :type/Number)
+         ;; The type comes from the column whose value is rendered in this slot, which for a
+         ;; remapped FK is the target. Mirrors `isColumnRightAligned`
+         ;; (`frontend/src/metabase/viz-core/lib/table.ts`); it is the only thing this row
+         ;; decides, since `render-table-head` prints the titles from `:col-names`.
+         :let     [col-name  (column-name card col)
+                   value-col (or (:remapped_to_column col) col)]]
+     (if (isa? ((some-fn :effective_type :base_type) value-col) :type/Number)
        (formatter/map->NumericWrapper {:num-str col-name :num-value col-name})
        col-name))})
 
@@ -225,10 +230,17 @@
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
-        ;; Must be the same column list `query-results->header-row` produces: `render-table`
-        ;; indexes the header titles, the column list and the colour-lookup keys against the
-        ;; rendered rows positionally, so they all have to agree (#71069).
-        filtered-cols               (table-data/visible-columns ordered-cols)
+        ;; Same length as the header row `prep-for-html-rendering` produces, because
+        ;; `render-table` indexes titles, columns and colour-lookup keys against the rendered
+        ;; rows positionally (#71069).
+        ;;
+        ;; Each column keeps its own `:name`, so per-column styles, viz settings and colour
+        ;; rules still resolve against the column the user configured. Only the name shown comes
+        ;; from the remap target. `streaming.common/column-titles` is shared with the export
+        ;; paths, which emit both columns and so must keep both names, so the substitution
+        ;; happens here rather than in it.
+        filtered-cols               (mapv #(assoc % :display_name (table-data/remapped-display-name %))
+                                          (table-data/visible-columns ordered-cols))
         minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
         table-body                  [:div
                                      (table/render-table

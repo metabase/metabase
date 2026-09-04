@@ -211,16 +211,20 @@
                                                          {}
                                                          {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
 
-;; The header row and the header *titles* are built by two different code paths and then
-;; zipped positionally in `render-table-head`: `query-results->header-row` drops the remapped
-;; source column, while `streaming.common/column-titles` (fed by `filtered-cols`) does not.
-;; With no `::mb.viz/table-columns` on the card the two lists differ in length and the titles
-;; shift. [[remapped-col]] above asserts the header row these titles are supposed to match.
+;; Before the fix, the header row and the header *titles* came from two different code paths and
+;; were then zipped positionally in `render-table-head`: `query-results->header-row` dropped the
+;; remapped source column, while `streaming.common/column-titles` (fed by `filtered-cols`) did
+;; not. With no `::mb.viz/table-columns` on the card the two lists differed in length and the
+;; titles shifted. [[remapped-col]] above asserts the header row these titles must match.
 
 (def ^:private header-alignment-cols
-  "A remapped pair (`rating` -> `rating_desc`) with a column after it, so that a one-position
-  shift in the rendered headers is visible and not just a truncated tail. Names are kept short
-  because `render-table-head` truncates long titles."
+  "A remapped pair (`rating` -> `rating_desc`) with a column after it, so a one-position shift
+  in the rendered headers is visible and not just a truncated tail.
+
+  The two halves carry *different* display names on purpose, so the assertions below say which
+  column supplied each title. The name shown must be the remap target's, as it is on the
+  frontend (`value-formatting/column.ts`). [[equal-display-name-cols]] covers the shape a real
+  instance has, where the two names agree."
   [{:name "id"          :display_name "ID"          :base_type :type/Integer
     :visibility_type :normal :semantic_type nil}
    {:name "rating"      :display_name "Rating"      :base_type :type/Integer
@@ -229,6 +233,20 @@
     :visibility_type :normal :semantic_type nil :remapped_from "rating"}
    {:name "title"       :display_name "Title"       :base_type :type/Text
     :visibility_type :normal :semantic_type nil}])
+
+(def ^:private equal-display-name-cols
+  "[[header-alignment-cols]] with both halves of the pair named `Rating`, which is what a real
+  instance looks like: the remapping is a Dimension whose `:name` becomes the target column's
+  display name, and Metabase keeps that equal to the FK column's display name on create
+  (`RemappingPicker.tsx`) and on rename (`rename-dimension-for-field!`).
+
+  This is the fixture that reproduces the reported symptom. Before the fix it rendered
+  `[\"ID\" \"Rating\" \"Rating\"]` -- one name repeated and the last column gone -- rather than a
+  name that merely looked wrong (#71069)."
+  (mapv (fn [col]
+          (cond-> col
+            (= "rating_desc" (:name col)) (assoc :display_name "Rating")))
+        header-alignment-cols))
 
 (def ^:private header-alignment-rows [[1 3 "Good" "Widget"]])
 
@@ -242,24 +260,29 @@
 
 (defn- rendered-table-headers
   "The titles actually rendered into the <th> cells of a `:table` part."
-  [viz-settings]
-  (let [data {:cols header-alignment-cols :rows header-alignment-rows :viz-settings viz-settings}
-        part (body/render :table :inline pacific-tz {:visualization_settings {}} nil data)]
-    (map last (render.tu/nodes-with-tag (:content part) :th))))
+  ([viz-settings] (rendered-table-headers viz-settings header-alignment-cols))
+  ([viz-settings cols]
+   (let [data {:cols cols :rows header-alignment-rows :viz-settings viz-settings}
+         part (body/render :table :inline pacific-tz {:visualization_settings {}} nil data)]
+     (map last (render.tu/nodes-with-tag (:content part) :th)))))
 
 (deftest ^:parallel remapped-column-header-alignment-test
-  (testing "the header row itself drops the remapped source column"
+  (testing "the header row itself drops the remapped source column and takes its name from the target"
     (is (= [(number "ID" "ID") "Rating Desc" "Title"]
            (:row (first (#'body/prep-for-html-rendering
                          pacific-tz {} {:cols header-alignment-cols
                                         :rows header-alignment-rows}))))))
-  (testing "rendered <th> titles must match that header row (#71069)"
+  (testing "rendered <th> titles line up with that header row (#71069)"
     (is (= ["ID" "Rating Desc" "Title"]
            (rendered-table-headers {}))))
-  (testing "they already do when table-columns viz settings are present, which is why
-            restyling any column appears to fix it (#71069)"
+  (testing "and are the same with table-columns viz settings present, which is why restyling
+            any column appeared to fix it (#71069)"
     (is (= ["ID" "Rating Desc" "Title"]
-           (rendered-table-headers header-alignment-table-columns)))))
+           (rendered-table-headers header-alignment-table-columns))))
+  (testing "the reported symptom: with both halves named alike, the name was repeated and the
+            trailing column was dropped (#71069)"
+    (is (= ["ID" "Rating" "Title"]
+           (rendered-table-headers {} equal-display-name-cols)))))
 
 (defn- rendered-th-titles
   "The `:title` attribute of each rendered <th>. Read the attribute rather than the cell text,
@@ -270,6 +293,11 @@
 ;; Companion to [[remapped-column-header-alignment-test]] using a real FK remapping and a real
 ;; query, so the hand-written `:remapped_to` / `:remapped_from` metadata above is checked
 ;; against what the query processor actually emits.
+;;
+;; This one does NOT reproduce #71069 on its own: the QP appends the remap target last, so
+;; nothing follows it to be shifted. It guards the metadata shape and the currency suffix.
+;; [[remapped-column-header-alignment-test]] is the regression test -- it puts a column after
+;; the remapped pair, which is what the reporter had.
 ;;
 ;; Note the two behaviours this pins are in tension, which is why the fix cannot simply be
 ;; "render the header row's titles":
@@ -283,6 +311,11 @@
         (let [data (:data (:result (notification.execute/execute-card (mt/user->id :crowberto)
                                                                       (:id card))))
               part (body/render :table :inline pacific-tz card nil data)]
+          ;; "Product ID [external remap]" is the Dimension name `with-column-remappings` creates
+          ;; (`test/metabase/test/util.clj`), i.e. the name an admin gave the remapping. The admin
+          ;; UI defaults that to the FK column's display name, so a real instance shows
+          ;; "Product ID"; the fixture renames it so this assertion says which column the title
+          ;; came from.
           (is (= ["ID" "User ID" "Product ID [external remap]" "Subtotal" "Tax" "Total"
                   "Discount ($)" "Created At" "Quantity"]
                  (rendered-th-titles part))))))))
