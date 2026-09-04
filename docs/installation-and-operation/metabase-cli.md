@@ -39,7 +39,7 @@ Log in once per Metabase instance:
 mb auth login --url https://metabase.example.com
 ```
 
-On Metabase 63 or later, the CLI offers to open Metabase in your browser. Sign in with your password or SSO and approve the CLI. The CLI stores a token that refreshes itself, so you never paste a secret. If you'd rather use an API key, pick **With an API key** at the prompt. If the `MB_API_KEY` environment variable is set, the CLI uses that key and skips the browser.
+The CLI offers to open Metabase in your browser. Sign in with your password or SSO and approve the CLI. The CLI stores a token that refreshes itself, so you never paste a secret. If you'd rather use an API key, pick **With an API key** at the prompt. If the `MB_API_KEY` environment variable is set, the CLI uses that key and skips the browser. This `MB_API_KEY` is read from the machine running the CLI. It's unrelated to the [`MB_API_KEY` environment variable](../configuring-metabase/environment-variables.md#mb_api_key) you can set on your Metabase server, which only guards the `/api/notify` endpoints.
 
 On older versions of Metabase, the CLI skips the browser and asks for an [API key](../people-and-groups/api-keys.md#create-an-api-key).
 
