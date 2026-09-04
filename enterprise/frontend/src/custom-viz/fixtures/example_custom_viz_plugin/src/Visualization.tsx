@@ -1,10 +1,6 @@
 import { useState } from "react";
 import type { MouseEvent } from "react";
-import {
-  type CustomVisualizationProps,
-  type RowValue,
-  formatValue,
-} from "../../../src/index";
+import { type CustomVisualizationProps, formatValue } from "../../../src/index";
 import type { Settings } from "./types";
 
 export const Visualization = (
@@ -24,14 +20,14 @@ export const Visualization = (
   const measuredHeight = Math.round(measuredTextSize.height);
   const brandColor = renderingContext.getColor("brand");
 
-  const [lastClickValue, setLastClickValue] = useState<RowValue | null>(null);
-  const [lastHoverValue, setLastHoverValue] = useState<RowValue | null>(null);
+  const [lastClickValue, setLastClickValue] = useState<number | null>(null);
+  const [lastHoverValue, setLastHoverValue] = useState<number | null>(null);
 
   if (typeof value !== "number" || typeof threshold !== "number") {
     throw new Error("Value and threshold need to be numbers");
   }
 
-  function handleClick(event: MouseEvent<HTMLButtonElement>) {
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     setLastClickValue(value);
     onClick({
       value,
@@ -42,9 +38,9 @@ export const Visualization = (
       origin: { row: rows[0], cols },
       data: [{ value, col: cols[0] }],
     });
-  }
+  };
 
-  function handleHoverEnter(event: MouseEvent<HTMLDivElement>) {
+  const handleHoverEnter = (event: MouseEvent<HTMLDivElement>) => {
     setLastHoverValue(value);
     onHover({
       value,
@@ -53,11 +49,11 @@ export const Visualization = (
       element: event.currentTarget,
       data: [{ key: cols[0].name, value, col: cols[0] }],
     });
-  }
+  };
 
-  function handleHoverLeave() {
+  const handleHoverLeave = () => {
     onHover(null);
-  }
+  };
 
   return (
     <div>
@@ -96,12 +92,10 @@ export const Visualization = (
         Hover me
       </div>
       <div data-testid="demo-viz-last-click">
-        Last clicked:{" "}
-        {lastClickValue === null ? "none" : String(lastClickValue)}
+        Last clicked: {lastClickValue ?? "none"}
       </div>
       <div data-testid="demo-viz-last-hover">
-        Last hovered:{" "}
-        {lastHoverValue === null ? "none" : String(lastHoverValue)}
+        Last hovered: {lastHoverValue ?? "none"}
       </div>
     </div>
   );
