@@ -5,13 +5,14 @@ import { t } from "ttag";
 import { useListTimelinesQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import { TimelineSidebar } from "metabase/timelines/panel/components/TimelineSidebar";
+import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import { Box, Loader, Stack, Text } from "metabase/ui";
-import { getTimelineEventSettings } from "metabase/viz-core";
-import type {
-  CollectionId,
-  TimelineEvent,
-  TimelineEventId,
-} from "metabase-types/api";
+import {
+  isSameTimelineEventsVisibility,
+  resolveVisibleTimelineEvents,
+} from "metabase/visualizations/lib/timeline-events-visibility";
+import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
+import type { CollectionId, TimelineEvent } from "metabase-types/api";
 
 import {
   clearFocusedTimelineEvents,
@@ -43,21 +44,11 @@ export function EmbedTimelineSidebar({
   collectionId,
 }: EmbedTimelineSidebarProps) {
   const dispatch = useDispatch();
-  const selectedTimelineEventIds = useSelector(getSelectedTimelineEventIds);
-  const focusedTimelineEventIds = useSelector(getFocusedTimelineEventIds);
+  const selectedEventIds = useSelector(getSelectedTimelineEventIds);
+  const focusedEventIds = useSelector(getFocusedTimelineEventIds);
 
-  const {
-    data: timelineData = [],
-    isLoading,
-    isError,
-  } = useListTimelinesQuery({
-    include: "events",
-  });
-
-  const timelines = useMemo(
-    () => timelineData.filter((timeline) => (timeline.events?.length ?? 0) > 0),
-    [timelineData],
-  );
+  const { isLoading, isError } = useListTimelinesQuery({ include: "events" });
+  const timelines = useSelector(getTransformedTimelines);
 
   const { card, draftCard, regularDataset } = useCardData({
     id: cardId,
@@ -72,77 +63,46 @@ export function EmbedTimelineSidebar({
     regularDataset,
   );
 
-  const visibleTimelineEventIds = useMemo(() => {
-    const selectedTimelineIds = new Set(
-      card?.visualization_settings["timeline.selected_timeline_ids"] ?? [],
-    );
-    const excludedTimelineEventIds = new Set(
-      card?.visualization_settings["timeline.excluded_timeline_event_ids"] ??
-        [],
-    );
+  const visibility = card?.visualization_settings;
+  const visibleEventIds = useMemo(
+    () =>
+      resolveVisibleTimelineEvents({ timelines, visibility }).map(
+        (event) => event.id,
+      ),
+    [timelines, visibility],
+  );
 
-    return timelines.flatMap((timeline) => {
-      if (!selectedTimelineIds.has(timeline.id)) {
-        return [];
+  const handleUpdateVisibility = useCallback(
+    (update: TimelineEventsVisibilityUpdate) => {
+      const nextVisibility = update(visibility ?? {}, timelines);
+      if (isSameTimelineEventsVisibility(visibility, nextVisibility)) {
+        return;
       }
-      return (timeline.events ?? [])
-        .filter((event) => !excludedTimelineEventIds.has(event.id))
-        .map((event) => event.id);
-    });
-  }, [card, timelines]);
-
-  const updateTimelineVizSettings = useCallback(
-    (newTimelineEventIds: TimelineEventId[]) => {
       const draftId = ensureDraftCard({}, true);
       dispatch(
-        updateVizSettings({
-          cardId: draftId,
-          settings: getTimelineEventSettings(timelines, newTimelineEventIds),
-        }),
+        updateVizSettings({ cardId: draftId, settings: nextVisibility }),
       );
     },
-    [dispatch, ensureDraftCard, timelines],
+    [dispatch, ensureDraftCard, visibility, timelines],
   );
 
-  const handleShowTimelineEvents = useCallback(
-    (timelineEvents: TimelineEvent[]) => {
-      const newVisibleTimelineEventIds = [
-        ...visibleTimelineEventIds,
-        ...timelineEvents.map((event) => event.id),
-      ];
-      updateTimelineVizSettings(newVisibleTimelineEventIds);
-    },
-    [updateTimelineVizSettings, visibleTimelineEventIds],
-  );
-
-  const handleHideTimelineEvents = useCallback(
-    (timelineEvents: TimelineEvent[]) => {
-      const eventIdsToHide = new Set(timelineEvents.map((event) => event.id));
-      const newVisibleTimelineEventIds = visibleTimelineEventIds.filter(
-        (eventId) => !eventIdsToHide.has(eventId),
-      );
-      updateTimelineVizSettings(newVisibleTimelineEventIds);
-    },
-    [updateTimelineVizSettings, visibleTimelineEventIds],
-  );
-
-  const handleClose = useCallback(() => {
-    dispatch(closeSidebar());
-  }, [dispatch]);
-
-  const handleSelectTimelineEvents = useCallback(
-    (timelineEvents: TimelineEvent[]) => {
-      dispatch(selectTimelineEvents(timelineEvents));
+  const handleSelectEvents = useCallback(
+    (events: TimelineEvent[]) => {
+      dispatch(selectTimelineEvents(events));
     },
     [dispatch],
   );
 
-  const handleDeselectTimelineEvents = useCallback(() => {
+  const handleDeselectEvents = useCallback(() => {
     dispatch(deselectTimelineEvents());
   }, [dispatch]);
 
   const handleShowAllEvents = useCallback(() => {
     dispatch(clearFocusedTimelineEvents());
+  }, [dispatch]);
+
+  const handleClose = useCallback(() => {
+    dispatch(closeSidebar());
   }, [dispatch]);
 
   if (isLoading) {
@@ -171,13 +131,12 @@ export function EmbedTimelineSidebar({
       <TimelineSidebar
         collectionId={collectionId}
         timelines={timelines}
-        visibleTimelineEventIds={visibleTimelineEventIds}
-        selectedTimelineEventIds={selectedTimelineEventIds}
-        focusedTimelineEventIds={focusedTimelineEventIds}
-        onShowTimelineEvents={handleShowTimelineEvents}
-        onHideTimelineEvents={handleHideTimelineEvents}
-        onSelectTimelineEvents={handleSelectTimelineEvents}
-        onDeselectTimelineEvents={handleDeselectTimelineEvents}
+        visibleEventIds={visibleEventIds}
+        selectedEventIds={selectedEventIds}
+        focusedEventIds={focusedEventIds}
+        onUpdateVisibility={handleUpdateVisibility}
+        onSelectEvents={handleSelectEvents}
+        onDeselectEvents={handleDeselectEvents}
         onShowAllEvents={handleShowAllEvents}
         onClose={handleClose}
       />
