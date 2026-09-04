@@ -134,18 +134,12 @@ export function getSavedDashboardUiParameters(
   dashcards: Dashboard["dashcards"],
   parameters: Dashboard["parameters"],
   parameterFields: Dashboard["param_fields"],
-  metadata: Metadata,
 ): UiParameter[] {
   const mappableDashcards = dashcards.filter(isQuestionDashCard);
   const mappings = getMappings(mappableDashcards);
   const uiParameters: UiParameter[] = (parameters || []).map((parameter) => {
     if (isFieldFilterParameter(parameter)) {
-      return buildSavedDashboardParameter(
-        parameter,
-        mappings,
-        parameterFields,
-        metadata,
-      );
+      return buildSavedDashboardParameter(parameter, mappings, parameterFields);
     }
 
     return {
@@ -208,7 +202,6 @@ function buildSavedDashboardParameter(
   parameter: Parameter,
   mappings: ExtendedMapping[],
   fields: Dashboard["param_fields"],
-  metadata: Metadata,
 ) {
   const parameterMappings = mappings.filter(
     (mapping) => mapping.parameter_id === parameter.id,
@@ -216,10 +209,10 @@ function buildSavedDashboardParameter(
   const hasVariableTemplateTagTarget = parameterMappings.some((mapping) =>
     isParameterVariableTarget(mapping.target),
   );
-  const parameterFields = (fields?.[parameter.id] ?? [])
-    .map((field) => metadata.field(field.id))
-    .filter(isNotNull);
-  const uniqueParameterFields = _.uniq(parameterFields, (field) => field.id);
+  const uniqueParameterFields = _.uniq(
+    fields?.[parameter.id] ?? [],
+    (field) => field.id,
+  );
 
   return {
     ...parameter,

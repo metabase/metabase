@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -35,7 +34,7 @@ export function getCardUiParameters(
     });
 
   return hasParamFields(card)
-    ? getSavedCardUiParameters(card, metadata, valuePopulatedParameters)
+    ? getSavedCardUiParameters(card, valuePopulatedParameters)
     : getUnsavedCardUiParameters(card, metadata, valuePopulatedParameters);
 }
 
@@ -55,15 +54,14 @@ function hasParamFields(card: SeriesCard) {
  */
 function getSavedCardUiParameters(
   card: SeriesCard,
-  metadata: Metadata,
   parameters: Parameter[] | ParameterWithTarget[],
 ): UiParameter[] {
   return parameters.map((parameter) => {
     const target = getParameterTarget(parameter);
-    const parameterFields = (card.param_fields?.[parameter.id] ?? [])
-      .map((field) => metadata.field(field.id))
-      .filter(isNotNull);
-    const fields = _.uniq(parameterFields, (field) => field.id);
+    const fields = _.uniq(
+      card.param_fields?.[parameter.id] ?? [],
+      (field) => field.id,
+    );
     if (fields.length > 0) {
       return {
         ...parameter,

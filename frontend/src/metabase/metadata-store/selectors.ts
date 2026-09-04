@@ -475,5 +475,9 @@ export function getFieldRemappings(
   state: State,
   fieldId: FieldId,
 ): FieldValue[] {
-  return state.entities.fields[fieldId]?.remappings ?? [];
+  return state.entities.fields[fieldId]?.remappings ?? NO_REMAPPINGS;
 }
+
+// a shared empty array, so a field with no remappings keeps its identity
+// between calls and a `useSelector` on it does not re-render
+const NO_REMAPPINGS: FieldValue[] = [];
