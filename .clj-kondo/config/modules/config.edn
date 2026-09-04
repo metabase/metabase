@@ -3191,8 +3191,7 @@
            premium-features
            request
            settings
-           util
-           enterprise/sandbox}
+           util}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
