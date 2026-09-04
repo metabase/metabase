@@ -40,7 +40,10 @@
                 (if (premium-features/is-hosted?)
                   :external-only
                   :allow-private))
-  :value-validator #{:external-only :allow-private :allow-all})
+  :value-validator #{:external-only :allow-private :allow-all}
+  ;; network-level: this is the SSRF allowlist the map-tile-server-url setter checks against, so a Metabase admin must
+  ;; not be able to widen it
+  :sysadmin-only? true)
 
 (defn- valid-map-tile-server-url?
   "Whether `template` is safe to store. It must be http(s) and its host must be allowed

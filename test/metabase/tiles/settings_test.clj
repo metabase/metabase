@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.premium-features.test-util :as premium-features.tu]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.tiles.settings :as tiles.settings]))
 
@@ -94,6 +95,10 @@
         (testing "the scheme is still checked"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid map tile server URL"
                                 (tiles.settings/map-tile-server-url! "file:///etc/passwd"))))))
-    (testing "only the three known values are accepted"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #":allow-everything is not a valid value for setting map-tile-server-allowed-networks"
-                            (tiles.settings/map-tile-server-allowed-networks! :allow-everything))))))
+    (testing "an unrecognized env value fails closed: reading the setting throws rather than falling back"
+      (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks "allow-everything"]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is not a valid value for setting map-tile-server-allowed-networks"
+                              (tiles.settings/map-tile-server-allowed-networks)))))
+    (testing "it is sysadmin-only: the admin API cannot widen it"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only be set by the MB_MAP_TILE_SERVER_ALLOWED_NETWORKS environment variable"
+                            (setting/set! :map-tile-server-allowed-networks :allow-all))))))
