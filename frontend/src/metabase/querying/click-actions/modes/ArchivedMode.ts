@@ -1,4 +1,4 @@
-import type { QueryClickActionsMode } from "../../types";
+import type { QueryClickActionsMode } from "../types";
 
 export const ArchivedMode: QueryClickActionsMode = {
   name: "archived",
