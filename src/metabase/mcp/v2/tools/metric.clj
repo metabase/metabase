@@ -15,6 +15,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.db :as v2.db]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
@@ -22,8 +23,7 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.queries.core :as queries]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -173,8 +173,7 @@
                       ;; verified card whose query changes by reading `:moderation_reviews` off the
                       ;; card-before, and a bare row would leave the Verified badge on a swapped
                       ;; definition.
-                      (fn [cid] (t2/hydrate (api/write-check :model/Card cid)
-                                            [:moderation_reviews :moderator_details])))
+                      (fn [cid] (v2.db/hydrate-moderation-reviews (api/write-check :model/Card cid))))
         _            (check-is-metric! card-before)
         card-id      (:id card-before)
         new-query    (resolve-definition args session-id)
@@ -196,7 +195,7 @@
                            :card-updates          card-updates
                            :actor                 @api/*current-user*
                            :delete-old-dashcards? false})
-    (write-result (t2/select-one :model/Card :id card-id))))
+    (write-result (v2.db/card card-id))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
 
