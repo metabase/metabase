@@ -159,6 +159,7 @@ project_backend_checks:
   - "modules/**/*.cljc"
   - "modules/**/*.cljs"
   - "**deps.edn"
+  - ".clj-kondo/{src,test}/**/*.{clj,cljc,cljs}"
   - ".clj-kondo/config.edn"
   - ".clj-kondo/config/modules/config.edn"
   - ".github/team.json"
