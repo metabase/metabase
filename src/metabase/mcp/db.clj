@@ -80,9 +80,12 @@
   "Map of user id to `tenant_id` for `user-ids`, in one query. An empty collection asks nothing of the
   database and answers `{}` — `[:in ()]` is not valid SQL.
 
-  Throws unless `user-ids` is a collection of integers. HoneySQL binds a number in an `[:in …]` clause as
-  a parameter, but renders a string, a raw form, or a nested map as SQL — so a non-integer element
-  arriving here is an injection vector, not merely a type error, and is refused before any SQL is built.
+  Throws unless `user-ids` is a collection of integers. The ids are spliced into an `[:in …]` clause,
+  where HoneySQL reads some shapes as syntax rather than as values: a vector is a function call, so
+  `[:raw \"1) OR 1=1 --\"]` renders verbatim into the SQL and `[:inline x]` inlines a literal; a map is a
+  subquery; a keyword or symbol is an identifier. Those are the injection vectors, and they are refused
+  before any SQL is built. Numbers and strings are bound as parameters, so a string id is a plain bug
+  rather than a hole — refused all the same, because a silent no-match is a worse answer than a throw.
   The offending values ride `ex-data` rather than the message, so nothing caller-controlled lands in a
   log line.
 

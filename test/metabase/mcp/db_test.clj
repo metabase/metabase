@@ -23,9 +23,13 @@
         [nil]
         [1.5]
         [1M]
-        ;; the shapes that would actually render as SQL rather than as a parameter
+        ;; the shapes HoneySQL reads as syntax rather than as a value: a vector is a function call
+        ;; (`[:raw …]` renders verbatim, `[:inline …]` inlines a literal), a map is a subquery, and a
+        ;; keyword is an identifier. These are the injection vectors the guard exists for.
         [[:raw "1) OR 1=1 --"]]
+        [[:inline "1) OR 1=1 --"]]
         [{:select [:id] :from [:core_user]}]
+        ['user_id]
         ;; one bad element among good ones is still refused
         [1 2 "3"]))
     (testing "a value that is not a collection at all"
