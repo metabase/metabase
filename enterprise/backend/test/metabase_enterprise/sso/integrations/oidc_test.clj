@@ -5,8 +5,8 @@
    [metabase-enterprise.sso.integrations.oidc :as oidc-integration]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.server.instance :as server.instance]
    [metabase.sso.oidc.state :as oidc.state]
+   [metabase.sso.test-helpers :as sso.test-helpers]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
@@ -17,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :test-users))
+(use-fixtures :once (fixtures/initialize :web-server :test-users))
 
 (def ^:private test-encryption-key
   "Test encryption key for OIDC state encryption."
@@ -88,7 +88,7 @@
              (fn []
                (mt/with-temporary-setting-values
                  [oidc-providers [test-provider]
-                  site-url       (format "http://localhost:%s" (server.instance/server-port))]
+                  site-url       (sso.test-helpers/localhost-site-url)]
                  ~@body)))))))))
 
 ;;; -------------------------------------------------- Prerequisites Tests --------------------------------------------------
@@ -108,7 +108,7 @@
       (mt/with-additional-premium-features #{:sso-oidc}
         (mt/with-temporary-setting-values
           [oidc-providers [(assoc test-provider :enabled false)]
-           site-url           (format "http://localhost:%s" (server.instance/server-port))]
+           site-url           (sso.test-helpers/localhost-site-url)]
           (with-ensure-encryption!
             (with-successful-oidc!
               (let [response (mt/client-full-response :get 400 "/auth/sso/test-idp"
