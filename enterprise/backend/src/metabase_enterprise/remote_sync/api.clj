@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
@@ -269,8 +270,7 @@
   (let [collections (when (seq collections)
                       (let [current-states (into {}
                                                  (map (juxt :id :is_remote_synced))
-                                                 (t2/select [:model/Collection :id :is_remote_synced]
-                                                            :id [:in (keys collections)]))]
+                                                 (remote-sync.db/collection-sync-states (keys collections)))]
                         (not-empty
                          (into {}
                                (filter (fn [[id desired]]
