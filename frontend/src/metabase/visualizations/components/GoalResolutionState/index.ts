@@ -1,1 +1,2 @@
-export * from "./GoalResolutionState";
+export * from "./GoalFailedState";
+export * from "./GoalResolvingState";
