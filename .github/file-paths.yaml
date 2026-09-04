@@ -226,22 +226,16 @@ serialization_baseline:
   - ".github/workflows/serialization.yml"
   - "test_resources/serialization_baseline/**"
 
+# Anything that can change OpenAPI generation, validation, or its backend source inputs.
 openapi:
+  - ".github/file-paths.yaml"
   - ".github/workflows/lint.yml"
-  - "src/metabase/api/**"
-  - "src/metabase/api_routes/**"
-  - "src/metabase/*_rest/api.clj"
-  - "src/metabase/*/api.clj"
-  - "src/metabase/*/api/*.clj"
-  - "enterprise/backend/src/metabase_enterprise/**/api.clj"
-  - "enterprise/backend/src/metabase_enterprise/**/api/*.clj"
+  - "frontend/build/openapi/**"
   - "package.json"
-
-# Anything that can change the generated OpenAPI document — broader than `openapi` above,
-# since a schema reached from an endpoint may live far from any api.clj.
-openapi_spec:
-  - ".github/workflows/lint.yml"
+  - "bun.lock"
   - "src/**"
   - "enterprise/backend/src/**"
-  - "**deps.edn"
-  - "frontend/build/openapi/spec/**"
+  - "**/deps.edn"
+  - "resources/data_readers.clj"
+  - "resources/locales.clj"
+  - "resources/version.properties"

@@ -116,25 +116,6 @@ jobs:
         if: steps.backport.outputs.has_conflicts == 'true'
         uses: ./.github/actions/prepare-frontend
 
-      - name: Build CLJS for type checking
-        if: steps.backport.outputs.has_conflicts == 'true'
-        run: ${{ steps.pkg.outputs.mgr }} run build-pure:cljs
-
-      - name: Detect OpenAPI type generation support
-        if: steps.backport.outputs.has_conflicts == 'true'
-        id: openapi-types
-        run: |
-          if node -e 'const scripts = require("./package.json").scripts ?? {}; process.exit(scripts["types:ensure"] ? 0 : 1)'; then
-            echo "supported=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "supported=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::types:ensure is not available on this release branch; skipping OpenAPI type generation"
-          fi
-
-      - name: Generate OpenAPI types for type checking
-        if: steps.backport.outputs.has_conflicts == 'true' && steps.openapi-types.outputs.supported == 'true'
-        run: ${{ steps.pkg.outputs.mgr }} run types:ensure
-
       - name: Generate GitHub App Token for Claude
         if: steps.backport.outputs.has_conflicts == 'true'
         uses: actions/create-github-app-token@v1
@@ -154,7 +135,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_BACKPORT_FIX }}
           model: "claude-sonnet-4-20250514"
           max_turns: "${{ github.event.inputs.max_turns || '75' }}"
-          allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Bash(clojure:*),Bash(${{ steps.pkg.outputs.mgr }} run type-check-pure:*),Bash(${{ steps.pkg.outputs.mgr }} run lint-eslint:*),Bash(./bin/mage cljfmt:*),Glob,Grep"
+          allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Bash(clojure:*),Bash(${{ steps.pkg.outputs.mgr }} run build-pure:cljs:*),Bash(${{ steps.pkg.outputs.mgr }} run type-check-pure:*),Bash(${{ steps.pkg.outputs.mgr }} run lint-eslint:*),Bash(./bin/mage cljfmt:*),Glob,Grep"
           prompt: |
             You are resolving git cherry-pick merge conflicts for a Metabase backport PR.
 
@@ -196,22 +177,26 @@ jobs:
                  ${{ steps.pkg.outputs.mgr }} run lint-eslint --fix
                  ```
             7. Validate resolved files before committing:
+               - After all conflict markers are removed, build CLJS:
+                 ```
+                 ${{ steps.pkg.outputs.mgr }} run build-pure:cljs
+                 ```
+               - Run the type checker after the CLJS build regardless of the conflicted file extensions. This is required even for Clojure-only conflicts because backend API changes can affect generated TypeScript declarations:
+                 ```
+                 ${{ steps.pkg.outputs.mgr }} run type-check-pure
+                 ```
                - **Clojure/ClojureScript** (.clj, .cljc, .cljs): run clj-kondo to verify syntax:
                  ```
                  clojure -M:kondo --lint <file1> <file2> ...
                  ```
-               - **TypeScript/JavaScript** (.ts, .tsx, .js, .jsx): run the type checker:
-                 ```
-                 ${{ steps.pkg.outputs.mgr }} run type-check-pure
-                 ```
-               If either tool reports errors or warnings, fix them before proceeding. CI treats kondo warnings as errors.
+               If any tool reports errors or warnings, fix them before proceeding. CI treats kondo warnings as errors.
                Repeat steps 6-7 until all errors are resolved.
-            7. Once all files are clean, stage and complete the cherry-pick:
+            8. Once all files are clean, stage and complete the cherry-pick:
                ```
                git add -A
                git cherry-pick --continue
                ```
-            8. Push the result:
+            9. Push the result:
                ```
                git push --force
                ```

@@ -11,7 +11,10 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [ring.middleware.content-type :as content-type]
-   [ring.util.response :as response]))
+   [ring.util.response :as response])
+  (:import
+   (java.io File)
+   (java.nio.file CopyOption Files StandardCopyOption)))
 
 (set! *warn-on-reflection* true)
 
@@ -61,17 +64,6 @@
                (into (pop queue) (schema-refs (get schemas schema-name)))))
       seen)))
 
-(defn- unalias-schema
-  "Rewrite a `$ref`-rooted schema into the equivalent `allOf` composition.
-
-  A bare `{:$ref ..., :description ...}` is an indirection that tooling may resolve away — pre-3.1 rules
-  say siblings of `$ref` are ignored — which loses the schema's name and description when a split tree is
-  bundled back. `allOf` states the same thing as a composition, so there is nothing to collapse."
-  [schema]
-  (if-let [ref (and (map? schema) (:$ref schema))]
-    (-> schema (dissoc :$ref) (assoc :allOf [{:$ref ref}]))
-    schema))
-
 (defn open-api-object
   "The OpenAPI document describing the public API of `root-handler`.
 
@@ -84,9 +76,20 @@
     (-> spec
         (assoc :paths paths)
         (assoc-in [:components :schemas]
-                  (-> schemas
-                      (select-keys (reachable-schemas schemas (schema-refs paths)))
-                      (update-vals unalias-schema))))))
+                  (select-keys schemas (reachable-schemas schemas (schema-refs paths)))))))
+
+(defn- move-file-atomically!
+  [^File source ^File destination]
+  (Files/move (.toPath source)
+              (.toPath destination)
+              (into-array CopyOption [StandardCopyOption/ATOMIC_MOVE
+                                      StandardCopyOption/REPLACE_EXISTING])))
+
+(defn- temporary-sibling
+  ^File [^File destination]
+  (File/createTempFile (str "." (.getName destination) ".")
+                       ".tmp"
+                       (.getParentFile destination)))
 
 (defn write-openapi-spec-to-file!
   "Generate and write the OpenAPI specification to a local file.
@@ -96,11 +99,16 @@
               (open-api-object root-handler)
               {:servers [{:url         ""
                           :description "Metabase API"}]})
-        file (io/file openapi-file-path)]
-    ;; Create parent directory if it doesn't exist
-    (when-let [parent-dir (.getParentFile file)]
-      (.mkdirs parent-dir))
-    (json/encode-to (sort-keys spec) (io/writer file) {:pretty true})
+        ^File file (.getAbsoluteFile (io/file openapi-file-path))
+        ^File parent-dir (.getParentFile file)]
+    (.mkdirs parent-dir)
+    (let [^File temp-file (temporary-sibling file)]
+      (try
+        (with-open [writer (io/writer temp-file)]
+          (json/encode-to (sort-keys spec) writer {:pretty true}))
+        (move-file-atomically! temp-file file)
+        (finally
+          (Files/deleteIfExists (.toPath temp-file)))))
     (log/info "OpenAPI specification written to" openapi-file-path)))
 
 (defonce ^:private openapi-regen-state

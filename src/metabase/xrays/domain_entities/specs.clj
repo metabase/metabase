@@ -168,7 +168,7 @@
   [:map
    {:closed true}
    [:name        :string]
-   [:aggregation ::mbql.s/AnyAggregation]
+   [:aggregation ::mbql.s/Aggregation]
    [:filter      {:optional true} ::mbql.s/Filter]])
 
 (mr/def ::instantiated-metrics

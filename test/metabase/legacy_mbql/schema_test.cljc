@@ -322,13 +322,13 @@
 (deftest ^:parallel normalize-aggregation-inside-non-aggregation-function-test
   (is (= [:concat "$" [:round [:sum [:field "cost_per_customer" {:base-type :type/Decimal}]]]]
          (lib/normalize
-          ::mbql.s/AnyAggregation
+          ::mbql.s/Aggregation
           ["concat" "$" ["round" ["sum" ["field" "cost_per_customer" {"base-type" "type/Decimal"}]]]])))
   (is (= [:aggregation-options
           [:concat "$" [:round [:sum [:field "cost_per_customer" {:base-type :type/Decimal}]]]]
           {:name "Sum", :display-name "Sum"}]
          (lib/normalize
-          ::mbql.s/AnyAggregation
+          ::mbql.s/Aggregation
           ["aggregation-options"
            ["concat" "$" ["round" ["sum" ["field" "cost_per_customer" {"base-type" "type/Decimal"}]]]]
            {"name" "Sum", "display-name" "Sum"}]))))
@@ -386,7 +386,7 @@
                  2]
                 2]]
               {"name" "Min+sec", "display-name" "Min+sec"}]
-        normalized (lib/normalize ::mbql.s/AnyAggregation expr)]
+        normalized (lib/normalize ::mbql.s/Aggregation expr)]
     (is (= [:aggregation-options
             [:concat
              [:text
@@ -424,7 +424,7 @@
               2]]
             {:name "Min+sec", :display-name "Min+sec"}]
            normalized))
-    (is (mr/validate ::mbql.s/AnyAggregation normalized))))
+    (is (mr/validate ::mbql.s/Aggregation normalized))))
 
 (deftest ^:parallel normalize-aggregation-options-with-nil-options-test
   (testing "nil options in :aggregation-options should get normalized to an empty map"
@@ -432,10 +432,10 @@
       (is (= [:aggregation-options [:count] {}]
              normalized))
       (is (mr/validate ::mbql.s/aggregation-options normalized))))
-  (testing "::AnyAggregation itself should unwrap :aggregation-options with an empty options map"
+  (testing "::Aggregation itself should unwrap :aggregation-options with an empty options map"
     (is (= [:count]
-           (lib/normalize ::mbql.s/AnyAggregation [:aggregation-options [:count] nil])
-           (lib/normalize ::mbql.s/AnyAggregation [:aggregation-options [:count] {}])))))
+           (lib/normalize ::mbql.s/Aggregation [:aggregation-options [:count] nil])
+           (lib/normalize ::mbql.s/Aggregation [:aggregation-options [:count] {}])))))
 
 (deftest ^:parallel normalize-template-tag-options-test
   (testing "template tag `:options` should get normalized correctly"
@@ -497,7 +497,7 @@
   (doseq [clause [:if :case]]
     (testing (str clause " should be allowed as an aggregation expression if it contains an aggregation")
       (let [normalized (lib/normalize
-                        ::mbql.s/AnyAggregation
+                        ::mbql.s/Aggregation
                         [(name clause)
                          [[["="
                             ["sum-where"
@@ -529,7 +529,7 @@
                    [:field 781 {:base-type :type/Float}]
                    [:= [:expression "Paid" {:base-type :type/Boolean}] true]]]}]
                normalized))
-        (is (mr/validate ::mbql.s/AnyAggregation normalized))))))
+        (is (mr/validate ::mbql.s/Aggregation normalized))))))
 
 (deftest ^:parallel allow-coalesce-as-datetime-expression-test
   (let [normalized (lib/normalize

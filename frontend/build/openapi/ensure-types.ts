@@ -1,200 +1,533 @@
 #!/usr/bin/env bun
 /**
- * Ensures generated API types (frontend/src/metabase-types/openapi/) exist
- * and represent the complete Enterprise API.
+ * Keeps generated Enterprise API types in sync with backend source.
  *
- * Source selection:
- *   1. Running EE backend — use its live document, including evaluated schema changes
- *   2. Running OSS backend — reload saved local changes with the EE classpath to produce a complete document
- *   3. No backend — bundle the committed EE specification
- *
- * --tolerant is used by postinstall and may keep existing types when they appear current.
+ * Fresh runs exit without work. A changed local source regenerates through
+ * Clojure; other stale runs may fetch a running Enterprise backend. Generation
+ * stages its output and replaces the declaration atomically, so the lock only
+ * avoids duplicate work. Postinstall uses a best-effort background worker.
  */
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import {
-  existsSync,
+  closeSync,
+  constants,
+  fchmodSync,
+  fstatSync,
   mkdirSync,
+  openSync,
   readFileSync,
-  readdirSync,
   renameSync,
-  statSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
+import { withGenerationLock } from "./generation-lock";
 import {
-  type GenerationSource,
-  createGenerationSource,
-  createSpecHash,
+  GENERATED_OUTPUT_NAMES,
+  GENERATED_TYPES_DIRECTORY,
+  GENERATION_STATE_VERSION,
+  type GenerationState,
+  createContentHash,
+  createOutputsHash,
   getOpenApiEdition,
-  parseGenerationSource,
-} from "./generation-source";
+  readGenerationState,
+  writeGenerationStateAtomically,
+} from "./generation-state";
+import {
+  createSourceFingerprint,
+  createTypeGeneratorFingerprint,
+} from "./source-fingerprint";
 
 const SPEC_PATH = ".tmp/openapi/openapi.json";
-const SPLIT_SPEC_DIR = "frontend/build/openapi/spec";
-const SPLIT_SPEC_PATH = `${SPLIT_SPEC_DIR}/openapi.json`;
-const TYPES_DIR = "frontend/src/metabase-types/openapi";
-const TYPES_PATH = `${TYPES_DIR}/types.gen.d.ts`;
-const GENERATION_SOURCE_PATH = `${TYPES_DIR}/.generation.json`;
-const BACKEND_URL = `http://localhost:${process.env.MB_JETTY_PORT ?? 3000}/api/docs/openapi.json`;
+const GENERATION_LOCK_PATH = ".tmp/openapi/types-ensure.lock";
+const MAX_LOCK_WAIT_MS = 60_000;
+const POSTINSTALL_LOG_PATH = ".tmp/openapi/types-ensure.log";
+const OPENAPI_INPUT_ENV = "METABASE_OPENAPI_INPUT";
+const OPENAPI_OUTPUT_ENV = "METABASE_OPENAPI_OUTPUT";
+const BACKEND_TIMEOUT_MS = 2000;
+const MAX_CAPTURED_OUTPUT_BYTES = 10 * 1024 * 1024;
+const GENERATED_INDEX_CONTENT = 'export type * from "./types.gen.d";\n';
 
-const tolerant = process.argv.includes("--tolerant");
+const CLOJURE_GENERATE_COMMAND = [
+  "clojure",
+  "-M:run:ee",
+  "generate-openapi-spec",
+];
+const OPENAPI_TS_COMMAND = [
+  "node_modules/.bin/openapi-ts",
+  "-f",
+  "./frontend/build/openapi/openapi-ts.config.ts",
+];
+interface EnsureOptions {
+  forceLocal: boolean;
+  postinstall: boolean;
+  /** Best-effort background mode used by postinstall. */
+  postinstallWorker: boolean;
+}
+
+interface AcquiredSpec {
+  contents: string;
+  hash: string;
+  /** Omitted when the spec came from a running backend. */
+  sourceDigest?: string;
+}
 
 function log(message: string) {
   // eslint-disable-next-line no-console
   console.log(`[types:ensure] ${message}`);
 }
 
-function runScript(name: string): number {
-  const result = spawnSync("bun", ["run", name], { stdio: "inherit" });
-  return result.status ?? 1;
-}
-
-function newestModificationTime(dir: string): number {
-  let newest = 0;
-  const visit = (current: string) => {
-    for (const entry of readdirSync(current, { withFileTypes: true })) {
-      const path = join(current, entry.name);
-      if (entry.isDirectory()) {
-        visit(path);
-      } else {
-        newest = Math.max(newest, statSync(path).mtimeMs);
-      }
-    }
-  };
-  visit(dir);
-  return newest;
-}
-
-function committedSpecIsNewerThanTypes(): boolean {
-  if (!existsSync(SPLIT_SPEC_PATH) || !existsSync(TYPES_PATH)) {
-    return false;
+function parseOptions(arguments_: string[]): EnsureOptions {
+  const knownArguments = new Set([
+    "--force-local",
+    "--postinstall",
+    "--postinstall-worker",
+  ]);
+  const unknownArgument = arguments_.find(
+    (argument) => !knownArguments.has(argument),
+  );
+  if (unknownArgument !== undefined) {
+    throw new Error(`unknown option: ${unknownArgument}`);
   }
-  return newestModificationTime(SPLIT_SPEC_DIR) > statSync(TYPES_PATH).mtimeMs;
+  return {
+    forceLocal: arguments_.includes("--force-local"),
+    postinstall: arguments_.includes("--postinstall"),
+    postinstallWorker: arguments_.includes("--postinstall-worker"),
+  };
 }
 
-function readGenerationSource(): GenerationSource | undefined {
-  if (!existsSync(GENERATION_SOURCE_PATH)) {
+interface RunCommandOptions {
+  quietUnlessError?: boolean;
+  postinstallWorker: boolean;
+  env?: NodeJS.ProcessEnv;
+}
+
+/** Keep child commands asynchronous so the lock heartbeat can run. */
+function runCommand(
+  command: string[],
+  { quietUnlessError = false, postinstallWorker, env }: RunCommandOptions,
+): Promise<number> {
+  const [executable, ...commandArguments] = command;
+  if (executable === undefined) {
+    return Promise.resolve(1);
+  }
+  return new Promise((resolvePromise) => {
+    const output = postinstallWorker ? process.stdout.fd : "inherit";
+    const child = spawn(executable, commandArguments, {
+      env: { ...process.env, ...env },
+      stdio: quietUnlessError
+        ? ["inherit", "pipe", "pipe"]
+        : ["inherit", output, output],
+    });
+
+    let capturedBytes = 0;
+    let captured = "";
+    const capture = (chunk: Buffer) => {
+      if (capturedBytes < MAX_CAPTURED_OUTPUT_BYTES) {
+        captured += String(chunk);
+        capturedBytes += chunk.byteLength;
+      }
+    };
+    child.stdout?.on("data", capture);
+    child.stderr?.on("data", capture);
+
+    const finish = (status: number) => {
+      if (quietUnlessError && status !== 0) {
+        const errorOutput = postinstallWorker ? process.stdout : process.stderr;
+        errorOutput.write(captured);
+      }
+      resolvePromise(status);
+    };
+    child.once("error", (error) => {
+      const errorOutput = postinstallWorker ? process.stdout : process.stderr;
+      errorOutput.write(`${error.message}\n`);
+      finish(1);
+    });
+    child.once("close", (status) => finish(status ?? 1));
+  });
+}
+
+function backendUrl(): string | undefined {
+  const configuredPort = process.env.MB_JETTY_PORT;
+  if (configuredPort === undefined) {
+    return "http://localhost:3000/api/docs/openapi.json";
+  }
+  const port = Number(configuredPort);
+  if (!/^[1-9]\d{0,4}$/.test(configuredPort) || port > 65_535) {
     return undefined;
   }
+  return `http://localhost:${port}/api/docs/openapi.json`;
+}
 
+function readCompleteSpec(): string | undefined {
   try {
-    return parseGenerationSource(readFileSync(GENERATION_SOURCE_PATH, "utf8"));
+    const contents = readFileSync(SPEC_PATH, "utf8");
+    return getOpenApiEdition(contents) === "ee" ? contents : undefined;
   } catch {
     return undefined;
   }
 }
 
-function writeGenerationSource(specContents: string) {
-  const source = createGenerationSource("ee", specContents);
-  const temporaryPath = `${GENERATION_SOURCE_PATH}.${process.pid}.tmp`;
-  mkdirSync(TYPES_DIR, { recursive: true });
-  writeFileSync(temporaryPath, `${JSON.stringify(source, null, 2)}\n`);
-  renameSync(temporaryPath, GENERATION_SOURCE_PATH);
+function writePrivateFile(path: string, contents: string): void {
+  let fileDescriptor: number | undefined;
+  mkdirSync(dirname(path), { recursive: true });
+  try {
+    fileDescriptor = openSync(path, "wx", 0o600);
+    writeFileSync(fileDescriptor, contents);
+  } finally {
+    if (fileDescriptor !== undefined) {
+      closeSync(fileDescriptor);
+    }
+  }
 }
 
-async function fetchSpecFromBackend(): Promise<string | undefined> {
+function publishSpecAtomically(contents: string): void {
+  const temporaryPath = `${SPEC_PATH}.${process.pid}.${randomUUID()}.tmp`;
   try {
-    const response = await fetch(BACKEND_URL, {
-      signal: AbortSignal.timeout(2000),
+    writePrivateFile(temporaryPath, contents);
+    renameSync(temporaryPath, SPEC_PATH);
+  } finally {
+    rmSync(temporaryPath, { force: true });
+  }
+}
+
+async function fetchSpecFromBackend(
+  url: string,
+): Promise<{ contents: string; edition: "oss" | "ee" } | undefined> {
+  try {
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
     });
     if (!response.ok) {
       return undefined;
     }
-
-    const body = await response.text();
-    return getOpenApiEdition(body) ? body : undefined;
+    const contents = await response.text();
+    const edition = getOpenApiEdition(contents);
+    return edition === undefined ? undefined : { contents, edition };
   } catch {
     return undefined;
   }
 }
 
-function finish(status: number): never {
-  if (status !== 0 && tolerant) {
-    log(
-      "⚠ could not generate API types — run `bun run types:ensure` to see the failure",
-    );
-    process.exit(0);
+type StalenessReason =
+  | "no generation state"
+  | "previous types came from a running backend"
+  | "backend source changed"
+  | "type generator inputs changed"
+  | "generated outputs changed on disk";
+
+/** Returns why regeneration is needed, or nothing when types are fresh. */
+function stalenessReason(
+  state: GenerationState | undefined,
+  sourceDigest: string,
+  generatorDigest: string,
+): StalenessReason | undefined {
+  if (state === undefined) {
+    return "no generation state";
   }
-  process.exit(status);
+  if (state.sourceDigest === undefined) {
+    return "previous types came from a running backend";
+  }
+  if (state.sourceDigest !== sourceDigest) {
+    return "backend source changed";
+  }
+  if (state.generatorDigest !== generatorDigest) {
+    return "type generator inputs changed";
+  }
+  if (createOutputsHash() !== state.outputsHash) {
+    return "generated outputs changed on disk";
+  }
+  return undefined;
 }
 
-function generateTypesFromCurrentSpec(): never {
-  let specContents: string;
+function freshBeforePostinstall(): boolean {
   try {
-    specContents = readFileSync(SPEC_PATH, "utf8");
-  } catch {
-    log(`error: OpenAPI document not found at ${SPEC_PATH}`);
-    finish(1);
-  }
-
-  if (getOpenApiEdition(specContents) !== "ee") {
-    log(
-      "error: refusing to generate incomplete API types from an OSS document",
+    return (
+      stalenessReason(
+        readGenerationState(),
+        createSourceFingerprint(),
+        createTypeGeneratorFingerprint(),
+      ) === undefined
     );
-    finish(1);
+  } catch {
+    return false;
   }
-
-  const specHash = createSpecHash(specContents);
-  const source = readGenerationSource();
-  if (
-    existsSync(TYPES_PATH) &&
-    source?.edition === "ee" &&
-    source.specHash === specHash
-  ) {
-    log("generated API types already match the complete OpenAPI document");
-    finish(0);
-  }
-
-  const status = runScript("types:generate");
-  if (status === 0) {
-    writeGenerationSource(specContents);
-  }
-  finish(status);
 }
 
-function generateFromCommittedSpec(): never {
-  if (!existsSync(SPLIT_SPEC_PATH)) {
-    log(`error: committed OpenAPI spec not found at ${SPLIT_SPEC_PATH}`);
-    finish(1);
+function startPostinstallWorker(): number {
+  let logFileDescriptor: number | undefined;
+  try {
+    mkdirSync(dirname(POSTINSTALL_LOG_PATH), { recursive: true });
+    logFileDescriptor = openSync(
+      POSTINSTALL_LOG_PATH,
+      constants.O_APPEND |
+        constants.O_CREAT |
+        constants.O_WRONLY |
+        constants.O_NOFOLLOW,
+      0o600,
+    );
+    if (!fstatSync(logFileDescriptor).isFile()) {
+      throw new Error("postinstall log is not a regular file");
+    }
+    fchmodSync(logFileDescriptor, 0o600);
+    const scriptPath = process.argv[1];
+    if (scriptPath === undefined) {
+      throw new Error("could not determine types:ensure script path");
+    }
+    const worker = spawn(
+      process.execPath,
+      [scriptPath, "--postinstall-worker"],
+      {
+        detached: true,
+        stdio: ["ignore", logFileDescriptor, "inherit"],
+      },
+    );
+    worker.unref();
+    log(
+      `generating API types in the background (logs: ${POSTINSTALL_LOG_PATH})`,
+    );
+  } catch {
+    log(
+      "⚠ could not start API type generation — run `bun run types:ensure` to see the failure",
+    );
+  } finally {
+    if (logFileDescriptor !== undefined) {
+      closeSync(logFileDescriptor);
+    }
   }
-
-  log("generating types from the committed complete OpenAPI spec");
-  const bundleStatus = runScript("openapi:bundle");
-  if (bundleStatus !== 0) {
-    finish(bundleStatus);
-  }
-  generateTypesFromCurrentSpec();
+  return 0;
 }
 
-function generateFromLocalSources(): never {
+async function acquireFromLocalSource(
+  options: EnsureOptions,
+): Promise<{ status: number; spec?: AcquiredSpec }> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const sourceDigest = createSourceFingerprint();
+    log("generating the complete OpenAPI document from local source");
+    const status = await runCommand(CLOJURE_GENERATE_COMMAND, {
+      quietUnlessError: true,
+      postinstallWorker: options.postinstallWorker,
+    });
+    if (status !== 0) {
+      return { status };
+    }
+
+    const contents = readCompleteSpec();
+    if (contents === undefined) {
+      log(
+        "error: local source generation did not produce a complete EE OpenAPI document",
+      );
+      return { status: 1 };
+    }
+    const currentSourceDigest = createSourceFingerprint();
+    if (sourceDigest === currentSourceDigest) {
+      return {
+        status: 0,
+        spec: {
+          contents,
+          hash: createContentHash(contents),
+          sourceDigest: currentSourceDigest,
+        },
+      };
+    }
+
+    if (attempt === 0) {
+      log("backend source changed during OpenAPI generation — retrying once");
+      continue;
+    }
+    log(
+      "error: backend source changed during both OpenAPI generation attempts",
+    );
+    return { status: 1 };
+  }
+  return { status: 1 };
+}
+
+async function acquireCurrentSpec(
+  options: EnsureOptions,
+  reason: StalenessReason | undefined,
+): Promise<{ status: number; spec?: AcquiredSpec }> {
+  if (!options.forceLocal && reason !== "backend source changed") {
+    const url = backendUrl();
+    if (url === undefined) {
+      log(`invalid MB_JETTY_PORT: ${process.env.MB_JETTY_PORT}`);
+      return acquireFromLocalSource(options);
+    }
+    const backendSpec = await fetchSpecFromBackend(url);
+    if (backendSpec?.edition === "ee") {
+      publishSpecAtomically(backendSpec.contents);
+      log(`fetched complete OpenAPI spec from running backend (${url})`);
+      return {
+        status: 0,
+        spec: {
+          contents: backendSpec.contents,
+          hash: createContentHash(backendSpec.contents),
+        },
+      };
+    }
+    if (backendSpec?.edition === "oss") {
+      log("running backend exposes OSS routes only");
+    }
+  }
+  return acquireFromLocalSource(options);
+}
+
+async function generateTypes(
+  spec: AcquiredSpec,
+  options: EnsureOptions,
+): Promise<{ status: number; outputsHash?: string }> {
+  const snapshotPath = `${SPEC_PATH}.${process.pid}.${randomUUID()}.snapshot.json`;
+  const outputDirectory = `.tmp/openapi/types-out.${process.pid}.${randomUUID()}`;
+  try {
+    writePrivateFile(snapshotPath, spec.contents);
+    const status = await runCommand(OPENAPI_TS_COMMAND, {
+      postinstallWorker: options.postinstallWorker,
+      env: {
+        [OPENAPI_INPUT_ENV]: snapshotPath,
+        [OPENAPI_OUTPUT_ENV]: outputDirectory,
+      },
+    });
+    if (status !== 0) {
+      return { status };
+    }
+    writePrivateFile(
+      join(outputDirectory, "index.ts"),
+      GENERATED_INDEX_CONTENT,
+    );
+    const outputsHash = createOutputsHash(outputDirectory);
+    if (outputsHash === undefined) {
+      log("error: type generation did not produce declaration outputs");
+      return { status: 1 };
+    }
+    mkdirSync(GENERATED_TYPES_DIRECTORY, { recursive: true });
+    for (const name of GENERATED_OUTPUT_NAMES) {
+      renameSync(
+        join(outputDirectory, name),
+        join(GENERATED_TYPES_DIRECTORY, name),
+      );
+    }
+    return { status: 0, outputsHash };
+  } finally {
+    rmSync(snapshotPath, { force: true });
+    rmSync(outputDirectory, { recursive: true, force: true });
+  }
+}
+
+async function ensureTypes(options: EnsureOptions): Promise<number> {
+  const sourceDigest = createSourceFingerprint();
+  const generatorDigest = createTypeGeneratorFingerprint();
+  const state = readGenerationState();
+
+  const reason = stalenessReason(state, sourceDigest, generatorDigest);
+  if (!options.forceLocal && reason === undefined) {
+    return 0;
+  }
   log(
-    "running backend exposes OSS routes only — generating the complete OpenAPI document from local source",
+    options.forceLocal
+      ? "regenerating from local source (forced)"
+      : `regenerating API types (${reason})`,
   );
-  const generateStatus = runScript("openapi:generate");
-  if (generateStatus !== 0) {
-    finish(generateStatus);
+
+  const acquisition = await acquireCurrentSpec(options, reason);
+  if (acquisition.status !== 0 || acquisition.spec === undefined) {
+    return acquisition.status || 1;
   }
-  generateTypesFromCurrentSpec();
-}
+  const spec = acquisition.spec;
 
-const typesExist = existsSync(TYPES_PATH);
-const typesAreBehindCommittedSpec =
-  typesExist && committedSpecIsNewerThanTypes();
+  const createState = (outputsHash: string): GenerationState => ({
+    version: GENERATION_STATE_VERSION,
+    ...(spec.sourceDigest !== undefined
+      ? { sourceDigest: spec.sourceDigest }
+      : {}),
+    generatorDigest,
+    specHash: spec.hash,
+    outputsHash,
+  });
 
-if (tolerant && typesExist && !typesAreBehindCommittedSpec) {
-  process.exit(0);
-}
-
-const backendSpec = await fetchSpecFromBackend();
-if (backendSpec) {
-  if (getOpenApiEdition(backendSpec) === "ee") {
-    mkdirSync(dirname(SPEC_PATH), { recursive: true });
-    writeFileSync(SPEC_PATH, backendSpec);
-    log(`fetched complete OpenAPI spec from running backend (${BACKEND_URL})`);
-    generateTypesFromCurrentSpec();
+  const currentOutputsHash = createOutputsHash();
+  const outputsAreReusable =
+    !options.forceLocal &&
+    state !== undefined &&
+    state.generatorDigest === generatorDigest &&
+    state.specHash === spec.hash &&
+    state.outputsHash === currentOutputsHash &&
+    currentOutputsHash !== undefined;
+  if (outputsAreReusable) {
+    writeGenerationStateAtomically(createState(currentOutputsHash));
+    return 0;
   }
-  generateFromLocalSources();
+
+  const generation = await generateTypes(spec, options);
+  if (generation.status !== 0 || generation.outputsHash === undefined) {
+    return generation.status || 1;
+  }
+  writeGenerationStateAtomically(createState(generation.outputsHash));
+  return 0;
 }
 
-generateFromCommittedSpec();
+export async function main(
+  arguments_ = process.argv.slice(2),
+): Promise<number> {
+  let options: EnsureOptions;
+  try {
+    options = parseOptions(arguments_);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    log(`error: ${message}`);
+    return 1;
+  }
+
+  if (options.postinstall) {
+    return freshBeforePostinstall() ? 0 : startPostinstallWorker();
+  }
+
+  let status: number;
+  try {
+    const outcome = await withGenerationLock(
+      GENERATION_LOCK_PATH,
+      {
+        wait: !options.postinstallWorker,
+        maxWaitMs: MAX_LOCK_WAIT_MS,
+        onWait: ({ path, ageMs }) =>
+          log(
+            `waiting for generation lock (${path}, age ${Math.round(ageMs / 1000)}s); ` +
+              `if stuck: rm -rf ${path}`,
+          ),
+        onWaitTimeout: () =>
+          log("generation lock timed out after 60s; continuing without it"),
+      },
+      () => ensureTypes(options),
+    );
+    if (!outcome.executed) {
+      if (!options.postinstallWorker) {
+        log("API type generation is already running");
+      }
+      return 0;
+    }
+    status = outcome.result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    log(`error: ${message}`);
+    status = 1;
+  }
+
+  if (status !== 0 && options.postinstallWorker) {
+    // Background generation must not fail bun install.
+    process.stderr.write(
+      "[types:ensure] ⚠ could not generate API types — run `bun run types:ensure` to see the failure\n",
+    );
+    return 0;
+  }
+  return status;
+}
+
+const currentScriptPath = process.argv[1];
+if (
+  currentScriptPath !== undefined &&
+  resolve(currentScriptPath) === fileURLToPath(import.meta.url)
+) {
+  process.exit(await main());
+}

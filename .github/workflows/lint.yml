@@ -25,7 +25,6 @@ jobs:
       codeql: ${{ steps.changes.outputs.codeql }}
       i18n: ${{ steps.changes.outputs.i18n }}
       openapi: ${{ steps.changes.outputs.openapi }}
-      openapi_spec: ${{ steps.changes.outputs.openapi_spec }}
       snowplow: ${{ steps.changes.outputs.snowplow }}
       yaml: ${{ steps.changes.outputs.yaml }}
     steps:
@@ -81,11 +80,9 @@ jobs:
             if: needs.files-changed.outputs.actionlint == 'true'
             run: ${{ steps.download.outputs.executable }} --color --verbose ${{ needs.files-changed.outputs.actionlint_files }}
 
-  # Lints the generated OpenAPI document and checks that the committed split spec
-  # still matches what the Malli schemas produce.
   validate-openapi:
     needs: files-changed
-    if: needs.files-changed.outputs.openapi == 'true' || needs.files-changed.outputs.openapi_spec == 'true'
+    if: needs.files-changed.outputs.openapi == 'true'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -97,64 +94,16 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-
-      - name: Validate committed split OpenAPI spec
-        if: needs.files-changed.outputs.openapi_spec == 'true'
-        run: |
-          bun run openapi:bundle
-          bun run openapi:lint
-
-      - name: Generate and split OpenAPI spec
-        if: needs.files-changed.outputs.openapi_spec == 'true'
-        run: bun run openapi:update
-
-      - name: Generate OpenAPI spec
-        if: needs.files-changed.outputs.openapi == 'true' && needs.files-changed.outputs.openapi_spec != 'true'
-        run: bun run openapi:generate
-
-      - name: Validate OpenAPI spec
+      - name: Generate OpenAPI artifacts from local source
+        run: bun run types:ensure --force-local
+      - name: Lint OpenAPI spec
         run: bun run openapi:lint
-
-      # openapi:update above regenerates from source first, so any difference means the
-      # commit did not include a regenerated spec.
-      #
-      # Warns rather than fails, on purpose. This is the first stage of rolling the check
-      # out: it makes drift visible in the job summary without turning anyone's PR red.
-      - name: Check the committed spec is up to date
-        if: needs.files-changed.outputs.openapi_spec == 'true'
-        run: |
-          changes=$(git status --porcelain -uall frontend/build/openapi/spec)
-          if [ -n "$changes" ]; then
-            count=$(echo "$changes" | wc -l | tr -d ' ')
-            echo "::warning::The committed OpenAPI spec is out of date ($count files). Run 'bun run openapi:update' and commit frontend/build/openapi/spec."
-            {
-              echo "### OpenAPI spec is out of date"
-              echo
-              echo "\`$count\` file(s) differ from what the current schemas produce."
-              echo "Run \`bun run openapi:update\` and commit \`frontend/build/openapi/spec\`."
-              echo
-              echo '```'
-              echo "$changes"
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Committed OpenAPI spec is up to date." >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Generate API types for type checking
-        if: needs.files-changed.outputs.openapi_spec == 'true'
-        run: bun run types:generate
-
       - name: Compile CLJS for type checking
-        if: needs.files-changed.outputs.openapi_spec == 'true'
         run: bun run build-pure:cljs
-
       - name: Check frontend types
-        if: needs.files-changed.outputs.openapi_spec == 'true'
         run: bun run type-check-pure
 
-  # Always reports, even when the OpenAPI work is skipped. This is the job to mark
-  # required once the freshness check is promoted from warning to failure.
+  # Always reports, even when OpenAPI generation and validation are skipped.
   openapi-result:
     needs: [files-changed, validate-openapi]
     if: always() && !cancelled()
@@ -171,11 +120,11 @@ jobs:
             const jobs = Object.entries(needs).map(([name, { result }]) => ({ name, result }));
 
             if (jobs.every(({ result }) => result === 'skipped' || result === 'success')) {
-              console.log('All OpenAPI jobs are skipped or successful');
+              console.log('OpenAPI generation and validation succeeded or were skipped');
               process.exit(0);
             }
 
-            console.log('Some OpenAPI jobs failed');
+            console.log('OpenAPI generation or validation failed');
             jobs.filter(({ result }) => result !== 'success')
                 .forEach(({ name, result }) => console.log(`${name} - ${result}`));
             process.exit(1);

@@ -284,8 +284,8 @@
   ::mbql.s/DateTimeValue)
 
 (def ^{:deprecated "0.63.0"} mbql.schema.Aggregation
-  "::mbql.s/AnyAggregation"
-  ::mbql.s/AnyAggregation)
+  "::mbql.s/Aggregation"
+  ::mbql.s/Aggregation)
 
 (def ^{:deprecated "0.63.0"} mbql.schema.OrderBy
   "::mbql.s/OrderBy"

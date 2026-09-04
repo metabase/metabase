@@ -123,7 +123,7 @@
                           :tried           expression-name
                           :found           found})))))))
 
-(mu/defn aggregation-at-index :- ::mbql.s/AnyAggregation
+(mu/defn aggregation-at-index :- ::mbql.s/Aggregation
   "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
    This also handles nested queries, which could be potentially ambiguous if multiple levels had aggregations. To
    support nested queries, you'll need to keep tract of how many `:source-query`s deep you've traveled; pass in this

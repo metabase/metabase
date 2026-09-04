@@ -80,17 +80,16 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - name: Restore OpenAPI spec cache
-        id: openapi-cache
+      - name: Restore OpenAPI cache
         uses: actions/cache@v5
         with:
-          path: .tmp/openapi/openapi.json
-          key: openapi-spec-${{ hashFiles('src/**/*.clj', 'src/**/*.cljc', 'enterprise/backend/src/**/*.clj', 'enterprise/backend/src/**/*.cljc', 'deps.edn') }}
-      - name: Generate OpenAPI spec
-        if: steps.openapi-cache.outputs.cache-hit != 'true'
-        run: bun run openapi:generate
-      - name: Generate API types from OpenAPI spec
-        run: bun run types:generate
+          path: |
+            .tmp/openapi/openapi.json
+            .tmp/openapi/generation.json
+            frontend/src/metabase-types/openapi
+          key: openapi-v3-${{ hashFiles('src/**', 'enterprise/backend/src/**', '**/deps.edn', 'resources/data_readers.clj', 'resources/locales.clj', 'resources/version.properties', 'package.json', 'bun.lock', 'frontend/build/openapi/**') }}
+      - name: Prepare OpenAPI types
+        run: bun run types:ensure
       - run: bun run build-pure:cljs
         name: Compile CLJS
       - run: bun run type-check-pure
