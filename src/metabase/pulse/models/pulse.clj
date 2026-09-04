@@ -357,11 +357,10 @@
         notification->pulse)))
 
 (defn- tenant-scoped-caller?
-  "True when the current user's recipient visibility is narrowed to their own tenant. Superusers and
-  users with no tenant see recipients unfiltered, as before tenants existed."
+  "True when the current user's recipient visibility is narrowed to their own tenant: every non-superuser
+  sees only recipients with the same `:tenant_id` as themselves (nil for internal users)."
   []
-  (and (not api/*is-superuser?*)
-       (some? (:tenant_id @api/*current-user*))))
+  (not api/*is-superuser?*))
 
 (defn- recipient-ids->tenant-ids
   "Map of user id -> `:tenant_id` for the Metabase-user recipients in `recipient-ids`. Recipient maps
@@ -417,9 +416,8 @@
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
   themselves. Recipients that are plain email addresses are preserved.
 
-  If the current user belongs to a tenant (and is not a superuser), also filters the recipient
-  lists down to users in the same tenant. A user with no tenant sees recipients unfiltered, as
-  before tenants existed."
+  If the current user is not a superuser, also filters the recipient lists down to users in the same
+  tenant: tenant users see only their own tenant, internal users see only other internal users."
   [pulses]
   (cond->> pulses
     (perms/sandboxed-or-impersonated-user?)

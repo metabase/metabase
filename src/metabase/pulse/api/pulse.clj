@@ -223,7 +223,7 @@
                                (filter (fn [{id :id}] (and id (not= id api/*current-user-id*)))
                                        existing-recipients))
                              (models.pulse/hidden-cross-tenant-recipients existing-recipients))]
-    (if (seq recipients-to-add)
+    (if (and (seq recipients-to-add) (seq (:channels pulse-updates)))
       (assoc pulse-updates :channels
              (for [channel (:channels pulse-updates)]
                ;; normalize like [[email-channel]]: :channel_type is a string over REST but a
@@ -330,7 +330,8 @@
                        (assoc-in [:email :configured] (channel.settings/email-configured?))
                        (assoc-in [:http :configured] (pulse.db/active-http-channel-exists?)))]
     {:channels (cond
-                 (perms/sandboxed-or-impersonated-user?)
+                 (or (perms/sandboxed-or-impersonated-user?)
+                     (some? (:tenant_id @api/*current-user*)))
                  (dissoc chan-types :slack)
 
                  ;; no Slack integration, so we are g2g
