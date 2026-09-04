@@ -13,6 +13,7 @@
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive, and the :collection projection its echo is built from.
    [metabase.mcp.v2.tools.collection :as tools.collection]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
@@ -37,19 +38,22 @@
 (defn- tool-result
   "Decoded success payload of a tool response; throws when the call errored, so a tool-level
    error can never masquerade as a result."
-  [response]
-  (when (:isError response)
-    (throw (ex-info (str "tool call failed: " (-> response :content first :text))
-                    {:response response})))
-  (-> response :content first :text json/decode+kw))
+  [{:keys [result error]}]
+  (when error
+    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
+  (when (:isError result)
+    (throw (ex-info (str "tool call failed: " (-> result :content first :text))
+                    {:result result})))
+  (-> result :content first :text json/decode+kw))
 
 (defn- tool-error
   "Tool-level error text of a tool response; throws when the call succeeded, so a passing call
    can never satisfy an error assertion."
-  [response]
-  (when-not (:isError response)
-    (throw (ex-info "expected a tool error, got success" {:response response})))
-  (-> response :content first :text))
+  [{:keys [result error]}]
+  (cond
+    error             (:message error)
+    (:isError result) (-> result :content first :text)
+    :else             (throw (ex-info "expected a tool error, got success" {:result result}))))
 
 (defn- create!
   "Create a collection through the tool as `user`, returning the echo payload."
@@ -125,16 +129,35 @@
                    (tool-error (call-tool! :crowberto {:method "create" :name "x" k v})))))))
 
 (deftest create-requires-write-perms-on-parent-test
-  (testing "a user cannot create inside someone else's personal collection"
-    (let [crowbertos (t2/select-one-fn :id :model/Collection :personal_owner_id (mt/user->id :crowberto))]
-      (is (re-find #"don't have permissions"
-                   (tool-error (call-tool! :rasta {:method "create" :name "Snooping" :parent_id crowbertos}))))))
+  (testing "a user with read but not write access to the parent is refused, and told why — they can
+            already see the collection, so the permission message leaks nothing"
+    (mt/with-non-admin-groups-no-collection-perms collection/root-collection
+      (mt/with-temp [:model/Collection parent {:name "Read-only shelf"}]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) parent)
+        (is (re-find #"don't have permissions"
+                     (tool-error (call-tool! :rasta {:method "create" :name "Snooping"
+                                                     :parent_id (:id parent)})))))))
   (testing "but can create inside their own"
     (mt/with-model-cleanup [:model/Collection]
       (let [personal-id (t2/select-one-fn :id :model/Collection :personal_owner_id (mt/user->id :rasta))
             payload     (create! :rasta {:name "Rasta's subfolder" :parent_id personal-id})]
         (is (= (str "/" personal-id "/")
                (t2/select-one-fn :location :model/Collection :id (:id payload))))))))
+
+(deftest create-unknown-parent-collapses-to-not-found-test
+  (testing "GHY-4148: parent_id must not become a collection-id enumeration oracle — a parent that
+            exists but the caller cannot see must give the same answer as one that does not exist.
+            POST /api/collection answers the same either way, because it reaches api/write-check
+            without a prior existence probe."
+    (mt/with-temp [:model/Collection coll {:name     "Crowberto's personal subfolder"
+                                           :location (str "/" (t2/select-one-fn
+                                                               :id :model/Collection
+                                                               :personal_owner_id (mt/user->id :crowberto)) "/")}]
+      (let [nonexistent (tool-error (call-tool! :rasta {:method "create" :name "x" :parent_id 13371337}))
+            unreadable  (tool-error (call-tool! :rasta {:method "create" :name "x" :parent_id (:id coll)}))]
+        (is (re-find #"not found" nonexistent))
+        (is (= (str/replace nonexistent "13371337" (str (:id coll)))
+               unreadable))))))
 
 ;;; -------------------------------------------------- Update ------------------------------------------------------
 
@@ -160,18 +183,21 @@
 (deftest update-move-requires-write-perms-on-new-parent-test
   (testing "moving needs write access to the destination, not just to the collection being moved —
             the create path checks this, and the move path checks it separately"
-    (mt/with-temp [:model/Collection coll {:name "Rasta's to move"
-                                           :location (str "/" (t2/select-one-fn
-                                                               :id :model/Collection
-                                                               :personal_owner_id (mt/user->id :rasta)) "/")}]
-      (let [crowbertos (t2/select-one-fn :id :model/Collection :personal_owner_id (mt/user->id :crowberto))]
-        ;; Assert on the permission message, not merely that something failed: rasta can read the
-        ;; collection being moved, so a not-found collapse here would mean the destination check
-        ;; had stopped running.
+    (mt/with-non-admin-groups-no-collection-perms collection/root-collection
+      (mt/with-temp [:model/Collection coll        {:name "Rasta's to move"
+                                                    :location (str "/" (t2/select-one-fn
+                                                                        :id :model/Collection
+                                                                        :personal_owner_id (mt/user->id :rasta)) "/")}
+                     :model/Collection destination {:name "Read-only shelf"}]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) destination)
+        ;; Assert on the permission message, not merely that something failed: rasta can read both
+        ;; collections, so a not-found collapse here would mean the destination check had stopped
+        ;; running.
         (is (re-find #"don't have permissions"
-                     (tool-error (call-tool! :rasta {:method "update" :id (:id coll) :parent_id crowbertos}))))
+                     (tool-error (call-tool! :rasta {:method "update" :id (:id coll)
+                                                     :parent_id (:id destination)}))))
         (testing "and the collection stays put"
-          (is (not= (str "/" crowbertos "/")
+          (is (not= (str "/" (:id destination) "/")
                     (t2/select-one-fn :location :model/Collection :id (:id coll)))))))))
 
 (deftest update-rejects-archive-with-parent-id-test

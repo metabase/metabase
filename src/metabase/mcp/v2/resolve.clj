@@ -76,10 +76,11 @@
    `:trash-collection-id` when the caller allows it (the tool passes the id from the
    collections module) and is a teaching error otherwise.
 
-   A numeric id is checked for existence here. [[resolve-id-or-404]] translates entity_ids but
-   passes numbers straight through, so without this an id for no collection at all travelled on
-   into the write, where it fails a `mu/defn` schema or a permission check and reaches the caller
-   as the sanitized \"Internal error\". Permissions stay the caller's job afterwards, unchanged."
+   Anything else must name a collection the caller can read: \"doesn't exist\" and \"exists but not
+   readable\" collapse into the same not-found error, so the argument never reports the existence of
+   a collection the caller cannot see. That read also keeps an id for no collection at all from
+   travelling into the write, where it fails a `mu/defn` schema or a permission check and reaches
+   the caller as the sanitized \"Internal error\". Write permission stays the caller's job."
   ([id-or-sentinel] (resolve-collection-id id-or-sentinel nil))
   ([id-or-sentinel {:keys [trash-collection-id]}]
    (cond
@@ -91,10 +92,7 @@
          (common/throw-teaching-error "\"trash\" is not a valid collection here — pass a collection id, entity_id, or \"root\"."))
 
      :else
-     (let [id (resolve-id-or-404 :model/Collection id-or-sentinel)]
-       (when-not (mcp.db/select-one-by-id :model/Collection id)
-         (common/throw-not-found :model/Collection id-or-sentinel))
-       id))))
+     (:id (resolve-and-read :model/Collection id-or-sentinel)))))
 
 (defn resolve-collection-id-or-personal
   "Like [[resolve-collection-id]], but an absent argument means the caller's personal collection
