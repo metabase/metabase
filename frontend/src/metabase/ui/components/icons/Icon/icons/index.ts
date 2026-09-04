@@ -132,6 +132,7 @@ import grid_component from "./grid.svg?component";
 import grid_2x2_component from "./grid_2x2.svg?component";
 import grid_bordered_component from "./grid_bordered.svg?component";
 import group_component from "./group.svg?component";
+import hexagon_component from "./hexagon.svg?component";
 import history_component from "./history.svg?component";
 import home_component from "./home.svg?component";
 import horizontal_bar_component from "./horizontal_bar.svg?component";
@@ -434,6 +435,7 @@ export const Icons: Record<IconName, React.VFC> = {
   google: google_component,
   google_drive: google_drive_component,
   google_sheet: google_sheet_component,
+  hexagon: hexagon_component,
   history: history_component,
   home: home_component,
   horizontal_bar: horizontal_bar_component,

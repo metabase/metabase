@@ -3,6 +3,8 @@ import { Pie } from "@visx/shape";
 import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
 
 import type { ColorGetter } from "metabase/ui/colors/types";
+import type { ResolvedGoalSegment } from "metabase/visualizations/lib/dynamic-goals";
+import type { GaugeRange } from "metabase/visualizations/visualizations/Gauge/types";
 
 import Watermark from "../../watermark.svg?component";
 
@@ -17,7 +19,7 @@ import {
   SEGMENT_LABEL_FONT_SIZE,
   START_ANGLE,
 } from "./constants";
-import type { GaugeLabelData, GaugeSegment, Position } from "./types";
+import type { GaugeLabelData, Position } from "./types";
 import {
   calculateChartScale,
   calculateRelativeValueAngle,
@@ -32,7 +34,8 @@ import {
 interface GaugeProps {
   value: number;
   valueFormatter: (value: number) => string;
-  segments: GaugeSegment[];
+  segments: ResolvedGoalSegment[];
+  range: GaugeRange;
   gaugeLabels: GaugeLabelData[];
   center: Position;
   getColor: ColorGetter;
@@ -44,13 +47,12 @@ export default function Gauge({
   value,
   valueFormatter,
   segments,
+  range: [segmentMinValue, segmentMaxValue],
   gaugeLabels,
   center,
   getColor,
   hasDevWatermark,
 }: GaugeProps) {
-  const segmentMinValue = segments[0].min;
-  const segmentMaxValue = segments[segments.length - 1].max;
   const gaugeNeedleAngle = limit(
     START_ANGLE +
       calculateRelativeValueAngle(value, segmentMinValue, segmentMaxValue),
@@ -101,7 +103,7 @@ export default function Gauge({
                 const baseArcPath = pie.path({
                   startAngle: START_ANGLE,
                   endAngle: END_ANGLE,
-                } as unknown as PieArcDatum<GaugeSegment>);
+                } as unknown as PieArcDatum<ResolvedGoalSegment>);
                 return (
                   <Group className="visx-pie-arcs-group">
                     {baseArcPath && (

@@ -2,16 +2,17 @@ import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
 
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+import type { ResolvedGoalSegment } from "metabase/visualizations/lib/dynamic-goals";
 
 import {
   GAUGE_ARC_ANGLE,
   SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE,
 } from "./constants";
-import type { GaugeSegment } from "./types";
 import {
   calculateRelativeValueAngle,
   calculateSegmentLabelTextAnchor,
   colorGetter,
+  gaugeSorter,
   getCirclePositionInSvgCoordinate,
   limit,
   populateDefaultColumnSettings,
@@ -181,9 +182,33 @@ describe("Static gauge utils", () => {
     });
   });
 
+  describe("gaugeSorter", () => {
+    const segment = (min: number, max: number): ResolvedGoalSegment => ({
+      min,
+      max,
+      color: "red",
+    });
+
+    it("orders segments by their min", () => {
+      expect([segment(50, 60), segment(0, 100)].sort(gaugeSorter)).toEqual([
+        segment(0, 100),
+        segment(50, 60),
+      ]);
+    });
+
+    it("orders a containing segment before the segments nested in it when they share a min", () => {
+      expect([segment(0, 60), segment(0, 100)].sort(gaugeSorter)).toEqual([
+        segment(0, 100),
+        segment(0, 60),
+      ]);
+    });
+  });
+
   describe("colorGetter", () => {
     const getColor = createColorGetter();
-    const createPieArcDatum = (color: string): PieArcDatum<GaugeSegment> => ({
+    const createPieArcDatum = (
+      color: string,
+    ): PieArcDatum<ResolvedGoalSegment> => ({
       data: { min: 0, max: 100, color, label: "test" },
       value: 100,
       index: 0,

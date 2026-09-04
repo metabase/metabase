@@ -6,8 +6,7 @@ import type { ChartSettingGoalInputProps } from "metabase/viz-core";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import S from "./ChartSettingFieldPicker/ChartSettingFieldPicker.module.css";
-
-const RIGHT_SECTION_WIDTH = "38px";
+import { RIGHT_SECTION_WIDTH } from "./ChartSettingSegmentsEditor/constants";
 
 const inputStyles = {
   input: {
@@ -70,24 +69,27 @@ export const ChartSettingGoalInput = ({
   const rightSection = hasNumericColumns ? (
     <Menu
       opened={isPopoverOpen}
-      onChange={setIsPopoverOpen}
       position="bottom-end"
+      onChange={setIsPopoverOpen}
     >
       <Menu.Target>
-        <Box component="span" className={S.chevronTarget}>
+        <Box className={S.chevronTarget} component="span">
           <Icon name="chevrondown" />
         </Box>
       </Menu.Target>
+
       <Menu.Dropdown miw={320}>
-        <Menu.Item onClick={() => handleMenuItemSelect(numericValue)} fw="bold">
+        <Menu.Item fw="bold" onClick={() => handleMenuItemSelect(numericValue)}>
           {t`Custom value`}
         </Menu.Item>
+
         <Menu.Divider />
+
         {availableColumns.map((column) => (
           <Menu.Item
             key={column.value}
-            onClick={() => handleMenuItemSelect(column.value)}
             fw="bold"
+            onClick={() => handleMenuItemSelect(column.value)}
           >
             {column.label}
           </Menu.Item>
@@ -98,16 +100,16 @@ export const ChartSettingGoalInput = ({
 
   if (isColumnReference) {
     return (
-      <Group className={S.root} bg="background_page-primary" align="center">
+      <Group align="center" bg="background_page-primary" className={S.root}>
         <TextInput
           id={id}
-          value={selectedColumn?.label || value}
-          readOnly
           placeholder={selectedColumn?.label || value}
+          readOnly
           rightSection={rightSection}
           rightSectionPointerEvents="all"
           rightSectionWidth={RIGHT_SECTION_WIDTH}
           styles={inputStyles}
+          value={selectedColumn?.label || value}
           w="100%"
         />
       </Group>
@@ -115,18 +117,18 @@ export const ChartSettingGoalInput = ({
   }
 
   return (
-    <Group className={S.root} bg="background_page-primary" align="center">
+    <Group align="center" bg="background_page-primary" className={S.root}>
       <NumberInput
         ref={numberInputRef}
         id={id}
-        value={numericValue}
-        onChange={(val) => onChange(val ?? 0)}
         placeholder={t`Enter goal value`}
         rightSection={rightSection}
         rightSectionPointerEvents="all"
         rightSectionWidth={RIGHT_SECTION_WIDTH}
         styles={inputStyles}
+        value={numericValue}
         w="100%"
+        onChange={(val) => onChange(val ?? 0)}
       />
     </Group>
   );

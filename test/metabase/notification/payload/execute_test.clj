@@ -15,8 +15,8 @@
 
 (def ^:private expected-data-keys
   "The only keys that should appear in the :data sub-map of a notification result."
-  #{:cols :rows :viz-settings :results_metadata :insights :results_timezone
-    :format-rows? :pivot-export-options :referenced_entities})
+  #{:cols :rows :viz-settings :results_metadata :insights :referenced_entities :results_timezone
+    :format-rows? :pivot-export-options})
 
 (defn- check-result-structure
   [result]
@@ -52,24 +52,57 @@
           (is (= :card (:type part)))
           (check-result-structure result))))))
 
-(deftest execute-card-carries-dynamic-goal-values-through-to-rendering-test
-  (testing "a goal referencing another card survives execution and resolves at render time"
-    (mt/with-temp [:model/Card {goal-card-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
-                                                   :display       :scalar}
+(defn- gauge-with-referenced-goal
+  "A gauge card whose upper bound is another card's `count`."
+  [goal-id]
+  {:display                :gauge
+   :dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+   :visualization_settings {:gauge.segments [{:min   0
+                                              :max   {:id goal-id :type "card" :column "count"}
+                                              :color "#84BB4C"}]}})
+
+(defn- referenced-goal-result [part goal-id]
+  (get-in part [:result :data :referenced_entities "card" (str goal-id)]))
+
+(deftest execute-card-keeps-referenced-entities-test
+  (testing "execute-card keeps the dynamic goal values the static renderer and alerts resolve against"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                   :model/Card {card-id :id} (gauge-with-referenced-goal goal-id)]
+      (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)]
+        (check-result-structure (:result part))
+        (is (=? {:status "completed"
+                 :data   {:cols [{:name "count"}]
+                          :rows [[1000]]}}
+                (referenced-goal-result part goal-id)))))))
+
+(deftest execute-dashboard-subscription-card-keeps-referenced-entities-test
+  (testing "execute-dashboard-subscription-card keeps the dynamic goal values the static renderer resolves against"
+    (mt/with-temp [:model/Card          {goal-id :id} {:dataset_query (mt/mbql-query checkins
+                                                                        {:aggregation [[:count]]})}
+                   :model/Card          {card-id :id} (gauge-with-referenced-goal goal-id)
+                   :model/Dashboard     {dash-id :id} {}
+                   :model/DashboardCard dashcard      {:dashboard_id dash-id :card_id card-id}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [part (notification.payload.execute/execute-dashboard-subscription-card dashcard [])]
+          (check-result-structure (:result part))
+          (is (=? {:status "completed"
+                   :data   {:cols [{:name "count"}]
+                            :rows [[1000]]}}
+                  (referenced-goal-result part goal-id))))))))
+
+(deftest execute-card-goal-resolves-at-render-time-test
+  (testing "the kept values are the ones the renderer resolves against, not just a surviving key"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
+                                              :display       :scalar}
                    :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]
                                                                                     :breakout    [$price]})
                                               :display       :line
                                               :visualization_settings
-                                              {:graph.goal_value {:id     goal-card-id
+                                              {:graph.goal_value {:id     goal-id
                                                                   :type   "card"
                                                                   :column "count"}}}]
-      (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)
-            ref  (get-in part [:result :data :referenced_entities "card" (str goal-card-id)])]
-        (testing "the referenced value is not stripped by the result whitelist"
-          (is (= "completed" (:status ref)))
-          (is (= [[100]] (get-in ref [:data :rows]))))
-        (testing "so the renderer resolves the goal instead of throwing"
-          (is (= 100 (ui-logic/find-goal-value part))))))))
+      (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)]
+        (is (= 100 (ui-logic/find-goal-value part)))))))
 
 (defn- card-parts [parts]
   (filter #(= :card (:type %)) parts))

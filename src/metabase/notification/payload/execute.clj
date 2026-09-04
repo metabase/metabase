@@ -157,10 +157,8 @@
   (-> (select-keys qp-result [:status :row_count :database_id :error
                               :notification/truncated? :data.rows-file-size])
       (assoc :data (select-keys (:data qp-result)
-                                [:cols :rows :viz-settings :results_metadata :insights
-                                 :results_timezone :format-rows? :pivot-export-options
-                                 ;; dynamic goals resolve against this at render time
-                                 :referenced_entities]))))
+                                [:cols :rows :viz-settings :results_metadata :insights :referenced_entities
+                                 :results_timezone :format-rows? :pivot-export-options]))))
 
 (def cells-to-disk-threshold
   "Maximum cells (rows * columns) to hold in memory when running notification queries. After this, query results are

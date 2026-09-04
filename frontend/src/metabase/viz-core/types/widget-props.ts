@@ -2,9 +2,11 @@ import type { AccentColorOptions } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DatasetColumn,
+  DatasetData,
+  DatasetQuery,
+  GoalSegment,
   IconName,
   RawSeries,
-  ScalarSegment,
   Series,
   SmartScalarComparison,
   SmartScalarComparisonType,
@@ -57,9 +59,11 @@ export type ChartSettingMaxCategoriesProps = ChartSettingWidgetProps<number> & {
 };
 
 export type ChartSettingSegmentsEditorProps = {
-  value: ScalarSegment[];
-  onChange: (value: ScalarSegment[]) => void;
   canRemoveAll?: boolean;
+  data?: DatasetData;
+  datasetQuery?: DatasetQuery;
+  value: GoalSegment[];
+  onChange: (value: GoalSegment[]) => void;
 };
 
 // The fields ChartSettingOrderedItems reads off every row it renders.

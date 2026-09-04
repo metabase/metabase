@@ -623,6 +623,22 @@
         (channel.render/render-pulse-card-for-display nil card {:data data}))
       (is (= [{:min 0 :max 80 :color "#84BB4C"}] (:gauge.segments @captured))))))
 
+(deftest ^:parallel render-keeps-self-column-gauge-bounds-test
+  (testing "a gauge bound naming a column of the same query is left for the JS renderer to resolve"
+    (let [captured (atom nil)
+          card     {:id                     1
+                    :name                   "gauge with self-column bound"
+                    :display                :gauge
+                    :visualization_settings {:gauge.segments [{:min 0 :max "target" :color "#84BB4C"}]}}
+          data     {:cols [{:name "count" :base_type :type/Integer}
+                           {:name "target" :base_type :type/Integer}]
+                    :rows [[42 80]]}]
+      (mt/with-dynamic-fn-redefs [js.svg/gauge (fn [card _data]
+                                                 (reset! captured (:visualization_settings card))
+                                                 (byte-array 0))]
+        (channel.render/render-pulse-card-for-display nil card {:data data}))
+      (is (= [{:min 0 :max "target" :color "#84BB4C"}] (:gauge.segments @captured))))))
+
 (deftest ^:parallel render-failed-dynamic-goal-test
   (testing "a failed referenced query fails that card's render into the standard error box"
     (let [card     {:id                     1
