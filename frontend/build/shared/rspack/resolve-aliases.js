@@ -42,6 +42,9 @@ const RESOLVE_ALIASES = {
   assets: ASSETS_PATH,
   // Written by the `:translations` build step, which runs before the frontend one.
   locales: LOCALES_PATH,
+  // How a locale catalogue is loaded. The app imports it from its own bundle;
+  // the SDK bundle overrides this to fetch from the instance instead.
+  "locale-catalog": SRC_PATH + "/api/load-locale-catalog",
   img: IMAGES_PATH,
   fonts: FONTS_PATH,
   docs: DOCS_PATH,
