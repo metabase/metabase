@@ -133,15 +133,11 @@
   (when-let [{:keys [timestamp topic], user-id :user_id}
              ;; Serialization can restore `is_published` without a publish event, so a later unpublish
              ;; invalidates older publishing details.
-             (t2/select-one [:model/AuditLog :timestamp :topic :user_id]
-                            :topic [:in [:table-publish :table-unpublish]]
-                            :model "Table"
-                            :model_id table-id
-                            {:order-by [[:timestamp :desc] [:id :desc]]})]
+             (data-studio.db/latest-table-publishing-event table-id)]
     (when (= topic :table-publish)
       {:published_at timestamp
        :published_by (when user-id
-                       (some-> (t2/select-one [:model/User :id :first_name :last_name :email] user-id)
+                       (some-> (data-studio.db/user-name-and-email user-id)
                                (select-keys [:id :common_name])))})))
 
 (api.macros/defendpoint :get "/:id/publishing-info" :- [:maybe PublishingInfo]
