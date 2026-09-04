@@ -5,8 +5,8 @@ import { jt, t } from "ttag";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
+} from "metabase/settings-components/SettingsSection";
+import { isSettingSetFromEnvVar } from "metabase/settings-components/is-setting-set-from-env-var";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { Link } from "metabase/common/components/Link";
@@ -26,7 +26,7 @@ import { Box, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { reload } from "metabase/utils/dom";
 
-import { SettingHeader } from "../SettingHeader";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
 
 import {
   type DomainsSettings,
