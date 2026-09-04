@@ -133,9 +133,10 @@
                                          "restores them. Archiving is the only removal path — there is no hard "
                                          "delete. Omit to leave the collection's trashed state alone.")}]]]
    [:namespace {:optional true}
-    [:maybe [:string {:min 1 :description (str "Create only: puts the collection in a separate hierarchy instead of "
-                                               "the normal one. The only namespace in general use is \"snippets\" "
-                                               "(SQL snippet folders). Omit for a normal collection.")}]]]
+    [:maybe [:enum {:description (str "Create only: puts the collection in a separate hierarchy instead of the "
+                                      "normal one. \"snippets\" holds SQL snippet folders. Omit for a normal "
+                                      "collection.")}
+             "snippets"]]]
    [:authority_level {:optional true}
     [:maybe [:enum {:description (str "Marks the collection Official. Requires an admin on an instance with the "
                                       "Official Collections feature. To make a collection unofficial again, name "

@@ -122,6 +122,17 @@
                   default into"
           (is (= "/" (t2/select-one-fn :location :model/Collection :id (:id payload)))))))))
 
+(deftest create-rejects-unknown-namespace-test
+  (mt/with-model-cleanup [:model/Collection]
+    (testing "GHY-4148: a mistyped namespace is rejected by the args schema rather than landing a
+              collection in a hierarchy nothing in Metabase surfaces — the echo would otherwise
+              confirm a `namespace` that took effect only in the sense that the row is unreachable"
+      (is (str/starts-with? (tool-error (call-tool! :crowberto {:method "create"
+                                                                :name "Typo Snippet Folder"
+                                                                :namespace "snippet"}))
+                            "Invalid arguments"))
+      (is (nil? (t2/select-one :model/Collection :name "Typo Snippet Folder"))))))
+
 (deftest create-rejects-update-only-args-test
   (doseq [[k v] {:archived true :id 1}]
     (testing (str "`" (name k) "` on create is a teaching error, not silently ignored")
