@@ -1,6 +1,10 @@
 (ns metabase.mcp.db
   "Application database queries for the MCP module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`).
+
+  The one thing that does belong alongside a query is a guard on a value the query splices rather than binds
+  — see [[user-id->tenant-id]]. It lives here because here is the only place that knows the value reaches
+  HoneySQL."
   (:require
    [toucan2.core :as t2]))
 
@@ -66,3 +70,39 @@
                                                                     :where  [:and
                                                                              [:= :key_hashed key-hashed]
                                                                              [:= :user_id user-id]]}]]]}))
+
+(defn hydrate-notification
+  "`notification` with its payload, subscriptions, and handler channels and recipients hydrated.
+
+  Spelled out here rather than delegated to `metabase.notification.models/hydrate-notification`, whose
+  output schema rejects `payload_type: notification/dashboard` rows — readable on the MCP read path by
+  design."
+  [notification]
+  (t2/hydrate notification
+              :payload
+              :subscriptions
+              [:handlers :channel [:recipients :recipients-detail]]))
+
+(defn user-id->tenant-id
+  "Map of user id to `tenant_id` for `user-ids`, in one query. An empty collection asks nothing of the
+  database and answers `{}` — `[:in ()]` is not valid SQL.
+
+  Throws unless `user-ids` is a collection of integers. The ids are spliced into an `[:in …]` clause,
+  where HoneySQL reads some shapes as syntax rather than as values: a vector is a function call, so
+  `[:raw \"1) OR 1=1 --\"]` renders verbatim into the SQL and `[:inline x]` inlines a literal; a map is a
+  subquery; a keyword or symbol is an identifier. Those are the injection vectors, and they are refused
+  before any SQL is built. Numbers and strings are bound as parameters, so a string id is a plain bug
+  rather than a hole — refused all the same, because a silent no-match is a worse answer than a throw.
+  The offending values ride `ex-data` rather than the message, so nothing caller-controlled lands in a
+  log line.
+
+  `int?` rather than `Long` on purpose: `core_user.id` comes back from JDBC as an `Integer`, so a
+  Long-only check would pass its tests and refuse every real call."
+  [user-ids]
+  (when-not (coll? user-ids)
+    (throw (ex-info "MCP: user ids must be a collection of integers" {:user-ids user-ids})))
+  (when-let [invalid (seq (remove int? user-ids))]
+    (throw (ex-info "MCP: user ids must be a collection of integers" {:invalid (vec invalid)})))
+  (if (seq user-ids)
+    (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids])
+    {}))
