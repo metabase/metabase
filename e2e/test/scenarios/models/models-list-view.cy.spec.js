@@ -17,6 +17,16 @@ function addRightColumn(searchText, columnName) {
   H.popover().findByText(columnName).click();
 }
 
+function runQuery() {
+  cy.findByTestId("run-button").click();
+  cy.wait("@dataset");
+  // Wait for the results to be processed before doing anything else. Switching
+  // the editor tab re-runs a query whose results are still pending, and the
+  // completion of that run resets the display and the visualization settings
+  // to the ones captured when it started.
+  cy.findByTestId("run-button").should("have.attr", "aria-label", "Refresh");
+}
+
 describe("scenarios > models list view", () => {
   describe("basic scenarios", () => {
     beforeEach(() => {
@@ -434,8 +444,7 @@ describe("scenarios > models list view", () => {
         cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
-      cy.findByTestId("run-button").click();
-      cy.wait("@dataset");
+      runQuery();
 
       cy.log("Switch to the list view and keep only Quantity on the right");
       cy.findByTestId("dataset-edit-bar").findByText("Settings").click();
@@ -448,8 +457,7 @@ describe("scenarios > models list view", () => {
       cy.findByTestId("dataset-edit-bar").findByText("Query").click();
       H.join();
       H.joinTable("Accounts", "User ID", "ID");
-      cy.findByTestId("run-button").click();
-      cy.wait("@dataset");
+      runQuery();
 
       cy.log("Add the joined email column to the list layout");
       cy.findByTestId("dataset-edit-bar").findByText("Settings").click();
