@@ -57,7 +57,7 @@ const DownloadWidgetInner = ({
       question={question}
       result={result}
       onDownload={handleDownload}
-      p="md"
+      p="lg"
       disabled={!withDownloads}
       {...rest}
     />

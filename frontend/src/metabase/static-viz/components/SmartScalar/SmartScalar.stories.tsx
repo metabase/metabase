@@ -107,6 +107,7 @@ export default {
     "scalar.comparisons": [{ id: "1", type: "previousPeriod" }],
     "scalar.switch_positive_negative": false,
     "scalar.compact_primary_number": false,
+    "scalar.show_comparison_value": true,
   },
   argTypes: {
     "scalar.field": {
@@ -117,6 +118,9 @@ export default {
       control: { type: "boolean" },
     },
     "scalar.compact_primary_number": {
+      control: { type: "boolean" },
+    },
+    "scalar.show_comparison_value": {
       control: { type: "boolean" },
     },
   },

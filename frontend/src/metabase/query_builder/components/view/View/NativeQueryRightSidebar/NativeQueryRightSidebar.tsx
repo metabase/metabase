@@ -1,9 +1,9 @@
 import { match } from "ts-pattern";
 
+import { TagEditorSidebar } from "metabase/parameters/components/TagEditor/TagEditorSidebar";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
-import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
 import { useDispatch, useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
 import type {

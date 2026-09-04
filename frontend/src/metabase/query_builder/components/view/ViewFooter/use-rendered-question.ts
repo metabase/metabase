@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
+import type { Card } from "metabase-types/api";
 
 import {
   getIsRunning,
@@ -38,7 +39,9 @@ export const useRenderedQuestion = () => {
     const renderedCard = rawSeries?.[0]?.card;
     const renderedQuestion =
       question != null && renderedCard != null
-        ? question.setCard(renderedCard)
+        ? // Question's card is typed as Card, but it's not always actually a Card
+          // clean this up when Question gets cleaned up
+          question.setCard(renderedCard as Card)
         : question;
     const isPivotResult = lastRunQuestion?.display() === "pivot";
     return {

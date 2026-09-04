@@ -102,7 +102,7 @@ export const RlsDataSelector = ({
   );
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Text size="md" c="text-secondary" lh="lg">
         {t`Select one or more tables to be made visible to tenant users, and the column to filter by. Only rows where the value in the selected column matches the organization_id attribute will be visible to tenant users. You will create tenants and configure this attribute in the next step.`}
       </Text>
@@ -111,7 +111,7 @@ export const RlsDataSelector = ({
         {t`Tenant users will be able to create queries on these tables with the query builder. All other tables will be blocked.`}
       </Text>
 
-      <Stack gap="md">
+      <Stack gap="lg">
         {selections.map((selection, index) => {
           // Get all selected table ids, except the current card's selection
           const selectedTableIds = selections
@@ -133,7 +133,7 @@ export const RlsDataSelector = ({
 
       <Flex justify="space-between" align="center">
         <UnstyledButton onClick={addTable} className={S.AddTableButton}>
-          <Flex align="center" gap="xs">
+          <Flex align="center" gap="xxs">
             <Icon name="add" size={16} />
             <Text fw="bold" size="md" c="inherit">{t`Add table`}</Text>
           </Flex>

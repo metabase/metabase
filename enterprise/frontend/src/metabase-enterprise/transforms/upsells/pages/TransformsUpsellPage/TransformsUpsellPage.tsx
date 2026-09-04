@@ -89,7 +89,7 @@ export function TransformsUpsellPage() {
       style={{ display: "flex", flexDirection: "column" }}
     >
       <TransformsHeader showTabs={false} />
-      <Flex justify="center" pos="relative" flex={1} mt="lg">
+      <Flex justify="center" pos="relative" flex={1} mt="xl">
         <LineDecorator pos="absolute" mah="100%">
           <EnableTransformsCard
             onEnableClick={onEnableClick}

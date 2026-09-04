@@ -50,7 +50,7 @@ export const InviteUserForm = ({
       validationContext={user}
       onSubmit={onSubmit}
     >
-      <Form as={Stack} gap="md" data-testid="invite-user-form">
+      <Form as={Stack} gap="lg" data-testid="invite-user-form">
         <div className={S.UserFieldGroup}>
           <FormTextInput
             name="first_name"

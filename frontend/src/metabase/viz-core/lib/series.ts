@@ -6,6 +6,7 @@ import type {
   DatasetQuery,
   RawSeries,
   Series,
+  SeriesCard,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -20,7 +21,7 @@ export const updateSeriesColor = (
   return assocIn(settings, [SERIES_SETTING_KEY, seriesKey, "color"], color);
 };
 
-export const getNameForCard = (card: Card) => {
+export const getNameForCard = (card: SeriesCard) => {
   return card?.name || "";
 };
 
