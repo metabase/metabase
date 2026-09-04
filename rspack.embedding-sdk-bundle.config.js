@@ -51,6 +51,7 @@ const {
 } = require("./frontend/build/embedding-sdk/lib/get-sdk-bundle-version-from-version-properties");
 
 const SDK_BUNDLE_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-bundle";
+const METABASE_SRC_PATH = __dirname + "/frontend/src/metabase";
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const SDK_OUTPUT_PATH = path.join(BUILD_PATH, SDK_BUNDLE_PATH);
@@ -432,6 +433,10 @@ config.resolve.alias = {
   "sdk-iframe-embedding-ee-plugins":
     ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins",
   "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
+  // The SDK renders against whichever instance it is pointed at, so it takes
+  // catalogues from there rather than from its own bundle. This also keeps the
+  // locales context module, and so all 36 catalogues, out of the SDK.
+  "locale-catalog": METABASE_SRC_PATH + "/api/load-locale-catalog-from-instance",
 };
 
 if (config.cache) {
