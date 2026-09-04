@@ -10,6 +10,7 @@ import {
 import { PermissionsBasePath } from "./PermissionsBasePath";
 
 const HUB_PERMISSIONS_BASE_PATH = "/embedding/permissions";
+const TEST_OWNER_ID = "test";
 
 // What a child that builds a URL during its own render sees. The URL builders
 // run from redux selectors at render time, so reading in an effect would test
@@ -20,7 +21,7 @@ function ShowBasePath() {
 
 describe("PermissionsBasePath", () => {
   afterEach(() => {
-    resetPermissionsBasePath();
+    resetPermissionsBasePath(TEST_OWNER_ID);
   });
 
   it("declares its host's base path before its children render", () => {
@@ -40,7 +41,7 @@ describe("PermissionsBasePath", () => {
     // puts the value back after the hub's copy of the editor set it. It has to
     // land during render: admin's breadcrumb selectors build hrefs on their
     // first pass, before the hub's unmount cleanup has run.
-    setPermissionsBasePath(HUB_PERMISSIONS_BASE_PATH);
+    setPermissionsBasePath(HUB_PERMISSIONS_BASE_PATH, TEST_OWNER_ID);
 
     render(
       <PermissionsBasePath>
@@ -67,12 +68,12 @@ describe("PermissionsBasePath", () => {
 
   it("doesn't clobber a base path a later host already claimed", () => {
     // Tenancy -> Permissions in the hub: React renders Permissions' new
-    // PermissionsBasePath (claiming its own base path) before running
-    // Tenancy's unmount cleanup. An unconditional reset there would undo
-    // what Permissions just set.
-    const TENANCY_PERMISSIONS_BASE_PATH = "/embedding/tenancy/permissions";
+    // PermissionsBasePath (claiming the base path) before running Tenancy's
+    // unmount cleanup. An unconditional reset there would undo what
+    // Permissions just set. Both hosts claim the same path, so only the
+    // owning id tells them apart.
     const { unmount } = render(
-      <PermissionsBasePath basePath={TENANCY_PERMISSIONS_BASE_PATH} />,
+      <PermissionsBasePath basePath={HUB_PERMISSIONS_BASE_PATH} />,
     );
     render(<PermissionsBasePath basePath={HUB_PERMISSIONS_BASE_PATH} />);
 
