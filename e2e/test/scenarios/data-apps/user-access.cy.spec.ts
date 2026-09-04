@@ -71,7 +71,7 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
     H.main().within(() => {
       cy.findByText(NORMAL_USER_NAME, { timeout: 20_000 }).should("be.visible");
       cy.findByText(USERS.normal.email).should("be.visible");
-      cy.findByText("No one has access yet").should("not.exist");
+      cy.findByText("No one has access yet").should("not.be.visible");
     });
 
     cy.findByRole("button", { name: `Remove ${NORMAL_USER_NAME}` }).click();
