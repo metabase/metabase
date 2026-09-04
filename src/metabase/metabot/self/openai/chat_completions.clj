@@ -75,28 +75,6 @@
                              group))))
         messages))
 
-(defn- merge-reasoning-parts
-  "Joins consecutive same-id :reasoning parts into one, keeping any carried metadata.
-
-  A reasoning block streams as many small parts plus a possible empty-text metadata
-  carrier; replaying one think chunk per part costs ~3 prompt tokens of wrapper
-  apiece (measured on Mistral, 2026-09-01), so a block must replay as one part.
-  Runs only when a dialect passes [[parts->cc-messages]] a replay hook — today
-  Mistral (think chunks) and Moonshot (top-level `reasoning_content`), the two
-  Chat Completions dialects that define a reasoning replay channel."
-  [parts]
-  (into []
-        (comp (partition-by (fn [p] (if (= :reasoning (:type p)) [:reasoning (:id p)] :other)))
-              (mapcat (fn [group]
-                        (if (= :reasoning (:type (first group)))
-                          [(cond-> {:type :reasoning
-                                    :id   (:id (first group))
-                                    :text (apply str (map :text group))}
-                             (some :provider-metadata group)
-                             (assoc :provider-metadata (some :provider-metadata group)))]
-                          group))))
-        parts))
-
 (defn parts->cc-messages
   "Convert a sequence of AISDK parts into Chat Completions messages.
 
@@ -109,7 +87,10 @@
   Output: Chat Completions messages (user, assistant with tool_calls, tool)."
   ([parts] (parts->cc-messages parts nil))
   ([parts {:keys [reasoning-part->message]}]
-   (->> (cond-> parts reasoning-part->message merge-reasoning-parts)
+   ;; coalescing runs only when a dialect passes a replay hook — today Mistral (think chunks)
+   ;; and Moonshot (top-level reasoning_content), the two Chat Completions dialects that define
+   ;; a reasoning replay channel
+   (->> (cond-> parts reasoning-part->message core/merge-reasoning-parts)
         (keep (fn [part]
                 (case (:type part)
                   ;; The generic Chat Completions dialect has no replay channel for
@@ -247,9 +228,16 @@
                 ;; to avoid spurious text blocks that would close open tools.
                 chunk-type    (cond
                                 (not-empty (:content delta))  :text
+                                ;; tool_calls outrank reasoning: a delta carrying both would
+                                ;; otherwise classify as :reasoning, and the tool call's opening
+                                ;; chunk — the only one carrying its id and name — would be
+                                ;; lost, breaking the tool loop. Ranked this way, such a delta
+                                ;; loses its reasoning fragment instead: display text,
+                                ;; recoverable. No probed provider combines the two in one
+                                ;; delta today.
+                                (some? tool-call)             :function_call
                                 (and forward-reasoning?
                                      (delta-reasoning delta)) :reasoning
-                                (some? tool-call)             :function_call
                                 :else                         nil)
                 ;; For new tool calls, the id comes from the chunk; for deltas
                 ;; on the same tool, we keep current-id.

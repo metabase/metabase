@@ -58,6 +58,14 @@
   [model]
   (contains? supported-models (str model)))
 
+(def ^:private thinking-only-models
+  "Models that reject `thinking {:type \"disabled\"}` outright.
+
+  glm-5.3's thinking cannot be turned off (error 1210 \"always engages in thinking\", probed
+  2026-09-03); it takes `reasoning_effort` low|high|max instead, which this adapter does not send
+  while the model stays off the [[supported-models]] whitelist."
+  #{"glm-5.3" "glm-5.3-flash"})
+
 (defn- list-all-models
   "Fetch the full Z.AI model catalog (`GET /models`).
 
@@ -99,20 +107,25 @@
   "Build the Chat Completions request body for an LLM request.
 
   Z.AI's Chat Completions dialect matches what [[chat-completions/request-body]] emits, so this delegates to it,
-  adding Z.AI's `thinking` directive for whitelisted models. Z.AI documents only `tool_choice \"auto\"`, but
-  `\"required\"` — which the structured-output path relies on — is accepted and honored in practice, with
-  thinking on."
+  adding Z.AI's `thinking` directive: enabled only where a whitelisted model's reasoning renders, disabled
+  otherwise — except [[thinking-only-models]], which reject the directive and are sent none. Z.AI documents only
+  `tool_choice \"auto\"`, but `\"required\"` — which the structured-output path relies on — is accepted and honored
+  in practice, with thinking on."
   [{:keys [model reasoning? schema] :as opts
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
   ;; Thinking is on by default server-side, at reasoning_effort "max"
   ;; (https://docs.z.ai/api-reference/llm/chat-completion), so "enabled" only makes the default
-  ;; explicit; the "disabled" half is the real change — structured output would otherwise spend
-  ;; its small output budget on invisible thinking (see
-  ;; [[metabase.metabot.conversation-title]]'s title-max-tokens). Models outside the whitelist
-  ;; get no directive at all: the server default rules, matching the gate answering false.
+  ;; explicit; "disabled" is the real change — it protects structured output's small budget (see
+  ;; [[metabase.metabot.conversation-title]]'s title-max-tokens) and, off the whitelist, keeps the
+  ;; stream matching the settings gate answering false: glm-4.7 "will think compulsorily" by
+  ;; default and the xf forwards reasoning unconditionally. Probed 2026-09-03: the disable is
+  ;; accepted and honored on glm-4.7, tolerated by pre-4.5 models (which do not think), and
+  ;; rejected only by [[thinking-only-models]], which therefore get no directive at all.
   (cond-> (chat-completions/request-body (assoc opts :model model))
-    (reasoning-model? model)
-    (assoc :thinking {:type (if (and reasoning? (not schema)) "enabled" "disabled")})))
+    (not (thinking-only-models (str model)))
+    (assoc :thinking {:type (if (and (reasoning-model? model) reasoning? (not schema))
+                              "enabled"
+                              "disabled")})))
 
 (mu/defn zai-raw
   "Perform a streaming request to the Z.AI Chat Completions API.
@@ -160,7 +173,9 @@
 (defn zai->aisdk-chunks-xf
   "Translates Z.AI Chat Completions streaming chunks into AI SDK v5 protocol chunks.
 
-  Thinking arrives as `delta.reasoning_content` and is forwarded as reasoning chunks."
+  Thinking arrives as `delta.reasoning_content` and is forwarded as reasoning chunks. A delta
+  carrying both `reasoning_content` and non-empty `content` would drop its reasoning — the
+  shared xf classifies content first. Accepted, unprobed risk: no such chunk has been observed."
   []
   (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons {:forward-reasoning? true}))
 

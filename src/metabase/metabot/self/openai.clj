@@ -307,6 +307,7 @@
 
 (defn- strip-vendor-prefix
   "`model` lowercased and without an optional vendor prefix (e.g. Bedrock's `openai.`).
+
   Lowercasing lets the model-derived predicates hold for Azure's admin-cased deployment names."
   [model]
   (str/replace-first (u/lower-case-en (str model)) #"^openai\." ""))

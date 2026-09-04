@@ -158,7 +158,7 @@
     [[thinking-only-models]] cannot disable thinking and are sent no `thinking` at all.
   - **`reasoning_effort`** for [[thinking-only-models]] (kimi-k3, which explicitly does not support `thinking`
     and is the only model accepting `reasoning_effort`): \"max\" when the chat path renders reasoning, \"low\"
-    otherwise; their in-turn reasoning is replayed (see [[reasoning-message]]) and structured calls get a
+    otherwise; their in-turn reasoning is replayed (see [[reasoning-message]]) and forced tool calls get a
     `max_tokens` floor (see [[forced-tool-call-token-floor]]).
   - **`prompt_cache_key`.** Moonshot caching is automatic and hits without it, but a `:prompt-cache-key` — the
     conversation id — is forwarded when present."
@@ -194,10 +194,16 @@
          ;; https://platform.kimi.ai/docs/guide/use-kimi-k2-thinking-model
          (when (and thinking? thinking-only?) {:reasoning-part->message reasoning-message}))
         (dissoc :temperature)
-        (cond-> thinking-only?              (assoc :reasoning_effort (if thinking? "max" "low"))
-                (and thinking-only? schema) floor-max-tokens
-                (not thinking-only?)        (assoc :thinking {:type (if thinking? "enabled" "disabled")})
-                prompt-cache-key            (assoc :prompt_cache_key prompt-cache-key)))))
+        (cond-> thinking-only?               (assoc :reasoning_effort (if thinking? "max" "low"))
+                ;; Every forced tool call — schema or tool_choice "required" — must survive the
+                ;; thinking spend: reasoning and the tool call share one max_tokens budget ("the
+                ;; sum of tokens in reasoning_content and content must be <= max_tokens", and the
+                ;; guide recommends >= 16000 for tool calls —
+                ;; https://platform.kimi.ai/docs/guide/use-thinking-models). A tool call cut off
+                ;; at `length` fails the whole turn.
+                (and thinking-only? forced?) floor-max-tokens
+                (not thinking-only?)         (assoc :thinking {:type (if thinking? "enabled" "disabled")})
+                prompt-cache-key             (assoc :prompt_cache_key prompt-cache-key)))))
 
 (mu/defn moonshot-raw
   "Perform a streaming request to the Moonshot Chat Completions API.

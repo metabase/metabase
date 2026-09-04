@@ -58,6 +58,7 @@
 
 (defn reasoning-model?
   "Whether the deployment behind a `{family}/{deployment}` model string streams reasoning.
+
   Deployment names are admin-chosen free text, so this is best-effort by name — and symmetric
   with the request body, which derives its thinking config from the same string. A deployment
   whose name resembles a reasoning model while serving a different one gets reasoning request
