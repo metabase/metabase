@@ -23,14 +23,13 @@ import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { addRemappings, getMetadata } from "metabase/metadata-store";
+import { addRemappings } from "metabase/metadata-store";
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,
   fetchParameterValues,
 } from "metabase/parameters/actions";
-import { connect, useDispatch } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import { useDispatch } from "metabase/redux";
 import {
   Autocomplete,
   Loader,
@@ -79,16 +78,6 @@ import {
 const MAX_SEARCH_RESULTS = 100;
 const COMBOBOX_WIDTH = 364;
 const DROPDOWN_WIDTH = 314;
-
-function mapStateToProps(
-  state: State,
-  { fields = [] }: { fields: ParameterField[] },
-) {
-  const metadata = getMetadata(state);
-  return {
-    fields: fields.map((field) => metadata.field(field.id) || field),
-  };
-}
 
 export interface IFieldValuesWidgetProps {
   maxResults?: number;
@@ -475,9 +464,7 @@ export const FieldValuesWidget = ExplicitSize<IFieldValuesWidgetProps>()(
 );
 
 // eslint-disable-next-line import/no-default-export
-export default connect(mapStateToProps, null, null, { forwardRef: true })(
-  FieldValuesWidget,
-);
+export default FieldValuesWidget;
 
 const LoadingState = () => (
   <div
