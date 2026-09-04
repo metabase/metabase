@@ -7,12 +7,12 @@ import { FieldSet } from "metabase/common/components/FieldSet";
 import { Link } from "metabase/common/components/Link";
 import { getMetadata } from "metabase/metadata-store";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
+import { useSelector } from "metabase/redux";
 import {
+  SegmentEditor,
   getSegmentQuery,
   getSegmentQueryDefinition,
-} from "metabase/querying/segments/utils";
-import { useSelector } from "metabase/redux";
+} from "metabase/segments";
 import { Alert, Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";

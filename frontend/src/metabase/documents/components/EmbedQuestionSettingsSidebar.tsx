@@ -8,6 +8,7 @@ import {
   ActionIcon,
   Box,
   Button,
+  Ellipsified,
   Group,
   Icon,
   Loader,
@@ -130,9 +131,14 @@ export const EmbedQuestionSettingsSidebar = ({
   return (
     <Box className={S.container}>
       <Box className={S.header}>
-        <Group w="100%" justify="space-between" align="flex-start">
-          <Group align="center" p="lg">
-            <Text size="md" fw="bold">{t`Visualize as`}</Text>
+        <Group
+          w="100%"
+          wrap="nowrap"
+          justify="space-between"
+          align="flex-start"
+        >
+          <Group wrap="nowrap" miw={0} flex={1} align="center" p="lg">
+            <Text size="md" fw="bold" flex="none">{t`Visualize as`}</Text>
             <Menu position="bottom-start">
               <Menu.Target>
                 <Button
@@ -148,8 +154,9 @@ export const EmbedQuestionSettingsSidebar = ({
                     ) : null
                   }
                   justify="space-between"
+                  miw={0}
                 >
-                  {selectedElem?.label}
+                  <Ellipsified>{selectedElem?.label}</Ellipsified>
                 </Button>
               </Menu.Target>
               <Menu.Dropdown>

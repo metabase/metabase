@@ -1117,24 +1117,17 @@
    [:ref ::children]])
 
 (mu/defn descendants-flat :- [:sequential CollectionWithLocationAndIDOrRoot]
-  "Return all descendant collections of a `collection`, including children, grandchildren, and so forth."
-  [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
-  (or
-   (collections.db/descendant-summaries-where
-    (apply
-     vector
-     :and
-     [:like :location (str (children-location collection) "%")]
-     ;; Only return the Personal Collection belonging to the Current
-     ;; User, regardless of whether we should actually be allowed to see
-     ;; it (e.g., admins have perms for all Collections). This is done
-     ;; to keep the Root Collection View for admins from getting crazily
-     ;; cluttered with Personal Collections belonging to other users
-     [:or
-      [:= :personal_owner_id nil]
-      [:= :personal_owner_id api/*current-user-id*]]
-     additional-honeysql-where-clauses))
-   []))
+  "Return all descendant collections of a `collection`, including children, grandchildren, and so forth. Excludes
+  other users' Personal Collections, regardless of whether we should actually be allowed to see them (e.g. admins
+  have perms for all Collections) -- this is done to keep the Root Collection View for admins from getting crazily
+  cluttered with Personal Collections belonging to other users. `archived?`, if given (true or false), restricts
+  to Collections with that archived status. `additional-honeysql-where-clauses` are for permission-filter builders
+  like [[visible-collection-filter-clause]]."
+  ([collection :- CollectionWithLocationAndIDOrRoot]
+   (descendants-flat collection nil))
+  ([collection :- CollectionWithLocationAndIDOrRoot, archived? :- [:maybe :boolean], & additional-honeysql-where-clauses]
+   (collections.db/descendant-summaries
+    (children-location collection) api/*current-user-id* archived? additional-honeysql-where-clauses)))
 
 (mu/defn descendants-flat-for :- [:sequential CollectionWithLocationAndIDOrRoot]
   "Like [[descendants-flat]], but returns the descendants of *any* of
@@ -1160,10 +1153,10 @@
 
   where each letter represents a Collection, and the arrows represent values of its respective `:children`
   set."
-  [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
+  [collection :- CollectionWithLocationAndIDOrRoot]
   ;; first, fetch all the descendants of the `collection`, and build a map of location -> children. This will be used
   ;; so we can fetch the immediate children of each Collection
-  (let [location->children (group-by :location (apply descendants-flat collection additional-honeysql-where-clauses))
+  (let [location->children (group-by :location (descendants-flat collection))
         ;; Next, build a function to add children to a given `coll`. This function will recursively call itself to add
         ;; children to each child
         add-children       (fn add-children [coll]

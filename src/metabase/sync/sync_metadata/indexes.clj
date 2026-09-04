@@ -38,10 +38,7 @@
         (doseq [field-id adding]
           (log/infof "Marking Field %d as indexed" field-id))
         (if (or (seq adding) (seq removing))
-          (do (sync.db/set-table-fields-indexed! (:id table)
-                                                 (if (seq indexed-field-ids)
-                                                   [:case [:in :id indexed-field-ids] true :else false]
-                                                   false))
+          (do (sync.db/set-table-fields-indexed! (:id table) indexed-field-ids)
               {:total-indexes   (count indexed-field-ids)
                :added-indexes   (count adding)
                :removed-indexes (count removing)})
