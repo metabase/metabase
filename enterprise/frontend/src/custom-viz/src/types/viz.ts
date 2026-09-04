@@ -120,7 +120,18 @@ export type CustomVisualizationProps<
   series: Series;
   settings: CustomVisualizationSettings<TSettings>;
   renderingContext: RenderingContext;
+
+  /**
+   * Call with a {@link ClickObject} to open the drill-through popover for a data point.
+   * Call with `null` to close an open popover, e.g. when the same element is clicked again or the chart scrolls.
+   */
   onClick: (clickObject: ClickObject | null) => void;
+
+  /**
+   * Call with a {@link HoverObject} to show a tooltip for a data point.
+   * Call with `null` or no argument to hide it, e.g. on mouse leave. Hiding is deferred until the next
+   * tick so moving between elements doesn't flicker.
+   */
   onHover: (hoverObject?: HoverObject | null) => void;
 };
 

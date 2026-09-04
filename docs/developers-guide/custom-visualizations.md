@@ -182,8 +182,8 @@ export default createVisualization;
 | `width`            | `number \| null`                         | Container width in pixels. `null` until the first measure — render `null` to avoid a flash.                                      |
 | `height`           | `number \| null`                         | Container height in pixels. `null` until the first measure.                                                                      |
 | `renderingContext` | `RenderingContext`                       | Host helpers for colors, text measurement, and the current color scheme — see [Formatting and theming](#formatting-and-theming). |
-| `onClick`          | `(clickObject) => void`                  | Call to trigger drill-through actions on a data point.                                                                           |
-| `onHover`          | `(hoverObject?) => void`                 | Call to show a tooltip on a data point.                                                                                          |
+| `onClick`          | `(clickObject) => void`                  | Call to trigger drill-through actions on a data point. Pass `null` to close the drill-through popover.                           |
+| `onHover`          | `(hoverObject?) => void`                 | Call to show a tooltip on a data point. Pass `null` to hide it.                                                                  |
 
 ## Handling query results
 
@@ -234,7 +234,7 @@ Your component receives `onClick` and `onHover`. Call them with an object that i
 />
 ```
 
-Pass `null` to `onHover` to dismiss the tooltip. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell. It can take a `data` array of `{ col, value }` pairs (one per column) when an action needs every column's value.
+Pass `null` to `onHover` to dismiss the tooltip. Metabase waits a tick before hiding it, so moving between adjacent elements doesn't flicker. Pass `null` to `onClick` to close the drill-through popover, for example when the same element is clicked again or when your chart scrolls. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell. It can take a `data` array of `{ col, value }` pairs (one per column) when an action needs every column's value.
 
 The hover object accepts more than `element` and `data`. Optional fields like `index` and `seriesIndex` (to highlight a series in the legend) and `value`, `column`, `dimensions`, and `event` (for a simpler single-point tooltip) are available when you need them.
 
