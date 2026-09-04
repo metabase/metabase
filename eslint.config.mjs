@@ -1279,6 +1279,27 @@ const configs = [
       ],
     },
   },
+  // ============================================
+  // PLUGIN SLOT DECLARATIONS
+  // ============================================
+  {
+    // definePluginSlot registers a slot's reset wherever the slot is declared, so a module's plugins file is where a reader finds its slots.
+    files: [
+      "frontend/src/**/*.{ts,tsx,js,jsx}",
+      "enterprise/frontend/src/**/*.{ts,tsx,js,jsx}",
+    ],
+    ignores: [
+      // metabase/api sits below metabase/plugins, so PLUGIN_API is declared and reset by hand there.
+      "frontend/src/metabase/api/client/request-handlers.ts",
+      // TODO(no-plugin-slot-outside-plugins-files): these two predate the rule and are not reset by reinitialize().
+      // They move to a plugins file when their modules adopt definePluginSlot, and these ignores go with them.
+      "frontend/src/metabase/embedding/embedding-iframe-sdk/plugin.ts",
+      "frontend/src/embedding-sdk-bundle/store/auth/auth.ts",
+    ],
+    rules: {
+      "metabase/no-plugin-slot-outside-plugins-files": "error",
+    },
+  },
 ];
 
 if (shouldLintCssModules) {
