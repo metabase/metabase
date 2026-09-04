@@ -118,6 +118,39 @@
   [:map
    [:target_collection [:maybe (ms/InstanceOf :model/Collection)]]])
 
+(def ^:private PublishingUser
+  [:map {:closed true}
+   [:id ms/PositiveInt]
+   [:common_name :string]])
+
+(def ^:private PublishingInfo
+  [:map {:closed true}
+   [:published_at ms/TemporalInstant]
+   [:published_by [:maybe PublishingUser]]])
+
+(defn- publishing-info
+  [table-id]
+  (when-let [{:keys [timestamp topic], user-id :user_id}
+             ;; Serialization can restore `is_published` without a publish event, so a later unpublish
+             ;; invalidates older publishing details.
+             (data-studio.db/latest-table-publishing-event table-id)]
+    (when (= topic :table-publish)
+      {:published_at timestamp
+       :published_by (when user-id
+                       (some-> (data-studio.db/user-name-and-email user-id)
+                               (select-keys [:id :common_name])))})))
+
+(api.macros/defendpoint :get "/:id/publishing-info" :- [:maybe PublishingInfo]
+  "Return the latest valid publishing information for a published table, or no content when unavailable."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   _body
+   _request]
+  (api/check-data-analyst)
+  (let [table (api/read-check :model/Table id)]
+    (when (:is_published table)
+      (publishing-info id))))
+
 (defn- can-publish?
   "Publishing a table means that it's now query-able by a new set of people. So we should not allow you to publish a
   table if you don't *already* have permissions to query it - otherwise, maybe you can just publish it to circumvent your
