@@ -1,42 +1,82 @@
-name: CI for PR Review ENV
+name: Deploy PR Environment
 run-name: Building Dynamic PR Environment for ${{ github.ref_name }} by @${{ github.actor }}
 
 on:
-  workflow_call:
-    inputs:
-      self_hosting:
-        description: "Deploy self-hosting stack"
-        required: false
-        type: boolean
-        default: false
-      analytics_dev_mode:
-        description: "Enable analytics development mode"
-        required: false
-        type: boolean
-        default: false
-      stats_dump:
-        description: "Load a recent app DB stats dump on first env creation"
-        required: false
-        type: boolean
-        default: false
+  pull_request:
+    types: [ opened, labeled, synchronize, reopened ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+  pull-requests: write
+
 jobs:
   build:
-    if: github.event.pull_request.head.repo.full_name == github.repository
-    name: Build Metabase Docker image
-    uses: ./.github/workflows/build-private-ee-docker-image.yml
-    secrets:
-      PR_ENV_IAM_ROLE: ${{ secrets.PR_ENV_IAM_ROLE }}
-      PR_ENV_AWS_ACCOUNT_ID: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}
-  deploy_pr:
+    if: >-
+      ${{
+        github.event.pull_request.head.repo.full_name == 'metabase/metabase' &&
+        (
+          contains(github.event.pull_request.labels.*.name, 'PR-Env') ||
+          contains(github.event.pull_request.labels.*.name, 'PR-Env-self-hosting') ||
+          contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev') ||
+          contains(github.event.pull_request.labels.*.name, 'PR-Env-Stats-Dump')
+        )
+      }}
+    uses: ./.github/workflows/uberjar.yml
+    secrets: inherit
+
+  containerize:
     needs: [build]
+    uses: ./.github/workflows/containerize-jar.yml
+    secrets: inherit
+    with:
+      edition: ee
+      registry: ecr
+      repo: metabase-enterprise
+      tag: ${{ github.event.pull_request.head.sha }}
+      commit: ${{ github.event.pull_request.head.sha }}
+      platforms: linux/amd64
+
+  deploy:
+    needs: [containerize]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: PR Review ENV
-    permissions:
-      id-token: write
-      contents: read
+    timeout-minutes: 60
+    outputs:
+      self_hosting: ${{ steps.label.outputs.self_hosting }}
+      analytics_dev_mode: ${{ steps.label.outputs.analytics_dev_mode }}
+      stats_dump: ${{ steps.label.outputs.stats_dump }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v6
+      - name: Resolve Labels
+        id: label
+        env:
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: | # bash
+          self_hosting=false
+          analytics_dev_mode=false
+          stats_dump=false
+
+          while IFS= read -r label; do
+            case "$label" in
+              PR-Env-self-hosting)  self_hosting=true ;;
+              PR-Env-analytics-dev) analytics_dev_mode=true ;;
+              PR-Env-Stats-Dump)    stats_dump=true ;;
+            esac
+          done < <(jq -r '.[]' <<< "$LABELS")
+
+          echo "self_hosting=${self_hosting} analytics_dev_mode=${analytics_dev_mode} stats_dump=${stats_dump}"
+          {
+            echo "self_hosting=${self_hosting}"
+            echo "analytics_dev_mode=${analytics_dev_mode}"
+            echo "stats_dump=${stats_dump}"
+          } >> "$GITHUB_OUTPUT"
       - name: Tailscale
         uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
         with:
@@ -75,7 +115,7 @@ jobs:
           PR_ENV_DB_NAME: ${{ secrets.PR_ENV_DB_NAME }}
       - name: Verify stats dump load status
         id: verify_stats_dump
-        if: ${{ inputs.stats_dump }}
+        if: ${{ steps.label.outputs.stats_dump == 'true' }}
         run: |
           export PGPASSWORD="${PR_ENV_DB_PASSWORD}"
           ADMIN="psql -h ${PR_ENV_DB_HOST} -U ${PR_ENV_DB_USER} -d ${PR_ENV_DB_NAME}"
@@ -98,7 +138,7 @@ jobs:
           PR_ENV_DB_NAME: ${{ secrets.PR_ENV_DB_NAME }}
       - name: Locate latest stats dump in S3
         id: locate_stats_dump
-        if: ${{ inputs.stats_dump && steps.verify_stats_dump.outputs.should_load == 'true' }}
+        if: ${{ steps.label.outputs.stats_dump == 'true' && steps.verify_stats_dump.outputs.should_load == 'true' }}
         env:
           STATS_DUMP_BUCKET: metabase-cloud-stats-backups-coredev
         run: |
@@ -113,7 +153,7 @@ jobs:
           echo "Latest dump: $LATEST_KEY"
           echo "key=$LATEST_KEY" >> "$GITHUB_OUTPUT"
       - name: Download stats dump
-        if: ${{ inputs.stats_dump && steps.verify_stats_dump.outputs.should_load == 'true' }}
+        if: ${{ steps.label.outputs.stats_dump == 'true' && steps.verify_stats_dump.outputs.should_load == 'true' }}
         env:
           STATS_DUMP_BUCKET: metabase-cloud-stats-backups-coredev
         run: |
@@ -123,7 +163,7 @@ jobs:
           echo "Downloaded $(stat -c%s /tmp/stats-dump.dump) bytes"
           file /tmp/stats-dump.dump
       - name: Prepare app database schema
-        if: ${{ inputs.stats_dump && steps.verify_stats_dump.outputs.should_load == 'true' }}
+        if: ${{ steps.label.outputs.stats_dump == 'true' && steps.verify_stats_dump.outputs.should_load == 'true' }}
         run: |
           PGPASSWORD="${PR_ENV_DB_PASSWORD}" psql \
             -h "${PR_ENV_DB_HOST}" \
@@ -136,7 +176,7 @@ jobs:
           PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
           PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
       - name: Restore stats dump into app database
-        if: ${{ inputs.stats_dump && steps.verify_stats_dump.outputs.should_load == 'true' }}
+        if: ${{ steps.label.outputs.stats_dump == 'true' && steps.verify_stats_dump.outputs.should_load == 'true' }}
         run: |
           set +e
           echo "::group::pg_restore / pg client versions"
@@ -173,7 +213,7 @@ jobs:
           PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
           PR_ENV_DB_NAME: ${{ secrets.PR_ENV_DB_NAME }}
       - name: Mark database as stats-dump loaded
-        if: ${{ inputs.stats_dump && steps.verify_stats_dump.outputs.should_load == 'true' }}
+        if: ${{ steps.label.outputs.stats_dump == 'true' && steps.verify_stats_dump.outputs.should_load == 'true' }}
         run: |
           PGPASSWORD="${PR_ENV_DB_PASSWORD}" psql \
             -h "${PR_ENV_DB_HOST}" \
@@ -185,22 +225,22 @@ jobs:
           PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
           PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
       - name: Download Deployment YAML template
-        if: ${{ !inputs.self_hosting }}
+        if: ${{ steps.label.outputs.self_hosting != 'true' }}
         run: aws s3 cp s3://metabase-pr-env/metabase.yml.tmpl ./metabase.yml.tmpl
       - name: Render Deployment YAML
-        if: ${{ !inputs.self_hosting }}
+        if: ${{ steps.label.outputs.self_hosting != 'true' }}
         uses: nowactions/envsubst@c4b8e3977354d294659a7ec164279ce8fba5c2e1 # v1.0.1
         with:
           input: ./metabase.yml.tmpl
           output: ./metabase.yml
         env:
-          IMAGE_TAG: ${{ needs.build.outputs.tag }}
+          IMAGE_TAG: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.number }}
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          MB_ANALYTICS_DEV_MODE: ${{ inputs.analytics_dev_mode && 'true' || 'false' }}
+          MB_ANALYTICS_DEV_MODE: ${{ steps.label.outputs.analytics_dev_mode }}
       - name: Inject stats-dump env vars into Deployment YAML
-        if: ${{ !inputs.self_hosting && inputs.stats_dump }}
+        if: ${{ steps.label.outputs.self_hosting != 'true' && steps.label.outputs.stats_dump == 'true' }}
         env:
           MB_ENCRYPTION_SECRET_KEY: ${{ secrets.PR_ENV_STATS_DUMP_ENCRYPTION_KEY }}
         run: |
@@ -242,20 +282,20 @@ jobs:
                 namespace: default
                 user: oidc-token
       - name: Deploy PR Review ENV
-        if: ${{ !inputs.self_hosting }}
+        if: ${{ steps.label.outputs.self_hosting != 'true' }}
         run: |
           kubectl apply -f ./metabase.yml
       - name: Download Helm values template (self-hosting)
-        if: ${{ inputs.self_hosting }}
+        if: ${{ steps.label.outputs.self_hosting == 'true' }}
         run: aws s3 cp s3://metabase-pr-env/values.yaml.tmpl ./values.yaml.tmpl
       - name: Render Helm values (self-hosting)
-        if: ${{ inputs.self_hosting }}
+        if: ${{ steps.label.outputs.self_hosting == 'true' }}
         uses: nowactions/envsubst@c4b8e3977354d294659a7ec164279ce8fba5c2e1 # v1.0.1
         with:
           input: ./values.yaml.tmpl
           output: ./values.yaml
         env:
-          IMAGE_TAG: ${{ needs.build.outputs.tag }}
+          IMAGE_TAG: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.number }}
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -266,15 +306,15 @@ jobs:
           DB_USERNAME: ${{ secrets.PR_ENV_DB_USER }}
           DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
           CONFIG: ${{ secrets.PR_ENV_CONFIG }}
-          MB_ANALYTICS_DEV_MODE: ${{ inputs.analytics_dev_mode && 'true' || 'false' }}
+          MB_ANALYTICS_DEV_MODE: ${{ steps.label.outputs.analytics_dev_mode }}
 
       - name: Setup Helm
-        if: ${{ inputs.self_hosting }}
+        if: ${{ steps.label.outputs.self_hosting == 'true' }}
         uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
         with:
           version: "latest"
       - name: Login to Quay.io
-        if: ${{ inputs.self_hosting }}
+        if: ${{ steps.label.outputs.self_hosting == 'true' }}
         run: |
           helm registry login quay.io \
             --username "${QUAY_USERNAME}" \
@@ -283,7 +323,7 @@ jobs:
           QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
           QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
       - name: Deploy PR Review ENV (self-hosting)
-        if: ${{ inputs.self_hosting }}
+        if: ${{ steps.label.outputs.self_hosting == 'true' }}
         run: |
           helm upgrade --install hosting-pr${{ github.event.number }} \
             oci://quay.io/enterprisemetabase/chart-metabase-stack \
@@ -295,7 +335,7 @@ jobs:
   preview_links:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
-    needs: [deploy_pr]
+    needs: [deploy]
     steps:
       - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
@@ -305,4 +345,4 @@ jobs:
             ✅ Preview:
                 https://pr${{ github.event.number }}.coredev.metabase.com
             🗒️ [login instructions](https://www.notion.so/metabase/Ephemeral-PR-Environments-c74a3710c87a460dbf4fc0007a001458)
-            📦 Deployment type: ${{ inputs.self_hosting && 'PR-Env-self-hosting' || (inputs.analytics_dev_mode && 'PR-Env-analytics-dev' || (inputs.stats_dump && 'PR-Env-Stats-Dump' || 'PR-Env')) }}
+            📦 Deployment type: ${{ needs.deploy.outputs.self_hosting == 'true' && 'PR-Env-self-hosting' || (needs.deploy.outputs.analytics_dev_mode == 'true' && 'PR-Env-analytics-dev' || (needs.deploy.outputs.stats_dump == 'true' && 'PR-Env-Stats-Dump' || 'PR-Env')) }}
