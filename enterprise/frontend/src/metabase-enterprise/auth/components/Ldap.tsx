@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import { FormTextInput } from "metabase/forms";
 import { useAdminSetting } from "metabase/settings";
-import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
 import { SettingsSection } from "metabase/settings-components/SettingsSection";
 import { provisioningOptions } from "metabase-enterprise/auth/utils";
