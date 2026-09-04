@@ -693,6 +693,8 @@
                                 :table_id           (mt/id :venues)
                                 :display_name       "Category ID"
                                 :base_type          "type/Integer"
+                                :effective_type     "type/Integer"
+                                :settings           nil
                                 :name               "CATEGORY_ID"
                                 :semantic_type      "type/FK"
                                 :has_field_values   "none"
@@ -715,6 +717,8 @@
                                  :table_id           (mt/id :venues)
                                  :display_name       "Category ID"
                                  :base_type          "type/Integer"
+                                 :effective_type     "type/Integer"
+                                 :settings           nil
                                  :name               "CATEGORY_ID"
                                  :semantic_type      "type/FK"
                                  :has_field_values   "none"
@@ -758,6 +762,8 @@
                                 :table_id           (mt/id :venues)
                                 :display_name       "Category ID"
                                 :base_type          "type/Integer"
+                                :effective_type     "type/Integer"
+                                :settings           nil
                                 :name               "CATEGORY_ID"
                                 :semantic_type      "type/FK"
                                 :has_field_values   "none"
@@ -786,6 +792,8 @@
                                  :table_id           (mt/id :venues)
                                  :display_name       "Category ID"
                                  :base_type          "type/Integer"
+                                 :effective_type     "type/Integer"
+                                 :settings           nil
                                  :name               "CATEGORY_ID"
                                  :semantic_type      "type/FK"
                                  :has_field_values   "none"
@@ -823,6 +831,8 @@
                                      :table_id           (mt/id :venues)
                                      :display_name       "Category ID"
                                      :base_type          "type/Integer"
+                                     :effective_type     "type/Integer"
+                                     :settings           nil
                                      :name               "CATEGORY_ID"
                                      :semantic_type      "type/FK"
                                      :has_field_values   "none"
