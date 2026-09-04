@@ -311,6 +311,12 @@
                                   (not (premium-features/enable-advanced-permissions?))
                                   (sql.helpers/where [:not= :group_id (u/the-id (perms/data-analyst-group))])))))
 
+(defn- check-data-app-group-feature!
+  [group-id]
+  (when (t2/exists? :model/PermissionsGroup :id group-id :is_data_app_group true)
+    (premium-features/assert-has-feature :data-apps-preview (tru "Data Apps"))
+    true))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -325,6 +331,9 @@
                                                    [:is_group_manager {:default false} [:maybe :boolean]]]]
   (let [is_group_manager (boolean is_group_manager)]
     (perms/check-manager-of-group group_id)
+    (when (check-data-app-group-feature! group_id)
+      (api/check-400 (t2/exists? :model/User :id user_id :is_active true)
+                     (tru "Deactivated users cannot be added to data apps.")))
     (when is_group_manager
       ;; enable `is_group_manager` require advanced-permissions enabled
       (perms/check-advanced-permissions-enabled :group-manager)
@@ -372,6 +381,7 @@
                           [:group-id ms/PositiveInt]]]
   (perms/check-manager-of-group group-id)
   (api/check-404 (t2/exists? :model/PermissionsGroup :id group-id))
+  (check-data-app-group-feature! group-id)
   (api/check-400 (not= group-id (u/the-id (perms/admin-group))))
   (perms/remove-all-users-from-group! group-id)
   api/generic-204-no-content)
@@ -387,5 +397,6 @@
   (let [membership (t2/select-one :model/PermissionsGroupMembership :id id)]
     (api/check-404 membership)
     (perms/check-manager-of-group (:group_id membership))
+    (check-data-app-group-feature! (:group_id membership))
     (perms/remove-user-from-group! (:user_id membership) (:group_id membership))
     api/generic-204-no-content))

@@ -192,13 +192,11 @@
     (select-keys app [:name :display_name])))
 
 (defn- data-app-list-response
-  [app]
+  [warning-group-ids app]
   (cond-> (data-app-response app)
     api/*is-superuser?*
     (assoc :has_user_permission_warnings
-           (data-app.user-access/group-has-permission-warnings?
-            (:table_ids app)
-            (:permission_group_id app)))))
+           (contains? warning-group-ids (:permission_group_id app)))))
 
 (defn- read-check-data-app
   "Check whether the current user can access a data app. Viewing requires read access to the app's
@@ -219,12 +217,14 @@
    to return only enabled apps without sync errors."
   [_route-params
    {:keys [available]} :- [:map [:available {:optional true} [:maybe :boolean]]]]
-  (->> (data-app/select-non-blob (cond-> {:order-by [[:display_name :asc]]}
-                                   available (assoc :where [:and
-                                                            [:= :enabled true]
-                                                            [:= :sync_error nil]])))
-       (map api/read-check)
-       (mapv data-app-list-response)))
+  (let [apps (->> (data-app/select-non-blob (cond-> {:order-by [[:display_name :asc]]}
+                                              available (assoc :where [:and
+                                                                       [:= :enabled true]
+                                                                       [:= :sync_error nil]])))
+                  (mapv api/read-check))
+        warning-group-ids (when api/*is-superuser?*
+                            (data-app.user-access/groups-with-permission-warnings apps))]
+    (mapv (partial data-app-list-response warning-group-ids) apps)))
 
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows
 ;; slashes inside a segment, so `/:slug` would otherwise swallow `/x/bundle`.
@@ -276,8 +276,10 @@
    {user-ids :user_ids} :- PermissionWarningsRequest]
   (api/check-superuser)
   (let [app   (api/check-404 (data-app/select-one-non-blob :name slug))
-        users (t2/select [:model/User :id :is_superuser :tenant_id] :id [:in user-ids])]
+        users (t2/select [:model/User :id :is_superuser :is_active :tenant_id] :id [:in user-ids])]
     (api/check-404 (= (count users) (count user-ids)))
+    (api/check-400 (every? :is_active users)
+                   (tru "Deactivated users cannot be added to data apps."))
     (api/check-400 (every? (comp nil? :tenant_id) users)
                    (tru "Tenant users cannot be added to data apps."))
     (data-app.user-access/permission-warnings (:table_ids app) users)))

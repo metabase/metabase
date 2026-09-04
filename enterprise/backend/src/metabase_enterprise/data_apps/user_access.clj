@@ -1,7 +1,6 @@
 (ns metabase-enterprise.data-apps.user-access
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -22,9 +21,21 @@
                 :order-by [[:d.name :asc] [:t.schema :asc] [:t.display_name :asc]]})
     []))
 
-(defn- sandboxed-table-ids
-  [user-id]
-  (into #{} (map :table_id) (sandbox.api.util/enforced-sandboxes-for-user user-id)))
+(defn- sandboxed-user-table-pairs
+  [user-ids table-ids]
+  (if (and (seq user-ids) (seq table-ids))
+    (into #{}
+          (map (juxt :user_id :table_id))
+          (t2/query {:select-distinct [[:pgm.user_id :user_id]
+                                       [:s.table_id :table_id]]
+                     :from [[:permissions_group_membership :pgm]]
+                     :join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]
+                            [:permissions_group :pg] [:= :pg.id :pgm.group_id]]
+                     :where [:and
+                             [:in :pgm.user_id user-ids]
+                             [:in :s.table_id table-ids]
+                             [:not :pg.is_data_app_group]]}))
+    #{}))
 
 (defn- unrestricted-user-table-pairs
   [user-ids table-ids]
@@ -50,14 +61,13 @@
     #{}))
 
 (defn- user-warning
-  [user tables unrestricted-pairs]
+  [user tables unrestricted-pairs sandboxed-pairs]
   (when-not (:is_superuser user)
-    (let [user-id       (:id user)
-          sandboxed-ids (sandboxed-table-ids user-id)
-          has-access?   (fn [{table-id :id}]
-                          (or (unrestricted-pairs [user-id table-id])
-                              (sandboxed-ids table-id)))
-          missing       (remove has-access? tables)]
+    (let [user-id     (:id user)
+          has-access? (fn [{table-id :id}]
+                        (or (unrestricted-pairs [user-id table-id])
+                            (sandboxed-pairs [user-id table-id])))
+          missing     (remove has-access? tables)]
       (when (seq missing)
         {:user_id        (:id user)
          :missing_tables (vec missing)}))))
@@ -68,18 +78,48 @@
   [table-ids users]
   (if (seq table-ids)
     (let [tables             (table-details table-ids)
-          unrestricted-pairs (unrestricted-user-table-pairs (map :id users) table-ids)]
-      (into [] (keep #(user-warning % tables unrestricted-pairs)) users))
+          user-ids           (map :id users)
+          unrestricted-pairs (unrestricted-user-table-pairs user-ids table-ids)
+          sandboxed-pairs    (sandboxed-user-table-pairs user-ids table-ids)]
+      (into [] (keep #(user-warning % tables unrestricted-pairs sandboxed-pairs)) users))
     []))
 
-(defn group-has-permission-warnings?
-  "Whether any member of `group-id` cannot access every table in `table-ids`."
-  [table-ids group-id]
-  (if (and (seq table-ids) group-id)
-    (let [user-ids (t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id group-id)
-          users    (if (seq user-ids)
-                     (->> (t2/select [:model/User :id :is_superuser :email] :id [:in user-ids])
-                          (remove #(str/ends-with? (:email %) "@api-key.invalid")))
-                     [])]
-      (boolean (seq (permission-warnings table-ids users))))
-    false))
+(defn- active-group-members
+  [group-ids]
+  (if (seq group-ids)
+    (->> (t2/query {:select [[:pgm.group_id :group_id]
+                             [:u.id :id]
+                             :u.is_superuser
+                             :u.email]
+                    :from [[:permissions_group_membership :pgm]]
+                    :join [[:core_user :u] [:= :u.id :pgm.user_id]]
+                    :where [:and
+                            [:in :pgm.group_id group-ids]
+                            [:= :u.is_active true]]})
+         (remove #(str/ends-with? (:email %) "@api-key.invalid")))
+    []))
+
+(defn- group-has-permission-warning?
+  [users table-ids unrestricted-pairs sandboxed-pairs]
+  (let [tables (mapv (fn [table-id] {:id table-id}) table-ids)]
+    (boolean (some #(user-warning % tables unrestricted-pairs sandboxed-pairs) users))))
+
+(defn groups-with-permission-warnings
+  "The permission group IDs for apps with an active member who cannot access every dependent table."
+  [apps]
+  (let [apps               (filter #(and (:permission_group_id %) (seq (:table_ids %))) apps)
+        group-ids          (into #{} (map :permission_group_id) apps)
+        memberships        (active-group-members group-ids)
+        group->users       (group-by :group_id memberships)
+        user-ids           (into #{} (map :id) memberships)
+        table-ids          (into #{} (mapcat :table_ids) apps)
+        unrestricted-pairs (unrestricted-user-table-pairs user-ids table-ids)
+        sandboxed-pairs    (sandboxed-user-table-pairs user-ids table-ids)]
+    (into #{}
+          (keep (fn [{:keys [permission_group_id table_ids]}]
+                  (when (group-has-permission-warning? (group->users permission_group_id)
+                                                       table_ids
+                                                       unrestricted-pairs
+                                                       sandboxed-pairs)
+                    permission_group_id)))
+          apps)))

@@ -3178,7 +3178,7 @@
    :uses #{premium-features}}
 
   enterprise/data-apps
-  {:team "Gadget"
+  {:team "Embedding"
    :api  #{metabase-enterprise.data-apps.api
            metabase-enterprise.data-apps.init
            metabase-enterprise.data-apps.sync}

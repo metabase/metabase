@@ -4,7 +4,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-09-03T00:00:00
       author: poom
-      comment: Store synchronized data app table dependencies
+      comment: Store table ids used by the last successful resource sync in data apps
       changes:
         - addColumn:
             tableName: data_app
@@ -13,7 +13,7 @@ databaseChangeLog:
                   name: table_ids
                   type: ${text.type}
                   defaultValue: "[]"
-                  remarks: JSON array of table IDs used by the last successful resource synchronization
+                  remarks: JSON array of table ids used by the last successful resource sync
                   constraints:
                     nullable: false
       rollback:

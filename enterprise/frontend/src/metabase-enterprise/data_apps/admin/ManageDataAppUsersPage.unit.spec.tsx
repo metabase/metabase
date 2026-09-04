@@ -240,6 +240,7 @@ describe("ManageDataAppUsersPage", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: "Add users" }),
     );
+
     expect(await screen.findByText("Another User")).toBeInTheDocument();
     await userEvent.click(await screen.findByText("Pending User"));
 
