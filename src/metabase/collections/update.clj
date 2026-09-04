@@ -5,6 +5,7 @@
   module-linter's non-rest -> rest barrier, mirroring `metabase.collections.create`."
   (:require
    [metabase.api.common :as api]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    ;; `metabase.notification.card`, not `notification.core`: `core` pulls the payload/send chain,
@@ -40,7 +41,7 @@
   users just as if they had be archived individually via the card API."
   [& {:keys [collection-before-update collection-updates actor]}]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
-    (doseq [card (t2/select :model/Card :collection_id (u/the-id collection-before-update))]
+    (doseq [card (collections.db/cards-in-collection (u/the-id collection-before-update))]
       (notification.card/delete-card-notifications-and-notify! :event/card-update.notification-deleted.card-archived actor card))))
 
 (defn- move-collection!
@@ -52,7 +53,7 @@
     (let [orig-location (:location collection-before-update)
           new-parent-id (:parent_id collection-updates)
           new-parent    (if new-parent-id
-                          (t2/select-one [:model/Collection :location :id :type] :id new-parent-id)
+                          (collections.db/collection-location-columns new-parent-id)
                           collection/root-collection)
           new-location  (collection/children-location new-parent)]
       ;; check and make sure we're actually supposed to be moving something
@@ -114,9 +115,9 @@
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
       (when (seq updates)
-        (t2/update! :model/Collection id updates)))
+        (collections.db/update-collection! id updates)))
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
-    (u/prog1 (t2/select-one :model/Collection :id id)
+    (u/prog1 (collections.db/collection id)
       (events/publish-event! :event/collection-update {:object <> :user-id api/*current-user-id*})
       (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))))
