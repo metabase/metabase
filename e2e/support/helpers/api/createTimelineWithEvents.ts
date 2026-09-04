@@ -15,12 +15,11 @@ export const createTimelineWithEvents = ({
   events,
 }: {
   timeline: CreateTimelineRequest;
-  events: Omit<CreateTimelineEventRequest, "timeline_id">[];
-}): {
+  events: Partial<Omit<CreateTimelineEventRequest, "timeline_id">>[];
+}): Cypress.Chainable<{
   timeline: Timeline;
   events: TimelineEvent[];
-} => {
-  // @ts-expect-error - Cypress typings don't account for what happens in then() here
+}> => {
   return createTimeline(timeline).then(({ body: timeline }) => {
     return cypressWaitAll(
       events.map((query) =>
