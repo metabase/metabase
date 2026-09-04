@@ -218,8 +218,9 @@
       (.getProtectionDomain)
       (.getCodeSource)
       (.getLocation)
-      (.toURI) ;; avoid problems with special characters in path.
-      (.getPath)))
+      (.toURI)
+      (Paths/get)
+      (str)))
 
 (defn find-in-current-jar
   "Find matching files in the current jar. See
