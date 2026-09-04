@@ -1,24 +1,63 @@
+import type { EChartsType } from "echarts/core";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { Card, Center, Text } from "metabase/ui";
-import { useAreAllDataPointsOutOfRange } from "metabase/visualizations/visualizations/CartesianChart/use-data-points-visible";
-import type { BaseCartesianChartModel } from "metabase/viz-core";
-import type { VisualizationSettings } from "metabase-types/api";
+import {
+  DATA_VISIBILITY_ACTION,
+  DATA_VISIBILITY_EVENT,
+  isDataVisibilityResult,
+} from "metabase/viz-core";
 
 export interface DataPointsVisiblePopoverProps {
   isDashboard: boolean;
   isVisualizer: boolean;
-  chartModel: BaseCartesianChartModel;
-  settings: VisualizationSettings;
+  chartInstance: EChartsType | undefined;
 }
+
+const useRenderedDataVisibility = (chartInstance: EChartsType | undefined) => {
+  const [anythingRendered, setAnythingRendered] = useState<boolean | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!chartInstance) {
+      return;
+    }
+
+    const handleResult = (event: unknown) => {
+      if (isDataVisibilityResult(event)) {
+        setAnythingRendered(event.anythingRendered);
+      }
+    };
+
+    const requestResult = () => {
+      if (!chartInstance.isDisposed()) {
+        chartInstance.dispatchAction({ type: DATA_VISIBILITY_ACTION });
+      }
+    };
+
+    chartInstance.on(DATA_VISIBILITY_EVENT, handleResult);
+    chartInstance.on("rendered", requestResult);
+
+    requestResult();
+
+    return () => {
+      chartInstance.off(DATA_VISIBILITY_EVENT, handleResult);
+      chartInstance.off("rendered", requestResult);
+    };
+  }, [chartInstance]);
+
+  return anythingRendered;
+};
 
 export const DataPointsVisiblePopover = ({
   isDashboard,
   isVisualizer,
-  chartModel,
-  settings,
+  chartInstance,
 }: DataPointsVisiblePopoverProps) => {
-  const allPointsHidden = useAreAllDataPointsOutOfRange(chartModel, settings);
+  const anythingRendered = useRenderedDataVisibility(chartInstance);
+  const allPointsHidden = anythingRendered === false;
 
   if (!allPointsHidden || isVisualizer) {
     return null;
