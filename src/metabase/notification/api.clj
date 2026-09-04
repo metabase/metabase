@@ -14,7 +14,8 @@
   list-notifications
   get-notification
   publish-notification-update!
-  unsubscribe-user!])
+  unsubscribe-user!
+  update-notification!])
 
 (def ^{:arglists '([request respond raise])} notification-routes
   "`/api/notification` routes."
