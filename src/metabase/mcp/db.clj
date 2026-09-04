@@ -8,6 +8,13 @@
   (:require
    [toucan2.core :as t2]))
 
+(defn select-one-by-id
+  "The `model` row with primary key `id`, or nil. `id` must already be an integer - ids arriving from an agent
+  are resolved to one before they reach here, so a string entity_id is a bug rather than a lookup."
+  [model id]
+  {:pre [(integer? id)]}
+  (t2/select-one model :id id))
+
 (defn insert-feedback!
   "Insert the McpFeedback `row`."
   [row]
