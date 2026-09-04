@@ -335,6 +335,22 @@
       (is (str/includes? msg "definition"))
       (is (not= "Internal error" msg)))))
 
+(deftest ^:parallel empty-definition-teaching-test
+  (testing "GHY-4146: an empty `definition` map — what a strict client sends when it fills every declared
+            property — is a teaching error, not an internal error"
+    (testing "create"
+      (let [msg (tool-error (call-tool! :crowberto write-scope "metric_write"
+                                        {:method "create" :name "metric-test empty definition"
+                                         :definition {}}))]
+        (is (str/includes? msg "definition"))
+        (is (not= "Internal error" msg))))
+    (testing "update"
+      (mt/with-temp [:model/Card {metric-id :id} {:type :metric :dataset_query (orders-count-query)}]
+        (let [msg (tool-error (call-tool! :crowberto write-scope "metric_write"
+                                          {:method "update" :id metric-id :definition {}}))]
+          (is (str/includes? msg "definition"))
+          (is (not= "Internal error" msg)))))))
+
 ;;; ---------------------------------------------- Query sources ---------------------------------------------------
 
 ;; not ^:parallel: creates rows through the tool; with-model-cleanup's id watermark is not parallel-safe

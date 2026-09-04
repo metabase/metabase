@@ -62,15 +62,22 @@
 (defn- normalize-definition
   "Normalize a numeric-ref query — hand-written MBQL 5, MBQL 4 (which normalizes into it), a
    resolved portable query, or a handle's stored query — into the canonical MBQL 5 the card layer
-   takes. Strict, so a malformed definition is a teaching error here rather than silently degrading
-   to `{}` on store; the result carries the metadata provider the card write checks require."
+   takes. Strict, so a malformed or empty definition is a teaching error here rather than silently
+   degrading to `{}` on store; the result carries the metadata provider the card write checks require."
   [definition]
-  (try
-    (lib-be/normalize-query nil definition {:strict? true})
-    (catch Exception e
+  (let [normalized (try
+                     (lib-be/normalize-query nil definition {:strict? true})
+                     (catch Exception e
+                       (common/throw-teaching-error
+                        (format "`definition` is not a valid MBQL query: %s %s"
+                                (common/ellipsize (ex-message e) 300) accepted-shapes))))]
+    ;; normalize-query short-circuits an empty query to `{}` before its strict validation runs, so
+    ;; an empty `definition` arrives here unvalidated instead of throwing above.
+    (when (empty? normalized)
       (common/throw-teaching-error
-       (format "`definition` is not a valid MBQL query: %s %s"
-               (common/ellipsize (ex-message e) 300) accepted-shapes)))))
+       (str "`definition` is empty. Pass the metric's query in it, or leave `definition` out of the "
+            "call entirely — on update that keeps the stored query as it is. " accepted-shapes)))
+    normalized))
 
 (defn- resolve-definition
   "Resolve the caller's query source to the query the metric card stores. Exactly one of
