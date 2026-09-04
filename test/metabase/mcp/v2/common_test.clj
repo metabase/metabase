@@ -1,8 +1,10 @@
 (ns metabase.mcp.v2.common-test
   (:require
    [clojure.test :refer :all]
+   [metabase.channel.urls :as channel.urls]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
@@ -85,3 +87,132 @@
            (try
              (projections/project :collection :summary {:id 1})
              (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
+
+(deftest frontend-url-test
+  (testing "a configured site URL is prefixed onto the relative path"
+    (mt/with-dynamic-fn-redefs [channel.urls/site-url (constantly "http://metabase.example.com")]
+      (is (= "http://metabase.example.com/collection/42"
+             (common/frontend-url (channel.urls/collection-path 42))))))
+  (testing "an unset site URL yields a relative path, never the literal \"null\" host that
+            interpolating site-url directly would produce — site-url is nil both when it has
+            never been configured and when the stored value fails validation"
+    (doseq [unset [nil ""]]
+      (mt/with-dynamic-fn-redefs [channel.urls/site-url (constantly unset)]
+        (is (= "/collection/42" (common/frontend-url (channel.urls/collection-path 42))))
+        (is (= "/question/42" (common/frontend-url (channel.urls/card-path 42))))))))
+
+(deftest response-format-test
+  (testing "response_format parses to :concise (default) or :detailed"
+    (is (= :concise (common/response-format {})))
+    (is (= :concise (common/response-format {:response_format "concise"})))
+    (is (= :detailed (common/response-format {:response_format "detailed"}))))
+  (testing "an unrecognized response_format is a teaching error naming the valid values"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"concise.*detailed"
+                          (common/response-format {:response_format "verbose"})))))
+
+;; A projection whose catalog deliberately includes a field (`collection`) that is a string prefix
+;; of a sibling (`collection_path`) — the exact shape that a prefix match without a `.` boundary
+;; check would confuse. `parameters` is nested so subtree selection and order-absorption can be
+;; exercised.
+(def ^:private test-catalog
+  ["name" "collection" "collection_path" "parameters.name" "parameters.type"])
+
+(defn- register-fields-test-type! []
+  (projections/register-projection!
+   :fields-test
+   {:concise  identity
+    :detailed identity
+    :catalog  test-catalog}))
+
+(deftest select-fields-test
+  (register-fields-test-type!)
+  (let [row {:name       "Q1"
+             :collection "Root"
+             :collection_path "Root/Sub"
+             :parameters [{:name "cat" :type "category" :extra "drop-me"}]
+             :secret     "never-selected"}]
+    (testing "an exact scalar path selects just that field"
+      (is (= {:name "Q1"} (common/select-fields :fields-test row ["name"]))))
+    (testing "a field that is a string prefix of a sibling does NOT drag the sibling in"
+      ;; the prefix-boundary bug: `collection` must not match `collection_path`
+      (is (= {:collection "Root"} (common/select-fields :fields-test row ["collection"]))))
+    (testing "the longer sibling is selectable on its own"
+      (is (= {:collection_path "Root/Sub"} (common/select-fields :fields-test row ["collection_path"]))))
+    (testing "a bare nested prefix selects the whole subtree"
+      (is (= {:parameters [{:name "cat" :type "category" :extra "drop-me"}]}
+             (common/select-fields :fields-test row ["parameters"]))))
+    (testing "a leaf under a nested path selects only that leaf, per array item"
+      (is (= {:parameters [{:name "cat"}]}
+             (common/select-fields :fields-test row ["parameters.name"]))))
+    (testing "subtree absorption is order-independent: a bare prefix wins regardless of order"
+      (is (= {:parameters [{:name "cat" :type "category" :extra "drop-me"}]}
+             (common/select-fields :fields-test row ["parameters" "parameters.name"])))
+      (is (= {:parameters [{:name "cat" :type "category" :extra "drop-me"}]}
+             (common/select-fields :fields-test row ["parameters.name" "parameters"]))))
+    (testing "an unknown path is a teaching error naming the nearest valid paths"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown field path.*Nearest"
+                            (common/select-fields :fields-test row ["nmae"]))))
+    (testing "empty fields is a teaching error"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at least one path"
+                            (common/select-fields :fields-test row []))))
+    (testing "fields is mutually exclusive with response_format / include"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"OR"
+                            (common/select-fields :fields-test row ["name"] {:response-format :detailed})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"OR"
+                            (common/select-fields :fields-test row ["name"] {:include ["x"]}))))
+    (testing "fields on a type with no catalog is a teaching error"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for type"
+                            (common/select-fields :no-such-type row ["name"]))))))
+
+(deftest list-content-empty-page-test
+  (testing "GHY-4137/P6: a page that returns nothing must say why. `truncation-line` only fires when
+            (offset + limit) < total, so an offset at or past the end produced a bare
+            {\"data\":[],\"returned\":0,\"total\":37} with no steering at all — which reads as
+            \"nothing matches\" when the truth is \"you paged past the end\"."
+    (testing "an offset past the end names the offset and the total"
+      (let [text (-> (common/list-content [] 37 {:offset 100 :limit 20}) :content first :text)]
+        (is (re-find #"No results at offset 100" text))
+        (is (re-find #"37 available" text))
+        (is (re-find #"`offset`" text) "it steers back rather than leaving the caller stuck")))
+    (testing "a floored total stays a floor in the empty-page line"
+      (let [text (-> (common/list-content [] 37 {:offset 100 :limit 20 :total-floor? true})
+                     :content first :text)]
+        (is (re-find #"at least 37 available" text))))
+    (testing "an empty FIRST page — every match dropped after counting — says so instead of steering
+              to an offset that would not help"
+      (let [text (-> (common/list-content [] 3 {:offset 0 :limit 20}) :content first :text)]
+        (is (re-find #"Returned 0 of 3" text))
+        (is (not (re-find #"No results at offset" text)))))
+    (testing "a genuinely empty result set gets no line — total 0 already says it"
+      (let [text (-> (common/list-content [] 0 {:offset 0 :limit 20}) :content first :text)]
+        (is (not (re-find #"No results" text)))
+        (is (not (re-find #"Returned" text)))))
+    (testing "an unknown total gets no line — there is nothing to report against"
+      (let [text (-> (common/list-content [] nil {:offset 100 :limit 20}) :content first :text)]
+        (is (not (re-find #"No results" text)))))
+    (testing "a non-empty page is unaffected by the new branch"
+      (let [text (-> (common/list-content [{:id 1} {:id 2}] 5 {:offset 0 :limit 2}) :content first :text)]
+        (is (re-find #"Returned 2 of 5" text))
+        (is (not (re-find #"No results" text)))))))
+
+(deftest list-content-test
+  (testing "a full page (returned == total) appends no steering line"
+    (let [content (common/list-content [{:id 1} {:id 2}] 2 {:offset 0 :limit 10})
+          text    (-> content :content first :text)]
+      (is (not (re-find #"Returned" text)))
+      (is (re-find #"\"returned\":2" text))))
+  (testing "a truncated page appends the steering line with the next offset"
+    (let [content (common/list-content [{:id 1} {:id 2}] 5 {:offset 0 :limit 2})
+          text    (-> content :content first :text)]
+      (is (re-find #"Returned 2 of 5" text))
+      (is (re-find #"offset: 2" text))))
+  (testing "GHY-4137: a page shorter than limit/total/offset predict (a post-fetch drop — e.g. a
+            stale index hit) reports the steering line's count from the real page, matching the
+            envelope's :returned rather than contradicting it"
+    (let [content (common/list-content [{:id 1} {:id 2} {:id 3}] 40 {:offset 0 :limit 10})
+          text    (-> content :content first :text)]
+      (is (re-find #"\"returned\":3" text) "the envelope reports the real page size")
+      (is (re-find #"Returned 3 of 40" text)
+          "the steering line's count matches the envelope, not the arithmetic min(limit, total-offset) = 10")
+      (is (not (re-find #"Returned 10" text))
+          "the arithmetic prediction must not appear anywhere in the text"))))
