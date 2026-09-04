@@ -4,7 +4,8 @@
    [clojure.test :refer :all]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as temp-storage]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.visualization-settings.ui-logic :as ui-logic]))
 
 (set! *warn-on-reflection* true)
 
@@ -15,7 +16,7 @@
 (def ^:private expected-data-keys
   "The only keys that should appear in the :data sub-map of a notification result."
   #{:cols :rows :viz-settings :results_metadata :insights :results_timezone
-    :format-rows? :pivot-export-options})
+    :format-rows? :pivot-export-options :referenced_entities})
 
 (defn- check-result-structure
   [result]
@@ -50,6 +51,25 @@
               result (:result part)]
           (is (= :card (:type part)))
           (check-result-structure result))))))
+
+(deftest execute-card-carries-dynamic-goal-values-through-to-rendering-test
+  (testing "a goal referencing another card survives execution and resolves at render time"
+    (mt/with-temp [:model/Card {goal-card-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
+                                                   :display       :scalar}
+                   :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]
+                                                                                    :breakout    [$price]})
+                                              :display       :line
+                                              :visualization_settings
+                                              {:graph.goal_value {:id     goal-card-id
+                                                                  :type   "card"
+                                                                  :column "count"}}}]
+      (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)
+            ref  (get-in part [:result :data :referenced_entities "card" (str goal-card-id)])]
+        (testing "the referenced value is not stripped by the result whitelist"
+          (is (= "completed" (:status ref)))
+          (is (= [[100]] (get-in ref [:data :rows]))))
+        (testing "so the renderer resolves the goal instead of throwing"
+          (is (= 100 (ui-logic/find-goal-value part))))))))
 
 (defn- card-parts [parts]
   (filter #(= :card (:type %)) parts))
