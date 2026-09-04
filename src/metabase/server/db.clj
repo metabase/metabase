@@ -23,8 +23,10 @@
                  now]
       :mysql    [:- now [::h2x/mysql-interval amount unit]])))
 
+;; Hard-coded rather than `(descendants :metabase.auth-identity.provider/supports-mfa)` so the session query below is
+;; compiled once rather than depending on load order of the provider namespaces.
+;; [[metabase.server.middleware.session-test/mfa-providers-list-test]] keeps this in sync with the hierarchy.
 (def ^:private mfa-supported-methods
-  #_(descendants :metabase.auth-identity.provider/supports-mfa)
   #{:provider/password :provider/ldap})
 
 (def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required])} session-with-id-query

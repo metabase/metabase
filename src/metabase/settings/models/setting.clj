@@ -962,9 +962,11 @@
   (set-value-of-type!
    :string
    setting-definition-or-name
-   (some-> new-value
-           u.time/coerce-to-timestamp
-           u.date/format)))
+   (when (some? new-value) ; nils are written through directly
+     ;; But if there is a value, then it must be one we can coerce to a timestamp.
+     (if-let [timestamp (u.time/coerce-to-timestamp new-value)]
+       (u.date/format timestamp)
+       (throw (ex-info "Malformed value for :timestamp setting" {:value new-value}))))))
 
 (defn- serialize-csv [value]
   (cond

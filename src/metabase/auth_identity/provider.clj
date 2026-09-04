@@ -253,9 +253,9 @@
 
   If the user does not have `:is_active true`, the response is not successful and an error message is returned."
   [request :- [:map
-               [:user [:maybe [:map
-                               [:id ms/PositiveInt]
-                               [:is_active :boolean]]]]]]
+               [:user {:optional true} [:maybe [:map
+                                                [:id ms/PositiveInt]
+                                                [:is_active :boolean]]]]]]
   (cond-> request
     (and (nil? (:error request))
          (not (get-in request [:user :is_active]))) (assoc :success? false
@@ -307,9 +307,12 @@
   [_provider login-result]
   login-result)
 
+;; TODO: (bshepherdson, 2026-09-04) Only a sharp-eyed code reviewer caught that `:mfa/enroll?` had been introduced
+;; but not added to this blocklist. The consumers of [[authenticate-owned-keys]] should be switched to an allowlist
+;; using `select-keys`, rather than `dissoc`ing all the bad fields.
 (def ^:private authenticate-owned-keys
   [:user-id :user_id :user :user-data :auth-identity :provider-id :success? :session
-   :error :message :mfa/pending? :mfa/methods :mfa/first-factor
+   :error :message :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor
    :jwt-data :claims
    :tenant-slug :tenant-attributes :user-provisioning-enabled?])
 

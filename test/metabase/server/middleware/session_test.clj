@@ -11,6 +11,7 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.server.db :as server.db]
    [metabase.server.middleware.session :as mw.session]
    [metabase.session.core :as session]
    [metabase.session.events.revoke-on-deactivation] ; for side effects: deletes sessions on deactivation
@@ -912,7 +913,10 @@
 (deftest mfa-providers-list-test
   (testing "Ldap and password are the only ones that support mfa"
     (is (= #{:provider/password :provider/ldap}
-           (descendants :metabase.auth-identity.provider/supports-mfa)))))
+           (descendants :metabase.auth-identity.provider/supports-mfa))))
+  (testing "and the hard-coded list the session query is compiled from says the same thing"
+    (is (= #{:provider/password :provider/ldap}
+           @#'server.db/mfa-supported-methods))))
 
 (deftest mfa-session-preservation-test
   (init-status/set-complete!)
