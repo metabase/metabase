@@ -59,7 +59,8 @@
   [viz-settings]
   (->> (dynamic-goals/goal-values viz-settings)
        (keep dynamic-goals/goal-source)
-       (filter (comp #{"card" "measure"} :type))
+       (filter (fn [{:keys [id type]}]
+                 (and (pos-int? id) (#{"card" "measure"} type))))
        (u/group-by (comp keyword :type) :id conj #{})))
 
 (mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps

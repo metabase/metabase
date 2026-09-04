@@ -758,4 +758,12 @@
                 :dashboard
                 {:dashcards [{:visualization_settings
                               {:click_behavior {:linkType "question" :targetId 7777}}}]})]
+      (is (= #{7777} (:card deps)))))
+  (testing "a dynamic goal whose id is not a positive integer is dropped"
+    (let [deps (calculation/calculate-deps*
+                :dashboard
+                {:dashcards [{:visualization_settings
+                              {:progress.goal {:id "x" :type "card" :column "count"}}}
+                             {:visualization_settings
+                              {:graph.goal_value {:id 7777 :type "card" :column "count"}}}]})]
       (is (= #{7777} (:card deps))))))
