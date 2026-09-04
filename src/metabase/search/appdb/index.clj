@@ -128,19 +128,26 @@
                              :from   [(t2/table-name :model/SearchIndexMetadata)]
                              :where  [:= :engine "appdb"]}]]})))
 
-(defn- delete-obsolete-tables! []
-  ;; Delete metadata around indexes that are no longer needed.
-  (search-index-metadata/delete-obsolete! *index-version-id*)
-  ;; Drop any indexes that are no longer referenced.
-  (let [dropped (volatile! [])]
-    (doseq [table (orphan-indexes)]
-      (try
-        (t2/query (sql.helpers/drop-table table))
-        (vswap! dropped conj table)
-        ;; Deletion could fail if it races with other instances
-        (catch Exception e
-          (log/warnf e "Failed to drop stale index %s" table))))
-    (log/infof "Dropped %d stale indexes: %s" (count @dropped) @dropped)))
+(defn delete-obsolete-tables!
+  "Drop index tables that are no longer needed. Best effort: failures are logged and never propagate. Does nothing
+  while mocking tables, where the pending table is tracked in an atom and has no metadata row to find it by."
+  []
+  (when-not *mocking-tables*
+    (try
+      ;; Delete metadata around indexes that are no longer needed.
+      (search-index-metadata/delete-obsolete! *index-version-id*)
+      ;; Drop any indexes that are no longer referenced.
+      (let [dropped (volatile! [])]
+        (doseq [table (orphan-indexes)]
+          (try
+            (t2/query (sql.helpers/drop-table table))
+            (vswap! dropped conj table)
+            ;; Deletion could fail if it races with other instances
+            (catch Exception e
+              (log/warnf e "Failed to drop stale index %s" table))))
+        (log/infof "Dropped %d stale indexes: %s" (count @dropped) @dropped))
+      (catch Exception e
+        (log/warn e "Failed to clean up obsolete indexes")))))
 
 (defn- ->db-type [t]
   (get {:pk :int, :timestamp :timestamp-with-time-zone} t t))
