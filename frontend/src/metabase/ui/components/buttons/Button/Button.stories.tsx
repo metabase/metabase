@@ -390,124 +390,6 @@ const MatrixSection = ({
   </StorySection>
 );
 
-interface VariantMatrixProps {
-  title: string;
-  variant: string;
-  colors: readonly MatrixColor[];
-  sizes?: readonly MatrixSize[];
-}
-
-const VariantMatrix = ({
-  title,
-  variant,
-  colors,
-  sizes = MATRIX_SIZES,
-}: VariantMatrixProps) => (
-  <StoryBoard title={title} background={BOARD_BACKGROUND} padding="2rem">
-    {colors.map((color) => (
-      <MatrixSection
-        key={color}
-        title={COLOR_TITLES[color]}
-        variant={variant}
-        color={color}
-        sizes={sizes}
-      />
-    ))}
-  </StoryBoard>
-);
-
-const matrixParameters = {
-  pseudo: {
-    hover: ['[data-spec-cell$="/hover"]'],
-    active: ['[data-spec-cell$="/active"]'],
-  },
-  controls: { disable: true },
-};
-
-export const MatrixFilled = {
-  name: "Matrix: Filled",
-  render: () => (
-    <VariantMatrix
-      title="Button · filled"
-      variant="filled"
-      colors={["brand", "negative"]}
-    />
-  ),
-  parameters: matrixParameters,
-};
-
-export const MatrixDefault = {
-  name: "Matrix: Default",
-  render: () => (
-    <VariantMatrix
-      title="Button · default"
-      variant="default"
-      colors={["brand"]}
-    />
-  ),
-  parameters: matrixParameters,
-};
-
-export const MatrixLight = {
-  name: "Matrix: Light",
-  render: () => (
-    <VariantMatrix
-      title="Button · light"
-      variant="light"
-      colors={["brand", "negative", "neutral"]}
-    />
-  ),
-  parameters: matrixParameters,
-};
-
-export const MatrixSubtle = {
-  name: "Matrix: Subtle",
-  render: () => (
-    <VariantMatrix
-      title="Button · subtle"
-      variant="subtle"
-      colors={["brand", "negative", "neutral"]}
-    />
-  ),
-  parameters: matrixParameters,
-};
-
-export const MatrixCompact = {
-  name: "Matrix: Compact",
-  render: () => (
-    <VariantMatrix
-      title="Button · compact"
-      variant="subtle"
-      colors={["brand"]}
-      sizes={COMPACT_SIZES}
-    />
-  ),
-  parameters: matrixParameters,
-};
-
-const OnDarkTemplate = () => (
-  <StoryBoard title="Button · onDark" padding="2rem" onDark>
-    <MatrixSection
-      title="Primary"
-      variant="on-dark-primary"
-      color="brand"
-      sizes={MATRIX_SIZES}
-    />
-    <MatrixSection
-      title="Secondary"
-      variant="on-dark-secondary"
-      color="brand"
-      sizes={MATRIX_SIZES}
-    />
-  </StoryBoard>
-);
-
-export const MatrixOnDark = {
-  name: "Matrix: onDark",
-  render: OnDarkTemplate,
-  parameters: matrixParameters,
-};
-
 type GroupItemKind = "text" | "icon";
 
 const groupItemCell = (
@@ -532,6 +414,11 @@ const groupJsx = (variant: string, color: MatrixColor) => {
   ].join("\n");
 };
 
+const groupTitle = (color: MatrixColor) =>
+  color === "brand"
+    ? "Button.Group"
+    : `Button.Group · ${COLOR_TITLES[color].toLowerCase()}`;
+
 const GroupSection = ({
   variant,
   color,
@@ -540,7 +427,7 @@ const GroupSection = ({
   color: MatrixColor;
 }) => (
   <StorySection
-    title="Button.Group"
+    title={groupTitle(color)}
     description={<StoryJsx>{groupJsx(variant, color)}</StoryJsx>}
   >
     <Box style={matrixGridStyle(MATRIX_SIZES.length)}>
@@ -590,54 +477,130 @@ const GroupSection = ({
   </StorySection>
 );
 
-const groupTitle = (variant: string, color: MatrixColor) =>
-  color === "brand"
-    ? `Button.Group · ${variant}`
-    : `Button.Group · ${variant} · ${COLOR_TITLES[color].toLowerCase()}`;
-
-const GroupMatrix = ({
-  variant,
-  color = "brand",
-}: {
+interface VariantMatrixProps {
+  title: string;
   variant: string;
-  color?: MatrixColor;
-}) => (
-  <StoryBoard
-    title={groupTitle(variant, color)}
-    background={BOARD_BACKGROUND}
-    padding="2rem"
-  >
-    <GroupSection variant={variant} color={color} />
+  colors: readonly MatrixColor[];
+  sizes?: readonly MatrixSize[];
+  groups?: readonly MatrixColor[];
+}
+
+const VariantMatrix = ({
+  title,
+  variant,
+  colors,
+  sizes = MATRIX_SIZES,
+  groups = [],
+}: VariantMatrixProps) => (
+  <StoryBoard title={title} background={BOARD_BACKGROUND} padding="2rem">
+    {colors.map((color) => (
+      <MatrixSection
+        key={color}
+        title={COLOR_TITLES[color]}
+        variant={variant}
+        color={color}
+        sizes={sizes}
+      />
+    ))}
+    {groups.map((color) => (
+      <GroupSection key={color} variant={variant} color={color} />
+    ))}
   </StoryBoard>
 );
 
-export const GroupDefault = {
-  name: "Group: Default",
-  render: () => <GroupMatrix variant="default" />,
+const matrixParameters = {
+  pseudo: {
+    hover: ['[data-spec-cell$="/hover"]'],
+    active: ['[data-spec-cell$="/active"]'],
+  },
+  controls: { disable: true },
+};
+
+export const MatrixFilled = {
+  name: "Matrix: Filled",
+  render: () => (
+    <VariantMatrix
+      title="Button · filled"
+      variant="filled"
+      colors={["brand", "negative"]}
+      groups={["brand"]}
+    />
+  ),
   parameters: matrixParameters,
 };
 
-export const GroupFilled = {
-  name: "Group: Filled",
-  render: () => <GroupMatrix variant="filled" />,
+export const MatrixDefault = {
+  name: "Matrix: Default",
+  render: () => (
+    <VariantMatrix
+      title="Button · default"
+      variant="default"
+      colors={["brand"]}
+      groups={["brand"]}
+    />
+  ),
   parameters: matrixParameters,
 };
 
-export const GroupLight = {
-  name: "Group: Light",
-  render: () => <GroupMatrix variant="light" color="neutral" />,
+export const MatrixLight = {
+  name: "Matrix: Light",
+  render: () => (
+    <VariantMatrix
+      title="Button · light"
+      variant="light"
+      colors={["brand", "negative", "neutral"]}
+      groups={["neutral"]}
+    />
+  ),
   parameters: matrixParameters,
 };
 
-export const GroupSubtle = {
-  name: "Group: Subtle",
-  render: () => <GroupMatrix variant="subtle" />,
+export const MatrixSubtle = {
+  name: "Matrix: Subtle",
+  render: () => (
+    <VariantMatrix
+      title="Button · subtle"
+      variant="subtle"
+      colors={["brand", "negative", "neutral"]}
+      groups={["brand", "neutral"]}
+    />
+  ),
   parameters: matrixParameters,
 };
 
-export const GroupSubtleNeutral = {
-  name: "Group: Subtle neutral",
-  render: () => <GroupMatrix variant="subtle" color="neutral" />,
+export const MatrixCompact = {
+  name: "Matrix: Compact",
+  render: () => (
+    <VariantMatrix
+      title="Button · compact"
+      variant="subtle"
+      colors={["brand"]}
+      sizes={COMPACT_SIZES}
+    />
+  ),
+  parameters: matrixParameters,
+};
+
+const OnDarkTemplate = () => (
+  <StoryBoard title="Button · onDark" padding="2rem" onDark>
+    <MatrixSection
+      title="Primary"
+      variant="on-dark-primary"
+      color="brand"
+      sizes={MATRIX_SIZES}
+    />
+    <MatrixSection
+      title="Secondary"
+      variant="on-dark-secondary"
+      color="brand"
+      sizes={MATRIX_SIZES}
+    />
+  </StoryBoard>
+);
+
+export const MatrixOnDark = {
+  name: "Matrix: onDark",
+  render: OnDarkTemplate,
   parameters: matrixParameters,
 };
 
