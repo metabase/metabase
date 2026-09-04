@@ -11,6 +11,7 @@
    [metabase.cloud-migration.models.cloud-migration :as cloud-migration]
    [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
+   [metabase.settings.db :as settings.db]
    [metabase.settings.env-file :as setting.env-file]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -2060,7 +2061,7 @@
 ;;; ------------------------------------------- value_sysadmin column -------------------------------------------
 
 (defn- raw-setting-row [setting-key]
-  (first (mdb/query {:select [:value :value_sysadmin]
+  (first (mdb/query {:select [:value :value_with_aad :value_sysadmin]
                      :from   [:setting]
                      :where  [:= :key (name setting-key)]})))
 
@@ -2416,6 +2417,30 @@
         (is (some #(str/includes? % "MB_TEST_SYSADMIN_ONLY_KEYWORD_SETTING is set in metabase.env")
                   (map :message (messages))))))))
 
+(defsetting test-sysadmin-only-json-setting
+  "Sysadmin-only :json setting. This only shows up in dev."
+  :visibility :internal
+  :type :json
+  :sysadmin-only? true)
+
+(defsetting test-sysadmin-only-csv-setting
+  "Sysadmin-only :csv setting. This only shows up in dev."
+  :visibility :internal
+  :type :csv
+  :sysadmin-only? true)
+
+(deftest merge-env-file-value!-serialization-test
+  (testing "a config-file value is spelled the way the setting's env var would be: JSON for :json, CSV for :csv"
+    (mt/with-env-file-values! {}
+      (setting/merge-env-file-value! :test-sysadmin-only-json-setting {:a 1 :b ["x"]})
+      (is (= "{\"a\":1,\"b\":[\"x\"]}" (get (setting.env-file/env-file-values) :mb-test-sysadmin-only-json-setting)))
+      (is (= {:a 1 :b ["x"]} (test-sysadmin-only-json-setting)))
+      (setting/merge-env-file-value! :test-sysadmin-only-csv-setting ["a" "b,c"])
+      (is (= ["a" "b,c"] (test-sysadmin-only-csv-setting)))
+      (testing "and a boolean the way `true`/`false` are spelled"
+        (setting/merge-env-file-value! :test-sysadmin-only-admin-setting true)
+        (is (= "true" (get (setting.env-file/env-file-values) :mb-test-sysadmin-only-admin-setting)))))))
+
 (deftest log-unknown-env-file-keys!-test
   (mt/with-env-file-values! {:mb-test-setting-1 "known" :mb-old-test-setting-name "known-deprecated" :mb-no-such-thing "x" :path "/bin"}
     (mt/with-log-messages-for-level [messages :warn]
@@ -2451,6 +2476,20 @@
         (mt/with-temp-env-var-value! [mb-test-sysadmin-only-init-setting "from-env"]
           (is (= "from-env" (test-sysadmin-only-init-setting))))))))
 
+(deftest sysadmin-only-init-race-test
+  (testing "losing the first-ever init race to another node (its row lands between our update and insert) falls back to an update: last write wins, nothing throws"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (let [orig-insert! settings.db/insert-sysadmin-setting-value!]
+        (with-redefs [settings.db/insert-sysadmin-setting-value!
+                      (fn [k v]
+                        (orig-insert! k (str "other-node-" v))
+                        (throw (java.sql.SQLException. "Unique index or primary key violation: PK_SETTING")))]
+          (let [generated (test-sysadmin-only-init-setting)]
+            (is (str/starts-with? generated "generated-"))
+            (is (= generated (setting/db-stored-value :test-sysadmin-only-init-setting)))
+            (is (= generated (test-sysadmin-only-init-setting)))))))))
+
 (defsetting test-sysadmin-only-renamed-setting
   "Sysadmin-only setting with a deprecated name. This only shows up in dev."
   :visibility :internal
@@ -2458,16 +2497,23 @@
   :deprecated-name :test-sysadmin-only-old-name
   :sysadmin-only? true)
 
-(defn- backfill-log-messages!
-  "Run [[setting/backfill-sysadmin-values!]] and return the log messages at `level` and above that mention
-  `setting-name`."
-  [level setting-name]
+(defn- backfill-log-entries!
+  "Run [[setting/backfill-sysadmin-values!]] and return `[level message]` for every log message at :info and above
+  that mentions `setting-name`."
+  [setting-name]
   (mt/with-log-messages-for-level [messages :info]
     (setting/backfill-sysadmin-values!)
     (->> (messages)
-         (filter #(= level (:level %)))
-         (map :message)
-         (filterv #(str/includes? % (name setting-name))))))
+         (filter #(str/includes? (:message %) (name setting-name)))
+         (mapv (juxt :level :message)))))
+
+(defn- backfill-log-messages!
+  "Run [[setting/backfill-sysadmin-values!]] and return the log messages at exactly `level` that mention
+  `setting-name`."
+  [level setting-name]
+  (->> (backfill-log-entries! setting-name)
+       (filter #(= level (first %)))
+       (mapv second)))
 
 (deftest backfill-sysadmin-values!-test
   (mt/with-temp-empty-app-db [_conn :h2]
@@ -2475,6 +2521,7 @@
     (encryption-test/with-secret-key "ABCDEFGH12345678"
       (testing "a legacy admin-panel value is carried over into value_sysadmin, with a warning, and value is untouched"
         (t2/insert! :model/Setting {:key "test-sysadmin-only-setting" :value "from-admin-panel"})
+        (is (= "server-default" (test-sysadmin-only-setting)) "(and the cache has been populated before the backfill)")
         (let [legacy-raw (:value (raw-setting-row :test-sysadmin-only-setting))]
           (is (= [(str "Setting test-sysadmin-only-setting was set through the admin panel and is now sysadmin-only."
                        " Its stored value has been carried over, but the admin panel can no longer change it:"
@@ -2484,33 +2531,39 @@
             (is (= legacy-raw value))
             (is (encryption/decryptable-string? value_sysadmin
                                                 {:aad (mdb.setting/sysadmin-setting-aad "test-sysadmin-only-setting")})))
-          (setting.cache/restore-cache!)
-          (is (= "from-admin-panel" (test-sysadmin-only-setting)))
+          (testing "the settings cache sees the carried-over value without a restore of its own"
+            (is (= "from-admin-panel" (test-sysadmin-only-setting))))
           (testing "a second run changes nothing and says nothing"
             (let [before (raw-setting-row :test-sysadmin-only-setting)]
               (is (= [] (backfill-log-messages! :info :test-sysadmin-only-setting)))
               (is (= before (raw-setting-row :test-sysadmin-only-setting)))))))
-      (testing "once the env var is set, the carried-over value is cleared"
+      (testing "once the env var is set, the stored row is removed: the env var is the source of truth from then on"
         (mt/with-temp-env-var-value! [mb-test-sysadmin-only-setting "from-env"]
-          (is (= [(str "MB_TEST_SYSADMIN_ONLY_SETTING is set; cleared the stored sysadmin value of"
+          (is (= [(str "MB_TEST_SYSADMIN_ONLY_SETTING is set; removed the stored value of"
                        " test-sysadmin-only-setting.")]
                  (backfill-log-messages! :info :test-sysadmin-only-setting)))
-          (is (nil? (:value_sysadmin (raw-setting-row :test-sysadmin-only-setting))))
-          (testing "and the legacy value is not carried over again while the env var is set"
-            (is (= [] (backfill-log-messages! :info :test-sysadmin-only-setting)))
-            (is (nil? (:value_sysadmin (raw-setting-row :test-sysadmin-only-setting)))))))
+          (is (nil? (raw-setting-row :test-sysadmin-only-setting)))
+          (testing "and a second run while the env var is set says nothing"
+            (is (= [] (backfill-log-messages! :info :test-sysadmin-only-setting)))))
+        (testing "and once the env var is gone again the default applies: the admin-panel value does not come back"
+          (is (= [] (backfill-log-messages! :info :test-sysadmin-only-setting)))
+          (is (nil? (raw-setting-row :test-sysadmin-only-setting)))
+          (is (= "server-default" (test-sysadmin-only-setting)))))
       (testing "a value in the metabase.env layer counts as the env var being set"
-        (t2/query {:update :setting :set {:value_sysadmin "x"} :where [:= :key "test-sysadmin-only-setting"]})
+        (t2/query {:insert-into :setting :values [{:key "test-sysadmin-only-setting" :value "x" :value_sysadmin "x"}]})
         (mt/with-env-file-values! {:mb-test-sysadmin-only-setting "from-file"}
           (setting/backfill-sysadmin-values!)
-          (is (nil? (:value_sysadmin (raw-setting-row :test-sysadmin-only-setting))))))
+          (is (nil? (raw-setting-row :test-sysadmin-only-setting)))))
       (testing "a legacy value under a :deprecated-name is carried over into a row under the current name"
         (t2/insert! :model/Setting {:key "test-sysadmin-only-old-name" :value "from-old-name"})
         (setting/backfill-sysadmin-values!)
-        (setting.cache/restore-cache!)
         (is (= "from-old-name" (setting/db-stored-value :test-sysadmin-only-renamed-setting)))
         (is (= "from-old-name" (t2/select-one-fn :value :model/Setting :key "test-sysadmin-only-old-name"))
-            "the old row is left alone"))
+            "the old row is left alone")
+        (testing "the new row is a complete one: its value_with_aad reads back too, so no later boot mistakes it for one an older version wrote"
+          (is (= "from-old-name"
+                 (encryption/maybe-decrypt (:value_with_aad (raw-setting-row :test-sysadmin-only-renamed-setting))
+                                           {:aad (mdb.setting/setting-aad "test-sysadmin-only-renamed-setting")})))))
       (testing "a sysadmin value already stored under the deprecated name is preferred and re-encrypted under the new name"
         (t2/delete! :model/Setting :key "test-sysadmin-only-renamed-setting")
         (t2/update! :model/Setting "test-sysadmin-only-old-name" {:value_sysadmin "sysadmin-under-old-name"})
@@ -2519,11 +2572,16 @@
         (is (= "sysadmin-under-old-name" (setting/db-stored-value :test-sysadmin-only-renamed-setting)))
         (is (encryption/decryptable-string? (:value_sysadmin (raw-setting-row :test-sysadmin-only-renamed-setting))
                                             {:aad (mdb.setting/sysadmin-setting-aad "test-sysadmin-only-renamed-setting")}))
-        (testing "and the env var clears both rows' sysadmin values"
+        (testing "and the env var removes both rows"
           (mt/with-temp-env-var-value! [mb-test-sysadmin-only-renamed-setting "from-env"]
             (setting/backfill-sysadmin-values!)
-            (is (nil? (:value_sysadmin (raw-setting-row :test-sysadmin-only-renamed-setting))))
-            (is (nil? (:value_sysadmin (raw-setting-row :test-sysadmin-only-old-name)))))))
+            (is (nil? (raw-setting-row :test-sysadmin-only-renamed-setting)))
+            (is (nil? (raw-setting-row :test-sysadmin-only-old-name))))))
+      (testing "a legacy value of an :init setting was generated, never entered in the admin panel, so it is carried over without the warning"
+        (t2/insert! :model/Setting {:key "test-sysadmin-only-init-setting" :value "generated-before-the-column-existed"})
+        (is (= [[:info "Setting test-sysadmin-only-init-setting is now sysadmin-only; its generated value has been carried over."]]
+               (backfill-log-entries! :test-sysadmin-only-init-setting)))
+        (is (= "generated-before-the-column-existed" (setting/db-stored-value :test-sysadmin-only-init-setting))))
       (testing "a legacy value that does not decrypt is skipped with an error"
         (t2/query {:insert-into :setting
                    :values      [{:key   "test-sysadmin-only-admin-setting"
@@ -2588,31 +2646,36 @@
   (testing "a valid env value is used"
     (mt/with-temp-env-var-value! [mb-test-validated-keyword-setting "beta"]
       (is (= :beta (test-validated-keyword-setting)))))
-  (testing "an invalid env value is ignored -- the default applies and it does not count as env-set -- with one warning"
-    (mt/with-log-messages-for-level [messages :warn]
-      (mt/with-temp-env-var-value! [mb-test-validated-keyword-setting "gamma"]
-        (is (= :alpha (test-validated-keyword-setting)))
-        (is (= :alpha (test-validated-keyword-setting)))
-        (is (= :default (setting/get-raw-value-source :test-validated-keyword-setting)))
-        (is (=? {:is_env_setting false}
-                (#'setting/user-facing-info (setting/resolve-setting :test-validated-keyword-setting)))))
-      (is (= ["Ignoring MB_TEST_VALIDATED_KEYWORD_SETTING: \"gamma\" is not a valid value for setting test-validated-keyword-setting."]
-             (filterv #(str/includes? % "MB_TEST_VALIDATED_KEYWORD_SETTING") (map :message (messages)))))))
-  (testing "a value the type cannot parse is left to the usual parse error rather than silently ignored"
+  (testing "an invalid env value fails closed: every read throws, it still counts as env-set, and startup refuses it"
+    (mt/with-temp-env-var-value! [mb-test-validated-keyword-setting "gamma"]
+      (is (thrown-with-msg? ExceptionInfo
+                            #"^MB_TEST_VALIDATED_KEYWORD_SETTING: \"gamma\" is not a valid value for setting test-validated-keyword-setting\.$"
+                            (test-validated-keyword-setting)))
+      (is (thrown-with-msg? ExceptionInfo #"is not a valid value" (test-validated-keyword-setting))
+          "the validator's verdict is cached, but the read still throws")
+      (is (thrown-with-msg? ExceptionInfo #"is not a valid value"
+                            (setting/get-raw-value-source :test-validated-keyword-setting)))
+      (is (=? {:is_env_setting true, :value nil}
+              (#'setting/user-facing-info (setting/resolve-setting :test-validated-keyword-setting))))
+      (is (thrown-with-msg? ExceptionInfo #"Invalid KEYWORD configuration for setting: test-validated-keyword-setting"
+                            (setting/validate-settings-formatting!)))
+      (testing "the startup error names the value rather than redacting it, as the message is already sensitivity-aware"
+        (is (thrown-with-msg? ExceptionInfo #"\"gamma\" is not a valid value"
+                              (try (setting/validate-settings-formatting!)
+                                   (catch ExceptionInfo e (throw (ex-cause e)))))))))
+  (testing "a value the type cannot parse is left to the usual parse error"
     (mt/with-temp-env-var-value! [mb-test-validated-integer-setting "lots"]
       (is (thrown-with-msg? ExceptionInfo #"Error parsing Setting" (test-validated-integer-setting)))))
   (testing "the metabase.env layer is validated the same way"
     (mt/with-env-file-values! {:mb-test-validated-keyword-setting "gamma"}
-      (is (= :alpha (test-validated-keyword-setting))))
+      (is (thrown-with-msg? ExceptionInfo #"is not a valid value" (test-validated-keyword-setting))))
     (mt/with-env-file-values! {:mb-test-validated-keyword-setting "beta"}
       (is (= :beta (test-validated-keyword-setting)))))
-  (testing "merge-env-file-value! refuses an invalid config-file value with a warning"
+  (testing "merge-env-file-value! refuses an invalid config-file value by throwing, leaving the layer untouched"
     (mt/with-env-file-values! {}
-      (mt/with-log-messages-for-level [messages :warn]
-        (setting/merge-env-file-value! :test-validated-keyword-setting :gamma)
-        (is (not (contains? (setting.env-file/env-file-values) :mb-test-validated-keyword-setting)))
-        (is (some #(str/includes? % "is not a valid value for setting test-validated-keyword-setting")
-                  (map :message (messages)))))
+      (is (thrown-with-msg? ExceptionInfo #"is not a valid value for setting test-validated-keyword-setting"
+                            (setting/merge-env-file-value! :test-validated-keyword-setting :gamma)))
+      (is (not (contains? (setting.env-file/env-file-values) :mb-test-validated-keyword-setting)))
       (setting/merge-env-file-value! :test-validated-keyword-setting :beta)
       (is (= :beta (test-validated-keyword-setting))))))
 
@@ -2640,7 +2703,9 @@
     (reset! dynamic-default-source :changed)
     (is (= :changed (test-dynamic-default-setting)))
     (testing "user-facing-info reports the computed value, not the function"
-      (is (= :changed (:default (#'setting/user-facing-info (setting/resolve-setting :test-dynamic-default-setting)))))))
+      (is (= :changed (:default (#'setting/user-facing-info (setting/resolve-setting :test-dynamic-default-setting))))))
+    (testing "user-facing-value treats the computed default as 'not set', exactly as it does a plain one"
+      (is (nil? (setting/user-facing-value :test-dynamic-default-setting)))))
   (testing "a stored or env value still wins over it"
     (mt/with-temporary-setting-values [test-dynamic-default-setting :stored]
       (is (= :stored (test-dynamic-default-setting)))
@@ -2661,7 +2726,7 @@
   (mt/with-temporary-setting-values [test-dynamic-default-setting nil]
     (run-dynamic-default-test!)))
 
-(deftest sysadmin-db-value-deprecated-name-fallback-test
+(deftest sysadmin-value-deprecated-name-fallback-test
   (testing "with no row under the current name, value_sysadmin under the deprecated name is read, with one warning"
     (binding [setting/*deprecated-db-key-warned* (atom #{})]
       (with-sysadmin-value-in-db [:test-sysadmin-only-old-name "from-old-row"]

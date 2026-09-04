@@ -26,23 +26,22 @@
   {:arglists '([old new])}
   (constantly :default))
 
+(defn- new-cache-atom
+  "An empty cache: nil until restored, and watched so [[call-on-change]] sees every change."
+  []
+  (doto (atom nil)
+    (add-watch :call-on-change (fn [_key _ref old new]
+                                 (call-on-change old new)))))
+
 ;; Setting cache is unique to the application DB; if it's swapped out for tests or mocking or whatever then use a new
 ;; cache.
 (def ^:private ^{:arglists '([])} cache*
-  (mdb/memoize-for-application-db
-   (fn []
-     (doto (atom nil)
-       (add-watch :call-on-change (fn [_key _ref old new]
-                                    (call-on-change old new)))))))
+  (mdb/memoize-for-application-db new-cache-atom))
 
 ;; The sysadmin cache mirrors `setting.value_sysadmin` the way `cache*` mirrors `setting.value`. Kept as a second map
 ;; rather than a richer value in the first so the shape every existing reader of `cache` relies on stays the same.
 (def ^:private ^{:arglists '([])} sysadmin-cache*
-  (mdb/memoize-for-application-db
-   (fn []
-     (doto (atom nil)
-       (add-watch :call-on-change (fn [_key _ref old new]
-                                    (call-on-change old new)))))))
+  (mdb/memoize-for-application-db new-cache-atom))
 
 (defn cache
   "Fetch the current contents of the Settings cache, a map of key (string) -> value (string)."
@@ -55,19 +54,22 @@
   []
   @(sysadmin-cache*))
 
+(defn- update-cache-atom!
+  "Put `new-value` for `setting-name` in `cache-atom`, or drop the entry when it is empty."
+  [cache-atom setting-name ^String new-value]
+  (if (seq new-value)
+    (swap! cache-atom assoc  setting-name new-value)
+    (swap! cache-atom dissoc setting-name)))
+
 (defn update-cache!
   "Update the String value of a Setting in the Settings cache."
   [setting-name, ^String new-value]
-  (if (seq new-value)
-    (swap! (cache*) assoc  setting-name new-value)
-    (swap! (cache*) dissoc setting-name)))
+  (update-cache-atom! (cache*) setting-name new-value))
 
 (defn update-sysadmin-cache!
   "Update the String `value_sysadmin` of a Setting in the sysadmin Settings cache."
   [setting-name, ^String new-value]
-  (if (seq new-value)
-    (swap! (sysadmin-cache*) assoc  setting-name new-value)
-    (swap! (sysadmin-cache*) dissoc setting-name)))
+  (update-cache-atom! (sysadmin-cache*) setting-name new-value))
 
 ;; CACHE SYNCHRONIZATION
 ;;
@@ -163,11 +165,17 @@
      cache-update-check-interval-ms))
 
 (defn restore-cache!
-  "Populate cache with the latest hotness from the db"
+  "Populate both caches with the latest hotness from the db: one select, read (and decrypted) once."
   []
   (log/debug "Refreshing Settings cache...")
-  (reset! (cache*) (settings.db/setting-values-by-key))
-  (reset! (sysadmin-cache*) (settings.db/sysadmin-setting-values-by-key)))
+  (let [{:keys [values sysadmin-values]}
+        (reduce (fn [m {:keys [key value value_sysadmin]}]
+                  (cond-> (assoc-in m [:values key] value)
+                    (some? value_sysadmin) (assoc-in [:sysadmin-values key] value_sysadmin)))
+                {:values {}, :sysadmin-values {}}
+                (settings.db/all-settings))]
+    (reset! (cache*) values)
+    (reset! (sysadmin-cache*) sysadmin-values)))
 
 (defonce ^:private ^ReentrantLock restore-cache-lock (ReentrantLock.))
 

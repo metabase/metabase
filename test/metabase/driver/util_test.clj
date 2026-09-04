@@ -897,12 +897,13 @@
                  (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database))))))))))
 
 (deftest warehouse-allowed-networks-validation-test
-  (testing "an unrecognized env value is ignored, so the default for where we run applies"
+  (testing "an unrecognized env value fails closed: every read throws, wherever we run, rather than falling back to a default"
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-everything"]
-      (mt/with-premium-features #{}
-        (is (= :allow-all (driver.settings/warehouse-allowed-networks))))
-      (mt/with-premium-features #{:hosting}
-        (is (= :external-only (driver.settings/warehouse-allowed-networks))))))
+      (doseq [features [#{} #{:hosting}]]
+        (mt/with-premium-features features
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"MB_WAREHOUSE_ALLOWED_NETWORKS: \"allow-everything\" is not a valid value for setting warehouse-allowed-networks"
+                                (driver.settings/warehouse-allowed-networks)))))))
   (testing "the setting is sysadmin-only: the admin API cannot widen it"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -937,9 +938,10 @@
       (is (= :external-only (driver.settings/warehouse-allowed-networks)))
       (is (=? {:status-code 400}
               (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
-  (testing "an unrecognized policy is ignored with a warning; on Cloud that leaves the external-only default"
+  (testing "an unrecognized policy fails closed: no connection is checked -- let alone allowed -- until it is fixed"
     (mt/with-premium-features #{:hosting}
       (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "unknown-policy"]
-        (is (= :external-only (driver.settings/warehouse-allowed-networks)))
-        (is (=? {:status-code 400}
-                (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is not a valid value for setting warehouse-allowed-networks"
+                              (driver.settings/warehouse-allowed-networks)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is not a valid value for setting warehouse-allowed-networks"
+                              (driver.u/validate-connection-hosts! :postgres {:host "8.8.8.8"})))))))

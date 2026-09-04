@@ -23,6 +23,12 @@
   Distinct from [[setting-aad]] so a `value_with_aad` ciphertext cannot be moved into the sysadmin column."
   (memoize (fn ^bytes [setting-key] (codecs/to-bytes (str "sysadmin." (name setting-key))))))
 
+(defn sysadmin-aad-opts
+  "The `metabase.util.encryption` opts binding a `setting.value_sysadmin` ciphertext to `setting-key`'s row -- the one
+  place that pairing is spelled out, so every reader and writer of the column agrees on it."
+  [setting-key]
+  {:aad (sysadmin-setting-aad setting-key)})
+
 (defn migrate-settings!
   "Give every setting row that has no `value_with_aad` one, from the legacy `value` column beside it, stored the way
   the Setting model stores one. Runs from `metabase.app-db.setup/setup-db!` after migrations and before anything reads

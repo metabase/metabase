@@ -644,7 +644,7 @@
      (some
       (fn [setting]
         (not= ((:getter setting))
-              (:default setting)))
+              (setting/default-value setting)))
       whitelabel-settings))))
 
 (def csv-upload-version-availability

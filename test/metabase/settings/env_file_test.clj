@@ -35,6 +35,8 @@
   (testing "a key that is not a valid variable name is an error"
     (is (thrown-with-msg? ExceptionInfo #"line 1"
                           (env-file/parse-env-file "MB-X=1"))))
+  (testing "a UTF-8 byte order mark (Windows Notepad writes one) is not part of the first key"
+    (is (= {:mb-site-name "Foo"} (env-file/parse-env-file "\uFEFFMB_SITE_NAME=Foo\n"))))
   (testing "an empty file parses to an empty map"
     (is (= {} (env-file/parse-env-file "")))))
 

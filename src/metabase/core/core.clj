@@ -204,8 +204,6 @@
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
-  ;; runs before anything reads settings -- see its docstring
-  (setting/backfill-sysadmin-values!)
   (mdb/encrypt-plaintext-columns!)
   ;; In OSS, convert any Data Analysts group with members to a normal visible group
   (perms/sync-data-analyst-group-for-oss!)
@@ -223,6 +221,8 @@
   (let [new-install? (not (setup/has-user-setup))]
     ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
     (config-from-file/init-from-file-if-code-available!)
+    ;; after the config file, whose sysadmin-only values it must see as "set"
+    (setting/backfill-sysadmin-values!)
     (init-status/set-progress! 0.6)
     (if new-install?
       (do
@@ -295,6 +295,7 @@
       (System/exit 1))))
 
 (defn- run-cmd [cmd init-fn args]
+  (setting/load-env-file!)
   ((requiring-resolve 'metabase.cmd.core/run-cmd) cmd init-fn args))
 
 ;;; -------------------------------------------------- Tracing -------------------------------------------------------

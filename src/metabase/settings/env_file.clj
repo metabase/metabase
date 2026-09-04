@@ -70,7 +70,8 @@
   per line; blank lines and lines starting with `#` are skipped; a leading `export ` is allowed; one pair of matching
   outer quotes is stripped from the value. `KEY=` sets the empty string, which means \"explicitly unset\" exactly as an
   empty real env var does. The last of duplicate keys wins. A line that is not a `KEY=value` pair is an error: a typo
-  in the host's configuration must not be skipped silently."
+  in the host's configuration must not be skipped silently. A leading UTF-8 byte order mark (some Windows editors
+  write one) is dropped, as it would otherwise become an invisible part of the first key."
   [^String contents]
   (transduce
    (comp (map-indexed (fn [i line] [(inc i) (str/trim line)]))
@@ -81,7 +82,7 @@
                    (log/warnf "metabase.env sets %s more than once; using the last value." (name k)))
                  (assoc m k v)))
    {}
-   (str/split-lines contents)))
+   (str/split-lines (u/strip-bom contents))))
 
 (defn- env-file-path
   "The file to load: the one `MB_ENV_FILE_PATH` names (which must exist), else `./metabase.env` when there is one."

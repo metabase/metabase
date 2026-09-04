@@ -3331,8 +3331,8 @@
             "metabot_conversation.state is gone")))))
 
 (deftest add-setting-value-sysadmin-test
-  (testing "v64.2026-09-02: setting gains a nullable value_sysadmin column and existing rows are untouched"
-    (impl/test-migrations ["v64.gj98asdfg2"] [migrate!]
+  (testing "v58.2026-09-04: setting gains a nullable value_sysadmin column and existing rows are untouched"
+    (impl/test-migrations ["v58.2026-09-04T00:00:00"] [migrate!]
       (t2/insert! :setting {:key "sysadmin-migration-test" :value "legacy"})
       (migrate!)
       (is (=? {:key "sysadmin-migration-test" :value "legacy" :value_sysadmin nil}

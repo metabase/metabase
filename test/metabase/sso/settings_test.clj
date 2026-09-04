@@ -25,9 +25,11 @@
       "Make sure this Setting returns a boolean, not some other type of value. (It was returning a function before I fixed it.)"))
 
 (deftest oidc-allowed-networks-validation-test
-  (testing "an unrecognized env value is ignored, so the default applies"
+  (testing "an unrecognized env value fails closed: every read throws rather than falling back to the permissive default"
     (mt/with-temp-env-var-value! [mb-oidc-allowed-networks "allow-everything"]
-      (is (= :allow-all (sso.settings/oidc-allowed-networks)))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"MB_OIDC_ALLOWED_NETWORKS: \"allow-everything\" is not a valid value for setting oidc-allowed-networks"
+                            (sso.settings/oidc-allowed-networks)))))
   (testing "a leftover application-database value is ignored outright, since the setting is sysadmin-only"
     (mt/with-temporary-raw-setting-values [oidc-allowed-networks "allow-everything"]
       (is (= :allow-all (sso.settings/oidc-allowed-networks)))))

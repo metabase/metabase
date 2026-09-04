@@ -1,7 +1,7 @@
 (ns metabase.cmd.config-file-gen-test
   (:require
    [clojure.test :refer :all]
-   [metabase.cmd.config-file-gen :refer [config-file-settings create-settings-map]]))
+   [metabase.cmd.config-file-gen :refer [config-file-settings create-settings-map get-name-and-default]]))
 
 (def example-settings '({:database-local :never,
                          :cache? true,
@@ -116,6 +116,14 @@
   {:admin-email nil
    :aggregated-query-row-limit nil
    :anon-tracking-enabled true})
+
+(deftest computed-default-test
+  (testing "a :default computed at runtime has no value the template can carry; it is left unset, which the config file loads as such"
+    (is (= {:computed-setting nil}
+           (get-name-and-default {:munged-name "computed-setting" :default (fn [] :depends-on-the-instance)})))
+    (testing "while a plain default is carried as it is"
+      (is (= {:plain-setting :sunday}
+             (get-name-and-default {:munged-name "plain-setting" :default :sunday}))))))
 
 (deftest test-config-template
   (testing "Setting map for config file is formatted as expected."

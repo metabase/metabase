@@ -498,8 +498,10 @@
       keyword))
 
 (defn do-with-temp-env-var-value!
-  "Impl for [[with-temp-env-var-value!]] macro."
-  [env-var-keyword value thunk]
+  "Impl for [[with-temp-env-var-value!]] macro. The Settings cache is flushed around `thunk` unless `flush-cache?` is
+  false: [[do-with-temporary-setting-value!]] passes false for a sysadmin-only setting, whose env var is the only
+  thing being changed and which the cache never holds."
+  [env-var-keyword value thunk & {:keys [flush-cache?] :or {flush-cache? true}}]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value!")
   ;; app DB needs to be initialized if we're going to play around with the Settings cache.
   (initialize/initialize-if-needed! :db)
@@ -510,11 +512,13 @@
         ;; temporarily override the underlying environment variable value
         (with-redefs [env/env (assoc env/env env-var-keyword value)]
           ;; flush the Setting cache so it picks up the env var value for the Setting (if applicable)
-          (setting.cache/restore-cache!)
+          (when flush-cache?
+            (setting.cache/restore-cache!))
           (thunk))
         (finally
           ;; flush the cache again so the original value of any env var Settings get restored
-          (setting.cache/restore-cache!))))))
+          (when flush-cache?
+            (setting.cache/restore-cache!)))))))
 
 (defn do-with-env-file-values!
   "Impl for [[with-env-file-values!]]."
@@ -642,11 +646,16 @@
                   (catch Exception e
                     (when-not raw-setting?
                       (throw e))))]
-    (if (and (not raw-setting?)
-             (or (setting/env-var-value setting-k)
-                 ;; sysadmin-only settings reject every write, so the env var is the only way to give them a value
-                 (:sysadmin-only? setting)))
+    (cond
+      (and (not raw-setting?) (:sysadmin-only? setting))
+      ;; sysadmin-only settings reject every write, so the env var is the only way to give them a value; the cache
+      ;; never holds an env value, so there is nothing to flush -- and these settings are bound in hundreds of tests
+      (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk :flush-cache? false)
+
+      (and (not raw-setting?) (setting/env-var-value setting-k))
       (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk)
+
+      :else
       (let [original-value (if raw-setting?
                              (raw-setting setting-k)
                              (if skip-init?
