@@ -243,6 +243,18 @@ describe("QueryBuilder > timeline events", () => {
     });
   });
 
+  it("saving other changes to a question with a recorded selection tracks nothing", async () => {
+    await setupWithTimelines({
+      "timeline.selected_timeline_ids": [TIMELINE.id],
+      "timeline.excluded_timeline_event_ids": [RC1.id],
+    });
+
+    await triggerVisualizationQueryChange();
+    await saveQuestion();
+
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
+  });
+
   it("saving a question that never recorded a selection tracks nothing", async () => {
     await setupWithTimelines();
 

@@ -320,7 +320,7 @@ export const apiUpdateQuestion = (
       },
     );
 
-    trackQuestionTimelineEventsSaved(updatedQuestion);
+    trackQuestionTimelineEventsSaved(updatedQuestion, originalQuestion);
 
     // invalidate question notifications
     // (some of the old alerts might be removed during update)

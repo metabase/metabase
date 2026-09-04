@@ -1,5 +1,6 @@
 import { act, renderWithProviders, waitFor } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { selectTab } from "metabase/redux/dashboard";
 import {
   createMockApiState,
   createMockDashboardState,
@@ -12,10 +13,11 @@ import {
   showTimelineEvents,
 } from "metabase/visualizations/lib/timeline-events-visibility";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { Timeline, VisualizationSettings } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboardCard,
+  createMockDashboardTab,
   createMockDataset,
   createMockDatasetData,
   createMockDatetimeColumn,
@@ -57,6 +59,11 @@ const EVENTS_RECORDED: VisualizationSettings = {
   "timeline.excluded_timeline_event_ids": [],
 };
 
+const TABS = [
+  createMockDashboardTab({ id: 1 }),
+  createMockDashboardTab({ id: 2 }),
+];
+
 const DATASET = createMockDataset({
   data: createMockDatasetData({
     cols: [
@@ -78,9 +85,11 @@ const DashboardTimelines = () => {
 function setup({
   savedVisibility,
   timeline = TIMELINE,
+  dashcardTabId = TABS[0].id,
 }: {
   savedVisibility?: VisualizationSettings;
-  timeline?: typeof TIMELINE;
+  timeline?: Timeline;
+  dashcardTabId?: number;
 } = {}) {
   const card = createMockCard({
     display: "line",
@@ -89,6 +98,7 @@ function setup({
   const dashcard = createMockDashboardCard({
     id: DASHCARD_ID,
     dashboard_id: DASHBOARD_ID,
+    dashboard_tab_id: dashcardTabId,
     card,
   });
 
@@ -104,10 +114,12 @@ function setup({
             [DASHBOARD_ID]: createMockStoreDashboard({
               id: DASHBOARD_ID,
               dashcards: [DASHCARD_ID],
+              tabs: TABS,
             }),
           },
           dashcards: { [DASHCARD_ID]: dashcard },
           dashcardData: { [DASHCARD_ID]: { [card.id]: DATASET } },
+          selectedTabId: TABS[0].id,
         }),
         "metabase-api": seedApiQueryCache(createMockApiState(), [
           {
@@ -172,5 +184,32 @@ describe("useDashboardTimelines", () => {
     });
 
     expect(trackSimpleEvent).not.toHaveBeenCalled();
+  });
+
+  it("does not track a question that turned timeline events off", () => {
+    setup({
+      savedVisibility: { ...EVENTS_RECORDED, "timeline_events.enabled": false },
+    });
+
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
+  });
+
+  it("tracks events on another tab only once that tab is selected", async () => {
+    const store = setup({
+      savedVisibility: EVENTS_RECORDED,
+      dashcardTabId: TABS[1].id,
+    });
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
+
+    act(() => {
+      store.dispatch(selectTab({ tabId: TABS[1].id }));
+    });
+
+    await waitFor(() => {
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dashboard_events_shown",
+        target_id: DASHBOARD_ID,
+      });
+    });
   });
 });
