@@ -60,7 +60,7 @@ export const AddDataAppUsers = ({
     return (data?.data ?? []).filter(
       (user) =>
         user.is_active &&
-        user.tenant_id == null &&
+        user.tenant_id === null &&
         !memberIds.has(user.id) &&
         !selectedUsers.has(user.id) &&
         ((user.common_name ?? "").toLowerCase().includes(input) ||
@@ -102,7 +102,7 @@ export const AddDataAppUsers = ({
 
       const canAdd =
         user?.is_active &&
-        user.tenant_id == null &&
+        user.tenant_id === null &&
         !memberIds.has(user.id) &&
         nextUsers.size < MAX_SELECTED_USERS;
 
