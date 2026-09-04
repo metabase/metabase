@@ -100,7 +100,7 @@ Every plugin includes a `metabase-plugin.json` file at the root of the project:
 
 | Field              | Description                                                                                                                                                                                   |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`             | Unique identifier for the plugin. Metabase registers your visualization under this name and uses it to match replacement bundles.                                                             |
+| `name`             | Unique identifier for the plugin. Metabase registers your visualization under this name and uses it to match replacement bundles. The name can't contain `:`.                                 |
 | `icon`             | Path to the visualization icon (SVG recommended). Metabase serves the icon automatically. It's the only file Metabase serves alongside your bundle. See [Bundling assets](#bundling-assets).  |
 | `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62 <1.64"`). Keep the range closed on both ends. See [Versioning and compatibility](#versioning-and-compatibility). |
 | `sdk.version`      | The exact `@metabase/custom-viz` version the plugin was built with. Written automatically at pack time — don't set it by hand.                                                                |
