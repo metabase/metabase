@@ -38,7 +38,7 @@ export function BooleanPicker({
   return (
     <div>
       <Radio.Group value={value} onChange={handleChange}>
-        <Stack p="md" pb={hasExpandButton ? 0 : "md"} gap="sm">
+        <Stack p="lg" pb={hasExpandButton ? 0 : "lg"} gap="sm">
           {visibleOptions.map((option) => (
             <Radio
               key={option.value}

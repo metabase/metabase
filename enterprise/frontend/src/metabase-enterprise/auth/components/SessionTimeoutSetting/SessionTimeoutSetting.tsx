@@ -121,7 +121,7 @@ export const SessionTimeoutSetting = () => {
         inputType="boolean"
       />
       {!!settingValue && (
-        <Flex gap="sm" mt="md">
+        <Flex gap="sm" mt="lg">
           <TextInput
             type="number"
             data-testid="session-timeout-input"

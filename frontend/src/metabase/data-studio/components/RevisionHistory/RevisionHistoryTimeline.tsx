@@ -61,7 +61,7 @@ export function RevisionHistoryTimeline({
   }
 
   return (
-    <Stack p="xl" maw={720} mx="auto" w="100%">
+    <Stack p="xxl" maw={720} mx="auto" w="100%">
       <Timeline bulletSize={40} lineWidth={2}>
         {revisions.map((revision) => (
           <RevisionItem

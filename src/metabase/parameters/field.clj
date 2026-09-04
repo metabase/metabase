@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.parameters.chain-filter :as chain-filter]
+   [metabase.parameters.db :as parameters.db]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.field.search-values-query :as search-values-query]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -13,8 +14,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.metadata-from-qp :as warehouse-schema.metadata-from-qp]
-   [toucan2.core :as t2])
+   [metabase.warehouse-schema.metadata-from-qp :as warehouse-schema.metadata-from-qp])
   (:import
    (java.text NumberFormat)))
 
@@ -32,7 +32,7 @@
   [{semantic-type :semantic_type, fk-target-field-id :fk_target_field_id, :as field}]
   (if (and (isa? semantic-type :type/FK)
            fk-target-field-id)
-    (t2/select-one :model/Field :id fk-target-field-id)
+    (parameters.db/field fk-target-field-id)
     field))
 
 (def ^:private default-max-field-search-limit 1000)
@@ -78,7 +78,7 @@
   (if-let [remapped-field-id (when (= has-field-values-type :list)
                                (chain-filter/remapped-field-id field-id))]
     {:values          (search-values (api/check-404 field)
-                                     (api/check-404 (t2/select-one :model/Field :id remapped-field-id)))
+                                     (api/check-404 (parameters.db/field remapped-field-id)))
      :field_id        field-id
      :has_more_values (boolean has_more_values)}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
@@ -90,10 +90,10 @@
   (let [field        (if qp.perms/*param-values-query*
                        ;; When fetching param values for a card/dashboard the user can read, skip the Field
                        ;; read-check which requires create-queries permission on the table.
-                       (api/check-404 (t2/select-one :model/Field :id field-id))
-                       (api/read-check (t2/select-one :model/Field :id field-id)))
+                       (api/check-404 (parameters.db/field field-id))
+                       (api/read-check (parameters.db/field field-id)))
         search-field (or (some->> (chain-filter/remapped-field-id field-id)
-                                  (t2/select-one :model/Field :id))
+                                  parameters.db/field)
                          field)]
     {:values          (search-values field search-field query-string)
      ;; assume there are more if doing a search, otherwise there are no more values

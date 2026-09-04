@@ -79,13 +79,13 @@ export const QuestionInfoSidebar = ({
         defaultValue="overview"
         className={SidesheetStyles.FlexScrollContainer}
       >
-        <Tabs.List mx="xl">
+        <Tabs.List mx="xxl">
           <Tabs.Tab value="overview">{t`Overview`}</Tabs.Tab>
           {!isIAQuestion && <Tabs.Tab value="history">{t`History`}</Tabs.Tab>}
           <Tabs.Tab value="relationships">{t`Relationships`}</Tabs.Tab>
           {question.type() === "model" && !question.isArchived() && (
             <Link to={Urls.modelDetail(question.card())}>
-              <Flex gap="xs" className={SidesheetStyles.TabSibling}>
+              <Flex gap="xxs" className={SidesheetStyles.TabSibling}>
                 <Icon name="external" />
                 {t`Actions`}
               </Flex>
@@ -96,8 +96,8 @@ export const QuestionInfoSidebar = ({
 
         <SidesheetTabPanelContainer>
           <Tabs.Panel value="overview">
-            <Stack gap="lg">
-              <SidesheetCard pb="md">
+            <Stack gap="xl">
+              <SidesheetCard pb="lg">
                 <Stack gap={0}>
                   <SidesheetCardTitle>{t`Description`}</SidesheetCardTitle>
 

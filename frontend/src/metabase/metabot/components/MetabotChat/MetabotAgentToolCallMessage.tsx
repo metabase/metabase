@@ -50,8 +50,8 @@ const ToolCallSection = ({
   const clipboard = useClipboard();
 
   return (
-    <Stack gap="xs">
-      <Flex gap="xs">
+    <Stack gap="xxs">
+      <Flex gap="xxs">
         <Flex align="center" gap="sm">
           <Text fw="bold">{title}</Text>
           {badge}
@@ -66,7 +66,7 @@ const ToolCallSection = ({
           </ActionIcon>
         </Tooltip>
       </Flex>
-      <Box p="xs" bd="1px solid var(--mb-color-border-neutral)" bdrs="sm">
+      <Box p="xxs" bd="1px solid var(--mb-color-border-neutral)" bdrs="xs">
         <CodeEditor
           value={value}
           language={isJson ? "json" : undefined}
@@ -101,7 +101,7 @@ export const ToolCallDetailsContent = ({
   );
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       {message.args && (
         <ToolCallSection
           title={t`Request`}
@@ -179,9 +179,9 @@ export const AgentToolCallMessage = ({
     <>
       <Flex
         p="sm"
-        pl="md"
+        pl="lg"
         bd="1px solid var(--mb-color-border-neutral)"
-        bdrs="sm"
+        bdrs="xs"
         direction="row"
         align="center"
         justify="space-between"
@@ -200,7 +200,7 @@ export const AgentToolCallMessage = ({
           <Icon name="gear" c="text-secondary" mr="sm" />
           <Text fw="bold">{message.name}</Text>
         </Flex>
-        <Flex align="center" gap="xs" className={Styles.agentPartActions}>
+        <Flex align="center" gap="xxs" className={Styles.agentPartActions}>
           <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
             <ActionIcon
               h="sm"

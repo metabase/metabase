@@ -49,7 +49,7 @@ const WARNING_ICON_SIZE = 12;
 // divided the same way, then the button that follows them
 export function ProviderListSkeleton() {
   return (
-    <Stack gap="xs" data-testid="provider-list-skeleton">
+    <Stack gap="xxs" data-testid="provider-list-skeleton">
       <Stack gap={0}>
         <ProviderRowSkeleton />
         <Divider />
@@ -130,8 +130,8 @@ export function AIProviderList() {
   );
 
   return (
-    <Stack gap="md">
-      <Stack gap="xs">
+    <Stack gap="lg">
+      <Stack gap="xxs">
         {hasConnections && (
           <Stack gap={0}>
             {connections.map((connection, index) => (
@@ -206,7 +206,7 @@ function getDeleteWarning(
 
 function RowActions({ children }: { children: ReactNode }) {
   return (
-    <Group gap="xs" wrap="nowrap" h={PROVIDER_ICON_SIZE} align="center">
+    <Group gap="xxs" wrap="nowrap" h={PROVIDER_ICON_SIZE} align="center">
       {children}
     </Group>
   );
@@ -248,7 +248,7 @@ function ProviderConnectionRow({
         justify="center"
         mih={PROVIDER_ICON_SIZE}
       >
-        <Group gap="xs" wrap="nowrap">
+        <Group gap="xxs" wrap="nowrap">
           <Text fw="bold" lh={ROW_LINE_HEIGHT}>
             {connection.name}
           </Text>
@@ -340,7 +340,7 @@ function ProviderConnectionRow({
 
       {hasUsageDetails && (
         <Collapse id={detailsId} in={isShowingDetails}>
-          <Box pl={PROVIDER_DETAILS_INDENT} pb="md">
+          <Box pl={PROVIDER_DETAILS_INDENT} pb="lg">
             <MetabaseAIProviderSetup isConnected />
           </Box>
         </Collapse>
