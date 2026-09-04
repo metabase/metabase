@@ -49,6 +49,12 @@
 (defmacro with-new-secret-key! {:style/indent 0} [& body]
   `(do-with-new-secret-key! (fn [] ~@body)))
 
+(defn- field-effective-type
+  "A Field's `:effective_type` as the API returns it. It varies with the driver,
+  so a `:param_fields` expectation reads it rather than naming a value."
+  [field-id]
+  (u/qualified-name (t2/select-one-fn :effective_type :model/Field :id field-id)))
+
 (defn- the-id-or-entity-id
   "u/the-id doesn't work on entity-ids, so we should just pass them through."
   [id-or-entity-id]
@@ -693,7 +699,7 @@
                                 :table_id           (mt/id :venues)
                                 :display_name       "Category ID"
                                 :base_type          "type/Integer"
-                                :effective_type     "type/Integer"
+                                :effective_type     (field-effective-type (mt/id :venues :category_id))
                                 :settings           nil
                                 :name               "CATEGORY_ID"
                                 :semantic_type      "type/FK"
@@ -717,7 +723,7 @@
                                  :table_id           (mt/id :venues)
                                  :display_name       "Category ID"
                                  :base_type          "type/Integer"
-                                 :effective_type     "type/Integer"
+                                 :effective_type     (field-effective-type (mt/id :venues :category_id))
                                  :settings           nil
                                  :name               "CATEGORY_ID"
                                  :semantic_type      "type/FK"
@@ -762,7 +768,7 @@
                                 :table_id           (mt/id :venues)
                                 :display_name       "Category ID"
                                 :base_type          "type/Integer"
-                                :effective_type     "type/Integer"
+                                :effective_type     (field-effective-type (mt/id :venues :category_id))
                                 :settings           nil
                                 :name               "CATEGORY_ID"
                                 :semantic_type      "type/FK"
@@ -792,7 +798,7 @@
                                  :table_id           (mt/id :venues)
                                  :display_name       "Category ID"
                                  :base_type          "type/Integer"
-                                 :effective_type     "type/Integer"
+                                 :effective_type     (field-effective-type (mt/id :venues :category_id))
                                  :settings           nil
                                  :name               "CATEGORY_ID"
                                  :semantic_type      "type/FK"
@@ -831,7 +837,7 @@
                                      :table_id           (mt/id :venues)
                                      :display_name       "Category ID"
                                      :base_type          "type/Integer"
-                                     :effective_type     "type/Integer"
+                                     :effective_type     (field-effective-type (mt/id :venues :category_id))
                                      :settings           nil
                                      :name               "CATEGORY_ID"
                                      :semantic_type      "type/FK"
