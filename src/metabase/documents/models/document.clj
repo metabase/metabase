@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -16,7 +17,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.instance :as t2.instance]))
 
 (methodical/defmethod t2/table-name :model/Document [_model] :document)
 
@@ -25,13 +27,100 @@
   :model/Document)
 
 (t2/deftransforms :model/Document
-  {:document mi/transform-json})
+  {:document    mi/transform-json
+   :public_uuid (mi/transform-encrypted-text "document.public_uuid")})
 
 (doto :model/Document
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defonce ^{:doc "Predicate gating a document's *content* (not merely its existence) below
+                 collection-read, for documents whose rendered body embeds data the viewer may not
+                 be entitled to see. Installed at init.
+
+                 The only user today is `explorations`: a Summary document belongs to an
+                 exploration (the `:exploration_id` FK on the document table) and embeds verbatim —
+                 possibly sandboxed/impersonated/routed — result values, so a collaborator whose
+                 data-access lens differs from the creator's must not read it.
+
+                 `documents` can't call the consumer directly — the module graph runs one way
+                 (`explorations -> documents`) — so the consumer registers a callback here."}
+  doc-content-visibility-fn
+  (atom (fn [_doc] true)))
+
+(defn register-doc-content-visibility-fn!
+  "Install the content-visibility gate (see [[doc-content-visibility-fn]]). Called once at the
+  consuming module's init. `f` takes a document and returns whether the current user may see its
+  rendered content."
+  [f]
+  (reset! doc-content-visibility-fn f))
+
+(def ^:private ^:dynamic *content-gate-pending*
+  "Document ids whose content gate is currently being evaluated on this thread.
+
+  The gate is re-entrant by construction: adjudicating a document's content runs query-permission
+  checks, and those read-check the source Cards of the queries involved — a Card scoped to a
+  Document delegates back to that Document's gate. A document whose visibility depends on itself
+  has no answer, so deny rather than recur into a stack overflow inside an authorization check."
+  #{})
+
+(def ^:dynamic *cache*
+  "Cache atom bound by [[with-content-gate-cache]], or nil to adjudicate on every call."
+  nil)
+
+(defmacro with-content-gate-cache
+  "Adjudicate each document's content at most once for the duration of `body`. Nesting reuses the
+  enclosing cache.
+
+  The verdict is a rollup over the owning exploration's threads and costs roughly twenty app-DB
+  queries, so anything looping over documents — or over the Cards scoped to one, which all resolve
+  to the same document and so to the same verdict — otherwise pays it once per row. Scope it around
+  such a loop; everywhere else reads through."
+  {:style/indent 0}
+  [& body]
+  `(binding [*cache* (or *cache* (atom {}))]
+     ~@body))
+
+(defn content-visible?
+  "Run the registered content-visibility gate for `document`, guarding against re-entry and reusing
+  a verdict already reached under [[with-content-gate-cache]]."
+  [document]
+  (let [id      (:id document)
+        ;; Keyed by viewer as well as document: a verdict is only ever valid for the user it was
+        ;; computed for, so a cache that outlives or crosses a user binding misses rather than
+        ;; handing back someone else's answer.
+        k       [api/*current-user-id* api/*is-superuser?* id]
+        adjudge (fn []
+                  (if (contains? *content-gate-pending* id)
+                    false
+                    (binding [*content-gate-pending* (cond-> *content-gate-pending* id (conj id))]
+                      (boolean (@doc-content-visibility-fn document)))))]
+    (if (and id *cache*)
+      (if-some [cached (get @*cache* k)]
+        cached
+        (let [verdict (adjudge)]
+          (swap! *cache* assoc k verdict)
+          verdict))
+      (adjudge))))
+
+;; can-read?/can-write? compose the collection-permission policy with the content-visibility gate:
+;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
+;; narrower than collection access.
+(defmethod mi/can-read? :model/Document
+  ([instance]
+   (and (mi/current-user-has-full-permissions? :read instance)
+        (content-visible? instance)))
+  ([_model pk]
+   (mi/can-read? (documents.db/document pk))))
+
+(defmethod mi/can-write? :model/Document
+  ([instance]
+   (and (mi/current-user-has-full-permissions? :write instance)
+        (content-visible? instance)))
+  ([_model pk]
+   (mi/can-write? (documents.db/document pk))))
 
 (def DocumentName
   "Validations for the name of a document"
@@ -53,7 +142,7 @@
   (when old-collection-id
     (api/write-check :model/Collection old-collection-id))
   (when new-collection-id
-    (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))
+    (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id))
     (api/write-check :model/Collection new-collection-id)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :creator]
@@ -61,9 +150,10 @@
   [_model k documents]
   (mi/instances-with-hydrated-data
    documents k
-   #(-> (t2/select [:model/User :id :email :first_name :last_name] :id (keep :creator_id documents))
-        (map (juxt :id identity))
-        (into {}))
+   #(when-let [creator-ids (seq (keep :creator_id documents))]
+      (-> (documents.db/user-columns creator-ids)
+          (map (juxt :id identity))
+          (into {})))
    :creator_id {:default {}}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :cards]
@@ -73,9 +163,7 @@
   (let [document-ids (keep :id documents)
         ;; Fetch all cards for all documents in one batched query
         all-cards (when (seq document-ids)
-                    (t2/select :model/Card
-                               :document_id [:in document-ids]
-                               :archived false))
+                    (documents.db/unarchived-cards-for-documents document-ids))
         ;; Group cards by document_id, then convert each group to a map keyed by card ID
         cards-by-doc-id (group-by :document_id all-cards)
         cards-maps-by-doc-id (update-vals cards-by-doc-id
@@ -91,9 +179,7 @@
   (let [update-map {:collection_id collection-id
                     :archived (boolean archived)
                     :archived_directly (boolean archived-directly)}]
-    (t2/update! :model/Card
-                :document_id document-id
-                update-map)))
+    (documents.db/update-cards-for-document! document-id update-map)))
 
 (t2/define-after-update :model/Document
   [{:keys [id collection_id archived archived_directly] :as instance}]
@@ -101,7 +187,16 @@
                                    :archived archived
                                    :archived-directly archived_directly)
   (when-not mi/*deserializing?*
-    (events/publish-event! :event/document-update {:object instance}))
+    ;; Toucan2 hands `define-after-update` a `TransientRow` for each updated row,
+    ;; which is *not* a `mi/instance-of? :model/Document`. The revisions handler
+    ;; rejects non-instances with "object must be a model instance" — caught and
+    ;; logged at `revisions/events.clj:30`, but as a result no revision row is
+    ;; recorded for content updates. Promote it to a real instance here so the
+    ;; revisions push can complete cleanly.
+    (events/publish-event! :event/document-update
+                           {:object (if (t2/instance-of? :model/Document instance)
+                                      instance
+                                      (t2.instance/instance :model/Document instance))}))
   instance)
 
 (t2/define-after-select :model/Document
@@ -109,10 +204,6 @@
   (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
-
-(defmethod serdes/hash-fields :model/Document
-  [_table]
-  [:name (serdes/hydrated-hash :collection) :created-at])
 
 ;;; ----------------------------------------------- Search ----------------------------------------------------------
 
@@ -142,6 +233,7 @@
    :attrs {:archived true
            :collection-id :collection_id
            :creator-id :creator_id
+           :exploration-id :exploration_id
            :view-count :view_count
            :created-at :created_at
            :updated-at :updated_at
@@ -165,11 +257,14 @@
 
 ;;; ---------------------------------------------- Serialization --------------------------------------------------
 
-(def ^:private ast-model->db-model
-  {"card"      :model/Card
-   "dataset"   :model/Card
-   "table"     :model/Table
-   "dashboard" :model/Dashboard})
+(defn- ast-model->entity
+  "The database row identified by the smart-link/card-embed `model` (\"card\", \"dataset\", \"table\", or
+  \"dashboard\") and `id`, or nil."
+  [model id]
+  (case model
+    ("card" "dataset") (documents.db/card id)
+    "table"            (documents.db/table id)
+    "dashboard"        (documents.db/dashboard id)))
 
 (def ^:private model->serdes-model
   {"card"      "Card"
@@ -177,11 +272,23 @@
    "dashboard" "Dashboard"
    "table"     "Table"})
 
+(def ^:private non-portable-card-embed-attrs
+  "`cardEmbed` attrs holding a raw local database id that serdes cannot rewrite into a portable
+  reference, and so must not travel. `:stored_result_id` points at a `stored_result` row — an
+  ephemeral cached-snapshot record, not a first-class serdes entity — so exporting the integer
+  verbatim would, on import, either dangle or silently resolve to an unrelated instance's
+  snapshot. Dropping it degrades a static (snapshot-backed) embed to a live embed of the Card,
+  which is portable and renders the same query."
+  [:stored_result_id])
+
 (defn- id->entity-id
-  [{{:keys [model] :or {model "card"} :as attrs} :attrs type :type :as node}]
+  [{{:keys [model] :or {model "card"}} :attrs type :type :as node}]
   (let [id-key (if (= prose-mirror/smart-link-type type) :entityId :id)
-        id (id-key attrs)]
-    (if-let [db-model (t2/select-one (ast-model->db-model model) :id id)]
+        id (prose-mirror/node-entity-id node)
+        node (cond-> node
+               (= prose-mirror/card-embed-type type)
+               (update :attrs #(apply dissoc % non-portable-card-embed-attrs)))]
+    (if-let [db-model (and id (ast-model->entity model id))]
       (assoc-in node [:attrs id-key] (mapv #(dissoc % :label) (serdes/generate-path (model->serdes-model model) db-model)))
       (u/prog1 node
         (log/warnf "entity_id not found for %s at id: %s" model id)))))
@@ -195,32 +302,38 @@
       (u/prog1 node
         (log/warn "Model not found at path" (id-key attrs))))))
 
+(defn- serdes-rewritable-node?
+  "The AST nodes whose ids serdes rewrites between database ids and entity ids.
+
+  Matches on node *type* only. The id itself cannot be part of this test, because the same predicate
+  runs in both directions and the two directions see different shapes: on export `:id` is a raw
+  database id, but on import it is a serdes path (a vector of `{:model :id}` maps). A guard that
+  expected a positive integer would therefore pass on export and silently skip every node on import,
+  leaving the path unresolved. The id-shape checks belong in the readers — [[id->entity-id]] guards
+  on `prose-mirror/node-entity-id`, and [[entity-id->id]] on what `load-find-local` resolves to."
+  [node]
+  (contains? #{prose-mirror/smart-link-type prose-mirror/card-embed-type} (:type node)))
+
 (defn- export-document-content
-  "Transform cardEmbed/smartLink nodes to use entity IDs instead of database IDs"
+  "Transform cardEmbed / smartLink nodes to use entity IDs instead of database IDs"
   [document serdes-key _]
   (serdes-key
    (if (= (:content_type document) prose-mirror/prose-mirror-content-type)
-     (prose-mirror/update-ast
-      document
-      #(contains? #{prose-mirror/smart-link-type prose-mirror/card-embed-type} (:type %))
-      id->entity-id)
+     (prose-mirror/update-ast document serdes-rewritable-node? id->entity-id)
      document)))
 
 (defn- import-document-content
-  "Transform cardEmbed/smartLink nodes to use database IDs instead of entity IDs"
+  "Transform live cardEmbed / smartLink nodes to use database IDs instead of entity IDs"
   [document serdes-key _]
   (serdes-key
    (if (= (:content_type document) prose-mirror/prose-mirror-content-type)
-     (prose-mirror/update-ast
-      document
-      #(contains? #{prose-mirror/smart-link-type prose-mirror/card-embed-type} (:type %))
-      entity-id->id)
+     (prose-mirror/update-ast document serdes-rewritable-node? entity-id->id)
      document)))
 
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id]
+   :skip [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content
@@ -230,9 +343,24 @@
    :defaults {:archived          false
               :archived_directly false}})
 
+(defmethod serdes/extract-query "Document"
+  [model-name opts]
+  ;; An exploration document is not first-class content: it is reachable only through its owning
+  ;; exploration, its body embeds values computed under its creator's data-access lens, and
+  ;; `:exploration_id` is in this spec's `:skip` list — so an exported document would import as an
+  ;; ordinary, ungated document detached from any exploration.
+  ((get-method serdes/extract-query :default)
+   model-name
+   (update opts :where (fn [where]
+                         (let [clause [:= :exploration_id nil]]
+                           (if where [:and where clause] clause))))))
+
 (defn- document-deps
   [{:keys [content_type] :as document}]
   (when (= content_type prose-mirror/prose-mirror-content-type)
+    ;; NOTE: unlike the readers below, this feeds `deserialization-dependencies`, which runs on the already-serialized
+    ;; form where `:entityId` is a serdes path (a vector of {:model :id} maps), not a raw id — so it is not guarded
+    ;; with `node-entity-id` here.
     (set (prose-mirror/collect-ast document (fn document-deps [{:keys [type attrs]}]
                                               (cond
                                                 (and (= prose-mirror/smart-link-type type)
@@ -262,32 +390,32 @@
       (concat
        (for [embedded-card-id (prose-mirror/card-ids document)]
          [{:model "Card" :id embedded-card-id}])
-       (for [{model :model link-id :entityId}
+       (for [{{model :model} :attrs :as node}
              (prose-mirror/collect-ast document
-                                       #(when (= prose-mirror/smart-link-type (:type %))
-                                          (:attrs %)))
-             :when (contains? model->serdes-model model)]
+                                       #(when (= prose-mirror/smart-link-type (:type %)) %))
+             :let  [link-id (prose-mirror/node-entity-id node)]
+             :when (and link-id (contains? model->serdes-model model))]
          [{:model (model->serdes-model model) :id link-id}]))))))
 
 (defmethod serdes/descendants "Document"
   [_model-name id _opts]
-  (when-let [document (t2/select-one :model/Document :id id)]
+  (when-let [document (documents.db/document id)]
     (when (= prose-mirror/prose-mirror-content-type (:content_type document))
       (merge
        (into {}
              (for [embedded-card-id (prose-mirror/card-ids document)]
                {["Card" embedded-card-id] {"Document" id}}))
        (into {}
-             (for [{model :model link-id :entityId} (prose-mirror/collect-ast document
-                                                                              #(when (= prose-mirror/smart-link-type (:type %))
-                                                                                 (:attrs %)))
-                   :when (contains? model->serdes-model model)]
+             (for [{{model :model} :attrs :as node} (prose-mirror/collect-ast document
+                                                                              #(when (= prose-mirror/smart-link-type (:type %)) %))
+                   :let  [link-id (prose-mirror/node-entity-id node)]
+                   :when (and link-id (contains? model->serdes-model model))]
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
 
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))
-  model)
+  (public-sharing/add-public-uuid-prefix model))
 
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
-  model)
+  (public-sharing/add-public-uuid-prefix-if-changed model))

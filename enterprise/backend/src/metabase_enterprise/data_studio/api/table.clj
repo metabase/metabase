@@ -2,7 +2,7 @@
   "/api/ee/data-studio/table endpoints for bulk table operations (enterprise-only endpoints)."
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
+   [metabase-enterprise.data-studio.db :as data-studio.db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -11,10 +11,8 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,15 +29,10 @@
    [:map
     [:collection_id ms/PositiveInt]]])
 
-(mu/defn ^:private table-selectors->filter
+(defn- body->table-selectors
+  "The table selectors of a request `body`, as [[data-studio.db/table-ids-matching-selectors]] expects them."
   [{:keys [database_ids table_ids schema_ids]}]
-  (let [schema-expr (fn [s]
-                      (let [[schema-db-id schema-name] (str/split s #"\:")]
-                        [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]]))]
-    (cond-> [:or false]
-      (seq database_ids) (conj [:in :db_id (sort database_ids)])
-      (seq table_ids)    (conj [:in :id    (sort table_ids)])
-      (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids))))))
+  {:database-ids database_ids, :table-ids table_ids, :schema-ids schema_ids})
 
 ;;; ------------------------------------------------ Remapping Graph Traversal ------------------------------------------------
 
@@ -47,23 +40,12 @@
   "Find tables connected via FK remapping (Dimensions).
   `input-field` and `output-field` are field aliases (:source_field or :target_field).
   Returns table IDs from `output-field` that are connected to `tables` via `input-field`.
-  `tables` can be a set of table IDs or a HoneySQL subquery map."
+  `tables` can be a set of table IDs or a table-selectors map."
   [input-field output-field tables]
   (if (empty? tables)
     #{}
-    (let [input-table-id  (keyword (name input-field) "table_id")
-          output-table-id (keyword (name output-field) "table_id")]
-      (into #{} (map :table_id)
-            (t2/reducible-query {:select [[output-table-id :table_id]]
-                                 :from   [[(t2/table-name :model/Dimension) :dim]]
-                                 :join   [[(t2/table-name :model/Field) :source_field]
-                                          [:= :dim.field_id :source_field.id]
-                                          [(t2/table-name :model/Field) :target_field]
-                                          [:= :dim.human_readable_field_id :target_field.id]]
-                                 :where  [:and
-                                          [:= :dim.type "external"]
-                                          [:in input-table-id tables]
-                                          [:not [:in output-table-id tables]]]})))))
+    (into #{} (map :table_id)
+          (data-studio.db/remapped-table-ids-reducible input-field output-field tables))))
 
 (defn- upstream-table-ids
   "Given a table selector (set of IDs or subquery), find all tables that these tables depend on
@@ -76,11 +58,6 @@
   via FK remapping (Dimensions)."
   [target-tables]
   (remapped-table-ids :target_field :source_field target-tables))
-
-(defn- table-subquery
-  "Create a subquery that selects table IDs matching the given WHERE clause."
-  [where]
-  {:select [:id] :from [(t2/table-name :model/Table)] :where where})
 
 (defn- traverse-graph
   "Recursively traverse the remapping graph starting from initial-ids.
@@ -95,21 +72,21 @@
                new-neighbors)))))
 
 (defn- all-upstream-table-ids
-  "Get all upstream table IDs recursively for tables matching the given WHERE clause.
+  "Get all upstream table IDs recursively for tables matching the given table selectors.
   The first hop uses a subquery to avoid materializing potentially millions of IDs;
   subsequent hops use IDs since remappings are rare."
-  [source-table-where]
-  (let [initial-ids (upstream-table-ids (table-subquery source-table-where))]
+  [source-table-selectors]
+  (let [initial-ids (upstream-table-ids source-table-selectors)]
     (if (empty? initial-ids)
       #{}
       (traverse-graph upstream-table-ids initial-ids))))
 
 (defn- all-downstream-table-ids
-  "Get all downstream table IDs recursively for tables matching the given WHERE clause.
+  "Get all downstream table IDs recursively for tables matching the given table selectors.
   The first hop uses a subquery to avoid materializing potentially millions of IDs;
   subsequent hops use IDs since remappings are rare."
-  [target-table-where]
-  (let [initial-ids (downstream-table-ids (table-subquery target-table-where))]
+  [target-table-selectors]
+  (let [initial-ids (downstream-table-ids target-table-selectors)]
     (if (empty? initial-ids)
       #{}
       (traverse-graph downstream-table-ids initial-ids))))
@@ -123,15 +100,13 @@
   :feature :library
   [seed-table-ids]
   (when (seq seed-table-ids)
-    (let [downstream-ids      (all-downstream-table-ids [:in :id seed-table-ids])
+    (let [downstream-ids      (all-downstream-table-ids {:table-ids seed-table-ids})
           table-ids-to-update (when (seq downstream-ids)
-                                (t2/select-pks-set :model/Table :id [:in downstream-ids] :is_published true))]
+                                (data-studio.db/published-table-ids downstream-ids))]
       (when (seq table-ids-to-update)
-        (t2/update! :model/Table :id [:in table-ids-to-update]
-                    {:collection_id nil
-                     :is_published  false})
+        (data-studio.db/unpublish-tables! table-ids-to-update)
         ;; Publish events for audit log and remote sync tracking
-        (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
+        (let [updated-tables (data-studio.db/tables table-ids-to-update)]
           (doseq [table updated-tables]
             (events/publish-event! :event/table-unpublish {:object  table
                                                            :user-id api/*current-user-id*})))))))
@@ -154,7 +129,7 @@
   "This function returns `true` iff you have permission to publish every table passed."
   [table-ids]
   (every? can-publish? (when (seq table-ids)
-                         (t2/select :model/Table :id [:in table-ids]))))
+                         (data-studio.db/tables table-ids))))
 
 (api.macros/defendpoint :post "/publish-tables" :- ::publish-tables-response
   "Set collection for each of selected tables and all upstream dependencies recursively."
@@ -162,24 +137,19 @@
    _query-params
    body :- ::publish-table-selectors]
   (api/check-data-analyst)
-  (let [target-collection  (api/check-404 (t2/select-one :model/Collection (:collection_id body)))
+  (let [target-collection  (api/check-404 (data-studio.db/collection (:collection_id body)))
         _                  (api/check-400 (= (:type target-collection) collection/library-data-collection-type)
                                           (tru "Tables can only be published to Library/Data collections."))
-        where              (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        upstream-ids       (all-upstream-table-ids where)
-        ;; Don't move already-published upstream tables; only publish unpublished ones.
-        update-where       (if (seq upstream-ids)
-                             [:or where [:and [:in :id upstream-ids] [:= :is_published false]]]
-                             where)
-        ;; Get table IDs before update for event publishing
-        table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
+        selectors          (body->table-selectors body)
+        upstream-ids       (all-upstream-table-ids selectors)
+        ;; Don't move already-published upstream tables; only publish unpublished ones. Get table IDs before update
+        ;; for event publishing.
+        table-ids-to-update (data-studio.db/table-ids-matching-selectors selectors upstream-ids :unpublished)]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
-      (t2/update! :model/Table :id [:in table-ids-to-update]
-                  {:collection_id (:id target-collection)
-                   :is_published  true})
+      (data-studio.db/publish-tables! table-ids-to-update (:id target-collection))
       ;; Publish events for audit log and remote sync tracking
-      (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
+      (let [updated-tables (data-studio.db/tables table-ids-to-update)]
         (doseq [table updated-tables]
           (events/publish-event! :event/table-publish {:object  table
                                                        :user-id api/*current-user-id*}))))
@@ -191,20 +161,15 @@
    _query-params
    body :- ::table-selectors]
   (api/check-data-analyst)
-  (let [where           (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        downstream-ids  (all-downstream-table-ids where)
-        update-where    (if (seq downstream-ids)
-                          [:or where [:in :id downstream-ids]]
-                          where)
+  (let [selectors       (body->table-selectors body)
+        downstream-ids  (all-downstream-table-ids selectors)
         ;; Get table IDs before update for event publishing
-        table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
+        table-ids-to-update (data-studio.db/table-ids-matching-selectors selectors downstream-ids :any)]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
-      (t2/update! :model/Table :id [:in table-ids-to-update]
-                  {:collection_id nil
-                   :is_published  false})
+      (data-studio.db/unpublish-tables! table-ids-to-update)
       ;; Publish events for audit log and remote sync tracking
-      (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
+      (let [updated-tables (data-studio.db/tables table-ids-to-update)]
         (doseq [table updated-tables]
           (events/publish-event! :event/table-unpublish {:object  table
                                                          :user-id api/*current-user-id*}))))

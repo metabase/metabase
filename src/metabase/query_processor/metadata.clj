@@ -61,7 +61,7 @@
     (try
       (qp/process-query query' result-metadata-rff)
       (catch Throwable e
-        (log/error e "Error running query to determine Card result metadata")
+        (log/errorf "Error running query to determine Card result metadata: %s" (ex-message e))
         []))))
 
 (mu/defn- metadata-from-driver :- [:sequential :map]
@@ -155,6 +155,7 @@
   [query           :- :map
    current-user-id :- [:maybe ::lib.schema.id/user]]
   (mapv
+   ;; deprecated fn delegating to its deprecated private helper; both leave together
    #_{:clj-kondo/ignore [:deprecated-var]}
    ensure-legacy
    (result-metadata* query current-user-id)))

@@ -4,14 +4,13 @@
   See the detailed descriptions of the (de)serialization processes in [[metabase.models.serialization]]."
   (:require
    [clojure.set :as set]
-   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
+   [metabase-enterprise.serialization.db :as serialization.db]
    [metabase-enterprise.serialization.v2.dependency-validation :as dependency-validation]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -61,31 +60,41 @@
 
   Does not export ee-only analytics collections."
   [user-id]
-  (let [roots (t2/select :model/Collection {:where [:and [:= :location "/"]
-                                                    [:or [:= :personal_owner_id nil]
-                                                     [:= :personal_owner_id user-id]]
-                                                    [:or [:= :namespace nil]
-                                                     [:!= :namespace "analytics"]]]})]
+  (let [roots (serialization.db/root-collections-for-user user-id)]
     ;; start with the special "nil" root collection ID
     (-> #{nil}
         (into (map :id) roots)
         (into (mapcat collection/descendant-ids) roots))))
 
-(defn- parse-target [[model-name id :as target]]
+(defn- missing-target-error
+  "Bad-input error for a target that matches no row. `id-kind` names the flavour of id for the message."
+  [model-name id-kind id]
+  (ex-info (format "Could not find %s with %s: %s" model-name id-kind id)
+           {:status-code 400
+            :model       model-name
+            :id          id}))
+
+(defn- parse-target
+  "Normalizes a `[model-name id]` target to a database-local id, checking that it actually exists.
+
+  Nothing downstream treats a missing target as an error: `serdes/descendants` finds no children for an
+  id with no row behind it, and a `nil` id quietly exports root-level content. Both are reported as bad
+  input here instead."
+  [[model-name id :as target]]
   (if (string? id)
     (if-let [resolved-id (serdes/eid->id model-name id)]
       [model-name resolved-id]
-      (throw (ex-info (format "Could not find %s with entity ID: %s" model-name id)
-                      {:status-code 400
-                       :model       model-name
-                       :entity-id   id})))
-    target))
+      (throw (missing-target-error model-name "entity ID" id)))
+    (let [model (keyword "model" model-name)]
+      (when-not (serialization.db/instance-exists? model id)
+        (throw (missing-target-error model-name "ID" id)))
+      target)))
 
 (defn- analytics-collection-ids
   "Returns a set of collection IDs that are in the 'analytics' namespace (internal analytics collections).
    These collections are intentionally excluded from serialization."
   []
-  (let [analytics-roots (t2/select :model/Collection {:where [:= :namespace "analytics"]})]
+  (let [analytics-roots (serialization.db/analytics-root-collections)]
     (into (set (map :id analytics-roots))
           (mapcat collection/descendant-ids)
           analytics-roots)))
@@ -100,9 +109,7 @@
       (into #{}
             (comp (partition-all serdes/query-batch-size)
                   (mapcat (fn [batch]
-                            (t2/select-pks-set :model/Card {:where [:and
-                                                                    [:in :id (vec batch)]
-                                                                    [:in :collection_id (vec analytics-colls)]]}))))
+                            (serialization.db/card-ids-in-collections (vec batch) (vec analytics-colls)))))
             card-ids)
       #{})))
 
@@ -176,7 +183,6 @@
 (defn extract
   "Returns a reducible stream of entities to serialize"
   [opts]
-  (serdes.backfill/backfill-ids!)
   (extract-subtrees opts))
 
 (comment

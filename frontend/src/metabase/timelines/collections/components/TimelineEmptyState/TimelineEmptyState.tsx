@@ -11,11 +11,13 @@ import type { Collection, Timeline } from "metabase-types/api";
 export interface TimelineEmptyStateProps {
   timeline?: Timeline;
   collection?: Collection;
+  shouldOpenLinkInNewTab?: boolean;
 }
 
 const TimelineEmptyState = ({
   timeline,
   collection,
+  shouldOpenLinkInNewTab = false,
 }: TimelineEmptyStateProps): JSX.Element => {
   const link = timeline
     ? Urls.newEventInCollection(timeline)
@@ -26,7 +28,7 @@ const TimelineEmptyState = ({
 
   const applicationName = useSelector(getApplicationName);
   return (
-    <Stack align="center" ta="center" gap="lg">
+    <Stack align="center" ta="center" gap="xl">
       <Tooltip label={t`Launch of v2.0`} offset={-24} opened>
         <Box maw="6rem">
           <img src={EmptyEvent} alt={t`Collection event illustration`} />
@@ -46,7 +48,7 @@ const TimelineEmptyState = ({
         </Text>
       </Box>
       {canWrite && (
-        <Link to={link}>
+        <Link to={link} target={shouldOpenLinkInNewTab ? "_blank" : undefined}>
           <Button variant="filled" w="12.5rem">
             {t`Create event`}
           </Button>

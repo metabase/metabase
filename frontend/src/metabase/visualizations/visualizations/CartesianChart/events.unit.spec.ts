@@ -3,19 +3,34 @@ import {
   createMockCartesianChartModel,
   createMockSeriesModel,
 } from "__support__/echarts";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import type {
-  Datum,
-  DimensionModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { dayjs } from "metabase/dayjs";
+import {
+  type ComputedVisualizationSettings,
+  type Datum,
+  type DimensionModel,
+  type EChartsSeriesBrushEndEvent,
+  type EChartsSeriesBrushSelectedEvent,
+  type EChartsSeriesMouseEvent,
+  INDEX_KEY,
+  X_AXIS_DATA_KEY,
+  getDatasetKey,
+} from "metabase/viz-core";
 import {
   createMockColumn,
   createMockDatetimeColumn,
   createMockSingleSeries,
+  createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { canBrush, getEventDimensions } from "./events";
+import {
+  canBrush,
+  getAdjustedBrushEndEvent,
+  getBrushClickObject,
+  getEventDimensions,
+  getSeriesClickData,
+  getTooltipModel,
+  normalizeDimensionValue,
+} from "./events";
 
 const CARD_ID = 107;
 
@@ -47,6 +62,7 @@ const dimensionModel: DimensionModel = {
   column: createdAtColumn,
   columnIndex: 0,
   columnByCardId: { [CARD_ID]: createdAtColumn },
+  columns: [createdAtColumn],
 };
 
 describe("getEventDimensions", () => {
@@ -141,6 +157,7 @@ describe("getEventDimensions", () => {
       column: monthColumn,
       columnIndex: 0,
       columnByCardId: { [CARD_ID]: monthColumn },
+      columns: [monthColumn],
     };
 
     const seriesModel = createMockSeriesModel({
@@ -238,6 +255,7 @@ describe("getEventDimensions", () => {
       column: categoryColumn,
       columnIndex: 0,
       columnByCardId: { [CARD_ID]: categoryColumn },
+      columns: [categoryColumn],
     };
     const seriesModel = createMockSeriesModel({
       dataKey: countKey,
@@ -256,6 +274,160 @@ describe("getEventDimensions", () => {
 
     expect(dimensions).toEqual([
       { column: categoryColumn, value: "Doohickey" },
+    ]);
+  });
+});
+
+describe("getSeriesClickData", () => {
+  const categoryColumn = createMockColumn({
+    name: "CATEGORY",
+    display_name: "Category",
+    source: "breakout",
+  });
+
+  const sumColumn = createMockColumn({
+    name: "sum",
+    display_name: "Sum",
+    source: "aggregation",
+  });
+
+  const dataKey = getDatasetKey(sumColumn, CARD_ID);
+
+  it("supplies cardId, metric column, dimensions, and normalized dates", () => {
+    const createdAtColumn = createMockDatetimeColumn({
+      name: "CREATED_AT",
+      source: "breakout",
+    });
+    const createdAtKey = getDatasetKey(createdAtColumn, CARD_ID);
+    const sumKey = dataKey;
+    const datum: Datum = {
+      [X_AXIS_DATA_KEY]: "2027-10-01T00:00:00Z",
+      [createdAtKey]: "2027-10-01T00:00:00Z",
+      [sumKey]: 42,
+    };
+
+    const seriesModel = createMockSeriesModel({
+      dataKey: sumKey,
+      column: sumColumn,
+      columnIndex: 1,
+      cardId: CARD_ID,
+    });
+
+    const chartModel = createMockCartesianChartModel({
+      seriesModels: [seriesModel],
+      seriesIdToDataKey: { [sumKey]: sumKey },
+      dataset: [datum],
+      // Unjustified type cast. FIXME
+      transformedDataset: [
+        { [X_AXIS_DATA_KEY]: "", [INDEX_KEY]: 0 },
+      ] as Datum[],
+      columnByDataKey: {
+        [createdAtKey]: createdAtColumn,
+        [sumKey]: sumColumn,
+      },
+      dimensionModel: {
+        column: createdAtColumn,
+        columnIndex: 0,
+        columnByCardId: { [CARD_ID]: createdAtColumn },
+        columns: [createdAtColumn],
+      },
+      cardsColumns: [
+        {
+          dimension: { column: createdAtColumn, index: 0 },
+          metrics: [{ column: sumColumn, index: 1 }],
+        },
+      ],
+    });
+
+    const clickData = getSeriesClickData(
+      chartModel,
+      {},
+      // Unjustified type cast. FIXME
+      {
+        seriesId: sumKey,
+        dataIndex: 0,
+        event: { event: new MouseEvent("click") },
+      } as EChartsSeriesMouseEvent,
+    );
+
+    expect(clickData).toMatchObject({
+      cardId: CARD_ID,
+      column: sumColumn,
+      value: 42,
+      dimensions: [
+        {
+          column: createdAtColumn,
+          value: normalizeDimensionValue(
+            createdAtColumn,
+            "2027-10-01T00:00:00Z",
+          ),
+        },
+      ],
+    });
+  });
+
+  it("includes breakout dimensions alongside the x-axis dimension", () => {
+    const sourceColumn = createMockColumn({
+      name: "SOURCE",
+      source: "breakout",
+    });
+    const sourceKey = getDatasetKey(sourceColumn, CARD_ID);
+    const sumKey = dataKey;
+    const datum: Datum = {
+      [X_AXIS_DATA_KEY]: "Gadget",
+      [sourceKey]: "Affiliate",
+      [sumKey]: 12,
+    };
+
+    const seriesModel = createMockBreakoutSeriesModel({
+      dataKey: sumKey,
+      column: sumColumn,
+      cardId: CARD_ID,
+      breakoutColumn: sourceColumn,
+      breakoutValue: "Affiliate",
+    });
+
+    const chartModel = createMockCartesianChartModel({
+      seriesModels: [seriesModel],
+      seriesIdToDataKey: { [sumKey]: sumKey },
+      dataset: [datum],
+      // Unjustified type cast. FIXME
+      transformedDataset: [
+        { [X_AXIS_DATA_KEY]: "", [INDEX_KEY]: 0 },
+      ] as Datum[],
+      columnByDataKey: {
+        [sourceKey]: sourceColumn,
+        [sumKey]: sumColumn,
+      },
+      dimensionModel: {
+        column: categoryColumn,
+        columnIndex: 0,
+        columnByCardId: { [CARD_ID]: categoryColumn },
+        columns: [categoryColumn],
+      },
+      cardsColumns: [
+        {
+          dimension: { column: categoryColumn, index: 0 },
+          breakout: { column: sourceColumn, index: 1 },
+          metric: { column: sumColumn, index: 2 },
+        },
+      ],
+    });
+
+    const clickData = getSeriesClickData(
+      chartModel,
+      {},
+      // Unjustified type cast. FIXME
+      {
+        seriesId: sumKey,
+        dataIndex: 0,
+        event: { event: new MouseEvent("click") },
+      } as EChartsSeriesMouseEvent,
+    );
+
+    expect(clickData?.dimensions).toEqual([
+      { column: categoryColumn, value: "Gadget" },
+      { column: sourceColumn, value: "Affiliate" },
     ]);
   });
 });
@@ -283,6 +455,18 @@ describe("canBrush", () => {
     source: "aggregation",
     base_type: "type/Float",
     effective_type: "type/Float",
+  });
+
+  const binnedQuantityColumn = createMockColumn({
+    name: "QUANTITY",
+    display_name: "Quantity: 10 bins",
+    source: "breakout",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    binning_info: {
+      binning_strategy: "num-bins",
+      bin_width: 10,
+    },
   });
 
   const baseSettings: ComputedVisualizationSettings = {
@@ -341,5 +525,383 @@ describe("canBrush", () => {
     expect(
       canBrush(series, baseSettings, sumSubtotalColumn, undefined, onBrush),
     ).toBe(true);
+  });
+
+  // Binned dimensions default to histogram scale (already unbrushable), but
+  // users can switch to linear. Bars are centered on the bin start (0 for
+  // "0-10"), so a brush would filter the wrong range
+  it("returns false when the x-axis dimension is binned, even on a linear scale", () => {
+    const series = [
+      createMockSingleSeries(
+        {},
+        { data: { cols: [binnedQuantityColumn, sumSubtotalColumn] } },
+      ),
+    ];
+
+    expect(
+      canBrush(series, baseSettings, binnedQuantityColumn, onChangeCardAndRun),
+    ).toBe(false);
+  });
+});
+
+describe("getBrushClickObject", () => {
+  // mock element
+  const chartElement = {
+    getBoundingClientRect: () => ({
+      left: 100,
+      top: 50,
+      width: 400,
+      height: 200,
+      right: 500,
+      bottom: 250,
+      x: 100,
+      y: 50,
+      toJSON: () => ({}),
+    }),
+  } as HTMLElement;
+
+  it("builds a temporal brush click object with naive wall-clock strings and sorted bounds", () => {
+    const chartModel = createMockCartesianChartModel({
+      dimensionModel: {
+        column: createdAtColumn,
+        columnIndex: 0,
+        columnByCardId: { [CARD_ID]: createdAtColumn },
+        columns: [createdAtColumn],
+      },
+      xAxisModel: {
+        axisType: "time",
+        toEChartsAxisValue: (value) => String(value),
+        fromEChartsAxisValue: (value) => dayjs.utc(value),
+        interval: { unit: "month", count: 1 },
+        intervalsCount: 12,
+        range: [dayjs.utc("2020-01-01"), dayjs.utc("2020-12-01")],
+        formatter: String,
+      },
+    });
+    // mock event
+    const event = {
+      areas: [
+        {
+          brushType: "lineX",
+          coordRange: [Date.UTC(2020, 2, 1), Date.UTC(2020, 0, 1)],
+          range: [40, 180],
+        },
+      ],
+    } as EChartsSeriesBrushEndEvent;
+
+    const clicked = getBrushClickObject(chartModel, event, chartElement, {});
+
+    expect(clicked?.brushRange).toEqual({
+      type: "temporal",
+      start: "2020-01-01T00:00:00",
+      end: "2020-03-01T00:00:00",
+    });
+    expect(clicked?.column).toBe(createdAtColumn);
+    expect(clicked?.event.clientX).toBe(280);
+    expect(clicked?.event.clientY).toBe(150);
+  });
+
+  it("builds a numeric brush click object with sorted bounds", () => {
+    const priceColumn = createMockColumn({
+      name: "PRICE",
+      source: "breakout",
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+    });
+    const chartModel = createMockCartesianChartModel({
+      dimensionModel: {
+        column: priceColumn,
+        columnIndex: 0,
+        columnByCardId: { [CARD_ID]: priceColumn },
+        columns: [priceColumn],
+      },
+      xAxisModel: {
+        axisType: "value",
+        toEChartsAxisValue: (value) =>
+          typeof value === "number" ? value : null,
+        fromEChartsAxisValue: (value) => value,
+        extent: [0, 10],
+        interval: 1,
+        intervalsCount: 10,
+        isPadded: false,
+        formatter: String,
+      },
+    });
+    // mock event
+    const event = {
+      areas: [
+        {
+          brushType: "lineX",
+          coordRange: [4, 1],
+          range: [20, 90],
+        },
+      ],
+    } as EChartsSeriesBrushEndEvent;
+
+    const clicked = getBrushClickObject(chartModel, event, chartElement, {});
+
+    expect(clicked?.brushRange).toEqual({
+      type: "numeric",
+      start: 1,
+      end: 4,
+    });
+    expect(clicked?.column).toBe(priceColumn);
+  });
+});
+
+describe("getAdjustedBrushEndEvent", () => {
+  const jan = "2020-01-01T00:00:00Z";
+  const feb = "2020-02-01T00:00:00Z";
+  const mar = "2020-03-01T00:00:00Z";
+  const apr = "2020-04-01T00:00:00Z";
+  const janMs = Date.UTC(2020, 0, 1);
+  const febMs = Date.UTC(2020, 1, 1);
+  const marMs = Date.UTC(2020, 2, 1);
+  const aprMs = Date.UTC(2020, 3, 1);
+
+  const timeSeriesChartModel = createMockCartesianChartModel({
+    dimensionModel: {
+      column: createdAtColumn,
+      columnIndex: 0,
+      columnByCardId: { [CARD_ID]: createdAtColumn },
+      columns: [createdAtColumn],
+    },
+    xAxisModel: {
+      axisType: "time",
+      toEChartsAxisValue: (value) => String(value),
+      fromEChartsAxisValue: (value) => dayjs.utc(value),
+      interval: { unit: "month", count: 1 },
+      intervalsCount: 4,
+      range: [dayjs.utc(jan), dayjs.utc(apr)],
+      formatter: String,
+    },
+    transformedDataset: [jan, feb, mar, apr].map((value, index) => ({
+      [X_AXIS_DATA_KEY]: value,
+      [INDEX_KEY]: index,
+    })),
+  });
+
+  const brushEndEvent = (coordRange: [number, number]) =>
+    // getAdjustedBrushEndEvent only reads areas; mouse fields are unused
+    ({
+      areas: [
+        {
+          brushType: "lineX",
+          coordRange,
+          range: [40, 180],
+        },
+      ],
+    }) as unknown as EChartsSeriesBrushEndEvent;
+
+  const brushSelectedEvent = (
+    dataIndex: number[],
+  ): EChartsSeriesBrushSelectedEvent => ({
+    batch: [{ selected: [{ seriesIndex: 0, dataIndex }] }],
+  });
+
+  // Mid-January to mid-March: the pixel range covers parts of the Jan and Mar
+  // bars without reaching their tick values.
+  const partialCoordRange: [number, number] = [
+    Date.UTC(2020, 0, 15),
+    Date.UTC(2020, 2, 15),
+  ];
+
+  it("widens the start to include a highlighted bar whose tick is left of coordRange", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([0, 1, 2]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([
+      janMs,
+      partialCoordRange[1],
+    ]);
+  });
+
+  it("widens the end to include a highlighted bar whose tick is right of coordRange", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([1, 2, 3]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([
+      partialCoordRange[0],
+      aprMs,
+    ]);
+  });
+
+  it("widens both bounds when highlighted bars sit outside the pixel range", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([0, 1, 2, 3]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([janMs, aprMs]);
+  });
+
+  it("takes the min and max dataIndex across series", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      {
+        batch: [
+          {
+            selected: [
+              { seriesIndex: 0, dataIndex: [1, 2] },
+              { seriesIndex: 1, dataIndex: [0, 3] },
+            ],
+          },
+        ],
+      },
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([janMs, aprMs]);
+  });
+
+  it("returns the original coordRange when nothing is selected", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual(partialCoordRange);
+  });
+
+  it("returns the original coordRange when brushSelected is missing", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      null,
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual(partialCoordRange);
+  });
+
+  it("returns the original coordRange for a numeric axis", () => {
+    const chartModel = createMockCartesianChartModel({
+      xAxisModel: {
+        axisType: "value",
+        toEChartsAxisValue: (value) =>
+          typeof value === "number" ? value : null,
+        fromEChartsAxisValue: (value) => value,
+        extent: [0, 10],
+        interval: 1,
+        intervalsCount: 10,
+        isPadded: false,
+        formatter: String,
+      },
+      transformedDataset: [0, 1, 2, 3].map((value, index) => ({
+        [X_AXIS_DATA_KEY]: value,
+        [INDEX_KEY]: index,
+      })),
+    });
+
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent([1.5, 2.5]),
+      brushSelectedEvent([0, 1, 2, 3]),
+      chartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([1.5, 2.5]);
+  });
+
+  it("returns null when coordRange is not a lineX pair", () => {
+    // Missing coordRange is the case under test; mouse fields are unused
+    const event = {
+      areas: [{ brushType: "lineX", range: [40, 180] }],
+    } as unknown as EChartsSeriesBrushEndEvent;
+
+    expect(
+      getAdjustedBrushEndEvent(
+        event,
+        brushSelectedEvent([0]),
+        timeSeriesChartModel,
+      ),
+    ).toBeNull();
+  });
+
+  it("keeps a bound when the selected index is out of range", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([0, 99]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([
+      janMs,
+      partialCoordRange[1],
+    ]);
+  });
+
+  it("does not shrink the range when selected ticks sit inside coordRange", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([1, 2]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual(partialCoordRange);
+    expect(febMs).toBeGreaterThan(partialCoordRange[0]);
+    expect(marMs).toBeLessThan(partialCoordRange[1]);
+  });
+});
+
+describe("getTooltipModel", () => {
+  // The shape produced by funnelToBarTransform and scalarsBarTransform:
+  // each series is a separate card with a datapoint at only its own category.
+  const createStepSeriesChartModel = (dataset: Datum[]) =>
+    createMockCartesianChartModel({
+      seriesModels: [
+        createMockSeriesModel({ dataKey: "Doohickey", name: "Doohickey" }),
+        createMockSeriesModel({ dataKey: "Gadget", name: "Gadget" }),
+      ],
+      dataset,
+      transformedDataset: dataset,
+    });
+
+  it("shows only series with a datapoint at the hovered position in the default tooltip (metabase#76933)", () => {
+    const chartModel = createStepSeriesChartModel([
+      { [X_AXIS_DATA_KEY]: "Doohickey", [INDEX_KEY]: 0, Doohickey: 3976 },
+      { [X_AXIS_DATA_KEY]: "Gadget", [INDEX_KEY]: 1, Gadget: 4939 },
+    ]);
+
+    const tooltipModel = getTooltipModel(
+      chartModel,
+      createMockVisualizationSettings({ "graph.tooltip_type": "default" }),
+      0,
+      "bar",
+      "Doohickey",
+    );
+
+    expect(tooltipModel?.rows.map((row) => row.name)).toEqual(["Doohickey"]);
+  });
+
+  it("keeps series with explicit null values in the default tooltip", () => {
+    const chartModel = createStepSeriesChartModel([
+      {
+        [X_AXIS_DATA_KEY]: "Doohickey",
+        [INDEX_KEY]: 0,
+        Doohickey: 3976,
+        Gadget: null,
+      },
+      { [X_AXIS_DATA_KEY]: "Gadget", [INDEX_KEY]: 1, Gadget: 4939 },
+    ]);
+
+    const tooltipModel = getTooltipModel(
+      chartModel,
+      createMockVisualizationSettings({ "graph.tooltip_type": "default" }),
+      0,
+      "bar",
+      "Doohickey",
+    );
+
+    expect(tooltipModel?.rows.map((row) => row.name)).toEqual([
+      "Doohickey",
+      "Gadget",
+    ]);
   });
 });

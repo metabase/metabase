@@ -1,24 +1,29 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { forwardRef, useCallback, useMemo, useState } from "react";
+import { Fragment, forwardRef, useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useSubmitMetabotFeedbackMutation } from "metabase/api/metabot";
 import { useToast } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
-import { useMetabotName } from "metabase/metabot/hooks";
-import type {
-  MetabotAgentChatMessage,
-  MetabotAgentDataPartMessage,
-  MetabotAgentTextChatMessage,
-  MetabotAgentTurnError,
-  MetabotAgentTurnErroredMessage,
-  MetabotChatMessage,
-  MetabotDataPart,
-  MetabotUserChatMessage,
+import {
+  type MetabotAgentChatMessage,
+  type MetabotAgentDataPartMessage,
+  type MetabotAgentId,
+  type MetabotAgentTextChatMessage,
+  type MetabotAgentTurnError,
+  type MetabotAgentTurnErroredMessage,
+  type MetabotAgentTurnIncompleteMessage,
+  type MetabotChatMessage,
+  type MetabotDataPart,
+  type MetabotDebugToolCallMessage,
+  type MetabotUserChatMessage,
+  forkConversation,
+  isChainOfThoughtMessage,
 } from "metabase/metabot/state";
+import { useDispatch } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
   Box,
@@ -33,10 +38,15 @@ import {
 } from "metabase/ui";
 import type { IconName, MetabotFeedback } from "metabase-types/api";
 
+import { useSubmitMetabotFeedbackMutation } from "../../api";
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";
 import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
+import {
+  MetabotChainOfThought,
+  MetabotToolProgress,
+} from "./MetabotChainOfThought";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
 
@@ -68,10 +78,15 @@ const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
       isUserVisibleDataPartMessage(message),
     )
     .with({ type: "tool_call" }, () => false)
+    .with({ type: "chain_of_thought" }, () => true)
     .with({ type: "turn_aborted" }, () => true)
+    .with({ type: "turn_incomplete" }, () => true)
     .with({ type: "turn_errored" }, () => true)
     .with({ type: "turn_in_progress" }, () => false)
     .exhaustive();
+
+const isConversationContent = (message: MetabotChatMessage) =>
+  !isChainOfThoughtMessage(message) && message.type !== "tool_call";
 
 interface BaseMessageProps extends Omit<FlexProps, "onCopy"> {
   message: MetabotChatMessage;
@@ -178,6 +193,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   readonly: boolean;
   conversationId: string;
   onRetry?: (messageId: string) => void;
+  onContinue?: (resumePrompt: string) => void;
   onRefreshConversation?: () => void;
   getCopyText: () => string;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
@@ -185,6 +201,10 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   onInternalLinkClick?: (link: string) => void;
   extraActions?: ReactNode;
   isStreaming?: boolean;
+  supportsReasoning?: boolean;
+  onFork?: (messageId: string) => void;
+  isForking?: boolean;
+  onToolCallSelect?: (message: MetabotDebugToolCallMessage) => void;
 }
 
 export const AgentMessage = ({
@@ -195,6 +215,7 @@ export const AgentMessage = ({
   conversationId,
   getCopyText,
   onRetry,
+  onContinue,
   onRefreshConversation,
   setFeedbackMessage,
   submittedFeedback,
@@ -202,13 +223,22 @@ export const AgentMessage = ({
   hideActions,
   extraActions,
   isStreaming = false,
+  supportsReasoning = true,
+  onFork,
+  isForking,
+  onToolCallSelect,
   ...props
 }: AgentMessageProps) => {
   const messageId = "externalId" in message ? (message.externalId ?? "") : "";
   const isInProgress = message.type === "turn_in_progress";
-  const canGiveFeedback =
-    !readonly && !isInProgress && !!setFeedbackMessage && !!messageId;
+  const isFailedTurn =
+    message.type === "turn_errored" || message.type === "turn_aborted";
+  const canActOnMessage = !readonly && !isInProgress && !!messageId;
+  const canGiveFeedback = canActOnMessage && !!setFeedbackMessage;
+  const canFork = canActOnMessage && !isFailedTurn && !!onFork;
   const clipboard = useClipboard({ timeout: 2000 });
+  const copyText = getCopyText();
+  const canCopy = !isInProgress && copyText.length > 0;
 
   return (
     <MessageContainer chatRole={message.role} {...props}>
@@ -231,10 +261,24 @@ export const AgentMessage = ({
           />
         ))
         .with({ type: "tool_call" }, (m) => (
-          <AgentToolCallMessage message={m} />
+          <AgentToolCallMessage message={m} onSelect={onToolCallSelect} />
         ))
+        .with({ type: "chain_of_thought" }, (m) =>
+          supportsReasoning ? (
+            <MetabotChainOfThought message={m} isStreaming={isStreaming} />
+          ) : (
+            <MetabotToolProgress message={m} isStreaming={isStreaming} />
+          ),
+        )
         .with({ type: "turn_aborted" }, (m) => (
           <AbortedTurnAlert messageId={m.id} debug={debug} onRetry={onRetry} />
+        ))
+        .with({ type: "turn_incomplete" }, (m) => (
+          <IncompleteTurnAlert
+            finishReason={m.finishReason}
+            contextWindowFull={m.contextWindowFull}
+            onContinue={onContinue}
+          />
         ))
         .with({ type: "turn_errored" }, (m) => (
           <AgentErroredTurnAlert
@@ -254,12 +298,12 @@ export const AgentMessage = ({
         .exhaustive()}
       {!hideActions && (
         <Flex className={Styles.messageActions} align="center">
-          {!isInProgress && (
+          {canCopy && (
             <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
               <ActionIcon
                 h="sm"
                 data-testid="metabot-chat-message-copy"
-                onClick={() => clipboard.copy(getCopyText())}
+                onClick={() => clipboard.copy(copyText)}
               >
                 <Icon name="copy" size="1rem" />
               </ActionIcon>
@@ -303,6 +347,19 @@ export const AgentMessage = ({
             </Tooltip>
           )}
           {extraActions}
+          {canFork && (
+            <Tooltip label={t`Fork conversation`}>
+              <ActionIcon
+                h="sm"
+                data-testid="metabot-chat-message-fork"
+                loading={isForking}
+                disabled={isForking}
+                onClick={() => onFork(messageId)}
+              >
+                <Icon name="git_branch" size="1rem" />
+              </ActionIcon>
+            </Tooltip>
+          )}
         </Flex>
       )}
     </MessageContainer>
@@ -324,10 +381,10 @@ const AgentTurnAlert = ({
 }) => (
   <Flex
     direction="column"
-    gap="xs"
+    gap="xxs"
     p="sm"
     bd="1px solid var(--mb-color-border-neutral)"
-    bdrs="sm"
+    bdrs="xs"
     data-testid="metabot-chat-message-turn-alert"
     bg="background_page-primary"
   >
@@ -345,8 +402,8 @@ const AgentTurnAlert = ({
     </Flex>
     {debugDetails && (
       <Card
-        bdrs="xs"
-        ml="lg"
+        bdrs="xxs"
+        ml="xl"
         p="sm"
         withBorder
         shadow="none"
@@ -359,7 +416,7 @@ const AgentTurnAlert = ({
         {JSON.stringify(debugDetails, null, 2)}
       </Card>
     )}
-    {footer && <Box ml="lg">{footer}</Box>}
+    {footer && <Box ml="xl">{footer}</Box>}
   </Flex>
 );
 
@@ -410,7 +467,7 @@ const AbortedTurnAlert = ({
   debug: boolean;
   onRetry?: (messageId: string) => void;
 }) => {
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   return (
     <AgentTurnAlert
       variant="info"
@@ -425,6 +482,67 @@ const AbortedTurnAlert = ({
             data-testid="metabot-chat-message-retry"
           >
             {t`Retry`}
+          </Button>
+        ) : null
+      }
+    />
+  );
+};
+
+const getIncompleteTurnConfig = (
+  finishReason: MetabotAgentTurnIncompleteMessage["finishReason"],
+  metabotName: string,
+): { message: string; resumePrompt?: string } =>
+  match(finishReason)
+    .with("length", () => ({
+      message: t`Response from ${metabotName} was cut off because it hit the maximum length`,
+      resumePrompt: t`Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote.`,
+    }))
+    .with("content-filter", () => ({
+      message: t`Response from ${metabotName} was stopped by a content filter. Try rephrasing your question.`,
+    }))
+    .with("tool-calls", () => ({
+      message: t`${metabotName} paused after reaching its step limit for this response`,
+      resumePrompt: t`Continue working on my last request.`,
+    }))
+    .with("other", () => ({
+      message: t`Response from ${metabotName} stopped before it finished`,
+    }))
+    .exhaustive();
+
+const IncompleteTurnAlert = ({
+  finishReason,
+  contextWindowFull,
+  onContinue,
+}: {
+  finishReason: MetabotAgentTurnIncompleteMessage["finishReason"];
+  contextWindowFull?: boolean;
+  onContinue?: (resumePrompt: string) => void;
+}) => {
+  const metabotName = useSetting("metabot-name");
+  // "length" is overloaded, occurs when context window has been met (unrecoverable)
+  // or when the max_tokens has been met (recoverable)
+  const { message, resumePrompt } =
+    finishReason === "length" && contextWindowFull
+      ? {
+          message: t`This conversation has reached its maximum length and can't continue. Please start a new chat.`,
+          resumePrompt: undefined,
+        }
+      : getIncompleteTurnConfig(finishReason, metabotName);
+  return (
+    <AgentTurnAlert
+      variant="info"
+      message={message}
+      cta={
+        resumePrompt && onContinue ? (
+          <Button
+            variant="default"
+            size="compact-xs"
+            fz="xs"
+            onClick={() => onContinue(resumePrompt)}
+            data-testid="metabot-chat-message-continue"
+          >
+            {t`Continue`}
           </Button>
         ) : null
       }
@@ -463,24 +581,35 @@ export const getFullAgentReply = (
 export const Messages = ({
   messages,
   onRetryMessage,
+  onContinueMessage,
   onRefreshConversation,
   isDoingScience,
+  supportsReasoning = true,
   debug,
   readonly = false,
+  agentId,
   conversationId,
   onInternalLinkClick,
   getExtraActions,
+  renderAfterMessage,
+  onToolCallSelect,
 }: {
   messages: MetabotChatMessage[];
   onRetryMessage?: (messageId: string) => void;
+  onContinueMessage?: (resumePrompt: string) => void;
   onRefreshConversation?: () => void;
   isDoingScience: boolean;
+  supportsReasoning?: boolean;
   debug: boolean;
   readonly?: boolean;
+  agentId?: MetabotAgentId;
   conversationId: string;
   onInternalLinkClick?: (navigateToPath: string) => void;
   getExtraActions?: (messageId: string) => ReactNode;
+  renderAfterMessage?: (message: MetabotChatMessage) => ReactNode;
+  onToolCallSelect?: (message: MetabotDebugToolCallMessage) => void;
 }) => {
+  const dispatch = useDispatch();
   const visibleMessages = useMemo(
     () => (debug ? messages : messages.filter(isUserVisibleMessage)),
     [debug, messages],
@@ -490,6 +619,27 @@ export const Messages = ({
     [visibleMessages],
   );
   const [sendToast] = useToast();
+  const [forkingMessageId, setForkingMessageId] = useState<string | null>(null);
+
+  const handleFork = useCallback(
+    async (messageId: string) => {
+      if (!agentId || isDoingScience) {
+        return;
+      }
+      setForkingMessageId(messageId);
+      try {
+        await dispatch(
+          forkConversation({ agentId, conversationId, messageId }),
+        ).unwrap();
+        sendToast({ icon: "check", message: t`Conversation forked` });
+      } catch {
+        sendToast({ icon: "warning", message: t`Failed to fork conversation` });
+      } finally {
+        setForkingMessageId(null);
+      }
+    },
+    [dispatch, agentId, conversationId, sendToast, isDoingScience],
+  );
 
   const [feedbackState, setFeedbackState] = useState<{
     submitted: Record<string, "positive" | "negative" | undefined>;
@@ -536,40 +686,70 @@ export const Messages = ({
     <>
       {visibleMessages.map((message, index) => {
         const next = visibleMessages[index + 1];
+        const nextContent = visibleMessages
+          .slice(index + 1)
+          .find(isConversationContent);
         const isLastUserMessage = index > lastUserIndex;
 
-        return message.role === "agent" ? (
-          <AgentMessage
-            key={"msg-" + message.id}
-            data-testid="metabot-chat-message"
-            message={message}
-            debug={debug}
-            readonly={readonly}
-            conversationId={conversationId}
-            onRetry={isLastUserMessage ? onRetryMessage : undefined}
-            onRefreshConversation={onRefreshConversation}
-            getCopyText={() => getAgentReplyCopyText(message.id)}
-            setFeedbackMessage={(data) =>
-              setFeedbackState((prev) => ({ ...prev, modal: data }))
-            }
-            submittedFeedback={
-              "externalId" in message && message.externalId
-                ? feedbackState.submitted[message.externalId]
-                : undefined
-            }
-            hideActions={next?.role === "agent" || (isDoingScience && !next)}
-            extraActions={getExtraActions?.(message.id)}
-            onInternalLinkClick={onInternalLinkClick}
-            isStreaming={isDoingScience && !next}
-          />
-        ) : (
-          <UserMessage
-            key={"msg-" + message.id}
-            data-testid="metabot-chat-message"
-            message={message}
-            hideActions={isDoingScience && visibleMessages.length === index + 1}
-            extraActions={getExtraActions?.(message.id)}
-          />
+        const messageElement =
+          message.role === "agent" ? (
+            <AgentMessage
+              data-testid="metabot-chat-message"
+              message={message}
+              debug={debug}
+              readonly={readonly}
+              conversationId={conversationId}
+              onRetry={isLastUserMessage ? onRetryMessage : undefined}
+              onContinue={isLastUserMessage ? onContinueMessage : undefined}
+              onRefreshConversation={onRefreshConversation}
+              getCopyText={() => getAgentReplyCopyText(message.id)}
+              setFeedbackMessage={(data) =>
+                setFeedbackState((prev) => ({ ...prev, modal: data }))
+              }
+              submittedFeedback={
+                "externalId" in message && message.externalId
+                  ? feedbackState.submitted[message.externalId]
+                  : undefined
+              }
+              hideActions={
+                isChainOfThoughtMessage(message) ||
+                nextContent?.role === "agent" ||
+                (isDoingScience && !nextContent)
+              }
+              extraActions={getExtraActions?.(message.id)}
+              onFork={
+                agentId && !readonly && !isDoingScience ? handleFork : undefined
+              }
+              isForking={
+                "externalId" in message &&
+                !!message.externalId &&
+                forkingMessageId === message.externalId
+              }
+              onInternalLinkClick={onInternalLinkClick}
+              supportsReasoning={supportsReasoning}
+              onToolCallSelect={onToolCallSelect}
+              isStreaming={
+                isChainOfThoughtMessage(message)
+                  ? isDoingScience && !nextContent
+                  : isDoingScience && !next
+              }
+            />
+          ) : (
+            <UserMessage
+              data-testid="metabot-chat-message"
+              message={message}
+              hideActions={
+                isDoingScience && visibleMessages.length === index + 1
+              }
+              extraActions={getExtraActions?.(message.id)}
+            />
+          );
+
+        return (
+          <Fragment key={"msg-" + message.id}>
+            {messageElement}
+            {renderAfterMessage?.(message)}
+          </Fragment>
         );
       })}
 

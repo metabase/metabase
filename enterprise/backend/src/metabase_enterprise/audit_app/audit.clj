@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase-enterprise.audit-app.db :as audit-app.db]
    [metabase-enterprise.audit-app.settings :as audit-app.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.app-db.cluster-lock :as cluster-lock]
@@ -63,71 +64,40 @@
   - This uses a weird ID because some tests were hardcoded to look for database with ID = 2, and inserting an extra db
   throws that off since these IDs are sequential."
   [engine id]
-  (t2/insert! :model/Database {:is_audit         true
-                               :id               id
-                               :name             default-db-name
-                               :description      "Internal Audit DB used to power metabase analytics."
-                               :engine           engine
-                               :is_full_sync     true
-                               :is_on_demand     false
-                               :creator_id       nil
-                               :auto_run_queries true})
-  ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
-  (t2/delete! :model/Permissions {:where [:like :object (str "%/db/" id "/%")]}))
+  ;; one transaction so a crash can't commit the database row yet skip the permissions guard below —
+  ;; the next boot would see the database and no-op, leaving the stale permissions with no re-run path
+  (t2/with-transaction [_conn]
+    (audit-app.db/insert-database! {:is_audit         true
+                                    :id               id
+                                    :name             default-db-name
+                                    :description      "Internal Audit DB used to power metabase analytics."
+                                    :engine           engine
+                                    :is_full_sync     true
+                                    :is_on_demand     false
+                                    :creator_id       nil
+                                    :auto_run_queries true})
+    ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
+    (audit-app.db/delete-permissions-for-database! id)))
 
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
   ;; We need to move back to a schema that matches the serialized data
-  (t2/update! :model/Database audit-db-id {:engine "postgres"})
+  ;;
+  ;; The flip commits, so on a multi-node mysql/h2 cluster other nodes can see engine="postgres" while
+  ;; the load runs — the longstanding behavior of this pipeline (only #76551's single-transaction era
+  ;; briefly hid it). Resolving serialized names against an overlay instead would avoid even that.
+  (audit-app.db/set-database-engine! audit-db-id "postgres")
   ;; do a separate select and update of table ids that are not downcased
   ;; we don't want to try to downcase audit db tables that may already have a downcased version
   ;; some older migrations have both upper and lowercased table names
   ;; just grab the ids separately since there aren't many and this kind of check in an update
   ;; has different syntax on different appdbs
-  (let [table-ids-to-update (t2/query {:select [:table.id]
-                                       :from [[(t2/table-name :model/Table) :table]]
-                                       :where [:and [:= :table.db_id audit-db-id]
-                                               ;; Exclude DATABASECHANGELOG, DATABASECHANGELOGLOCK, and QRTZ_* tables, they are not metabase managed
-                                               [:not= :table.name [:inline "DATABASECHANGELOG"]]
-                                               [:not= :table.name [:inline "DATABASECHANGELOGLOCK"]] ;; new instances do not get this file, but existing instances may have it
-                                               [:not= :table.name [:inline "DATABASECHANGELOG_VERSION"]]
-                                               [:not [:like :table.name [:inline "QRTZ_%"]]]
-                                               [:not [:exists {:select [1]
-                                                               :from [[(t2/table-name :model/Table) :self_table]]
-                                                               :where [:and
-                                                                       [:= :self_table.db_id :table.db_id]
-                                                                       [:or
-                                                                        [:= :self_table.schema [:lower :table.schema]]
-                                                                        [:and
-                                                                         [:= :self_table.schema [:inline "public"]]
-                                                                         [:= :table.schema nil]]]
-                                                                       [:= :self_table.name [:lower :table.name]]]}]]]})]
+  (let [table-ids-to-update (audit-app.db/table-ids-to-downcase audit-db-id)]
     (when (seq table-ids-to-update)
-      (t2/update! :model/Table :id [:in (map :id table-ids-to-update)]
-                  {:schema "public" :name [:lower :name]})))
-  (let [field-ids-to-update (t2/query {:select [:field.id]
-                                       :from [[(t2/table-name :model/Field) :field]]
-                                       :inner-join [[(t2/table-name :model/Table) :table]
-                                                    [:= :table.id :field.table_id]]
-                                       :where [:and [:= :table.db_id audit-db-id]
-                                               [:not= :table.name [:inline "DATABASECHANGELOG"]]
-                                               [:not= :table.name [:inline "DATABASECHANGELOG_VERSION"]]
-                                               [:not [:like :table.name [:inline "QRTZ_%"]]]
-                                               [:not [:exists {:select [1]
-                                                               :from [[(t2/table-name :model/Field) :self_field]]
-                                                               :inner-join [[(t2/table-name :model/Table) :self_table]
-                                                                            [:= :self_table.id :self_field.table_id]]
-                                                               :where [:and
-                                                                       [:= :self_table.db_id :table.db_id]
-                                                                       [:or
-                                                                        [:= :self_table.schema [:lower :table.schema]]
-                                                                        [:and
-                                                                         [:= :self_table.schema [:inline "public"]]
-                                                                         [:= :table.schema nil]]]
-                                                                       [:= :self_field.name [:lower :field.name]]]}]]]})]
+      (audit-app.db/downcase-tables! table-ids-to-update)))
+  (let [field-ids-to-update (audit-app.db/field-ids-to-downcase audit-db-id)]
     (when (seq field-ids-to-update)
-      (t2/update! :model/Field :id [:in (map :id field-ids-to-update)]
-                  {:name [:lower :name]})))
+      (audit-app.db/downcase-fields! field-ids-to-update)))
   (log/info "Adjusted Audit DB for loading Analytics Content"))
 
 (defn- fix-h2-card-metadata! [audit-db-id]
@@ -143,28 +113,22 @@
              (.setInt stmt 2 (:id card))
              (.addBatch stmt))))
        nil
-       (t2/reducible-select [(t2/table-name :model/Card) :id :result_metadata] :database_id audit-db-id))
+       (audit-app.db/card-result-metadata-reducible audit-db-id))
       (.executeBatch stmt))))
 
 (defn- adjust-audit-db-to-host!
   [{audit-db-id :id :keys [engine] :as audit-db}]
   (when-not (= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
-    (t2/update! :model/Database audit-db-id {:engine (name (mdb/db-type))})
+    (audit-app.db/set-database-engine! audit-db-id (name (mdb/db-type)))
     (case (mdb/db-type)
       :mysql
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema nil})
+      (audit-app.db/clear-table-schemas! audit-db-id)
 
       :h2
       (do
-        (t2/update! :model/Table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
-        (t2/update! :model/Field
-                    {:table_id
-                     [:in
-                      {:select [:id]
-                       :from   [(t2/table-name :model/Table)]
-                       :where  [:= :db_id audit-db-id]}]}
-                    {:name [:upper :name]})
+        (audit-app.db/upcase-tables! audit-db-id)
+        (audit-app.db/upcase-fields! audit-db-id)
         (fix-h2-card-metadata! audit-db-id))
 
       :postgres
@@ -259,7 +223,7 @@
   half-applied state left by an interrupted `adjust-audit-db-to-host!`."
   [audit-db-id]
   (and (not= :postgres (mdb/db-type))
-       (t2/exists? :model/Table :db_id audit-db-id :schema "public" :active true)))
+       (audit-app.db/active-public-table-exists? audit-db-id)))
 
 (defn- maybe-load-analytics-content!
   "Loads serialized audit content from the classpath if its checksum has changed.
@@ -282,14 +246,14 @@
          ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
          (let [report  (log/with-no-logs
                          (serialization.cmd/v2-load-internal! (str (instance-analytics-plugin-dir (plugins/plugins-dir)))
-                                                              {:backfill? false}
+                                                              {}
                                                               :token-check? false
                                                               :require-initialized-db? false))
                loaded? (empty? (:errors report))]
            (if loaded?
              (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
              (log/info (str "Error Loading Analytics Content: " (pr-str report))))
-           (when-let [{:keys [engine] :as audit-db} (t2/select-one :model/Database :is_audit true)]
+           (when-let [{:keys [engine] :as audit-db} (audit-app.db/audit-database)]
              (let [original-engine engine]
                (adjust-audit-db-to-host! audit-db)
                ;; GHY-3974 Mode B: advance the checksum only after the host-adjust completes, so an
@@ -300,7 +264,7 @@
 
 (defn- maybe-install-audit-db!
   []
-  (let [audit-db (t2/select-one :model/Database :is_audit true)
+  (let [audit-db (audit-app.db/audit-database)
         result   (cond
                    (not (audit-app.settings/install-analytics-database))
                    (u/prog1 ::blocked
@@ -319,7 +283,7 @@
                    :else
                    ::no-op)]
     (when (contains? #{::installed ::updated} result)
-      (when-let [db (t2/select-one :model/Database :is_audit true)]
+      (when-let [db (audit-app.db/audit-database)]
         (log/info "Syncing Audit DB")
         (log/with-no-logs (sync/sync-database! db {:scan :schema}))))
     result))
@@ -334,28 +298,34 @@
       (directory-content-checksum views-dir ".sql"))))
 
 (defn- maybe-sync-audit-db!
-  "One-shot synchronous `:scan :schema` sync of the audit DB. Fires when either trigger is true:
+  "One-shot synchronous `:scan :schema` sync of the audit DB. Fires when any trigger is true:
      - `engine-changed?` — `maybe-load-analytics-content!` swapped the audit DB engine and
        field metadata needs to be refreshed for the new dialect.
      - the `instance_analytics_views` SQL files have changed since the last successful sync,
        meaning a migration may have added a new view that isn't yet in `metabase_table`.
-   The two triggers share one sync because they both want the same operation. Runs synchronously
-   (not in a background future) so it stays inside the caller's cross-node cluster lock and
-   transaction — a sync on another thread would escape the lock and, on a transactional appdb,
-   deadlock against the caller's uncommitted `metabase_table` writes."
+     - a previous engine-changed sync failed or was interrupted, recorded durably in
+       [[audit-app.settings/audit-db-dialect-sync-pending]].
+   The triggers share one sync because they all want the same operation. Runs synchronously
+   (not in a background future) so it stays serialized under the caller's cross-node cluster lock."
   [audit-db engine-changed?]
-  (let [current      (views-checksum)
-        views-stale? (and current (not= current (audit-app.settings/last-analytics-views-checksum)))]
-    (when (or engine-changed? views-stale?)
-      (log/infof "Syncing Audit DB schema (engine-changed? %s, views-stale? %s)"
-                 engine-changed? views-stale?)
+  (let [current       (views-checksum)
+        views-stale?  (and current (not= current (audit-app.settings/last-analytics-views-checksum)))
+        sync-pending? (audit-app.settings/audit-db-dialect-sync-pending)]
+    ;; record the debt durably BEFORE attempting the sync: the content checksum has already advanced, so
+    ;; a failed or interrupted sync would otherwise never be retried — no other path syncs the audit DB
+    (when engine-changed?
+      (audit-app.settings/audit-db-dialect-sync-pending! true))
+    (when (or engine-changed? views-stale? sync-pending?)
+      (log/infof "Syncing Audit DB schema (engine-changed? %s, views-stale? %s, sync-pending? %s)"
+                 engine-changed? views-stale? sync-pending?)
       (try
         (log/with-no-logs (sync/sync-database! audit-db {:scan :schema}))
         (when current
           (audit-app.settings/last-analytics-views-checksum! current))
+        (audit-app.settings/audit-db-dialect-sync-pending! false)
         (log/info "Audit DB sync complete.")
         (catch Exception e
-          (log/error e "Audit DB sync failed."))))))
+          (log/errorf "Audit DB sync failed: %s" (ex-message e)))))))
 
 (defn- host-canonical-table
   "The `[name schema]` an audit-DB `metabase_table` row should use for the host engine, matching the
@@ -372,16 +342,16 @@
   [orphan-table-id survivor-table-id]
   (let [survivor-by-name (into {}
                                (map (juxt (comp u/lower-case-en :name) :id))
-                               (t2/select [:model/Field :id :name] :table_id survivor-table-id))]
+                               (audit-app.db/field-names-of-table survivor-table-id))]
     (into {}
           (keep (fn [{:keys [id name]}]
                   (when-let [survivor-field-id (survivor-by-name (u/lower-case-en name))]
                     [id survivor-field-id])))
-          (t2/select [:model/Field :id :name] :table_id orphan-table-id))))
+          (audit-app.db/field-names-of-table orphan-table-id))))
 
 (defn- remap-result-metadata-ref
   "Remap the Field ID of a single result-metadata `:field_ref` via `field-id-remap`. Handles legacy refs
-   (`[:field id opts]`, `[:field-id id]`, id second) and pMBQL refs (`[:field opts id]`, id last). Non-field refs and
+   (`[:field id opts]`, `[:field-id id]`, id second) and MBQL 5 refs (`[:field opts id]`, id last). Non-field refs and
    ids with no remapping are returned unchanged."
   [field-id-remap ref]
   (if (and (vector? ref) (#{:field :field-id} (first ref)))
@@ -412,13 +382,13 @@
    when the orphan is deleted. Field ids are remapped onto the survivor's same-named fields."
   [orphan-table-id survivor-table-id]
   (let [field-id-remap (orphan->survivor-field-ids orphan-table-id survivor-table-id)]
-    (doseq [card (t2/select :model/Card :table_id orphan-table-id)]
-      (t2/update! :model/Card (:id card)
-                  (cond-> {:dataset_query (-> (:dataset_query card)
-                                              (lib/replace-table-ids {orphan-table-id survivor-table-id})
-                                              (lib/replace-field-ids field-id-remap))}
-                    (:result_metadata card)
-                    (assoc :result_metadata (remap-result-metadata field-id-remap (:result_metadata card))))))))
+    (doseq [card (audit-app.db/cards-of-table orphan-table-id)]
+      (audit-app.db/update-card! (:id card)
+                                 (cond-> {:dataset_query (-> (:dataset_query card)
+                                                             (lib/replace-table-ids {orphan-table-id survivor-table-id})
+                                                             (lib/replace-field-ids field-id-remap))}
+                                   (:result_metadata card)
+                                   (assoc :result_metadata (remap-result-metadata field-id-remap (:result_metadata card))))))))
 
 (defn- reconcile-audit-db-duplicates!
   "Collapse duplicate `metabase_table` rows for the same audit view into a single active row at the host-canonical
@@ -432,32 +402,32 @@
   [audit-db-id]
   ;; order by id in the query so every selection below (including the `referenced?` tiebreak) is deterministic;
   ;; group-by preserves this order within each group
-  (let [groups (->> (t2/select [:model/Table :id :name :schema :active] :db_id audit-db-id
-                               {:order-by [[:id :asc]]})
+  (let [groups (->> (audit-app.db/tables-of-database-in-id-order audit-db-id)
                     (group-by (comp u/lower-case-en :name))
                     (filter (fn [[_ rows]] (> (count rows) 1))))]
     (doseq [[_ rows] groups]
-      (let [referenced-ids    (into #{}
-                                    (map :table_id)
-                                    (t2/query {:select-distinct [:table_id]
-                                               :from            [(t2/table-name :model/Card)]
-                                               :where           [:in :table_id (map :id rows)]}))
-            survivor          (or (first (filter (comp referenced-ids :id) rows))
-                                  (first (filter :active rows))
-                                  (first rows))
-            [c-name c-schema] (host-canonical-table (:name survivor))
-            orphans           (remove #(= (:id %) (:id survivor)) rows)]
-        ;; move content off each orphan, then delete it before re-canonicalizing the survivor so the survivor's
-        ;; new (name, schema) can't collide with an orphan still sitting at that slot on idx_unique_table
-        (doseq [{orphan-id :id} orphans]
-          (repoint-cards-to-survivor! orphan-id (:id survivor))
-          (t2/delete! :model/Table orphan-id))
-        ;; clear is_defective_duplicate so the survivor re-enters idx_unique_table (its unique_table_helper is
-        ;; NULL — and thus excluded from the index — while the flag is set)
-        (t2/update! :model/Table (:id survivor)
-                    {:active true :name c-name :schema c-schema :is_defective_duplicate false})
-        (log/infof "Reconciled %d duplicate audit view row(s) onto table id %s"
-                   (count orphans) (:id survivor))))))
+      ;; one transaction per group so a crash can't delete the orphans yet skip the survivor update —
+      ;; the shrunken group would no longer register as duplicates, stranding the survivor's flags
+      (t2/with-transaction [_conn]
+        (let [referenced-ids    (into #{}
+                                      (map :table_id)
+                                      (audit-app.db/table-ids-referenced-by-cards (map :id rows)))
+              survivor          (or (first (filter (comp referenced-ids :id) rows))
+                                    (first (filter :active rows))
+                                    (first rows))
+              [c-name c-schema] (host-canonical-table (:name survivor))
+              orphans           (remove #(= (:id %) (:id survivor)) rows)]
+          ;; move content off each orphan, then delete it before re-canonicalizing the survivor so the survivor's
+          ;; new (name, schema) can't collide with an orphan still sitting at that slot on idx_unique_table
+          (doseq [{orphan-id :id} orphans]
+            (repoint-cards-to-survivor! orphan-id (:id survivor))
+            (audit-app.db/delete-table! orphan-id))
+          ;; clear is_defective_duplicate so the survivor re-enters idx_unique_table (its unique_table_helper is
+          ;; NULL — and thus excluded from the index — while the flag is set)
+          (audit-app.db/update-table! (:id survivor)
+                                      {:active true :name c-name :schema c-schema :is_defective_duplicate false})
+          (log/infof "Reconciled %d duplicate audit view row(s) onto table id %s"
+                     (count orphans) (:id survivor)))))))
 
 (def ^:private audit-db-cluster-lock
   "Cluster lock serializing the audit DB load/adjust/sync/reconcile across nodes (GHY-3974 1b)."
@@ -480,13 +450,17 @@
   ;; serialize install+adjust+load+sync+reconcile across nodes so a rolling upgrade can't run an adjust or sync
   ;; against a half-adjusted schema (`with-duplicate-ops-prevented` is per-process only). The install runs inside the
   ;; lock too, so a node that acquires it after the installer committed sees the DB already exists and falls through
-  ;; to a no-op rather than colliding on the audit DB primary key. The sync runs synchronously inside the lock so it
-  ;; stays in the lock's transaction. If another node already holds the lock it is doing this same work, so we skip
-  ;; rather than fail the boot.
+  ;; to a no-op rather than colliding on the audit DB primary key. The sync runs synchronously so it stays serialized
+  ;; under the lock. If another node already holds the lock it is doing this same work, so we skip rather than fail
+  ;; the boot.
+  ;;
+  ;; the detached lock keeps the pipeline off the lock's transaction — its work commits incrementally in
+  ;; small transactions (#78238). That is safe here because the pipeline self-heals: the checksum only
+  ;; advances on completion and reconcile runs every boot, so a crash mid-pipeline is repaired next boot.
   (try
-    (cluster-lock/with-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 5 :retry-config {:max-retries 2}}
+    (cluster-lock/with-detached-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 5 :retry-config {:max-retries 2}}
       (u/prog1 (maybe-install-audit-db!)
-        (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
+        (when-let [audit-db (audit-app.db/audit-database)]
           ((sync-util/with-duplicate-ops-prevented
             :sync-database audit-db
             (fn []

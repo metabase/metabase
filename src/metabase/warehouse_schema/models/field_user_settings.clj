@@ -3,6 +3,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -17,6 +18,7 @@
    :semantic_type     field/transform-field-semantic-type
    :visibility_type   mi/transform-keyword
    :has_field_values  mi/transform-keyword
+   :data_sensitivity  mi/transform-keyword
    :settings          mi/transform-json
    :nfc_path          mi/transform-json})
 
@@ -30,13 +32,9 @@
   "Upsert FieldUserSettings"
   [{:keys [id]} settings]
   (let [filtered-settings (u/select-keys-when settings :present field/field-user-settings)]
-    (when-not (t2/exists? :model/FieldUserSettings id)
-      (t2/insert! :model/FieldUserSettings {:field_id id}))
-    (t2/update! :model/FieldUserSettings id filtered-settings)))
-
-(defmethod serdes/hash-fields :model/FieldUserSettings
-  [_field-values]
-  [(serdes/hydrated-hash :field)])
+    (when-not (warehouse-schema.db/field-user-settings-exist? id)
+      (warehouse-schema.db/insert-field-user-settings! {:field_id id}))
+    (warehouse-schema.db/update-field-user-settings! id filtered-settings)))
 
 (defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)
 
@@ -51,7 +49,7 @@
 (defmethod serdes/load-find-local "FieldUserSettings" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldUserSettings.
   (let [field (serdes/load-find-local (pop path))]
-    (t2/select-one :model/FieldUserSettings :field_id (:id field))))
+    (warehouse-schema.db/field-user-settings (:id field))))
 
 (defn- field-path->field-ref [field-values-path]
   (let [[db schema table field :as field-ref] (map :id (pop field-values-path))]
@@ -63,7 +61,7 @@
 (defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]
   {:copy      [:semantic_type :description :display_name :visibility_type
                :has_field_values :effective_type :coercion_strategy :caveats
-               :points_of_interest :nfc_path :json_unfolding :settings]
+               :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity]
    :transform {:created_at   (serdes/date)
                :fk_target_field_id (serdes/fk :model/Field)
                :field_id     {::serdes/fk true

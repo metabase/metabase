@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Group, Stack, Title } from "metabase/ui";
 
 import { AiFeatureAccessTable } from "./components/AiFeatureAccessTable";
@@ -49,7 +49,7 @@ export function MetabotFeatureAccessPage() {
   const error = groupsError || permissionsError;
 
   return (
-    <SettingsPageWrapper mt="sm" gap="md">
+    <SettingsPageWrapper mt="sm" gap="lg">
       <Group justify="space-between" w="100%">
         <Title order={1}>{t`AI feature access`}</Title>
         {advanced && <GearIconMenu />}
@@ -59,7 +59,7 @@ export function MetabotFeatureAccessPage() {
         <GroupCategoryTabs setActiveTab={setActiveTab} activeTab={activeTab} />
       )}
 
-      <Stack gap="md">
+      <Stack gap="lg">
         <LoadingAndErrorWrapper loading={isLoading} error={error}>
           {activeGroups && (
             <AiFeatureAccessTable

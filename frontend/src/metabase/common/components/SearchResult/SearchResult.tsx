@@ -1,13 +1,12 @@
 import cx from "classnames";
-import type { LocationDescriptorObject } from "history";
 import type { AnchorHTMLAttributes, HTMLAttributes, MouseEvent } from "react";
 import { forwardRef, useCallback } from "react";
 
 import { Markdown } from "metabase/common/components/Markdown";
 import { trackSearchClick } from "metabase/common/search/analytics";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import type { To } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import type { AnchorProps, BoxProps, StackProps } from "metabase/ui";
 import {
   Anchor,
@@ -113,13 +112,11 @@ export function SearchResult({
 
   const isActive = isItemActive(result);
   const isLoading = isItemLoading(result);
-
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject | string) =>
-      dispatch(push(nextLocation)),
-    [dispatch],
+    (nextLocation: To) => navigate(nextLocation),
+    [navigate],
   );
 
   const onXRayClick = (e: MouseEvent<HTMLButtonElement>) => {
@@ -200,8 +197,8 @@ export function SearchResult({
         item={result}
         type={model}
       />
-      <ResultNameSection justify="center" gap="xs">
-        <Group gap="xs" align="center" wrap="nowrap">
+      <ResultNameSection justify="center" gap="xxs">
+        <Group gap="xxs" align="center" wrap="nowrap">
           <ResultTitle
             role="heading"
             data-testid="search-result-item-name"
@@ -227,7 +224,7 @@ export function SearchResult({
                 size="md"
                 color="input-focus"
                 orientation="vertical"
-                bdrs="xs"
+                bdrs="xxs"
               />
               <Markdown
                 dark
@@ -243,7 +240,7 @@ export function SearchResult({
         )}
       </ResultNameSection>
       {isLoading && (
-        <LoadingSection px="xs">
+        <LoadingSection px="xxs">
           <Loader data-testid="search-result-sync-loading-indicator" />
         </LoadingSection>
       )}

@@ -27,9 +27,28 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 - Format using Markdown conventions
 - Reference other vars with `[[other-var]]` not backticks
 
+A docstring states the *contract*: what it returns (including when it returns nil), what its
+params mean, what it throws versus swallows, and any precondition or invariant the caller must
+respect. A params block for non-obvious or optional args is good documentation — length is not
+the problem.
+
+These seven things are, and each is a reason to cut or relocate:
+
+| Anti-pattern | Why | Where it goes instead |
+| --- | --- | --- |
+| **Facts you don't own** — how a *callee*, another namespace, or another repo works internally | Drifts silently; nothing fails when it goes stale | Cut. Name the callee and let its own docstring say it |
+| **Said twice** — ns docstring restating its vars', a caller restating its callee's, sibling fns repeating boilerplate | Two copies means one is already wrong | Cut the copy. One fact, one owner |
+| **Design rationale** — why this approach, why it lives in this module, what the alternative was | The caller can't act on it | Commit message, or an inline comment on the specific line it constrains |
+| **Development history** — "matching master", "the X branch", "currently", "for now", "used to" | Stale by construction | Cut |
+| **Instructions to the reader** — "callers should trust this", "don't bother checking", "you should use X" | State the contract; the caller decides | Cut, keeping any actual guarantee as a plain statement |
+| **Invented precision** — score bands, thresholds, or tables no code enforces | Reads as spec, isn't | Cut, or make the code enforce it |
+| **A note on the wrong var** — describing how overrides behave, on the base/default impl | Nobody reading the override sees it | Move to the overrides it describes |
+
 **Comments:**
 
 - `TODO` format: `;; TODO (Name YYYY-MM-DD) -- description`
+- Prefer an inline comment over docstring prose for anything that explains *the body*. Put it on
+  the line it explains, not at the top of the function.
 
 ## Code Organization
 
@@ -285,12 +304,13 @@ Tag response Malli `:map` schemas with `{:closed true}` so the generated OpenAPI
 
 **Linter Suppressions:**
 
-The right shape is a **reader-discard map** placed directly above the form being silenced, listing the rule keywords explicitly:
+The right shape is a **reader-discard map** placed directly above the form being silenced, listing the
+rule keywords explicitly and including the required explanation:
 
 ```clojure
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/api_key" ...)
+;; Loaded by name from the plugin registry.
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn plugin-entrypoint ...)
 ```
 
 For a single require entry, hang it as metadata on that entry:
@@ -301,7 +321,12 @@ For a single require entry, hang it as metadata on that entry:
  [metabase.query-processor.store :as qp.store])
 ```
 
-Common Metabase-specific rules you'll see: `:metabase/modules`, `:metabase/validate-defendpoint-route-uses-kebab-case`, `:metabase/validate-defendpoint-has-response-schema`, `:metabase/prefer-with-dynamic-fn-redefs`, `:deprecated-namespace`, `:discouraged-namespace`. Don't use the keyword form (`#_:clj-kondo/ignore`); always the map form so it's grep-able by which rule(s) are suppressed.
+Use the map form, not the keyword form (`#_:clj-kondo/ignore`), so searches can identify the suppressed
+rules. Keep `:clj-kondo/ignore` as the map's first key; the ratchet scanner rejects other orderings.
+
+Fix the warning when possible. Adding a suppression is a last resort and requires approval. If one is
+necessary, add an explanatory `;;` comment directly above it or at the end of the same line. CI enforces
+these requirements with `./bin/mage kondo-ratchets`.
 
 **Configurable Options:**
 

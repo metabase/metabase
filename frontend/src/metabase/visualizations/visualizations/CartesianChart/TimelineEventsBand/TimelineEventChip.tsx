@@ -1,16 +1,17 @@
 import cx from "classnames";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { Box, HoverCard, Icon, Text, UnstyledButton } from "metabase/ui";
-import { TIMELINE_EVENTS_BAND } from "metabase/visualizations/echarts/cartesian/constants/style";
+import {
+  TIMELINE_EVENTS_BAND,
+  type TimelineEventGroup,
+} from "metabase/viz-core";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import S from "./TimelineEventsBand.module.css";
 import { TimelineEventRow, TimelineEventsList } from "./TimelineEventsList";
-import {
-  type PositionedTimelineEventGroup,
-  getTimelineEventGroupIconName,
-} from "./utils";
+import { getTimelineEventGroupIconName } from "./utils";
 
 const MAX_VISIBLE_EVENTS = 3;
 
@@ -20,25 +21,50 @@ const POPOVER_OFFSET =
   TIMELINE_EVENTS_BAND.bandPaddingY +
   AXIS_CLEARANCE;
 
+export const POPOVER_CLOSE_DELAY_MS = 150;
+
 interface TimelineEventChipProps {
-  eventsGroup: PositionedTimelineEventGroup;
+  group: TimelineEventGroup;
+  x: number;
   centerY: number;
   selectedEventIds: TimelineEventId[];
+  hidden?: boolean;
+  zIndex?: number;
+  className?: string;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  onGroupHover?: (group: TimelineEventGroup | null) => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (events: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
+  onSeeAllEvents?: (events: TimelineEvent[]) => void;
 }
 
 export const TimelineEventChip = ({
-  eventsGroup,
+  group,
+  x,
   centerY,
   selectedEventIds,
+  hidden = false,
+  zIndex,
+  className,
+  onFocus,
+  onBlur,
+  onGroupHover,
   onOpenTimelines,
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
+  onSeeAllEvents,
 }: TimelineEventChipProps) => {
-  const { group, x } = eventsGroup;
   const { events } = group;
+
+  // Remounting the hover card via a fresh key is how an action taken from the
+  // popover (e.g. "See all", which opens a sidebar) dismisses it: a hover-only
+  // card would otherwise linger under the cursor after the chart re-lays-out,
+  // and controlling `opened` fights Mantine's own hover handling. A remounted
+  // card starts closed and only re-opens on a new hover.
+  const [popoverKey, setPopoverKey] = useState(0);
+  const dismissPopover = () => setPopoverKey((key) => key + 1);
 
   const isSingleEvent = events.length === 1;
   const hasMoreThanMax = events.length > MAX_VISIBLE_EVENTS;
@@ -68,27 +94,56 @@ export const TimelineEventChip = ({
     }
   };
 
-  const showSeeAll = hasMoreThanMax && canSelect;
+  // "See all" hands the whole cluster to `onSeeAllEvents` when provided (its
+  // host renders the full list); otherwise it falls back to the select/open
+  // behavior used by the query builder's timeline sidebar.
+  const showSeeAll = hasMoreThanMax && (canSelect || onSeeAllEvents != null);
+  const handleSeeAll = () => {
+    dismissPopover();
+    if (onSeeAllEvents) {
+      onSeeAllEvents(events);
+    } else {
+      handleSelect();
+    }
+  };
 
   return (
     <HoverCard
+      key={popoverKey}
       position="top"
       offset={POPOVER_OFFSET}
       openDelay={50}
-      closeDelay={150}
-      shadow="md"
+      closeDelay={POPOVER_CLOSE_DELAY_MS}
+      shadow="sm"
       classNames={{ dropdown: S.bridgeDropdown }}
     >
       <HoverCard.Target>
         <UnstyledButton
-          className={cx(S.chip, isSelected && S.chipSelected)}
-          style={{ left: x, top: centerY }}
+          className={cx(
+            S.chip,
+            className,
+            isSelected && S.chipSelected,
+            hidden && S.chipHidden,
+          )}
+          style={{
+            transform: `translate(${x}px, ${centerY}px) translate(-50%, -50%)`,
+            width: TIMELINE_EVENTS_BAND.chipWidth,
+            height: TIMELINE_EVENTS_BAND.chipHeight,
+            zIndex,
+          }}
           data-testid="timeline-event-chip"
           data-selected={isSelected}
+          data-hidden={hidden}
+          aria-hidden={hidden}
+          tabIndex={hidden ? -1 : undefined}
           aria-label={
             isSingleEvent ? events[0].name : t`${events.length} events`
           }
           onClick={canSelect ? handleChipClick : undefined}
+          onMouseEnter={() => onGroupHover?.(group)}
+          onMouseLeave={() => onGroupHover?.(null)}
+          onFocus={onFocus}
+          onBlur={onBlur}
         >
           {isSingleEvent ? (
             <Icon name={getTimelineEventGroupIconName(group)} size={12} />
@@ -113,7 +168,7 @@ export const TimelineEventChip = ({
               {showSeeAll && (
                 <UnstyledButton
                   className={S.seeAllButton}
-                  onClick={handleSelect}
+                  onClick={handleSeeAll}
                 >
                   {t`See all`}
                 </UnstyledButton>

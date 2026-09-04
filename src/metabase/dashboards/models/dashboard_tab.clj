@@ -1,6 +1,7 @@
 (ns metabase.dashboards.models.dashboard-tab
   (:require
    [medley.core :as m]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -34,7 +35,7 @@
   (assert (= 1 (count (set (map :dashboard_id tabs)))), "All tabs must belong to the same dashboard")
   (let [dashboard-id      (:dashboard_id (first tabs))
         tab-ids           (map :id tabs)
-        dashcards         (t2/select :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id [:in tab-ids])
+        dashcards         (dashboards.db/dashcards-in-tabs dashboard-id tab-ids)
         tab-id->dashcards (-> (group-by :dashboard_tab_id dashcards)
                               (update-vals #(sort dashboard-card/dashcard-comparator %)))
         tabs              (sort-by :position tabs)]
@@ -44,21 +45,12 @@
 (defmethod mi/perms-objects-set :model/DashboardTab
   [dashtab read-or-write]
   (let [dashboard (or (:dashboard dashtab)
-                      (t2/select-one :model/Dashboard :id (:dashboard_id dashtab)))]
+                      (dashboards.db/dashboard (:dashboard_id dashtab)))]
     (mi/perms-objects-set dashboard read-or-write)))
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
-(defmethod serdes/hash-fields :model/DashboardTab
-  [_dashboard-tab]
-  [:name
-   (comp serdes/identity-hash
-         #(t2/select-one :model/Dashboard :id %)
-         :dashboard_id)
-   :position
-   :created_at])
-
 (defmethod serdes/generate-path "DashboardTab" [_ dashcard]
-  [(serdes/infer-self-path "Dashboard" (t2/select-one :model/Dashboard :id (:dashboard_id dashcard)))
+  [(serdes/infer-self-path "Dashboard" (dashboards.db/dashboard (:dashboard_id dashcard)))
    (serdes/infer-self-path "DashboardTab" dashcard)])
 
 (defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
@@ -73,9 +65,9 @@
   "Create the new tabs and returned a mapping from temporary tab ID to the new tab ID."
   [dashboard-id :- ms/PositiveInt
    new-tabs     :- [:sequential [:map [:id neg-int?]]]]
-  (let [new-tab-ids (t2/insert-returning-pks! :model/DashboardTab (->> new-tabs
-                                                                       (map #(dissoc % :id))
-                                                                       (map #(assoc % :dashboard_id dashboard-id))))]
+  (let [new-tab-ids (dashboards.db/insert-dashboard-tabs! (->> new-tabs
+                                                               (map #(dissoc % :id))
+                                                               (map #(assoc % :dashboard_id dashboard-id))))]
     (zipmap (map :id new-tabs) new-tab-ids)))
 
 (mu/defn update-tabs! :- nil?
@@ -92,14 +84,14 @@
                                    (select-keys new-tab update-ks))))
                          new-tabs)]
     (doseq [tab to-update-tabs]
-      (t2/update! :model/DashboardTab (:id tab) (select-keys tab update-ks)))
+      (dashboards.db/update-dashboard-tab! (:id tab) (select-keys tab update-ks)))
     nil))
 
 (mu/defn delete-tabs! :- nil?
   "Delete tabs of a Dashboard"
   [tab-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (when (seq tab-ids)
-    (t2/delete! :model/DashboardTab :id [:in tab-ids]))
+    (dashboards.db/delete-dashboard-tabs! tab-ids))
   nil)
 
 (defn do-update-tabs!
@@ -118,10 +110,10 @@
         _                   (when-let [to-delete-ids (seq to-delete-ids)]
                               (delete-tabs! to-delete-ids))
         old->new-tab-id     (when (seq to-create)
-                              (let [new-tab-ids (t2/insert-returning-pks! :model/DashboardTab
-                                                                          (->> to-create
-                                                                               (map #(dissoc % :id))
-                                                                               (map #(assoc % :dashboard_id dashboard-id))))]
+                              (let [new-tab-ids (dashboards.db/insert-dashboard-tabs!
+                                                 (->> to-create
+                                                      (map #(dissoc % :id))
+                                                      (map #(assoc % :dashboard_id dashboard-id))))]
                                 (zipmap (map :id to-create) new-tab-ids)))]
     (when (seq to-update)
       (update-tabs! current-tabs to-update))

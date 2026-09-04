@@ -1,8 +1,8 @@
 import cx from "classnames";
 import type { ComponentPropsWithoutRef, FunctionComponent } from "react";
 
-import type { LinkProps } from "metabase/router";
-import { Link } from "metabase/router";
+import type { LinkProps } from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import type { AnchorProps, CardProps, UnstyledButtonProps } from "metabase/ui";
 import { Anchor, Card, UnstyledButton } from "metabase/ui";
 

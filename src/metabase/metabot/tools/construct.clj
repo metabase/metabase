@@ -12,10 +12,10 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
-   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -27,8 +27,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -114,15 +113,16 @@
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
+(defn- portable-table-fk
+  [x]
+  (when (and (vector? x) (= 3 (count x)) (string? (nth x 0)))
+    x))
+
 (defn- first-stage-source-table-fk
   "Pull the portable `[db schema table]` FK out of `stages[0].source-table`, or `nil`
   if not present / wrong shape."
   [parsed-query]
-  (let [fk (get-in parsed-query ["stages" 0 "source-table"])]
-    (when (and (vector? fk)
-               (= 3 (count fk))
-               (string? (nth fk 0)))
-      fk)))
+  (portable-table-fk (get-in parsed-query ["stages" 0 "source-table"])))
 
 (def ^:private metabase-uri-source-table-pattern
   "Matches values the LLM sometimes writes into `source-table:` by confusing the Metabase
@@ -180,23 +180,67 @@
 (def ^:private permission-aware-content-store
   "ContentStore for agent query construction. Alias for
   [[shared.content-store/default-store]] — the chokepoint wrapper applies `api/read-check` to
-  every lookup whenever `api/*current-user-id*` is bound, symmetrically across all five
-  ContentStore methods. The unchecked underlying store gates non-NanoID entity-id values to
-  avoid a full-table scan via `find-by-identity-hash`."
+  every lookup whenever `api/*current-user-id*` is bound, symmetrically across all six
+  ContentStore methods. The unchecked underlying store rejects non-NanoID entity-id values."
   shared.content-store/default-store)
 
-(defn- check-first-stage-source-table-query-permissions!
-  "Ensure the current user can query the table named by `stages[0].source-table`.
+(defn- portable-field-fk-table
+  [x]
+  (when (and (vector? x)
+             (>= (count x) 4)
+             (string? (nth x 0))
+             (let [schema (nth x 1)] (or (nil? schema) (string? schema)))
+             (string? (nth x 2)))
+    (subvec x 0 3)))
 
-  The metadata provider intentionally exposes database metadata without applying user data
-  permissions. Before any repair pass can inspect fields/FKs on the requested source table,
-  resolve the portable table FK and run the normal API query permission check."
-  [metadata-provider parsed-query]
-  (when-let [table-fk (first-stage-source-table-fk parsed-query)]
-    (let [resolver (resolve.mp/import-resolver metadata-provider permission-aware-content-store)
-          table-id (serdes.resolve/import-table-fk resolver table-fk)]
-      (api/query-check :model/Table table-id)
+(defn- node-table-fks
+  [node]
+  (cond
+    (map? node)
+    (keep identity [(portable-table-fk (get node "source-table"))
+                    (portable-field-fk-table (get node "source-field"))])
+
+    (and (vector? node)
+         (not (map-entry? node))
+         (= "field" (nth node 0 nil)))
+    (keep identity [(or (portable-field-fk-table (nth node 2 nil))
+                        (portable-field-fk-table (nth node 1 nil)))])))
+
+(defn- referenced-table-fks
+  [parsed-query]
+  (into []
+        (comp (mapcat node-table-fks) (distinct))
+        (tree-seq coll? seq parsed-query)))
+
+(def ^:private unresolved-table-fk-errors
+  #{:unknown-table :ambiguous-table})
+
+(defn- resolve-table-fk
+  [resolver table-fk]
+  (try
+    (serdes.resolve/import-table-fk resolver table-fk)
+    (catch clojure.lang.ExceptionInfo e
+      (when-not (contains? unresolved-table-fk-errors (:error (ex-data e)))
+        (throw e))
       nil)))
+
+(defn- check-source-table-query-permissions!
+  ([metadata-provider portable-query]
+   (check-source-table-query-permissions! metadata-provider portable-query #{}))
+
+  ([metadata-provider portable-query already-checked]
+   (if-let [table-fks (not-empty (referenced-table-fks portable-query))]
+     (let [resolver (resolve.mp/import-resolver metadata-provider permission-aware-content-store)]
+       (reduce (fn [checked table-fk]
+                 (if-let [table-id (resolve-table-fk resolver table-fk)]
+                   (if (contains? checked table-id)
+                     checked
+                     (do (api/query-check :model/Table table-id)
+                         (conj checked table-id)))
+                   checked))
+               already-checked
+               table-fks))
+     already-checked)))
 
 (defn resolve-database-id-from-first-stage
   "Resolve the application database id from the first stage's source.
@@ -221,7 +265,7 @@
   (detect-metabase-uri-source-table! parsed-query)
   (if-let [table-fk (first-stage-source-table-fk parsed-query)]
     (let [db-name (nth table-fk 0)
-          ids     (t2/select-pks-vec :model/Database :name db-name)]
+          ids     (metabot.db/database-ids-by-name db-name)]
       (case (count ids)
         0 (throw (ex-info (tru (str "Unknown database: `{0}`. Use the exact database name as "
                                     "reported by search / `read_resource` (it appears "
@@ -324,7 +368,7 @@
        diagnostics over every custom column / aggregation / filter
        ([[repr.repair/assert-editor-accepts-expressions!]]). Either failure is a retryable
        `:agent-error?` - success on a query the editor rejects is BOT-1442.
-    7. Export that final numeric pMBQL back to the portable form for the LLM-facing
+    7. Export that final numeric MBQL 5 back to the portable form for the LLM-facing
        `:query-json` / `query-content` output.
 
   Returns a map with `:structured-output` and `:instructions` keys. Throws with an
@@ -350,16 +394,17 @@
                       (catch clojure.lang.ExceptionInfo e
                         (throw (as-agent-input-error e))))
         database-id (resolve-database-id-from-first-stage parsed)
-        mp          (lib-be/application-database-metadata-provider database-id)]
-    ;; Permission checks happen before repair/resolve so the metadata-provider-backed pipeline
-    ;; never inspects table/card metadata that the current user cannot use.
-    (check-first-stage-source-table-query-permissions! mp parsed)
+        mp          (lib-be/application-database-metadata-provider database-id)
+        ;; Permission checks happen before repair/resolve so the metadata-provider-backed pipeline
+        ;; never inspects table/card metadata that the current user cannot use.
+        checked     (check-source-table-query-permissions! mp parsed)]
     ;; Everything after the MP is built can surface LLM-input errors (lib.schema validation
     ;; in resolve, missing-column complaints from lib/query in `result-columns-for-query`,
     ;; etc.). Wrap the whole rest of the pipeline in a single `:agent-error?` relay so any of
     ;; them reach the tool wrapper with the flag set.
     (try
       (let [repaired      (repr.repair/repair mp parsed permission-aware-content-store)
+            _perms        (check-source-table-query-permissions! mp repaired checked)
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
             _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]
@@ -412,7 +457,7 @@
 (defn- structured->query-data
   "Convert tool structured output to a map suitable for [[llm-shape/query->xml]].
 
-  `:query-content` is the **canonical portable representations JSON** for the final pMBQL
+  `:query-content` is the **canonical portable representations JSON** for the final MBQL 5
   query we actually constructed: repaired and resolved to numeric IDs, normalized by lib,
   then exported back to portable FK paths/entity_ids. By feeding the LLM this final portable
   form (rather than legacy-MBQL JSON or a pre-resolve approximation) on the next turn it can
@@ -462,7 +507,6 @@
                             {:query-id      (:query-id structured)
                              :chart-type    chart-type
                              :queries-state {(:query-id structured) (:query structured)}})
-              results-url  (:results-url chart-result)
               full-structured (assoc structured
                                      :result-type   :query
                                      :chart-id      (:chart-id chart-result)
@@ -480,16 +524,13 @@
               chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
           {:output (str "<result>\n" chart-xml "\n</result>\n"
                         "<instructions>\n" instruction-text "\n</instructions>")
-           :data-parts        (when results-url
-                                [(streaming/viz-part
-                                  {:inline?     (shared/inline-viz-capable?)
-                                   :entity-id   (:chart-id chart-result)
-                                   :query-id    (:query-id structured)
-                                   :query       (links/->legacy-mbql (:query structured))
-                                   :display     chart-type
-                                   :title       title
-                                   :description description
-                                   :link        results-url})])
+           :data-parts        [(streaming/viz-part
+                                {:entity-id   (:chart-id chart-result)
+                                 :query-id    (:query-id structured)
+                                 :query       (links/->legacy-mbql (:query structured))
+                                 :display     chart-type
+                                 :title       title
+                                 :description description})]
            :structured-output full-structured
            :instructions      instruction-text})
         ;; query-result may already have :output (error) or only :structured-output
@@ -501,14 +542,16 @@
                                 "<instructions>\n" instruction-text "\n</instructions>")))
           query-result)))
     (catch Exception e
-      (if (:agent-error? (ex-data e))
+      ;; A 403 counts as agent-facing even without the flag: `api/read-check` throws a bare one,
+      ;; and it means the user can't have the card they named rather than that anything broke.
+      (if (or (:agent-error? (ex-data e))
+              (= 403 (:status-code (ex-data e))))
         ;; Expected agent-facing signal (bad LLM input: unknown table, unknown schema,
         ;; URI-in-source-table, …). Log at debug only — no stacktrace — since the message
         ;; is the tool's result and the LLM is expected to self-correct on the next turn.
         (do
-          (log/debug e "construct_notebook_query returned agent-error to the LLM")
+          (log/debugf "construct_notebook_query returned agent-error to the LLM: %s" (ex-message e))
           {:output (ex-message e)})
-        ;; Genuine unexpected failure — keep full stacktrace.
         (do
-          (log/error e "Failed to construct notebook query")
+          (log/errorf "Failed to construct notebook query: %s" (ex-message e))
           {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))})))))

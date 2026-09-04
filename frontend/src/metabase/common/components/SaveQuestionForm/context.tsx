@@ -18,9 +18,9 @@ import {
   getEntityTypeFromCardType,
   isInstanceAnalyticsCollection,
 } from "metabase/common/collections/utils";
+import { getUser } from "metabase/current-user";
 import { FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { isNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId, DashboardId } from "metabase-types/api";

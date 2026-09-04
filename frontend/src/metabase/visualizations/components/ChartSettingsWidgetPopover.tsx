@@ -1,15 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box, Space, Tabs } from "metabase/ui";
 import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
-
-import type { Widget } from "../types";
+import type { Widget } from "metabase/viz-core";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
-import { WidgetPopoverPortalContext } from "./settings/WidgetPopoverPortalContext";
+import {
+  WidgetPopoverPortalContext,
+  useWidgetPopoverPortal,
+} from "./settings/WidgetPopoverPortalContext";
 
 interface ChartSettingsWidgetPopoverProps {
   anchor: HTMLElement;
@@ -23,26 +25,12 @@ export const ChartSettingsWidgetPopover = ({
   widgets,
 }: ChartSettingsWidgetPopoverProps) => {
   const sections = useRef<(string | undefined)[]>([]);
-  const contentRef = useRef<HTMLDivElement | null>(null);
-  const [dropdownTarget, setDropdownTarget] = useState<HTMLDivElement | null>(
-    null,
-  );
-  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
-    null,
-  );
-
-  const setContentRef = useCallback((node: HTMLDivElement | null) => {
-    contentRef.current = node;
-    setScrollContainer(node);
-  }, []);
-
-  const portalValue = useMemo(
-    () =>
-      dropdownTarget && scrollContainer
-        ? { dropdownTarget, scrollContainer }
-        : null,
-    [dropdownTarget, scrollContainer],
-  );
+  const {
+    value: portalValue,
+    setDropdownTarget,
+    setScrollContainer,
+    scrollContainer,
+  } = useWidgetPopoverPortal();
 
   useEffect(() => {
     sections.current = _.chain(widgets).pluck("section").unique().value();
@@ -59,7 +47,7 @@ export const ChartSettingsWidgetPopover = ({
   const onClose = () => {
     // Unjustified type cast. FIXME
     const activeElement = document.activeElement as HTMLElement;
-    if (activeElement && contentRef.current?.contains(activeElement)) {
+    if (activeElement && scrollContainer?.contains(activeElement)) {
       activeElement.blur();
     }
     handleEndShowWidget();
@@ -70,6 +58,7 @@ export const ChartSettingsWidgetPopover = ({
       anchorEl={anchor}
       opened={!!anchor && widgets.length > 0}
       onDismiss={onClose}
+      closeOnEscape={false}
       position="right"
       offset={{ mainAxis: 10, crossAxis: 10 }}
       middlewares={{
@@ -87,25 +76,33 @@ export const ChartSettingsWidgetPopover = ({
         <WidgetPopoverPortalContext.Provider value={portalValue}>
           <Box
             pt={hasMultipleSections ? 0 : undefined}
-            ref={setContentRef}
+            ref={setScrollContainer}
             data-testid="chart-settings-widget-popover-content"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                // Escape bubbles here after a focused *BlurChange input has
+                // discarded its pending value via flushSync; Mantine's document-level
+                // closeOnEscape would unmount the widget before the input could react.
+                onClose();
+              }
+            }}
             mah="40rem"
             miw="336px"
             className={CS.overflowYAuto}
           >
             {hasMultipleSections && (
               <Tabs
-                px="md"
-                pt="xs"
+                px="lg"
+                pt="xxs"
                 value={currentSection}
-                onChange={(section) => setCurrentSection(String(section))}
+                onChange={(section) => setCurrentSection(section ?? undefined)}
               >
                 <Tabs.List grow>
                   {sections.current.map((sectionName) => (
                     <Tabs.Tab
                       key={sectionName}
                       value={String(sectionName)}
-                      p="md"
+                      p="lg"
                     >
                       {sectionName}
                     </Tabs.Tab>

@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 
 // Path to the admin embedding setup guide. Inlined here (rather than
@@ -26,7 +25,7 @@ export const ReturnToSetupGuideModal = ({
   title,
   message,
 }: ReturnToSetupGuideModalProps) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   return (
     <Modal opened={opened} onClose={onClose} title={title} size="md">
@@ -38,7 +37,7 @@ export const ReturnToSetupGuideModal = ({
           </Button>
           <Button
             variant="filled"
-            onClick={() => dispatch(push(EMBEDDING_SETUP_GUIDE_PATH))}
+            onClick={() => navigate(EMBEDDING_SETUP_GUIDE_PATH)}
           >
             {t`Return to the setup guide`}
           </Button>

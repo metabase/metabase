@@ -10,7 +10,7 @@ import {
   useGetTableQueryMetadataQuery,
   useUpdateFieldValuesMutation,
 } from "metabase/api";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -27,7 +27,8 @@ import {
 } from "metabase/ui";
 import type MetadataDatabase from "metabase-lib/v1/metadata/Database";
 import type MetadataTable from "metabase-lib/v1/metadata/Table";
-import type { Database, Field, FieldId } from "metabase-types/api";
+import { getRemappings } from "metabase-lib/v1/queries/utils/field";
+import type { Database, Field, FieldId, FieldValue } from "metabase-types/api";
 
 import {
   type ChangeOptions,
@@ -41,7 +42,6 @@ import {
 import { NamingTip } from "./NamingTip";
 import SubInputIllustration from "./illustrations/sub-input.svg?component";
 import {
-  getFieldRemappedValues,
   getFkTargetTableEntityNameOrNull,
   getOptions,
   getValue,
@@ -106,7 +106,7 @@ export const RemappingPicker = ({
     return getOptions(field, fieldValues?.values, fkTargetTable);
   }, [field, fieldValues, fkTargetTable]);
   const mapping = useMemo(() => {
-    return getFieldRemappedValues(fieldValues?.values);
+    return new Map(getRemappings({ values: fieldValues?.values }));
   }, [fieldValues?.values]);
 
   const isFkMapping = value === "foreign" || isChoosingInitialFkTarget;
@@ -240,7 +240,11 @@ export const RemappingPicker = ({
           async () => {
             const { error } = await updateFieldValues({
               id,
-              values: Array.from(mapping),
+              values: Array.from(
+                mapping,
+                ([key, label]): FieldValue =>
+                  label == null ? [key] : [key, label],
+              ),
             });
 
             sendUndoToast(error);
@@ -312,14 +316,14 @@ export const RemappingPicker = ({
             />
           )}
 
-          {hasChanged && hasFkMappingValue && <NamingTip mt="md" />}
+          {hasChanged && hasFkMappingValue && <NamingTip mt="lg" />}
         </>
       )}
 
       {value === "custom" && (
         <>
           {isFieldsAccessRestricted && (
-            <Alert mt="md">
+            <Alert size="compact" variant="light" mt="lg">
               {t`You need unrestricted data access on this table to map custom display values.`}
             </Alert>
           )}
@@ -345,7 +349,7 @@ export const RemappingPicker = ({
                 </Button>
               </Group>
 
-              {hasChanged && <NamingTip mt="md" />}
+              {hasChanged && <NamingTip mt="lg" />}
             </>
           )}
         </>

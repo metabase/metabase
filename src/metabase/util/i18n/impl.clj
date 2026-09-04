@@ -29,12 +29,12 @@
   Returns `nil` for invalid strings -- you can use this to check whether a String is valid."
   ^String [s]
   {:pre [((some-fn nil? string?) s)]}
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (when (string? s)
     (when-let [[_ language country] (re-matches #"^(\w{2})(?:[-_](\w{2}))?$" s)]
-      (let [language (str/lower-case language)]
+      ;; Locale/US casing so a Turkish default locale can't mangle codes like "ID"
+      (let [language (.toLowerCase ^String language Locale/US)]
         (if country
-          (str language \_ (some-> country str/upper-case))
+          (str language \_ (some-> ^String country (.toUpperCase Locale/US)))
           language)))))
 
 (extend-protocol CoerceToLocale
@@ -206,11 +206,11 @@
        (catch Throwable e
          ;; Not translating this string to prevent an unfortunate stack overflow. If this string happened to be the one
          ;; that had the typo, we'd just recur endlessly without logging an error.
-         (log/errorf e "Unable to translate string %s to %s" (pr-str format-string) (str locale-or-name))
+         (log/errorf "Unable to translate string %s to %s: %s" (pr-str format-string) (str locale-or-name) (ex-message e))
          (try
            (.format (MessageFormat. format-string) (to-array args))
            (catch Throwable _
-             (log/errorf e "Invalid format string %s" (pr-str format-string))
+             (log/errorf "Invalid format string %s: %s" (pr-str format-string) (ex-message e))
              format-string)))))))
 
 (def ^:private ^:dynamic *in-site-locale-from-setting*

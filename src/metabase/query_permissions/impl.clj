@@ -17,7 +17,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.query-permissions.db :as query-permissions.db]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.interface :as qp.i]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -129,8 +131,7 @@
             (match/match-many query
               (:and m {:qp/stage-is-from-source-card (id :guard identity)})
               (merge-with merge-source-ids
-                          (when-not parent-source-card-id
-                            {:card-ids #{id}})
+                          {:card-ids #{id}}
                           (query->source-ids (dissoc m :qp/stage-is-from-source-card) id in-sandbox?))
 
               (:and m {:query-permissions/sandboxed-table (id :guard identity)})
@@ -171,7 +172,7 @@
       (if (qp.store/initialized?)
         (when-let [{:keys [collection-id]} (lib.metadata/card (qp.store/metadata-provider) card-id)]
           (t2/instance :model/Card {:collection_id collection-id}))
-        (t2/select-one [:model/Card :collection_id :card_schema] :id card-id))
+        (query-permissions.db/card-collection-id card-id))
       (throw (Exception. (tru "Card {0} does not exist." card-id)))))
 
 (mu/defn- source-card-read-perms :- [:set perms/PathSchema]
@@ -189,6 +190,44 @@
     (do-as-admin
      (^:once fn* []
        (preprocess query)))))
+
+(defn- preprocess-without-per-user-lens
+  "[[preprocess-query]], minus the preprocess middlewares that resolve the current user's data-access
+  lens. `do-as-admin` keeps the user's id (and thus their attributes), so database routing and
+  impersonation would still resolve the user's destination db / role — and throw when that
+  configuration exists without its premium feature. Those per-user dimensions are the lens callers
+  are *comparing*, not part of the query's table footprint, so skip them.
+
+  [[qp.i/*skip-middleware-because-app-db-access*]] is a much bigger name than its blast radius:
+  despite \"middleware\" plural, the routing and impersonation preprocess middlewares are the only
+  things that consult it (it exists for preprocess-only contexts like the offline semantic checker,
+  and is slated for replacement — see its docstring)."
+  [query]
+  (binding [qp.i/*skip-middleware-because-app-db-access* true]
+    (preprocess-query query)))
+
+(mu/defn query->resolved-source-ids :- [:maybe :map]
+  "Like [[query->source-ids]], but resolves card-sourced queries (`:source-table \"card__N\"`,
+  card-sourced joins, nested card-on-card chains) first, by preprocessing the query.
+
+  The whole projection, not just its tables: preprocessing is also what surfaces `:card-ids` (via the
+  `:qp/stage-is-from-source-card` annotation it adds), and those drive a read-permission check on
+  each card's collection in [[required-perms-for-query]] — a requirement no projection of the *raw*
+  query can express. Callers keying a permission verdict on this must keep the whole map, or two
+  queries reading the same tables through different cards will look identical.
+
+  Preprocessing runs as admin with per-user lens resolution skipped
+  ([[preprocess-without-per-user-lens]]), so the result is identical for every user. THROWS when the
+  query cannot be preprocessed — e.g. a card in the source chain has been deleted — so callers
+  gating cached reads on it can fail closed instead of treating the query as touching nothing."
+  [query :- :map]
+  (when (seq query)
+    (query->source-ids (preprocess-without-per-user-lens query))))
+
+(mu/defn query->resolved-source-table-ids :- [:maybe [:set ::lib.schema.id/table]]
+  "The Table IDs of [[query->resolved-source-ids]]. Throws on an unpreprocessable query, as it does."
+  [query :- :map]
+  (:table-ids (query->resolved-source-ids query)))
 
 (defn- referenced-card-ids
   "Return the union of all the `:query-permissions/referenced-card-ids` sets anywhere in the query."
@@ -209,10 +248,11 @@
    {:perms/create-queries :query-builder-and-native
     :perms/view-data      :unrestricted}
    (when-let [card-ids (referenced-card-ids query)]
-     {:paths (into #{}
-                   (mapcat (fn [card-id]
-                             (mi/perms-objects-set (card-instance card-id) :read)))
-                   card-ids)})))
+     {:card-ids card-ids
+      :paths    (into #{}
+                      (mapcat (fn [card-id]
+                                (mi/perms-objects-set (card-instance card-id) :read)))
+                      card-ids)})))
 
 (defn- legacy-mbql-required-perms
   ([query options]
@@ -237,7 +277,7 @@
                                                                       (not already-preprocessed?) preprocess-query)
                {:keys [table-ids table-query-ids card-ids native?]} (query->source-ids query)]
            (merge
-            (when (seq card-ids)
+            (when-let [card-ids (not-empty (into (set card-ids) (referenced-card-ids query)))]
               {:card-ids card-ids})
             (when (seq table-ids)
               {:perms/view-data (zipmap table-ids (repeat :unrestricted))})
@@ -252,7 +292,7 @@
                         {:query (or (u/ignore-exceptions (mbql.normalize/normalize query))
                                     query)}
                         e)]
-         (if throw-exceptions? (throw e) (log/error e)))
+         (if throw-exceptions? (throw e) (log/error (ex-message e))))
        {:perms/create-queries {0 :query-builder}})))) ; table 0 will never exist
 
 (defn- mbql5-required-perms
@@ -286,13 +326,14 @@
   "Checks that the current user has at least `required-perm` for the entire DB specified by `db-id`."
   [perm-type required-perm db-id]
   (perms/at-least-as-permissive? perm-type
-                                 (perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
+                                 (perms/full-database-permission-for-user api/*current-user-id* perm-type db-id)
                                  required-perm))
 
 (defn- has-perm-for-table?
   "Checks that the current user has the permissions for tables specified in `table-id->perm`. Returns true if access
   is allowed, otherwise false."
   [perm-type table-id->required-perm db-id]
+  (perms/prime-table-perms-cache {:db-ids #{db-id} :table-ids (set (keys table-id->required-perm))})
   (every? (fn [[table-id required-perm]]
             (perms/user-has-permission-for-table?
              api/*current-user-id*
@@ -311,7 +352,7 @@
       ;; used by the model upon which the action is defined. In this case, the underlying model whose
       ;; permissions we need to check will not be exposed by the metadata provider, so we need a fallback.
       ;; -- Noah
-      (t2/select-one :model/Card :id card-id :database_id [:!= database-id])
+      (query-permissions.db/card-not-in-database card-id database-id)
       (throw (ex-info (tru "Card {0} does not exist." card-id)
                       {:type    qp.error-type/invalid-query
                        :card-id card-id}))))
@@ -322,7 +363,8 @@
   (let [field-ids (keep :id result-metadata)
         table-ids (into (set (keep (some-fn :table-id :table_id) result-metadata))
                         (when (seq field-ids)
-                          (t2/select-fn-set :table_id :model/Field :id [:in field-ids])))]
+                          (query-permissions.db/field-table-ids field-ids)))]
+    (perms/prime-table-perms-cache {:db-ids #{database-id} :table-ids table-ids})
     (run! #(when-not (perms/user-has-permission-for-table?
                       api/*current-user-id*
                       :perms/view-data
@@ -390,16 +432,20 @@
 
 (mu/defn can-run-query?
   "Return `true` if the current user has sufficient permissions to run `query`, and `false` otherwise."
-  [{database-id :database :as query} :- :map]
-  (try
-    (let [required-perms (required-perms-for-query query)]
-      (check-data-perms query required-perms)
-      ;; Check card read permissions for any cards referenced in subqueries!
-      (doseq [card-id (:card-ids required-perms)]
-        (check-card-read-perms database-id card-id))
-      true)
-    (catch clojure.lang.ExceptionInfo _e
-      false)))
+  ([query]
+   (can-run-query? query false))
+
+  ([{database-id :database :as query} :- :map
+    already-preprocessed?             :- :boolean]
+   (try
+     (let [required-perms (required-perms-for-query query :already-preprocessed? already-preprocessed?)]
+       (check-data-perms query required-perms)
+       ;; Check card read permissions for any cards referenced in subqueries!
+       (doseq [card-id (:card-ids required-perms)]
+         (check-card-read-perms database-id card-id))
+       true)
+     (catch clojure.lang.ExceptionInfo _e
+       false))))
 
 (mu/defn can-query-table?
   "Does the current user have permissions to run an ad-hoc query against the Table with `table-id`?"
@@ -409,15 +455,36 @@
                    :type     :query
                    :query    {:source-table table-id}}))
 
+(mu/defn check-parameter-field-permissions
+  "Throw a 403 unless the current user could run an ad-hoc query against the Tables the Fields with `field-ids` belong
+  to."
+  [field-ids :- [:maybe [:sequential ::lib.schema.id/field]]]
+  (when (seq field-ids)
+    (let [table-ids             (query-permissions.db/field-table-ids (set field-ids))
+          table-id->database-id (when (seq table-ids)
+                                  (query-permissions.db/table-id->database-id table-ids))]
+      (perms/prime-table-perms-cache {:table-ids table-ids})
+      (doseq [table-id table-ids
+              :let     [database-id (table-id->database-id table-id)]]
+        (when-not (can-query-table? database-id table-id)
+          (throw (ex-info (tru "You must have data permissions to add a parameter referencing this Field.")
+                          {:status-code 403})))))))
+
 (mu/defn check-run-permissions-for-query
   "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
   queries they wouldn't be allowed to run!"
   [query :- :map]
   {:pre [(map? query)]}
-  (let [query (dissoc query :query-permissions/perms)]
-    (when-not (can-run-query? query)
+  (let [query    (dissoc query :query-permissions/perms)
+        expanded (try
+                   (preprocess-query query)
+                   (catch Throwable _
+                     nil))
+        query    (or expanded query)
+        expanded? (some? expanded)]
+    (when-not (can-run-query? query expanded?)
       (let [required-perms (try
-                             (required-perms-for-query query :throw-exceptions? true)
+                             (required-perms-for-query query :already-preprocessed? expanded? :throw-exceptions? true)
                              (catch Throwable e
                                e))]
         (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")

@@ -1,14 +1,17 @@
 (ns metabase.queries.metadata
   (:require
+   [clojure.edn :as edn]
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -30,7 +33,7 @@
   [db :- [:map]]
   (if (and (not (:is_audit db))
            (= :query-builder-and-native
-              (perms/full-db-permission-for-user
+              (perms/full-database-permission-for-user
                api/*current-user-id*
                :perms/create-queries
                (u/the-id db))))
@@ -40,21 +43,21 @@
 (defn- get-databases
   [ids]
   (when (seq ids)
-    (perms/prime-db-cache ids)
+    (perms/prime-database-perms-cache {:db-ids (set ids)})
     (into [] (comp (filter mi/can-read?)
                    (map #(assoc % :native_permissions (get-native-perms-info %))))
-          (t2/select :model/Database :id [:in ids]))))
+          (queries.db/databases ids))))
 
 (defn- field-ids->table-ids
   [field-ids]
   (if (seq field-ids)
-    (t2/select-fn-set :table_id :model/Field :id [:in field-ids])
+    (queries.db/field-table-ids field-ids)
     #{}))
 
 (defn- collect-recursive-snippets
   ([initial-snippet-ids]
    (when (seq initial-snippet-ids)
-     (let [snippets (into [] (filter mi/can-read?) (t2/select :model/NativeQuerySnippet :id [:in initial-snippet-ids]))]
+     (let [snippets (into [] (filter mi/can-read?) (queries.db/snippets initial-snippet-ids))]
        (collect-recursive-snippets (set snippets) snippets (set initial-snippet-ids)))))
   ([all-snippets snippets-to-recurse seen-ids]
    (let [->nested-snippet-ids (fn [snippet]
@@ -67,7 +70,7 @@
                                     snippet-id)))
          nested-snippet-ids   (into #{} (mapcat ->nested-snippet-ids) snippets-to-recurse)
          nested-snippets      (when (seq nested-snippet-ids)
-                                (into [] (filter mi/can-read?) (t2/select :model/NativeQuerySnippet :id [:in nested-snippet-ids])))]
+                                (into [] (filter mi/can-read?) (queries.db/snippets nested-snippet-ids)))]
      (if-not (seq nested-snippet-ids)
        all-snippets
        (recur (into all-snippets nested-snippets)
@@ -86,7 +89,7 @@
                   [dim-type field-id] (cond
                                         (vector? dimension) dimension
                                         (string? dimension) (try
-                                                              (read-string dimension)
+                                                              (edn/read-string dimension)
                                                               (catch Exception _ nil))
                                         :else               nil)]
          :when   (and (#{:field "field"} dim-type)
@@ -189,7 +192,7 @@
                    [:set ::lib.schema.id/card]]]]
   (when (seq ids)
     (let [cards (into [] (filter mi/can-read?)
-                      (t2/select :model/Card :id [:in ids]))]
+                      (queries.db/cards ids))]
       (t2/hydrate cards :can_write))))
 
 (defn- dashcard->click-behaviors [dashcard]
@@ -202,11 +205,9 @@
 (defn- batch-fetch-linked-dashboards
   [dashboard-ids]
   (when (seq dashboard-ids)
-    (let [dashboards (->> (t2/select :model/Dashboard :id [:in dashboard-ids])
+    (let [dashboards (->> (queries.db/dashboards dashboard-ids)
                           (filter mi/can-read?))]
-      (t2/hydrate dashboards
-                  :can_write
-                  :param_fields))))
+      (t2/hydrate dashboards :can_write :param_fields))))
 
 (defn- batch-fetch-dashboard-links
   [dashcards]
@@ -229,7 +230,7 @@
                                            [:map
                                             [:card   {:optional true} [:maybe ::queries.schema/card]]
                                             [:series {:optional true} [:maybe [:sequential [:map
-                                                                                            [:dataset_query ::queries.schema/query]]]]]]]]]]]
+                                                                                            [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]]]]]]]]]
   (let [dashcards (mapcat :dashcards dashboards)
         cards     (for [{:keys [card series]} dashcards
                         :let   [all (conj series card)]

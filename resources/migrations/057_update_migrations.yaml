@@ -2240,6 +2240,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_document_made_public_by_id
+                foreignKeyTableName: document
       changes:
         - addForeignKeyConstraint:
             baseTableName: document

@@ -1,12 +1,12 @@
 (ns metabase.users.events.last-login
   (:require
    [metabase.events.core :as events]
+   [metabase.users.db :as users.db]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
-(derive ::event :metabase/event)
-(derive :event/user-login ::event)
+(events/derive! ::event :metabase/event)
+(events/derive! :event/user-login ::event)
 
 (methodical/defmethod events/publish-event! ::event
   [topic {:keys [user-id] :as _event}]
@@ -14,7 +14,7 @@
   (when user-id
     (try
       ;; just make a simple attempt to set the `:last_login` for the given user to now
-      (t2/update! :model/User user-id {:last_login :%now})
+      (users.db/set-user-last-login-now! user-id)
       (catch Throwable e
         ;; TODO -- huh? Terrible log message.
-        (log/warnf e "Failed to process sync-database event. %s" topic)))))
+        (log/warnf "Failed to process sync-database event. %s: %s" topic (ex-message e))))))

@@ -3,14 +3,14 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
-import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
-import { setOpenModalWithProps } from "metabase/redux/ui";
-import { push } from "metabase/router";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
-} from "metabase/selectors/user";
+} from "metabase/current-user";
+import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
+import { setOpenModalWithProps } from "metabase/redux/ui";
+import { useNavigate } from "metabase/router";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
@@ -30,6 +30,7 @@ export const CreateMenu = ({
   canWriteToDataCollection?: boolean;
 }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [
     showPublishTableModal,
     { close: closePublishTableModal, open: openPublishTableModal },
@@ -140,7 +141,7 @@ export const CreateMenu = ({
       <PublishTableModal
         opened={showPublishTableModal}
         onClose={closePublishTableModal}
-        onPublished={(table) => dispatch(push(Urls.dataStudioTable(table.id)))}
+        onPublished={(table) => navigate(Urls.dataStudioTable(table.id))}
       />
     </>
   );

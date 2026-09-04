@@ -2,10 +2,11 @@ import { useEffect } from "react";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
-import { useSetting } from "metabase/common/hooks";
 import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { useSetting } from "metabase/settings";
 
 import {
+  getHostReactVersion,
   getSdkAuthMethod,
   getSdkLocaleUsed,
   trackSdkSimpleEvent,
@@ -188,6 +189,7 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
           auth_method: getSdkAuthMethod(),
           sdk_version: sdkVersion,
           locale_used: getSdkLocaleUsed(),
+          react_version: getHostReactVersion(),
         },
       }),
     });

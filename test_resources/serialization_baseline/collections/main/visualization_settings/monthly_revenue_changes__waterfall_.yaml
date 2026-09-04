@@ -87,7 +87,7 @@ visualization_settings:
   waterfall.increase_color: '#88BF4D'
   waterfall.show_total: true
   waterfall.total_color: '#509EE3'
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: kJWYpTzyc9ow-75HjyIhf
   label: monthly_revenue_changes__waterfall_

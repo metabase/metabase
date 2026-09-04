@@ -3,14 +3,13 @@
 
    Direct access to `(:details database)` is an anti-pattern. It couples callers to
    the raw data layout, which means any change to how details are resolved — connection
-   routing, write credentials, workspace isolation, security boundaries — requires
+   routing, write credentials, security boundaries — requires
    finding and updating every call site. This namespace provides the indirection that
    makes those changes possible.
 
    Primary API: [[effective-details]], [[with-write-connection]], [[default-details]]."
   (:require
    [metabase.analytics-interface.core :as analytics]
-   [metabase.driver.connection.workspaces :as driver.w]
    [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -47,14 +46,13 @@
 ;; there's no corresponding classification for "this field doesn't need to be encrypted at all."
 ;;
 ;; This namespace centralizes all reads of `:details` (and `:write-data-details`) behind
-;; functions that can apply connection-type routing, workspace isolation, and — eventually —
-;; a proper separation of credentials from configuration. The immediate goal is to make
-;; direct `(:details database)` access a greppable code smell. The longer-term goal is to
+;; functions that can apply connection-type routing and — eventually — a proper separation
+;; of credentials from configuration. The immediate goal is to make direct
+;; `(:details database)` access a greppable code smell. The longer-term goal is to
 ;; make it possible to store non-sensitive configuration outside the encrypted column
 ;; without a codebase-wide refactor. The immediate need for this namespace was to make it
 ;; possible to access and *use* configuration in a controllable and auditable way as we
-;; are going from one master-connection to a database to two + any number of dynamic
-;; workspaces connections.
+;; are going from one master-connection to a database to two.
 ;;
 ;; Please use/adapt/augment/improve this namespace and avoid all such patterns:
 ;;  - (:details database)
@@ -145,14 +143,6 @@
   `(binding [*suppress-resolution-telemetry* true]
      ~@body))
 
-(defmacro with-swapped-connection-details
-  "Re-export of [[metabase.driver.connection.workspaces/with-swapped-connection-details]]
-   on the driver module's public API surface, so consumers outside the module can apply
-   per-database connection-detail overrides through `metabase.driver.connection`."
-  {:style/indent 2}
-  [database-id swap-map & body]
-  `(driver.w/do-with-swapped-connection-details ~database-id ~swap-map (fn [] ~@body)))
-
 (defenterprise database-write-data-details
   "Returns the `:write-data-details` for a database, or `nil` if the writable-connection feature is not available.
    OSS implementation always returns `nil`."
@@ -161,7 +151,7 @@
   nil)
 
 (defenterprise database-admin-details
-  "Returns the `:admin-details` for a database, or `nil` if the workspaces feature is not available.
+  "Returns the `:admin-details` for a database, or `nil` if the connection-overlays feature is not available.
    OSS implementation always returns `nil`."
   metabase-enterprise.connection-overlays.core
   [_database]
@@ -203,24 +193,21 @@
    scope, takes `:write-data-details` into account (if configured) — transforms write, so
    they get write-data credentials when set — but resolves to a *different* pool key
    (`:transform` vs `:write-data`) so the pool properties (e.g. `unreturnedConnectionTimeout`)
-   can differ. Within a
-   [[driver.w/with-swapped-connection-details]] scope, applies workspace isolation
-   overrides on top."
+   can differ."
   [database]
   (when-let [database (some-> database driver.u/ensure-lib-database)]
     (let [overlay  (perf/not-empty (overlay-details-for-type database *connection-type*))
           base     (merge (:details database) overlay)
           eff-type (resolve-effective-type *connection-type* overlay)]
-      ;; Track when an overlay is genuinely used (not fallback, not workspace-swapped).
+      ;; Track when an overlay is genuinely used (not fallback).
       ;; Default resolutions are not tracked here — see :metabase-db-connection/write-op for
       ;; pool-level connection acquisition metrics.
       (when (and overlay
-                 (not *suppress-resolution-telemetry*)
-                 (not (driver.w/has-connection-swap? (:id database))))
+                 (not *suppress-resolution-telemetry*))
         (try (analytics/inc! :metabase-db-connection/type-resolved
                              {:connection-type (name *connection-type*)})
              (catch Exception _ nil)))
-      (-> (driver.w/maybe-swap-details (:id database) base)
+      (-> base
           (assoc ::connection-pool-type eff-type)
           (assoc ::database-id (u/id database))))))
 

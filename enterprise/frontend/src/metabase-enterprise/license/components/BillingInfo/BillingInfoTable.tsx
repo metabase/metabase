@@ -5,7 +5,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Box, Card, Flex, Icon, Text } from "metabase/ui";
 import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 
@@ -95,9 +95,9 @@ function BillingInfoRow({
         className={S.row}
         align="center"
         justify="space-between"
-        gap="lg"
-        px="lg"
-        py="md"
+        gap="xl"
+        px="xl"
+        py="lg"
         {...props}
       >
         <Text
@@ -125,7 +125,7 @@ export const BillingInfoTable = ({
   return (
     <Box>
       <SettingHeader id="billing" title={t`Billing`} />
-      <Card mt="md" p={0} radius="md" shadow="none" withBorder>
+      <Card mt="lg" p={0} radius="sm" shadow="none" withBorder>
         {billingInfo.content?.map((lineItem) => (
           <BillingInfoRow key={lineItem.name} lineItem={lineItem} />
         ))}

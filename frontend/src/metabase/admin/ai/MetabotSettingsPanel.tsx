@@ -4,19 +4,16 @@ import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import {
-  skipToken,
-  useGetCollectionQuery,
-  useUpdateMetabotMutation,
-} from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils/settings";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useGetIcon } from "metabase/hooks/use-icon";
+import { useUpdateMetabotMutation } from "metabase/metabot";
 import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useAdminSetting } from "metabase/settings";
 import {
   Box,
   Button,
@@ -45,7 +42,7 @@ export function MetabotSettingsPanel({ metabot }: { metabot: MetabotInfo }) {
     : "metabot-enabled?";
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       {isEmbedMetabot && (
         <Text c="text-secondary" maw="40rem">
           {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
@@ -101,7 +98,7 @@ function MetabotEnabledToggle({
             : t`Metabot is Metabase's AI assistant. When enabled, Metabot will be available to help users create queries, analyze data, and answer questions about your data.`
         }
       />
-      <Flex align="center" gap="md" mt="md">
+      <Flex align="center" gap="lg" mt="lg">
         <Switch
           data-testid="metabot-enabled-toggle"
           checked={!!value}
@@ -138,7 +135,7 @@ function MetabotSettingsBody({
     return null;
   }
 
-  return <Stack gap="lg">{children}</Stack>;
+  return <Stack gap="xl">{children}</Stack>;
 }
 
 function MetabotCollectionConfigurationPane({
@@ -196,7 +193,7 @@ function MetabotCollectionConfigurationPane({
     <Box>
       <SettingHeader id="allow-metabot" title={title ?? defaultTitle} />
       <CollectionInfo collection={collection} />
-      <Flex gap="md" mt="md">
+      <Flex gap="lg" mt="lg">
         <Button onClick={open} leftSection={isUpdating && <Loader size="xs" />}>
           {match({ isMutating: isUpdating, collection })
             .with({ isMutating: true }, () => t`Updating collection...`)

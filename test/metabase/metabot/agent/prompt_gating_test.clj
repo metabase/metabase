@@ -111,7 +111,7 @@
       (is (re-find #"Communicating with the user" without-queries))
       (is (re-find #"Finding data" without-queries)))
     (testing "explicit denial for query tools is included"
-      (is (re-find #"You cannot build queries or create charts" without-queries)))
+      (is (re-find #"You cannot build queries" without-queries)))
     (testing "no individual SQL/NLQ denials when both are off"
       (is (not (re-find #"You cannot write SQL" without-queries)))
       (is (not (re-find #"You cannot use natural language querying" without-queries))))))
@@ -127,7 +127,7 @@
       (is (not (re-find #"X-ray auto-generated dashboards" rendered)))
       (is (not (re-find #"# Writing SQL" rendered))))
     (testing "denial messages are present"
-      (is (re-find #"You cannot build queries or create charts" rendered))
+      (is (re-find #"You cannot build queries" rendered))
       (is (re-find #"You cannot create dashboards or documents" rendered)))))
 
 (deftest ^:parallel defaults-to-no-permissions-when-unbound-test
@@ -136,7 +136,7 @@
       (is (not (re-find #"MBQL shape rules" rendered)))
       (is (not (re-find #"Natural-language querying is your default" rendered)))
       (is (not (re-find #"X-ray auto-generated dashboards" rendered)))
-      (is (re-find #"You cannot build queries or create charts" rendered))
+      (is (re-find #"You cannot build queries" rendered))
       (is (re-find #"You cannot create dashboards or documents" rendered)))))
 
 (deftest ^:parallel prompt-no-denials-when-all-enabled-test
@@ -186,12 +186,15 @@
                                                  :permission/metabot-other-tools    :no})]
     (testing "other-tools sections included when permitted"
       (is (re-find #"static_viz" with-other))
-      (is (re-find #"Visualization Titles" with-other))
+      (is (re-find #"Saved questions and metrics" with-other))
       (is (re-find #"Visual Previews" with-other)))
     (testing "other-tools sections excluded when not permitted"
       (is (not (re-find #"static_viz" without-other)))
-      (is (not (re-find #"Visualization Titles" without-other)))
+      (is (not (re-find #"Saved questions and metrics" without-other)))
       (is (not (re-find #"Visual Previews" without-other))))
+    (testing "visualization titles heading still covers nlq ad-hoc queries when other-tools is off"
+      (is (re-find #"Visualization Titles" without-other))
+      (is (re-find #"Ad-hoc queries" without-other)))
     (testing "other-tools denial message present when not permitted"
       (is (re-find #"You cannot create inline visualizations" without-other)))))
 
@@ -212,6 +215,22 @@
     (testing "no denial messages when all permissions are enabled"
       (is (not (re-find #"You cannot build custom queries" rendered)))
       (is (not (re-find #"You cannot create inline visualizations" rendered))))))
+
+(deftest ^:parallel slackbot-prompt-teaches-standard-markdown-test
+  ;; The channel answer goes in a `markdown` block, which renders standard markdown rather than
+  ;; Slack's `mrkdwn`. Measured against the API: `*one*` comes back italic and `~one~` is not
+  ;; parsed at all, so the old dialect would silently lose every bold and strikethrough.
+  (testing "the prompt teaches the dialect the answer block actually renders (BOT-2010)"
+    (let [rendered (render-slackbot-template all-yes-perms)]
+      (testing "standard markdown is prescribed"
+        (is (re-find #"`\*\*text\*\*` for bold text" rendered))
+        (is (re-find #"`~~text~~` for strikethrough text" rendered)))
+      (testing "and the Slack-only dialect is not"
+        (is (not (re-find #"`\*text\*` for bold text" rendered)))
+        (is (not (re-find #"`~text~` for strikethrough text" rendered))))
+      (testing "Slack's link syntax is kept -- it does render inside a markdown block (measured)"
+        (is (re-find #"<https://example\.com\|Link Text>" rendered))
+        (is (re-find #"metabase://dashboard/123\|Dashboard Name" rendered))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Custom system prompt injection
@@ -278,3 +297,15 @@
                                        metabot-chat-system-prompt ""]
       (let [rendered (render-template "internal.selmer" all-yes-perms)]
         (is (not (re-find #"NLQ only instruction" rendered)))))))
+
+(deftest ^:parallel communication-guidance-gates-on-reasoning-ui-test
+  (testing "templates for surfaces with a reasoning timeline skip the narration guidance"
+    (doseq [template ["internal.selmer"
+                      "natural-language-querying-only.selmer"
+                      "natural-language-querying-fallback.selmer"]]
+      (let [rendered (render-template template all-yes-perms)]
+        (is (not (re-find #"silent between tool calls" rendered))
+            template))))
+  (testing "the embedding SDK template (loader only) keeps the narration guidance"
+    (let [rendered (render-template "embedding-next.selmer" all-yes-perms)]
+      (is (re-find #"silent between tool calls" rendered)))))

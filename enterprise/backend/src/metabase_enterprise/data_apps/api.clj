@@ -8,14 +8,13 @@
    `metabase.server.routes/static-files-handler`)."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.data-apps.models.data-app :as data-app]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.json :as json]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.io ByteArrayInputStream)))
 
@@ -23,8 +22,8 @@
 
 ;;; ------------------------------------------------ Constants ------------------------------------------------
 
-;; Slug must not collide with the literal `repo-status` sub-route.
-(def ^:private slug-regex #"(?!repo-status$)[^/]+")
+;; Slug must not collide with the literal `repo-status`/`sandbox-host` sub-routes.
+(def ^:private slug-regex #"(?!repo-status$|sandbox-host$)[^/]+")
 
 (def ^:private bundle-response-headers
   ;; `no-cache` so the browser may cache but must revalidate via
@@ -57,6 +56,7 @@
    [:id              ms/PositiveInt]
    [:name            ms/NonBlankString]
    [:display_name    ms/NonBlankString]
+   [:description     [:maybe :string]]
    [:bundle_path     ms/NonBlankString]
    [:enabled         :boolean]
    [:allowed_hosts   [:sequential :string]]
@@ -87,6 +87,41 @@
   (api/check-superuser)
   (repo-status))
 
+;;; --------------------------------------------- Sandbox host ---------------------------------------------
+
+(def ^:private sandbox-host-html
+  "Empty document loaded as the Near-Membrane realm iframe. It only needs to exist and carry the
+   CSP below; the membrane populates the realm itself."
+  "<!doctype html><html><head><meta charset=\"utf-8\"></head><body></body></html>")
+
+(def ^:private sandbox-host-csp
+  "CSP for the sandbox realm document ONLY.
+
+   `'unsafe-eval'` is what Near-Membrane needs to evaluate the app bundle inside the realm.
+   Serving the realm from its own document is what lets the data-app document drop that grant:
+   an `about:blank` realm would instead inherit the data-app document's CSP, forcing
+   `'unsafe-eval'` there and handing an attacker `eval`/`Function` in the host realm.
+
+   `default-src 'none'` gives the realm no network of its own — unlike the inherited case, where
+   it would pick up the data-app document's `connect-src` (which includes the instance origin)."
+  (str "default-src 'none'; "
+       "script-src 'unsafe-eval'; "
+       "frame-ancestors 'self';"))
+
+(api.macros/defendpoint :get "/sandbox-host" :- :any
+  "Serve the document used as the `src` of the Near-Membrane realm iframe, carrying a
+   per-document CSP that confines `'unsafe-eval'` to that realm. See [[sandbox-host-csp]]."
+  []
+  {:status  200
+   :headers {"Content-Type"                 "text/html; charset=utf-8"
+             "Content-Security-Policy"      sandbox-host-csp
+             "X-Frame-Options"              "SAMEORIGIN"
+             "X-Content-Type-Options"       "nosniff"
+             "Cross-Origin-Resource-Policy" "same-origin"
+             "Referrer-Policy"              "no-referrer"
+             "Cache-Control"                "public, max-age=60"}
+   :body    sandbox-host-html})
+
 ;;; ------------------------------------------------ Apps ------------------------------------------------
 
 (defn- data-app-response
@@ -101,10 +136,7 @@
    to return only enabled apps without sync errors."
   [_route-params
    {:keys [available]} :- [:map [:available {:optional true} [:maybe :boolean]]]]
-  (->> (data-app/select-non-blob (cond-> {:order-by [[:display_name :asc]]}
-                                   available (assoc :where [:and
-                                                            [:= :enabled true]
-                                                            [:= :sync_error nil]])))
+  (->> (data-apps.db/non-blob-data-apps available)
        (map api/read-check)
        (mapv data-app-response)))
 
@@ -117,9 +149,9 @@
    _query-params
    {:keys [enabled]} :- [:map [:enabled :boolean]]]
   (api/check-superuser)
-  (let [app (api/check-404 (data-app/select-one-non-blob :name slug))]
-    (t2/update! :model/DataApp :id (:id app) {:enabled enabled})
-    (data-app/select-one-non-blob :id (:id app))))
+  (let [app (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))]
+    (data-apps.db/update-data-app! (:id app) {:enabled enabled})
+    (data-apps.db/non-blob-data-app (:id app))))
 
 (api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
   "Remove a single data app (its row and cached bundle). Intended for clearing out
@@ -129,7 +161,7 @@
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
   (api/check-superuser)
   ;; `t2/delete!` returns the row count; a 0 means the slug wasn't there → 404.
-  (api/check-404 (pos? (t2/delete! :model/DataApp :name slug)))
+  (api/check-404 (pos? (data-apps.db/delete-data-app-by-slug! slug)))
   ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
@@ -137,7 +169,7 @@
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single enabled data app by its slug."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
-  (data-app-response (api/read-check (data-app/select-one-non-blob :name slug :enabled true))))
+  (data-app-response (api/read-check (data-apps.db/enabled-non-blob-data-app-by-slug slug))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
   "Serve the cached JS bundle for a single enabled data app by slug. Honors
@@ -149,7 +181,7 @@
    respond
    raise]
   (try
-    (let [row  (api/read-check (data-app/select-one-non-blob :name slug :enabled true))
+    (let [row  (api/read-check (data-apps.db/enabled-non-blob-data-app-by-slug slug))
           hash (:bundle_hash row)
           etag (some->> hash (format "\"%s\""))]
       (cond
@@ -159,7 +191,7 @@
         (respond {:status 304, :headers {"Cache-Control" "no-cache", "ETag" etag}})
 
         :else
-        (let [^bytes bundle (t2/select-one-fn :bundle :model/DataApp :id (:id row))]
+        (let [^bytes bundle (data-apps.db/data-app-bundle (:id row))]
           (if (and bundle (pos? (alength bundle)))
             (respond {:status  200
                       :headers (-> bundle-response-headers

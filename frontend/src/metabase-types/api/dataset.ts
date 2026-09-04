@@ -6,7 +6,7 @@ import type {
   VisualizerColumnValueSource,
 } from "metabase-types/api";
 
-import type { Card, ColumnSettings } from "./card";
+import type { Card, ColumnSettings, UnsavedCard } from "./card";
 import type { DatabaseId } from "./database";
 import type {
   Field,
@@ -15,7 +15,7 @@ import type {
   FieldVisibilityType,
 } from "./field";
 import type { Insight } from "./insight";
-import type { ParameterOptions } from "./parameters";
+import type { NormalizedQueryParameter, ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
@@ -121,7 +121,7 @@ export interface DatasetData {
 }
 
 export type JsonQuery = DatasetQuery & {
-  parameters?: Parameter[];
+  parameters?: NormalizedQueryParameter[];
   "cache-strategy"?: CacheStrategy & {
     /** An ISO 8601 date */
     "invalidated-at"?: string;
@@ -134,6 +134,7 @@ export interface Dataset {
   data: DatasetData;
   database_id: DatabaseId;
   row_count: number;
+  total_count?: number;
   running_time: number;
   json_query?: JsonQuery;
   error?: DatasetError;
@@ -153,7 +154,7 @@ export type DatasetError =
   | string
   | {
       status: number; // HTTP status code
-      data?: string;
+      data?: unknown;
     };
 
 export type DatasetErrorType =
@@ -193,8 +194,10 @@ export interface NativeDatasetResponse {
   params: unknown;
 }
 
-export type SingleSeries = {
-  card: Card;
+export type SeriesCard = UnsavedCard & Partial<Card>;
+
+export type SingleSeries<C extends SeriesCard = SeriesCard> = {
+  card: C;
   /**
    * A record that maps visualizer series keys (in the form of COLUMN_1,
    * COLUMN_2, etc.) to their original values (count, avg, etc.).
@@ -202,24 +205,13 @@ export type SingleSeries = {
   columnValuesMapping?: Record<string, VisualizerColumnValueSource[]>;
 } & Pick<Dataset, "error" | "started_at" | "data" | "json_query">;
 
-export type SingleSeriesWithTranslation = SingleSeries & {
-  data: Dataset["data"] & {
-    /**
-     * The original, untranslated rows for this series (if any).
-     * Undefined if no translation occurred.
-     */
-    untranslatedRows?: RowValues[];
-  };
-};
-
-export type TransformedCard = Card & {
+export type TransformedCard = SeriesCard & {
   _seriesKey: string;
   _transformed: true;
 };
 
-export type RawSeries = SingleSeries[];
+export type RawSeries<C extends SeriesCard = SeriesCard> = SingleSeries<C>[];
 export type TransformedSeries = RawSeries & { _raw?: Series };
-export type MaybeTranslatedSeries = SingleSeriesWithTranslation[];
 export type Series = RawSeries | TransformedSeries;
 
 export type TemplateTagId = string;

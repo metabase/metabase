@@ -1,7 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { Location } from "history";
-import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
@@ -14,13 +12,12 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import { getResultMetadata } from "metabase/common/data-studio/utils/get-result-metadata";
 import type { MetricUrls } from "metabase/common/metrics/types";
+import { getMetadata } from "metabase/metadata-store";
 import { MetricQueryEditor } from "metabase/metrics/components/MetricQueryEditor";
 import { NAME_MAX_LENGTH } from "metabase/metrics/constants";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useDispatch, useSelector } from "metabase/redux";
-import type { Route } from "metabase/router";
-import { goBack, push } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useSelector } from "metabase/redux";
+import { useLocation, useNavigate } from "metabase/router";
 import { Breadcrumbs, Card, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
@@ -32,13 +29,7 @@ import { getValidationResult } from "../../utils/validation";
 import { CreateMetricModal } from "./CreateMetricModal";
 import { getInitialQuery, getQuery } from "./utils";
 
-interface NewMetricPageQuery {
-  collectionId?: string;
-}
-
 interface NewMetricPageProps {
-  location: Location<NewMetricPageQuery>;
-  route: Route;
   urls?: MetricUrls;
   renderBreadcrumbs?: () => ReactNode;
   showAppSwitcher?: boolean;
@@ -46,13 +37,12 @@ interface NewMetricPageProps {
 }
 
 export function NewMetricPage({
-  location,
-  route,
   urls = defaultUrls,
   renderBreadcrumbs,
   showAppSwitcher = false,
   triggeredFrom = "main_app",
 }: NewMetricPageProps) {
+  const location = useLocation();
   const metadata = useSelector(getMetadata);
   const [name, setName] = useState("");
   const [datasetQuery, setDatasetQuery] = useState(() =>
@@ -62,10 +52,10 @@ export function NewMetricPage({
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const initialCollectionId = Urls.extractCollectionId(
-    location.query.collectionId,
+    new URLSearchParams(location.search).get("collectionId") ?? undefined,
   );
   const defaultCollectionId = useGetDefaultCollectionId();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const query = useMemo(
     () => getQuery(datasetQuery, metadata),
@@ -92,7 +82,7 @@ export function NewMetricPage({
   );
 
   const handleCreate = (card: CardApiType) => {
-    dispatch(push(urls.about(card.id)));
+    navigate(urls.about(card.id));
   };
 
   const handleChangeQuery = (query: Lib.Query) => {
@@ -100,7 +90,7 @@ export function NewMetricPage({
   };
 
   const handleCancel = () => {
-    dispatch(goBack());
+    navigate(-1);
   };
 
   return (
@@ -141,7 +131,7 @@ export function NewMetricPage({
             )
           }
         />
-        <Card withBorder p={0} flex={1}>
+        <Card withBorder shadow="none" p={0} flex={1}>
           <MetricQueryEditor
             query={query}
             uiState={uiState}
@@ -159,7 +149,7 @@ export function NewMetricPage({
           onClose={closeModal}
         />
       )}
-      <LeaveRouteConfirmModal route={route} isEnabled={!isModalOpened} />
+      <LeaveRouteConfirmModal isEnabled={!isModalOpened} />
     </>
   );
 }

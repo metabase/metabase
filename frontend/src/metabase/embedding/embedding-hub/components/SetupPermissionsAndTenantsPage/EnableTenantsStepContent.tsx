@@ -6,10 +6,10 @@ import { t } from "ttag";
 import {
   useCreateCollectionMutation,
   useListCollectionsTreeQuery,
-  useUpdateSettingMutation,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
+import { useUpdateSettingMutation } from "metabase/settings";
 import { Button, Group, Stack, Text } from "metabase/ui";
 
 import S from "./SetupPermissionsAndTenantsPage.module.css";
@@ -63,7 +63,7 @@ export const EnableTenantsStepContent = ({
   }, [updateSetting, hasSharedCollections, createCollection, sendToast]);
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <img
         src="app/assets/img/embedding-onboarding/multi-tenant-user-strategy.svg"
         alt=""

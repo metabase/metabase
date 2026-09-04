@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import { useUpdateSettingsMutation } from "metabase/api";
+import { useUpdateSettingsMutation } from "metabase/settings";
 import { Anchor, Button, Center, Stack, Text } from "metabase/ui";
 
 interface EnableEmbeddingPromptProps {
@@ -46,7 +46,7 @@ export function EnableEmbeddingPrompt({
 
   return (
     <Center h="100%">
-      <Stack align="center" gap="md" maw={400}>
+      <Stack align="center" gap="lg" maw={400}>
         <Text ta="center" c="text-secondary">
           {message}
         </Text>

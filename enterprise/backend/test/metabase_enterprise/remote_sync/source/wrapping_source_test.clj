@@ -9,6 +9,9 @@
   (list-files [_]
     (keys files))
 
+  (list-dir [_ path]
+    (source/paths->children (keys files) path))
+
   (read-file [_ path]
     (get files path))
 

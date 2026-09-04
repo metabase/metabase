@@ -1,13 +1,19 @@
 import type { PolygonProps } from "@visx/shape/lib/shapes/Polygon";
 
 import { CHAR_SIZES_FONT_WEIGHT } from "metabase/static-viz/constants/char-sizes";
-import { formatNumber, formatPercent } from "metabase/static-viz/lib/numbers";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+import { formatPercent } from "metabase/utils/formatting";
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import { isNotNull } from "metabase/utils/types";
-import { truncateText } from "metabase/visualizations/lib/text";
+import {
+  type FunnelDatum,
+  type FunnelStep,
+  type Step,
+  truncateText,
+} from "metabase/viz-core";
 
-import type { FunnelDatum, FunnelSettings, FunnelStep, Step } from "../types";
+import { formatNumber } from "../../../lib/numbers";
+import type { FunnelSettings } from "../types";
 
 type StepDimensions = Pick<FunnelStep, "top" | "left" | "height">;
 

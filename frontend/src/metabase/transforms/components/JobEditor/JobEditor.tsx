@@ -62,7 +62,9 @@ export function JobEditor({
           readOnly={readOnly}
           onTagsChange={onTagListChange}
         />
-        {job.id != null && <TransformsSection jobId={job.id} />}
+        {job.id !== undefined && (
+          <TransformsSection jobId={job.id} lastJobRun={job.last_run} />
+        )}
       </Stack>
     </PageContainer>
   );

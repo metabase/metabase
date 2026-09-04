@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.transforms-inspector.db :as transforms-inspector.db]
    [metabase-enterprise.transforms-inspector.query-analysis :as query-analysis]
    [metabase-enterprise.transforms-inspector.schema :as transforms-inspector.schema]
    [metabase.driver :as driver]
@@ -13,8 +14,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,7 +24,7 @@
   "Fetch tables by ID and build source info maps."
   [table-ids]
   (when (seq table-ids)
-    (t2/select [:model/Table [:id :table-id] [:name :table-name] :schema [:db_id :db-id]] :id [:in table-ids])))
+    (transforms-inspector.db/table-source-rows table-ids)))
 
 (defmulti extract-sources
   "Extract source table information for a transform.
@@ -41,7 +41,7 @@
           table-ids (lib/all-source-table-ids query)]
       (table-ids->source-info table-ids))
     (catch Exception e
-      (log/warn e "Failed to extract sources from MBQL transform")
+      (log/warnf "Failed to extract sources from MBQL transform: %s" (ex-message e))
       nil)))
 
 (defmethod extract-sources :native
@@ -51,12 +51,12 @@
                     transforms-base.u/massage-sql-query
                     qp.preprocess/preprocess)
           db-id (transforms-base.u/transform-source-database transform)
-          driver (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)
+          driver (keyword (transforms-inspector.db/database-engine db-id))
           deps (driver/native-query-deps driver query)
           table-ids (keep :table deps)]
       (table-ids->source-info table-ids))
     (catch Exception e
-      (log/warn e "Failed to extract sources from native transform")
+      (log/warnf "Failed to extract sources from native transform: %s" (ex-message e))
       nil)))
 
 (defmethod extract-sources :python
@@ -67,7 +67,7 @@
           table-ids (keep :table_id normalized)]
       (table-ids->source-info table-ids))
     (catch Exception e
-      (log/warn e "Failed to extract sources from Python transform")
+      (log/warnf "Failed to extract sources from Python transform: %s" (ex-message e))
       nil)))
 
 (defmethod extract-sources :default
@@ -107,7 +107,7 @@
 (mu/defn- collect-field-metadata :- [:sequential ::transforms-inspector.schema/field]
   "Collect metadata for fields in a table."
   [table-id]
-  (let [fields (t2/select :model/Field :table_id table-id :active true)]
+  (let [fields (transforms-inspector.db/active-fields-for-table table-id)]
     (mapv (fn [field]
             (cond-> (select-keys field [:id :name :display_name :base_type :semantic_type])
               (get-field-stats field)
@@ -269,7 +269,7 @@
              :target              target-info
              :db-id               db-id
              :driver              (or (:driver query-info)
-                                      (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id))
+                                      (keyword (transforms-inspector.db/database-engine db-id)))
              :from-table-id       (:from-table-id query-info)
              :has-joins?          (boolean (seq join-structure))
              :visited-fields      (:visited-fields query-info)

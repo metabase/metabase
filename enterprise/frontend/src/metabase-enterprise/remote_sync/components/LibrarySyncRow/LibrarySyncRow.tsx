@@ -3,20 +3,17 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/bordered.module.css";
 import { Box, Flex, Icon, Switch, Text } from "metabase/ui";
-import type { RemoteSyncConfigurationSettings } from "metabase-types/api";
 
 import { SYNC_LIBRARY_PENDING_KEY } from "../../constants";
-
-type FormValues = RemoteSyncConfigurationSettings & {
-  [SYNC_LIBRARY_PENDING_KEY]?: boolean;
-};
+import type { RemoteSyncSettingsFormState } from "../../types";
 
 interface LibrarySyncRowProps {
   isReadOnly: boolean;
 }
 
 export const LibrarySyncRow = ({ isReadOnly }: LibrarySyncRowProps) => {
-  const { values, setFieldValue } = useFormikContext<FormValues>();
+  const { values, setFieldValue } =
+    useFormikContext<RemoteSyncSettingsFormState>();
   const isChecked = values[SYNC_LIBRARY_PENDING_KEY] ?? false;
 
   const handleToggle = (checked: boolean) => {
@@ -24,7 +21,7 @@ export const LibrarySyncRow = ({ isReadOnly }: LibrarySyncRowProps) => {
   };
 
   return (
-    <Box p="md" className={CS.borderRowDivider}>
+    <Box p="lg" className={CS.borderRowDivider}>
       <Flex justify="space-between" align="center">
         <Flex align="center" gap="sm">
           <Icon name="repository" c="text-secondary" />

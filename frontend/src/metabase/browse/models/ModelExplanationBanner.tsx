@@ -2,7 +2,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDocsUrl, useUserSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
+import { useUserSetting } from "metabase/settings";
 import {
   Button,
   Flex,
@@ -41,13 +42,13 @@ export const ModelExplanationBanner = () => {
       radius="0.25rem"
       role="complementary"
       w="80%"
-      mb="xl"
+      mb="xxl"
     >
       <Flex>
         {showMetabaseLinks && (
           <ModelsVideoThumbnail onClick={() => setOpened(true)} />
         )}
-        <Stack gap="md">
+        <Stack gap="lg">
           <Title
             order={6}
             m={0}
@@ -55,7 +56,7 @@ export const ModelExplanationBanner = () => {
           <Text size="md" lh="1.5">
             {t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}
           </Text>
-          <Group gap="md">
+          <Group gap="lg">
             {showMetabaseLinks && (
               <Button variant="subtle" p={0}>
                 <ExternalLink href={url}>{t`Read the docs`}</ExternalLink>

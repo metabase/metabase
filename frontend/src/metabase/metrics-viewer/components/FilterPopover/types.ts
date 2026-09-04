@@ -17,10 +17,7 @@ export type SegmentListItem = {
 
 export type FilterItem = DimensionListItem | SegmentListItem;
 
-export type MetricGroupFilterSection = BaseSection<FilterItem> & {
-  /** True only for the metric's "main" (source-table) group. */
-  isSourceTable?: boolean;
-};
+export type MetricGroupFilterSection = BaseSection<FilterItem>;
 
 export type MetricGroup = {
   id: number;

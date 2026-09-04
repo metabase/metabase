@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 
-import type { MetabotConfig } from "metabase/metabot/components/Metabot";
 import { MetabotChat } from "metabase/metabot/components/MetabotChat";
 import { MetabotConversationHistory } from "metabase/metabot/components/MetabotChat/MetabotConversationHistory";
 import { isHistoryEnabledProfile } from "metabase/metabot/constants";
@@ -9,9 +8,8 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import { useDispatch } from "metabase/redux";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import { push, replace } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Box, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -27,16 +25,11 @@ const SUGGESTION_MODELS: SuggestionModel[] = [
   "dashboard",
 ];
 
-const askConfig: MetabotConfig = {
-  agentId: "ask",
-  suggestionModels: SUGGESTION_MODELS,
-};
-
 export const MetabotAsk = () => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { setVisible: setSidebarVisible } = useMetabotAgent("omnibot");
-  const askAgent = useMetabotAgent("ask");
-  const { messages, isDoingScience, conversationId } = askAgent;
+  const { conversationId, messages, isDoingScience, profile } =
+    useMetabotAgent("ask");
   const { isConfigured } = useUserMetabotPermissions();
   const isAskPage = useIsAskPage();
 
@@ -50,22 +43,20 @@ export const MetabotAsk = () => {
   useEffect(
     function navigateToConversationOnFirstMessage() {
       if (isAskPage && messages.length > 0 && conversationId) {
-        dispatch(replace(Urls.metabotConversation(conversationId)));
+        navigate(Urls.metabotConversation(conversationId), { replace: true });
       }
     },
-    [isAskPage, messages.length, conversationId, dispatch],
+    [isAskPage, messages.length, conversationId, navigate],
   );
 
   const showGreeting = messages.length === 0 && !isDoingScience;
 
-  const showHistory = isConfigured && isHistoryEnabledProfile(askAgent.profile);
+  const showHistory = isConfigured && isHistoryEnabledProfile(profile);
   const historyAction = showHistory ? (
     <MetabotConversationHistory
-      profileId={askAgent.profile}
+      profileId={profile}
       activeConversationId={conversationId}
-      onConversationSelect={(id) =>
-        dispatch(push(Urls.metabotConversation(id)))
-      }
+      onConversationSelect={(id) => navigate(Urls.metabotConversation(id))}
     />
   ) : undefined;
 
@@ -74,17 +65,25 @@ export const MetabotAsk = () => {
       {showGreeting ? (
         <>
           {historyAction && (
-            <Flex justify="flex-end" px="md" pt="md">
+            <Flex justify="flex-end" px="lg" pt="lg">
               {historyAction}
             </Flex>
           )}
-          <MetabotGreeting agentId="ask" suggestionModels={SUGGESTION_MODELS} />
+          <MetabotGreeting
+            conversationId={conversationId}
+            suggestionModels={SUGGESTION_MODELS}
+          />
         </>
       ) : (
         <Box pos="relative" h="100%" w="100%">
           <Box className={S.topFade} />
           <MetabotChat
-            config={askConfig}
+            conversationId={conversationId}
+            agentId="ask"
+            onNewConversation={() =>
+              navigate(Urls.newQuestion({ mode: "ask" }))
+            }
+            config={{ suggestionModels: SUGGESTION_MODELS }}
             className={S.chat}
             headerActions={historyAction}
           />

@@ -21,7 +21,7 @@ export const DurationInput = () => {
         {t`Reset to defaults after`}
       </Text>
 
-      <Flex align="flex-end" gap="md">
+      <Flex align="flex-end" gap="lg">
         <FormNumberInput
           // rendering long error message for 80px-wide input messes up the layout
           // so this error message will be displayed under the form instead

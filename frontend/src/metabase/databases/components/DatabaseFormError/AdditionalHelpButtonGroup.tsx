@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { Link } from "metabase/router";
 import { getDocsUrl } from "metabase/selectors/settings";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Button, Divider, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -20,7 +20,7 @@ export const AdditionalHelpButtonGroup = () => {
     <>
       {showMetabaseLinks && (
         <>
-          <Divider variant="dashed" mb="lg" />
+          <Divider variant="dashed" mb="xl" />
           <Button
             className={CS.link}
             component={Link}

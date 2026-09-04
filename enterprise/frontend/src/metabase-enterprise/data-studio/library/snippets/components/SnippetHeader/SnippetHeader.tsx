@@ -4,19 +4,21 @@ import { t } from "ttag";
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { isRootCollection } from "metabase/common/collections/utils";
+import { Link } from "metabase/common/components/Link";
+import {
+  type PillTab,
+  PillTabNavigation,
+} from "metabase/common/components/PillTabNavigation";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import {
   PaneHeader,
   PaneHeaderInput,
   type PaneHeaderProps,
-  type PaneHeaderTab,
-  PaneHeaderTabs,
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
 import { useToast } from "metabase/common/hooks";
 import { PLUGIN_DEPENDENCIES, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Link } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
@@ -135,11 +137,11 @@ type SnippetTabsProps = {
 
 function SnippetTabs({ snippet }: SnippetTabsProps) {
   const tabs = getTabs(snippet.id);
-  return <PaneHeaderTabs tabs={tabs} />;
+  return <PillTabNavigation tabs={tabs} />;
 }
 
-function getTabs(snippetId: number): PaneHeaderTab[] {
-  const tabs: PaneHeaderTab[] = [
+function getTabs(snippetId: number): PillTab[] {
+  const tabs: PillTab[] = [
     {
       label: t`Definition`,
       to: Urls.dataStudioSnippet(snippetId),

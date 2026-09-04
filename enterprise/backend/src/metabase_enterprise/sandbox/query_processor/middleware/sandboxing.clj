@@ -6,6 +6,7 @@
    [better-cond.core :as b]
    [medley.core :as m]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase-enterprise.sandbox.models.sandbox :as sandbox]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    ;; allowed (for now) since sandboxing needs to manipulate legacy metadata
@@ -32,9 +33,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.match :as match]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -165,8 +164,7 @@
         persisted-info (:lib/persisted-info card)
         persisted?     (qp.persisted/can-substitute? card persisted-info)
         query          (lib/card->underlying-query metadata-providerable card)]
-    ;; log the query at this point, it's useful for some purposes
-    (log/debugf "Fetched query from Card %s:\n%s" card-id (u/cprint-to-str (select-keys query [:stages :parameters])))
+    (log/debugf "Fetched query from Card %s" card-id)
     (cond-> query
       ;; This will be applied, if still appropriate, by the persistence middleware
       persisted?
@@ -217,7 +215,7 @@
                 (log/infof "Saving results metadata for Sandbox Card %d" card-id)
                 ;; TODO (Cam 9/9/25) -- we should switch to saving Lib-style metadata in the app DB instead of legacy
                 ;; style in the near future
-                (t2/update! :model/Card card-id {:result_metadata cols}))
+                (sandbox.db/set-card-result-metadata! card-id cols))
               (lib/update-query-stage query 0 assoc :lib/stage-metadata (lib/->normalized-stage-metadata cols))))))
       query))
 
@@ -262,10 +260,10 @@
                                             (not= table-id original-table-id))
                                        (do
                                          (log/errorf (str "Sandboxes can only include columns from the original Table (%d),"
-                                                          " query included %s from Table %d. This is unsupported and may not"
+                                                          " query included column %s from Table %d. This is unsupported and may not"
                                                           " work in the future.")
                                                      original-table-id
-                                                     (pr-str (:name sandbox-col))
+                                                     (:id sandbox-col)
                                                      table-id)
                                          true)
 
@@ -273,9 +271,9 @@
                                        (not matching-table-col)
                                        (do
                                          (log/errorf (str "Sandboxes can only include columns from the original Table,"
-                                                          " but query included %s. This is unsupported and may not work in"
+                                                          " but query included column %s. This is unsupported and may not work in"
                                                           " the future.")
-                                                     (pr-str (:name sandbox-col)))
+                                                     (:id sandbox-col))
                                          true)
 
                                        :else
@@ -384,9 +382,7 @@
                               (sandbox-exposed-field-ids sandbox-query source-table)))
         replacement-stages (cond-> new-source-stages
                              wrapper-stage (conj wrapper-stage))]
-    (log/tracef "Applied Sandbox: replaced stage\n\n%s\n\nwith stages\n\n%s"
-                (u/cprint-to-str stage)
-                (u/cprint-to-str replacement-stages))
+    (log/trace "Applied Sandbox: replaced stage with sandboxed stages")
     replacement-stages))
 
 (mu/defn- apply-sandboxes :- ::lib.schema/query

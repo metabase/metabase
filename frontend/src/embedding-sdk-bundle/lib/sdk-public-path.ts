@@ -6,8 +6,7 @@
  *
  * Without this, an on-demand chunk would be requested relative to the host
  * page's base URL (where the SDK chunks don't exist) and fail with a
- * `ChunkLoadError`. This is why those dependencies used to be force-imported
- * eagerly in `./sdk-specific-imports`.
+ * `ChunkLoadError`.
  *
  * Both the chunked bootstrap and the legacy monolithic bundle are served from
  * `app/embedding-sdk.js`, with their split/on-demand chunks living one level
@@ -31,7 +30,7 @@
 // so the assignment below is rewritten to set the runtime's `publicPath`.
 declare let __webpack_public_path__: string;
 
-const resolveAssetBaseUrl = (): string | undefined => {
+export const resolveAssetBaseUrl = (): string | undefined => {
   const fromGlobal =
     typeof window !== "undefined"
       ? window.METABASE_EMBEDDING_SDK_ASSET_BASE_URL
@@ -48,7 +47,12 @@ const resolveAssetBaseUrl = (): string | undefined => {
   // Unjustified type cast. FIXME
   const scriptUrl = (document.currentScript as HTMLScriptElement | null)?.src;
 
-  if (!scriptUrl) {
+  // Only derive the base from `document.currentScript` when it is the SDK entry
+  // itself. In Storybook (and other hosts) the current script is a
+  // bundle-specific file — e.g. `.../embedding-sdk/<story>.iframe.bundle.js` —
+  // and deriving the base from it would point on-demand chunks at the wrong
+  // directory and fail to load them.
+  if (!scriptUrl || !/embedding-sdk\.js(\?|$)/.test(scriptUrl)) {
     return undefined;
   }
 
@@ -61,5 +65,3 @@ const assetBaseUrl = resolveAssetBaseUrl();
 if (assetBaseUrl) {
   __webpack_public_path__ = assetBaseUrl;
 }
-
-export {};

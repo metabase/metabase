@@ -7,9 +7,8 @@ import {
   useUpdateMeasureMutation,
 } from "metabase/api";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useMetadataToasts } from "metabase/common/hooks";
+import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
@@ -22,8 +21,10 @@ type DataModelMeasurePageParams = {
   measureId: string;
 };
 
-export function useDataModelMeasurePage(params: DataModelMeasurePageParams) {
-  const dispatch = useDispatch();
+export function useDataModelMeasurePage(
+  params: Partial<DataModelMeasurePageParams>,
+) {
+  const navigate = useNavigate();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [updateMeasure] = useUpdateMeasureMutation();
 
@@ -61,15 +62,13 @@ export function useDataModelMeasurePage(params: DataModelMeasurePageParams) {
       sendErrorToast(t`Failed to remove measure`);
     } else {
       sendSuccessToast(t`Measure removed`);
-      dispatch(
-        push(
-          Urls.dataStudioData({
-            databaseId,
-            schemaName,
-            tableId,
-            tab: "measures",
-          }),
-        ),
+      navigate(
+        Urls.dataStudioData({
+          databaseId,
+          schemaName,
+          tableId,
+          tab: "measures",
+        }),
       );
     }
   }, [
@@ -78,9 +77,9 @@ export function useDataModelMeasurePage(params: DataModelMeasurePageParams) {
     schemaName,
     databaseId,
     updateMeasure,
-    dispatch,
     sendSuccessToast,
     sendErrorToast,
+    navigate,
   ]);
 
   const isLoading = isLoadingMeasure || isLoadingTable;

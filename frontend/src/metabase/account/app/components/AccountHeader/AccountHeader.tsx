@@ -1,10 +1,9 @@
-import type { Path } from "history";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { UserAvatar } from "metabase/common/components/UserAvatar";
-import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
 import { Box, Flex, Tabs, Title, rem } from "metabase/ui";
 import { getFullName } from "metabase/utils/user";
 import type { User } from "metabase-types/api";
@@ -14,7 +13,7 @@ import S from "./AccountHeader.module.css";
 type AccountHeaderProps = {
   user: User;
   path?: string;
-  onChangeLocation?: (nextLocation: Path) => void;
+  onChangeLocation?: (nextLocation: string) => void;
 };
 
 export const AccountHeader = ({
@@ -22,28 +21,25 @@ export const AccountHeader = ({
   path,
   onChangeLocation,
 }: AccountHeaderProps) => {
-  const hasPasswordChange = useMemo(
+  const canChangePassword = useMemo(
     () => PLUGIN_IS_PASSWORD_USER.every((predicate) => predicate(user)),
     [user],
   );
   const mfaEnforcement = useSetting("mfa-enforcement");
   const isMfaEnabled = mfaEnforcement != null && mfaEnforcement !== "off";
-  const hasSecurityTab =
-    isMfaEnabled && (hasPasswordChange || user.sso_source === "ldap");
+  const hasAuthenticationTab =
+    canChangePassword || (isMfaEnabled && user.sso_source === "ldap");
 
   const tabs = useMemo(
     () => [
       { name: t`Profile`, value: "/account/profile" },
-      ...(hasPasswordChange
-        ? [{ name: t`Password`, value: "/account/password" }]
-        : []),
-      ...(hasSecurityTab
-        ? [{ name: t`Security`, value: "/account/security" }]
+      ...(hasAuthenticationTab
+        ? [{ name: t`Authentication`, value: "/account/password" }]
         : []),
       { name: t`Login History`, value: "/account/login-history" },
       { name: t`Notifications`, value: "/account/notifications" },
     ],
-    [hasPasswordChange, hasSecurityTab],
+    [hasAuthenticationTab],
   );
 
   const userFullName = getFullName(user);
@@ -56,14 +52,14 @@ export const AccountHeader = ({
       justify="center"
       align="center"
       bg="background_page-primary"
-      pt={{ base: "sm", sm: "md" }}
+      pt={{ base: "sm", sm: "lg" }}
     >
-      <Flex direction="column" align="center" p={{ base: "md", md: rem(64) }}>
-        <Box mb={{ base: "sm", sm: "md" }}>
+      <Flex direction="column" align="center" p={{ base: "lg", md: rem(64) }}>
+        <Box mb={{ base: "sm", sm: "lg" }}>
           <UserAvatar user={user} className={S.avatar} />
         </Box>
         {userFullName && (
-          <Title order={2} fz="md" ta="center" mb="xs">
+          <Title order={2} fz="md" ta="center" mb="xxs">
             {userFullName}
           </Title>
         )}

@@ -2,9 +2,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useUpdateSettingsMutation } from "metabase/api";
 import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
+import { useSetting, useUpdateSettingsMutation } from "metabase/settings";
 import { Button, Group, Stack, Text, TextInput } from "metabase/ui";
 
 export const SetupJwtStep = ({ onSuccess }: { onSuccess: () => void }) => {
@@ -53,7 +53,7 @@ export const SetupJwtStep = ({ onSuccess }: { onSuccess: () => void }) => {
   ]);
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Text size="md" c="text-secondary" lh="lg">
         {t`To implement SSO you will need to add a new endpoint to your app. You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people. Enabling JWT authentication will also create a signing key and enable group sync.`}
       </Text>

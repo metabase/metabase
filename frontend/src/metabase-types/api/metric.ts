@@ -1,27 +1,73 @@
-import type { Collection, CollectionId } from "./collection";
-import type { DatasetColumn, RowValue } from "./dataset";
-import type { FieldValue } from "./field";
-import type { DimensionId, DimensionMapping, MetricDimension } from "./measure";
+import type { PaginationResponse } from "metabase-types/api/pagination";
 
-export type {
-  DimensionMapping,
-  MetricDimension,
-  MetricDimensionGroup,
-  MetricDimensionSource,
-} from "./measure";
+import type { Collection, CollectionId } from "./collection";
+import type { DatasetColumn, RowValue, TemporalUnit } from "./dataset";
+import type { FieldValue } from "./field";
 
 export type MetricId = number;
+export type DimensionId = string;
+
+export type MetricDimensionGroup = {
+  id: string;
+  type: "main" | "connection";
+  display_name: string;
+};
+
+export type MetricDimensionSource = {
+  type: string;
+  "field-id": number;
+};
+
+export type MetricDimensionStatus = "status/active" | "status/orphaned";
+
+export type MetricDimension = {
+  id: DimensionId;
+  name?: string;
+  display_name: string;
+  description?: string | null;
+  effective_type: string;
+  semantic_type: string | null;
+  has_field_values?: "list" | "search" | "none" | null;
+  default?: boolean;
+  default_temporal_unit?: TemporalUnit;
+  status?: MetricDimensionStatus;
+  status_message?: string | null;
+  dimension_interestingness?: number | null;
+  group?: MetricDimensionGroup;
+  sources?: MetricDimensionSource[];
+};
+
+export type DimensionMappingTarget = [
+  "field",
+  Record<string, unknown>,
+  number | string,
+];
+
+export type AddableMetricDimension = MetricDimension & {
+  mapping_target: DimensionMappingTarget;
+};
+
+export type DimensionMapping = {
+  dimension_id: DimensionId;
+  table_id: number;
+  target: DimensionMappingTarget;
+};
 
 export type Metric = {
   id: MetricId;
   name: string;
   description: string | null;
-  dimensions: MetricDimension[];
-  dimension_mappings?: DimensionMapping[];
+  dimension_ids?: DimensionId[] | null;
+  dimensions?: MetricDimension[] | null;
+  dimension_mappings?: DimensionMapping[] | null;
   collection_id: CollectionId | null;
-  collection: Collection | null;
+  collection?: Collection | null;
   result_column_name?: string;
 };
+
+export type GetMetricListResponse = {
+  data: Metric[];
+} & PaginationResponse;
 
 export const MATH_OPERATORS = ["+", "-", "*", "/"] as const;
 export type MathOperator = (typeof MATH_OPERATORS)[number];
@@ -111,4 +157,50 @@ export type GetRemappedMetricDimensionValueRequest = {
   metricId: MetricId;
   dimensionId: DimensionId;
   value: string;
+};
+
+export type ListMetricDimensionsRequest = {
+  metricId: MetricId;
+  query?: string;
+  "with-addable"?: boolean;
+  "include-orphaned"?: boolean;
+};
+
+export type AddableDimensionGroup = {
+  group: MetricDimensionGroup;
+  dimensions: AddableMetricDimension[];
+};
+
+export type ListMetricDimensionsResponse = {
+  added: MetricDimension[];
+  addable: AddableDimensionGroup[];
+};
+
+export type AddMetricDimensionsRequest = {
+  metricId: MetricId;
+  dimensions: AddableMetricDimension[];
+};
+
+export type RemoveMetricDimensionsRequest = {
+  metricId: MetricId;
+  dimension_ids: DimensionId[];
+};
+
+export type SetDefaultMetricDimensionRequest = {
+  metricId: MetricId;
+  dimension_id: DimensionId | null;
+};
+
+export type ReorderMetricDimensionsRequest = {
+  metricId: MetricId;
+  dimension_ids: DimensionId[];
+};
+
+export type UpdateMetricDimensionRequest = {
+  metricId: MetricId;
+  dimensionId: DimensionId;
+  display_name?: string;
+  description?: string | null;
+  default_temporal_unit?: TemporalUnit;
+  source?: MetricDimensionSource;
 };

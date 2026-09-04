@@ -1,5 +1,6 @@
 (ns metabase-enterprise.audit-app.permissions
   (:require
+   [metabase-enterprise.audit-app.db :as audit-app.db]
    [metabase.audit-app.core :as audit]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -9,8 +10,7 @@
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [tru]]))
 
 (def audit-db-view-names
   "Used for giving granular permissions into the audit db. Instead of granting permissions to
@@ -33,7 +33,8 @@
     "v_metabot_conversations"
     "v_metabot_messages"
     "v_ai_usage_log"
-    "v_mcp_tool_calls"})
+    "v_mcp_tool_calls"
+    "v_agent_api_calls"})
 
 (defenterprise check-audit-db-permissions
   "Performs a number of permission checks to ensure that a query on the Audit database can be run.
@@ -73,7 +74,7 @@
       (let [create-queries-value (case tyype
                                    (:read :write) :query-builder
                                    :none  :no)
-            view-tables         (t2/select :model/Table :db_id audit/audit-db-id :name [:in audit-db-view-names])]
+            view-tables         (audit-app.db/tables-of-database-named audit/audit-db-id audit-db-view-names)]
         (doseq [table view-tables]
           (perms/set-table-permission! group-id table :perms/create-queries create-queries-value))
         (cond-> changes

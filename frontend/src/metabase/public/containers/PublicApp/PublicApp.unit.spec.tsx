@@ -2,10 +2,10 @@ import userEvent from "@testing-library/user-event";
 import type { JSX } from "react";
 
 import { mockSettings } from "__support__/settings";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { act, getIcon, renderWithProviders, screen } from "__support__/ui";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
+import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
-import { createMockAppState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 
 import PublicApp from "./PublicApp";
@@ -25,10 +25,9 @@ function setup({
   hash = "",
   ...embedFrameProps
 }: SetupOpts = {}) {
-  const app = createMockAppState({ errorPage: error });
   const settings = mockSettings({ "hide-embed-branding?": !hasEmbedBranding });
 
-  renderWithProviders(
+  const { store } = renderWithProviders(
     <Route path="/public/dashboard/:id" element={<PublicApp />}>
       <Route
         index
@@ -42,10 +41,19 @@ function setup({
     {
       mode: "public",
       initialRoute: `/public/dashboard/UUID${hash}`,
-      storeInitialState: { app, settings },
+      storeInitialState: { settings },
       withRouter: true,
     },
   );
+
+  // `errorPage` is set at runtime by a failed request, after the mount
+  // `LOCATION_CHANGE` that resets it. Seeding it in the initial store would be
+  // cleared by that mount dispatch, so set it the way the app does: afterwards.
+  if (error) {
+    act(() => {
+      store.dispatch(setErrorPage(error));
+    });
+  }
 }
 
 describe("PublicApp", () => {

@@ -5,13 +5,14 @@ import {
   type MouseEvent,
   type MouseEventHandler,
   type ReactNode,
+  type TouchEventHandler,
   forwardRef,
   useCallback,
 } from "react";
 
+import type { LinkProps } from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import type { LinkProps } from "metabase/router";
-import { Link } from "metabase/router";
 import { Box } from "metabase/ui";
 
 import S from "./LegendLabel.module.css";
@@ -23,12 +24,23 @@ interface Props {
   onClick?: MouseEventHandler;
   onFocus: FocusEventHandler;
   onMouseEnter: MouseEventHandler;
+  onMouseDown?: MouseEventHandler;
+  onTouchStart?: TouchEventHandler;
 }
 
 // eslint-disable-next-line react/display-name
 export const LegendLabel = forwardRef(
   (
-    { children, className, href, onClick, onFocus, onMouseEnter }: Props,
+    {
+      children,
+      className,
+      href,
+      onClick,
+      onFocus,
+      onMouseEnter,
+      onMouseDown,
+      onTouchStart,
+    }: Props,
     ref: React.Ref<any>,
   ) => {
     const handleLinkClick = useCallback(
@@ -51,6 +63,8 @@ export const LegendLabel = forwardRef(
           onClick={onClick}
           onFocus={onFocus}
           onMouseEnter={onMouseEnter}
+          onMouseDown={onMouseDown}
+          onTouchStart={onTouchStart}
           data-testid="legend-label"
           data-is-clickable={!!onClick}
         >
@@ -69,6 +83,8 @@ export const LegendLabel = forwardRef(
           onClick={handleLinkClick}
           onFocus={onFocus}
           onMouseEnter={onMouseEnter}
+          onMouseDown={onMouseDown}
+          onTouchStart={onTouchStart}
           data-testid="legend-label"
           data-is-clickable={!!onClick}
         >
@@ -85,6 +101,8 @@ export const LegendLabel = forwardRef(
         onClick={handleLinkClick}
         onFocus={onFocus}
         onMouseEnter={onMouseEnter}
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
         data-testid="legend-label"
         data-is-clickable={!!onClick}
       >

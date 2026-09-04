@@ -16,10 +16,12 @@
    [metabase.driver.mysql]
    [metabase.driver.postgres]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.embeddings.startup :as embeddings.startup]
    [metabase.events.core :as events]
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
+   [metabase.metrics.core :as metrics]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.plugins.core :as plugins]
@@ -134,7 +136,7 @@
         (try
           (.handle original-handler sig)
           (catch Exception e
-            (log/errorf e "Error calling original signal handler for SIG%s" signal-name)))))))
+            (log/errorf "Error calling original signal handler for SIG%s: %s" signal-name (ex-message e))))))))
 
 (defn- init-signal-logging!
   "Set up signal handlers to log system signals like SIGTERM, SIGINT, etc."
@@ -155,13 +157,26 @@
         (catch IllegalArgumentException e
           (log/debugf "Ignoring invalid signal SIG%s: %s" signal-name (.getMessage e)))
         (catch Exception e
-          (log/warnf e "Failed to register signal handler for SIG%s" signal-name))))))
+          (log/warnf "Failed to register signal handler for SIG%s: %s" signal-name (ex-message e)))))))
+
+(defn- reconcile-sample-database!
+  "Bring the sample database into line with the bundled one, adding it if there is none.
+
+  Keyed on whether a sample database row is present rather than on whether this is a new install: the
+  `CreateSampleContentV2` migration seeds that row before this runs, and an instance with no users reports a
+  new install on every boot, so keying on the install leaves a seeded sample database unreconciled forever -
+  including across a change of bundled engine."
+  []
+  (if (sample-data/sample-database-id)
+    (sample-data/update-sample-database-if-needed!)
+    (when (config/load-sample-content?)
+      (sample-data/extract-and-sync-sample-database!))))
 
 (defn- init!*
   "General application initialization function which should be run once at application startup."
   []
   (log/infof "Starting Metabase version %s ..." config/mb-version-string)
-  (log/infof "System info:\n %s" (u/pprint-to-str (u.system-info/system-info)))
+  (log/infof "System info:\n %s" (pr-str (u.system-info/system-info)))
   (perf/maybe-enable-monitoring!)
   (init-signal-logging!)
   (init-status/set-progress! 0.1)
@@ -177,6 +192,7 @@
   (tracing/init!)
   ;; load any plugins as needed
   (plugins/load-plugins!)
+  (embeddings.startup/ensure-in-process-provider!)
   (init-status/set-progress! 0.3)
   (setting/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations
@@ -186,6 +202,7 @@
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
+  (mdb/encrypt-plaintext-columns!)
   ;; In OSS, convert any Data Analysts group with members to a normal visible group
   (perms/sync-data-analyst-group-for-oss!)
   ;; Disable read-only mode if its on during startup.
@@ -213,15 +230,14 @@
       ;; The instance is already set up. Clear out any stale setup token.
       (setup/clear-token!))
     (init-status/set-progress! 0.7)
-    ;; deal with our sample database as needed
-    (if new-install?
-      ;; add the sample database DB for fresh installs (only when sample content is enabled)
-      (when (config/load-sample-content?)
-        (sample-data/extract-and-sync-sample-database!))
-      ;; On existing installs always reconcile: if the bundled engine changed (H2 <-> SQLite) the old
-      ;; sample database must be cleaned up and replaced regardless of whether sample content is
-      ;; currently enabled. Otherwise just refresh its connection details.
-      (sample-data/update-sample-database-if-needed!))
+    (reconcile-sample-database!)
+    ;; Sample-content metrics are inserted via raw SQL and so never trigger Card after-insert hooks.
+    ;; Not critical to startup: log and carry on if it fails rather than aborting initialization.
+    (when-let [sample-db-id (sample-data/sample-database-id)]
+      (try
+        (metrics/sync-metric-dimensions-for-database! sample-db-id)
+        (catch Throwable e
+          (log/error e "Error syncing metric dimensions for the Sample Database"))))
     (init-status/set-progress! 0.8))
   (ensure-audit-db-installed!)
   (notification/seed-notification!)
@@ -230,7 +246,6 @@
   (embed.settings/check-and-sync-settings-on-startup! env/env)
   (llm.startup/check-and-sync-settings-on-startup!)
   (init-status/set-progress! 0.9)
-  (setting/migrate-encrypted-settings!)
   (database/check-health!)
   (startup/run-startup-logic!)
   (setting/log-deprecated-env-var-usage!)
@@ -271,7 +286,7 @@
     (when (config/config-bool :mb-jetty-join)
       (.join (server/instance)))
     (catch Throwable e
-      (log/error e "Metabase Initialization FAILED")
+      (log/errorf "Metabase Initialization FAILED: %s" (ex-message e))
       (System/exit 1))))
 
 (defn- run-cmd [cmd init-fn args]
@@ -285,6 +300,8 @@
     (when (not-empty mb-trace-str)
       (log/warn "WARNING: You have enabled namespace tracing, which could log sensitive information like db passwords.")
       (doseq [namespace (map symbol (str/split mb-trace-str #",\s*"))]
+        ;; tracing namespaces are supplied by the user at runtime
+        #_{:clj-kondo/ignore [:metabase/modules]}
         (try (require namespace)
              (catch Throwable _
                (throw (ex-info "A namespace you specified with MB_NS_TRACE could not be required" {:namespace namespace}))))

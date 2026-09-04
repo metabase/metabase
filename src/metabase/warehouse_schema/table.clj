@@ -3,8 +3,10 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -69,13 +71,11 @@
    (batch-fetch-query-metadatas* ids nil))
   ([ids {:keys [include-sensitive-fields?]}]
    (when (seq ids)
-     (let [tables (->> (t2/select :model/Table :id [:in ids])
-                       (filter can-access-table-for-query-metadata?))
-           tables (t2/hydrate tables
-                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                              :segments
-                              :measures
-                              :metrics)
+     (let [tables (warehouse-schema.db/tables ids)
+           _      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
+                                                  :table-ids (into #{} (map :id) tables)})
+           tables (filter can-access-table-for-query-metadata? tables)
+           tables (t2/hydrate tables [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :measures :metrics)
            excluded-visibility-types (cond-> #{:hidden}
                                        (not include-sensitive-fields?) (conj :sensitive))]
        (for [table tables]
@@ -90,7 +90,7 @@
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   metabase-enterprise.sandbox.api.table
   [id opts]
-  (fetch-query-metadata* (t2/select-one :model/Table :id id) opts))
+  (fetch-query-metadata* (warehouse-schema.db/table id) opts))
 
 (defenterprise batch-fetch-table-query-metadatas
   "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`.
@@ -121,7 +121,7 @@
   [card-id metadata metadata-fields]
   (let [underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
-                                         (-> (t2/select :model/Field :id [:in ids])
+                                         (-> (warehouse-schema.db/fields ids)
                                              (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
@@ -150,16 +150,33 @@
   []
   "Everything else")
 
+(defn- cards->card-id->metadata-fields
+  "Batch-fetch the underlying Fields for the `:result_metadata` columns of `cards`, returning a map of card ID to its
+  hydrated Fields. One select (plus hydration) covers every card, instead of the per-card lookup
+  [[card-result-metadata->virtual-fields]] falls back to."
+  [cards]
+  (let [metadata-field-ids (into #{}
+                                 (comp (mapcat :result_metadata)
+                                       (keep :id))
+                                 cards)
+        metadata-fields    (if (seq metadata-field-ids)
+                             (-> (warehouse-schema.db/fields metadata-field-ids)
+                                 (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
+                                 (->> (m/index-by :id)))
+                             {})]
+    (into {}
+          (map (fn [card]
+                 [(:id card) (into []
+                                   (keep (comp metadata-fields :id))
+                                   (:result_metadata card))]))
+          cards)))
+
 (defn card->virtual-table
   "Return metadata for a 'virtual' table for a `card` in the Saved Questions 'virtual' database. Optionally include
   'virtual' fields as well."
   [{:keys [database_id] :as card} & {:keys [include-database? include-fields? databases card-id->metadata-fields]}]
-  ;; if collection isn't already hydrated then do so
   (let [card-type     (:type card)
-        dataset-query (:dataset_query card)
-        database      (when (int? database_id)
-                        (or (get databases database_id)
-                            (t2/select-one :model/Database :id database_id)))]
+        dataset-query (:dataset_query card)]
     (cond-> {:id               (str "card__" (u/the-id card))
              :db_id            (:database_id card)
              :display_name     (:name card)
@@ -174,13 +191,29 @@
       (assoc :dataset_query dataset-query)
 
       include-database?
-      (assoc :db (when (and database (mi/can-read? database)) database))
+      (assoc :db (when-let [database (when (int? database_id)
+                                       (or (get databases database_id)
+                                           (warehouse-schema.db/database database_id)))]
+                   (when (mi/can-read? database) database)))
 
       include-fields?
       (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
                                                            (:result_metadata card)
                                                            (when card-id->metadata-fields
                                                              (card-id->metadata-fields (u/the-id card))))))))
+
+(defn cards->virtual-tables
+  "Return [[card->virtual-table]] metadata for `cards`, batching the Field fetch that `:include-fields?` needs so it
+  costs one select for the whole list instead of one per card."
+  [cards & {:keys [include-database? include-fields? databases]}]
+  (let [card-id->metadata-fields (when include-fields?
+                                   (cards->card-id->metadata-fields cards))]
+    (for [card cards]
+      (card->virtual-table card
+                           :include-database? include-database?
+                           :include-fields? include-fields?
+                           :databases databases
+                           :card-id->metadata-fields card-id->metadata-fields))))
 
 (defn- remove-nested-pk-fk-semantic-types
   "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a semantic
@@ -200,39 +233,11 @@
   "Return metadata for the 'virtual' tables for a Cards. Unreadable cards are silently skipped."
   [ids {:keys [include-database?]}]
   (when (seq ids)
-    (let [cards (t2/select :model/Card
-                           {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
-                                        :c.description :c.collection_id :c.database_id :c.type
-                                        :c.source_card_id :c.created_at :c.entity_id :c.card_schema
-                                        [:r.status :moderated_status]]
-                            :from      [[:report_card :c]]
-                            :left-join [[{:select   [:moderated_item_id :status]
-                                          :from     [:moderation_review]
-                                          :where    [:and
-                                                     [:= :moderated_item_type "card"]
-                                                     [:= :most_recent true]]
-                                          :order-by [[:id :desc]]
-                                          :limit    1} :r]
-                                        [:= :r.moderated_item_id :c.id]]
-                            :where      [:in :c.id ids]})
+    (let [cards (warehouse-schema.db/cards-with-moderated-status ids)
           dbs (if (seq cards)
-                (t2/select-pk->fn identity :model/Database :id [:in (into #{} (map :database_id) cards)])
+                (warehouse-schema.db/databases-by-id (into #{} (map :database_id) cards))
                 {})
-          metadata-field-ids (into #{}
-                                   (comp (mapcat :result_metadata)
-                                         (keep :id))
-                                   cards)
-          metadata-fields (if (seq metadata-field-ids)
-                            (-> (t2/select :model/Field :id [:in metadata-field-ids])
-                                (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
-                                (->> (m/index-by :id)))
-                            {})
-          card-id->metadata-fields (into {}
-                                         (map (fn [card]
-                                                [(:id card) (into []
-                                                                  (keep (comp metadata-fields :id))
-                                                                  (:result_metadata card))]))
-                                         cards)
+          card-id->metadata-fields (cards->card-id->metadata-fields cards)
           readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
       (for [card readable-cards]
         ;; Models can have user configured FK columns which, for MBQL models, we cannot distinguish from

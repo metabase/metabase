@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.curation :as collections.curation]
    [metabase.lib-be.core :as lib-be]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.tracing.core :as tracing]
@@ -113,7 +114,7 @@
                   record)]
       (f input))
     (catch Exception e
-      (log/warn e "Function execution failed for attribute" attr-key)
+      (log/warn "Function execution failed for attribute" attr-key ":" (ex-message e))
       nil)))
 
 (defn- execute-all-function-attrs
@@ -177,7 +178,7 @@
                                                        [:attrs :render-terms])
                                                fn-selects))
       :from      [[(t2/table-name (:model spec)) :this]]
-      :where     (:where spec [:inline [:= 1 1]])
+      :where     (:where spec [:= [:inline 1] [:inline 1]])
       :left-join (when (:joins spec)
                    (into []
                          cat
@@ -223,12 +224,12 @@
     (let [spec      (search.spec/spec search-model)
           indexed?  (-> (spec-index-query-where search-model [:= :this.id id])
                         (assoc :select [[[:inline 1] :one]] :limit 1)
-                        t2/query
+                        search.db/spec-index-rows
                         seq
                         boolean)]
       (cond
         indexed?                              :indexable
-        (t2/exists? (:model spec) :id id)     :excluded
+        (search.db/entity-exists? (:model spec) id)     :excluded
         :else                                 :not-found))))
 
 (def ^:private max-document-error-logs 10)
@@ -257,7 +258,7 @@
                                  (let [n (vswap! failures inc)]
                                    (cond
                                      (<= n max-document-error-logs)
-                                     (log/warnf t "Error building search document for %s %s; skipping" (:model m) (:id m))
+                                     (log/warnf "Error building search document for %s %s; skipping: %s" (:model m) (:id m) (ex-message t))
                                      (= n (inc max-document-error-logs))
                                      (log/warnf "Suppressing further per-document error logs after %d failures" max-document-error-logs)))
                                  nil))]
@@ -275,7 +276,7 @@
   (->> (for [model search.spec/search-models]
          (-> (spec-index-query-where model nil)
              (assoc :select [[:%count.* :count]])
-             t2/query
+             search.db/spec-index-rows
              first
              :count))
        (filter some?)
@@ -417,7 +418,7 @@
                    {:success-handler     (fn [_result _duration _]
                                            (track-queue-size!))
                     :err-handler        (fn [err _]
-                                          (log/error err "Error indexing search entries")
+                                          (log/errorf "Error indexing search entries: %s" (ex-message err))
                                           (analytics/inc! :metabase-search/index-error)
                                           (track-queue-size!))
                     ;; Note that each message can correspond to multiple documents,

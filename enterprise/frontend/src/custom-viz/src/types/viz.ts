@@ -1,7 +1,9 @@
 import type { ComponentType } from "react";
 
 import type { Column, RowValue, Series } from "./data";
+import type { TextMeasurer } from "./measure-text";
 import type {
+  BaseVisualizationSettings,
   CreateDefineSetting,
   CustomVisualizationSettingDefinition,
   CustomVisualizationSettings,
@@ -11,13 +13,13 @@ import type {
  * Export this function to define a custom visualization.
  */
 export type CreateCustomVisualization<
-  TSettings extends Record<string, unknown>,
+  TSettings extends BaseVisualizationSettings,
 > = (
   props: CreateCustomVisualizationProps<TSettings>,
 ) => CustomVisualization<TSettings>;
 
 export type CreateCustomVisualizationProps<
-  TSettings extends Record<string, unknown>,
+  TSettings extends BaseVisualizationSettings,
 > = {
   defineSetting: ReturnType<CreateDefineSetting<TSettings>>;
 
@@ -27,7 +29,7 @@ export type CreateCustomVisualizationProps<
   locale: string;
 };
 
-export type CustomVisualization<TSettings extends Record<string, unknown>> = {
+export type CustomVisualization<TSettings extends BaseVisualizationSettings> = {
   /**
    * A unique visualization identifier. It's not shown in the UI.
    */
@@ -67,9 +69,11 @@ export type CustomVisualization<TSettings extends Record<string, unknown>> = {
   >;
 
   /**
-   * This function should throw if the visualization cannot be rendered with given data and settings.
+   * Throw here if the visualization cannot be rendered with the given data and settings.
+   * Metabase shows the thrown message to the user.
+   * When omitted, the visualization is always considered renderable.
    */
-  checkRenderable: (
+  checkRenderable?: (
     series: Series,
     settings: CustomVisualizationSettings<TSettings>,
   ) => void | never;
@@ -101,23 +105,35 @@ export type VisualizationGridSize = {
   height: number;
 };
 
+export type ColorGetter = (colorName: string) => string;
+
+export interface RenderingContext {
+  getColor: ColorGetter;
+  measureText: TextMeasurer;
+  fontFamily: string;
+  colorScheme: "light" | "dark";
+}
+
 export type CustomVisualizationProps<
-  TSettings extends Record<string, unknown>,
+  TSettings extends BaseVisualizationSettings,
 > = {
   width: number | null;
-
   height: number | null;
-
   series: Series;
-
   settings: CustomVisualizationSettings<TSettings>;
+  renderingContext: RenderingContext;
 
-  colorScheme: "light" | "dark";
+  /**
+   * Call with a {@link ClickObject} to open the drill-through popover for a data point.
+   * Call with `null` to close an open popover, e.g. when the same element is clicked again or the chart scrolls.
+   */
+  onClick: (clickObject: ClickObject | null) => void;
 
-  onClick: (
-    clickObject: ClickObject<CustomVisualizationSettings<TSettings>> | null,
-  ) => void;
-
+  /**
+   * Call with a {@link HoverObject} to show a tooltip for a data point.
+   * Call with `null` or no argument to hide it, e.g. on mouse leave. Hiding is deferred until the next
+   * tick so moving between elements doesn't flicker.
+   */
   onHover: (hoverObject?: HoverObject | null) => void;
 };
 
@@ -141,7 +157,7 @@ export type CustomVisualizationMount = <P extends object>(
   initialProps: P,
 ) => CustomVisualizationMountHandle<P>;
 
-export type ClickObject<TSettings extends Record<string, unknown>> = {
+export type ClickObject = {
   /** The raw value of the clicked cell. */
   value?: RowValue;
 
@@ -161,9 +177,6 @@ export type ClickObject<TSettings extends Record<string, unknown>> = {
 
   /** The DOM element that was clicked. Used to anchor popovers. */
   element?: Element;
-
-  /** Visualization settings at the time of the click. */
-  settings?: CustomVisualizationSettings<TSettings>;
 
   /**
    * The full row of data and column metadata for the clicked data point.
@@ -268,7 +281,7 @@ export type ClickBehavior = {
 
 export type BaseWidgetProps<
   TValue,
-  TSettings extends Record<string, unknown>,
+  TSettings extends BaseVisualizationSettings,
 > = {
   id: string;
   value: TValue | undefined;

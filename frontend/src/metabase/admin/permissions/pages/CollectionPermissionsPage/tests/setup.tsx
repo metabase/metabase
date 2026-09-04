@@ -8,7 +8,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import type {
   Collection,
   CollectionPermissionsGraph,
@@ -23,10 +23,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { CollectionPermissionsPage } from "../CollectionPermissionsPage";
-
-const RoutedCollectionPermissionsPage = withRouteProps(
-  CollectionPermissionsPage,
-);
 
 const personalCollection = createMockCollection({
   id: "personal",
@@ -186,11 +182,11 @@ export function setup({
     <>
       <Route
         path="/admin/permissions/collections"
-        element={<RoutedCollectionPermissionsPage />}
+        element={<CollectionPermissionsPage />}
       />
       <Route
         path="/admin/permissions/collections/:collectionId"
-        element={<RoutedCollectionPermissionsPage />}
+        element={<CollectionPermissionsPage />}
       />
     </>,
     {

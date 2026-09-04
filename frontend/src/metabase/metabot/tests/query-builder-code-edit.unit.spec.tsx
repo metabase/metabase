@@ -11,9 +11,9 @@ import {
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
+import { getMetadata } from "metabase/metadata-store";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -27,7 +27,12 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { MetabotProvider } from "../context";
 import { sendAgentRequest } from "../state/actions";
-import { getMetabotInitialState } from "../state/reducer-utils";
+
+import {
+  convoForAgent,
+  createTestMetabotState,
+  testConversationId,
+} from "./utils";
 
 jest.mock("metabase/api/ai-streaming", () => ({
   aiStreamingQuery: jest.fn(),
@@ -109,8 +114,8 @@ describe("query builder code edits from omnibot", () => {
         questions: [TEST_NATIVE_CARD],
       }),
       metabot: assocIn(
-        getMetabotInitialState(),
-        ["conversations", "omnibot", "title"],
+        createTestMetabotState(),
+        ["conversations", testConversationId("omnibot"), "title"],
         "SQL edit",
       ),
     } as any);
@@ -132,17 +137,15 @@ describe("query builder code edits from omnibot", () => {
       getState: () => State;
     };
 
-    const convo = checkNotNull(
-      typedStore.getState().metabot.conversations.omnibot,
-    );
+    const convo = convoForAgent(typedStore);
+    const { conversationId } = convo;
 
     await act(async () => {
       await typedStore.dispatch(
         sendAgentRequest({
-          agentId: "omnibot",
           message: "Please rewrite this query",
           conversation_id: convo.conversationId,
-          loadId: convo.loadId,
+          isFullPageMetabot: false,
           context: {
             user_is_viewing: [
               {
@@ -176,7 +179,7 @@ describe("query builder code edits from omnibot", () => {
     });
 
     expect(
-      typedStore.getState().metabot.conversations.omnibot?.messages,
+      typedStore.getState().metabot.conversations[conversationId]?.messages,
     ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

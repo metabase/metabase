@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import { selectTableQueryMetadata } from "metabase/api";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
   DataPickerModal,
@@ -9,15 +10,16 @@ import {
   shouldDisableItemNotInDb,
 } from "metabase/common/components/Pickers/DataPicker";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
+import type { MiniPickerSearchParams } from "metabase/common/components/Pickers/MiniPicker/context";
 import type {
   MiniPickerItem,
   MiniPickerPickableItem,
 } from "metabase/common/components/Pickers/MiniPicker/types";
+import { getIsTenantUser } from "metabase/current-user";
 import { isEmbedding } from "metabase/embedding/config";
-import { loadMetadataForTable } from "metabase/questions/actions";
+import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getIsTenantUser } from "metabase/selectors/user";
+import { fetchTableMetadata } from "metabase/redux/tables";
 import { Icon, TextInput } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -33,6 +35,10 @@ import { NotebookCellItem } from "../NotebookCell";
 
 import { EmbeddingDataPicker } from "./EmbeddingDataPicker";
 import { isObjectWithModel } from "./utils";
+
+const DATA_SOURCE_SEARCH_PARAMS: MiniPickerSearchParams = {
+  filter_items_in_personal_collection: "exclude-others",
+};
 
 export interface NotebookDataPickerProps {
   title: string;
@@ -81,10 +87,16 @@ export function NotebookDataPicker({
   const isTenantUser = useSelector(getIsTenantUser);
 
   const handleChange = async (tableId: TableId) => {
-    await dispatch(loadMetadataForTable(tableId));
-    const metadata = getMetadata(store.getState());
-    const databaseId = checkNotNull(metadata.table(tableId)).db_id;
-    const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+    await dispatch(fetchTableMetadata({ id: tableId }));
+    const state = store.getState();
+    const { data: tableMetadata } = selectTableQueryMetadata({ id: tableId })(
+      state,
+    );
+    const databaseId = checkNotNull(tableMetadata).db_id;
+    const metadataProvider = Lib.metadataProvider(
+      databaseId,
+      getMetadata(state),
+    );
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
     if (table) {
       onChangeRef.current?.(table, metadataProvider);
@@ -238,6 +250,7 @@ function ModernDataPicker({
         // minipicker doesn't support picking a database
         models={miniPickerModelList.filter((model) => model !== "database")}
         searchQuery={dataSourceSearchQuery}
+        searchParams={DATA_SOURCE_SEARCH_PARAMS}
         onBrowseAll={() => setIsBrowsing(true)}
         trapFocus={focusPicker}
         onChange={(value: MiniPickerPickableItem) => {
@@ -252,7 +265,7 @@ function ModernDataPicker({
         shouldHide={shouldHide}
         shouldShowLibrary={shouldShowLibrary}
         menuDropdownProps={{
-          mt: "xl",
+          mt: "xxl",
           ml: "-1rem",
         }}
       />

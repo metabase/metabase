@@ -1,17 +1,17 @@
 import { renderHook } from "@testing-library/react";
-import type { Location } from "history";
 import type { PropsWithChildren } from "react";
 
 import { mainReducers } from "__support__/entities-store";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { EmbedState } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
+import type { Location } from "metabase/router";
 import { getStore } from "metabase/store";
 
 import { useSetEmbedFont } from "./use-set-embed-font";
 
 const setup = ({ location }: { location: Location }) => {
-  const store = getStore(mainReducers, undefined, createMockState());
+  const store = getStore(mainReducers, createMockState());
 
   const Wrapper = ({ children }: PropsWithChildren) => (
     <MetabaseReduxProvider store={store}>{children}</MetabaseReduxProvider>

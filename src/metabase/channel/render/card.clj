@@ -1,6 +1,7 @@
 (ns metabase.channel.render.card
   (:require
    [hiccup.core :refer [h]]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.png :as png]
@@ -9,13 +10,13 @@
    [metabase.channel.urls :as urls]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.markdown :as markdown]
-   [toucan2.core :as t2]))
+   [metabase.util.markdown :as markdown]))
 
 ;;; I gave these keys below namespaces to make them easier to find usages for but didn't use `metabase.channel.render` so
 ;;; we can keep this as an internal namespace you don't need to know about outside of the module.
@@ -81,7 +82,7 @@
        :content [:div {:style (style/style {:color style/color-text-medium
                                             :font-size :12px
                                             :margin-bottom :8px})}
-                 (markdown/process-markdown description :html)]})))
+                 (markdown/process-markdown description :html (system/site-url))]})))
 
 (defn- has-lat-lng-columns?
   "True when the result has both a Latitude and a Longitude column (a coordinate-based map)."
@@ -138,14 +139,14 @@
 
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
-  [{display-type :display card-name :name :as card} maybe-dashcard {:keys [cols rows] :as data}]
+  [{display-type :display :as card} maybe-dashcard {:keys [cols rows] :as data}]
   (let [col-sample-count  (delay (count (take 3 cols)))
         row-sample-count  (delay (count (take 2 rows)))
         display-type      (or (render.util/visualizer-display-type maybe-dashcard) display-type)
         map-type          (map-chart-type display-type card maybe-dashcard data)]
     (letfn [(chart-type [tyype reason & args]
               (log/tracef "Detected chart type %s for Card %s because %s"
-                          tyype (pr-str card-name) (apply format reason args))
+                          tyype (:id card) (apply format reason args))
               tyype)]
       (cond
         (or (empty? rows)
@@ -228,10 +229,10 @@
 
           (:card-error data)
           (do
-            (log/error e "Pulse card query error")
+            (log/errorf "Pulse card query error: %s" (ex-message e))
             (body/render :card-error nil nil nil nil nil))
           :else (do
-                  (log/error e "Pulse card render error")
+                  (log/errorf "Pulse card render error: %s" (ex-message e))
                   (body/render :render-error nil nil nil nil nil)))))))
 
 (mu/defn error-rendered-part :- ::body/RenderedPartCard
@@ -366,5 +367,5 @@
 (mu/defn defaulted-timezone :- :string
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
   [card]
-  (or (some->> card :database_id (t2/select-one :model/Database :id) qp.timezone/results-timezone-id)
+  (or (some->> card :database_id channel.db/database qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))

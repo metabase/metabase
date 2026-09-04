@@ -8,6 +8,7 @@ export const createMockDashboardState = (
   dashboards: {},
   dashcards: {},
   dashcardData: {},
+  linkTargets: { questions: {}, dashboards: {} },
   parameterValues: {},
   draftParameterValues: {},
   loadingDashCards: {

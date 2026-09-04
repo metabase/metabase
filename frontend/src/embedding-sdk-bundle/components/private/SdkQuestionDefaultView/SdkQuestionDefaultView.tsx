@@ -157,19 +157,32 @@ export const SdkQuestionDefaultView = ({
 
   const { ref: containerRef, isMobile } = useMobileLayout();
 
+  // EMB-2177: the loader and the error states have to sit in the same box as
+  // the rendered state, otherwise the component collapses and then jumps to
+  // the caller's height once the question resolves.
+  const sizeProps = { height, width, className, style };
+
   if (
     !isEditorOpen &&
     (isLocaleLoading || isQuestionLoading || isQueryResultLoading)
   ) {
-    return <SdkLoader />;
+    return (
+      <FlexibleSizeComponent {...sizeProps}>
+        <SdkLoader />
+      </FlexibleSizeComponent>
+    );
   }
 
   if (!isEditorOpen && !question) {
-    if (originalId) {
-      return <QuestionNotFoundError id={originalId} />;
-    } else {
-      return <SdkError message={t`Question not found`} />;
-    }
+    return (
+      <FlexibleSizeComponent {...sizeProps}>
+        {originalId ? (
+          <QuestionNotFoundError id={originalId} />
+        ) : (
+          <SdkError message={t`Question not found`} />
+        )}
+      </FlexibleSizeComponent>
+    );
   }
 
   const showSaveButton =
@@ -191,7 +204,7 @@ export const SdkQuestionDefaultView = ({
         component={Stack}
         className={InteractiveQuestionS.TopBar}
         gap="sm"
-        p="md"
+        p="lg"
       >
         <RenderIfHasContent
           component={Group}
@@ -199,7 +212,7 @@ export const SdkQuestionDefaultView = ({
           align="flex-end"
           data-testid="interactive-question-top-toolbar"
         >
-          <RenderIfHasContent component={Group} gap="xs">
+          <RenderIfHasContent component={Group} gap="xxs">
             <Stack align="flex-start">
               <SdkInternalNavigationBackButton />
               <DefaultViewTitle title={title} />
@@ -212,7 +225,7 @@ export const SdkQuestionDefaultView = ({
             component={ResultToolbar}
             data-testid="interactive-question-result-toolbar"
           >
-            <RenderIfHasContent component={Group} gap="xs">
+            <RenderIfHasContent component={Group} gap="xxs">
               {isEditorOpen ? (
                 <PopoverBackButton
                   onClick={toggleEditor}
@@ -233,7 +246,7 @@ export const SdkQuestionDefaultView = ({
 
                       {!isNativeQuestion && !isMobile && (
                         <Divider
-                          mx="xs"
+                          mx="xxs"
                           orientation="vertical"
                           style={{
                             color: "var(--mb-color-border-neutral) !important",

@@ -1,24 +1,24 @@
 import type { EChartsType } from "echarts/core";
 import { useCallback, useMemo, useRef } from "react";
 
-import { extractRemappings } from "metabase/visualizations";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
-import { getSankeyLayout } from "metabase/visualizations/echarts/graph/sankey/layout";
-import { getSankeyChartModel } from "metabase/visualizations/echarts/graph/sankey/model";
-import { getSankeyChartOption } from "metabase/visualizations/echarts/graph/sankey/option";
-import { getTooltipOption } from "metabase/visualizations/echarts/graph/sankey/option/tooltip";
-import {
-  useCloseTooltipOnScroll,
-  useSankeyChartColorsClasses,
-} from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
+import {
+  extractRemappings,
+  getSankeyChartModel,
+  getSankeyChartOption,
+  getSankeyLayout,
+  getTooltipOption,
+  useCloseTooltipOnScroll,
+  useSankeyChartColorsClasses,
+} from "metabase/viz-core";
 
 import { SANKEY_CHART_DEFINITION } from "./definition";
 import { useChartEvents } from "./events";
 
-export const SankeyChart = ({
+const SankeyChartComponent = ({
   rawSeries,
   settings,
   fontFamily,
@@ -75,7 +75,6 @@ export const SankeyChart = ({
     <>
       <ResponsiveEChartsRenderer
         ref={containerRef}
-        display="sankey"
         option={option}
         eventHandlers={eventHandlers}
         onInit={handleInit}
@@ -85,4 +84,7 @@ export const SankeyChart = ({
   );
 };
 
-Object.assign(SankeyChart, SANKEY_CHART_DEFINITION);
+export const SankeyChart = Object.assign(
+  SankeyChartComponent,
+  SANKEY_CHART_DEFINITION,
+);

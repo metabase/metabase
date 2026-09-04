@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import type { Params } from "react-router/lib/Router";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
+import type { Params } from "metabase/router";
 import { Modal } from "metabase/ui";
 import {
   useGetTenantQuery,
@@ -48,7 +48,7 @@ export const EditTenantModal = ({ params, onClose }: EditUserModalProps) => {
   };
 
   return (
-    <Modal opened title={t`Edit tenant`} padding="xl" onClose={onClose}>
+    <Modal opened title={t`Edit tenant`} padding="xxl" onClose={onClose}>
       <LoadingAndErrorWrapper loading={isLoading} error={error}>
         <TenantForm
           initialValues={initialValues}

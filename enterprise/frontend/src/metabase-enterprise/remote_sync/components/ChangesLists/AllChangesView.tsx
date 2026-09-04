@@ -2,7 +2,7 @@ import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Divider,
@@ -113,14 +113,14 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
   return (
     <Box>
       {!!title && (
-        <Title order={4} mb="md" c="text-secondary">
+        <Title order={4} mb="lg" c="text-secondary">
           {title}
         </Title>
       )}
 
       <Paper
         withBorder
-        radius="md"
+        radius="sm"
         mah={400}
         styles={{
           root: {
@@ -136,13 +136,13 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
             return (
               <Fragment key={group.collectionId}>
                 {groupIndex > 0 && <Divider />}
-                <Box p="md">
+                <Box p="lg">
                   <Group
                     p="sm"
                     gap="sm"
                     mb={hasItems ? "0.75rem" : 0}
                     bg="background_page-secondary"
-                    bdrs="md"
+                    bdrs="sm"
                   >
                     <Icon
                       name={getGroupIcon(group.spec)}
@@ -166,8 +166,8 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                   {hasItems && (
                     <Stack
                       gap="0.75rem"
-                      ml="md"
-                      pl="xs"
+                      ml="lg"
+                      pl="xxs"
                       style={{
                         borderLeft: "2px solid var(--mb-color-border-neutral)",
                       }}
@@ -188,8 +188,8 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                           {tableGroup.children.length > 0 && (
                             <Stack
                               gap="0.75rem"
-                              ml="md"
-                              pl="xs"
+                              ml="lg"
+                              pl="xxs"
                               mt="0.75rem"
                               style={{
                                 borderLeft:

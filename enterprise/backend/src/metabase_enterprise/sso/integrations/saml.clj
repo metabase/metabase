@@ -32,6 +32,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.sso.api.interface :as sso.i]
+   [metabase-enterprise.sso.db :as sso.db]
    [metabase-enterprise.sso.integrations.saml-utils :as saml-utils]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.integrations.token-utils :as token-utils]
@@ -39,17 +40,18 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.embedding.util :as embed.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.session.core :as session]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [ring.util.response :as response]
-   [saml20-clj.core :as saml]
-   [toucan2.core :as t2]))
+   [saml20-clj.core :as saml]))
 
 (set! *warn-on-reflection* true)
 
@@ -121,7 +123,8 @@
           (if embedding?
             {:status 200
              :body {:url (:redirect-url auth-result)
-                    :method "saml"}
+                    :method "saml"
+                    :saml-popup-url (acs-url)}
              :headers {"Content-Type" "application/json"}}
             (response/redirect (:redirect-url auth-result))))
 
@@ -164,7 +167,7 @@
     (relay-state/relay-state-key? relay-state)
     (if-let [{:keys [continue_url origin embedding]} (relay-state/find-unexpired relay-state)]
       (if embedding
-        {:mode :embedding, :continue-url continue_url, :origin (or origin "*"), :relay-key relay-state}
+        {:mode :embedding, :continue-url continue_url, :origin origin, :relay-key relay-state}
         {:mode :redirect,  :continue-url continue_url, :relay-key relay-state})
       {:mode :expired})
 
@@ -188,6 +191,14 @@
     (when (= mode :expired)
       (throw (ex-info (tru "Invalid authentication token")
                       {:status-code 401})))
+    ;; Validate the popup callback target against the configured SDK embedding origins.
+    (when (= mode :embedding)
+      (when-not (and origin
+                     (mw.security/approved-origin? origin (embed.settings/embedding-app-origins-sdk)))
+        (log/warn "Rejecting SAML embedding login: popup origin is not an approved embedding origin"
+                  {:origin origin})
+        (throw (ex-info (tru "This origin is not an approved embedding origin.")
+                        {:status-code 400}))))
     (sso-utils/check-sso-redirect continue-url)
     (try
       (let [redirect-url (or continue-url (system/site-url))
@@ -214,7 +225,7 @@
           (throw (ex-info (or (str (:message login-result)) "SAML authentication failed")
                           {:status-code 401}))))
       (catch Throwable e
-        (log/error e "SAML response validation failed")
+        (log/errorf "SAML response validation failed: %s" (ex-message e))
         (throw (ex-info (tru "Unable to log in: SAML response validation failed")
                         {:status-code 401}
                         e))))))
@@ -231,7 +242,7 @@
                                           :response-validators [:signature :require-authenticated :issuer]})]
       (if-let [metabase-session-key (and (saml/logout-success? response) (get-in cookies [request/metabase-session-cookie :value]))]
         (do
-          (t2/delete! :model/Session {:where [:or [:= (session/hash-session-key metabase-session-key) :key_hashed] [:= metabase-session-key :id]]})
+          (sso.db/delete-session! (session/hash-session-key metabase-session-key))
           (request/clear-session-cookie (response/redirect (system/site-url))))
         {:status 500 :body "SAML logout failed."}))
     (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))

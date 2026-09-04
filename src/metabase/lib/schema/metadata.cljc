@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.metadata
-  (:refer-clojure :exclude [get-in])
+  (:refer-clojure :exclude [empty? get-in])
   (:require
    #?@(:clj
        ([metabase.util.regex :as u.regex]))
@@ -13,7 +13,7 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [get-in]]))
+   [metabase.util.performance :refer [empty? get-in]]))
 
 ;;; Column vs Field?
 ;;;
@@ -308,6 +308,25 @@
 (mr/def ::column.visibility-type
   (into [:enum {:decode/normalize keyword}] column-visibility-types))
 
+(def column-data-sensitivity-types
+  "Possible values for column `:data-sensitivity`, most severe first. The order is the precedence an automated
+  classifier uses when several categories match a single column. `nil` means the column has never been scanned or
+  labeled; `:PUBLIC` means it was scanned or reviewed and nothing sensitive was found. Whether a person made the call
+  is recorded by the presence of a value in `metabase_field_user_settings`, not by the value itself."
+  [:SEC_KEY       ; Security Credentials & Secrets
+   :SYS_TELEMETRY ; Infrastructure & System Secrets
+   :PHI           ; Protected Health Information
+   :BIO_GEN       ; Biometric & Genetic Data
+   :PCI_FIN       ; Financial & Payment Card Data
+   :SENS_PERS     ; Special Category Personal Traits
+   :PII           ; Personally Identifiable Information
+   :CORP_IP       ; Intellectual Property & Code
+   :BIZ_CONF      ; Confidential Business Data
+   :PUBLIC])      ; Non-Sensitive / Public Information
+
+(mr/def ::column.data-sensitivity
+  (into [:enum {:decode/normalize keyword}] column-data-sensitivity-types))
+
 (mr/def ::column.legacy-source
   "Possible values for `column.source` -- this is added by [[metabase.lib.metadata.result-metadata]] for historical
   reasons (it is used in a few places in the FE). DO NOT use this in the backend for any purpose, use `:lib/source`
@@ -353,6 +372,7 @@
     [:database-type  {:optional true} [:maybe :string]]
     [:active         {:optional true} :boolean]
     [:visibility-type {:optional true} [:maybe ::column.visibility-type]]
+    [:data-sensitivity {:optional true} [:maybe ::column.data-sensitivity]]
     ;; if this is a field from another table (implicit join), this is the field in the current table that should be
     ;; used to perform the implicit join. e.g. if current table is `VENUES` and this field is `CATEGORIES.ID`, then the
     ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
@@ -535,7 +555,7 @@
     ;; `:coercion-strategy`, along with `:qp/native-sandbox-column.propagate-coercion? true` (see below). Lib will
     ;; propagate the coercion strategy through *exactly one* stage boundary, so it can get from the SQL first stage to
     ;; the earliest MBQL stage, where the coercion will get applied correctly. See QUE2-376 or #69867 for more details.
-    [:qp/native-sandbox-column.force-coercion-strategy {:optional true} :keyword]
+    [:qp/native-sandbox-column.force-coercion-strategy {:optional true} [:ref ::lib.schema.common/coercion-strategy]]
     ;;
     ;; See above about `:qp/native-sandbox-column.force-coercion-strategy`.
     [:qp/native-sandbox-column.propagate-coercion? {:optional true} :boolean]]
@@ -637,8 +657,21 @@
 (mr/def ::card.query
   "Saved query. This is possibly still a legacy query, but should already be normalized.
   Call [[metabase.lib.convert/->mbql5]] on it as needed."
-  [:map
-   {:decode/normalize normalize-card-query}])
+  ;; dispatched rather than written as a keyless `[:map {:decode/normalize ...}]`, which declares no keys and so
+  ;; would strip the whole query while decoding
+  [:multi {:dispatch (fn [query]
+                       (cond
+                         (empty? query)              :empty
+                         (:lib/type query)           :mbql5
+                         :else                       :legacy))}
+   ;; Cards may be saved with an empty query -- see `:metabase.queries.schema/query`
+   [:empty  [:= {} {}]]
+   [:mbql5  [:schema
+             {:decode/normalize normalize-card-query}
+             [:ref :metabase.lib.schema/query]]]
+   [:legacy [:schema
+             {:decode/normalize normalize-card-query}
+             [:ref :metabase.legacy-mbql.schema/Query]]]])
 
 (defn- normalize-card [card]
   (when card
@@ -725,8 +758,11 @@
 (mr/def ::measure.definition
   "Measure definition query. This should be an MBQL5 query with a single stage and one aggregation.
    Strict validation via :metabase.lib.schema.measure/definition happens in metabase.measures.models.measure."
-  [:map
-   {:decode/normalize normalize-measure-definition}])
+  ;; wrapped in `[:schema ...]` rather than written as a keyless `[:map {:decode/normalize ...}]`, which declares no
+  ;; keys and so would strip the whole definition while decoding
+  [:schema
+   {:decode/normalize normalize-measure-definition}
+   [:ref :metabase.lib.schema/query]])
 
 (defn- mock-measure [measure]
   (cond-> measure
@@ -776,9 +812,8 @@
    [:display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:schema       {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    ;; Optional `:db` AST slot for cross-DB references (BigQuery `project.dataset.table`,
-   ;; SQL Server / Snowflake `db.schema.table`, MySQL workspace-remapped tables routing
-   ;; to a different database). Sync doesn't populate it on standard reads — only
-   ;; workspace remap and other cross-DB rewriters fill it.
+   ;; SQL Server / Snowflake `db.schema.table`). Sync doesn't populate it on standard
+   ;; reads — only cross-DB rewriters fill it.
    [:db           {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::database
@@ -792,8 +827,8 @@
    ;; Clj mode
    [:dbms-version    {:optional true} [:maybe :map]]
    [:details         {:optional true} :map]
-   [:engine          {:optional true} :keyword]
-   [:features        {:optional true} [:set :keyword]]
+   [:engine          {:optional true} [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]
+   [:features        {:optional true} [:set [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:is-audit        {:optional true} :boolean]
    [:is-attached-dwh {:optional true} :boolean]
    [:settings        {:optional true} [:maybe :map]]])

@@ -1,6 +1,6 @@
 (ns metabase.lib-be.metadata.bootstrap
   (:require
-   [clojure.set :as set]
+   [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -9,7 +9,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.performance :as perf]))
 
 (mu/defn- source-card-id-for-mbql5-query :- [:maybe ::lib.schema.id/card]
   [query :- :map]
@@ -29,14 +29,12 @@
 (defn- bootstrap-metadatas [{metadata-type :lib/type, id-set :id, :as _metadata-spec}]
   (when (and (seq id-set)
              (= metadata-type :metadata/card))
-    (t2/select-fn-vec
-     (fn [card]
-       {:lib/type    :metadata/card
-        :id          (:id card)
-        :name        (format "Card #%d" (:id card))
-        :database-id (:database_id card)})
-     [:model/Card :id :database_id :card_schema]
-     :id [:in (set id-set)])))
+    (perf/mapv (fn [card]
+                 {:lib/type    :metadata/card
+                  :id          (:id card)
+                  :name        (format "Card #%d" (:id card))
+                  :database-id (:database_id card)})
+               (lib-be.db/card-database-ids (set id-set)))))
 
 (deftype ^:private BootstrapMetadataProvider []
   lib.metadata.protocols/MetadataProvider
@@ -120,13 +118,10 @@
                           [:or
                            ::empty-map
                            [:map
-                            [:database ::maybe-unresolved-database-id]]
-                           [:map
-                            ["database" ::maybe-unresolved-database-id]]]]]
+                            [:database ::maybe-unresolved-database-id]]]]]
    (when (seq query)
      (if (pos-int? (:database query))
        query
-       (let [query       (set/rename-keys query {"database" :database})
-             database-id (resolved-database-id metadata-provider query)]
+       (let [database-id (resolved-database-id metadata-provider query)]
          (cond-> query
            database-id (assoc :database database-id)))))))

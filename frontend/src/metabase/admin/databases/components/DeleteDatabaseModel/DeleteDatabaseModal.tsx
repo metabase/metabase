@@ -4,8 +4,7 @@ import { jt, t } from "ttag";
 
 import { useGetDatabaseUsageInfoQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Alert,
   Box,
@@ -16,7 +15,6 @@ import {
   Input,
   Modal,
   Stack,
-  Text,
   UnstyledButton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -65,7 +63,7 @@ export const DeleteDatabaseModal = ({
   onDelete,
   ...props
 }: DeleteDatabaseModalProps) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const { data: usageInfo, isLoading: loading } = useGetDatabaseUsageInfoQuery(
     database.id,
@@ -91,7 +89,7 @@ export const DeleteDatabaseModal = ({
   const handleEditConnectionDetailsClick: MouseEventHandler = (e) => {
     e.preventDefault();
     onClose();
-    dispatch(push(Urls.editDatabase(database.id)));
+    navigate(Urls.editDatabase(database.id));
   };
 
   const hasContent = usageInfo && hasContentInDatabase(usageInfo);
@@ -119,29 +117,27 @@ export const DeleteDatabaseModal = ({
       opened={opened}
       title={title || t`Delete the ${database.name} database?`}
       onClose={onClose}
-      padding="xl"
+      padding="xxl"
       {...props}
     >
       <LoadingAndErrorWrapper loading={loading}>
         <Stack
           component="form"
-          mt="md"
-          gap="md"
+          mt="lg"
+          gap="lg"
           onSubmit={canDelete ? handleSubmit : undefined}
         >
           {hasContent && (
             <DeleteDatabaseModalSection isHidden={isContentRemovalConfirmed}>
-              <Alert color="info" icon={<Icon name="info" />}>
-                <Text>
-                  {jt`If you’re trying to migrate from a development DB to a production one, you don’t need to do this. You can just ${(
-                    <UnstyledButton
-                      key="button"
-                      onClick={handleEditConnectionDetailsClick}
-                      c="core-brand"
-                      fw="bold"
-                    >{t`edit your connection details.`}</UnstyledButton>
-                  )}`}
-                </Text>
+              <Alert icon={<Icon name="info" />}>
+                {jt`If you’re trying to migrate from a development DB to a production one, you don’t need to do this. You can just ${(
+                  <UnstyledButton
+                    key="button"
+                    onClick={handleEditConnectionDetailsClick}
+                    c="core-brand"
+                    fw="bold"
+                  >{t`edit your connection details.`}</UnstyledButton>
+                )}`}
               </Alert>
             </DeleteDatabaseModalSection>
           )}
@@ -164,8 +160,8 @@ export const DeleteDatabaseModal = ({
           <DeleteDatabaseModalSection
             isHidden={!isContentRemovalConfirmed && hasContent}
           >
-            <Alert icon={<Icon name="warning" />} color="error">
-              <Text>{defaultDatabaseRemovalMessage}</Text>
+            <Alert size="compact" icon={<Icon name="warning" />} color="error">
+              {defaultDatabaseRemovalMessage}
             </Alert>
           </DeleteDatabaseModalSection>
           <DeleteDatabaseModalSection
@@ -188,7 +184,7 @@ export const DeleteDatabaseModal = ({
           </DeleteDatabaseModalSection>
           <Flex gap="sm" justify="flex-end" align="center">
             {errorMessage && (
-              <Box c="feedback-negative" px="md">
+              <Box c="feedback-negative" px="lg">
                 {errorMessage}
               </Box>
             )}
@@ -216,7 +212,7 @@ export const DeleteDatabaseModalSection = ({
     <Box
       h={isHidden ? 0 : "unset"}
       opacity={isHidden ? 0 : 1}
-      p="xs"
+      p="xxs"
       style={{
         transition: "all 350ms, opacity 200ms",
         overflow: "hidden",

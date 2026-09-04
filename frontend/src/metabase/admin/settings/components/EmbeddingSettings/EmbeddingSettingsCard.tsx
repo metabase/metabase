@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "react";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { Alert, Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
+import { Alert, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import S from "./EmbeddingSettings.module.css";
@@ -37,12 +37,12 @@ export function EmbeddingSettingsCard({
 
   return (
     <Flex direction="column" className={S.SectionCard} data-testid={testId}>
-      <Stack gap="xs" px="xl" py="lg">
+      <Stack gap="xxs" px="xxl" py="xl">
         <Text fw={600} c="text-primary" fz="h4">
           {title}
         </Text>
 
-        <Text c="text-secondary" lh="lg" mb="md" maw="38rem">
+        <Text c="text-secondary" lh="lg" mb="lg" maw="38rem">
           {description}
         </Text>
 
@@ -59,20 +59,13 @@ export function EmbeddingSettingsCard({
 
         {alertInfoText && (
           <Alert
+            size="compact"
+            variant="light"
             data-testid="sdk-settings-alert-info"
-            mt="md"
-            bg="background_page-secondary"
-            bd="1px solid var(--mb-color-border-neutral)"
+            mt="lg"
+            icon={<Icon name="info" />}
           >
-            <Flex gap="sm">
-              <Box>
-                <Icon c="text-secondary" name="info" mt="2px" />
-              </Box>
-
-              <Text c="text-primary" lh="lg">
-                {alertInfoText}
-              </Text>
-            </Flex>
+            {alertInfoText}
           </Alert>
         )}
       </Stack>
@@ -81,12 +74,12 @@ export function EmbeddingSettingsCard({
 
       {(hasLinksContent || actionButton) && (
         <Group
-          px="xl"
+          px="xxl"
           className={S.CardLinksSection}
           h="3.5rem"
           justify="space-between"
         >
-          <Group gap="xl">
+          <Group gap="xxl">
             {links?.map((link, index) => (
               <ExternalLink key={index} href={link.href}>
                 <Group gap="sm" fw="bold">

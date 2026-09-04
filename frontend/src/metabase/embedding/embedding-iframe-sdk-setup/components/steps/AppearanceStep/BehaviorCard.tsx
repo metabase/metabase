@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useDocsUrl, useHasEmailSetup } from "metabase/common/hooks";
-import { Link } from "metabase/router";
 import {
   Anchor,
   Card,
@@ -28,9 +28,7 @@ export const BehaviorCard = () => {
 
   const behaviorDocsParams = getBehaviorDocsUrlParams(settings);
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only admins can see the EmbedJS Wizard
-  const { url: behaviorDocsUrl } = useDocsUrl(behaviorDocsParams?.page ?? "", {
-    anchor: behaviorDocsParams?.anchor,
-  });
+  const { url: behaviorDocsUrl } = useDocsUrl(behaviorDocsParams?.page ?? "");
 
   const behaviorSection = useMemo(() => {
     return match(settings)
@@ -63,7 +61,7 @@ export const BehaviorCard = () => {
       .with(
         { componentName: "metabase-question", questionId: P.nonNullable },
         (settings) => (
-          <Stack gap="md">
+          <Stack gap="lg">
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled }) => (
                 <Checkbox
@@ -108,7 +106,7 @@ export const BehaviorCard = () => {
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled: disabledInGuestEmbedding }) => {
                 return (
-                  <Flex align="center" gap="xs">
+                  <Flex align="center" gap="xxs">
                     <Checkbox
                       disabled={!hasEmailSetup || disabledInGuestEmbedding}
                       label={t`Allow alerts`}
@@ -154,7 +152,7 @@ export const BehaviorCard = () => {
       .with(
         { componentName: "metabase-dashboard", dashboardId: P.nonNullable },
         (settings) => (
-          <Stack gap="md">
+          <Stack gap="lg">
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled }) => (
                 <Checkbox
@@ -184,7 +182,7 @@ export const BehaviorCard = () => {
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled: disabledInGuestEmbedding }) => {
                 return (
-                  <Flex align="center" gap="xs">
+                  <Flex align="center" gap="xxs">
                     <Checkbox
                       disabled={!hasEmailSetup || disabledInGuestEmbedding}
                       label={t`Allow subscriptions`}
@@ -250,9 +248,9 @@ export const BehaviorCard = () => {
   }
 
   return (
-    <Card p="md">
-      <Flex align="center" justify="space-between" gap="xs" mb="md">
-        <Flex align="center" gap="xs">
+    <Card p="lg">
+      <Flex align="center" justify="space-between" gap="xxs" mb="lg">
+        <Flex align="center" gap="xxs">
           <Text size="lg" fw="bold">
             {t`Behavior`}
           </Text>

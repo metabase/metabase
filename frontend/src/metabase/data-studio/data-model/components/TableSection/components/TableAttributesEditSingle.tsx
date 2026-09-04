@@ -2,14 +2,14 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   DataSourceInput,
   EntityTypeInput,
   LayerInput,
   UserInput,
 } from "metabase/metadata/components";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Link } from "metabase/router";
 import { Box, Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -222,7 +222,7 @@ function TransformLink({ table }: { table: Table }) {
       <Box
         component={Link}
         to={Urls.transform(transform.id)}
-        py="xs"
+        py="xxs"
         px="sm"
         style={{
           borderRadius: 4,

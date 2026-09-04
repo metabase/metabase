@@ -3,17 +3,14 @@ import { useMemo } from "react";
 import { jt, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import {
-  useGetSlackManifestQuery,
-  useUpdateSlackSettingsMutation,
-} from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import {
   ButtonLink,
   ExternalLink,
 } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import {
   Badge,
   Box,
@@ -25,6 +22,11 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+
+import {
+  useGetSlackManifestQuery,
+  useUpdateSlackSettingsMutation,
+} from "../api/slack";
 
 import { SlackConfiguration } from "./SlackConfiguration";
 import { SlackSetupForm } from "./SlackSetupForm";
@@ -70,7 +72,7 @@ const SlackConnectionStatus = ({
                 />
               </HoverCard.Target>
               <HoverCard.Dropdown>
-                <Stack gap="xs" p="md">
+                <Stack gap="xxs" p="lg">
                   <Text c="text-secondary">{t`Slack Bot OAuth Token`}</Text>
                   <Text fw="bold">{token}</Text>
                 </Stack>
@@ -120,14 +122,14 @@ export const SlackSetup = () => {
   if (!hasCompletedSetup) {
     return (
       <SettingsSection title={t`Create a Slack app and connect to it.`}>
-        <Stack gap="md">
+        <Stack gap="lg">
           <Markdown>
             {t`First, **click the button below** to create your Slack App using the Metabase configuration.`}
           </Markdown>
           <Box>
             <ButtonLink href={`https://api.slack.com${link}`}>
               <span>{t`Create Slack App`}</span>
-              <Icon name="external" opacity={0.7} ml="md" />
+              <Icon name="external" opacity={0.7} ml="lg" />
             </ButtonLink>
           </Box>
           <Markdown>
@@ -144,14 +146,14 @@ export const SlackSetup = () => {
   }
 
   return (
-    <SettingsSection stackProps={{ pt: "lg" }}>
+    <SettingsSection stackProps={{ pt: "xl" }}>
       <Box>
         <SlackConnectionStatus
           isValid={isValid}
           docsUrl={docsUrl}
           token={slackAppToken}
         />
-        <Divider w="calc(100% + 4rem)" ml="-2rem" my="lg" />
+        <Divider w="calc(100% + 4rem)" ml="-2rem" my="xl" />
         <SlackConfiguration />
       </Box>
     </SettingsSection>

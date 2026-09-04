@@ -6,12 +6,14 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
+   [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -29,7 +31,7 @@
   "Validate that an MBQL 5 segment definition has the correct structure."
   [definition]
   (when (seq definition)
-    (mu/validate-throw ::segments.schema/segment definition)
+    (mu/validate-throw ::segments.schema/definition definition)
     definition))
 
 (defn- normalize-segment-definition
@@ -42,14 +44,17 @@
   [definition table-id database-id]
   (if (seq definition)
     (u/prog1 (-> (case (lib/normalized-mbql-version definition)
-                   (:mbql-version/mbql5 :mbql-version/legacy)
+                   :mbql-version/mbql5
+                   (lib/normalize ::lib.schema/query definition)
+
+                   :mbql-version/legacy
                    definition
                    ;; default MBQL4 fragment
-                   (let [definition
+                   (let [definition (update-keys definition keyword)
+                         definition
                          (if (:aggregation definition)
                            (do
-                             (log/warn "Stripping :aggregation from MBQL4 segment definition during migration"
-                                       {:segment-definition definition})
+                             (log/warn "Stripping :aggregation from MBQL4 segment definition during migration")
                              (dissoc definition :aggregation))
                            definition)]
                      {:database database-id
@@ -63,7 +68,7 @@
   "Transform for segment definitions. Only handles JSON serialization/deserialization.
   Normalization and validation happen in before-insert and after-select hooks."
   {:in mi/json-in
-   :out mi/json-out-with-keywordization})
+   :out mi/json-out-without-keywordization})
 
 (t2/deftransforms :model/Segment
   {:definition transform-segment-definition})
@@ -77,8 +82,8 @@
   ([instance]
    (let [table (:table (t2/hydrate instance :table))]
      (mi/can-read? table)))
-  ([model pk]
-   (mi/can-read? (t2/select-one model pk))))
+  ([_model pk]
+   (mi/can-read? (segments.db/segment pk))))
 
 ;; Segments can be created by
 ;; a) superusers
@@ -87,7 +92,7 @@
 (defmethod mi/can-write? :model/Segment
   ([instance]
    (let [table (or (:table instance)
-                   (t2/select-one :model/Table :id (:table_id instance)))]
+                   (segments.db/table (:table_id instance)))]
      (and (or (mi/superuser?)
               (and api/*is-data-analyst?*
                    (perms/user-has-permission-for-table?
@@ -97,8 +102,8 @@
                     (:db_id table)
                     (u/the-id table))))
           (remote-sync/table-editable? table))))
-  ([model pk]
-   (mi/can-write? (t2/select-one model pk))))
+  ([_model pk]
+   (mi/can-write? (segments.db/segment pk))))
 
 ;; Segments can be created by
 ;; a) superusers
@@ -107,7 +112,7 @@
 (defmethod mi/can-create? :model/Segment
   [_model instance]
   (let [table (or (:table instance)
-                  (t2/select-one :model/Table :id (:table_id instance)))]
+                  (segments.db/table (:table_id instance)))]
     (and (or (mi/superuser?)
              (and api/*is-data-analyst?*
                   (perms/user-has-permission-for-table?
@@ -132,7 +137,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                      (segments.db/collections collection-ids))
                                 {})
         ;; Associate collection info with each segment's table
         segments-with-collection (for [segment segments-with-tables
@@ -153,7 +158,7 @@
   [{:keys [definition], table-id :table_id}]
   (when (some? definition)
     (let [database-id (when table-id
-                        (t2/select-one-fn :db_id :model/Table :id table-id))]
+                        (segments.db/table-database-id table-id))]
       (normalize-segment-definition definition table-id database-id))))
 
 (t2/define-before-insert :model/Segment
@@ -180,7 +185,7 @@
 (defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
   (let [table (or (:table segment)
-                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
+                  (segments.db/table-perms-columns (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
 (defn- maybe-migrated-segment-definition
@@ -188,7 +193,7 @@
   (try
     (migrated-segment-definition segment)
     (catch Throwable e
-      (log/error e "Error upgrading segment definition:" (ex-message e))
+      (log/errorf "Error upgrading segment definition: %s" (ex-message e))
       nil)))
 
 (t2/define-after-select :model/Segment
@@ -203,7 +208,7 @@
     (try
       (lib/describe-top-level-key definition :filters)
       (catch Throwable e
-        (log/error e "Error calculating Segment description:" (ex-message e))
+        (log/errorf "Error calculating Segment description: %s" (ex-message e))
         nil))))
 
 (methodical/defmethod t2.hydrate/batched-hydrate [:model/Segment :definition_description]
@@ -212,10 +217,6 @@
     (assoc segment :definition_description (definition-description segment))))
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
-
-(defmethod serdes/hash-fields :model/Segment
-  [_segment]
-  [:name (serdes/hydrated-hash :table) :created_at])
 
 (defmethod serdes/deserialization-dependencies "Segment" [{:keys [definition]}]
   (serdes/mbql-deps false definition))

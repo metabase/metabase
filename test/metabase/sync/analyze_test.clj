@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analyze.classifiers.category :as classifiers.category]
+   [metabase.analyze.classifiers.data-sensitivity :as classifiers.data-sensitivity]
    [metabase.analyze.classifiers.name :as classifiers.name]
    [metabase.analyze.classifiers.no-preview-display
     :as classifiers.no-preview-display]
@@ -14,10 +15,12 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.test.sync :refer [sync-survives-crash?!]]
+   [metabase.test.sync :refer [sync-survives-crash?! cache-normal-sync-steps-fixture]]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
+
+(use-fixtures :once #'cache-normal-sync-steps-fixture)
 
 (deftest skip-analysis-of-fields-with-current-fingerprint-version-test
   (testing "Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current"
@@ -96,6 +99,11 @@
 (deftest survive-classify-table-errors
   (testing "Make sure we survive table classification failing"
     (sync-survives-crash?! classifiers.name/infer-entity-type-by-name)))
+
+(deftest survive-data-sensitivity-errors
+  (testing "sync survives the data sensitivity rules failing; the setting must be on for the rules to be reached"
+    (mt/with-temporary-setting-values [data-sensitivity-scan-enabled true]
+      (sync-survives-crash?! classifiers.data-sensitivity/infer-data-sensitivity))))
 
 (defn- classified-semantic-type [values]
   (let [field (mi/instance :model/Field {:base_type :type/Text})]
@@ -225,7 +233,8 @@
                    :model/Field _     (fake-field table)]
       (let [results (analyze-table! table)]
         (testing "has the steps performed"
-          (is (= ["fingerprint-fields" "classify-fields" "classify-tables" "score-interestingness"]
+          (is (= ["fingerprint-fields" "classify-fields" "classify-tables" "score-interestingness"
+                  "classify-data-sensitivity"]
                  (->> results :steps (map first)))))
         (testing "has start and finish times"
           (is (seq (select-keys results [:start-time :end-time]))))))))

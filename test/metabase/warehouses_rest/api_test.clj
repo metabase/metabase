@@ -51,7 +51,7 @@
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)
-   (java.util.concurrent CountDownLatch)
+   (java.util.concurrent CountDownLatch Executors)
    (org.quartz JobDetail TriggerKey)))
 
 (set! *warn-on-reflection* true)
@@ -627,23 +627,23 @@
               (is (= nil (:cache_ttl curr-db))))))))))
 
 (deftest reject-is-stub-in-create-test
-  (testing "POST /api/database rejects :is_stub in the request body (advanced-config only path)"
+  (testing "POST /api/database returns a 400 when :is_stub=true is in the request body (advanced-config only path)"
     (mt/with-model-cleanup [:model/Database]
       (with-redefs [driver/available?   (constantly true)
                     driver/can-connect? (constantly true)]
-        (is (re-find #"is_stub"
-                     (mt/user-http-request :crowberto :post 400 "database"
-                                           {:name    (mt/random-name)
-                                            :engine  (u/qualified-name ::test-driver)
-                                            :details {:db "my_db"}
-                                            :is_stub true})))))))
+        (is (= "is_stub may not be set via the API"
+               (mt/user-http-request :crowberto :post 400 "database"
+                                     {:name    (mt/random-name)
+                                      :engine  (u/qualified-name ::test-driver)
+                                      :details {:db "my_db"}
+                                      :is_stub true})))))))
 
 (deftest reject-is-stub-in-update-test
-  (testing "PUT /api/database/:id rejects :is_stub=true in the request body"
+  (testing "PUT /api/database/:id returns a 400 when :is_stub=true is in the request body"
     (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
-      (is (re-find #"is_stub"
-                   (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                         {:is_stub true})))
+      (is (= "is_stub may not be set via the API"
+             (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                   {:is_stub true})))
       (testing "the row is unchanged"
         (is (false? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
   (testing "PUT /api/database/:id passes when :is_stub=false is in the body (no-op, matches default)"
@@ -929,6 +929,21 @@
            (let [resp (mt/derecordize (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id))))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
 
+(deftest fetch-database-metadata-primes-table-perms-cache-test
+  (testing "GET /api/database/:id/metadata primes the table-perms cache before its per-table read checks"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t1"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t2"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t3"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t4"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t5"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t6"}]
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :query-builder)
+      (let [tables (:tables (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" db-id)))]
+        (is (= #{"t1" "t2" "t3" "t4" "t5" "t6"} (set (map :name tables)))
+            "every table is returned to a non-admin user with table-granular perms, without tripping the backstop")))))
+
 (deftest ^:parallel fetch-database-fields-test
   (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]
     (testing "GET /api/database/:id/fields"
@@ -985,11 +1000,10 @@
                    :model/Table table {:db_id db-id}
                    :model/Field _ {:table_id (u/the-id table)}]
       (testing "GET /api/database/:id/metadata?skip_fields=true"
-        (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
-                          :tables
-                          first
-                          :fields)]
-          (is (= () fields)))))))
+        (let [table (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
+                         :tables
+                         first)]
+          (is (not (contains? table :fields))))))))
 
 (deftest ^:parallel autocomplete-suggestions-test
   (let [prefix-fn (fn [db-id prefix]
@@ -1241,6 +1255,38 @@
         (mt/with-temp-env-var-value! ["MB_ENABLE_NESTED_QUERIES" "false"]
           (is (not-any? :is_saved_questions
                         (:data (mt/user-http-request :lucky :get 200 "database?saved=true")))))))))
+
+(deftest databases-list-saved-questions-call-count-test
+  (testing "GET /api/database?saved=true&include=tables app-DB call count should not scale with the number of Cards"
+    (mt/with-model-cleanup [:model/Card]
+      (letfn [(insert-cards! [n]
+                (dotimes [_ n]
+                  (t2/insert! :model/Card
+                              (assoc (card-with-native-query (mt/random-name))
+                                     :creator_id             (mt/user->id :crowberto)
+                                     :display                :table
+                                     :visualization_settings {}
+                                     ;; a column with a real Field :id exercises the per-card Field
+                                     ;; fetch + hydration path
+                                     :result_metadata        [{:id           (mt/id :venues :name)
+                                                               :name         "NAME"
+                                                               :display_name "Name"
+                                                               :base_type    :type/Text}]))))
+              (warm-call-count! []
+                ;; first request pays one-time priming; measure the second
+                (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables")
+                (t2/with-call-count [call-count]
+                  (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables")
+                  (call-count)))]
+        (insert-cards! 2)
+        (let [calls-with-2  (warm-call-count!)
+              _             (insert-cards! 16)
+              calls-with-18 (warm-call-count!)]
+          ;; [[mi/do-after-select]] re-runs each Card row through toucan2's identity-query, which
+          ;; `with-call-count` counts even though it never hits the DB — so growth of 1 per Card is
+          ;; expected and allowed. The slack of 6 stays well under the pre-batching behavior of one
+          ;; real `metabase_database` select per additional Card on top of that (#78919).
+          (is (<= calls-with-18 (+ calls-with-2 16 6))))))))
 
 (deftest fetch-databases-with-invalid-driver-test
   (testing "GET /api/database"
@@ -1702,12 +1748,40 @@
             (is (pos? (t2/count :model/Table :db_id db-id))
                 "Sync-now must populate tables even when disable-auto-sync is on")))))))
 
+(deftest sync-schema-labels-data-sensitivity-test
+  (testing "POST /api/database/:id/sync_schema runs the data sensitivity step when the setting is on"
+    ;; Same shape as the test above: create the Database under disable-auto-sync so only the explicit request syncs
+    ;; it, and run the quick task synchronously so the labels can be asserted after the request returns.
+    (let [details (:details (mt/db))]
+      (mt/with-temporary-setting-values [disable-auto-sync             true
+                                         data-sensitivity-scan-enabled true]
+        (mt/with-temp [:model/Database {db-id :id} {:engine              "h2"
+                                                    :details             details
+                                                    :initial_sync_status "incomplete"}]
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [f]
+                                                                (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                  (f)))]
+            (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
+          (let [label (fn [table-name field-name]
+                        (t2/select-one-fn :data_sensitivity :model/Field
+                                          :table_id (t2/select-one-pk :model/Table :db_id db-id :name table-name)
+                                          :name field-name))]
+            (is (= :PII (label "PEOPLE" "EMAIL")))
+            (is (= :SEC_KEY (label "PEOPLE" "PASSWORD")))
+            (is (= :PUBLIC (label "ORDERS" "TOTAL")))))))))
+
 (deftest sync-schema-executes-when-executor-busy-test
   (testing "POST /api/database/:id/sync_schema should execute sync even when quick-task executor is busy (GHY-3254)"
     (let [sync-called?  (promise)
-          blocker-latch (CountDownLatch. 1)]
+          blocker-latch (CountDownLatch. 1)
+          ;; Run on a pool of our own: the shared one is process-wide and holds fire-and-forget tasks left
+          ;; behind by earlier tests, each with the default two-hour timeout. One of those still running
+          ;; ahead of the blocker delays everything below it past the deref timeout, which is what happens
+          ;; on driver CI, where those leftover tasks are real syncs over the network.
+          pool          (Executors/newSingleThreadExecutor)]
       (mt/with-temp [:model/Database {db-id :id} {:engine "h2" :details (:details (mt/db))}]
-        (with-redefs [sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
+        (with-redefs [quick-task/executor                      (delay pool)
+                      sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
                       analyze/analyze-db-explicit!             (constantly nil)]
           ;; Submit a blocking task with a 1-second timeout so it gets cancelled quickly.
           ;; This simulates a stuck sync (e.g., hanging JDBC connection) that exceeds
@@ -1721,7 +1795,8 @@
             (testing "sync executes after stuck task is evicted"
               (is (true? (deref sync-called? 10000 :sync-never-called))))
             (finally
-              (.countDown blocker-latch))))))))
+              (.countDown blocker-latch)
+              (.shutdownNow pool))))))))
 
 (deftest ^:parallel dismiss-spinner-test
   (testing "Can we dismiss the spinner? (#20863)"
@@ -1748,22 +1823,28 @@
 (deftest can-rescan-fieldvalues-for-a-db
   (testing "Can we RESCAN all the FieldValues for a DB?"
     (mt/with-premium-features #{:audit-app}
-      (let [update-field-values-called? (promise)]
-        (mt/with-temp [:model/Database db {:engine "h2", :details (:details (mt/db))}]
-          (mt/with-dynamic-fn-redefs [sync.field-values/update-field-values! (fn [synced-db]
-                                                                               (when (= (u/the-id synced-db) (u/the-id db))
-                                                                                 (deliver update-field-values-called? :sync-called)))]
-            (snowplow-test/with-fake-snowplow-collector
-              (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
-              (is (= :sync-called
-                     (deref update-field-values-called? long-timeout :sync-never-called)))
-              (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
-              (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
-                                  :details :id)))
-              (testing "triggers snowplow event"
-                (is (=?
-                     {"event" "database_manual_scan", "target_id" (u/the-id db)}
-                     (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
+      (let [update-field-values-called? (promise)
+            ;; Isolated pool, for the same reasons as in `sync-schema-executes-when-executor-busy-test`.
+            pool                        (Executors/newSingleThreadExecutor)]
+        (try
+          (mt/with-temp [:model/Database db {:engine "h2", :details (:details (mt/db))}]
+            (with-redefs [quick-task/executor (delay pool)]
+              (mt/with-dynamic-fn-redefs [sync.field-values/update-field-values! (fn [synced-db]
+                                                                                   (when (= (u/the-id synced-db) (u/the-id db))
+                                                                                     (deliver update-field-values-called? :sync-called)))]
+                (snowplow-test/with-fake-snowplow-collector
+                  (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
+                  (is (= :sync-called
+                         (deref update-field-values-called? long-timeout :sync-never-called)))
+                  (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
+                  (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
+                                      :details :id)))
+                  (testing "triggers snowplow event"
+                    (is (=?
+                         {"event" "database_manual_scan", "target_id" (u/the-id db)}
+                         (:data (last (snowplow-test/pop-event-data-and-user-id!))))))))))
+          (finally
+            (.shutdownNow pool)))))))
 
 (deftest ^:parallel nonadmins-cant-trigger-rescan-test
   (testing "Non-admins should not be allowed to trigger re-scan"
@@ -1890,6 +1971,37 @@
                  (#'warehouses.util/test-connection-details "postgres" {:ssl false})))
           (is (= 1 @call-count))
           (is (= [true] @ssl-values)))))))
+
+(deftest no-ssrf-via-database-add-test
+  (testing "endpoints that test connection details cannot be used to probe the internal network (SEC-556)"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (let [private-details {:host "10.224.7.141" :port 5432 :dbname "postgres" :user "postgres"}]
+        (testing "POST /api/database"
+          (let [response (mt/user-http-request :crowberto :post 400 "database"
+                                               {:name "internal" :engine "postgres" :details private-details})]
+            (is (=? {:message "Cannot connect to a private or internal network address."} response))
+            (is (not (t2/exists? :model/Database :name "internal")))))
+        (testing "POST /api/database/validate"
+          (is (=? {:valid false, :message "Cannot connect to a private or internal network address."}
+                  (mt/user-http-request :crowberto :post 200 "database/validate"
+                                        {:details {:engine "postgres" :details private-details}}))))
+        (testing "every blocked address gives the same answer, so nothing can be learned about what is behind it"
+          (is (apply = (for [host ["10.224.7.141" "127.0.0.1" "169.254.169.254" "192.168.55.55"]]
+                         (mt/user-http-request :crowberto :post 200 "database/validate"
+                                               {:details {:engine "postgres"
+                                                          :details (assoc private-details :host host)}})))))
+        (testing "PUT /api/database/:id cannot repoint an existing database at an internal address either"
+          (mt/with-temp [:model/Database db {:engine "postgres"
+                                             :details {:host "db.example.com" :port 5432 :dbname "x"}}]
+            (is (=? {:message "Cannot connect to a private or internal network address."}
+                    (mt/user-http-request :crowberto :put 400 (str "database/" (u/the-id db))
+                                          {:details private-details})))))
+        (testing "a Database with internal details cannot be written directly (serialization import, config files)"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"private or internal network address"
+                                (t2/insert! :model/Database {:name    "internal"
+                                                             :engine  "postgres"
+                                                             :details private-details}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                      GET /api/database/:id/schemas & GET /api/database/:id/schema/:schema                      |
@@ -2461,6 +2573,33 @@
                                                     :access-token                  secret/protected-password
                                                     :refresh-token                 secret/protected-password})))))
 
+(deftest update-database-engine-changed-details-not-merged-test
+  (let [existing-details {:host "localhost",
+                          :port 5432,
+                          :dbname "postgres",
+                          :user "postgres"
+                          :password "password",
+                          :schema-filters-type "all"
+                          :ssl false,
+                          :tunnel-enabled false,
+                          :advanced-options false}
+        new-details      {:service-account-json "{\"type\": \"service_account\", \"project_id\": \"bigquery-project\"}",
+                          :dataset-filters-type "inclusion",
+                          :dataset-filters-patterns "dev",
+                          :project-id nil
+                          :advanced-options false}]
+    (with-redefs [driver/can-connect? (constantly true)]
+      (testing "when the engine changes, the existing details are not merged into the new ones (#77480)"
+        (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details existing-details}]
+          (api-update-database! 200 db-id {:engine :bigquery-cloud-sdk, :details new-details})
+          (is (= new-details
+                 (t2/select-one-fn :details :model/Database :id db-id))))
+        (testing "without an engine change, existing details are still merged into partial updates"
+          (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres :details existing-details}]
+            (api-update-database! 200 db-id {:details {:port 5433}})
+            (is (= (assoc existing-details :port 5433)
+                   (t2/select-one-fn :details :model/Database :id db-id)))))))))
+
 (deftest ^:parallel secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver
     (testing "File path values for secrets are returned as plaintext in the API (#20030)"
@@ -2595,7 +2734,8 @@
         (testing "does not includes undefined keys by default"
           (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
                               :undefined-setting))))
-        (is (= "Error checking the readability of :undefined-setting setting. The setting will be hidden in API response."
+        (is (= (str "Error checking the readability of :undefined-setting setting. The setting will be hidden in API response."
+                    " Error: Unknown setting: :undefined-setting")
                (-> (messages)
                    first
                    :message)))))))
@@ -3043,144 +3183,21 @@
           (is (not (contains? response :admin_details)))
           (is (not (contains? response :details))))))))
 
-(deftest update-database-admin-details-test
-  (testing "PUT /api/database/:id with admin_details"
-    (testing "Superusers can set admin_details"
-      (mt/with-premium-features #{:workspaces}
-        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
-                                                    :details {:host "localhost"}}]
-          (with-redefs [driver/can-connect? (constantly true)]
-            (let [response (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
-                                                 {:admin_details {:host "admin-host"
-                                                                  :password "admin-pass"
-                                                                  :admin-connection true}})]
-              (is (= "admin-host" (get-in response [:admin_details :host])))
-              (is (= secret/protected-password (get-in response [:admin_details :password])))
-              (let [db (t2/select-one :model/Database :id db-id)]
-                (is (= {:host "admin-host" :password "admin-pass" :admin-connection true}
-                       (:admin_details db)))))))))
-    (testing "Superusers can clear admin_details by setting it to nil"
-      (mt/with-premium-features #{:workspaces}
-        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
-                                                    :details {:host "localhost"}
-                                                    :admin_details {:host "admin-host"}}]
-          (with-redefs [driver/can-connect? (constantly true)]
-            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
-                                  {:admin_details nil})
-            (let [db (t2/select-one :model/Database :id db-id)]
-              (is (nil? (:admin_details db))))))))
-    (testing "Sensitive fields are preserved when protected-password is sent"
-      (mt/with-premium-features #{:workspaces}
-        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
-                                                    :details {:host "localhost"}
-                                                    :admin_details {:host "admin-host"
-                                                                    :password "original-pass"}}]
-          (with-redefs [driver/can-connect? (constantly true)]
-            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
-                                  {:admin_details {:host "new-admin-host"
-                                                   :password secret/protected-password
-                                                   :admin-connection true}})
-            (let [db (t2/select-one :model/Database :id db-id)]
-              (is (= "new-admin-host" (get-in db [:admin_details :host])))
-              (is (= "original-pass" (get-in db [:admin_details :password]))))))))
-    (testing "Returns 402 without :workspaces feature"
-      (with-redefs [premium-features/has-feature? (constantly false)]
-        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
-                                                    :details {:host "localhost"}}]
-          (mt/user-http-request :crowberto :put 402 (format "database/%d" db-id)
-                                {:admin_details {:host "admin-host"}}))))))
-
 (deftest update-database-preserves-overlay-details-test
-  (testing "PUT /api/database/:id without write_data_details/admin_details/provider_name keys"
+  (testing "PUT /api/database/:id without write_data_details/provider_name keys"
     (testing "preserves nullable fields instead of nil-ing them out"
-      (mt/with-premium-features #{:writable-connection :workspaces}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine             :h2
                                                     :details            {:host "localhost"}
                                                     :write_data_details {:host "write-host"}
-                                                    :admin_details      {:host "admin-host"}
                                                     :provider_name      "AWS RDS"}]
           (with-redefs [driver/can-connect? (constantly true)]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                                   {:name "Renamed DB"})
             (is (=? {:name               "Renamed DB"
                      :write_data_details {:host "write-host"}
-                     :admin_details      {:host "admin-host"}
                      :provider_name      "AWS RDS"}
                     (t2/select-one :model/Database :id db-id)))))))))
-
-(deftest put-validates-admin-details-connection-test
-  (when config/ee-available?
-    (testing "PUT /api/database/:id returns 400 when admin connection test fails"
-      (mt/with-premium-features #{:workspaces}
-        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
-                                                    :details {:host "localhost"}}]
-          (with-redefs [driver/can-connect? (fn [_engine details]
-                                              (if (:admin-connection details)
-                                                (throw (Exception. "Admin connection failed"))
-                                                true))]
-            (let [response (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                                 {:admin_details {:host "totally-bogus-host"
-                                                                  :admin-connection true}})]
-              (is (= "Admin connection failed" (:message response))))))))))
-
-(deftest admin-details-guardrails-test
-  (testing "PUT /api/database/:id admin_details guardrails"
-    (testing "admin-connection must not be truthy in details"
-      (mt/with-premium-features #{:workspaces}
-        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
-                                                    :details {:host "localhost"}}]
-          (is (= "admin-connection must not be set in details"
-                 (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                       {:details {:host             "localhost"
-                                                  :admin-connection true}}))))))
-    (testing "admin-connection must be truthy in admin_details"
-      (mt/with-premium-features #{:workspaces}
-        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
-                                                    :details {:host "localhost"}}]
-          (is (= "admin-connection must be set in admin_details"
-                 (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                       {:admin_details {:host "admin-host"}}))))))
-    (testing "Destination-database must be false in admin_details"
-      (mt/with-premium-features #{:workspaces}
-        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
-                                                    :details {:host "localhost"}}]
-          (is (= "destination-database must be false in admin_details"
-                 (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                       {:admin_details {:host                 "admin-host"
-                                                        :admin-connection     true
-                                                        :destination-database true}}))))))
-    (testing "Fields hidden for admin connections must not be in admin_details"
-      (mt/with-premium-features #{:workspaces}
-        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
-                                                    :details {:host "localhost"}}]
-          (is (str/includes?
-               (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                     {:admin_details {:host             "admin-host"
-                                                      :admin-connection true
-                                                      :auto_run_queries true}})
-               "admin_details must not contain fields hidden for admin connections")))))
-    (testing "Cannot set admin_details on a destination database"
-      (mt/with-premium-features #{:workspaces}
-        (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
-                                                        :details {:host "localhost"}}
-                       :model/Database {dest-id :id}   {:engine             :h2
-                                                        :details            {:host "localhost"}
-                                                        :router_database_id router-id}]
-          (is (= "Cannot configure an admin connection on a destination database"
-                 (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
-                                       {:admin_details {:host             "admin-host"
-                                                        :admin-connection true}}))))))
-    (testing "Cannot set admin_details on a router database"
-      (mt/with-premium-features #{:workspaces}
-        (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
-                                                        :details {:host "localhost"}}
-                       :model/Database {_dest-id :id}  {:engine             :h2
-                                                        :details            {:host "localhost"}
-                                                        :router_database_id router-id}]
-          (is (= "Cannot configure an admin connection on a router database"
-                 (mt/user-http-request :crowberto :put 400 (format "database/%d" router-id)
-                                       {:admin_details {:host             "admin-host"
-                                                        :admin-connection true}}))))))))
 
 (deftest databases-list-can-upload-respects-view-data-test
   (testing "GET /api/database/:id can_upload reflects the user's view-data permission, not just uploads_enabled"

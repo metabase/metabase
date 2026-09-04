@@ -1,10 +1,8 @@
 .list {
   padding: 0;
-  gap: var(--mantine-spacing-md);
 }
 
 .tab.tab {
-  padding: 6px 12px;
   background-color: transparent;
   color: var(--mb-color-text-primary);
   gap: var(--mantine-spacing-sm);
@@ -17,12 +15,6 @@
     background-color: var(--mb-color-background_surface-selected);
     color: var(--mb-color-core-brand);
   }
-}
-
-.tabLabel {
-  font-size: var(--mantine-font-size-md);
-  font-weight: bold;
-  line-height: 24px;
 }
 
 .tabSection[data-position="left"],

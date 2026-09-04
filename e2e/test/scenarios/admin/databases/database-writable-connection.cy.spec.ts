@@ -370,11 +370,23 @@ function performTableEdit() {
 
 function enableGlobalModelPersistence() {
   cy.visit("/admin/performance/models");
+  cy.intercept("POST", "/api/persist/enable").as("enableGlobalPersistence");
   cy.findByLabelText("Disabled").click({ force: true });
+  // Wait for the global setting to land before navigating away — otherwise the
+  // database page can boot from a stale `persisted-models-enabled` and never
+  // render the per-database "Model persistence" toggle.
+  cy.wait("@enableGlobalPersistence");
 }
 
 function enableModelPersistence() {
+  cy.intercept("POST", "/api/persist/database/*/persist").as(
+    "enableDbPersistence",
+  );
   cy.findByLabelText("Model persistence").click({ force: true });
+  // Wait for the database-level persist setting to be saved before persisting a
+  // model — the persist endpoint returns 400 ("Persisting models not enabled
+  // for database") if the card is persisted before this request lands.
+  cy.wait("@enableDbPersistence");
 }
 
 function enablePersistenceForModel(modelId: CardId) {

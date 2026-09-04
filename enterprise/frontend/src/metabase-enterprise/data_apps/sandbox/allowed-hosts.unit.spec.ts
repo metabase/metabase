@@ -1,8 +1,4 @@
-import {
-  isHostAllowed,
-  makeSandboxFetch,
-  makeSandboxXhr,
-} from "./allowed-hosts";
+import { isHostAllowed, makeSandboxFetch } from "./allowed-hosts";
 import type { SandboxRealm } from "./types";
 
 const u = (href: string) => new URL(href);
@@ -137,46 +133,6 @@ describe("makeSandboxFetch", () => {
       /reachable only via the SDK/,
     );
     expect(realFetch).not.toHaveBeenCalled();
-  });
-});
-
-describe("makeSandboxXhr", () => {
-  // jsdom's window origin is http://localhost — treat that as the Metabase origin.
-  const mbOrigin = window.location.origin;
-
-  it("returns null for an empty allowlist", () => {
-    expect(makeSandboxXhr(window, [], "sales")).toBeNull();
-  });
-
-  it("gates open() against the allowlist", () => {
-    const SandboxXhr = makeSandboxXhr(
-      window,
-      ["https://api.example.com"],
-      "sales",
-    );
-    expect(SandboxXhr).not.toBeNull();
-
-    const xhr = new SandboxXhr!();
-    expect(() => xhr.open("GET", "https://evil.example.org/")).toThrow(
-      /blocked XMLHttpRequest/,
-    );
-    // Allowed host: open() should not throw.
-    expect(() => xhr.open("GET", "https://api.example.com/data")).not.toThrow();
-  });
-
-  it("always blocks the Metabase origin, even if it's in allowed_hosts", () => {
-    const SandboxXhr = makeSandboxXhr(
-      window,
-      [mbOrigin, "https://api.example.com"],
-      "sales",
-    )!;
-    const xhr = new SandboxXhr();
-    expect(() => xhr.open("GET", `${mbOrigin}/api/user/current`)).toThrow(
-      /reachable only via the SDK/,
-    );
-    expect(() => xhr.open("GET", "/api/user/current")).toThrow(
-      /reachable only via the SDK/,
-    );
   });
 });
 

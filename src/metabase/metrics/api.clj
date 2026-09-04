@@ -3,16 +3,22 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
+   [metabase.app-db.core :as mdb]
+   [metabase.events.core :as events]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
+   [metabase.metrics.db :as metrics.db]
+   [metabase.metrics.dimension :as metrics.dimension]
    [metabase.metrics.permissions :as metrics.perms]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.core :as server]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -32,36 +38,24 @@
                                              [:name :string]]]]])
 
 (mr/def ::MetricWithDimensions
-  "Schema for a Metric with hydrated dimensions (returned from GET /:id)."
+  "Schema for a Metric with hydrated dimensions (returned from GET /:id). Dimensions and mappings
+  reference the wire-annotated schemas in [[metabase.metrics.dimension]]: the handler returns them
+  in the internal kebab-case shape, is validated against it, and `defendpoint` encodes them to the
+  snake_case wire shape on the way out."
   [:merge
    ::Metric
    [:map
-    [:dimensions           {:optional true} [:maybe [:sequential :map]]]
-    [:dimension_mappings   {:optional true} [:maybe [:sequential :map]]]
-    [:dataset_query        {:optional true} :map]
+    [:dimensions           [:sequential ::metrics.dimension/dimension]]
+    [:dimension_mappings   [:sequential ::metrics.dimension/dimension-mapping]]
+    [:dataset_query        {:optional true} [:maybe ms/Map]]
     [:database_id          {:optional true} [:maybe ms/PositiveInt]]
     [:result_column_name   {:optional true} [:maybe :string]]]])
 
-(def ^:private visibility-config
-  {:include-trash-collection? false
-   :include-archived-items    :exclude
-   :permission-level          :read})
-
-(defn- metrics-where-clause []
-  [:and
-   [:= :type "metric"]
-   [:= :archived false]
-   (collection/visible-collection-filter-clause :collection_id visibility-config)])
-
 (defn- count-metrics []
-  (t2/count :model/Card {:where (metrics-where-clause)}))
+  (metrics.db/metric-card-count (queries/visible-metric-cards-where-clause)))
 
 (defn- select-metrics [limit offset]
-  (-> (t2/select [:model/Card :id :name :description :collection_id]
-                 {:where    (metrics-where-clause)
-                  :order-by [[:name :asc]]
-                  :limit    limit
-                  :offset   offset})
+  (-> (metrics.db/metric-cards-page (queries/visible-metric-cards-where-clause) limit offset)
       (t2/hydrate :collection)))
 
 (api.macros/defendpoint :get "/"
@@ -85,18 +79,25 @@
      :offset offset
      :data   metrics}))
 
-(mu/defn- hydrated-metric [id :- ms/PositiveInt]
-  (api/read-check (t2/select-one :model/Card :id id :type "metric"))
+(mu/defn- hydrated-metric [id :- ms/PositiveInt
+                           include-orphaned? :- :boolean]
+  (api/read-check (metrics.db/metric-card id))
   (metrics/sync-dimensions! :metadata/metric id)
-  (-> (t2/select-one :model/Card :id id :type "metric")
-      metrics.perms/filter-dimensions-for-user))
+  (cond-> (-> (metrics.db/metric-card id)
+              metrics.perms/filter-dimensions-for-user
+              (update :dimensions #(or % []))
+              (update :dimension_mappings #(or % [])))
+    (not include-orphaned?) metrics/without-orphaned-dimensions))
 
 (api.macros/defendpoint :get "/:id" :- ::MetricWithDimensions
   "Fetch a `Metric` with ID.
 
-  Returns the metric with hydrated dimensions and dimension mappings."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [metric (hydrated-metric id)]
+  Returns the metric with hydrated dimensions and dimension mappings; the `::MetricWithDimensions`
+  schema encodes them to the snake_case wire shape at the `defendpoint` edge."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [include-orphaned]} :- [:map
+                                  [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
+  (let [metric (hydrated-metric id (boolean include-orphaned))]
     (assoc metric :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -162,12 +163,20 @@
    [:row_count ms/IntGreaterThanOrEqualToZero]])
 
 (defn- check-expression-permissions
-  "Collect all metric/measure leaves from the expression and verify query permissions for each."
+  "Verify permissions for each expression leaf and return metric card IDs keyed by UUID."
   [expression]
-  (doseq [[source-type source-id] (collect-expression-leaves expression)]
-    (case source-type
-      :metric  (api/query-check (t2/select-one :model/Card :id source-id :type "metric"))
-      :measure (api/query-check (t2/select-one :model/Measure :id source-id)))))
+  (into {}
+        (keep (fn [leaf]
+                (let [source-type (lib-metric/expression-leaf-type leaf)
+                      source-id   (lib-metric/expression-leaf-id leaf)]
+                  (case source-type
+                    :metric  (do
+                               (api/read-check (metrics.db/metric-card source-id))
+                               [(lib-metric/expression-leaf-uuid leaf) source-id])
+                    :measure (do
+                               (api/query-check (metrics.db/measure source-id))
+                               nil))))
+              (lib-metric/expression-leaves expression))))
 
 (defn- from-api-definition
   "Create a MetricDefinition from API definition parameters.
@@ -175,12 +184,9 @@
    The definition map is passed through directly as the internal MetricDefinition,
    since the API format and internal format now match.
 
-   Permission checks are performed on all referenced entities in the expression."
+   Referenced entities must be permission-checked before calling this function."
   [provider definition]
   (let [{:keys [expression filters projections]} definition]
-    ;; Permission check all expression leaves
-    (check-expression-permissions expression)
-    ;; Build MetricDefinition — format matches directly
     {:lib/type          :metric/definition
      :expression        expression
      :filters           (or filters [])
@@ -196,18 +202,33 @@
   (update query :info merge {:executed-by api/*current-user-id*
                              :context     :metric}))
 
+(defn- process-leaf-query
+  ([query metric-card-id]
+   (binding [qp.perms/*card-id* metric-card-id]
+     (qp/process-query (qp/userland-query (with-metric-exec-info query)))))
+  ([query metric-card-id rff]
+   (binding [qp.perms/*card-id* metric-card-id]
+     (qp/process-query (qp/userland-query (with-metric-exec-info query)) rff))))
+
 (defn- execute-leaf-queries
   "Execute all leaf queries in parallel, collecting results eagerly.
    Must be called OUTSIDE streaming context to avoid JSON writer conflicts.
-   Returns {uuid -> qp-result}."
-  [leaves]
-  (let [uuid->future (into {}
-                           (map (fn [[uuid leaf-plan]]
-                                  [uuid (future (qp/process-query (qp/userland-query (with-metric-exec-info (:leaf/mbql leaf-plan)))))]))
-                           leaves)]
-    (into {}
-          (map (fn [[uuid f]] [uuid @f]))
-          uuid->future)))
+  Returns {uuid -> qp-result}."
+  [leaves metric-card-ids]
+  (letfn [(run-leaf [[uuid leaf-plan]]
+            (process-leaf-query (:leaf/mbql leaf-plan) (get metric-card-ids uuid)))]
+    (if (mdb/in-transaction?)
+      ;; A transaction owns one connection, and `future` conveys that binding to each thread. Parallel leaves
+      ;; would therefore interleave app DB writes and savepoints on the same session; one thread's rollback can
+      ;; invalidate its siblings' savepoints. Only tests run this code within a transaction. During a request,
+      ;; each future obtains its own pooled connection.
+      (into {} (map (fn [leaf] [(first leaf) (run-leaf leaf)])) leaves)
+      (let [uuid->future (into {}
+                               (map (fn [leaf] [(first leaf) (future (run-leaf leaf))]))
+                               leaves)]
+        (into {}
+              (map (fn [[uuid f]] [uuid @f]))
+              uuid->future)))))
 
 (defn- stream-arithmetic-results
   "Join leaf results and stream the computed output through the QP reduce pipeline.
@@ -231,13 +252,14 @@
   [_route-params
    _query-params
    {:keys [definition]} :- ::DatasetRequest]
-  (let [definition (from-api-definition (lib-metric/metadata-provider) definition)
-        plan       (lib-metric/->query-plan definition {:limit 10000})]
+  (let [metric-card-ids (check-expression-permissions (:expression definition))
+        definition      (from-api-definition (lib-metric/metadata-provider) definition)
+        plan            (lib-metric/->query-plan definition {:limit 10000})]
     (if (= :leaf (:plan/type plan))
       (qp.streaming/streaming-response [rff :api]
-        (qp/process-query (qp/userland-query (with-metric-exec-info (:plan/mbql plan))) rff))
+        (process-leaf-query (:plan/mbql plan) (some-> metric-card-ids vals first) rff))
       ;; Arithmetic: execute leaf queries BEFORE streaming to avoid JSON writer conflicts
-      (let [uuid->result (execute-leaf-queries (:plan/leaves plan))]
+      (let [uuid->result (execute-leaf-queries (:plan/leaves plan) metric-card-ids)]
         (qp.streaming/streaming-response [rff :api]
           (stream-arithmetic-results plan uuid->result rff))))))
 
@@ -257,9 +279,10 @@
   [_route-params
    _query-params
    {:keys [definition]} :- ::DatasetRequest]
-  (let [definition (from-api-definition (lib-metric/metadata-provider) definition)
-        plan       (lib-metric/->query-plan definition {:limit 100 :values-only true})
-        result     (qp/process-query (qp/userland-query (with-metric-exec-info (:plan/mbql plan))))
+  (let [metric-card-ids (check-expression-permissions (:expression definition))
+        definition      (from-api-definition (lib-metric/metadata-provider) definition)
+        plan            (lib-metric/->query-plan definition {:limit 100 :values-only true})
+        result          (process-leaf-query (:plan/mbql plan) (some-> metric-card-ids vals first))
         col        (first (get-in result [:data :cols]))
         values     (mapv first (get-in result [:data :rows]))]
     {:values values
@@ -276,7 +299,7 @@
   [{:keys [id dimension-key]} :- [:map
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]]
-  (let [metric (hydrated-metric id)]
+  (let [metric (hydrated-metric id false)]
     (metrics/dimension-values
      (:dimensions metric)
      (:dimension_mappings metric)
@@ -291,7 +314,7 @@
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
    {:keys [query]}            :- [:map [:query ms/NonBlankString]]]
-  (let [metric (hydrated-metric id)]
+  (let [metric (hydrated-metric id false)]
     (metrics/dimension-search-values
      (:dimensions metric)
      (:dimension_mappings metric)
@@ -307,9 +330,117 @@
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
    {:keys [value]}             :- [:map [:value :string]]]
-  (let [metric (hydrated-metric id)]
+  (let [metric (hydrated-metric id false)]
     (metrics/dimension-remapped-value
      (:dimensions metric)
      (:dimension_mappings metric)
      dimension-key
      value)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Dimension CRUD Endpoints                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- read-check-metric! [id]
+  (api/read-check (metrics.db/metric-card id)))
+
+(defn- write-check-metric! [id]
+  (api/write-check (metrics.db/metric-card id)))
+
+;; The module-local parent keeps the topic publishable in OSS, where no consumer namespace derives
+;; it. (A direct :metabase/event derive would throw once an EE consumer makes it an ancestor.)
+(events/derive! ::dimensions-event :metabase/event)
+(events/derive! :event/metric-dimensions-update ::dimensions-event)
+
+(defn- notify-dimensions-changed!
+  "Signal that a metric's dimension mappings changed so its dependency graph is recomputed."
+  [id]
+  (events/publish-event! :event/metric-dimensions-update {:object {:id id}}))
+
+(api.macros/defendpoint :get "/:id/dimension"
+  :- [:map
+      [:added   [:sequential :map]]
+      [:addable [:sequential :map]]]
+  "List a metric's curated dimensions, and (when `with-addable=true`) the columns still available to
+  add, grouped by source table. Both can be filtered with a `query` name substring."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [query with-addable include-orphaned]} :- [:map
+                                                     [:query            {:optional true} [:maybe :string]]
+                                                     [:with-addable     {:optional true} [:maybe ms/BooleanValue]]
+                                                     [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
+  (read-check-metric! id)
+  (metrics/sync-dimensions! :metadata/metric id)
+  (metrics/list-dimensions :metadata/metric id {:query             query
+                                                :with-addable?     (boolean with-addable)
+                                                :include-orphaned? (boolean include-orphaned)}))
+
+(api.macros/defendpoint :post "/:id/dimension/add"
+  :- [:sequential :map]
+  "Add dimensions to a metric. Each entry carries its UUID and mapping target; the column-derived fields and mapping
+  are recomputed server-side.
+
+  Returns the updated list of dimensions."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [dimensions]} :- [:map
+                            [:dimensions [:sequential [:map
+                                                       [:id             ms/NonBlankString]
+                                                       [:display_name   {:optional true} ms/NonBlankString]
+                                                       [:description    {:optional true} [:maybe :string]]
+                                                       [:mapping_target ::lib-metric.schema/dimension-mapping.target]]]]]]
+  (write-check-metric! id)
+  (u/prog1 (metrics/add-dimensions! :metadata/metric id dimensions)
+    (notify-dimensions-changed! id)))
+
+(api.macros/defendpoint :post "/:id/dimension/remove"
+  :- [:sequential :map]
+  "Remove dimensions (by UUID) from a metric. Returns the updated list of added dimensions."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [dimension_ids]} :- [:map [:dimension_ids [:sequential ms/NonBlankString]]]]
+  (write-check-metric! id)
+  (u/prog1 (metrics/remove-dimensions! :metadata/metric id dimension_ids)
+    (notify-dimensions-changed! id)))
+
+(api.macros/defendpoint :post "/:id/dimension/set-default"
+  :- [:sequential :map]
+  "Mark exactly one dimension as the metric's default, clearing any previous default. A null
+  `dimension_id` clears the default without setting a new one, so the metric renders as a scalar.
+  Returns the updated list of added dimensions."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [dimension_id]} :- [:map [:dimension_id [:maybe ms/NonBlankString]]]]
+  (write-check-metric! id)
+  (metrics/set-default-dimension! :metadata/metric id dimension_id))
+
+(api.macros/defendpoint :post "/:id/dimension/reorder"
+  :- [:sequential :map]
+  "Persist a new ordering for a metric's dimensions. `dimension_ids` is the desired order; dimensions
+  not listed keep their relative order after the listed ones. Returns the updated list of added
+  dimensions."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [dimension_ids]} :- [:map [:dimension_ids [:sequential ms/NonBlankString]]]]
+  (write-check-metric! id)
+  (metrics/reorder-dimensions! :metadata/metric id dimension_ids))
+
+(api.macros/defendpoint :post "/:id/dimension/:dimension-key"
+  :- :map
+  "Update a metric dimension's `display_name`, `description`, `default_temporal_unit`, and/or source
+  column.
+
+  `source` is a `{type, field-id}`; the new column must have the same effective type."
+  [{:keys [id dimension-key]} :- [:map
+                                  [:id            ms/PositiveInt]
+                                  [:dimension-key ms/UUIDString]]
+   _query-params
+   body :- [:map
+            [:display_name {:optional true} ms/NonBlankString]
+            [:description  {:optional true} [:maybe :string]]
+            [:default_temporal_unit {:optional true} ms/NonBlankString]
+            [:source       {:optional true} [:maybe [:map [:field-id ms/PositiveInt]]]]]]
+  (write-check-metric! id)
+  (u/prog1 (metrics/update-dimension! :metadata/metric id dimension-key body)
+    ;; Only a source-column change alters the mapping (and thus the deps graph).
+    (when (:source body)
+      (notify-dimensions-changed! id))))

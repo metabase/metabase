@@ -4,28 +4,24 @@ import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
-import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
-import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import { MetabotLongChatNotice } from "metabase/metabot/components/MetabotChat/MetabotLongChatNotice";
+import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Paper, Stack, Text } from "metabase/ui";
 
-import {
-  useMetabotAgent,
-  useMetabotName,
-  useUserMetabotPermissions,
-} from "../../hooks";
-import type { MetabotConfig } from "../Metabot";
+import { useGetSuggestedMetabotPromptsQuery } from "../../api";
+import { useMetabotConversation, useUserMetabotPermissions } from "../../hooks";
+import type { MetabotAgentId } from "../../state";
+import type { MetabotChatConfig } from "../Metabot";
 
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
-import { MetabotThinking } from "./MetabotThinking";
+import { MetabotContextUsageRing } from "./MetabotContextUsageRing";
 import { useScrollManager } from "./hooks";
 
-const defaultConfig: MetabotConfig = {
-  agentId: "omnibot",
+const defaultConfig: MetabotChatConfig = {
   suggestionModels: [
     "dataset",
     "metric",
@@ -37,11 +33,17 @@ const defaultConfig: MetabotConfig = {
 };
 
 export const MetabotChat = ({
+  conversationId,
+  agentId,
+  onNewConversation,
   config = defaultConfig,
   className,
   headerActions,
 }: {
-  config?: MetabotConfig;
+  conversationId: string;
+  agentId?: MetabotAgentId;
+  onNewConversation?: () => void;
+  config?: MetabotChatConfig;
   className?: string;
   headerActions?: ReactNode;
 }) => {
@@ -52,15 +54,19 @@ export const MetabotChat = ({
       open: openAiProviderConfigurationModal,
     },
   ] = useDisclosure(false);
-  const metabot = useMetabotAgent(config.agentId);
-  const metabotName = useMetabotName();
+  const metabot = useMetabotConversation(conversationId);
+  const metabotName = useSetting("metabot-name");
   const { isConfigured } = useUserMetabotPermissions();
   const showIllustrations = useSetting("metabot-show-illustrations");
+  const supportsReasoning =
+    useSetting("llm-metabot-supports-reasoning?") ?? true;
 
   const hasMessages = metabot.messages.length > 0;
 
-  const { scrollContainerRef, headerRef, fillerRef } =
-    useScrollManager(hasMessages);
+  const { scrollContainerRef, fillerRef } = useScrollManager(
+    hasMessages,
+    metabot.conversationId,
+  );
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(
     {
@@ -74,19 +80,17 @@ export const MetabotChat = ({
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
 
-  const title = hasMessages ? metabot.title || t`New conversation` : undefined;
+  const untitledLabel = metabot.forkedFromConversationId
+    ? t`Forked conversation`
+    : t`New conversation`;
+  const title = hasMessages ? metabot.title || untitledLabel : undefined;
 
-  const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);
   const shouldShowHeader = headerActions || title;
 
   return (
     <Box className={cx(Styles.container, className)} data-testid="metabot-chat">
       {shouldShowHeader && (
-        <Box
-          ref={headerRef}
-          className={Styles.header}
-          data-testid="metabot-chat-header"
-        >
+        <Box className={Styles.header} data-testid="metabot-chat-header">
           {title && (
             <Text
               className={Styles.headerTitle}
@@ -117,8 +121,8 @@ export const MetabotChat = ({
               {/* empty state */}
               <Flex
                 h="100%"
-                gap="md"
-                px="md"
+                gap="lg"
+                px="lg"
                 direction="column"
                 align="center"
                 justify="center"
@@ -177,56 +181,65 @@ export const MetabotChat = ({
                 onRetryMessage={
                   config.preventRetryMessage ? undefined : metabot.retryMessage
                 }
+                onContinueMessage={metabot.submitInput}
                 onRefreshConversation={() => {
                   metabot.setPrompt("");
-                  metabot.loadConversation(metabot.conversationId);
+                  metabot.reloadConversation();
                 }}
                 isDoingScience={metabot.isDoingScience}
+                supportsReasoning={supportsReasoning}
                 debug={metabot.debugMode}
+                agentId={agentId}
                 conversationId={metabot.conversationId}
               />
-              {/* loading */}
-              {metabot.isDoingScience && (
-                <MetabotThinking toolCalls={metabot.activeToolCalls} />
-              )}
               {/* filler - height gets set via ref mutation */}
               <div ref={fillerRef} data-testid="metabot-message-filler" />
-              {/* long convo warning */}
-              {metabot.isLongConversation && (
-                <MetabotResetLongChatButton
-                  onResetConversation={metabot.createNewConversation}
-                />
-              )}
             </Box>
           )}
         </Box>
       </Box>
 
       {isConfigured && (
-        <Box className={Styles.textInputContainer}>
-          <Paper
-            className={cx(
-              Styles.inputContainer,
-              metabot.isDoingScience && Styles.inputContainerLoading,
+        <Box className={Styles.footerContainer}>
+          <Box className={Styles.textInputContainer}>
+            {metabot.longChatNotice && onNewConversation && (
+              <MetabotLongChatNotice
+                variant={metabot.longChatNotice}
+                onNewChat={onNewConversation}
+              />
             )}
-          >
-            <MetabotChatEditor
-              ref={metabot.promptInputRef}
-              value={metabot.prompt}
-              autoFocus
-              isResponding={metabot.isDoingScience}
-              placeholder={t`How can I help? Type @ to mention items.`}
-              onChange={metabot.setPrompt}
-              onSubmit={handleEditorSubmit}
-              onStop={metabot.cancelRequest}
-              suggestionConfig={{
-                suggestionModels: config.suggestionModels,
-              }}
-            />
-          </Paper>
-          <Text mt="sm" pb="0.5rem" fz="sm" c="text-secondary" ta="center">
-            {t`${metabotName} isn't perfect. Double-check results.`}
-          </Text>
+            <Paper
+              className={cx(
+                Styles.inputContainer,
+                metabot.isDoingScience && Styles.inputContainerLoading,
+              )}
+            >
+              <MetabotChatEditor
+                ref={metabot.promptInputRef}
+                value={metabot.prompt}
+                autoFocus
+                isResponding={metabot.isDoingScience}
+                placeholder={t`How can I help? Type @ to mention items.`}
+                onChange={metabot.setPrompt}
+                onSubmit={() => metabot.submitInput(metabot.prompt)}
+                onStop={metabot.cancelRequest}
+                suggestionConfig={{
+                  suggestionModels: config.suggestionModels,
+                }}
+              />
+            </Paper>
+          </Box>
+          <Box className={Styles.footerRow}>
+            <Text fz="sm" c="text-secondary" ta="center">
+              {t`${metabotName} isn't perfect. Double-check results.`}
+            </Text>
+            {metabot.contextWindowPercentUsage > 50 && (
+              <MetabotContextUsageRing
+                className={Styles.contextUsage}
+                percentUsage={metabot.contextWindowPercentUsage}
+              />
+            )}
+          </Box>
         </Box>
       )}
       <AIProviderConfigurationModal

@@ -1,12 +1,12 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
-   [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
@@ -36,9 +36,9 @@
   [_]
   #{:snippets})
 
-(derive ::event :metabase/event)
+(events/derive! ::event :metabase/event)
 (doseq [e [:event/snippet-create :event/snippet-update :event/snippet-delete]]
-  (derive e ::event))
+  (events/derive! e ::event))
 
 (defn add-template-tags
   "Update the template tags based on the new contents."
@@ -66,8 +66,7 @@
                        (lib/recognize-template-tags (:content snippet)))
         set-snippet-id (fn [{:keys [snippet-name] :as tag}]
                          ;; Check for exact match in database:
-                         (if-let [snippet-id (t2/select-one-fn :id :model/NativeQuerySnippet
-                                                               :name snippet-name)]
+                         (if-let [snippet-id (native-query-snippets.db/snippet-id-by-name snippet-name)]
                            (assoc tag :snippet-id snippet-id)
                            ;; Use previous reference if possible:
                            (or (name->old-tag snippet-name) tag)))]
@@ -109,10 +108,6 @@
   [snippet]
   (u/prog1 snippet
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
-
-(defmethod serdes/hash-fields :model/NativeQuerySnippet
-  [_snippet]
-  [:name (serdes/hydrated-hash :collection) :created_at])
 
 (defmethod mi/can-read? :model/NativeQuerySnippet
   [& args]
@@ -165,16 +160,11 @@
   ;; NativeQuerySnippets live in their own special collections, so the logic is the following:
   ;; - you either are exporting one of those
   ;; - or it was requested as a dependency of some Card, so export it regardless of collection
-  (t2/reducible-select :model/NativeQuerySnippet (cond-> {:where [:and
-                                                                  (when skip-archived [:not :archived])
-                                                                  [:or
-                                                                   (when-let [collection-ids (not-empty (remove nil? collection-set))]
-                                                                     [:in :collection_id collection-ids])
-                                                                   (when (some nil? collection-set)
-                                                                     [:= :collection_id nil])]]
-                                                          ;; stable filename de-dup suffixes across exports, see GHY-3754
-                                                          :order-by serdes/stable-storage-order}
-                                                   where (sql.helpers/where :or where))))
+  (native-query-snippets.db/exportable-snippets
+   (not-empty (remove nil? collection-set))
+   (boolean (some nil? collection-set))
+   skip-archived
+   where))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :content :description :entity_id :name]
@@ -190,7 +180,7 @@
 
 (defmethod serdes/required "NativeQuerySnippet"
   [_model id]
-  (when-let [collection_id (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id id)]
+  (when-let [collection_id (native-query-snippets.db/snippet-collection-id id)]
     {["Collection" collection_id] {"NativeQuerySnippet" id}}))
 
 (defmethod serdes/deserialization-dependencies "NativeQuerySnippet"
@@ -211,8 +201,7 @@
   ;; if we got local snippet in db and it has same name as incoming one, we can be sure
   ;; there will be no conflicts and skip the query to the db
   (if (and (not= (:name ingested) (:name maybe-local))
-           (t2/exists? :model/NativeQuerySnippet
-                       :name (:name ingested) :entity_id [:!= (:entity_id ingested)]))
+           (native-query-snippets.db/other-snippet-with-name-exists? (:name ingested) (:entity_id ingested)))
     (recur (update ingested :name str " (copy)")
            maybe-local)
     (serdes/default-load-one! ingested maybe-local)))

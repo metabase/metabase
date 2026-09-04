@@ -9,10 +9,12 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
@@ -25,7 +27,7 @@
 (defn check-database-feature
   "Check that the target database supports the required features for this transform."
   [transform]
-  (let [database (api/check-400 (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
+  (let [database (api/check-400 (transforms.db/database (transforms-base.i/target-db-id transform))
                                 (deferred-tru "The target database cannot be found."))
         features (transforms-base.u/required-database-features transform)]
     (api/check-400 (not (:is_sample database))
@@ -58,10 +60,15 @@
   and leaves the Metabase table with zero fields."
   [transform]
   (let [db-id (transforms-base.i/target-db-id transform)
-        db    (t2/select-one :model/Database db-id)]
+        db    (transforms.db/database db-id)]
     (when (and db (driver.u/supports? (:engine db) :schemas db))
       (api/check-400 (not (str/blank? (get-in transform [:target :schema])))
                      (deferred-tru "A target schema is required for this database.")))))
+
+(defn- field->column
+  "Adapt a t2 Field row to the kebab-case column shape `lib.types.isa` predicates expect."
+  [field]
+  {:base-type (:base_type field), :effective-type (:effective_type field)})
 
 (defn validate-incremental-column-type!
   "Validates that the checkpoint column for an incremental transform has a supported type.
@@ -71,12 +78,27 @@
   [{:keys [source] :as transform}]
   (when (transforms-base.u/checkpoint-source? transform)
     (let [checkpoint-filter-field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
-          field (t2/select-one :model/Field checkpoint-filter-field-id)]
+          field (transforms.db/field checkpoint-filter-field-id)]
       (api/check-400 field (deferred-tru "Checkpoint field not found."))
-      (api/check-400 (transforms-base.u/supported-incremental-filter-type? (:base_type field))
-                     (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
-                                   (:name field)
-                                   (pr-str (:base_type field)))))))
+      (let [column (field->column field)]
+        (api/check-400 (transforms-base.u/supported-checkpoint-column? column)
+                       (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
+                                     (:name field)
+                                     (pr-str (lib.types.isa/column-type column))))))))
+
+(defn validate-lookback!
+  "Validates a configured lookback window: only date and datetime checkpoint columns support one
+  (time-only columns wrap at midnight), and date-only columns need a day-or-coarser unit."
+  [{:keys [source] :as transform}]
+  (let [{:keys [lookback checkpoint-filter-field-id]} (:source-incremental-strategy source)]
+    (when-let [{:keys [unit]} (and (transforms-base.u/checkpoint-source? transform) lookback)]
+      (when-let [field (transforms.db/field checkpoint-filter-field-id)]
+        (let [column (field->column field)]
+          (api/check-400 (lib.types.isa/date-or-datetime? column)
+                         (deferred-tru "A lookback window is only supported for date or datetime checkpoint columns."))
+          (when (lib.types.isa/date-without-time? column)
+            (api/check-400 (contains? #{"day" "week" "month" "quarter" "year"} unit)
+                           (deferred-tru "A lookback window on a date checkpoint column must use days or a coarser unit."))))))))
 
 (defn validate-incremental-table-tag!
   "Reject a table-incremental native-query transform whose source query has no table template tag for
@@ -96,10 +118,7 @@
   [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
-    (let [transforms (t2/select :model/Transform {:where    (into [:and [:in :source_type enabled-types]]
-                                                                  (when database-id
-                                                                    [[:= :source_database_id database-id]]))
-                                                  :order-by [[:id :asc]]})]
+    (let [transforms (transforms.db/transforms-of-source-types enabled-types database-id)]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
            (into []
                  (comp (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
@@ -112,11 +131,11 @@
   "The index methods the target db's driver can create on `transform`'s target table, or nil when none are available."
   [transform]
   (when-let [db-id (transforms-base.i/target-db-id transform)]
-    (when-let [database (t2/select-one :model/Database db-id)]
+    (when-let [database (transforms.db/database db-id)]
       (let [methods (try
                       (driver/supported-index-methods (:engine database) database)
                       (catch Throwable e
-                        (log/warn e "Failed to fetch supported index methods for transform" (:id transform))
+                        (log/warn "Failed to fetch supported index methods for transform" (:id transform) (ex-message e))
                         nil))]
         (not-empty methods)))))
 
@@ -142,14 +161,14 @@
      (validate-transform-query! body))
    (validate-target-schema! body)
    (validate-incremental-table-tag! body)
+   (validate-lookback! body)
    (let [creator-id (or creator-id api/*current-user-id*)
          transform  (t2/with-transaction [_]
                       (let [tag-ids       (:tag_ids body)
                             ;; Set owner_user_id to current user if not explicitly provided
                             owner-user-id (when-not (:owner_email body)
                                             (or (:owner_user_id body) creator-id))
-                            transform     (t2/insert-returning-instance!
-                                           :model/Transform
+                            transform     (transforms.db/insert-transform!
                                            (assoc (select-keys body [:name :description :source :target :run_trigger
                                                                      :collection_id :owner_email])
                                                   :creator_id creator-id
@@ -168,7 +187,7 @@
   [id body]
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
-                    (let [old (t2/select-one :model/Transform id)
+                    (let [old (transforms.db/transform id)
                           new (merge old body)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       (api/check-403 (and (mi/can-write? old) (mi/can-write? new)))
@@ -180,7 +199,8 @@
                       (when (contains? body :source)
                         (validate-incremental-column-type! new))
                       (when (or (contains? body :source) (contains? body :target))
-                        (validate-incremental-table-tag! new))
+                        (validate-incremental-table-tag! new)
+                        (validate-lookback! new))
                       (when (transforms-base.u/query-transform? old)
                         (validate-transform-query! new)
                         (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle new)]
@@ -190,11 +210,11 @@
                                            (transforms-base.u/target-table-exists? new)))
                                  403
                                  (deferred-tru "A table with that name already exists.")))
-                    (t2/update! :model/Transform id (dissoc body :tag_ids))
+                    (transforms.db/update-transform! id (dissoc body :tag_ids))
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
-                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
+                    (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform
         transforms.u/add-source-readable)))
@@ -202,7 +222,7 @@
 (defn delete-transform!
   "Delete a transform and publish the delete event."
   [transform]
-  (t2/delete! :model/Transform (:id transform))
+  (transforms.db/delete-transform! (:id transform))
   (events/publish-event! :event/transform-delete
                          {:object transform
                           :user-id api/*current-user-id*})

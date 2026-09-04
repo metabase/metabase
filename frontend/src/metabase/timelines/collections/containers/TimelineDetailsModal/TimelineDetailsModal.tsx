@@ -4,8 +4,7 @@ import {
   useListCollectionTimelinesQuery,
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
@@ -22,7 +21,7 @@ function TimelineDetailsModalContainer({
   params,
   ...props
 }: TimelineDetailsModalContainerProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const archive = useSetArchive();
   const id = Urls.extractEntityId(params.timelineId);
   const collectionId = Urls.extractCollectionId(params.slug);
@@ -52,7 +51,7 @@ function TimelineDetailsModalContainer({
     archive({ id: event.id, model: "timeline-event" }, true);
 
   const handleGoBack = (timeline: Timeline) => {
-    dispatch(push(Urls.timelinesInCollection(timeline.collection)));
+    navigate(Urls.timelinesInCollection(timeline.collection));
   };
 
   return (

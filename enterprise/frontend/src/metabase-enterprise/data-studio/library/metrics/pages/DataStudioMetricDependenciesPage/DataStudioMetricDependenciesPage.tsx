@@ -1,19 +1,11 @@
-import type { MetricPageParams } from "metabase/common/metrics/types";
 import { MetricDependenciesPage } from "metabase/metrics/pages/MetricDependenciesPage";
 
 import { DataStudioMetricBreadcrumbs } from "../../components/DataStudioMetricBreadcrumbs";
 import { dataStudioMetricUrls } from "../../urls";
 
-interface DataStudioMetricDependenciesPageProps {
-  params: MetricPageParams;
-}
-
-export function DataStudioMetricDependenciesPage({
-  params,
-}: DataStudioMetricDependenciesPageProps) {
+export function DataStudioMetricDependenciesPage() {
   return (
     <MetricDependenciesPage
-      params={params}
       urls={dataStudioMetricUrls}
       showAppSwitcher
       showDataStudioLink={false}

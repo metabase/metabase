@@ -21,18 +21,14 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import type { FieldWithMaybeIndex } from "metabase/query_builder/model-indexes/actions";
-import {
-  canIndexField,
-  fieldHasIndex,
-} from "metabase/query_builder/model-indexes/utils";
 import { Box, Radio, Stack, Tabs } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import {
   ColumnSettings,
+  type ColumnSettingsProps,
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
-import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
+import { getGlobalSettingsForColumn } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isCurrency, isFK } from "metabase-lib/v1/types/utils/isa";
@@ -45,6 +41,8 @@ import type {
 } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
 
+import type { FieldWithMaybeIndex } from "../../../model-indexes/actions";
+import { canIndexField } from "../../../model-indexes/utils";
 import { EDITOR_TAB_INDEXES } from "../constants";
 
 import { DatasetFieldMetadataCurrencyPicker } from "./DatasetFieldMetadataCurrencyPicker";
@@ -52,6 +50,7 @@ import { DatasetFieldMetadataFkTargetPicker } from "./DatasetFieldMetadataFkTarg
 import { DatasetFieldMetadataSemanticTypePicker } from "./DatasetFieldMetadataSemanticTypePicker";
 import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
 import { MappedFieldPicker } from "./MappedFieldPicker";
+import { useShouldIndex } from "./use-should-index";
 
 type VisibilityType = (typeof FIELD_VISIBILITY_TYPES)[number];
 
@@ -105,7 +104,9 @@ const VIEW_AS_RELATED_FORMATTING_OPTIONS = new Set(VIEW_AS_FIELDS);
 const TAB = {
   SETTINGS: "settings",
   FORMATTING: "formatting",
-};
+} as const;
+
+type DatasetFieldTab = (typeof TAB)[keyof typeof TAB];
 
 const TAB_OPTIONS = [
   {
@@ -134,6 +135,11 @@ function DatasetFieldMetadataSidebarInner({
   const displayNameInputRef = useRef<HTMLInputElement>(null);
 
   const canIndex = dataset.isSaved() && canIndexField(field, dataset);
+  const { isNative } = Lib.queryDisplayInfo(dataset.query());
+  const { shouldIndex, setShouldIndex } = useShouldIndex({
+    field,
+    modelIndexes,
+  });
 
   const initialValues = useMemo(() => {
     const values: FieldMetadataFormValues = {
@@ -142,18 +148,27 @@ function DatasetFieldMetadataSidebarInner({
       semantic_type: field.semantic_type,
       fk_target_field_id: field.fk_target_field_id || null,
       visibility_type: field.visibility_type || "normal",
-      should_index: field.should_index ?? fieldHasIndex(modelIndexes, field),
+      should_index: shouldIndex,
       settings: field.settings,
     };
-    const { isNative } = Lib.queryDisplayInfo(dataset.query());
 
     if (isNative) {
       values.id = field.id;
     }
     return values;
-  }, [field, dataset, modelIndexes]);
+  }, [
+    field.display_name,
+    field.description,
+    field.semantic_type,
+    field.fk_target_field_id,
+    field.visibility_type,
+    field.settings,
+    field.id,
+    isNative,
+    shouldIndex,
+  ]);
 
-  const [tab, setTab] = useState<string>(TAB.SETTINGS);
+  const [tab, setTab] = useState<DatasetFieldTab>(TAB.SETTINGS);
 
   const handleFormattingSettingsChange = useCallback(
     (settings: ColumnSettingsType) => {
@@ -162,14 +177,13 @@ function DatasetFieldMetadataSidebarInner({
     [onFieldMetadataChange],
   );
 
-  const columnSettingsProps = useMemo(
+  const columnSettingsProps = useMemo<ColumnSettingsProps>(
     () => ({
       column: field,
       value: field.settings,
       onChangeSetting: handleFormattingSettingsChange,
       inheritedSettings: getGlobalSettingsForColumn(),
       variant: "form-field",
-      style: undefined,
     }),
     [field, handleFormattingSettingsChange],
   );
@@ -248,14 +262,14 @@ function DatasetFieldMetadataSidebarInner({
   );
 
   const handleShouldIndexChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) =>
+    (e: ChangeEvent<HTMLInputElement>) => {
+      setShouldIndex(e.target.checked);
       onFieldMetadataChange({
         should_index: e.target.checked,
-      }),
-    [onFieldMetadataChange],
+      });
+    },
+    [onFieldMetadataChange, setShouldIndex],
   );
-
-  const { isNative } = Lib.queryDisplayInfo(dataset.query());
 
   return (
     <SidebarContent>
@@ -354,13 +368,15 @@ function DatasetFieldMetadataSidebarInner({
                 ) : (
                   <Box className={DatasetFieldMetadataSidebarS.Divider} />
                 )}
-                <Tabs.Panel value={TAB.SETTINGS} p="1.5rem">
+                <Tabs.Panel value={TAB.SETTINGS} px="1.5rem" pt="1.5rem">
                   <Box mb="1.5rem">
                     <FormRadioGroup
                       name="visibility_type"
                       label={t`This column should appear in…`}
+                      // These are pulled from the form-field variant in ChartSettingsWidget.tsx
                       labelProps={{
-                        mb: "0.5rem",
+                        fz: "0.75rem",
+                        lh: "0.875rem",
                       }}
                       onChange={handleVisibilityTypeChange}
                     >
@@ -387,7 +403,7 @@ function DatasetFieldMetadataSidebarInner({
                     />
                   </Box>
                 </Tabs.Panel>
-                <Tabs.Panel value={TAB.FORMATTING} p="1.5rem">
+                <Tabs.Panel value={TAB.FORMATTING} px="1.5rem" pt="1.5rem">
                   <ColumnSettings
                     {...columnSettingsProps}
                     denylist={HIDDEN_COLUMN_FORMATTING_OPTIONS}
@@ -399,8 +415,15 @@ function DatasetFieldMetadataSidebarInner({
                 <FormSwitch
                   name="should_index"
                   label={t`Surface individual records in search by matching against this column`}
-                  px="1.5rem"
+                  mx="1.5rem"
+                  size="sm"
+                  fw="bold"
+                  maw="300px"
                   onChange={handleShouldIndexChange}
+                  labelPosition="left"
+                  classNames={{
+                    label: DatasetFieldMetadataSidebarS.IndexSwitchLabel,
+                  }}
                 />
               )}
             </Form>

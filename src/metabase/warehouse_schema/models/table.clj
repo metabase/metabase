@@ -1,7 +1,6 @@
 (ns metabase.warehouse-schema.models.table
   (:require
    [metabase.api.common :as api]
-   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
@@ -15,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -176,7 +176,7 @@
   ;; reasserts matching DB-level defaults for non-model insert paths.
   (let [defaults {:display_name   (humanization/name->human-readable-name (:name table))
                   :field_order    (or (:field_order table)
-                                      (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table))))
+                                      (driver/default-field-order (warehouse-schema.db/database-engine (:db_id table))))
                   :data_layer     :internal
                   :data_authority :unconfigured}]
     (collection/check-allowed-content :table (:collection_id table))
@@ -186,7 +186,7 @@
   [table]
   ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
-  (t2/delete! :model/Field :table_id (:id table)))
+  (warehouse-schema.db/delete-fields-for-table! (:id table)))
 
 (t2/define-before-update :model/Table
   [table]
@@ -318,7 +318,7 @@
      (:db_id instance)
      (:id instance))))
   ([_ pk]
-   (mi/can-read? (t2/select-one :model/Table pk))))
+   (mi/can-read? (warehouse-schema.db/table pk))))
 
 (defmethod mi/can-query? :model/Table
   ;; Check if user can execute queries against this table.
@@ -343,7 +343,7 @@
           ;; Can access via published collection (EE feature)
           (perms/can-access-via-collection? instance)))))
   ([_ pk]
-   (mi/can-query? (t2/select-one :model/Table pk))))
+   (mi/can-query? (warehouse-schema.db/table pk))))
 
 (defenterprise current-user-can-write-table?
   "OSS implementation. Returns a boolean whether the current user can write the given table.
@@ -360,7 +360,7 @@
   ([instance]
    (current-user-can-write-table? instance))
   ([_ pk]
-   (mi/can-write? (t2/select-one :model/Table pk))))
+   (mi/can-write? (warehouse-schema.db/table pk))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :can_write]
   "Batched hydration for :can_write on tables. Pre-fetches collection is_remote_synced values
@@ -374,7 +374,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                      (warehouse-schema.db/collections collection-ids))
                                 {})
         ;; Associate collection info with each table so table-editable? doesn't need to query
         tables-with-collection (for [table tables]
@@ -396,8 +396,7 @@
     tables
     (let [owner-user-ids (into #{} (keep :owner_user_id) tables)
           id->owner (when (seq owner-user-ids)
-                      (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
-                                        :id [:in owner-user-ids]))]
+                      (warehouse-schema.db/user-summaries-by-id owner-user-ids))]
       (for [table tables]
         (assoc table :owner
                (cond
@@ -423,43 +422,27 @@
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Table
-  [_table]
-  [:schema :name (serdes/hydrated-hash :db :db_id)])
-
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
 (def field-order-rule
   "How should we order fields."
-  [[:position :asc] [:%lower.name :asc]])
+  warehouse-schema.db/field-order-rule)
 
 (defn update-field-positions!
   "Update `:position` of field belonging to table `table` accordingly to `:field_order`"
   [table]
   (doall
    (map-indexed (fn [new-position field]
-                  (t2/update! :model/Field (u/the-id field) {:position new-position}))
+                  (warehouse-schema.db/update-field! (u/the-id field) {:position new-position}))
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
-                (t2/select [:model/Field :id]
-                           :table_id  (u/the-id table)
-                           {:order-by (case (:field_order table)
-                                        :custom       [[:custom_position :asc]]
-                                        :smart        [[[:case
-                                                         (app-db/isa :semantic_type :type/PK)       0
-                                                         (app-db/isa :semantic_type :type/Name)     1
-                                                         (app-db/isa :semantic_type :type/Temporal) 2
-                                                         :else                                     3]
-                                                        :asc]
-                                                       [:%lower.name :asc]]
-                                        :database     [[:database_position :asc]]
-                                        :alphabetical [[:%lower.name :asc]])}))))
+                (warehouse-schema.db/field-ids-for-table-ordered
+                 (u/the-id table)
+                 (:field_order table)))))
 
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
-  (= (t2/select-pks-set :model/Field
-                        :table_id (u/the-id table)
-                        :active   true)
+  (= (warehouse-schema.db/active-field-ids-for-table (u/the-id table))
      (set field-ordering)))
 
 (defn custom-order-fields!
@@ -467,11 +450,11 @@
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
   (t2/with-transaction [_]
-    (t2/update! :model/Table (u/the-id table) {:field_order :custom})
+    (warehouse-schema.db/update-table! (u/the-id table) {:field_order :custom})
     (dorun
      (map-indexed (fn [position field-id]
-                    (t2/update! :model/Field field-id {:position        position
-                                                       :custom_position position}))
+                    (warehouse-schema.db/update-field! field-id {:position        position
+                                                                 :custom_position position}))
                   field-order))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
@@ -481,12 +464,7 @@
   [_model k tables]
   (mi/instances-with-hydrated-data
    tables k
-   #(-> (group-by :table_id (t2/select [:model/FieldValues :field_id :values :field.table_id]
-                                       {:join  [[:metabase_field :field] [:= :metabase_fieldvalues.field_id :field.id]]
-                                        :where [:and
-                                                [:in :field.table_id [(map :id tables)]]
-                                                [:= :field.visibility_type  "normal"]
-                                                [:= :metabase_fieldvalues.type "full"]]}))
+   #(-> (group-by :table_id (warehouse-schema.db/full-field-values-for-tables (map :id tables)))
         (update-vals (fn [fvs] (->> fvs (map (juxt :field_id :values)) (into {})))))
    :id))
 
@@ -497,8 +475,7 @@
    tables k
    #(let [transform-ids (->> tables (keep :transform_id) distinct)
           id->transform (when (seq transform-ids)
-                          (t2/select-fn->fn :id identity :model/Transform
-                                            :id [:in transform-ids]))]
+                          (warehouse-schema.db/transforms-by-id transform-ids))]
       (into {}
             (keep (fn [{:keys [id transform_id]}]
                     (when transform_id
@@ -511,11 +488,7 @@
   [_model k tables]
   (mi/instances-with-hydrated-data
    tables k
-   #(t2/select-fn->fn :table_id :id
-                      :model/Field
-                      :table_id        [:in (map :id tables)]
-                      :semantic_type   (app-db/isa :type/PK)
-                      :visibility_type [:not-in ["sensitive" "retired"]])
+   #(warehouse-schema.db/pk-field-ids-by-table (map :id tables))
    :id))
 
 (defn- with-objects [hydration-key fetch-objects-fn tables]
@@ -531,7 +504,7 @@
   [tables]
   (with-objects :segments
     (fn [table-ids]
-      (t2/select :model/Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (warehouse-schema.db/unarchived-segments-for-tables table-ids))
     tables))
 
 (mi/define-batched-hydration-method with-measures
@@ -540,7 +513,7 @@
   [tables]
   (with-objects :measures
     (fn [table-ids]
-      (t2/select :model/Measure :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (warehouse-schema.db/unarchived-measures-for-tables table-ids))
     tables))
 
 (mi/define-batched-hydration-method with-metrics
@@ -549,11 +522,7 @@
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (->> (t2/select :model/Card
-                      :table_id [:in table-ids],
-                      :archived false,
-                      :type :metric,
-                      {:order-by [[:name :asc]]})
+      (->> (warehouse-schema.db/unarchived-metric-cards-for-tables table-ids)
            (filter mi/can-read?)))
     tables))
 
@@ -562,11 +531,7 @@
   [tables]
   (with-objects :fields
     (fn [table-ids]
-      (t2/select :model/Field
-                 :active          true
-                 :table_id        [:in table-ids]
-                 :visibility_type [:not= "retired"]
-                 {:order-by       field-order-rule}))
+      (warehouse-schema.db/active-fields-for-tables table-ids))
     tables))
 
 (mi/define-batched-hydration-method fields
@@ -580,7 +545,7 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (t2/select-one :model/Database :id (:db_id table)))
+  (warehouse-schema.db/database (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes/deserialization-dependencies "Table" [{:keys [db_id collection_id transform_id]}]
@@ -593,26 +558,18 @@
         ;; On import the parent Field row is synthesized if missing, so FieldUserSettings is self-sufficient.
         ;; Otherwise emit all Field ids for a full serdes backup/restore.
         fields   (if user-edits-only
-                   (into {} (for [fus-field-id (t2/select-fn-set :field_id :model/FieldUserSettings
-                                                                 {:join  [[:metabase_field :f] [:= :f.id :field_id]]
-                                                                  :where [:= :f.table_id id]})]
+                   (into {} (for [fus-field-id (warehouse-schema.db/user-edited-field-ids-for-table id)]
                               [["FieldUserSettings" fus-field-id] {"Table" id}]))
-                   (into {} (for [field-id (t2/select-pks-set :model/Field {:where [:= :table_id id]})]
+                   (into {} (for [field-id (warehouse-schema.db/field-ids-for-table id)]
                               [["Field" field-id] {"Table" id}])))
-        segments (into {} (for [segment-id (t2/select-pks-set :model/Segment
-                                                              {:where [:and
-                                                                       [:= :table_id id]
-                                                                       (when skip-archived [:not :archived])]})]
+        segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id skip-archived)]
                             [["Segment" segment-id] {"Table" id}]))
-        measures (into {} (for [measure-id (t2/select-pks-set :model/Measure
-                                                              {:where [:and
-                                                                       [:= :table_id id]
-                                                                       (when skip-archived [:not :archived])]})]
+        measures (into {} (for [measure-id (warehouse-schema.db/measure-ids-for-table id skip-archived)]
                             [["Measure" measure-id] {"Table" id}]))]
     (merge fields segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]
+  (let [db-name (warehouse-schema.db/database-name (:db_id table))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})
@@ -627,8 +584,8 @@
         schema-name (when (= 3 (count path))
                       (-> path second :id))
         table-name  (-> path last :id)
-        db-id       (t2/select-one-pk :model/Database :name db-name)]
-    (t2/select-one :model/Table :name table-name :db_id db-id :schema schema-name)))
+        db-id       (warehouse-schema.db/database-id-by-name db-name)]
+    (warehouse-schema.db/table-by-name db-id schema-name table-name)))
 
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
@@ -686,7 +643,7 @@
                   :collection-name            [:coalesce :collection.name
                                                [:case
                                                 [:and :this.is_published
-                                                 [:= :this.collection_id nil]] [:inline "Our analytics"]
+                                                 [:= :this.collection_id nil]] "Our analytics"
                                                 :else nil]]}
    :where        [:and
                   :active

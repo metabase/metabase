@@ -1,4 +1,4 @@
-import { useUpdateSettingsMutation } from "metabase/api";
+import { useUpdateSettingsMutation } from "metabase/settings";
 import { Stack } from "metabase/ui";
 import type { SettingKey } from "metabase-types/api";
 
@@ -50,7 +50,7 @@ export const GetCodeStep = () => {
   const showCode = !isGuestEmbed || resource?.enable_embedding;
 
   return (
-    <Stack gap="md" flex={1}>
+    <Stack gap="lg" flex={1}>
       {!isGuestEmbed && <MetabaseAccountCard />}
 
       {showCode ? (

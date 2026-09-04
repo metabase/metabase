@@ -4,7 +4,9 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.search-models :as metabot.search-models]
    [metabase.metabot.tmpl :as te]
@@ -18,8 +20,7 @@
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -87,14 +88,16 @@
                   :verified    verified?
                   :official    official?
                   :collection  collection-info})
-          (m/assoc-some :curated curated)))))
+          (m/assoc-some :curated curated
+                        :display (:display result)
+                        :moderated_status moderated_status)))))
 
 (defn- enrich-with-collection-descriptions
   "Fetch and merge collection descriptions for all search results that have collection IDs."
   [results]
   (let [coll-ids     (->> results (keep #(get-in % [:collection :id])) distinct)
         descriptions (when (seq coll-ids)
-                       (t2/select-pk->fn :description :model/Collection :id [:in coll-ids]))]
+                       (metabot.db/collection-descriptions coll-ids))]
     (cond->> results
       (seq descriptions) (mapv (fn [r]
                                  (let [cid (-> r :collection :id)]
@@ -109,10 +112,10 @@
   [results]
   (let [db-ids (->> results (keep :database_id) distinct)
         id->db (when (seq db-ids)
-                 (t2/select-pk->fn (juxt :engine :name) :model/Database :id [:in db-ids]))]
+                 (metabot.db/database-engines-and-names db-ids))]
     (cond->> results
       (seq id->db) (mapv (fn [r]
-                           (let [[engine db-name] (get id->db (:database_id r))]
+                           (let [{engine :engine, db-name :name} (get id->db (:database_id r))]
                              (-> r
                                  (m/assoc-some :database_engine engine)
                                  (m/assoc-some :database_name db-name))))))))
@@ -129,7 +132,7 @@
                       (keep :id)
                       distinct)
         id->eid  (when (seq card-ids)
-                   (t2/select-pk->fn :entity_id :model/Card :id [:in card-ids]))]
+                   (metabot.db/card-entity-ids card-ids))]
     (cond->> results
       (seq id->eid) (mapv (fn [r]
                             (if-let [eid (and (carded-types (:type r))
@@ -147,7 +150,9 @@
   hallucinate the base table (observed failure mode: `[<db>, public, customers]`) or do an
   extra `read_resource` round-trip. We read the two columns directly from
   `report_card.table_id` + `metabase_table.{schema,name}` to keep the lookup O(1) extra
-  query per search call, regardless of number of metrics in the result set.
+  query per search call, regardless of number of metrics in the result set. Base-table
+  metadata is attached only when the current user can read that Table; collection access
+  to the metric Card does not imply access to its physical source.
 
   Requires `:database_name` to already be set on each metric result (done earlier by
   [[enrich-with-database-engines]]) so we can assemble the full portable FK
@@ -155,24 +160,34 @@
   [results]
   (let [metric-ids (->> results (filter #(= "metric" (:type %))) (keep :id) distinct)
         card-id->table-id (when (seq metric-ids)
-                            (t2/select-pk->fn :table_id :model/Card :id [:in metric-ids]))
+                            (metabot.db/card-table-ids metric-ids))
         table-ids (->> card-id->table-id vals (remove nil?) distinct)
         table-id->info (when (seq table-ids)
-                         (t2/select-pk->fn (juxt :schema :name) :model/Table :id [:in table-ids]))]
+                         (into {}
+                               (comp (filter mi/can-read?)
+                                     (map (juxt :id (juxt :schema :name))))
+                               (metabot.db/table-schema-rows table-ids)))
+        metric-id->table-info
+        (into {}
+              (keep (fn [[metric-id table-id]]
+                      (when-let [[schema table-name] (get table-id->info table-id)]
+                        [metric-id {:table-id   table-id
+                                    :schema     schema
+                                    :table-name table-name}])))
+              card-id->table-id)]
     (cond->> results
       (seq card-id->table-id)
-      (mapv (fn [r]
-              (if (= "metric" (:type r))
-                (if-let [table-id (get card-id->table-id (:id r))]
-                  (let [[schema table-name] (get table-id->info table-id)
-                        db-name (:database_name r)]
-                    (cond-> (assoc r :base_table_id table-id)
-                      table-name (assoc :base_table_name table-name
-                                        :base_table_schema schema)
-                      (and db-name table-name)
-                      (assoc :base_table_portable_fk [db-name schema table-name])))
-                  r)
-                r))))))
+      (mapv (fn [{:keys [id type database_name] :as result}]
+              (if-let [{:keys [table-id schema table-name]}
+                       (when (= "metric" type)
+                         (get metric-id->table-info id))]
+                (cond-> (assoc result
+                               :base_table_id table-id
+                               :base_table_name table-name
+                               :base_table_schema schema)
+                  database_name
+                  (assoc :base_table_portable_fk [database_name schema table-name]))
+                result))))))
 
 (defn- remove-unreadable-transforms
   "Remove transforms from search results that the user cannot read.
@@ -180,7 +195,7 @@
   [results]
   (let [transform-ids (->> results (filter #(= "transform" (:type %))) (map :id) set)
         readable-ids (when (seq transform-ids)
-                       (->> (t2/select :model/Transform :id [:in transform-ids])
+                       (->> (metabot.db/transforms transform-ids)
                             transforms/add-source-readable
                             (filter :source_readable)
                             (map :id)
@@ -199,9 +214,7 @@
   [results]
   (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
         id->document (when (seq document-ids)
-                       (->> (t2/select :model/Document
-                                       :id [:in document-ids]
-                                       :archived false)
+                       (->> (metabot.db/unarchived-documents document-ids)
                             (filter mi/can-read?)
                             (map (juxt :id identity))
                             (into {})))]
@@ -274,22 +287,20 @@
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
            entity-types limit metabot-id profile-id search-native-query weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
-             {:term-queries        term-queries
-              :semantic-queries    semantic-queries
-              :database-id         database-id
-              :created-at          created-at
-              :last-edited-at      last-edited-at
-              :entity-types        entity-types
-              :limit               limit
-              :metabot-id          metabot-id
-              :profile-id          profile-id
-              :search-native-query search-native-query
-              :weights             weights})
+             {:term-query-count     (count term-queries)
+              :semantic-query-count (count semantic-queries)
+              :database-id          database-id
+              :entity-types         entity-types
+              :limit                limit
+              :metabot-id           metabot-id
+              :profile-id           profile-id
+              :search-native-query  search-native-query
+              :weights              weights})
   (let [search-models   (if (seq entity-types)
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
         _               (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
-        metabot         (t2/select-one :model/Metabot :entity_id (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id))
+        metabot         (metabot.db/metabot-by-entity-id (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id))
         use-verified?   (if metabot-id
                           (:use_verified_content metabot)
                           false)
@@ -326,12 +337,12 @@
                                                   (assoc :search-engine (name search-engine))
                                                   collection-id
                                                   (assoc :collection collection-id)))
-                                _              (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
-                                                          search-string (:models search-context))
+                                _              (log/infof "[METABOT-SEARCH] Search context models: %s"
+                                                          (:models search-context))
                                 search-results (search/search search-context)
                                 data           (:data search-results)
                                 result-models  (frequencies (map :model data))]
-                            (log/infof "[METABOT-SEARCH] Query '%s' returned entity types: %s" search-string result-models)
+                            (log/infof "[METABOT-SEARCH] Query returned entity types: %s" result-models)
                             data))
         search-fn*      (fn [search-engine queries]
                           (let [queries (search.engine/disjunction search-engine queries)]
@@ -364,7 +375,7 @@
   (when (seq ids)
     ;; only surface tables the current user can read — a curated entry may point at one they can't access
     (for [t (filter mi/can-read?
-                    (t2/select [:model/Table :id :name :display_name :db_id :schema :description] :id [:in ids]))]
+                    (metabot.db/table-summaries ids))]
       {:id              (:id t)
        :type            "table"
        :name            (:name t)
@@ -383,18 +394,14 @@
         id->card  (when (seq ids)
                     (into {} (map (juxt :id identity))
                           (filter mi/can-read?
-                                  (t2/select [:model/Card :id :name :description :database_id :collection_id
-                                              :card_schema :type]
-                                             :id [:in ids]))))
+                                  (metabot.db/card-search-rows ids))))
         coll-ids  (->> (vals id->card) (keep :collection_id) distinct)
         id->coll  (when (seq coll-ids)
                     (into {} (map (juxt :id identity))
-                          (t2/select [:model/Collection :id :name :authority_level] :id [:in coll-ids])))
+                          (metabot.db/collection-summaries coll-ids)))
         ;; verified is already a set (t2/select-fn-set), possibly nil when there were no ids
         verified  (when (seq ids)
-                    (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                                      :moderated_item_id [:in ids] :moderated_item_type "card"
-                                      :most_recent true :status "verified"))]
+                    (metabot.db/verified-item-ids ids "card"))]
     (for [id ids
           :let [c (id->card id)]
           :when c]
@@ -417,16 +424,15 @@
   [refs]
   (when (seq refs)
     (let [by-type (group-by :type refs)
-          fetch   (fn [model ids]
+          fetch   (fn [db-fn ids]
                     (when-let [ids (not-empty (distinct ids))]
-                      (filter mi/can-read?
-                              (t2/select [model :id :name :description :table_id :entity_id] :id [:in ids]))))
-          rows    (concat (map #(assoc % :type "measure") (fetch :model/Measure (map :id (get by-type "measure"))))
-                          (map #(assoc % :type "segment") (fetch :model/Segment (map :id (get by-type "segment")))))
+                      (filter mi/can-read? (db-fn ids))))
+          rows    (concat (map #(assoc % :type "measure") (fetch metabot.db/measures (map :id (get by-type "measure"))))
+                          (map #(assoc % :type "segment") (fetch metabot.db/segments (map :id (get by-type "segment")))))
           tbl-ids (not-empty (distinct (keep :table_id rows)))
           id->tbl (when tbl-ids
                     (into {} (map (juxt :id identity))
-                          (t2/select [:model/Table :id :name :schema :db_id] :id [:in tbl-ids])))]
+                          (metabot.db/table-schema-rows tbl-ids)))]
       (for [{:keys [id type name description table_id entity_id]} rows
             :let [t (get id->tbl table_id)]]
         (cond-> {:id id :type type :name name :description description}
@@ -522,6 +528,16 @@
   (str "Maximum number of results (default " default-search-limit ", max " max-search-limit "). "
        "Use a larger value (20–50) for broad or generic queries; keep the default for narrow, specific ones."))
 
+(defn- search-result->item
+  "Trim a search result to the fields the chain-of-thought results card renders.
+  `:display` (a question's viz type) and `:moderated_status` let the client pick the
+  exact entity icon, matching the app's search/command-palette icons."
+  [r]
+  (-> (select-keys r [:id :type :name :display_name :database_id :database_schema :database_name])
+      (m/assoc-some :display (some-> (:display r) name)
+                    :moderated_status (:moderated_status r)
+                    :collection (some-> (:collection r) (select-keys [:id :name])))))
+
 (defn- do-search
   [label allowed-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as _args}]
   (if-let [invalid (invalid-entity-types entity_types allowed-types)]
@@ -538,21 +554,54 @@
         {:output (format-search-output results)
          :structured-output {:result-type :search
                              :data results
-                             :total_count (count results)}})
+                             :total_count (count results)}
+         :data-parts [(streaming/search-results-part
+                       {:total_count (count results)
+                        :results (mapv search-result->item results)})]})
       (catch Exception e
-        (log/error e (str "Error in " label))
+        (log/error (str "Error in " label ": " (ex-message e)))
         {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
+
+(def ^:private semantic-queries-schema
+  [:sequential {:error/message "must be an array of strings"}
+   [:string {:description semantic-query-desc}]])
+
+(def ^:private keyword-queries-schema
+  [:sequential {:error/message "must be an array of strings"}
+   [:string {:description keyword-query-desc}]])
+
+(defn- entity-types-schema
+  [& types]
+  [:maybe [:sequential {:error/message "must be an array of supported entity type strings"}
+           (into [:enum {:description entity-types-desc}] types)]])
+
+(def ^:private limit-schema
+  [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]])
 
 (def ^:private search-schema
   [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
-   [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
+   [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
+   [:keyword_queries {:optional true} keyword-queries-schema]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "dashboard" "document" "question"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
+    (entity-types-schema "table" "model" "metric" "dashboard" "document" "question")]
+   [:limit {:optional true} limit-schema]])
 
-(mu/defn ^{:tool-name "search"
-           :scope     scope/agent-search}
+(defn- search-display
+  [{:keys [keyword_queries semantic_queries]}]
+  (let [query-lists  [keyword_queries semantic_queries]
+        well-formed? (every? #(or (nil? %) (sequential? %)) query-lists)
+        queries      (when well-formed?
+                       (->> (apply concat query-lists)
+                            (filter string?)
+                            distinct))]
+    (when (seq queries)
+      ;; just the object (the queries) — the client wraps it in the verb + tense
+      ;; ("Searching for …" while active, "Searched for …" once finished)
+      (str/join ", " queries))))
+
+(mu/defn ^{:tool-name  "search"
+           :scope      scope/agent-search
+           :title-fn   search-display}
   search-tool
   "Find tables, models, metrics, dashboards, documents, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
   [args :- search-schema]
@@ -560,15 +609,15 @@
 
 (def ^:private sql-search-schema
   [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
-   [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
+   [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
+   [:keyword_queries {:optional true} keyword-queries-schema]
    [:database_id [:int {:description "ID of the database to search — use the database currently selected in the SQL editor."}]]
-   [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
+   [:entity_types {:optional true} (entity-types-schema "table" "model")]
+   [:limit {:optional true} limit-schema]])
 
-(mu/defn ^{:tool-name "search"
-           :scope     scope/agent-search}
+(mu/defn ^{:tool-name  "search"
+           :scope      scope/agent-search
+           :title-fn   search-display}
   sql-search-tool
   "Find SQL-queryable data sources (tables and models) within a specific database by topic."
   [{:keys [database_id] :as args} :- sql-search-schema]
@@ -576,15 +625,15 @@
 
 (def ^:private nlq-search-schema
   [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
-   [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
+   [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
+   [:keyword_queries {:optional true} keyword-queries-schema]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc}
-                          "table" "model" "metric" "question" "dashboard" "document"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
+    (entity-types-schema "table" "model" "metric" "question" "dashboard" "document")]
+   [:limit {:optional true} limit-schema]])
 
-(mu/defn ^{:tool-name "search"
-           :scope     scope/agent-search}
+(mu/defn ^{:tool-name  "search"
+           :scope      scope/agent-search
+           :title-fn   search-display}
   nlq-search-tool
   "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
   [{:keys [entity_types] :as args} :- nlq-search-schema]
@@ -596,15 +645,15 @@
 
 (def ^:private transform-search-schema
   [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
-   [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
+   [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
+   [:keyword_queries {:optional true} keyword-queries-schema]
    [:search_native_query {:optional true} [:maybe [:boolean {:description "Also match against the native SQL text of transforms, not just names and descriptions."}]]]
-   [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "transform"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
+   [:entity_types {:optional true} (entity-types-schema "table" "model" "transform")]
+   [:limit {:optional true} limit-schema]])
 
-(mu/defn ^{:tool-name "search"
-           :scope     scope/agent-search}
+(mu/defn ^{:tool-name  "search"
+           :scope      scope/agent-search
+           :title-fn   search-display}
   transform-search-tool
   "Find transforms, plus the tables and models around them, by topic."
   [{:keys [search_native_query] :as args} :- transform-search-schema]

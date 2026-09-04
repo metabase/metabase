@@ -15,6 +15,7 @@
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.collections.models.collection :as collection]
+   [metabase.embeddings.provider :as embeddings.provider]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -58,6 +59,48 @@
             (is (m/find-first (comp #{"Migration already performed, skipping."} :message)
                               (:messages <>)))))))))
 
+(deftest version-2-embedding-space-migration-preserves-index-test
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.tu/with-test-db-defaults!
+      (let [pgvector  (semantic.env/get-pgvector-datasource!)
+            table-name "index_legacy_preserved_4"
+            model      {:provider "openai" :model-name "legacy-model" :vector-dimensions 4}
+            space-id   (:embedding-space-id (embeddings.provider/legacy-resolved-model model))]
+        (jdbc/execute! pgvector ["CREATE TABLE migration (version bigint PRIMARY KEY, migrated_at timestamp DEFAULT NOW(), status varchar(32))"])
+        (jdbc/execute! pgvector ["INSERT INTO migration (version, status) VALUES (2, 'success')"])
+        (jdbc/execute! pgvector [(str "CREATE TABLE index_metadata ("
+                                      "id bigint PRIMARY KEY, provider text NOT NULL, model_name text NOT NULL, "
+                                      "vector_dimensions int NOT NULL, table_name text NOT NULL UNIQUE, "
+                                      "index_version int NOT NULL, index_created_at timestamptz NOT NULL)")])
+        (jdbc/execute! pgvector ["CREATE TABLE index_control (id bigint PRIMARY KEY, version text NOT NULL, active_id int, active_updated_at timestamptz)"])
+        (jdbc/execute! pgvector [(format "CREATE TABLE %s (id text PRIMARY KEY)" table-name)])
+        (jdbc/execute! pgvector [(str "INSERT INTO index_metadata "
+                                      "(id, provider, model_name, vector_dimensions, table_name, index_version, index_created_at) "
+                                      "VALUES (7, 'openai', 'legacy-model', 4, ?, 5, NOW())")
+                                 table-name])
+        (jdbc/execute! pgvector ["INSERT INTO index_control (id, version, active_id) VALUES (0, '2', 7)"])
+        (semantic.db.connection/with-migrate-tx [tx]
+          (semantic.db.migration/maybe-migrate!
+           tx {:index-metadata semantic.index-metadata/default-index-metadata}))
+        (let [control-row  (jdbc/execute-one! pgvector ["SELECT active_id, version FROM index_control"]
+                                              {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+              metadata-row (jdbc/execute-one! pgvector ["SELECT id, embedding_space_id, model_revision FROM index_metadata"]
+                                              {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+              column-rows  (jdbc/execute! pgvector
+                                          ["SELECT column_name, is_nullable FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'index_metadata' AND column_name IN ('embedding_space_id', 'model_revision')"]
+                                          {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+              nullable-by-column (into {} (map (juxt :column_name :is_nullable)) column-rows)
+              active-model (get-in (semantic.index-metadata/get-active-index-state
+                                    pgvector semantic.index-metadata/default-index-metadata)
+                                   [:index :embedding-model])]
+          (testing "the physical index and active pointer survive"
+            (is (semantic.util/table-exists? pgvector table-name))
+            (is (= {:active_id 7 :version "3"} control-row)))
+          (testing "the existing metadata row is backfilled in place"
+            (is (= {:id 7 :embedding_space_id space-id :model_revision nil} metadata-row))
+            (is (= {"embedding_space_id" "NO" "model_revision" "YES"} nullable-by-column))
+            (is (not (contains? active-model :model-revision)))))))))
+
 (deftest schema-scoped-migration-drop-test
   (mt/with-premium-features #{:semantic-search}
     (semantic.tu/with-test-db-defaults!
@@ -90,15 +133,28 @@
 (deftest dedicated-reset-stays-in-default-schema-test
   (mt/with-premium-features #{:semantic-search}
     (semantic.tu/with-test-db-defaults!
-      (testing "the dedicated-mode reset wipes only the default schema — cohabitant schemas survive"
+      (testing "the dedicated-mode reset drops only its own tables, by schema and by name"
         (let [pgvector (semantic.env/get-pgvector-datasource!)]
           (jdbc/execute! pgvector ["CREATE SCHEMA cohabitant"])
           (jdbc/execute! pgvector ["CREATE TABLE cohabitant.precious (id int)"])
-          (jdbc/execute! pgvector ["CREATE TABLE doomed (id int)"])
+          ;; a real index table shape: index_<provider>_<model>_<dims>
+          (jdbc/execute! pgvector ["CREATE TABLE index_mock_model_4 (id int)"])
+          ;; library retrieval shares a dedicated store, and used to keep its index unqualified here
+          (jdbc/execute! pgvector ["CREATE TABLE library_entity_index (id int)"])
+          ;; a cohabitant is free to share our prefixes without matching any name we generate
+          (jdbc/execute! pgvector ["CREATE TABLE index_history (id int)"])
+          (jdbc/execute! pgvector ["CREATE TABLE dlq_backlog (id int)"])
+          (jdbc/execute! pgvector ["CREATE TABLE repair_log (id int)"])
           (semantic.db.connection/with-migrate-tx [tx]
             (semantic.db.migration/maybe-migrate! tx {:index-metadata semantic.index-metadata/default-index-metadata}))
           (is (true? (semantic.util/table-exists? pgvector "cohabitant.precious")))
-          (is (false? (semantic.util/table-exists? pgvector "public.doomed"))))))))
+          (is (true? (semantic.util/table-exists? pgvector "public.library_entity_index"))
+              "another module's table in the same schema is not ours to drop")
+          (testing "sharing a prefix is not enough — only names this module generates are dropped"
+            (is (true? (semantic.util/table-exists? pgvector "public.index_history")))
+            (is (true? (semantic.util/table-exists? pgvector "public.dlq_backlog")))
+            (is (true? (semantic.util/table-exists? pgvector "public.repair_log"))))
+          (is (false? (semantic.util/table-exists? pgvector "public.index_mock_model_4"))))))))
 
 (deftest dedicated-reset-refuses-app-db-test
   (mt/with-premium-features #{:semantic-search}
@@ -124,9 +180,9 @@
           (semantic.db.connection/with-migrate-tx [tx]
             (semantic.db.migration/maybe-migrate!
              tx {:index-metadata semantic.index-metadata/default-index-metadata}))
-          (testing "migration proceeds: the module tables are created and the stray table is wiped"
+          (testing "migration proceeds: the module tables are created, and a table that isn't ours is left"
             (is (true? (semantic.util/table-exists? pgvector "public.index_metadata")))
-            (is (false? (semantic.util/table-exists? pgvector "public.databasechangelog")))))))))
+            (is (true? (semantic.util/table-exists? pgvector "public.databasechangelog")))))))))
 
 (defn- executions-overlap?
   "Check if any two executions overlap in time. Each entry is [tid :started/:ended timestamp].
@@ -230,7 +286,9 @@
                                           :indexer_last_seen
                                           :indexer_last_seen_hash
                                           :indexer_last_seen_id
+                                          :embedding_space_id
                                           :model_name
+                                          :model_revision
                                           :provider
                                           :table_name
                                           :vector_dimensions]))))
@@ -299,6 +357,21 @@
                                           :where [:and
                                                   [:= :table_name [:inline table-name]]
                                                   [:= :column_name [:inline column-name]]]}))))
+
+(deftest current-schema-version-adds-health-metric-columns-test
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.tu/with-test-db-defaults!
+      (let [pgvector       (semantic.env/get-pgvector-datasource!)
+            index-metadata semantic.index-metadata/default-index-metadata]
+        (semantic.db.connection/with-migrate-tx [tx]
+          (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata}))
+        (jdbc/execute! pgvector [(str "ALTER TABLE index_metadata "
+                                      "DROP COLUMN repair_orphan_count, "
+                                      "DROP COLUMN repair_snapshot_at")])
+        (semantic.db.connection/with-migrate-tx [tx]
+          (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata}))
+        (is (has-column?! pgvector "index_metadata" "repair_orphan_count"))
+        (is (has-column?! pgvector "index_metadata" "repair_snapshot_at"))))))
 
 (deftest dynamic-schema-migration-test
   (mt/with-premium-features #{:semantic-search}

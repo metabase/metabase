@@ -19,14 +19,14 @@ export function TabPanel({
   dependentsCount,
   onTabChange,
 }: TabPanelProps) {
-  const handleChange = (value: string | null) => {
-    if (value === "column-mappings" || value === "dependents") {
+  const handleChange = (value: TabType | null) => {
+    if (value) {
       onTabChange(value);
     }
   };
 
   return (
-    <Box className={S.panel} px="lg" bg="background_page-primary">
+    <Box className={S.panel} px="xl" bg="background_page-primary">
       <Tabs value={selectedTab} onChange={handleChange} listBorder={false}>
         <Tabs.List>
           <Tabs.Tab value="column-mappings">{t`Column comparison`}</Tabs.Tab>

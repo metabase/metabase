@@ -6,13 +6,26 @@
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--default-border-radius);
 }
 
 .exploreButtonOverlay {
   position: absolute;
-  top: var(--mantine-spacing-xl);
-  right: var(--mantine-spacing-xl);
+  top: var(--mantine-spacing-xxl);
+  right: var(--mantine-spacing-xxl);
   z-index: 1;
+}
+
+.dimensionSelectContainer {
+  align-items: center;
+  display: flex;
+  flex: 0 0 1.5rem;
+  justify-content: center;
+  margin-bottom: var(--mantine-spacing-lg);
+  max-width: 100%;
 }
 
 .descriptionSection {
@@ -20,9 +33,8 @@
 }
 
 .visualizationPanel {
-  background-color: var(--mb-color-background_page-primary);
-  border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--default-border-radius);
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   /* keeps the embedded visualization non-interactive (no tooltips/hover) */
   pointer-events: none;

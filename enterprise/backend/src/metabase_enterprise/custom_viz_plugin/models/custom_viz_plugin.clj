@@ -1,6 +1,7 @@
 (ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
   (:require
    [buddy.core.codecs :as codecs]
+   [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -38,16 +39,6 @@
   [:id :identifier :display_name :icon :status :error_message :enabled
    :manifest :metabase_version :bundle_hash :dev_bundle_url
    :created_at :updated_at])
-
-(defn select-one-non-blob
-  "Like `t2/select-one` on `:model/CustomVizPlugin`, but excludes the bundle blob."
-  [& conditions]
-  (apply t2/select-one (into [:model/CustomVizPlugin] non-blob-columns) conditions))
-
-(defn select-non-blob
-  "Like `t2/select` on `:model/CustomVizPlugin`, but excludes the bundle blob."
-  [& conditions]
-  (apply t2/select (into [:model/CustomVizPlugin] non-blob-columns) conditions))
 
 (defmethod mi/can-read? :model/CustomVizPlugin
   ([_instance]   (some? api/*current-user-id*))
@@ -93,13 +84,9 @@
     :id    (:identifier entity)
     :label (:identifier entity)}])
 
-(defmethod serdes/hash-fields :model/CustomVizPlugin
-  [_model]
-  [:identifier])
-
 (defmethod serdes/load-find-local "CustomVizPlugin" [path]
   (let [{:keys [id]} (last path)]
-    (t2/select-one :model/CustomVizPlugin :identifier id)))
+    (custom-viz-plugin.db/plugin-by-identifier id)))
 
 (defmethod serdes/storage-path "CustomVizPlugin" [entity _ctx]
   [{:label "custom_viz_plugins"} {:label (:identifier entity)}])

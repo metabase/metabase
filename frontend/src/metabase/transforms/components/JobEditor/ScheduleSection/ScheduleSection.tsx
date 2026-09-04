@@ -6,18 +6,24 @@ import {
   useRunTransformJobMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { Schedule } from "metabase/common/components/Schedule";
+import {
+  Schedule,
+  cronToBuilderValue,
+} from "metabase/common/components/Schedule";
+import type {
+  ScheduleBuilderValue,
+  ScheduleValue,
+  ScheduleValueType,
+} from "metabase/common/components/Schedule/domain";
+import { isScheduleCronValue } from "metabase/common/components/Schedule/domain";
+import type { ScheduleChangeEvent } from "metabase/common/components/Schedule/types";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
-import { useSetting } from "metabase/common/hooks";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-import type {
-  ScheduleDisplayType,
-  ScheduleSettings,
-  ScheduleType,
-} from "metabase-types/api";
+import type { ScheduleDisplayType } from "metabase-types/api";
 
 import { trackTransformJobTriggerManualRun } from "../../../analytics";
 import { RunButton } from "../../RunButton";
@@ -45,13 +51,13 @@ export function ScheduleSection({
       label={t`Schedule`}
       description={t`Configure when this job should run.`}
     >
-      <Box px="xl" py="lg">
+      <Box px="xxl" py="xl">
         <Box display="contents" component="fieldset" disabled={readOnly}>
           <ScheduleWidget job={job} onChangeSchedule={onScheduleChange} />
         </Box>
       </Box>
       <Divider />
-      <Group px="xl" py="md" justify="space-between">
+      <Group px="xxl" py="lg" justify="space-between">
         <RunStatus
           run={job?.last_run ?? null}
           neverRunMessage={t`This job hasn’t been run before.`}
@@ -74,7 +80,7 @@ type ScheduleWidgetProps = {
   ) => void;
 };
 
-const SCHEDULE_OPTIONS: ScheduleType[] = [
+const SCHEDULE_OPTIONS: ScheduleValueType[] = [
   "hourly",
   "daily",
   "weekly",
@@ -82,19 +88,24 @@ const SCHEDULE_OPTIONS: ScheduleType[] = [
   "cron",
 ];
 
+const DEFAULT_SETTINGS: ScheduleBuilderValue = {
+  schedule_type: "hourly",
+  schedule_minute: 0,
+};
+
 function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
   const verb = c("A verb in the imperative mood").t`Run`;
   const systemTimezone = useSetting("system-timezone") ?? "UTC";
 
   const renderScheduleDescription = (
-    settings: ScheduleSettings,
-    schedule: string,
+    value: ScheduleValue,
+    cronString: string,
   ) => {
-    if (settings.schedule_type !== "cron") {
+    if (!isScheduleCronValue(value)) {
       return null;
     }
 
-    const scheduleExplanation = getScheduleExplanation(schedule);
+    const scheduleExplanation = getScheduleExplanation(cronString);
     if (scheduleExplanation == null) {
       return null;
     }
@@ -102,21 +113,28 @@ function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
     return t`This job will run ${scheduleExplanation}, ${systemTimezone}`;
   };
 
-  const handleChange = (schedule: string, settings: ScheduleSettings) => {
+  const value: ScheduleValue =
+    job.ui_display_type === "cron/raw"
+      ? { schedule_type: "cron", cron: job.schedule }
+      : (cronToBuilderValue(job.schedule) ?? DEFAULT_SETTINGS);
+
+  const handleChange = ({ value, cronString }: ScheduleChangeEvent) => {
+    if (!cronString) {
+      return;
+    }
     onChangeSchedule(
-      schedule,
-      settings.schedule_type === "cron" ? "cron/raw" : "cron/builder",
+      cronString,
+      isScheduleCronValue(value) ? "cron/raw" : "cron/builder",
     );
   };
 
   return (
     <Schedule
-      cronString={job.schedule}
+      value={value}
       scheduleOptions={SCHEDULE_OPTIONS}
       verb={verb}
       timezone={systemTimezone}
       layout="horizontal"
-      isCustomSchedule={job.ui_display_type === "cron/raw"}
       renderScheduleDescription={renderScheduleDescription}
       data-testid="schedule-picker"
       onScheduleChange={handleChange}

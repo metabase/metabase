@@ -23,7 +23,7 @@
    (java.nio ByteBuffer)
    (java.nio.channels ClosedChannelException SocketChannel)
    (java.nio.charset StandardCharsets)
-   (java.util.concurrent Future)
+   (java.util.concurrent ExecutorService Future)
    (java.util.concurrent.atomic AtomicBoolean)
    (java.util.zip GZIPOutputStream)
    (org.eclipse.jetty.ee9.nested HttpChannel Request)
@@ -114,8 +114,9 @@
 
 (defn- log-skipped-error! [obj]
   (if (instance? Throwable obj)
-    (log/error obj "Async context already completed, cannot write error to client")
-    (log/errorf "Async context already completed, cannot write error to client: %s" obj)))
+    (log/errorf "Async context already completed, cannot write error to client: %s" (ex-message obj))
+    (log/errorf "Async context already completed, cannot write error to client: %s"
+                (if (map? obj) (or (:message obj) (:error obj) (:status obj)) obj))))
 
 (defn- sanitize-error-obj [obj export-format]
   (-> (if (not= :api export-format)
@@ -146,7 +147,7 @@
         ;; `.complete` the async context, instead of leaving the request to hang until
         ;; Jetty's async timeout fires.
         (.set ^AtomicBoolean *completed?* false)
-        (log/error e "Error aborting streaming connection after mid-stream error")))))
+        (log/errorf "Error aborting streaming connection after mid-stream error: %s" (ex-message e))))))
 
 (defn- write-error-to-stream!
   "Serialize `obj` as a JSON error body onto `os` and close the stream. Used when there is no
@@ -155,14 +156,14 @@
    used directly)."
   [^OutputStream os obj export-format]
   (with-open [os os]
-    (log/trace (u/pprint-to-str (list 'write-error! obj)))
+    (log/trace "write-error!")
     (try
       (let [obj (sanitize-error-obj obj export-format)]
         (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
           (json/encode-to obj writer {})))
       (catch EofException _)
       (catch Throwable e
-        (log/error e "Error writing error to output stream" obj)))))
+        (log/errorf "Error writing error to output stream: %s" (ex-message e))))))
 
 (defn write-error!
   "Handle an error that occurred while producing a streaming response.
@@ -230,10 +231,10 @@
             (.cancel fut true)))))))
 
 (defn- do-f-async
-  "Runs `f` asynchronously on the streaming response `thread-pool`, returning immediately. When `f` finishes,
-  completes (i.e., closes) Jetty `async-context`. `completed?` is an `AtomicBoolean` used to coordinate with
-  Jetty's timeout/error callbacks so that only one path calls `.complete`."
-  [^AsyncContext async-context response ^Request request f ^OutputStream os finished-chan canceled-chan ^AtomicBoolean completed?]
+  "Runs `f` asynchronously on `executor` (the shared streaming response `thread-pool` when nil), returning
+  immediately. When `f` finishes, completes (i.e., closes) Jetty `async-context`. `completed?` is an `AtomicBoolean`
+  used to coordinate with Jetty's timeout/error callbacks so that only one path calls `.complete`."
+  [^AsyncContext async-context response ^Request request f ^OutputStream os finished-chan canceled-chan ^AtomicBoolean completed? executor]
   {:pre [(some? os)]}
   (let [task (^:once fn* []
                (binding [*response*   response
@@ -242,7 +243,7 @@
                  (try
                    (do-f* f os finished-chan canceled-chan)
                    (catch Throwable e
-                     (log/error e "Caught unexpected Exception in streaming response body")
+                     (log/errorf "Caught unexpected Exception in streaming response body: %s" (ex-message e))
                      (a/>!! finished-chan :unexpected-error)
                      (write-error! os e nil))
                    (finally
@@ -256,7 +257,8 @@
                      (a/close! canceled-chan)
                      (when (.compareAndSet completed? false true)
                        (.complete async-context))))))
-        fut  (.submit (thread-pool/thread-pool) ^Runnable task)]
+        ^ExecutorService pool (or executor (thread-pool/thread-pool))
+        fut  (.submit pool ^Runnable task)]
     (start-interrupt-escalation! fut finished-chan canceled-chan)
     nil))
 
@@ -341,7 +343,7 @@
     (catch ClosedChannelException _ true)
     (catch SocketException _ true)
     (catch Throwable e
-      (log/error e "Error determining whether HTTP request was canceled")
+      (log/errorf "Error determining whether HTTP request was canceled: %s" (ex-message e))
       false)))
 
 (def ^:private async-cancellation-poll-timeout-ms
@@ -374,7 +376,7 @@
 
 (defn- respond
   [{:keys [^HttpServletResponse response ^AsyncContext async-context request-map response-map request]}
-   f {:keys [content-type status headers], :as _options} finished-chan]
+   f {:keys [content-type status headers executor], :as _options} finished-chan]
   (let [canceled-chan (a/promise-chan)
         completed?   (AtomicBoolean. false)]
     (.addListener async-context
@@ -384,7 +386,7 @@
                       (when (.compareAndSet completed? false true)
                         (.complete async-context)))
                     (onError [_ event]
-                      (log/warn (.getThrowable ^AsyncEvent event) "Jetty async context error, completing request")
+                      (log/warnf "Jetty async context error, completing request: %s" (ex-message (.getThrowable ^AsyncEvent event)))
                       (when (.compareAndSet completed? false true)
                         (.complete async-context)))
                     (onComplete [_ _event])
@@ -413,13 +415,13 @@
         (let [output-stream-delay (output-stream-delay gzip? response)
               delay-os            (delay-output-stream output-stream-delay)]
           (start-async-cancel-loop! request finished-chan canceled-chan)
-          (do-f-async async-context response request f delay-os finished-chan canceled-chan completed?)))
+          (do-f-async async-context response request f delay-os finished-chan canceled-chan completed? executor)))
       (catch Throwable e
-        (log/error e "Unexpected exception in do-f-async")
+        (log/errorf "Unexpected exception in do-f-async: %s" (ex-message e))
         (try
           (.sendError response 500 (.getMessage e))
           (catch Throwable e
-            (log/error e "Unexpected exception writing error response")))
+            (log/errorf "Unexpected exception writing error response: %s" (ex-message e))))
         (a/>!! finished-chan :unexpected-error)
         (a/close! finished-chan)
         (a/close! canceled-chan)
@@ -490,7 +492,12 @@
   Current options:
 
   *  `:content-type` -- string content type to return in the results. This is required!
-  *  `:headers` -- other headers to include in the API response."
+  *  `:headers` -- other headers to include in the API response.
+  *  `:executor` -- optional `ExecutorService` to run `f` on. Defaults to the shared streaming response thread pool,
+     which is a small fixed pool: responses that block for the life of a client connection (rather than for the life
+     of a query) must supply their own executor so they cannot exhaust it. The supplied executor's futures must
+     support real interruption (`Future.cancel(true)`) — the hung-request escalation interrupts the worker, and a
+     ForkJoinPool-backed executor silently ignores it."
   {:style/indent 2, :arglists '([options [os-binding canceled-chan-binding] & body])}
   [options [os-binding canceled-chan-binding :as bindings] & body]
   {:pre [(= (count bindings) 2)]}

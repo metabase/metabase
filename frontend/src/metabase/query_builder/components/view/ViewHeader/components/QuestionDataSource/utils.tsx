@@ -33,11 +33,13 @@ export function getDataSourceParts({
   subHead,
   isObjectDetail,
   formatTableAsComponent = true,
+  hasMultipleSchemas = false,
 }: {
   question: Question;
   subHead?: boolean;
   isObjectDetail?: boolean;
   formatTableAsComponent?: boolean;
+  hasMultipleSchemas?: boolean;
 }): DataSourcePart[] {
   if (!question) {
     return [];
@@ -69,7 +71,7 @@ export function getDataSourceParts({
     ? metadata.table(Lib.sourceTableOrCardId(query))
     : // Unjustified type cast. FIXME
       (question.legacyNativeQuery() as NativeQuery).table();
-  if (table && table.hasSchema()) {
+  if (table?.schema_name && hasMultipleSchemas) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (database != null && !isBasedOnSavedQuestion) {
       parts.push({

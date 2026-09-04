@@ -49,6 +49,7 @@
     existing calls when practical. Will be unexported when there are no callers left. Docstrings should suggest an
     alternative to calling these functions.
   - **Deprecated:** Stronger than Leak - the function should be removed altogether, not just unexported."
+  ;; remove and ->> have no lib export yet; excluded so the clojure.core versions can't leak into the API
   {:clj-kondo/ignore [:unused-excluded-var]}
   (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min
                             + - * / time abs concat replace ref float])
@@ -119,6 +120,7 @@
    [metabase.lib.table :as lib.table]
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
@@ -337,6 +339,12 @@
   [an-expression-clause :- ::lib.schema.expression/expression
    new-name :- :string]
   (lib.expression/with-expression-name an-expression-clause new-name))
+
+;; TODO (Cam 2026-07-13) Give these wrappers like the other functions here
+(shared.ns/import-fns
+ [lib.expression
+  resolve-expression
+  value])
 
 ;; ### Expression Functions
 ;; These functions are quite generic, so they are re-exported directly. Each of these functions takes a number of
@@ -1408,6 +1416,7 @@
  [lib.binning
   available-binning-strategies
   binning
+  default-bin-width
   with-binning]
  [metabase.lib.card
   ->card-metadata-columns
@@ -1512,6 +1521,7 @@
   native-query
   raw-native-query
   recognize-template-tags
+  replace-template-tag-names
   required-native-extras
   native-query-card-ids
   native-query-snippet-ids
@@ -1600,6 +1610,7 @@
   check-measure-cycles
   check-measure-overwrite]
  [metabase.lib.serialize
+  prepare-after-deserialization
   prepare-for-serialization]
  [lib.stage
   append-stage
@@ -1621,6 +1632,8 @@
   raw-temporal-bucket
   temporal-bucket
   with-temporal-bucket]
+ [lib.underlying
+  aggregation-sourced?]
  [lib.util
   clause?
   clause-of-type?
@@ -1656,6 +1669,7 @@
   all-measure-ids
   all-segment-ids
   all-source-card-ids
+  all-source-card-ids-recursive
   all-source-table-ids
   all-template-tag-field-ids
   all-template-tag-snippet-ids

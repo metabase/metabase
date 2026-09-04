@@ -3,31 +3,32 @@ import type {
   CustomVisualization,
   CustomVisualizationProps,
   CustomVisualizationSettingDefinition,
-  ClickObject as CustomVizClickObject,
-  HoverObject as CustomVizHoverObject,
 } from "custom-viz";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { api } from "metabase/api/client";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
-import { useToast } from "metabase/common/hooks";
+import { type ToastArgs, useToast } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
-import { useColorScheme } from "metabase/ui";
+import {
+  type LoadCustomVizPluginForDisplayResult,
+  PLUGIN_CUSTOM_VIZ,
+} from "metabase/plugins";
+import type { DispatchFn } from "metabase/redux/hooks";
 import { getSubpathSafeUrl } from "metabase/urls";
+import { measureText } from "metabase/utils/measure-text";
 import { retry } from "metabase/utils/retry";
-import visualizations, { registerVisualization } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
-import type {
-  Visualization,
-  VisualizationProps,
-} from "metabase/visualizations/types/visualization";
+import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
+import type { VisualizationProps } from "metabase/visualizations/types/visualization";
+import { registerVisualization, visualizations } from "metabase/viz-core";
 import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
+import { customVizPluginApi } from "metabase-enterprise/api/custom-viz-plugin";
 import type {
   CustomVizPluginId,
   CustomVizPluginRuntime,
@@ -36,17 +37,17 @@ import type {
 import { isObject } from "metabase-types/guards";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
+import { type PluginClickObject, toHostClickObject } from "./click-object";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
+import { type PluginHoverObject, toHostHoverObject } from "./hover-object";
 import type { SandboxMode } from "./sandbox";
 import { usePluginMount } from "./use-plugin-mount";
+import { reportUnavailableCustomVizPlugin } from "./utils/unavailable-toast";
 
-// Track which plugins have already been loaded to avoid re-execution.
-// Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
-// bundle (or a dev server reload) produced new bytes.
 const loadedPlugins = new Map<
   CustomVizPluginId,
-  { identifier: string; hash: string | null }
+  { identifier: VisualizationDisplay; hash: string | null }
 >();
 
 const failedPluginHashes = new Map<
@@ -58,6 +59,11 @@ const failedPluginHashes = new Map<
 // dev reloads.
 const loadStartedSeqByPluginId = new Map<CustomVizPluginId, number>();
 const loadAppliedSeqByPluginId = new Map<CustomVizPluginId, number>();
+
+const inFlightPluginLoads = new Map<
+  CustomVizPluginId,
+  { hash: string | null; promise: Promise<VisualizationDisplay | null> }
+>();
 
 /**
  * Remove a previously-loaded custom-viz display from the global
@@ -107,7 +113,7 @@ function useCustomVizDevReload(
   display: string | undefined,
   plugins: CustomVizPluginRuntime[] | undefined,
   setLoading: (loading: boolean) => void,
-  onInfo: (message: string) => void,
+  onMessage: (toast: ToastArgs) => void,
   sandboxMode: SandboxMode = "hosted",
 ) {
   useEffect(() => {
@@ -136,7 +142,7 @@ function useCustomVizDevReload(
       try {
         await loadCustomVizPlugin(plugin, {
           cacheBustSuffix: `?t=${Date.now()}`,
-          onInfo,
+          onMessage,
           sandboxMode,
         });
       } finally {
@@ -151,11 +157,12 @@ function useCustomVizDevReload(
     return () => {
       eventSource.close();
     };
-  }, [display, onInfo, plugins, setLoading, sandboxMode]);
+  }, [display, onMessage, plugins, setLoading, sandboxMode]);
 }
 
 export type UseAutoLoadCustomVizPluginOptions = {
   sandboxMode?: SandboxMode;
+  onMessage?: (toast: ToastArgs) => void;
 };
 
 /**
@@ -175,6 +182,7 @@ export function useAutoLoadCustomVizPlugin(
   const { sandboxMode = "hosted" } = options;
   const { plugins, disabled } = useCustomVizPlugins();
   const [sendToast] = useToast();
+  const onMessage = options.onMessage ?? sendToast;
   const [loading, setLoadingState] = useState(false);
   const loadingRef = useRef<string | null>(null);
 
@@ -186,13 +194,6 @@ export function useAutoLoadCustomVizPlugin(
     );
     setLoadingState(loadingCountRef.current > 0);
   }, []);
-
-  const onInfo = useCallback(
-    (message: string) => {
-      sendToast({ message });
-    },
-    [sendToast],
-  );
 
   const load = useCallback(
     async (pluginToLoad: CustomVizPluginRuntime) => {
@@ -212,7 +213,7 @@ export function useAutoLoadCustomVizPlugin(
       setLoading(true);
       try {
         await loadCustomVizPlugin(pluginToLoad, {
-          onInfo,
+          onMessage,
           sandboxMode,
         });
       } finally {
@@ -220,7 +221,7 @@ export function useAutoLoadCustomVizPlugin(
         setLoading(false);
       }
     },
-    [onInfo, sandboxMode, setLoading],
+    [onMessage, sandboxMode, setLoading],
   );
 
   useEffect(() => {
@@ -236,7 +237,7 @@ export function useAutoLoadCustomVizPlugin(
     load(plugin);
   }, [display, plugins, load]);
 
-  useCustomVizDevReload(display, plugins, setLoading, onInfo, sandboxMode);
+  useCustomVizDevReload(display, plugins, setLoading, onMessage, sandboxMode);
 
   // `loading` state drives re-renders when async load completes.
   // Without it, the Map-based check alone wouldn't trigger a re-render.
@@ -292,7 +293,7 @@ export function useAutoLoadCustomVizPlugin(
 
 export type LoadCustomVizPluginOptions = {
   cacheBustSuffix?: string;
-  onInfo?: (message: string) => void;
+  onMessage?: (toast: ToastArgs) => void;
   sandboxMode?: SandboxMode;
 };
 
@@ -311,18 +312,43 @@ class BundleFetchError extends Error {
 export async function loadCustomVizPlugin(
   plugin: CustomVizPluginRuntime,
   options: LoadCustomVizPluginOptions = {},
-): Promise<string | null> {
-  const { cacheBustSuffix, onInfo, sandboxMode = "hosted" } = options;
-  const existing = loadedPlugins.get(plugin.id);
+): Promise<VisualizationDisplay | null> {
   const currentHash = plugin.bundle_hash ?? null;
-  if (
-    existing &&
-    existing.hash === currentHash &&
-    !plugin.dev_bundle_url &&
-    !cacheBustSuffix
-  ) {
+  const isFreshLoadForced = Boolean(
+    plugin.dev_bundle_url || options.cacheBustSuffix,
+  );
+
+  if (isFreshLoadForced) {
+    return fetchAndRegisterCustomVizPlugin(plugin, options);
+  }
+
+  const existing = loadedPlugins.get(plugin.id);
+  if (existing && existing.hash === currentHash) {
     return existing.identifier;
   }
+
+  const inFlight = inFlightPluginLoads.get(plugin.id);
+  if (inFlight && inFlight.hash === currentHash) {
+    return inFlight.promise;
+  }
+
+  const promise = fetchAndRegisterCustomVizPlugin(plugin, options);
+  inFlightPluginLoads.set(plugin.id, { hash: currentHash, promise });
+  try {
+    return await promise;
+  } finally {
+    if (inFlightPluginLoads.get(plugin.id)?.promise === promise) {
+      inFlightPluginLoads.delete(plugin.id);
+    }
+  }
+}
+
+async function fetchAndRegisterCustomVizPlugin(
+  plugin: CustomVizPluginRuntime,
+  options: LoadCustomVizPluginOptions,
+): Promise<VisualizationDisplay | null> {
+  const { cacheBustSuffix, onMessage, sandboxMode = "hosted" } = options;
+  const currentHash = plugin.bundle_hash ?? null;
 
   ensureVizApi();
 
@@ -401,7 +427,7 @@ export async function loadCustomVizPlugin(
     const Wrapper = createCustomVizWrapper(
       vizDef.mount,
       vizDef.VisualizationComponent,
-      plugin.id,
+      plugin,
     );
 
     // core app resolves these to a plain same-origin url like
@@ -413,16 +439,17 @@ export async function loadCustomVizPlugin(
     );
 
     // Attach the required static properties onto the component function
-    const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
-      Wrapper,
-    ) as Visualization;
-    applyDefaultVisualizationProps(Component, vizDef, {
-      identifier,
-      pluginId: plugin.id,
-      getUiName: () => plugin.display_name,
-      iconUrl: resolvedIconUrl,
-      isDev: Boolean(plugin.dev_bundle_url),
-    });
+    const Component = applyDefaultVisualizationProps(
+      ExplicitSize<VisualizationProps>({ wrapped: true })(Wrapper),
+      vizDef,
+      {
+        identifier,
+        plugin,
+        getUiName: () => plugin.display_name,
+        iconUrl: resolvedIconUrl,
+        isDev: Boolean(plugin.dev_bundle_url),
+      },
+    );
 
     if (!isLatest()) {
       return identifier;
@@ -455,12 +482,66 @@ export async function loadCustomVizPlugin(
     }
     console.error(t`Failed to load plugin "${plugin.display_name}":`, error);
     if (!failedPluginHashes.has(plugin.id)) {
-      onInfo?.(
-        t`The "${plugin.display_name}" visualization is currently unavailable.`,
-      );
+      reportUnavailableCustomVizPlugin(plugin, onMessage);
     }
     failedPluginHashes.set(plugin.id, currentHash);
     return null;
+  }
+}
+
+/**
+ * Imperatively load (and register) the plugin backing a `custom:*` display,
+ * if it is installed and enabled. Never rejects.
+ */
+export async function loadCustomVizPluginForDisplay(
+  dispatch: DispatchFn,
+  display: string,
+  {
+    sandboxMode,
+    onMessage,
+  }: {
+    sandboxMode?: SandboxMode;
+    onMessage?: (toast: ToastArgs) => void;
+  } = {},
+): Promise<LoadCustomVizPluginForDisplayResult> {
+  if (!isCustomVizDisplay(display)) {
+    return { status: "unavailable" };
+  }
+
+  const action = dispatch(
+    customVizPluginApi.endpoints.listCustomVizPlugins.initiate(undefined),
+  );
+
+  try {
+    const plugins = await action.unwrap();
+    const plugin = plugins.find(
+      (plugin) => getCustomPluginIdentifier(plugin) === display,
+    );
+
+    if (!plugin) {
+      onMessage?.({
+        icon: "warning_triangle_filled",
+        iconColor: "feedback-warning",
+        message: t`Custom visualization "${display}" was requested but no matching installed plugin was found. Check the name and that the plugin is uploaded.`,
+      });
+      return { status: "unavailable" };
+    }
+
+    const loadedDisplay = await loadCustomVizPlugin(plugin, {
+      onMessage,
+      sandboxMode,
+    });
+    return loadedDisplay
+      ? { status: "loaded", display: loadedDisplay }
+      : { status: "unavailable" };
+  } catch (error) {
+    console.error(
+      t`Failed to look up the plugin for custom visualization "${display}":`,
+      error,
+    );
+    return { status: "error" };
+  } finally {
+    action.unsubscribe();
   }
 }
 
@@ -501,44 +582,67 @@ function isValidVizDefinition(value: unknown): value is GenericVizDefinition {
 function createCustomVizWrapper(
   mount: GenericVizMount,
   VisualizationComponent: GenericVizDefinition["VisualizationComponent"],
-  pluginId: CustomVizPluginId,
+  plugin: CustomVizPluginRuntime,
 ) {
   return function CustomVizWrapper({
     width,
     height,
     series,
     settings,
+    fontFamily,
     onVisualizationClick,
     onHoverChange,
   }: VisualizationProps) {
-    const { resolvedColorScheme } = useColorScheme();
+    const browserRenderingContext = useBrowserRenderingContext({ fontFamily });
+
+    const renderingContext = useMemo<GenericVizPluginProps["renderingContext"]>(
+      () => ({
+        getColor: browserRenderingContext.getColor,
+        measureText: (text, style) =>
+          measureText(text, {
+            ...style,
+            family: style.family ?? browserRenderingContext.fontFamily,
+          }),
+        fontFamily: browserRenderingContext.fontFamily,
+        colorScheme: browserRenderingContext.colorScheme ?? "light",
+      }),
+      [browserRenderingContext],
+    );
+
+    const handleClick = (clickObject: PluginClickObject | null) =>
+      onVisualizationClick(
+        clickObject && toHostClickObject(clickObject, settings),
+      );
+
+    const handleHover = (hoverObject?: PluginHoverObject | null) =>
+      onHoverChange(
+        hoverObject ? toHostHoverObject(hoverObject, settings) : hoverObject,
+      );
 
     const pluginProps: GenericVizPluginProps = {
       width,
       height,
       // Unjustified type cast. FIXME
       series: series as unknown as GenericVizPluginProps["series"],
-      settings,
-      colorScheme: resolvedColorScheme,
-      // Unjustified type cast. FIXME
-      onClick: onVisualizationClick as unknown as (
-        clickObject: CustomVizClickObject<Record<string, unknown>> | null,
-      ) => void,
-      // Unjustified type cast. FIXME
-      onHover: onHoverChange as unknown as (
-        hoverObject?: CustomVizHoverObject | null,
-      ) => void,
+      // The plugin API mirrors host types with looser public shapes (e.g.
+      // the `column` resolver returns plain strings instead of internal
+      // unions); the runtime value is the host's computed settings.
+      settings: settings as unknown as GenericVizPluginProps["settings"],
+      renderingContext,
+      onClick: handleClick,
+      onHover: handleHover,
     };
 
     const containerRef = usePluginMount<GenericVizPluginProps>(
       (container, props) => mount(VisualizationComponent, container, props),
       pluginProps,
+      plugin,
     );
 
     return (
       <div
         ref={containerRef}
-        data-plugin-sandbox={pluginId}
+        data-plugin-sandbox={plugin.id}
         style={{ width: "100%", height: "100%" }}
       />
     );

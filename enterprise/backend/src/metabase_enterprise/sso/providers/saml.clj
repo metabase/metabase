@@ -93,7 +93,7 @@
          :redirect-url (get-in response [:headers "location"])
          :message "Redirecting to SAML provider"})
       (catch Throwable e
-        (log/errorf e "Error generating SAML request: %s" (.getMessage e))
+        (log/errorf "Error generating SAML request: %s" (.getMessage e))
         {:success? false
          :error :saml-request-generation-failed
          :message (str (tru "Error generating SAML request"))}))
@@ -141,12 +141,12 @@
                      :user-attributes user-attributes}
          :provider-id email})
       (catch clojure.lang.ExceptionInfo e
-        (log/errorf e "SAML authentication failed: %s" (.getMessage e))
+        (log/errorf "SAML authentication failed: %s" (.getMessage e))
         {:success? false
          :error (or (:error (ex-data e)) :authentication-failed)
          :message (.getMessage e)})
       (catch Exception e
-        (log/errorf e "Unexpected error during SAML authentication: %s" (.getMessage e))
+        (log/errorf "Unexpected error during SAML authentication: %s" (.getMessage e))
         {:success? false
          :error :server-error
          :message (str (tru "Unable to log in: SAML response validation failed"))}))))

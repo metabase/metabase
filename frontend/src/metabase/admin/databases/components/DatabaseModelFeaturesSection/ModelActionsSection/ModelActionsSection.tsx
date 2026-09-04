@@ -30,7 +30,7 @@ export function ModelActionsSection({
 
   return (
     <div>
-      <Flex align="center" justify="space-between" mb="xs">
+      <Flex align="center" justify="space-between" mb="xxs">
         <Label htmlFor="model-actions-toggle">{t`Model actions`}</Label>
         <Box>
           <Switch
@@ -54,10 +54,10 @@ export function ModelActionsSection({
       {disabled && (
         <Box>
           <Alert
+            size="compact"
             variant="light"
-            color="info"
             icon={<Icon name="info" />}
-            mb="md"
+            mb="lg"
           >
             {t`Model actions can't be enabled when database routing is enabled.`}
           </Alert>

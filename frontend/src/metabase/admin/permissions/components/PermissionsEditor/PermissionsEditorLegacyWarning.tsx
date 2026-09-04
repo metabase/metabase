@@ -7,9 +7,9 @@ export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
   const [isExpanded, { toggle }] = useToggle(false);
 
   return (
-    <Box mt="md" mb="sm" style={{ marginInlineEnd: "2.5rem" }}>
-      <Alert icon={<Icon name="warning" size={16} />} color="info">
-        <Text fw="bold">
+    <Box mt="lg" mb="sm" style={{ marginInlineEnd: "2.5rem" }}>
+      <Alert size="compact" variant="light" icon={<Icon name="warning" />}>
+        <Text fw="bold" c="text-secondary">
           {t`The “No self-service” access level for View data is going away.`}
           {!isExpanded && (
             <>

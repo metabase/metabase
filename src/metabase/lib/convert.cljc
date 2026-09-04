@@ -1,12 +1,14 @@
 (ns metabase.lib.convert
   (:refer-clojure :exclude [mapv some select-keys not-empty #?(:clj doseq) #?(:clj for)])
   (:require
-   [clojure.data :as data]
+   #?@(:cljs [[clojure.data :as data]])
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.error :as me]
    [medley.core :as m]
+   ;; this ns is the legacy <-> MBQL 5 converter; legacy input must be normalized before lifting
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; the converter validates against the legacy schema it converts from
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert.metadata-to-legacy :as lib.convert.metadata-to-legacy]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -75,10 +77,9 @@
                                              :diff (first (data/diff almost-stage new-stage))})))
           #?(:cljs (js/console.warn "Clean: Removing bad clause due to error!" error-location error-desc
                                     (u/pprint-to-str (first (data/diff almost-stage new-stage))))
-             :clj  (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"
+             :clj  (log/warnf "Clean: Removing bad clause in %s due to error %s"
                               (u/colorize :yellow (pr-str error-location))
-                              (u/colorize :yellow error-desc)
-                              (u/colorize :red (u/pprint-to-str (first (data/diff almost-stage new-stage))))))
+                              (u/colorize :yellow error-desc)))
           (if (= new-stage almost-stage)
             almost-stage
             (recur new-stage (conj removals [error-type error-location]))))
@@ -278,7 +279,7 @@
         :else
         (recur (conj acc col) aggregation-index more)))
     (catch #?(:clj Throwable :cljs :default) e
-      (log/error e "Error adding :lib/source-uuid to cols")
+      (log/errorf "Error adding :lib/source-uuid to cols: %s" (ex-message e))
       cols)))
 
 (defmethod ->mbql5 :mbql.stage/mbql
@@ -463,6 +464,7 @@
            {:query inner-query
             :type  :query})))
 
+;; TODO (Cam 2026-07-17) Deprecate this in 64
 (defmulti ->legacy-MBQL
   "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's
   not already legacy MBQL."
@@ -785,6 +787,7 @@
     stage-number :- :int
     legacy-ref   :- some?]
    (let [legacy-ref                  (->> #?(:clj legacy-ref :cljs (js->clj legacy-ref :keywordize-keys true))
+                                          ;; input is a legacy ref; normalize as legacy MBQL before conversion
                                           #_{:clj-kondo/ignore [:deprecated-var]}
                                           mbql.normalize/normalize-field-ref)
          {aggregations :aggregation} (lib.util/query-stage query stage-number)]

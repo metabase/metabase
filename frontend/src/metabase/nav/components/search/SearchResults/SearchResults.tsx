@@ -8,8 +8,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { SearchResult } from "metabase/common/components/SearchResult/SearchResult";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import type { SearchFilters } from "metabase/common/search/types";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { navigate } from "metabase/router";
 import { Box, Loader, Stack, rem } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import {
@@ -58,7 +57,7 @@ export const EmptyStateContainer = ({
   children: ReactNode;
   "data-testid"?: string;
 }) => (
-  <Box mt={rem(64)} mb="xl" data-testid={dataTestId}>
+  <Box mt={rem(64)} mb="xxl" data-testid={dataTestId}>
     {children}
   </Box>
 );
@@ -73,8 +72,6 @@ export const SearchResults = ({
   onFooterSelect,
   context,
 }: SearchResultsProps) => {
-  const dispatch = useDispatch();
-
   const [debouncedSearchText, setDebouncedSearchText] = useState<string>();
 
   const isWaitingForDebounce = searchText !== debouncedSearchText;
@@ -134,7 +131,7 @@ export const SearchResults = ({
       if (onEntitySelect) {
         onEntitySelect(item);
       } else if (item && modelToUrl(item)) {
-        dispatch(push(modelToUrl(item)));
+        navigate(modelToUrl(item));
       }
     }
   };

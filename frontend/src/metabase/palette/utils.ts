@@ -1,7 +1,7 @@
-import type { LocationDescriptor } from "history";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { To } from "metabase/router";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName, RecentItem } from "metabase-types/api";
 
@@ -107,18 +107,13 @@ export const getCommandPaletteIcon = (
 export const isAbsoluteURL = (url: string) =>
   url.startsWith("http://") || url.startsWith("https://");
 
-export const locationDescriptorToURL = (
-  locationDescriptor: LocationDescriptor,
-) => {
-  if (typeof locationDescriptor === "string") {
-    return locationDescriptor;
+export const navigationTargetToURL = (target: To) => {
+  if (typeof target === "string") {
+    return target;
   } else {
-    const { pathname = "", query = null, hash = null } = locationDescriptor;
-    const queryString = query
-      ? "?" + new URLSearchParams(query).toString()
-      : "";
+    const { pathname = "", search = "", hash = null } = target;
     const hashString = hash ? "#" + hash : "";
 
-    return `${pathname}${queryString}${hashString}`;
+    return `${pathname}${search}${hashString}`;
   }
 };

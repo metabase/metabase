@@ -9,7 +9,8 @@ import { isAnyOf } from "@reduxjs/toolkit";
 
 import { Api } from "metabase/api";
 import type { State } from "metabase/redux/store";
-import type { Card, Collection, Dashboard, Document } from "metabase-types/api";
+import { getSetting } from "metabase/settings";
+import type { Collection } from "metabase-types/api";
 
 import { REMOTE_SYNC_INVALIDATION_TAGS, TRANSFORMS_KEY } from "../constants";
 
@@ -18,7 +19,6 @@ import {
   type EndpointMatcher,
   InvalidationType,
   type ModelMutationConfig,
-  type ModelWithRemoteSynced,
 } from "./model-invalidation-config";
 
 type AppDispatch = ThunkDispatch<State, unknown, UnknownAction>;
@@ -38,18 +38,8 @@ function invalidateRemoteSyncTags(dispatch: AppDispatch) {
   dispatch(Api.util.invalidateTags(REMOTE_SYNC_INVALIDATION_TAGS as never));
 }
 
-function shouldInvalidateForRemoteSyncedModel(
-  oldModel: Card | Dashboard | Document | undefined,
-  newModel: Card | Dashboard | Document,
-): boolean {
-  const oldSynced = oldModel?.is_remote_synced ?? false;
-  const newSynced = newModel.is_remote_synced ?? false;
-
-  return oldSynced !== newSynced || newSynced;
-}
-
 function isTransformsSyncEnabled(state: State): boolean {
-  return !!state.settings?.values?.[TRANSFORMS_KEY];
+  return !!getSetting(state, TRANSFORMS_KEY);
 }
 
 function shouldInvalidateForCollection(
@@ -130,14 +120,6 @@ function registerCreateListeners(
           invalidateRemoteSyncTags(dispatch);
           break;
 
-        case InvalidationType.RemoteSyncedChange: {
-          const payload = getActionPayload<ModelWithRemoteSynced>(action);
-          if (payload?.is_remote_synced) {
-            invalidateRemoteSyncTags(dispatch);
-          }
-          break;
-        }
-
         case InvalidationType.CollectionBased: {
           const collection = getActionPayload<Collection>(action);
           if (
@@ -172,24 +154,6 @@ function registerUpdateListeners(
         case InvalidationType.Always:
           invalidateRemoteSyncTags(dispatch);
           break;
-
-        case InvalidationType.RemoteSyncedChange: {
-          const newModel = getActionPayload<Card | Dashboard | Document>(
-            action,
-          );
-          if (!newModel) {
-            break;
-          }
-          const oldModel = invalidation.getOriginal(
-            getOriginalState(),
-            // Unjustified type cast. FIXME
-            newModel.id as number,
-          );
-          if (shouldInvalidateForRemoteSyncedModel(oldModel, newModel)) {
-            invalidateRemoteSyncTags(dispatch);
-          }
-          break;
-        }
 
         case InvalidationType.CollectionBased: {
           const newCollection = getActionPayload<Collection>(action);
@@ -237,22 +201,6 @@ function registerDeleteListeners(
         case InvalidationType.Always:
           invalidateRemoteSyncTags(dispatch);
           break;
-
-        case InvalidationType.RemoteSyncedChange: {
-          const id = getDeleteId?.(action);
-          if (id == null) {
-            break;
-          }
-          const model = invalidation.getOriginal(
-            getOriginalState(),
-            // Unjustified type cast. FIXME
-            id as number,
-          );
-          if (model?.is_remote_synced) {
-            invalidateRemoteSyncTags(dispatch);
-          }
-          break;
-        }
 
         case InvalidationType.CollectionBased: {
           const deleteRequest = getDeleteId?.(action);

@@ -11,8 +11,10 @@
    [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.postgres :as specialization.postgres]
    [metabase.search.config :as search.config]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
+   [metabase.search.hierarchy :as search.hierarchy]
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
@@ -24,8 +26,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [methodical.core :as methodical])
   (:import
    (java.time OffsetDateTime)
    (java.util Queue)))
@@ -37,7 +38,7 @@
 (set! *warn-on-reflection* true)
 
 ;; Make sure the legacy cookies still work.
-(derive :search.engine/fulltext :search.engine/appdb)
+(search.hierarchy/derive! :search.engine/fulltext :search.engine/appdb)
 
 (def supported-db?
   "All the databases which we have implemented fulltext search for."
@@ -65,6 +66,7 @@
        :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
        :all-scores (search.scoring/all-scores weights active-scorers index-row))
+      ;; internal permission signal (published tables) — never surfaced in API responses
       (dissoc :is_published)
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
@@ -83,9 +85,9 @@
       true       (sql.helpers/where
                   [:or
                    [:= :search_index.model nil]
-                   [:!= :search_index.model [:inline "table"]]
+                   [:!= :search_index.model "table"]
                    [:and
-                    [:= :search_index.model [:inline "table"]]
+                    [:= :search_index.model "table"]
                     clause]]))))
 
 (defn add-collection-join-and-where-clauses
@@ -145,7 +147,7 @@
           (future
             (search.engine/init! search-engine {:force-reset? false}))
           (catch Exception e
-            (log/error e))))
+            (log/error (ex-message e)))))
       ;; Even if the index exists now, return an error so that we don't obscure that there was an issue.
       (throw (ex-info "Search Index not found."
                       {:search-engine      search-engine
@@ -155,7 +157,7 @@
                        :forced-init?       init-now?
                        :index-state-before index-state
                        :index-state-after  @@#'search.index/*indexes*
-                       :index-metadata     (t2/select :model/SearchIndexMetadata :engine :appdb)}))))
+                       :index-metadata     (search.db/index-metadata-for-engine :appdb)}))))
 
   (tracing/with-span :search "search.appdb.query" {:search/query-length (count search-string)}
     (try
@@ -171,7 +173,7 @@
             scorers (search.scoring/scorers search-ctx)
             query   (->> (base-filtered-query search-ctx search-string [:legacy_input])
                          (search.scoring/with-scores search-ctx scorers))]
-        (->> (t2/query query)
+        (->> (search.db/scored-search-rows query)
              (map (partial rehydrate weights (keys scorers)))))
       (catch Exception e
         ;; Rule out the error coming from stale index metadata.
@@ -195,7 +197,7 @@
                                  :search_index.model
                                  :search_index.source_type)))
          (search.filter/with-filters search-ctx)
-         t2/query
+         search.db/distinct-model-rows
          (into #{} (map :model)))))
 
 (defn- restrict-to-row [model id qry]
@@ -207,7 +209,7 @@
   (-> qry
       (assoc :select [[[:inline 1] :one]] :limit 1)
       (dissoc :order-by)
-      t2/query
+      search.db/search-index-probe-rows
       seq
       boolean))
 
@@ -229,7 +231,7 @@
   (let [active (search.index/active-table)]
     (if (nil? active)
       {:type :missing-from-index :details {:reason :no-active-index}}
-      (let [index-row (t2/select-one active :model model :model_id (str id))]
+      (let [index-row (search.db/index-row active model (str id))]
         (cond
           (nil? index-row)
           {:type :missing-from-index :details {:active-table active}}
@@ -282,15 +284,15 @@
     (if in-place?
       (when-let [table (search.index/active-table)]
         ;; keep the current table, just delete its contents
-        (t2/delete! table))
+        (search.db/delete-all-rows! table))
       (search.index/maybe-create-pending!))
     (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
       (search.index/activate-table!))
     (catch Throwable e
-      (log/error e "Error during reindexing")
+      (log/errorf "Error during reindexing: %s" (ex-message e))
       (throw e))))
 
-(derive :event/setting-update ::settings-changed-event)
+(events/derive! :event/setting-update ::settings-changed-event)
 
 (methodical/defmethod events/publish-event! ::settings-changed-event
   [_topic event]

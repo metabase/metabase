@@ -13,15 +13,24 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
-   [metabase.metabot.provider-util :as provider-util]
+   [metabase.llm.provider :as llm.provider]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.deepseek :as deepseek]
+   [metabase.metabot.self.google :as google]
+   [metabase.metabot.self.mistral :as mistral]
+   [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.vllm :as vllm]
+   [metabase.metabot.self.zai :as zai]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]]))
 
@@ -33,8 +42,14 @@
     "anthropic"  claude/claude
     "azure"      azure/azure
     "bedrock"    bedrock/bedrock
+    "deepseek"   deepseek/deepseek
+    "google"     google/google
+    "mistral"    mistral/mistral
+    "moonshot"   moonshot/moonshot
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
+    "vllm"       vllm/vllm
+    "zai"        zai/zai
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
@@ -44,17 +59,100 @@
     "anthropic"  claude/list-models
     "azure"      azure/list-models
     "bedrock"    bedrock/list-models
+    "deepseek"   deepseek/list-models
+    "google"     google/list-models
+    "mistral"    mistral/list-models
+    "moonshot"   moonshot/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
+    "vllm"       vllm/list-models
+    "zai"        zai/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
-(defn- parse-provider-model [s]
-  (let [provider (provider-util/provider-and-model->provider s)]
-    {:provider   provider
-     :stream-fn  (resolve-adapter provider)
-     :model      (provider-util/provider-and-model->model s)
-     :ai-proxy?  (provider-util/metabase-provider? s)}))
+(defn- normalize-known-model
+  "Coerce one adapter's `supported-models` value into `{:display-name ... :context-window ...}`. Most adapters store a
+  map already; DeepSeek stores the display name on its own. Anything else throws, so an adapter that invents a third
+  shape fails loudly instead of quietly documenting a model with no name."
+  [provider model-id value]
+  (cond
+    (map? value)    value
+    (string? value) {:display-name value}
+    :else           (throw (ex-info (str "Unrecognized supported-models entry for " provider)
+                                    {:provider provider :model model-id :value value}))))
+
+(defn known-models
+  "The models `provider`'s adapter is willing to offer, as `{model-id {:display-name ... :context-window ...}}`.
+
+  This is the allow-list [[list-models]] intersects with the provider's live catalog, so a model listed here is
+  available only if the connection's credentials can actually reach it. Returns nil for the provider types that have
+  no allow-list: `azure`, whose model is the deployment name the admin gives it, `vllm`, which serves whatever the
+  operator loaded, and `google` and `metabase`, whose catalogs are fixed in [[metabase.llm.provider]] instead."
+  [provider]
+  ;; a `case` like [[resolve-adapter]], so a new adapter that forgets to register here throws rather than reading as
+  ;; a provider that simply has no models
+  (when-let [models (case provider
+                      "anthropic"  claude/supported-models
+                      "bedrock"    bedrock/supported-models
+                      "deepseek"   deepseek/supported-models
+                      "mistral"    mistral/supported-models
+                      "moonshot"   moonshot/supported-models
+                      "openai"     openai/supported-models
+                      "openrouter" openrouter/supported-models
+                      "zai"        zai/supported-models
+                      ("azure" "google" "metabase" "vllm") nil
+                      (throw (ex-info (str "Unknown LLM provider: " provider)
+                                      {:provider provider})))]
+    (into {}
+          (map (fn [[model-id value]] [model-id (normalize-known-model provider model-id value)]))
+          models)))
+
+(defn- parse-provider-model
+  "Resolve a `connection-key/model` string into the adapter, model, and credentials needed to serve it.
+  Throws a 400 when the string names a connection that is not configured, so a stale
+  `llm-metabot-provider` surfaces as a clear error rather than an unauthenticated request."
+  [s]
+  (let [{:keys [type model credentials ai-proxy?]}
+        (or (llm.provider/resolve-model-ref s)
+            (throw (ex-info (tru "No LLM provider connection named {0} is configured."
+                                 (pr-str (llm.provider/model-ref->connection-key s)))
+                            {:status-code 400
+                             :api-error   true
+                             :model-ref   s})))]
+    {:provider    type
+     :stream-fn   (resolve-adapter type)
+     :model       model
+     :credentials credentials
+     :ai-proxy?   ai-proxy?}))
+
+(defn- resolve-context-window-fn [provider]
+  ;; a `case` inside of function instead of a map so that with-redefs work well
+  (case provider
+    "anthropic"  claude/context-window-tokens
+    "azure"      azure/context-window-tokens
+    "bedrock"    bedrock/context-window-tokens
+    "google"     google/context-window-tokens
+    "mistral"    mistral/context-window-tokens
+    "moonshot"   moonshot/context-window-tokens
+    "openai"     openai/context-window-tokens
+    "openrouter" openrouter/context-window-tokens
+    "zai"        zai/context-window-tokens
+    nil))
+
+(defn context-window-tokens
+  "Input context window (tokens) for a `connection-key/model` string, or nil when the
+  connection, provider, or model isn't one we know.
+
+  This is the ceiling a conversation's context (`contextTokens`, the last call's
+  prompt + completion) cannot grow past: the max *input* tokens for providers that
+  publish split input/output limits (OpenAI's 1,050,000 window is 922,000 input +
+  128,000 output), and the shared context window for providers whose output counts
+  against the window itself (Anthropic et al.)."
+  [model-ref]
+  (let [{:keys [type model]} (llm.provider/resolve-model-ref model-ref)
+        window-fn            (resolve-context-window-fn type)]
+    (when (and window-fn model)
+      (window-fn model))))
 
 (defn list-models
   "List available models for a provider using its configured credentials, or `:credentials` in `opts`.
@@ -99,17 +197,37 @@
         (= status 429)
         (>= status 500))))
 
+(defn- connection-error?
+  "True if `t` is a transient connection/timeout failure worth retrying."
+  [t]
+  (or (instance? java.net.ConnectException t)
+      (instance? java.net.SocketTimeoutException t)
+      (instance? java.io.IOException t)))
+
 (defn- retryable-error?
   "Whether an exception represents a transient LLM error worth retrying.
   Checks for retryable HTTP status codes in ex-data (set by claude-raw/openai-raw)
-  and connection-level failures."
+  and connection-level failures.
+
+  Walks the cause chain because provider adapters wrap the underlying socket
+  error: `rethrow-api-error!` rethrows e.g. a `Read timed out` as an
+  `ExceptionInfo` (with `:error-code :provider-request-failed` and no `:status`)
+  whose *cause* is the original `SocketTimeoutException`. Inspecting only the
+  top-level exception would miss it and we'd never retry a transient timeout.
+
+  An adapter opts a specific failure out of that default by tagging its ex-data
+  `:retryable? false` (top-level only), which wins over both checks. Note that
+  omitting `:status` does not — the cause walk still matches."
   [^Exception e]
-  (boolean
-   (or (retryable-status? (:status (ex-data e)))
-       ;; Connection errors (e.g. under load, connection refused/reset)
-       (instance? java.net.ConnectException e)
-       (instance? java.net.SocketTimeoutException e)
-       (instance? java.io.IOException e))))
+  (let [data (ex-data e)]
+    (if (false? (:retryable? data))
+      false
+      (boolean
+       (or (retryable-status? (:status data))
+           ;; Connection errors (e.g. under load, connection refused/reset), possibly
+           ;; wrapped one or more levels deep by a provider adapter. Bounded to 10
+           ;; levels to guard against a cyclic getCause chain.
+           (some connection-error? (take 10 (take-while some? (iterate #(some-> ^Throwable % .getCause) e)))))))))
 
 (defn- parse-retry-after-header
   "Extract retry-after seconds from response headers in ex-data, if present and ≤ 60s.
@@ -258,11 +376,12 @@
                                  (retry? e)
                                  (retryable-error? e))
                           (let [delay (retry-delay-ms attempt e)]
-                            (log/warn e "LLM call failed with retryable error, retrying"
+                            (log/warn "LLM call failed with retryable error, retrying"
                                       {:attempt attempt
                                        :max     max-llm-retries
                                        :delay   delay
-                                       :status  (:status (ex-data e))})
+                                       :status  (:status (ex-data e))
+                                       :error   (ex-message e)})
                             (analytics/inc! :metabase-metabot/llm-retries labels)
                             {:retry delay})
                           (do (analytics/inc! :metabase-metabot/llm-errors
@@ -275,6 +394,77 @@
                (recur (inc attempt)))
            (:ok result)))))))
 
+(defn- missing-required-permission
+  "Returns the metabot permission keyword that the current user is missing
+  (the base `:permission/metabot` or `required-perm`), or nil when granted.
+  The base `:permission/metabot` is always checked even when `required-perm`
+  is nil — every LLM call must at minimum require metabot to be turned on.
+  Shared by the throwing structured path and the error-part-emitting
+  streaming path."
+  [required-perm]
+  (let [perms (or scope/*current-user-metabot-permissions*
+                  (scope/resolve-user-permissions api/*current-user-id*))]
+    (scope/missing-permission perms required-perm)))
+
+(defn- check-permission!
+  "Structured-path permission gate: throws `:metabot/permission-denied` ex-info
+  on denial. Streaming path uses an error part instead — see [[call-llm]]."
+  [required-perm]
+  (when-let [missing (missing-required-permission required-perm)]
+    (throw (ex-info "Permission denied"
+                    {:type                :metabot/permission-denied
+                     :required-permission missing}))))
+
+(defn- error-reducible
+  "Returns a reducible that emits a single `{:type :error ...}` part and stops.
+  Used by [[call-llm]] for pre-flight failures (usage limit, permission denial)
+  that the streaming consumer should surface inline rather than as throws."
+  [message error-code]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (unreduced (rf init {:type :error :error {:message message :error-code error-code}})))))
+
+(defn- warn-when-missing-required-permission
+  "Every LLM call should declare which metabot permission gates it. Logs a warn
+  pointing at the source/tag when the caller forgets, so we can find and fix
+  them. Shared by [[call-llm]] and [[call-llm-structured-with-trace]]."
+  [fn-name opts]
+  (when-not (:required-permission opts)
+    (log/warnf "%s invoked without :required-permission (source=%s tag=%s) — every LLM call should declare which metabot permission gates it."
+               fn-name (pr-str (:source opts)) (pr-str (:tag opts)))))
+
+(defn llm-call-unavailable-reason
+  "Single pre-flight gate for callers that want to *skip* an LLM call cleanly instead of
+  attempting one and catching the failure it would throw. Bundles every check that decides
+  whether a structured LLM call requiring `required-permission` can run right now. The first
+  two are instance-level prerequisites the call paths assume are on; the usage/permission
+  checks are the same ones (in the same order) that [[call-llm]] /
+  [[call-llm-structured-with-trace]] enforce before opening the provider stream:
+
+    :metabot-disabled  — Metabot (or AI features) is turned off
+    :no-llm            — no provider API key is configured
+    :usage-limit       — the instance / tenant / user is over its AI usage limit
+                         (see [[metabase.metabot.usage/check-usage-limits!]])
+    :permission-denied — the current user lacks the base `:permission/metabot` or
+                         `required-permission`
+
+  Returns nil when the call would be allowed. The instance-level switches need no user; the
+  usage/permission checks resolve against the *current user*, so establish the intended
+  binding (e.g. `request/with-current-user`) before calling."
+  [required-permission]
+  (cond
+    (not (metabot.settings/metabot-enabled?))                 :metabot-disabled
+    (not (metabot.settings/llm-metabot-configured?))          :no-llm
+    (some? (usage/check-usage-limits!))                       :usage-limit
+    (some? (missing-required-permission required-permission)) :permission-denied))
+
+(defn llm-call-available?
+  "Boolean convenience over [[llm-call-unavailable-reason]]: true when a structured LLM call
+  requiring `required-permission` would be permitted for the current user right now (Metabot
+  enabled, provider configured, under usage limits, and the user holds the needed permissions)."
+  [required-permission]
+  (nil? (llm-call-unavailable-reason required-permission)))
+
 (defn call-llm
   "Call an LLM and stream processed parts.
 
@@ -286,95 +476,116 @@
   and user messages (`{:role :user, :content ...}`).  Each adapter converts
   these into its own wire format.
 
-  `tracking-opts` is a map with analytics context for prometheus and snowplow events. See [[report-token-usage-xf]]
-  above for details.
+  `tracking-opts` is a map with analytics + gating context. Tracking fields:
+  see [[report-token-usage-xf]]. Gating field:
+    :required-permission - A `:permission/metabot-*` keyword the current user
+                           must hold (as `:yes`) in addition to the base
+                           `:permission/metabot`, which is always checked.
+                           Omitting it still gets the base check, plus a
+                           log/warn pointing at the caller's source/tag.
 
-  `llm-opts` is an optional map of provider-facing call options. Currently this
-  supports `:tool-choice`, used by profiles like `:sql` that must end in a tool
-  call instead of plain assistant text.
+  `llm-opts` is an optional map of provider-facing call options — see
+  [[parse-provider-model]]'s adapters for what each one honors.
 
-  Returns a reducible that, when consumed, traces the full LLM round-trip
-  (HTTP call + streaming response) as an OTel span. Retries transient errors
-  (429 rate limit, 529 overloaded, connection errors) up to 3 attempts with
-  exponential backoff, matching the Python ai-service retry behavior."
+  Returns a reducible that, when consumed, traces the full LLM round-trip as an
+  OTel span and retries transient errors with exponential backoff. Global usage
+  limits and the permission gate are enforced before the stream opens; either
+  one failing yields a reducible of a single `:error` part rather than throwing
+  (`\"ai_usage_limit_reached\"` and `\"permission_denied\"` respectively)."
   ([provider-and-model system-msg parts tools tracking-opts]
    (call-llm provider-and-model system-msg parts tools tracking-opts nil))
   ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
-   (if-let [limit-msg (usage/check-usage-limits!)]
-     (reify clojure.lang.IReduceInit
-       (reduce [_ rf init]
-         (rf init {:type :error :error {:message limit-msg :error-code "ai_usage_limit_reached"}})))
-     (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)]
-       (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
-                                :tool-choice tool-choice :ai-proxy? ai-proxy?})
-       (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
-             streaming-opts (cond-> {:model model :input parts :tools (vals tools) :ai-proxy? ai-proxy?}
-                              system-msg        (assoc :system system-msg)
-                              (and (seq tools)
-                                   tool-choice) (assoc :tool_choice tool-choice))
-             make-source    (fn []
-                              (eduction (comp (core/tool-executor-xf tools)
-                                              (core/lite-aisdk-xf)
-                                              (report-aisdk-errors-xf tracking-opts)
-                                              (report-token-usage-xf tracking-opts)
-                                              (report-tool-usage-xf tracking-opts))
-                                        (stream-fn streaming-opts)))]
-         (reify clojure.lang.IReduceInit
-           (reduce [_ rf init]
-             (with-span :info {:name       :metabot.agent/call-llm
-                               :provider   provider
-                               :model      model
-                               :part-count (count parts)
-                               :tool-count (count tools)}
-               ;; `with-retries` re-runs its thunk on a retryable error, which re-opens the
-               ;; stream. That is safe only *before* any part has reached `rf`; once the consumer
-               ;; has seen output, replaying would duplicate it and re-execute tools. Gate retries
-               ;; on "nothing emitted yet" so a mid-stream failure surfaces instead of replaying.
-               (let [emitted? (volatile! false)
-                     rf*      (fn
-                                ([acc]   (rf acc))
-                                ([acc x] (vreset! emitted? true) (rf acc x)))]
-                 (with-retries
-                   tracking-opts
-                   #(reduce rf* init (make-source))
-                   (fn [_e] (not @emitted?))))))))))))
+   (warn-when-missing-required-permission "call-llm" tracking-opts)
+   (or (when-let [limit-msg (usage/check-usage-limits!)]
+         (error-reducible limit-msg "ai_usage_limit_reached"))
+       (when-let [missing (missing-required-permission (:required-permission tracking-opts))]
+         (error-reducible (format "Permission denied: %s required" missing) "permission_denied"))
+       (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)]
+         (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
+                                  :tool-choice tool-choice :ai-proxy? ai-proxy?})
+         (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
+               streaming-opts (cond-> {:model       model :input parts :tools (vals tools)
+                                       :credentials credentials :ai-proxy? ai-proxy?
+                                       :fast?       (metabot.settings/llm-fast-mode)}
+                                system-msg                  (assoc :system system-msg)
+                                (and (seq tools)
+                                     tool-choice)           (assoc :tool_choice tool-choice)
+                                (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))
+               make-source    (fn []
+                                (eduction (comp (core/tool-executor-xf tools)
+                                                (core/lite-aisdk-xf)
+                                                (core/stamp-tool-titles-xf tools)
+                                                (report-aisdk-errors-xf tracking-opts)
+                                                (report-token-usage-xf tracking-opts)
+                                                (report-tool-usage-xf tracking-opts))
+                                          (stream-fn streaming-opts)))]
+           (reify clojure.lang.IReduceInit
+             (reduce [_ rf init]
+               (with-span :info {:name       :metabot.agent/call-llm
+                                 :provider   provider
+                                 :model      model
+                                 :part-count (count parts)
+                                 :tool-count (count tools)}
+                 ;; `with-retries` re-runs its thunk on a retryable error, which re-opens the
+                 ;; stream. That is safe only *before* any part has reached `rf`; once the consumer
+                 ;; has seen output, replaying would duplicate it and re-execute tools. Gate retries
+                 ;; on "nothing emitted yet" so a mid-stream failure surfaces instead of replaying.
+                 (let [emitted? (volatile! false)
+                       rf*      (fn
+                                  ([acc]   (rf acc))
+                                  ([acc x] (vreset! emitted? true) (rf acc x)))]
+                   (with-retries
+                     tracking-opts
+                     #(reduce rf* init (make-source))
+                     (fn [_e] (not @emitted?))))))))))))
 
-(defn call-llm-structured
-  "Make an LLM call that returns structured JSON output.
+(defn call-llm-structured-with-trace
+  "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
+  so callers can inspect everything the model emitted — any non-tool text, the
+  structured tool call itself, and usage. Useful for debugging *why* the model
+  produced what it did.
 
-  Uses tool_choice to force the model to call a 'json' tool with the given schema,
-  then collects the streamed response and extracts the parsed tool arguments.
-  Includes the same retry logic as [[call-llm]] for transient errors.
+  Unlike [[call-llm]], the usage-limit and permission gates THROW here rather than
+  yielding an `:error` part — `ex-info` with `:type :metabot/usage-limit-reached`
+  or `:metabot/permission-denied`. Callers wanting to fall back silently must
+  catch them.
 
-  Args:
-    model         - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4.5\")
-    messages      - Sequence of Chat Completions message maps
-                    (e.g. [{:role \"user\" :content \"...\"}]). A leading
-                    {:role \"system\" ...} message is forwarded as the provider
-                    system prompt, keeping untrusted content in the user channel.
-    json-schema   - JSON Schema map for the expected response shape
-    temperature   - Sampling temperature
-    max-tokens    - Maximum tokens in the response
-    tracking-opts - See [[report-token-usage-xf]] for fields
+  `opts` extends `tracking-opts` and may include:
+    :required-permission  - A `:permission/metabot-*` keyword that the current
+                            user must hold (as `:yes`) in addition to the base
+                            `:permission/metabot`, which is always checked.
 
-  Returns the parsed JSON map from the forced tool call."
-  [provider-and-model messages json-schema temperature max-tokens tracking-opts]
-  (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)
+  A leading {:role \"system\" ...} message in `messages` is forwarded as the
+  provider system prompt, keeping untrusted content in the user channel."
+  [provider-and-model messages json-schema temperature max-tokens opts]
+  (warn-when-missing-required-permission "call-llm-structured-with-trace" opts)
+  (when-let [limit-msg (usage/check-usage-limits!)]
+    (throw (ex-info limit-msg
+                    {:type       :metabot/usage-limit-reached
+                     :error-code "ai_usage_limit_reached"
+                     :message    limit-msg})))
+  (check-permission! (:required-permission opts))
+  (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)
         [system-msg input] (if (= "system" (some-> messages first :role name))
                              [(:content (first messages)) (vec (rest messages))]
                              [nil messages])
-        _ (log/info "Calling LLM (structured)" {:provider provider
-                                                :model model
-                                                :msg-count (count input)
-                                                :ai-proxy? ai-proxy?})
-        tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
+        _ (log/info "Calling LLM (structured-with-trace)" {:provider provider
+                                                           :model     model
+                                                           :msg-count (count input)
+                                                           :ai-proxy? ai-proxy?})
+        tracking-opts  (-> opts
+                           (dissoc :required-permission)
+                           (assoc :model provider-and-model :ai-proxy? ai-proxy?))
         streaming-opts (cond-> {:model       model
                                 :input       input
                                 :schema      json-schema
                                 :temperature temperature
                                 :max-tokens  max-tokens
+                                :credentials credentials
                                 :ai-proxy?   ai-proxy?}
-                         system-msg (assoc :system system-msg))]
+                         system-msg                  (assoc :system system-msg)
+                         (contains? opts :cache?)    (assoc :cache? (:cache? opts))
+                         (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
                       :msg-count (count input)}
@@ -405,7 +616,7 @@
                                :raw-arguments (:_raw_arguments result)}))
 
               result
-              result
+              {:result result :parts parts}
 
               ;; The provider failed mid-stream and emitted an `:error` part instead of throwing
               ;; (e.g. an OpenAI `response.failed`). Surface its message and code so callers/logs
@@ -417,3 +628,29 @@
               :else
               (throw (ex-info "LLM returned no tool call in structured response"
                               {:parts parts})))))))))
+
+(defn call-llm-structured
+  "Make an LLM call that returns structured JSON output.
+
+  Uses tool_choice to force the model to call a 'json' tool with the given schema,
+  then collects the streamed response and extracts the parsed tool arguments.
+
+  Retry and gating behavior is [[call-llm-structured-with-trace]]'s.
+
+  Args:
+    model         - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4.5\")
+    messages      - Sequence of Chat Completions message maps
+                    (e.g. [{:role \"user\" :content \"...\"}])
+    json-schema   - JSON Schema map for the expected response shape
+    temperature   - Sampling temperature
+    max-tokens    - Maximum tokens in the response
+    opts          - Tracking + gating options. See [[report-token-usage-xf]] for
+                    tracking fields and [[call-llm-structured-with-trace]] for
+                    `:required-permission`.
+
+  Returns the parsed JSON map from the forced tool call. For access to the
+  full streamed trace (non-tool text), see
+  [[call-llm-structured-with-trace]]."
+  [provider-and-model messages json-schema temperature max-tokens opts]
+  (:result (call-llm-structured-with-trace
+            provider-and-model messages json-schema temperature max-tokens opts)))

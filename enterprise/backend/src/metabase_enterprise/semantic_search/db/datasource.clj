@@ -13,6 +13,8 @@
    (com.mchange.v2.c3p0 DataSources PooledDataSource)
    (java.net URLDecoder)
    (java.nio.charset StandardCharsets)
+   (java.sql Connection SQLException)
+   (java.util.concurrent Executor)
    (org.postgresql PGProperty)))
 
 (set! *warn-on-reflection* true)
@@ -191,6 +193,39 @@
         (throw e)))
     (throw (ex-info "Semantic search connection pool is not initialized. Call init-db! first." {}))))
 
+(def ^:private probe-timeout-params
+  "pgjdbc timeouts, in seconds, for the readiness probe, so a blackholed host can't block it forever."
+  {"connectTimeout" "5"
+   "socketTimeout"  "10"})
+
+(def ^:private probe-query-timeout-seconds
+  "Statement timeout for the readiness probe, for a server that accepts the query and never answers."
+  10)
+
+(defn- probe-jdbc-url
+  "The dedicated pgvector URL with [[probe-timeout-params]] applied.
+  These replace any timeouts on MB_PGVECTOR_DB_URL rather than deferring to them: an operator raises those
+  for long index builds, and a probe left waiting that long strands a thread and a server-side connection
+  every time it is abandoned -- interrupting it can't end a blocking socket read."
+  []
+  (let [[base pairs] (split-query (:jdbc-url (parsed-db-config)))
+        query        (concat (for [[k v] pairs
+                                   :when (not (probe-timeout-params k))]
+                               (str k "=" v))
+                             (for [[k v] probe-timeout-params]
+                               (str k "=" v)))]
+    (cond-> base
+      (seq query) (str "?" (str/join "&" query)))))
+
+(defn probe-dedicated-connection!
+  "Test the dedicated pgvector database, without initializing or borrowing its connection pool.
+  Always a one-shot connection: a pooled one carries the pool's timeouts, and waiting on a saturated pool
+  would read as an unreachable store."
+  []
+  (jdbc/execute-one! (jdbc/get-datasource {:jdbcUrl (probe-jdbc-url)})
+                     ["SELECT 1 AS test"]
+                     {:timeout probe-query-timeout-seconds}))
+
 (comment
   ;; docker-compose.yml
   (.doReset #'db-url "jdbc:postgres://localhost:55432/mb_semantic_search?user=postgres&password=postgres")
@@ -210,6 +245,12 @@
   re-query the catalog on every search and 20s indexer tick. Tests reset it."
   (atom nil))
 
+(def app-db-support-check-errored?
+  "Whether the last app-db pgvector support check failed to answer, rather than answering no.
+  Both outcomes read as unsupported, but only the second is a fact: the readiness probe uses this to report
+  that it couldn't find out instead of publishing a guess it would then sit on for an hour. Tests reset it."
+  (atom false))
+
 (def ^:private probe-cooldown-ms
   "How long an unsupported or failed app-db pgvector probe is trusted before re-probing.
   Long enough that a never-provisioned instance isn't running a rolled-back CREATE probe into its DDL audit
@@ -228,22 +269,105 @@
   (let [timer @probe-cooldown-timer]
     (or (nil? timer) (>= (u/since-ms timer) probe-cooldown-ms))))
 
+(def ^:private provisioning-denied-sql-states
+  "The SQLStates that answer the provisioning question with a no: this role may not create the pieces that
+  are missing, or this server cannot host them at all."
+  #{"42501"   ; insufficient_privilege -- the role lacks CREATE
+    "0A000"   ; feature_not_supported -- e.g. extension "vector" is not available on this server
+    "58P01"   ; undefined_file -- the extension's control file is missing from the installation
+    "42704"}) ; undefined_object
+
+(defn- exception-chain
+  "Every exception reachable from `e`, following causes and, for a SQLException, its next exception.
+  JDBC hangs sibling errors off the latter, which the usual cause walk never reaches, so the refusal can sit
+  a link off the path [[u/full-exception-chain]] takes."
+  [e]
+  (loop [pending [e], seen #{}, found []]
+    (if-let [^Throwable x (first pending)]
+      (if (seen x)
+        (recur (rest pending) seen found)
+        (recur (into (vec (rest pending))
+                     (remove nil?)
+                     [(.getCause x)
+                      (when (instance? SQLException x) (.getNextException ^SQLException x))])
+               (conj seen x)
+               (conj found x)))
+      found)))
+
+(defn- provisioning-denied?
+  "Whether `e` is the database refusing to provision, rather than failing to answer.
+  Anything else -- a statement timeout, a dropped connection, exhausted resources, interruption -- leaves
+  the question open, and reads as a denial only if we let it."
+  [e]
+  (boolean (some #(and (instance? SQLException %)
+                       (contains? provisioning-denied-sql-states (.getSQLState ^SQLException %)))
+                 (exception-chain e))))
+
+(def ^:private probe-network-timeout-ms
+  "Socket-level bound on a probe's reads, for a host that accepts the connection and then stops answering.
+  A statement timeout needs a working connection to carry the cancel, so it does nothing there; the readiness
+  probe cannot be interrupted out of a stuck read either, and one left in that state blocks every later
+  refresh for the life of the process."
+  (int (* 15 1000)))
+
+(def ^:private ^Executor same-thread-executor
+  "For [[java.sql.Connection/setNetworkTimeout]], which requires an executor but only runs bookkeeping on it."
+  (reify Executor
+    (execute [_ r] (.run ^Runnable r))))
+
+(defn- network-timeout
+  "The connection's network timeout, or nil where the driver has no opinion."
+  [^Connection conn]
+  (try
+    (.getNetworkTimeout conn)
+    (catch SQLException _ nil)))
+
+(defn- set-network-timeout!
+  [^Connection conn ^long timeout-ms]
+  (try
+    (.setNetworkTimeout conn same-thread-executor timeout-ms)
+    (catch SQLException _
+      ;; Unsupported, or the connection is already broken. Either way the statement timeouts still apply.
+      nil)))
+
+(defn- with-probe-connection
+  "Call `f` with an app-db connection whose reads are bounded by [[probe-network-timeout-ms]].
+  The bound is lifted again before check-in: this is a pooled connection, and c3p0 hands the same physical one
+  to whoever borrows it next, who is entitled to the app db's own patience -- a migration or a `copy-to-h2`
+  would fail in seconds under the probe's. Both calls are local to the socket, so neither can hang.
+  Check-in is therefore unbounded, which is the lesser problem: a connection whose read just timed out is
+  broken, and c3p0 destroys rather than reuses it."
+  [f]
+  (with-open [conn (jdbc/get-connection (mdb/data-source))]
+    (let [restore-to (network-timeout conn)]
+      (set-network-timeout! conn probe-network-timeout-ms)
+      (try
+        (f conn)
+        (finally
+          (when restore-to
+            (set-network-timeout! conn restore-to)))))))
+
 (defn- app-db-can-provision-pgvector?
   "Whether the app-db user can create whichever store pieces are still missing, checked without persisting
   them: the CREATEs run in a transaction that always rolls back.
   Attempts CREATE EXTENSION only when `create-extension?` and CREATE SCHEMA only when `create-schema?`, so
   an already-installed extension or existing schema needs no create privilege.
-  A privilege error reads as false."
-  [app-datasource create-extension? create-schema?]
+  A refusal reads as false; a check that never got that far throws, so the caller can tell the two apart."
+  [conn create-extension? create-schema?]
   (try
-    (jdbc/with-transaction [tx app-datasource {:rollback-only true}]
+    (jdbc/with-transaction [tx conn {:rollback-only true}]
       (when create-extension?
-        (jdbc/execute! tx ["CREATE EXTENSION IF NOT EXISTS vector"]))
+        (jdbc/execute! tx ["CREATE EXTENSION IF NOT EXISTS vector"]
+                       {:timeout probe-query-timeout-seconds}))
       (when create-schema?
-        (jdbc/execute! tx [(str "CREATE SCHEMA IF NOT EXISTS " (quoted/postgres app-db-schema))])))
+        (jdbc/execute! tx [(str "CREATE SCHEMA IF NOT EXISTS " (quoted/postgres app-db-schema))]
+                       {:timeout probe-query-timeout-seconds})))
     true
     (catch Exception e
-      (log/debug e "Semantic search: the application database user cannot provision the pgvector store")
+      (when-not (provisioning-denied? e)
+        (throw e))
+      (log/debugf "Semantic search: the application database user cannot provision the pgvector store: %s"
+                  (ex-message e))
       false)))
 
 (defn check-app-db-pgvector-support
@@ -254,27 +378,41 @@
   pg_available_extensions: managed Postgres often lists the extension as available while denying the DDL.
   The probe persists nothing, so the unlicensed and disabled instances whose availability predicates reach
   here never mutate the app db; the persisted CREATE EXTENSION / CREATE SCHEMA run only on the activation
-  path ([[metabase-enterprise.semantic-search.pgvector-api/init-semantic-search!]])."
+  path ([[metabase-enterprise.semantic-search.pgvector-api/init-semantic-search!]]).
+  Runs on one [[with-probe-connection]], so a host that stops answering ends the check instead of stranding
+  the readiness probe, which cannot be interrupted out of a stuck read."
   []
-  (let [app-datasource (mdb/data-source)
-        ;; The schema_exists SQL alias reads information_schema.schemata (privilege-filtered), not
-        ;; pg_namespace. It answers "a semantic_search schema this role can use exists", not mere catalog
-        ;; presence: a schema the app-db role lacks USAGE on reads as absent, so the store degrades to
-        ;; unavailable rather than passing here and crashing later when init creates tables it can't write.
-        {:keys [installed available schema-exists]}
-        (jdbc/execute-one! app-datasource
-                           [(str "SELECT"
-                                 " EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS installed,"
-                                 " EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') AS available,"
-                                 " EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = ?) AS schema_exists")
-                            app-db-schema]
-                           {:builder-fn jdbc.rs/as-unqualified-kebab-maps})]
-    (cond
-      (not (or installed available)) false
-      (and installed schema-exists)  true
-      :else                          (app-db-can-provision-pgvector? app-datasource
-                                                                     (not installed)
-                                                                     (not schema-exists)))))
+  (with-probe-connection
+    (fn [conn]
+      ;; The schema_exists SQL alias reads information_schema.schemata (privilege-filtered), not
+      ;; pg_namespace. It answers "a semantic_search schema this role can use exists", not mere catalog
+      ;; presence: a schema the app-db role lacks USAGE on reads as absent, so the store degrades to
+      ;; unavailable rather than passing here and crashing later when init creates tables it can't write.
+      (let [{:keys [installed available schema-exists]}
+            (jdbc/execute-one! conn
+                               [(str "SELECT"
+                                     " EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS installed,"
+                                     " EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') AS available,"
+                                     " EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = ?) AS schema_exists")
+                                app-db-schema]
+                               {:builder-fn jdbc.rs/as-unqualified-kebab-maps
+                                :timeout    probe-query-timeout-seconds})]
+        (cond
+          (not (or installed available)) false
+          (and installed schema-exists)  true
+          :else                          (app-db-can-provision-pgvector? conn
+                                                                         (not installed)
+                                                                         (not schema-exists)))))))
+
+(defn probe-app-db-store!
+  "Whether the app db is a usable pgvector store right now: it answers, and it can still host the store.
+  Uncached, so an extension dropped under a running instance shows up despite [[app-db-pgvector-support]]
+  latching true.
+  Asks [[check-app-db-pgvector-support]], the same question [[pgvector-mode]] selects `:app-db` on, so the
+  two can't disagree. Demanding an installed extension instead would report every instance that has not
+  activated semantic search yet -- where nothing has run `CREATE EXTENSION` -- as permanently unreachable."
+  []
+  (check-app-db-pgvector-support))
 
 (defn- app-db-pgvector-supported?
   "Whether the application database can act as the pgvector store, via a cached probe.
@@ -300,6 +438,9 @@
                                 " (MB_PGVECTOR_DB_URL is not set). Set it if this instance should use a"
                                 " dedicated pgvector database."))
                  (reset! app-db-pgvector-support true)
+                 ;; Outcome before cooldown, always: a reader takes neither under the lock, and one that
+                 ;; saw the new cooldown beside the previous outcome would trust a result we just replaced.
+                 (reset! app-db-support-check-errored? false)
                  (reset! probe-cooldown-timer nil)
                  true)
                (do
@@ -308,12 +449,15 @@
                                   " app-db user cannot create the vector extension or the semantic_search"
                                   " schema). Install pgvector and grant CREATE, or set MB_PGVECTOR_DB_URL;"
                                   " it is picked up automatically, no restart needed.")))
+                 (reset! app-db-support-check-errored? false)
                  (reset! probe-cooldown-timer (u/start-timer))
                  false))
              (catch Exception e
+               (reset! app-db-support-check-errored? true)
                (reset! probe-cooldown-timer (u/start-timer))
-               (log/warn e (str "Semantic search: pgvector support check on the application database failed;"
-                                " will retry after the cooldown."))
+               (log/warn (str "Semantic search: pgvector support check on the application database failed;"
+                              " will retry after the cooldown:")
+                         (ex-message e))
                false))))))))
 
 (defn pgvector-mode

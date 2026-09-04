@@ -171,6 +171,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_metabot_source_feedback_message_id
+                foreignKeyTableName: metabot_source_feedback
       changes:
         - addForeignKeyConstraint:
             baseTableName: metabot_source_feedback

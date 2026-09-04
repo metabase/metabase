@@ -2,12 +2,11 @@ import cx from "classnames";
 import { c, t } from "ttag";
 
 import { getCurrentVersion } from "metabase/admin/app/selectors";
-import { useGetVersionInfoQuery } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
-import { Tabs } from "metabase/ui";
+import { useGetVersionInfoQuery } from "metabase/settings";
+import { Button, Tabs } from "metabase/ui";
 import { newVersionAvailable, versionIsLatest } from "metabase/utils/version";
 
 import S from "./VersionUpdateNotice.module.css";
@@ -82,13 +81,12 @@ function NewVersionAvailable({
         <span className={cx(CS.textWhite, CS.textBold)}>
           {t`Metabase ${formatVersion(latestVersion)} is available. You're running ${currentVersion}.`}
         </span>
-        <ExternalLink
-          className={cx(
-            ButtonsS.Button,
-            ButtonsS.ButtonWhite,
-            ButtonsS.ButtonMedium,
-            CS.borderless,
-          )}
+        <Button
+          className={S.updateButton}
+          component={ExternalLink}
+          flex="0 0 auto"
+          ml="sm"
+          size="sm"
           href={
             "https://www.metabase.com/docs/" +
             latestVersion +
@@ -96,7 +94,7 @@ function NewVersionAvailable({
           }
         >
           {t`Update`}
-        </ExternalLink>
+        </Button>
       </div>
     </div>
   );
@@ -109,7 +107,7 @@ export function NewVersionInfo() {
   );
 
   return (
-    <Tabs mt="md" defaultValue="whats-new">
+    <Tabs mt="lg" defaultValue="whats-new">
       <Tabs.List>
         <Tabs.Tab value="whats-new">{t`What's new`}</Tabs.Tab>
         <Tabs.Tab value="changelog">{t`Changelog`}</Tabs.Tab>

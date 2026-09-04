@@ -73,7 +73,6 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
                       {:type ::malformed-chart-config, :series series-name})))))
 
 (mu/defn ^{:tool-name "analyze_chart"
-           :prompt    "analyze_chart"
            :scope     scope/agent-viz-read}
   analyze-chart-tool
   "Compute statistics and generate analysis context for a chart.
@@ -102,5 +101,5 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
       {:output (str "Chart config not found: " chart_config_id
                     ". Available chart configs can be found in the viewing context.")})
     (catch Exception e
-      (log/error e "Error analyzing chart")
+      (log/errorf "Error analyzing chart: %s" (ex-message e))
       {:output (str "Failed to analyze chart: " (or (ex-message e) "Unknown error"))})))

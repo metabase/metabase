@@ -3,14 +3,16 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time.api :as t]
+   [metabase.health-inspector.db :as health-inspector.db]
    [metabase.health-inspector.settings :as setting]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as schema]
    [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,7 +31,7 @@
 (defn ^:internal validate-queries
   "Determine how many saved queries are valid according to the malli schema."
   []
-  (let [queries (t2/reducible-select :report_card {:where [:= :archived false]})
+  (let [queries (health-inspector.db/unarchived-cards-reducible)
         {:keys [total valid]} (reduce validate-query {:total 0 :valid 0} queries)
         ratio (if (zero? total)
                 1
@@ -42,29 +44,95 @@
 (defonce ^:private checks (atom {:validate-queries validate-queries}))
 
 (defn register-check!
-  "Register a new check function with a given name.
-  Check functions take no args and return a map with a :health ratio and :description string."
+  "Register check `check-fn` under `name`.
+  A check takes no args and returns `{:health <int 0-100>, :message <string>}`, or nil when it doesn't
+  apply on this instance."
   [name check-fn]
   (swap! checks assoc name check-fn))
 
+(defn enabled?
+  "Whether the health inspector is enabled -- the master switch for persisting runs. Metric emitters that also
+  feed Prometheus (independent of this setting) use it to gate only their appdb persistence."
+  []
+  (setting/health-inspector-enabled))
+
+(defn- run-check
+  "Run one check in isolation. Ordinary failures read as degraded; interruption and fatal errors propagate."
+  [check-name f]
+  (try
+    (f)
+    (catch InterruptedException e
+      (throw e))
+    (catch Exception e
+      (log/error "Health check errored" {:check check-name} (ex-message e))
+      {:health 0, :message (str "Health check errored: " (ex-message e))})))
+
 (defn report
-  "Run all registered checks and produce a report describing potential problems."
+  "Run all registered checks and produce a report describing potential problems.
+  Each check is isolated, so one that throws doesn't lose the others' results."
   []
   (into {} (for [[name f] @checks]
-             [name (f)])))
+             [name (run-check name f)])))
+
+(defn- persist-check-result!
+  "Persist one check result, or nothing when `result` is nil.
+  A nil result marks a check as not applicable on this instance, so it is omitted rather than recorded as
+  a misleading healthy score."
+  [check-name result]
+  (when (some? result)
+    (health-inspector.db/insert-run! (-> result
+                                         (select-keys [:health :message])
+                                         (assoc :check_name (name check-name))))))
+
+(def ^:private run-retention-days
+  "Days of health-inspector runs to keep. Metric checks embed changing values (coverage %, ages) in their
+  `:message`, so dedup can't collapse them and the table would grow unbounded without pruning."
+  30)
+
+(defn- delete-old-runs!
+  "Delete health-inspector runs older than [[run-retention-days]]."
+  []
+  (health-inspector.db/delete-runs-before! (t/minus (t/offset-date-time) (t/days run-retention-days))))
 
 (defn save-report
-  "Run a health inspector report and save it to the DB."
+  "Run every registered check and persist the results (not-applicable (nil) checks are omitted), then prune
+  runs past the retention window."
   []
   (doseq [[check-name result] (report)]
-    (t2/insert! :health_inspector_runs (-> result
-                                           (select-keys [:health :message])
-                                           (assoc :check_name (name check-name))))))
+    (persist-check-result! check-name result))
+  (delete-old-runs!))
+
+(defn- latest-run
+  [check-name]
+  (health-inspector.db/latest-run (name check-name)))
+
+(defn save-check-result!
+  "Persist a precomputed check `result` (a `{:health :message}` map, or nil to skip). Skip the write when the
+  check's most recent result is unchanged. This is a best-effort optimization, not cross-node coordination.
+  Does NOT gate on `health-inspector-enabled` -- callers that emit results outside a check run (e.g. a
+  metric refresh that also feeds Prometheus) gate themselves."
+  [check-name result]
+  (when (some? result)
+    (let [prev (latest-run check-name)]
+      (when-not (and prev
+                     (= (:health prev) (:health result))
+                     (= (:message prev) (:message result)))
+        (persist-check-result! check-name result)))))
+
+(defn run-and-save-check!
+  "Run one registered check by name and persist its result, so a change can be surfaced immediately rather
+  than at the next daily report.
+  A no-op unless the health inspector is enabled and the named check is registered and applicable (non-nil).
+  Uses [[save-check-result!]] to avoid writing unchanged results in the usual single-caller case."
+  [check-name]
+  (when (enabled?)
+    (when-let [f (get @checks check-name)]
+      (save-check-result! check-name (run-check check-name f)))))
 
 (defn list-runs
   "Return the most recent health inspector runs from the DB."
   [limit]
-  (t2/select :health_inspector_runs {:limit limit :order-by [[:run_at :desc]]}))
+  (health-inspector.db/latest-runs limit))
 
 (task/defjob ^:private ^{org.quartz.DisallowConcurrentExecution true} SaveReport [_]
   (when (setting/health-inspector-enabled)

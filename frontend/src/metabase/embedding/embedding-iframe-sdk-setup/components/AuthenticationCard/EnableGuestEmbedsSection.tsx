@@ -2,8 +2,8 @@ import { useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { useUpdateSettingsMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
+import { useUpdateSettingsMutation } from "metabase/settings";
 import { Anchor, Button, Group, Icon, Stack, Text } from "metabase/ui";
 
 import { UsageConditionsInfoIcon } from "./UsageConditionsInfoIcon";
@@ -79,7 +79,13 @@ export const EnableGuestEmbedsSection = ({
   }
 
   return (
-    <Stack gap={0} pl="xl" data-testid="enable-embedding-card" mt="xs" mb="sm">
+    <Stack
+      gap={0}
+      pl="xxl"
+      data-testid="enable-embedding-card"
+      mt="xxs"
+      mb="sm"
+    >
       <Text fz="md" c="text-primary">
         {title}
 
@@ -90,7 +96,7 @@ export const EnableGuestEmbedsSection = ({
         )}
       </Text>
 
-      <Group justify="flex-start" mt="xs">
+      <Group justify="flex-start" mt="xxs">
         <Button
           variant={isAccepted ? "default" : "filled"}
           onClick={handleEnable}

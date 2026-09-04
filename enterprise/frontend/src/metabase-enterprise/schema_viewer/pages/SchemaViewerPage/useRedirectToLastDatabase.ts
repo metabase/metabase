@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { useDispatch } from "metabase/redux";
-import { replace } from "metabase/router";
+import { useUserKeyValue } from "metabase/current-user";
+import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { DatabaseId } from "metabase-types/api";
 
@@ -24,7 +23,7 @@ export function useRedirectToLastDatabase({
   databaseId,
   schema,
 }: UseRedirectToLastDatabaseArgs) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const {
     value: lastDatabase,
@@ -68,7 +67,7 @@ export function useRedirectToLastDatabase({
           databaseId: lastDatabase.databaseId,
           schema: lastDatabase.schema,
         });
-        dispatch(replace(url));
+        navigate(url, { replace: true });
       }
     }
     // Mark as "redirected" even if we didn't redirect (no saved db or db
@@ -82,7 +81,7 @@ export function useRedirectToLastDatabase({
     hasDbSelected,
     lastDatabase,
     databases,
-    dispatch,
+    navigate,
   ]);
 
   // Save current database/schema as last opened.

@@ -23,7 +23,7 @@
                  (or (nil? last-known)
                      (try (pos? (compare cookie-timestamp last-known))
                           (catch Exception _e
-                            (log/infof "Strange premium features cookie value: %s" cookie-timestamp)
+                            (log/info "Strange premium features cookie value")
                             false))))
         (log/info "Premium features cookie indicates cache is out of date. Clearing...")
         (premium-features/clear-cache!)

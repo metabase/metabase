@@ -1,4 +1,4 @@
-import { Link, type LinkProps } from "metabase/router";
+import { Link, type LinkProps } from "metabase/common/components/Link";
 import { Box, Flex, Text, Title } from "metabase/ui";
 
 import S from "./NewModelOption.module.css";
@@ -24,7 +24,7 @@ export function NewModelOption({
       <Flex align="center" justify="center" h="10rem">
         <img src={`${image}.png`} srcSet={`${image}@2x.png 2x`} width={width} />
       </Flex>
-      <Box my="md">
+      <Box my="lg">
         <Title order={2} className={S.modelTitle}>
           {title}
         </Title>

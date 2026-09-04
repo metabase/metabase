@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { FixedSizeIcon } from "metabase/ui";
 
 export function TimezoneIndicator() {

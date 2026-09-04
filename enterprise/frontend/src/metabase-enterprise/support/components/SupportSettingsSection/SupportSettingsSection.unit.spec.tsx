@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
 import {
@@ -7,6 +6,7 @@ import {
   setupListAccessGrantsEndpointWithError,
 } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import { Route } from "metabase/router";
 import { createMockAccessGrant } from "metabase-types/api/mocks";
 
@@ -16,13 +16,13 @@ import { SupportSettingsSection } from "./SupportSettingsSection";
 const setup = () => {
   return renderWithProviders(
     <>
-      <Route path="/admin/tools/help" element={<SupportSettingsSection />} />
+      <Route path="/admin/help" element={<SupportSettingsSection />} />
       <Route
-        path="/admin/tools/help/grant-access"
+        path="/admin/help/grant-access"
         element={<GrantAccessModal onClose={jest.fn()} />}
       />
     </>,
-    { withRouter: true, initialRoute: "/admin/tools/help" },
+    { withRouter: true, initialRoute: "/admin/help" },
   );
 };
 

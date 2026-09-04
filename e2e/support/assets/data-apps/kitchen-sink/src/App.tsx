@@ -3,6 +3,7 @@ import {
   StaticQuestion,
   useAction,
 } from "@metabase/embedding-sdk-react";
+import type { MetabaseQueryOptions } from "@metabase/embedding-sdk-react/data-app";
 import {
   aggregations,
   breakout,
@@ -113,6 +114,43 @@ function QueryStates() {
   );
 }
 
+function DownloadQuestionPage() {
+  const { downloadQuestionId } = getTestEnv();
+
+  return (
+    <div data-testid="data-app-download-question" style={{ padding: 24 }}>
+      <h1>Download question</h1>
+      <div style={{ height: 360 }}>
+        {downloadQuestionId != null ? (
+          <StaticQuestion questionId={downloadQuestionId} withDownloads />
+        ) : (
+          <div data-testid="download-question-loading">…</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// An InteractiveQuestion on a single-column (count) query, so a spec can switch it
+// to a custom viz — the example `demo-viz` requires exactly one result column.
+function CustomVizPage() {
+  const { scalarQuery } = getTestEnv();
+  const q = useMetabaseQueryObject(scalarQuery);
+
+  return (
+    <div data-testid="data-app-custom-viz" style={{ padding: 24 }}>
+      <h1>Custom viz</h1>
+      <div style={{ height: 360 }}>
+        {q.query ? (
+          <InteractiveQuestion card={{ query: q.query }} />
+        ) : (
+          <div data-testid="custom-viz-loading">…</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function StaticQuestionPage() {
   const { questionQuery } = getTestEnv();
   const q = useMetabaseQueryObject(questionQuery);
@@ -126,6 +164,34 @@ function StaticQuestionPage() {
         ) : (
           <div data-testid="static-question-loading">…</div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Data apps may not run native SQL: the backend rejects native queries from the
+// `data-app` client. The `card` prop takes a raw query with no native/structured
+// check, so this page hand-builds a native query to prove the backend refuses it.
+function NativeQueryPage() {
+  const { nativeQuery } = getTestEnv();
+
+  if (!nativeQuery) {
+    return <div data-testid="data-app-native-query">no-native-query-env</div>;
+  }
+
+  return (
+    <div data-testid="data-app-native-query" style={{ padding: 24 }}>
+      <h1>Native query</h1>
+      <div style={{ height: 360 }}>
+        <StaticQuestion
+          card={{
+            query: {
+              type: "native",
+              database: nativeQuery.database,
+              native: { query: nativeQuery.query },
+            },
+          }}
+        />
       </div>
     </div>
   );
@@ -158,6 +224,130 @@ function Combinators() {
     </div>
   );
 }
+
+/**
+ * A saved question used as a query source, with clauses applied on top of it.
+ * Each case runs the same clauses against the table and against a question that
+ * copies it; agreeing results are the assertion, so the spec never has to encode
+ * sample-database numbers.
+ */
+function CardSource() {
+  const {
+    source,
+    tableSource,
+    filterField,
+    filterColumn,
+    filterValue,
+    breakoutField,
+    breakoutColumn,
+  } = getTestEnv().cardSource!;
+
+  const countAgg = aggregations.count();
+
+  return (
+    <div data-testid="data-app-card-source" style={{ padding: 24 }}>
+      <h1>Card source</h1>
+
+      <CardSourceCase
+        caseKey="source"
+        tableQuery={{ source: tableSource, aggregations: [countAgg] }}
+        cardQuery={{ source, aggregations: [countAgg] }}
+        totalTestId="card-source-total"
+      />
+
+      <CardSourceCase
+        caseKey="filters"
+        tableQuery={{
+          source: tableSource,
+          filters: [filter(filterField, ">", filterValue)],
+          aggregations: [countAgg],
+        }}
+        cardQuery={{
+          source,
+          filters: [filter(filterColumn, ">", filterValue)],
+          aggregations: [countAgg],
+        }}
+      />
+
+      <CardSourceCase
+        caseKey="aggregations"
+        tableQuery={{
+          source: tableSource,
+          filters: [filter(filterField, ">", filterValue)],
+          aggregations: [countAgg, aggregations.sum(filterField)],
+        }}
+        cardQuery={{
+          source,
+          filters: [filter(filterColumn, ">", filterValue)],
+          aggregations: [countAgg, aggregations.sum(filterColumn)],
+        }}
+      />
+
+      <CardSourceCase
+        caseKey="breakouts"
+        tableQuery={{
+          source: tableSource,
+          filters: [filter(filterField, ">", filterValue)],
+          aggregations: [countAgg],
+          breakouts: [breakout(breakoutField)],
+          orderBys: [orderBy(breakoutField, "asc")],
+        }}
+        cardQuery={{
+          source,
+          filters: [filter(filterColumn, ">", filterValue)],
+          aggregations: [countAgg],
+          breakouts: [breakout(breakoutColumn)],
+          orderBys: [orderBy(breakoutColumn, "asc")],
+        }}
+      />
+    </div>
+  );
+}
+
+function CardSourceCase({
+  caseKey,
+  tableQuery,
+  cardQuery,
+  totalTestId,
+}: {
+  caseKey: string;
+  tableQuery: MetabaseQueryOptions<undefined>;
+  cardQuery: MetabaseQueryOptions<undefined>;
+  totalTestId?: string;
+}) {
+  const fromTable = useMetabaseQuery(tableQuery);
+  const fromCard = useMetabaseQuery(cardQuery);
+
+  const failure = fromTable.error ?? fromCard.error;
+  const tableResult = describeResult(fromTable.data);
+  const cardResult = describeResult(fromCard.data);
+
+  const status = failure
+    ? `error: ${describeError(failure)}`
+    : tableResult === null || cardResult === null
+      ? "loading"
+      : tableResult === cardResult
+        ? "match"
+        : `mismatch: table=${tableResult} card=${cardResult}`;
+
+  return (
+    <div>
+      <div data-testid={`card-source-case-${caseKey}`}>{status}</div>
+      {totalTestId && (
+        <div data-testid={totalTestId}>
+          {String(fromCard.data?.rawRows?.[0]?.[0] ?? "")}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Column names plus every row value, by position — comparable across sources. */
+const describeResult = (
+  data: { columns: { name: string }[]; rawRows: unknown[][] } | null,
+): string | null =>
+  data &&
+  `[${data.columns.map((column) => column.name).join(",")}] ${JSON.stringify(data.rawRows)}`;
 
 function Actions() {
   const { actionId, actionParams } = getTestEnv();
@@ -383,7 +573,11 @@ const ROUTES: Record<string, ComponentType> = {
   "/isolation": Isolation,
   "/query-states": QueryStates,
   "/static-question": StaticQuestionPage,
+  "/native-query": NativeQueryPage,
+  "/download-question": DownloadQuestionPage,
+  "/custom-viz": CustomVizPage,
   "/combinators": Combinators,
+  "/card-source": CardSource,
   "/actions": Actions,
   "/clipboard": Clipboard,
   "/missing-question": MissingQuestion,

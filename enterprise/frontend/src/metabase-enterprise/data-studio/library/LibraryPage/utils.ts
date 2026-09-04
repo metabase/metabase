@@ -1,7 +1,17 @@
+import { msgid, ngettext } from "ttag";
+
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { isEmptyStateData } from "metabase/data-studio/common/utils";
 import * as Urls from "metabase/urls";
 import type { Collection, CollectionType } from "metabase-types/api";
+
+export function getArchiveLibraryCollectionsMessage(count: number): string {
+  return ngettext(
+    msgid`Archiving this collection will also unpublish the tables inside it (and any tables that depend on them) and archive any other child items.`,
+    `Archiving these collections will also unpublish the tables inside them (and any tables that depend on them) and archive any other child items.`,
+    count,
+  );
+}
 
 export function getAccessibleCollection(
   rootCollection: Collection,

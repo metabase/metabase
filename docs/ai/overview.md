@@ -7,8 +7,6 @@ summary: Overview of all the ways you can use AI with Metabase.
 
 AI in Metabase is optional. You can use Metabase without AI at all. But if you do want to use AI to interact with Metabase, we have you covered.
 
-> To learn how to use the Metabase MCP server and CLI for AI data exploration, [register for our free MCP and CLI workshop](https://www.metabase.com/events/workshop-metabase-mcp-cli).
-
 Here are the different ways to use AI with Metabase:
 
 - [Metabot](#metabot)
@@ -19,18 +17,18 @@ Here are the different ways to use AI with Metabase:
 
 **Best for: daily tasks in Metabase; granular control over people's AI usage.**
 
-Metabot is Metabase's built-in AI agent. Metabot can help you with most daily tasks around Metabase, like answering questions about your data, creating queries, generating SQL code, explaining charts, or creating Documents. If you're embedding Metabase into your product, you can get the Metabot agent through the [AI chat component](../embedding/components.md#ai-chat). See [non-exhaustive list of things Metabot can do](metabot.md#what-metabot-can-do), as well as its [limitations](metabot.md#current-limitations).
+Metabot is Metabase's built-in AI agent. Metabot can help you with most daily tasks around Metabase, like answering questions about your data, creating queries, generating SQL code, explaining charts, or creating Documents. If you're embedding Metabase into your product, you can get the Metabot agent through the [AI chat component](../embedding/ai-chat.md). See a [non-exhaustive list of things Metabot can do](metabot.md#what-metabot-can-do), as well as its [limitations](metabot.md#current-limitations).
 
 **Controls:** Metabot will only see what the person using it can see. Metabot also comes with additional permission controls and usage limits so that you control who can use which Metabot tools (e.g. chat vs SQL generation) and how many tokens they can spend.
 
 **Provider**: Choose from:
 
-- Metabase's own AI Service (available as an add-on exclusively for Metabase Cloud)
+- Metabase's own AI service (available as an add-on exclusively for Metabase Cloud)
 - Third-party models via your own [provider API key](settings.md#bring-your-own-api-key)
 
-**Plans**: available on all plans. You can only use Metabase's AI Service on Metabase Cloud.
+**Plans**: available on all plans. You can only use Metabase's AI service on Metabase Cloud.
 
-See [full docs for Metabot](metabot.md) and [embedded AI chat](../embedding/components.md#ai-chat).
+See [full docs for Metabot](metabot.md) and [embedded AI chat](../embedding/ai-chat.md).
 
 ## MCP server
 

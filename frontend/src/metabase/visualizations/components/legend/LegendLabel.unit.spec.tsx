@@ -1,8 +1,8 @@
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent } from "@testing-library/react";
 import type { ComponentProps } from "react";
 
-import { screen } from "__support__/ui";
-import { Route, Router, createMemoryHistory } from "metabase/router";
+import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 
 import { LegendLabel } from "./LegendLabel";
 
@@ -12,45 +12,43 @@ describe("LegendLabel", () => {
     const onFocus = jest.fn();
     const onMouseEnter = jest.fn();
 
-    const history = createMemoryHistory();
-
-    render(
-      <Router history={history}>
-        <Route
-          path="/"
-          element={
-            <LegendLabel
-              href="#hello"
-              onClick={onClick}
-              onFocus={onFocus}
-              onMouseEnter={onMouseEnter}
-              {...props}
-            >
-              Test
-            </LegendLabel>
-          }
-        />
-      </Router>,
+    const { router } = renderWithProviders(
+      <Route
+        path="/"
+        element={
+          <LegendLabel
+            href="#hello"
+            onClick={onClick}
+            onFocus={onFocus}
+            onMouseEnter={onMouseEnter}
+            {...props}
+          >
+            Test
+          </LegendLabel>
+        }
+      />,
+      { withRouter: true, initialRoute: "/" },
     );
 
-    return { history, onClick, onFocus, onMouseEnter };
+    return { router, onClick, onFocus, onMouseEnter };
   };
 
   it("should be a link when onClick is defined", () => {
     const { onClick } = setup();
 
-    expect(screen.getByText("Test")).toHaveAttribute("href", "#hello");
+    // A hash-only target resolves against the current pathname.
+    expect(screen.getByText("Test")).toHaveAttribute("href", "/#hello");
 
     fireEvent.click(screen.getByText("Test"));
     expect(onClick).toHaveBeenCalled();
   });
 
   it("should not be a link when onClick is not defined", () => {
-    const { history } = setup({ onClick: undefined });
+    const { router } = setup({ onClick: undefined });
 
     expect(screen.getByText("Test")).not.toHaveAttribute("href");
     fireEvent.click(screen.getByText("Test"));
-    expect(history.getCurrentLocation().pathname).toBe("/");
-    expect(history.getCurrentLocation().hash).toBe("");
+    expect(router?.location.pathname).toBe("/");
+    expect(router?.location.hash).toBe("");
   });
 });

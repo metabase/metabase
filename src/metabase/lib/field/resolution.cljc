@@ -119,10 +119,10 @@
       (if <>
         (log/debugf "Found match %s"
                     (pr-str (select-keys <> [:id :lib/desired-column-alias :lib/deduplicated-name])))
-        (log/debugf "Failed to find match for %s. Found:\n%s"
+        (log/debugf "Failed to find match for %s. Found: %s"
                     (pr-str id-or-name)
-                    (u/pprint-to-str (map #(select-keys % [:id :lib/desired-column-alias :lib/deduplicated-name])
-                                          previous-stage-cols)))))))
+                    (pr-str (map #(select-keys % [:id :lib/desired-column-alias :lib/deduplicated-name])
+                                 previous-stage-cols)))))))
 
 (def ^:private opts-propagated-keys
   "Keys to copy non-nil values directly from `:field` opts into column metadata."
@@ -259,14 +259,22 @@
       (:qp/stage-had-source-card stage)
       (let [card-id (:qp/stage-had-source-card stage)]
         (when-some [card (lib.metadata/card query card-id)]
-          (when-some [card-cols (not-empty (cond->> (lib.metadata.calculation/returned-columns query card)
-                                             ;; if we have `id` then filter out anything that is definitely not a
-                                             ;; match
-                                             (:id col) (filter #(= (:id %) (:id col)))))]
-            ;; prefer resolution with `:lib/source-column-alias` over `:id` if we have it because it will be
-            ;; unique/unambiguous if multiple versions of the column (e.g. with different bucketing units) are
-            ;; returned
-            (when-some [col (resolve-in-previous-stage-returned-columns-and-update-keys query card-cols (:lib/source-column-alias col))]
+          (when-some [potential-card-cols (not-empty (cond->> (lib.metadata.calculation/returned-columns query card)
+                                                       ;; if we have `id` then filter out anything that is definitely
+                                                       ;; not a match
+                                                       (:id col) (filter #(= (:id %) (:id col)))))]
+            ;; prefer resolution with `:lib/source-column-alias` over `:id` if multiple versions of the column (e.g.
+            ;; with different bucketing units) are returned. If there's only one match then use ID for resolution. On
+            ;; very old saved Card source metadata `:lib/source-column-alias` might be set to something like `ID_2`
+            ;; rather than `Products__ID` so, matching on it is not as reliable as `:id`, which has been around since
+            ;; the dawn of human history.
+            (when-some [col (let [resolution-key (if (and (:id col)
+                                                          (= (count potential-card-cols) 1))
+                                                   :id
+                                                   :lib/source-column-alias)]
+                              (resolve-in-previous-stage-returned-columns-and-update-keys query
+                                                                                          potential-card-cols
+                                                                                          (resolution-key col)))]
               (let [col             (assoc col :lib/source :source/card, :lib/card-id card-id)
                     model?          (= (:type card) :model)
                     col             (cond-> col
@@ -515,10 +523,10 @@
                    (m/find-first #(= (:id %) id-or-name) current-stage-metadata-columns))
           (if <>
             (log/debugf "Found match: %s" (pr-str (select-keys <> [:id :lib/source-column-alias :lib/deduplicated-name])))
-            (log/debugf "Failed to find match for %s. Found:\n%s"
+            (log/debugf "Failed to find match for %s. Found: %s"
                         (pr-str id-or-name)
-                        (u/pprint-to-str (map #(select-keys % [:id :lib/source-column-alias :lib/deduplicated-name])
-                                              current-stage-metadata-columns)))))))))
+                        (pr-str (map #(select-keys % [:id :lib/source-column-alias :lib/deduplicated-name])
+                                     current-stage-metadata-columns)))))))))
 
 (mu/defn- resolve-in-source-card-metadata :- [:maybe ::lib.metadata.calculation/visible-column]
   [query        :- ::lib.schema/query

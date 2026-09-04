@@ -1,25 +1,29 @@
 import { useMemo } from "react";
 
 import { MetricCardVisualization } from "metabase/common/data-studio/components/OverviewVisualization";
-import { useCardQueryData } from "metabase/common/data-studio/hooks/use-card-query-data";
 import { Box, Stack } from "metabase/ui";
 import {
   TrendInfo,
   useTrendData,
 } from "metabase/visualizations/components/TrendInfo";
-import type { Card } from "metabase-types/api";
+import type { Card, Dataset } from "metabase-types/api";
 
 import S from "./MetricAbout.module.css";
 
 interface AboutVisualizationProps {
   card: Card;
+  data: Dataset | undefined;
+  isLoading: boolean;
 }
 
 const DATE_COLUMN_INDEX = 0;
 const METRIC_COLUMN_INDEX = 1;
 
-export function AboutVisualization({ card }: AboutVisualizationProps) {
-  const { data, isLoading } = useCardQueryData(card);
+export function AboutVisualization({
+  card,
+  data,
+  isLoading,
+}: AboutVisualizationProps) {
   const trendData = useTrendData(data, DATE_COLUMN_INDEX, METRIC_COLUMN_INDEX);
 
   const lineCard = useMemo(
@@ -30,7 +34,7 @@ export function AboutVisualization({ card }: AboutVisualizationProps) {
   return (
     <Stack gap={0} h="100%" className={S.visualizationPanel}>
       {trendData && (
-        <Box p="xl" pb="sm" data-testid="metric-value-preview">
+        <Box p="xxl" pb="sm" data-testid="metric-value-preview">
           <TrendInfo {...trendData} />
         </Box>
       )}

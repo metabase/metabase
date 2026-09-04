@@ -4,13 +4,13 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.request.core :as request]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.time Instant)
    (java.util Date)
@@ -32,12 +32,12 @@
 
 (defn- generate-suggested-prompts-for-metabot! [config-id]
   (let [metabot-eid (get-in metabot.config/metabot-config [config-id :entity-id])
-        metabot-id  (t2/select-one-pk :model/Metabot :entity_id metabot-eid)]
+        metabot-id  (metabot.db/metabot-id-by-entity-id metabot-eid)]
     (cond
       (nil? metabot-id)
       (log/warnf "No Metabot instance found for %s. Skipping suggested prompt generation." config-id)
 
-      (pos? (t2/count :model/MetabotPrompt :metabot_id metabot-id))
+      (pos? (metabot.db/prompt-count-for-metabot metabot-id))
       (log/infof "Suggested prompts are present for %s. Not generating." config-id)
 
       :else
@@ -64,7 +64,8 @@
         (request/as-admin
           (run! generate-suggested-prompts-for-metabot! config-ids))))
     (catch Exception e
-      (log/errorf "Suggested prompts generation failed: %s" (.getMessage e)))))
+      (when-not (= :api-key-missing (:error-code (ex-data e)))
+        (log/errorf "Suggested prompts generation failed: %s" (.getMessage e))))))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Initial _suggested prompts_ generation for the enabled built-in Metabot instances."}

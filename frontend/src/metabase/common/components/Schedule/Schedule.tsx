@@ -2,13 +2,10 @@ import cx from "classnames";
 import { type HTMLAttributes, useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { c } from "ttag";
-import _ from "underscore";
 
 import { CronExpressionInput } from "metabase/common/components/CronExpressioInput";
 import { Box, Flex, type FlexProps } from "metabase/ui";
 import { formatCronExpressionForUI } from "metabase/utils/cron";
-import { removeNullAndUndefinedValues } from "metabase/utils/types";
-import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
 import {
   GROUP_ATTRIBUTES,
@@ -23,119 +20,122 @@ import {
   SelectWeekday,
   SelectWeekdayOfMonth,
 } from "./components";
-import { cronToScheduleSettings, scheduleSettingsToCron } from "./cron";
+import { scheduleValueToCron, toScheduleBuilderValue } from "./cron";
+import {
+  type GetScheduleDefaults,
+  type NormalizedScheduleValue,
+  type ScheduleValue,
+  type ScheduleValueType,
+  changeScheduleType,
+  getScheduleDefaults,
+  isScheduleComplete,
+  isScheduleCronValue,
+  normalizeScheduleValue,
+  setScheduleField,
+} from "./domain";
 import { byTheMinuteIntervals } from "./strings";
-import type { UpdateSchedule } from "./types";
-import { getScheduleDefaults } from "./utils";
+import type { ScheduleChangeEvent, UpdateSchedule } from "./types";
 
 export interface ScheduleProps {
   className?: string;
-  cronString: string;
-  scheduleOptions: ScheduleType[];
-  onScheduleChange: (
-    nextCronString: string,
-    nextSchedule: ScheduleSettings,
-  ) => void;
+  value: ScheduleValue;
+  scheduleOptions: ScheduleValueType[];
+  onScheduleChange: (event: ScheduleChangeEvent) => void;
   timezone?: string;
   verb?: string;
   minutesOnHourPicker?: boolean;
+  getDefaults?: GetScheduleDefaults;
   labelAlignment?: "compact" | "left";
   layout?: "vertical" | "horizontal";
-  isCustomSchedule?: boolean;
+  fullWidthSelects?: boolean;
   renderScheduleDescription?: (
-    schedule: ScheduleSettings,
-    cronString: string,
+    value: NormalizedScheduleValue,
+    cronInputValue: string,
   ) => JSX.Element | string | null;
 }
 
 export const Schedule = ({
   className,
-  cronString: initialCronString,
+  value,
   scheduleOptions,
   timezone,
   verb,
   minutesOnHourPicker,
+  getDefaults = getScheduleDefaults,
   onScheduleChange,
   labelAlignment = "compact",
   layout = "vertical",
-  isCustomSchedule,
+  fullWidthSelects = false,
   renderScheduleDescription,
   ...flexProps
 }: ScheduleProps & FlexProps & HTMLAttributes<HTMLDivElement>) => {
-  const [internalCronString, setInternalCronString] = useState(() =>
-    formatCronExpressionForUI(initialCronString),
+  const normalizedValue = useMemo(
+    () => normalizeScheduleValue(value, getDefaults),
+    [value, getDefaults],
   );
-  const schedule = useMemo<ScheduleSettings>(() => {
-    return (
-      cronToScheduleSettings(initialCronString, isCustomSchedule) ?? {
-        schedule_type: "hourly",
-        schedule_minute: 0,
-      }
-    );
-  }, [initialCronString, isCustomSchedule]);
+  const [cronInputValue, setCronInputValue] = useState(() =>
+    formatCronExpressionForUI(scheduleValueToCron(normalizedValue)),
+  );
 
-  const updateSchedule: UpdateSchedule = useCallback(
-    (
-      updatedField: keyof ScheduleSettings,
-      newValue: ScheduleSettings[typeof updatedField],
-    ) => {
-      let newSchedule: ScheduleSettings = {
-        ...schedule,
-        [updatedField]: newValue,
-      };
-      const defaults = getScheduleDefaults(newSchedule);
-
-      if (updatedField === "schedule_type") {
-        // When a new schedule type is selected, use the default values for that type
-        newSchedule = {
-          // Unjustified type cast. FIXME
-          schedule_type: newValue as ScheduleType,
-          ...defaults,
-        };
-        if (newValue === "cron") {
-          setInternalCronString(formatCronExpressionForUI(initialCronString));
-        }
-      } else {
-        newSchedule = _.defaults(
-          removeNullAndUndefinedValues(newSchedule),
-          defaults,
-        );
-      }
-
-      // when the monthly schedule frame is the 15th, clear out the schedule_day
-      if (newSchedule.schedule_frame === "mid") {
-        newSchedule.schedule_day = null;
-      }
-
-      const newCronString = scheduleSettingsToCron(newSchedule);
-      onScheduleChange(newCronString, newSchedule);
+  const emitChange = useCallback(
+    (nextValue: NormalizedScheduleValue) => {
+      onScheduleChange({
+        value: nextValue,
+        cronString: isScheduleComplete(nextValue)
+          ? scheduleValueToCron(nextValue)
+          : null,
+      });
     },
-    [initialCronString, onScheduleChange, schedule],
+    [onScheduleChange],
+  );
+
+  const updateScheduleType = useCallback(
+    (scheduleType: ScheduleValueType) => {
+      if (scheduleType === "cron") {
+        const cron = scheduleValueToCron(normalizedValue);
+        setCronInputValue(formatCronExpressionForUI(cron));
+        emitChange({ schedule_type: "cron", cron });
+        return;
+      }
+
+      emitChange(
+        changeScheduleType(
+          toScheduleBuilderValue(normalizedValue),
+          scheduleType,
+          getDefaults,
+        ),
+      );
+    },
+    [emitChange, getDefaults, normalizedValue],
   );
 
   const renderedSchedule = useMemo(() => {
-    // Merge default values into the schedule
-    const scheduleWithDefaults: ScheduleSettings = _.defaults(
-      schedule,
-      getScheduleDefaults(schedule),
-    );
-
-    const {
-      schedule_type,
-      schedule_frame,
-      schedule_day,
-      schedule_hour,
-      schedule_minute,
-    } = scheduleWithDefaults;
-
     const selectFrequency = (
       <SelectFrequency
         key="frequency"
-        updateSchedule={updateSchedule}
-        scheduleType={schedule_type}
+        scheduleType={normalizedValue.schedule_type}
+        onScheduleTypeChange={updateScheduleType}
         scheduleOptions={scheduleOptions}
       />
     );
+
+    if (isScheduleCronValue(normalizedValue)) {
+      const selectCron = (
+        <CronExpressionInput
+          data-group={GROUP_ATTRIBUTES.separate}
+          key="cron"
+          value={cronInputValue}
+          onChange={setCronInputValue}
+          onBlurChange={(cron) => emitChange({ schedule_type: "cron", cron })}
+        />
+      );
+      return [verb, selectFrequency, selectCron];
+    }
+
+    const { schedule_frame, schedule_day, schedule_hour, schedule_minute } =
+      normalizedValue;
+    const updateSchedule: UpdateSchedule = (field, value) =>
+      emitChange(setScheduleField(normalizedValue, field, value));
 
     const selectMinute = (
       <SelectMinute
@@ -187,23 +187,7 @@ export const Schedule = ({
       />
     );
 
-    const selectCron = (
-      <CronExpressionInput
-        data-group={GROUP_ATTRIBUTES.separate}
-        key="cron"
-        value={internalCronString}
-        onChange={(value: string) => {
-          setInternalCronString(value);
-        }}
-        onBlurChange={(value) =>
-          onScheduleChange(value, {
-            schedule_type: "cron",
-          })
-        }
-      />
-    );
-
-    return match(schedule_type)
+    return match(normalizedValue.schedule_type)
       .with("every_n_minutes", () => {
         // "Minute" is registered as a plural msgid elsewhere; give this row's
         // singular its own context so it's a distinct key (no extraction clash).
@@ -260,24 +244,21 @@ export const Schedule = ({
               selectWeekdayOfMonth
             } at ${selectTime}`,
       )
-      .with("cron", () => [verb, selectFrequency, selectCron])
-      .with(null, () => null)
-      .with(undefined, () => null)
       .exhaustive();
   }, [
     minutesOnHourPicker,
-    schedule,
+    normalizedValue,
     scheduleOptions,
     timezone,
-    updateSchedule,
+    updateScheduleType,
     verb,
-    internalCronString,
-    onScheduleChange,
+    cronInputValue,
+    emitChange,
   ]);
 
   const scheduleDescription = useMemo(() => {
-    return renderScheduleDescription?.(schedule, internalCronString) || null;
-  }, [renderScheduleDescription, schedule, internalCronString]);
+    return renderScheduleDescription?.(normalizedValue, cronInputValue) || null;
+  }, [renderScheduleDescription, normalizedValue, cronInputValue]);
 
   return (
     <Flex direction="column" gap="1rem" {...flexProps}>
@@ -287,6 +268,7 @@ export const Schedule = ({
           {
             [S.CompactLabels]: labelAlignment === "compact",
             [S.Horizontal]: layout === "horizontal",
+            [S.FullWidthSelects]: fullWidthSelects,
           },
           className,
         )}

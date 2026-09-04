@@ -1,13 +1,18 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { P, match } from "ts-pattern";
 
-import {
-  getUserPersonalCollectionId,
-  getUserTenantCollectionId,
-} from "metabase/selectors/user";
+import { getUser, getUserPersonalCollectionId } from "metabase/current-user";
 import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 
-import type { SdkCollectionId } from "../types/collection";
+import type {
+  SdkBrowserCollectionId,
+  SdkCollectionId,
+} from "../types/collection";
+
+export const getUserTenantCollectionId = createSelector(
+  [getUser],
+  (user) => user?.tenant_collection_id,
+);
 
 /**
  * Converts "personal", "tenant", and "root" to the ids accepted by the api
@@ -49,42 +54,47 @@ export const getCollectionIdValueFromReference = createSelector(
 );
 
 /**
- * This return an "id"/"slug" that can be used in `/api/collection/{:id}`
- * There are extra handlers for "root" and "trash" so unlike when
- * creating a dashboard, we have to pass "root" for the root collection
- * instead of null
+ * Returns an "id"/"slug" for `/api/collection/{:id}` — unlike when creating a
+ * dashboard, the root collection is `"root"` here rather than null.
+ *
+ * Nullish when `"personal"` can't be resolved: `undefined` while `currentUser` hasn't loaded,
+ * `null` for a user the backend gives no personal collection — an API-key user, which is how
+ * the data-app dev server authenticates. Callers must handle both (e.g. with `skipToken`);
+ * `/api/collection/undefined` and `/api/collection/null` are each a 404.
+ *
+ * `"all"` is the virtual top level and resolves to `undefined`: there is no
+ * collection to fetch. Its branch has to stay above the string one, which would
+ * otherwise match it as an entity id.
  */
 export const getCollectionIdSlugFromReference = createSelector(
   [
     getUserPersonalCollectionId,
     getUserTenantCollectionId,
-    (_, collectionReference: SdkCollectionId) => collectionReference,
+    (_, collectionReference: SdkBrowserCollectionId) => collectionReference,
   ],
   (
     personalCollectionId,
     tenantCollectionId,
     collectionReference,
-  ): CollectionId => {
-    return (
-      match(collectionReference)
-        // Unjustified type cast. FIXME
-        .with("personal", () => personalCollectionId as RegularCollectionId)
-        .with("tenant", () => {
-          if (!tenantCollectionId) {
-            throw new Error(
-              "You must be a tenant member to access the tenant collection.",
-            );
-          }
-
-          return tenantCollectionId;
-        })
-        .with("root", () => "root" as const)
-        .with(P.union(P.number, P.string), (id) => id)
-        .otherwise(() => {
+  ): CollectionId | null | undefined => {
+    return match(collectionReference)
+      .with("personal", () => personalCollectionId)
+      .with("tenant", () => {
+        if (!tenantCollectionId) {
           throw new Error(
-            "Invalid collection id, expected `number | string | 'root' | 'personal' | 'tenant'`",
+            "You must be a tenant member to access the tenant collection.",
           );
-        })
-    );
+        }
+
+        return tenantCollectionId;
+      })
+      .with("root", () => "root" as const)
+      .with("all", () => undefined)
+      .with(P.union(P.number, P.string), (id) => id)
+      .otherwise(() => {
+        throw new Error(
+          "Invalid collection id, expected `number | string | 'root' | 'personal' | 'tenant' | 'all'`",
+        );
+      });
   },
 );

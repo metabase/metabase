@@ -3,13 +3,11 @@ import {
   useGetDatabaseQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { hasFeature } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import { DatabaseDataSelector } from "metabase/querying/common/components/DataSelector";
-import { useSelector } from "metabase/redux";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import { Flex } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type MetadataDatabase from "metabase-lib/v1/metadata/Database";
 import type { Database, DatabaseId, Transform } from "metabase-types/api";
 
@@ -32,9 +30,7 @@ export function PythonTransformTopBar({
   onDatabaseChange,
   canChangeDatabase = true,
 }: PythonTransformTopBarProps) {
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
-  const showEditButton =
-    !isEditMode && transform && !isRemoteSyncReadOnly && !readOnly;
+  const showEditButton = !isEditMode && transform && !readOnly;
 
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
@@ -82,7 +78,7 @@ export function PythonTransformTopBar({
       ) : (
         <Flex
           h="3rem"
-          p="md"
+          p="lg"
           ml="sm"
           align="center"
           data-testid="selected-database"
@@ -91,7 +87,7 @@ export function PythonTransformTopBar({
         </Flex>
       )}
       {showEditButton && (
-        <Flex ml="auto" mr="lg" align="center" h="3rem">
+        <Flex ml="auto" mr="xl" align="center" h="3rem">
           <EditDefinitionButton
             bg="transparent"
             fz="sm"

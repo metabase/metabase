@@ -1,15 +1,11 @@
 import type { Selector } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
-import type { Location } from "history";
 
+import { getUser } from "metabase/current-user";
+import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import type { State } from "metabase/redux/store";
-import {
-  getEmbedOptions,
-  getIsEmbeddingIframe,
-} from "metabase/selectors/embed";
-import { getUser } from "metabase/selectors/user";
-
-import { getSetting } from "./settings";
+import type { Location } from "metabase/router";
+import { selectIsWithinIframe } from "metabase/utils/iframe";
 
 export interface RouterProps {
   location: Location;
@@ -30,7 +26,7 @@ export const getErrorMessage = (state: State) => {
 
 export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
   [
-    getIsEmbeddingIframe,
+    selectIsWithinIframe,
     getEmbedOptions,
     (_state: State) => window.location.hash,
     (state: State) => state.app.isNavbarOpen,
@@ -63,10 +59,6 @@ export const getCustomHomePageDashboardId = createSelector(
   [getUser],
   (user) => user?.custom_homepage?.dashboard_id || null,
 );
-
-export const getHasDismissedCustomHomePageToast = (state: State) => {
-  return getSetting(state, "dismissed-custom-dashboard-toast");
-};
 
 export const getIsErrorDiagnosticModalOpen = (state: State) =>
   state.app.isErrorDiagnosticsOpen;

@@ -28,6 +28,13 @@ import { MappingRow } from "./MappingRow";
 
 const groupIsMappable = (group: GroupInfo) => !isDefaultGroup(group);
 
+/** The auth-provider group-mapping settings this widget can edit. */
+export type MappingSettingKey =
+  | "ldap-group-mappings"
+  | "saml-group-mappings"
+  | "jwt-group-mappings"
+  | "oidc-group-mappings";
+
 const helpText = (mappingSetting: string) => {
   if (mappingSetting === "jwt-group-mappings") {
     return t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If no mappings are defined, groups will automatically be assigned based on exactly matching names.`;
@@ -49,14 +56,14 @@ interface GroupMappingsWidgetViewProps {
   groupHeading: string;
   groupPlaceholder: string;
   allGroups: GroupInfo[];
-  mappingSetting: string; // seems like this should be SettingKey but we pass in values like "jwt-group-mappings"
+  mappingSetting: MappingSettingKey;
   deleteGroup: ({ id }: { id: number }) => Promise<void>;
   clearGroupMember: ({ id }: { id: number }) => Promise<void>;
   updateSetting: ({
     key,
     value,
   }: {
-    key: string;
+    key: MappingSettingKey;
     value: Record<string, GroupId[]>;
   }) => Promise<void>;
   mappings: Record<string, GroupId[]>;
@@ -153,14 +160,14 @@ export function GroupMappingsWidgetView({
 
   return (
     <Flex direction="column" w="100%">
-      <Group mb="md" gap="sm">
+      <Group mb="lg" gap="sm">
         <Text fw="bold">{t`Synchronize Group Memberships`}</Text>
         <FormSwitch data-testid="group-sync-switch" name={setting.key} />
       </Group>
 
       <Flex
         bd="1px solid var(--mb-color-border-neutral)"
-        bdrs="md"
+        bdrs="sm"
         direction="column"
         w="100%"
       >
@@ -169,7 +176,7 @@ export function GroupMappingsWidgetView({
           align="center"
           bg="background-secondary"
           mih={rem(56)}
-          px="md"
+          px="lg"
           py="sm"
         >
           {!showAddRow && (
@@ -220,7 +227,7 @@ export function GroupMappingsWidgetView({
           </AdminContentTable>
         ) : (
           !showAddRow && (
-            <Box pb="md">
+            <Box pb="lg">
               <EmptyState
                 illustrationElement={<img src={NoResults} alt="" />}
                 message={noMappingText(mappingSetting, groupSyncSwitchValue)}

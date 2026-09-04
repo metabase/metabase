@@ -3,11 +3,11 @@
    vulnerability counts. Exposed so operators can alert when advisories stop
    syncing or when vulnerabilities are present."
   (:require
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase-enterprise.security-center.settings :as settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.time.temporal Temporal ChronoField)))
 
@@ -41,8 +41,7 @@
   "Return a map of [severity acknowledged?] → count for advisories whose
    match_status places them in the vulnerable bucket."
   []
-  (->> (t2/reducible-select [:model/SecurityAdvisory :severity :acknowledged_at]
-                            :match_status [:in vulnerable-statuses])
+  (->> (security-center.db/advisories-with-statuses-reducible vulnerable-statuses)
        (reduce (fn [acc {:keys [severity acknowledged_at]}]
                  (update acc (label-of severity (some? acknowledged_at)) (fnil inc 0)))
                {})))
@@ -54,7 +53,7 @@
     (when-let [epoch (last-sync-epoch-seconds)]
       (analytics/set-gauge! :metabase-security-center/last-sync-timestamp-seconds epoch))
     (catch Exception e
-      (log/warn e "Failed to set :metabase-security-center/last-sync-timestamp-seconds metric")))
+      (log/warnf "Failed to set :metabase-security-center/last-sync-timestamp-seconds metric: %s" (ex-message e))))
   (try
     (let [counts (vulnerable-counts)]
       (doseq [label vulnerable-advisory-labels]
@@ -62,4 +61,4 @@
                               label
                               (get counts label 0))))
     (catch Exception e
-      (log/warn e "Failed to set :metabase-security-center/vulnerable-advisories metric"))))
+      (log/warnf "Failed to set :metabase-security-center/vulnerable-advisories metric: %s" (ex-message e)))))

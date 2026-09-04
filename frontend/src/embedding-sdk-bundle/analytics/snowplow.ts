@@ -3,8 +3,10 @@ import {
   newTracker,
   trackSelfDescribingEvent,
 } from "@snowplow/browser-tracker";
+import { version as reactVersion } from "react";
 
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
+import { getSettings } from "metabase/settings";
 import { trackMetaplowEvent } from "metabase/utils/metaplow";
 import type { SimpleEventSchema } from "metabase-types/analytics/event";
 
@@ -69,7 +71,7 @@ export function initSdkTracker({
   sdkAuthMethod = authMethod;
   sdkLocaleUsed = localeUsed;
 
-  const settingValues = store.getState().settings?.values;
+  const settingValues = getSettings(store.getState());
   sdkMetaplowEnabled = !!settingValues?.["metaplow-tracking-enabled"];
 
   newTracker(SDK_TRACKER_NAME, metabaseInstanceUrl, {
@@ -103,6 +105,12 @@ export function getSdkLocaleUsed(): boolean {
   return sdkLocaleUsed;
 }
 
+export function getHostReactVersion(): string {
+  // `undefined` would get removed by the serialization,
+  // explicit `unknown` to differentiate old data from real unknown
+  return reactVersion ?? "unknown";
+}
+
 // Attaches the instance context to every SDK event. Omits userId — unlike the
 // main-app tracker, SDK component usage is tracked at instance granularity;
 // the analytics-uuid already identifies the account.
@@ -113,7 +121,7 @@ function createSdkInstanceContextPlugin(store: {
     contexts(): SelfDescribingJson[] {
       // Settings are guaranteed present: initSdkTracker is only called after
       // isTrackingEnabled, which requires anon-tracking-enabled to be loaded.
-      const settings = store.getState().settings?.values;
+      const settings = getSettings(store.getState());
       const version = settings?.["version"] ?? {};
 
       return [

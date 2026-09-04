@@ -1,6 +1,6 @@
 {
   "name": "@metabase/custom-viz",
-  "version": "1.0.4",
+  "version": "2.0.0-canary.0",
   "description": "Creating custom visualizations for Metabase",
   "type": "module",
   "bin": {
@@ -24,7 +24,8 @@
     "directory": "enterprise/frontend/src/custom-viz"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "vite build && cp -r src/templates dist/templates",
@@ -33,18 +34,20 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "oxlint src/",
-    "release": "bun run build && np",
+    "release": "bun run type-check && bun run build && np",
     "test": "vitest run",
     "test:watch": "vitest",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.fixtures.json"
   },
   "dependencies": {
-    "commander": "^13.1.0"
+    "commander": "^13.1.0",
+    "tar-stream": "^3.1.8"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.1",
+    "@types/tar-stream": "^3.1.4",
     "np": "^11.0.2",
     "oxlint": "^1.59.0",
     "prettier": "^3.8.1",

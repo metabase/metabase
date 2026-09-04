@@ -15,16 +15,17 @@ import {
 } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
-import { refreshSiteSettings } from "metabase/redux/settings";
+import { useDocsUrl, useToast } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
 import {
   getApplicationName,
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
 import { Switch, Text } from "metabase/ui";
 
 import ModelPersistenceConfigurationS from "./ModelPersistenceConfiguration.module.css";
+import { PerformancePageContent } from "./PerformancePageContent";
 
 const modelCachingOptions = [
   {
@@ -73,7 +74,6 @@ export const ModelPersistenceConfiguration = () => {
     "persisted-model-refresh-cron-schedule",
   );
 
-  const dispatch = useDispatch();
   const [sendToast, removeToast] = useToast();
   const [enablePersist] = useEnablePersistMutation();
   const [disablePersist] = useDisablePersistMutation();
@@ -115,67 +115,68 @@ export const ModelPersistenceConfiguration = () => {
     const promise = shouldEnable
       ? enablePersist().unwrap()
       : disablePersist().unwrap();
+    // The mutations invalidate session-properties, which refetches settings.
     await resolveWithToasts([promise]);
-    dispatch(refreshSiteSettings());
   };
 
   const { url: docsUrl } = useDocsUrl("data-modeling/model-persistence");
 
   return (
-    <SettingsPageWrapper
-      title={t`Model persistence`}
-      description={t`Enable model persistence to make your models (and the queries that use them) load faster.`}
-    >
-      <SettingsSection
-        className={ModelPersistenceConfigurationS.Explanation}
-        maw="40rem"
+    <PerformancePageContent>
+      <SettingsPageWrapper
+        title={t`Model persistence`}
+        description={t`Enable model persistence to make your models (and the queries that use them) load faster.`}
       >
-        <Text>
-          {c(
-            '{0} is either "Metabase" or the customized name of the application.',
-          )
-            .t`This will create a table for each of your models in a dedicated schema. ${applicationName} will refresh them on a schedule. Questions and queries that use your models will query these tables.`}
-          {showMetabaseLinks && (
-            <>
-              {" "}
-              <ExternalLink
-                key="model-caching-link"
-                href={docsUrl}
-              >{t`Learn more`}</ExternalLink>
-            </>
-          )}
-        </Text>
-        <DelayedLoadingAndErrorWrapper
-          error={null}
-          loading={modelPersistenceEnabled === undefined}
+        <SettingsSection
+          className={ModelPersistenceConfigurationS.Explanation}
+          maw="40rem"
         >
-          <Switch
-            label={
-              <Text fw="bold">
-                {modelPersistenceEnabled ? t`Enabled` : t`Disabled`}
-              </Text>
-            }
-            onChange={onSwitchChanged}
-            checked={modelPersistenceEnabled}
-          />
-        </DelayedLoadingAndErrorWrapper>
-
-        {/* modelCachingSchedule is sometimes undefined but TS thinks it is always a string */}
-        {modelPersistenceEnabled && modelCachingSchedule && (
-          <div>
-            <ModelCachingScheduleWidget
-              value={modelCachingSchedule}
-              options={modelCachingOptions}
-              onChange={async (value: string) => {
-                await resolveWithToasts([
-                  setRefreshSchedule({ cron: value }).unwrap(),
-                  dispatch(refreshSiteSettings()),
-                ]);
-              }}
+          <Text>
+            {c(
+              '{0} is either "Metabase" or the customized name of the application.',
+            )
+              .t`This will create a table for each of your models in a dedicated schema. ${applicationName} will refresh them on a schedule. Questions and queries that use your models will query these tables.`}
+            {showMetabaseLinks && (
+              <>
+                {" "}
+                <ExternalLink
+                  key="model-caching-link"
+                  href={docsUrl}
+                >{t`Learn more`}</ExternalLink>
+              </>
+            )}
+          </Text>
+          <DelayedLoadingAndErrorWrapper
+            error={null}
+            loading={modelPersistenceEnabled === undefined}
+          >
+            <Switch
+              label={
+                <Text fw="bold">
+                  {modelPersistenceEnabled ? t`Enabled` : t`Disabled`}
+                </Text>
+              }
+              onChange={onSwitchChanged}
+              checked={modelPersistenceEnabled}
             />
-          </div>
-        )}
-      </SettingsSection>
-    </SettingsPageWrapper>
+          </DelayedLoadingAndErrorWrapper>
+
+          {/* modelCachingSchedule is sometimes undefined but TS thinks it is always a string */}
+          {modelPersistenceEnabled && modelCachingSchedule && (
+            <div>
+              <ModelCachingScheduleWidget
+                value={modelCachingSchedule}
+                options={modelCachingOptions}
+                onChange={async (value: string) => {
+                  await resolveWithToasts([
+                    setRefreshSchedule({ cron: value }).unwrap(),
+                  ]);
+                }}
+              />
+            </div>
+          )}
+        </SettingsSection>
+      </SettingsPageWrapper>
+    </PerformancePageContent>
   );
 };

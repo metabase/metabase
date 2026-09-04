@@ -143,7 +143,7 @@ visualization_settings:
     - sum
   pivot_table.show_column_totals: true
   pivot_table.show_row_totals: true
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: BjwHr6elEuKQuL26BEgno
   label: orders_pivot_table

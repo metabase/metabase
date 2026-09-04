@@ -1,7 +1,8 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { Markdown } from "metabase/common/components/Markdown";
+import { useSetting } from "metabase/settings";
 import {
   Anchor,
   Badge,
@@ -26,6 +27,8 @@ import type {
 import { trackSecurityAdvisoryDownloadClicked } from "../../analytics";
 import { getDownloadJarForInstance, isAcknowledged } from "../../utils";
 
+const DISALLOWED_ELEMENTS = ["img"];
+
 interface AdvisoryCardProps {
   advisory: Advisory;
   isAffecting: boolean;
@@ -44,8 +47,8 @@ export function AdvisoryCard({
     : null;
 
   return (
-    <Card p="xl" withBorder data-testid="advisory-card">
-      <Stack gap="md">
+    <Card p="xxl" withBorder data-testid="advisory-card">
+      <Stack gap="lg">
         <Group gap="sm" justify="space-between" align="flex-start">
           <Badge
             color={getSeverityColor({
@@ -62,7 +65,7 @@ export function AdvisoryCard({
             {getSeverityLabel(advisory.severity)}
           </Badge>
           {!isAffecting && (
-            <Group gap="xs" align="center">
+            <Group gap="xxs" align="center">
               <Text size="sm" c="feedback-positive" fw={500}>
                 {t`Your instance is not affected`}
               </Text>
@@ -73,27 +76,39 @@ export function AdvisoryCard({
 
         <Title order={4}>{advisory.title}</Title>
 
-        <Text c="text-secondary">{advisory.description}</Text>
+        <Markdown
+          c="text-secondary"
+          disallowHeading
+          disallowedElements={DISALLOWED_ELEMENTS}
+        >
+          {advisory.description}
+        </Markdown>
 
         {advisory.affected_versions.length > 0 && (
           <Box>
-            <Text fw={700} mb="xs">{t`Affected versions`}</Text>
+            <Text fw={700} mb="xxs">{t`Affected versions`}</Text>
             <List size="sm">
               {advisory.affected_versions.map((v) => (
                 <List.Item
                   key={`${v.min}-${v.fixed}`}
-                >{`${v.min} - ${v.fixed}`}</List.Item>
+                >{`>= ${v.min}, < ${v.fixed}`}</List.Item>
               ))}
             </List>
           </Box>
         )}
 
         <Box>
-          <Text fw={700} mb="xs">{t`Remediation`}</Text>
-          <Text c="text-secondary">{advisory.remediation}</Text>
+          <Text fw={700} mb="xxs">{t`Remediation`}</Text>
+          <Markdown
+            c="text-secondary"
+            disallowHeading
+            disallowedElements={DISALLOWED_ELEMENTS}
+          >
+            {advisory.remediation}
+          </Markdown>
         </Box>
 
-        <Group gap="md" mt="sm">
+        <Group gap="lg" mt="sm">
           {downloadJar && (
             <Button
               variant="outline"

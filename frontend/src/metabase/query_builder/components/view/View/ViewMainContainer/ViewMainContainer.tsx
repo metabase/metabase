@@ -3,10 +3,9 @@ import cx from "classnames";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
-import { ObjectDetailSidesheet } from "metabase/query_builder/components/ObjectDetailSidesheet";
-import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
+import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
+import { SyncedParametersList } from "metabase/parameters/components/SyncedParametersList";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
-import { SyncedParametersList } from "metabase/querying/components/SyncedParametersList";
 import type { QueryModalType } from "metabase/querying/constants";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
@@ -24,6 +23,8 @@ import type {
   ParameterId,
 } from "metabase-types/api";
 
+import { useVisualizationResultQBProps } from "../../../../hooks";
+import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
 import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
@@ -41,6 +42,7 @@ interface ViewMainContainerProps {
   isNativeEditorOpen: boolean;
   isRunnable: boolean;
   isRunning: boolean;
+  isDirty: boolean;
   isResultDirty: boolean;
 
   isShowingDataReference: boolean;
@@ -91,6 +93,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     queryBuilderMode,
     mode,
     question,
+    isDirty,
     showLeftSidebar,
     showRightSidebar,
     parameters,
@@ -147,6 +150,9 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           noHeader
           className={CS.spread}
           mode={queryMode}
+          noResultsAction={
+            !isDirty && <HasResultsAlertPrompt question={question} />
+          }
           onUpdateQuestion={updateQuestion}
         />
       </DebouncedFrame>

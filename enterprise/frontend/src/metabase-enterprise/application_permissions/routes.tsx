@@ -1,13 +1,18 @@
-import { Route, withRouteProps } from "metabase/router";
+import { Route, registerPagePrefetch } from "metabase/router";
 
-import ApplicationPermissionsPage from "./pages/ApplicationPermissionsPage";
+const APPLICATION_PERMISSIONS_PATH = "/admin/permissions/application";
 
-const RoutedApplicationPermissionsPage = withRouteProps(
-  ApplicationPermissionsPage,
-);
+const applicationPermissionsPage = () =>
+  import(
+    /* webpackChunkName: "application-permissions" */ "./pages/ApplicationPermissionsPage"
+  ).then((module) => ({
+    Component: module.default,
+  }));
+
+registerPagePrefetch(APPLICATION_PERMISSIONS_PATH, applicationPermissionsPage);
 
 const getRoutes = () => (
-  <Route path="application" element={<RoutedApplicationPermissionsPage />} />
+  <Route path="application" lazy={applicationPermissionsPage} />
 );
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

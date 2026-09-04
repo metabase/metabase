@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupCardQueryDownloadEndpoint,
@@ -6,10 +7,10 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
+import { getMetadata } from "metabase/metadata-store";
 import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card, Dataset } from "metabase-types/api";
@@ -206,6 +207,54 @@ describe("QuestionDownloadWidget", () => {
     expect(
       screen.queryByLabelText("Keep the data pivoted"),
     ).not.toBeInTheDocument();
+  });
+
+  describe("format preference persistence", () => {
+    const putCalls = () =>
+      fetchMock.callHistory.calls(
+        "path:/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+        { method: "PUT" },
+      );
+
+    it("does not persist when downloading with the format that is already saved", async () => {
+      // setup() has the server already storing csv, also the preselected format.
+      const { onDownload } = setup();
+
+      await userEvent.click(
+        await screen.findByTestId("download-results-button"),
+      );
+
+      await waitFor(() => expect(onDownload).toHaveBeenCalled());
+      expect(putCalls()).toHaveLength(0);
+    });
+
+    it("persists once when downloading with a changed format, even repeatedly", async () => {
+      const { onDownload } = setup();
+
+      await userEvent.click(screen.getByLabelText(".json"));
+      await userEvent.click(
+        await screen.findByTestId("download-results-button"),
+      );
+      await userEvent.click(screen.getByTestId("download-results-button"));
+
+      await waitFor(() => expect(onDownload).toHaveBeenCalledTimes(2));
+      expect(putCalls()).toHaveLength(1);
+    });
+
+    it("persists each new format the user exports with", async () => {
+      setup();
+
+      await userEvent.click(screen.getByLabelText(".xlsx"));
+      await userEvent.click(
+        await screen.findByTestId("download-results-button"),
+      );
+      await waitFor(() => expect(putCalls()).toHaveLength(1));
+
+      await userEvent.click(screen.getByLabelText(".json"));
+      await userEvent.click(screen.getByTestId("download-results-button"));
+
+      await waitFor(() => expect(putCalls()).toHaveLength(2));
+    });
   });
 
   it("should show maximum download size text only for xlsx format when results are truncated", async () => {

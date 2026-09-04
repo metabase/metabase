@@ -1,7 +1,18 @@
 import type { CustomVisualization } from "custom-viz";
+import type { ComponentType } from "react";
 
-import type { Visualization } from "metabase/visualizations/types/visualization";
-import type { CustomVizPluginId } from "metabase-types/api";
+import type {
+  Visualization,
+  VisualizationPassThroughProps,
+  VisualizationProps,
+} from "metabase/visualizations/types/visualization";
+import { columnSettings } from "metabase/viz-core";
+import type {
+  CustomVizPluginRuntime,
+  Series,
+  VisualizationDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { sanitizePluginSettings } from "./custom-viz-settings";
 
@@ -18,30 +29,34 @@ import { sanitizePluginSettings } from "./custom-viz-settings";
  * components.
  */
 export function applyDefaultVisualizationProps(
-  Component: Visualization,
+  Component: ComponentType<VisualizationProps & VisualizationPassThroughProps>,
   vizDef: CustomVisualization<Record<string, unknown>>,
   settings: {
-    identifier: string;
-    pluginId: CustomVizPluginId;
+    identifier: VisualizationDisplay;
+    plugin: CustomVizPluginRuntime;
     getUiName: () => string;
     iconUrl?: string | undefined;
     isDev?: boolean;
   },
-) {
-  Object.assign(Component, {
-    settings:
-      sanitizePluginSettings(
-        vizDef.settings,
-        vizDef.mount,
-        settings.pluginId,
-      ) ?? {},
-    checkRenderable: vizDef.checkRenderable,
+): Visualization {
+  const { plugin, ...componentSettings } = settings;
+  return Object.assign(Component, {
+    settings: {
+      ...columnSettings({ getHidden: () => true }),
+      ...sanitizePluginSettings(vizDef.settings, vizDef.mount, plugin),
+    },
+    checkRenderable: (series: Series, vizSettings: VisualizationSettings) => {
+      if (typeof vizDef.checkRenderable === "function") {
+        vizDef.checkRenderable(series, vizSettings);
+      }
+    },
     noHeader: vizDef.noHeader ?? false,
     canSavePng: vizDef.canSavePng ?? false,
     hidden: false,
     minSize: vizDef.minSize,
     defaultSize: vizDef.defaultSize,
     isDev: settings.isDev,
-    ...settings,
-  } satisfies Partial<Record<keyof Visualization, unknown>>);
+    pluginId: plugin.id,
+    ...componentSettings,
+  });
 }

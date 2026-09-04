@@ -6,12 +6,11 @@ import { useCreateMeasureMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { trackMeasureCreated } from "metabase/common/data-studio/analytics";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
-import type { Route } from "metabase/router";
-import { push } from "metabase/router";
-import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
+import { getMetadataWithHiddenTables } from "metabase/metadata-store";
+import { useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Measure, Table } from "metabase-types/api";
@@ -22,19 +21,17 @@ import { useMeasureQuery } from "../../hooks/use-measure-query";
 import { createInitialQueryForTable } from "../../utils/measure-query";
 
 type NewMeasurePageProps = {
-  route: Route;
   table: Table;
   breadcrumbs: ReactNode;
   getSuccessUrl: (measure: Measure) => string;
 };
 
 export function NewMeasurePage({
-  route,
   table,
   breadcrumbs,
   getSuccessUrl,
 }: NewMeasurePageProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const metadata = useSelector(getMetadataWithHiddenTables);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -102,12 +99,12 @@ export function NewMeasurePage({
 
   useEffect(() => {
     if (savedMeasure) {
-      dispatch(push(getSuccessUrl(savedMeasure)));
+      navigate(getSuccessUrl(savedMeasure));
     }
-  }, [savedMeasure, dispatch, getSuccessUrl]);
+  }, [savedMeasure, getSuccessUrl, navigate]);
 
   return (
-    <PageContainer data-testid="new-measure-page" gap="xl">
+    <PageContainer data-testid="new-measure-page" gap="xxl">
       <NewMeasureHeader
         previewUrl={previewUrl}
         onNameChange={setName}
@@ -131,7 +128,7 @@ export function NewMeasurePage({
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </PageContainer>
   );
 }

@@ -7,8 +7,7 @@ import {
   useListEmbeddingThemesQuery,
 } from "metabase/api/embedding-theme";
 import { useHasTokenFeature, useToast } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Loader, SimpleGrid, Stack, Text, Title } from "metabase/ui";
 
 import { EmbeddingThemeCard } from "./EmbeddingThemeCard";
@@ -25,14 +24,14 @@ export function EmbeddingThemeListingApp() {
 }
 
 function EmbeddingThemeListingAppInner() {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { data: themes, isLoading } = useListEmbeddingThemesQuery();
   const [duplicateTheme] = useCopyEmbeddingThemeMutation();
   const [sendToast] = useToast();
   const { requestDelete, modal: deleteModal } = useDeleteThemeFlow();
 
   const handleCreateTheme = () => {
-    dispatch(push(`/admin/embedding/themes/new`));
+    navigate(`/admin/embedding/themes/new`);
   };
 
   const handleDuplicateTheme = async (themeId: number) => {
@@ -54,20 +53,20 @@ function EmbeddingThemeListingAppInner() {
   }
 
   return (
-    <Stack mx="auto" gap="xl" maw={1200}>
-      <Stack gap="xs">
+    <Stack mx="auto" gap="xxl" maw={1200}>
+      <Stack gap="xxs">
         <Title order={1}>{t`Themes`}</Title>
         <Text c="text-secondary">
           {t`Create and edit themes to reuse across multiple embeds.`}
         </Text>
       </Stack>
 
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
+      <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
         {themes?.map((theme) => (
           <EmbeddingThemeCard
             key={theme.id}
             theme={theme}
-            onEdit={() => dispatch(push(`/admin/embedding/themes/${theme.id}`))}
+            onEdit={() => navigate(`/admin/embedding/themes/${theme.id}`)}
             onDuplicate={() => handleDuplicateTheme(theme.id)}
             onDelete={() => requestDelete(theme.id)}
           />

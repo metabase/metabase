@@ -3,14 +3,15 @@
    [clojure.set :as set]
    [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
+   [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-card :as pulse-card]
    [metabase.util :as u]
    [methodical.core :as m]
    [toucan2.core :as t2]))
 
-(derive ::dashboard-update :metabase/event)
-(derive :event/dashboard-update ::dashboard-update)
+(events/derive! ::dashboard-update :metabase/event)
+(events/derive! :event/dashboard-update ::dashboard-update)
 
 (m/defmethod events/publish-event! ::dashboard-update
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"
@@ -35,8 +36,7 @@
                                       set)
             cards-to-add         (set/difference correct-card-ids stale-card-ids)
             card-id->dashcard-id (when (seq cards-to-add)
-                                   (t2/select-fn->pk :card_id :model/DashboardCard :dashboard_id dashboard-id
-                                                     :card_id [:in cards-to-add]))
+                                   (pulse.db/dashcard-ids-by-card dashboard-id cards-to-add))
             positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id)
                                                       (range)))
             new-pulse-cards      (for [pulse-id                         pulse-ids
@@ -49,13 +49,13 @@
                                     :position          position})]
         (t2/with-transaction [_conn]
           (binding [models.pulse/*allow-moving-dashboard-subscriptions* true]
-            (t2/update! :model/Pulse {:dashboard_id dashboard-id}
-                        ;; TODO we probably don't need this anymore
-                        ;; pulse.name is no longer used for generating title.
-                        ;; pulse.collection_id is a thing for the old "Pulse" feature, but it was removed
-                        {:name (:name dashboard)
-                         :collection_id (:collection_id dashboard)
-                         ;; not allowing updated_at to change because this is usually triggered after a "last_viewed_at" update on dashboard which doesn't warrant a pulse update.
-                         ;; plus, the name and collection_id are not really used for anything so it's fine they don't trigger a pulse update_at change even if they do change.
-                         :updated_at :updated_at})
+            (pulse.db/update-pulses-for-dashboard! dashboard-id
+                                                   ;; TODO we probably don't need this anymore
+                                                   ;; pulse.name is no longer used for generating title.
+                                                   ;; pulse.collection_id is a thing for the old "Pulse" feature, but it was removed
+                                                   {:name (:name dashboard)
+                                                    :collection_id (:collection_id dashboard)
+                                                    ;; not allowing updated_at to change because this is usually triggered after a "last_viewed_at" update on dashboard which doesn't warrant a pulse update.
+                                                    ;; plus, the name and collection_id are not really used for anything so it's fine they don't trigger a pulse update_at change even if they do change.
+                                                    :updated_at :updated_at})
             (pulse-card/bulk-create! new-pulse-cards)))))))

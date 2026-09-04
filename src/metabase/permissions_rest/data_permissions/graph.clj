@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.audit-app.core :as audit]
+   [metabase.permissions-rest.db :as permissions-rest.db]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
    [metabase.permissions.schema :as permissions.schema]
@@ -18,7 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
@@ -129,10 +130,7 @@
   For every db in the incoming graph, adds on admin permissions."
   [api-graph {:keys [db-id group-ids group-id audit?]}]
   (let [admin-group-id (u/the-id (perms/admin-group))
-        db-ids         (if db-id [db-id] (t2/select-pks-vec :model/Database
-                                                            {:where [:and
-                                                                     (when-not audit? [:not= :id audit/audit-db-id])
-                                                                     [:= :router_database_id nil]]}))]
+        db-ids         (if db-id [db-id] (permissions-rest.db/non-destination-database-ids (when-not audit? audit/audit-db-id)))]
     ;; Don't add admin perms when we're fetching the perms for a specific non-admin group or set of groups
     (if (or (= group-id admin-group-id)
             (contains? (set group-ids) admin-group-id)
@@ -150,10 +148,7 @@
   This is not stored in the data-permissions table, so we add it to the graph for the API."
   [api-graph {:keys [db-id group-ids group-id audit?]}]
   (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))
-        db-ids                (if db-id [db-id] (t2/select-pks-vec :model/Database
-                                                                   {:where [:and
-                                                                            (when-not audit? [:not= :id audit/audit-db-id])
-                                                                            [:= :router_database_id nil]]}))]
+        db-ids                (if db-id [db-id] (permissions-rest.db/non-destination-database-ids (when-not audit? audit/audit-db-id)))]
     ;; Don't add data analyst perms when we're fetching perms for a specific non-data-analyst group
     (if (or (= group-id data-analyst-group-id)
             (contains? (set group-ids) data-analyst-group-id)
@@ -206,25 +201,24 @@
   "Reducible of the raw `data_permissions` rows for the given `opts`. Using a reducible (rather than realizing the full
   result set) keeps the row data out of memory -- we reduce each row into the graph as it streams from the app DB.
   Ordered by `(group_id, db_id)` so that all rows for a given (group, db) arrive contiguously, which lets
-  [[reduce-into-graph]] finalize and compact each (group, db) perm-map without buffering the whole graph."
+  [[reduce-into-graph]] finalize and compact each (group, db) perm-map without buffering the whole graph.
+
+  Rows are fetched with a raw query rather than a model select, and realized one at a time: key access on unrealized
+  result-set rows goes through toucan2's deferred-row machinery on every lookup, which benchmarked ~15x slower than
+  realizing each row once and reading plain map keys. The raw query skips the model transforms, so `:type` and
+  `:value` arrive as strings and are keywordized here."
   [{:keys [group-id group-ids db-id perm-type audit?]}]
-  (t2/reducible-select [:model/DataPermissions
-                        [:perm_type :type]
-                        [:group_id :group-id]
-                        [:perm_value :value]
-                        [:db_id :db-id]
-                        [:schema_name :schema]
-                        [:table_id :table-id]]
-                       {:where    [:and
-                                   (when perm-type [:= :perm_type (u/qualified-name perm-type)])
-                                   (when db-id [:= :db_id db-id])
-                                   (when group-id [:= :group_id group-id])
-                                   (when group-ids [:in :group_id group-ids])
-                                   (when-not audit? [:not= :db_id audit/audit-db-id])
-                                   [:not-in :db_id {:select [:id]
-                                                    :from   [:metabase_database]
-                                                    :where  [:not= :router_database_id nil]}]]
-                        :order-by [:group_id :db_id]}))
+  (eduction
+   (map (fn [row]
+          (-> (t2.realize/realize row)
+              (update :type keyword)
+              (update :value keyword))))
+   (permissions-rest.db/data-permissions-reducible
+    {:perm-type             perm-type
+     :db-id                 db-id
+     :group-id              group-id
+     :group-ids             group-ids
+     :excluded-database-id  (when-not audit? audit/audit-db-id)})))
 
 (defn- add-perm
   "Reducing step that accumulates one `data_permissions` row's value into its (group, db) `perm-map`, at either a
@@ -241,8 +235,8 @@
 
   `reducible` MUST be ordered by `(group_id, db_id)` so each (group, db)'s rows arrive contiguously: we accumulate one
   raw perm-map at a time and commit it as soon as its group ends, so the full raw table-level graph -- which can be on
-  the order of a gigabyte -- is never materialized. (The rows are transient, cursor-backed instances, so they can't be
-  buffered and grouped after the fact, e.g. via `partition-by`.)"
+  the order of a gigabyte -- is never materialized. (Buffering and grouping after the fact, e.g. via `partition-by`,
+  would materialize the whole result set.)"
   [reducible finalize]
   (let [commit (fn [graph path perm-map]
                  (if (nil? path)
@@ -268,13 +262,18 @@
   [& {:as opts}]
   (reduce-into-graph (data-perms-reducible opts) collapse-uniform-view-data))
 
+(defn- maybe-hide-tenant-groups [groups]
+  (apply dissoc groups (perms/hidden-tenant-group-ids (keys groups))))
+
 (mu/defn api-graph :- ::permissions-rest.schema/data-permissions-graph
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
   renames permission types and values from the names stored in the database to the ones expected by the frontend.
   - Converts DB key names to API key names
   - Converts DB value names to API value names
   - Nesting: see [[rename-perm]] to see which keys in `graph` affect which paths in the api permission-graph
-  - Adds sandboxed entries, and impersonations to graph"
+  - Adds sandboxed entries, and impersonations to graph
+  - Hides tenant-group entries when the Tenants feature is disabled, mirroring the visibility rules used by the
+    permissions group listing endpoints."
   ([]
    (api-graph {}))
 
@@ -295,7 +294,8 @@
                 (add-sandboxes-to-permissions-graph opts)
                 (add-impersonations-to-permissions-graph opts)
                 (add-admin-perms-to-permissions-graph opts)
-                (add-data-analyst-perms-to-permissions-graph opts))}))
+                (add-data-analyst-perms-to-permissions-graph opts)
+                (maybe-hide-tenant-groups))}))
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
 
@@ -606,8 +606,7 @@
    (let [affected-group-ids  (keys graph)
          affected-db-ids     (into #{} (mapcat keys) (vals graph))
          all-tables          (when (seq affected-db-ids)
-                               (t2/select [:model/Table :id :db_id :schema]
-                                          :db_id [:in affected-db-ids]))
+                               (permissions-rest.db/tables-for-databases affected-db-ids))
          tables-by-db-schema (group-by (juxt :db_id :schema) all-tables)
          tables-by-db        (group-by :db_id all-tables)
          current-perms       (or (perms/index-database-permissions affected-group-ids affected-db-ids) {})

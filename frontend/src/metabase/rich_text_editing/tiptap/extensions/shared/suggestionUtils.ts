@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 
-import type { MetabaseProtocolEntityModel } from "metabase/metabot/utils/links";
 import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
+import type { MetabaseProtocolEntityModel } from "metabase/urls";
 import type { UrlableModel } from "metabase/urls/modelToUrl";
 import type { MentionableUser, RecentItem } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";

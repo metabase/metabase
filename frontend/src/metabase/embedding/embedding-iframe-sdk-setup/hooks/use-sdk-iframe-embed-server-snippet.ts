@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 
-import { useSetting } from "metabase/common/hooks";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
@@ -14,6 +13,7 @@ import type {
   CodeSampleParameters,
   ServerCodeSampleConfig,
 } from "metabase/embedding/types";
+import { useSetting } from "metabase/settings";
 
 const getEmbedServerCodeExampleOptions = (
   codeSampleParameters: Omit<CodeSampleParameters, "displayOptions">,

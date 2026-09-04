@@ -11,8 +11,10 @@ export const usePublicEndpoints = ({
   uuid,
   token,
 }: {
-  uuid: EntityUuid;
-  token: EntityToken;
+  // Exactly one of these is present: the public route supplies `uuid`, the
+  // embed route supplies `token`.
+  uuid?: EntityUuid;
+  token?: EntityToken;
 }) => {
   const isPublic = Boolean(uuid);
   const isEmbed = Boolean(token);

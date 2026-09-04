@@ -10,9 +10,7 @@ import {
 import { useSetArchive } from "metabase/archive/hooks";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { ActionIcon, Button, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Alert, Button, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type Question from "metabase-lib/v1/Question";
@@ -21,7 +19,7 @@ import {
   canEditAction,
   canRunAction,
 } from "metabase-lib/v1/actions/utils";
-import type { WritebackAction } from "metabase-types/api";
+import type { Database, WritebackAction } from "metabase-types/api";
 
 import {
   EmptyStateActionContainer,
@@ -30,12 +28,7 @@ import {
   EmptyStateTitle,
 } from "../EmptyState.styled";
 
-import {
-  ActionAlert,
-  ActionList,
-  ActionsHeader,
-  Root,
-} from "./ModelActionDetails.styled";
+import { ActionList, ActionsHeader, Root } from "./ModelActionDetails.styled";
 import ModelActionListItem from "./ModelActionListItem";
 import { useEnableImplicitActionsForModel } from "./useEnableImplicitActionsForModel";
 
@@ -45,9 +38,11 @@ interface OwnProps {
 
 type Props = OwnProps;
 
+const EMPTY_DATABASE_LIST: Database[] = [];
+
 function ModelActionDetails({ model }: Props) {
-  useListDatabasesQuery();
-  const databases = useSelector((state) => getMetadata(state).databasesList());
+  const { data: databasesResponse } = useListDatabasesQuery();
+  const databases = databasesResponse?.data ?? EMPTY_DATABASE_LIST;
   const { data: actions = [] } = useListActionsQuery({
     "model-id": model.id(),
   });
@@ -153,9 +148,14 @@ function ModelActionDetails({ model }: Props) {
         </ActionsHeader>
       )}
       {database && !hasActionsEnabled && (
-        <ActionAlert icon="warning" variant="error">
+        <Alert
+          size="compact"
+          w="70%"
+          icon={<Icon name="warning" />}
+          color="error"
+        >
           {t`Running Actions is not enabled for database ${database.displayName()}`}
-        </ActionAlert>
+        </Alert>
       )}
       {actions.length > 0 ? (
         <ActionList aria-label={t`Action list`}>

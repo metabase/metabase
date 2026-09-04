@@ -54,7 +54,7 @@
   "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
   [collection-namespace]
   (m/assoc-some root-collection
-                :name (case (keyword collection-namespace)
+                :name (case (some-> collection-namespace keyword)
                         :shared-tenant-collections (tru "Shared collections")
                         :snippets (tru "SQL snippets")
                         :transforms (tru "Transforms")

@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { getEmbeddingThemeOverride } from "embedding-sdk-bundle/lib/theme";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
-import { useSetting } from "metabase/common/hooks";
 import {
   type MetabaseEmbeddingTheme,
   getEmbeddingComponentOverrides,
@@ -12,6 +11,7 @@ import {
 } from "metabase/embedding-sdk/theme";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { useSelector } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
 import type { MantineThemeOverride } from "metabase/ui";
 import { deriveFullMetabaseTheme } from "metabase/ui/colors";

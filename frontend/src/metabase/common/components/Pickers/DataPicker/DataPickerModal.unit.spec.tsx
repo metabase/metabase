@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupCollectionByIdEndpoint,
@@ -10,9 +11,16 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { DatabaseId, RecentItem, SearchResult } from "metabase-types/api";
+import { checkNotNull } from "metabase/utils/types";
+import type {
+  Database,
+  DatabaseId,
+  RecentItem,
+  SearchResult,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
@@ -29,6 +37,7 @@ type SetupOpts = {
   title?: string;
   value?: DataPickerValue;
   databaseId?: DatabaseId;
+  databases?: Database[];
   recentItems?: RecentItem[];
   searchItems?: SearchResult[];
 };
@@ -37,6 +46,7 @@ async function setup({
   title = "Pick your starting data",
   value,
   databaseId,
+  databases = [createMockDatabase({ id: 1, name: "DB 1" })],
   recentItems = [],
   searchItems = [],
 }: SetupOpts = {}) {
@@ -44,7 +54,7 @@ async function setup({
   const onChange = jest.fn();
   const onClose = jest.fn();
 
-  setupDatabasesEndpoints([createMockDatabase({ id: 1, name: "DB 1" })]);
+  setupDatabasesEndpoints(databases);
 
   const collections = [
     createMockCollection({ id: 2, name: "Collection A" }),
@@ -143,6 +153,71 @@ describe("DataPickerModal", () => {
       expect(await screen.findByText("DB 1 question")).toBeInTheDocument();
       expect(screen.queryByText("DB 2 table")).not.toBeInTheDocument();
       expect(screen.queryByText("DB 2 question")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("search", () => {
+    it("should exclude other users' personal collections from search results", async () => {
+      await setup({
+        searchItems: [
+          createMockSearchResult({ id: 1, name: "accounts", model: "table" }),
+        ],
+      });
+
+      await userEvent.type(
+        await screen.findByPlaceholderText(/search/i),
+        "accounts",
+      );
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.lastCall("path:/api/search")).toBeTruthy();
+      });
+
+      const call = fetchMock.callHistory.lastCall("path:/api/search");
+      const url = new URL(checkNotNull(call?.request?.url));
+      expect(url.searchParams.get("filter_items_in_personal_collection")).toBe(
+        "exclude-others",
+      );
+    });
+  });
+  describe("disabled databases", () => {
+    const databases = [
+      createMockDatabase({ id: 1, name: "DB 1" }),
+      createMockDatabase({ id: 2, name: "DB 2" }),
+    ];
+
+    it("explains why a database from another database is disabled when locked to one database", async () => {
+      await setup({ databaseId: 1, databases });
+
+      await userEvent.click(await screen.findByText("Databases"));
+
+      const disabledDatabase = await screen.findByRole("link", {
+        name: /DB 2/,
+      });
+      expect(disabledDatabase).toHaveAttribute("data-disabled", "true");
+
+      await userEvent.hover(disabledDatabase);
+
+      expect(
+        await screen.findByText(
+          "You can't combine data from different databases.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show a tooltip on the database the picker is locked to", async () => {
+      await setup({ databaseId: 1, databases });
+
+      await userEvent.click(await screen.findByText("Databases"));
+
+      const enabledDatabase = await screen.findByRole("link", { name: /DB 1/ });
+      expect(enabledDatabase).not.toHaveAttribute("data-disabled", "true");
+
+      await userEvent.hover(enabledDatabase);
+
+      expect(
+        screen.queryByText("You can't combine data from different databases."),
+      ).not.toBeInTheDocument();
     });
   });
 });

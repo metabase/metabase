@@ -1,23 +1,19 @@
 import { useEffect } from "react";
 
 import { useGetCollectionQuery } from "metabase/api";
-import { useDispatch } from "metabase/redux";
-import { Outlet, replace } from "metabase/router";
+import { Outlet, useNavigate, useParams } from "metabase/router";
 import { extractCollectionId } from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
 
 import { CollectionContent } from "../CollectionContent";
 
-export interface CollectionLandingProps {
-  params: CollectionLandingParams;
-}
-
-export interface CollectionLandingParams {
+export type CollectionLandingParams = {
   slug: string;
-}
+};
 
-const CollectionLanding = ({ params: { slug } }: CollectionLandingProps) => {
-  const dispatch = useDispatch();
+const CollectionLanding = () => {
+  const { slug } = useParams<CollectionLandingParams>();
+  const navigate = useNavigate();
   const { data: trashCollection } = useGetCollectionQuery({ id: "trash" });
 
   const collectionId = extractCollectionId(slug);
@@ -32,10 +28,10 @@ const CollectionLanding = ({ params: { slug } }: CollectionLandingProps) => {
         trashCollection.id === collectionId;
 
       if (isTrashSlug || isTrashCollectionId) {
-        dispatch(replace("/trash"));
+        navigate("/trash", { replace: true });
       }
     },
-    [dispatch, slug, trashCollection?.id, collectionId],
+    [slug, trashCollection?.id, collectionId, navigate],
   );
 
   if (!isNotNull(collectionId)) {

@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.actions.actions :as actions]
    [metabase.actions.args :as actions.args]
+   [metabase.actions.db :as actions.db]
    [metabase.actions.http-action :as http-action]
    [metabase.actions.models :as action]
    [metabase.analytics.core :as analytics]
@@ -24,7 +25,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (mu/defn- execute-query-action!
@@ -36,14 +36,13 @@
                                                               [:model_id      ::lib.schema.id/card]
                                                               [:dataset_query ::lib.schema/native-only-query]]
    request-parameters]
-  (log/tracef "Executing action\n\n%s" (u/pprint-to-str action))
+  (log/tracef "Executing action for model %d" model-id)
   (driver.conn/with-write-connection
     (try
       (let [parameters (for [parameter (:parameters action)]
                          (assoc parameter :value (get request-parameters (:id parameter))))
             query      (-> query
                            (assoc :parameters parameters))]
-        (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
         (binding [qp.perms/*card-id* model-id]
           (qp/execute-write-query! query)))
       (catch Throwable e
@@ -56,18 +55,20 @@
 
 (mu/defn- implicit-action-table
   [card-id :- ::lib.schema.id/card]
-  (let [query              (t2/select-one-fn :dataset_query :model/Card :id card-id)
+  (let [query              (actions.db/card-query card-id)
         {:keys [table-id]} (query/query->database-and-table-ids query)]
-    (t2/hydrate (t2/select-one :model/Table :id table-id) :fields)))
+    (t2/hydrate (actions.db/table table-id) :fields)))
 
 (defn- execute-custom-action! [action request-parameters]
   (let [{action-type :type} action]
     (actions/check-actions-enabled! action)
-    (let [model (t2/select-one :model/Card :id (:model_id action))]
-      (when (and (= action-type :query) (not= (:database_id model) (:database_id action)))
+    (let [model (actions.db/card (:model_id action))
+          ;; the query executes against its own :database; fall back to the derived column if absent
+          action-db-id (or (:database (:dataset_query action)) (:database_id action))]
+      (when (and (= action-type :query) (not= (:database_id model) action-db-id))
         ;; the above check checks the db of the model. We check the db of the query action here
         (actions/check-actions-enabled-for-database!
-         (t2/select-one :model/Database :id (:database_id action)))))
+         (actions.db/database action-db-id))))
     (try
       (case action-type
         :query
@@ -76,7 +77,7 @@
         :http
         (http-action/execute-http-action! action request-parameters))
       (catch Exception e
-        (log/error e "Error executing action.")
+        (log/errorf "Error executing action: %s" (ex-message e))
         (if-let [ed (ex-data e)]
           (let [ed (cond-> ed
                      (and (nil? (:status-code ed))
@@ -190,48 +191,53 @@
 
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
-  [action request-parameters]
-  (workspaces/check-not-in-workspace-mode! "Actions")
-  (let [;; if a value is supplied for a hidden parameter, it should raise an error
-        field-settings         (get-in action [:visualization_settings :fields])
-        hidden-param-ids       (->> (vals field-settings)
-                                    (filter :hidden)
-                                    (map :id))
-        destination-param-ids  (set/difference (set (map :id (:parameters action))) (set hidden-param-ids))
-        _ (check-no-extra-parameters request-parameters destination-param-ids)
-        ;; add default values for missing parameters (including hidden ones)
-        all-param-ids          (set (map :id (:parameters action)))
-        provided-param-ids     (set (keys request-parameters))
-        missing-param-ids      (set/difference all-param-ids provided-param-ids)
-        missing-param-defaults (into {}
-                                     (keep (fn [param-id]
-                                             (when-let [default-value (get-in field-settings [param-id :defaultValue])]
-                                               [param-id default-value])))
-                                     missing-param-ids)
-        request-parameters     (merge missing-param-defaults request-parameters)]
-    (case (:type action)
-      :implicit
-      (execute-implicit-action! action request-parameters)
-      (:query :http)
-      (execute-custom-action! action request-parameters)
-      (throw (ex-info (tru "Unknown action type {0}." (name (:type action :unknown))) action)))))
+  ([action request-parameters]
+   (execute-action! action request-parameters nil))
+  ([action request-parameters {:keys [allow-http-actions?] :or {allow-http-actions? true}}]
+   (when (and (= (:type action) :http) (not allow-http-actions?))
+     (throw (ex-info (tru "HTTP actions cannot be executed from public endpoints.")
+                     {:status-code 403})))
+   (let [;; if a value is supplied for a hidden parameter, it should raise an error
+         field-settings         (get-in action [:visualization_settings :fields])
+         hidden-param-ids       (->> (vals field-settings)
+                                     (filter :hidden)
+                                     (map :id))
+         destination-param-ids  (set/difference (set (map :id (:parameters action))) (set hidden-param-ids))
+         _ (check-no-extra-parameters request-parameters destination-param-ids)
+         ;; add default values for missing parameters (including hidden ones)
+         all-param-ids          (set (map :id (:parameters action)))
+         provided-param-ids     (set (keys request-parameters))
+         missing-param-ids      (set/difference all-param-ids provided-param-ids)
+         missing-param-defaults (into {}
+                                      (keep (fn [param-id]
+                                              (when-let [default-value (get-in field-settings [param-id :defaultValue])]
+                                                [param-id default-value])))
+                                      missing-param-ids)
+         request-parameters     (merge missing-param-defaults request-parameters)]
+     (case (:type action)
+       :implicit
+       (execute-implicit-action! action request-parameters)
+       (:query :http)
+       (execute-custom-action! action request-parameters)
+       (throw (ex-info (tru "Unknown action type {0}." (name (:type action :unknown))) action))))))
 
 (mu/defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
    of shape `{<parameter-id> <value>}."
-  [dashboard-id       :- ::lib.schema.id/dashboard
-   dashcard-id        :- ::lib.schema.id/dashcard
-   request-parameters :- [:maybe [:map-of :string :any]]]
-  (let [dashcard (api/check-404 (t2/select-one :model/DashboardCard
-                                               :id dashcard-id
-                                               :dashboard_id dashboard-id))
-        action (api/check-404 (action/select-action :id (:action_id dashcard)))]
-    (analytics/track-event! :snowplow/action
-                            {:event     :action-executed
-                             :source    :dashboard
-                             :type      (:type action)
-                             :action_id (:id action)})
-    (execute-action! action request-parameters)))
+  ([dashboard-id dashcard-id request-parameters]
+   (execute-dashcard! dashboard-id dashcard-id request-parameters nil))
+  ([dashboard-id       :- ::lib.schema.id/dashboard
+    dashcard-id        :- ::lib.schema.id/dashcard
+    request-parameters :- [:maybe [:map-of :string :any]]
+    opts]
+   (let [dashcard (api/check-404 (actions.db/dashcard-in-dashboard dashcard-id dashboard-id))
+         action (api/check-404 (action/select-action :id (:action_id dashcard)))]
+     (analytics/track-event! :snowplow/action
+                             {:event     :action-executed
+                              :source    :dashboard
+                              :type      (:type action)
+                              :action_id (:id action)})
+     (execute-action! action request-parameters opts))))
 
 (defn- fetch-implicit-action-values
   [action request-parameters]
@@ -243,7 +249,7 @@
         info {:executed-by api/*current-user-id*
               :context     :action
               :action-id   (:id action)}
-        card (t2/select-one :model/Card :id (:model_id action))
+        card (actions.db/card (:model_id action))
         ;; prefilling a form with day old data would be bad
         result (model-persistence/with-persisted-substituion-disabled
                  (qp/process-query

@@ -9,7 +9,7 @@ import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 import { trackOnboardingChecklistOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
-import { useAddDataPermissions } from "./AddDataModal/use-add-data-permission";
+import { useCanAddData } from "./use-can-add-data";
 
 export const GettingStartedSection = ({
   nonEntityItem,
@@ -19,7 +19,7 @@ export const GettingStartedSection = ({
   nonEntityItem: SelectedItem;
   onAddDataModalOpen: () => void;
 }>) => {
-  const { canPerformMeaningfulActions } = useAddDataPermissions();
+  const canAddData = useCanAddData();
   const [opened, { toggle }] = useDisclosure(true);
 
   const ONBOARDING_URL = "/getting-started";
@@ -46,7 +46,7 @@ export const GettingStartedSection = ({
         role="tabpanel"
         aria-expanded={opened}
       >
-        {canPerformMeaningfulActions && (
+        {canAddData && (
           <PaddedSidebarLink icon="add_data" onClick={onAddDataModalOpen}>
             {t`Add your data`}
           </PaddedSidebarLink>

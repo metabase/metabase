@@ -143,7 +143,7 @@
 
    SECURITY: Replacement values are injected into the SQL AST as identifier names
    without sanitization. Callers MUST ensure replacement values are system-generated
-   (e.g., workspace isolation schema names, database metadata). Never pass
+   (e.g., database metadata). Never pass
    user-controlled input as replacement values."
   ([driver sql-string replacements]
    (replace-names driver sql-string replacements {}))
@@ -165,7 +165,6 @@
 
 (mu/defn simple-query? :- ::simple-query-result
   "Check if SQL string is a simple SELECT (no LIMIT, OFFSET, or CTEs).
-  Used by Workspaces to determine if automatic checkpoints can be inserted.
 
   Returns a map with:
   - `:is_simple` - boolean indicating if query is simple

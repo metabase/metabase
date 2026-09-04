@@ -6,8 +6,6 @@ driver:
   name: bigquery-cloud-sdk
   display-name: BigQuery
   lazy-load: true
-  parent:
-    - sql
   connection-properties:
     - name: project-id
       display-name: Project ID (override)
@@ -40,6 +38,14 @@ driver:
       display-name: Alternate hostname
       helper-text: Alternate hostname used to connect to BigQuery
       placeholder: https://<hostname>:<port>
+      required: false
+      type: string
+      visible-if:
+        advanced-options: true
+    - name: universe-domain
+      display-name: Universe Domain
+      helper-text: The Google Cloud Universe Domain to use (e.g. googleapis.com or s3nsapis.fr).
+      placeholder: googleapis.com
       required: false
       type: string
       visible-if:

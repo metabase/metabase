@@ -13,6 +13,7 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.coordinated-run :as coordinated-run]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.freshness :as freshness]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
@@ -24,8 +25,7 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -83,7 +83,7 @@
 
 (defn- get-plan [transform-ids]
   (tracing/with-span :tasks "task.transform.plan" {:transform/count (count transform-ids)}
-    (let [all-transforms (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies])
+    (let [all-transforms (transforms.db/transform-dependency-rows)
           ;; Walk only the dependency closure of the transforms we're asked to run.
           ;; `table-dependencies` (and the QP preprocessing it triggers) is therefore called
           ;; only on transforms in that closure — never on unrelated transforms elsewhere in
@@ -101,7 +101,7 @@
       (transforms-base.ordering/persist-table-dependencies! uncached)
       ;; Fetch full rows only for the closure, which is what callers actually consume.
       (let [closure-transforms (if (seq dependencies)
-                                 (t2/select :model/Transform :id [:in (keys dependencies)])
+                                 (transforms.db/transforms (keys dependencies))
                                  [])]
         (dependencies->plan dependencies closure-transforms)))))
 
@@ -181,7 +181,7 @@
         (run-transform! ctx started-run-id transform)
         {::status :succeeded ::transform transform}
         (catch Throwable t
-          (log/errorf t "Transform %s in run %s failed" (pr-str (:id transform)) (pr-str run-id))
+          (log/errorf "Transform %s in run %s failed: %s" (pr-str (:id transform)) (pr-str run-id) (ex-message t))
           {::status    :failed
            ::transform transform
            ::message   (or (ex-message t) (str t))
@@ -215,6 +215,7 @@
              (update :failed conj id)
              (update :failures conj
                      {::transform t
+                      ::cascade? true
                       ::message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")}))
 
          ;; Defer if another in-flight transform is already writing this target table.
@@ -292,7 +293,7 @@
     (try
       (cancel-worker! worker)
       (catch Throwable t
-        (log/warnf t "Error canceling in-flight worker for transform %s" (pr-str id))))))
+        (log/warnf "Error canceling in-flight worker for transform %s: %s" (pr-str id) (ex-message t))))))
 
 (defonce ^:private active-runs
   ;; job-run-id -> promise, delivered once the run is found terminated externally (e.g. reaped).
@@ -334,7 +335,7 @@
 
 (defn- app-db-now
   []
-  (:now (t2/query-one {:select [[[:raw "current_timestamp"] :now]]})))
+  (transforms.db/app-db-now))
 
 (defn run-transforms!
   "Run the transforms of `plan`, honoring the DAG.
@@ -401,9 +402,9 @@
       :else                         {::status :succeeded})))
 
 (defn- job-transform-ids [job-id]
-  (let [tag-ids (t2/select-fn-set :tag_id :model/TransformJobTransformTag :job_id job-id)]
+  (let [tag-ids (transforms.db/job-tag-ids job-id)]
     (if (seq tag-ids)
-      (or (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids])
+      (or (transforms.db/transform-ids-with-tags tag-ids)
           #{})
       #{})))
 
@@ -423,17 +424,35 @@
                                            :scheduled  (contains? scheduled id))))
          plan)))
 
+(defn- split-cascade-failures
+  "Split `failures` into `[root-causes cascades]`, where cascades are dependents that never ran
+  because an upstream transform failed. If somehow every failure is a cascade, treat them all as
+  root causes so they aren't silently dropped."
+  [failures]
+  (let [{cascades true, roots false} (group-by (comp boolean ::cascade?) failures)]
+    (if (seq roots)
+      [roots cascades]
+      [failures nil])))
+
 (defn- compile-transform-failure-messages
   "Render the `::failures` of a coordinated run (as returned by [[run-transforms!]]) into a single
-  human-readable message, one block per failed transform with a link to its run."
+  human-readable message: one block per root-cause failure with a link to its run, plus a single
+  summary line for dependents skipped because an upstream transform failed."
   [failures]
-  (->> failures
-       (map (fn [failure]
-              (format "%s %s:\n%s"
-                      (:name (::transform failure))
-                      (urls/transform-run-url (:id (::transform failure)))
-                      (::message failure))))
-       (str/join "\n\n")))
+  (let [[roots cascades] (split-cascade-failures failures)
+        blocks  (map (fn [failure]
+                       (format "%s %s:\n%s"
+                               (:name (::transform failure))
+                               (urls/transform-run-url (:id (::transform failure)))
+                               (::message failure)))
+                     roots)
+        summary (when (seq cascades)
+                  (str (i18n/trsn "{0} downstream transform did not run because a transform it depends on failed"
+                                  "{0} downstream transforms did not run because a transform they depend on failed"
+                                  (count cascades))
+                       ": "
+                       (str/join ", " (map (comp :name ::transform) cascades))))]
+    (str/join "\n\n" (cond-> blocks summary (concat [summary])))))
 
 (defn execute-coordinated-run!
   "Run `transform-ids` per `plan` (as returned by [[get-plan]] or [[dependencies->plan]]) as the
@@ -454,13 +473,13 @@
                      (coordinated-run/fail-started-run! model run-id
                                                         {:message (compile-transform-failure-messages (::failures result))})
                      (catch Exception e
-                       (log/errorf e "Error when failing %s %s." label (pr-str run-id)))))
+                       (log/errorf "Error when failing %s %s: %s" label (pr-str run-id) (ex-message e)))))
       result)
     (catch Throwable t
       (try
         (coordinated-run/fail-started-run! model run-id {:message (ex-message t)})
         (catch Exception e
-          (log/errorf e "Error when failing %s." label)))
+          (log/errorf "Error when failing %s: %s" label (ex-message e))))
       (throw t))))
 
 (defn- active-users-to-edit-transform
@@ -472,18 +491,18 @@
   (when-some [revisions (seq (revisions/revisions :model/Transform transform-id))]
     (let [user-ids (map :user_id revisions)
           distinct-user-ids (distinct user-ids)
-          users (t2/select :model/User :id [:in distinct-user-ids] :is_active true)
+          users (transforms.db/active-users distinct-user-ids)
           by-id (u/index-by :id users)]
       ;; maintain order
       (map by-id distinct-user-ids))))
 
 (defn- active-admins
   []
-  (t2/select :model/User :is_superuser true :is_active true))
+  (transforms.db/active-admins))
 
 (defn- transform-creator
   [transform]
-  (t2/select :model/User :id (:creator_id transform) :is_active true))
+  (transforms.db/active-users [(:creator_id transform)]))
 
 (defn- users-to-notify-of-transform-failure [transform]
   (or (seq (take 1 (active-users-to-edit-transform (:id transform))))
@@ -504,14 +523,17 @@
   ;; or the creator if it hasn't been modified.
   ;; Or the admins if the creator is not active.
   ;; We hope that this will be the most recent user.
-  (let [job (t2/select-one :model/TransformJob job-id)
-        failures (map (fn [failure]
-                        (let [transform (::transform failure)]
-                          (assoc failure ::emails (->> transform
-                                                       users-to-notify-of-transform-failure
-                                                       (keep :email)))))
-                      failures)
-        by-user (group-by ::emails failures)]
+  ;; Only root-cause failures are reported individually; dependents that never ran because an
+  ;; upstream transform failed are summarized as a count to avoid a cascade of redundant errors.
+  (let [job (transforms.db/job job-id)
+        [roots cascades] (split-cascade-failures failures)
+        roots (map (fn [failure]
+                     (let [transform (::transform failure)]
+                       (assoc failure ::emails (->> transform
+                                                    users-to-notify-of-transform-failure
+                                                    (keep :email)))))
+                   roots)
+        by-user (group-by ::emails roots)]
     (doseq [[user-emails failures] by-user
             email user-emails]
       (events/publish-event! :event/transform-failed
@@ -519,6 +541,7 @@
                               :job_name (:name job)
                               :job_href (urls/transform-job-url job-id)
                               :failure_count (count failures)
+                              :skipped_count (count cascades)
                               :failures (mapv (fn [failure]
                                                 {:transform_name (:name (::transform failure))
                                                  :transform_href (urls/transform-run-url (:id (::transform failure)))
@@ -550,7 +573,7 @@
                                  (try
                                    (notify-transform-failures job-id failures)
                                    (catch Exception e
-                                     (log/errorf e "Error notifying failures of transform job %s" (pr-str job-id))))))]
+                                     (log/errorf "Error notifying failures of transform job %s: %s" (pr-str job-id) (ex-message e))))))]
             (some-> start-promise (deliver [:started run-id]))
             (tracing/with-span :tasks "task.transform.run-job" {:transform.job/id         job-id
                                                                 :transform.job/run-method (name run-method)

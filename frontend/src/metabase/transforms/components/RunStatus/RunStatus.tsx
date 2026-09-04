@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Box, Group, Icon } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 
@@ -69,7 +69,7 @@ export function RunStatus({
       return (
         <Group gap={0} data-testid="run-status">
           <Icon c="feedback-negative" name="warning" mr="sm" />
-          <Box mr={errorInfo ? "xs" : "sm"}>
+          <Box mr={errorInfo ? "xxs" : "sm"}>
             {endTimeText
               ? t`Last run failed ${endTimeText}.`
               : t`Last run failed.`}
@@ -100,7 +100,7 @@ export function RunStatus({
       return (
         <Group gap={0} data-testid="run-status">
           <Icon c="feedback-negative" name="warning" mr="sm" />
-          <Box mr={errorInfo ? "xs" : "sm"}>
+          <Box mr={errorInfo ? "xxs" : "sm"}>
             {endTimeText
               ? t`Last run timed out ${endTimeText}.`
               : t`Last run timed out.`}

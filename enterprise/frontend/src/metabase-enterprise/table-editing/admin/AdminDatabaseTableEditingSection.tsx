@@ -102,7 +102,7 @@ export function AdminDatabaseTableEditingSection({
       description={t`Allow the data within tables of this database to be edited by Admin users.`}
       data-testid="database-table-editing-section"
     >
-      <Flex align="center" justify="space-between" mb="xs">
+      <Flex align="center" justify="space-between" mb="xxs">
         <Label htmlFor="table-editing-toggle">{t`Editable tables`}</Label>
         <Switch
           id="table-editing-toggle"
@@ -120,7 +120,12 @@ export function AdminDatabaseTableEditingSection({
       </Box>
 
       {databaseHasRouting && (
-        <Alert variant="light" color="info" icon={<Icon name="info" />} mb="md">
+        <Alert
+          size="compact"
+          variant="light"
+          icon={<Icon name="info" />}
+          mb="lg"
+        >
           {t`Table editing can't be enabled when database routing is enabled.`}
         </Alert>
       )}

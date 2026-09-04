@@ -25,6 +25,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase-enterprise.entity-retrieval.db :as entity-retrieval.db]
    [metabase-enterprise.entity-retrieval.index-table :as index-table]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.collections.core :as collections]
@@ -32,8 +33,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as jdbc.rs]
-   [toucan2.core :as t2])
+   [next.jdbc.result-set :as jdbc.rs])
   (:import
    (java.sql Connection)))
 
@@ -49,6 +49,47 @@
 ;; Arbitrary app-wide-unique constant, distinct from index-table's ensure lock (20011) and
 ;; semantic-search's migration lock (19991).
 (def ^:private reconcile-lock-id 20012)
+
+(defn- with-index-lock
+  [pgvector lock-function unlock-function f]
+  (with-open [^Connection conn (jdbc/get-connection pgvector)]
+    (let [autocommit (.getAutoCommit conn)]
+      (.setAutoCommit conn true)
+      (try
+        (jdbc/execute! conn [(format "SELECT %s(%d)" lock-function reconcile-lock-id)])
+        (try
+          (f conn)
+          (finally
+            (jdbc/execute! conn [(format "SELECT %s(%d)" unlock-function reconcile-lock-id)])))
+        (finally
+          (.setAutoCommit conn autocommit))))))
+
+(defn with-index-read-lock
+  "Run `(f connection)` under a shared cluster-wide library-index lock, returning nil immediately when a
+  reconcile holds the matching exclusive lock.
+
+  Concurrent searches share this lock. The non-blocking acquisition prevents waiting searches from exhausting
+  the pgvector connection pool during a long reconcile. A successful search's compatibility check and vector
+  query cannot straddle a rebuild into another embedding space."
+  [pgvector f]
+  (with-open [^Connection conn (jdbc/get-connection pgvector)]
+    (let [autocommit (.getAutoCommit conn)]
+      (.setAutoCommit conn true)
+      (try
+        (when (:acquired (jdbc/execute-one!
+                          conn
+                          [(format "SELECT pg_try_advisory_lock_shared(%d) AS acquired" reconcile-lock-id)]
+                          {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
+          (try
+            (f conn)
+            (finally
+              (jdbc/execute! conn [(format "SELECT pg_advisory_unlock_shared(%d)" reconcile-lock-id)]))))
+        (finally
+          (.setAutoCommit conn autocommit))))))
+
+(defn- with-index-write-lock
+  [pgvector f]
+  (with-index-lock pgvector "pg_advisory_lock" "pg_advisory_unlock" f))
 
 (defn doc-id
   "Content-addressed primary key for an index document.
@@ -118,28 +159,20 @@
 (defn- library-cards [lib-ids id]
   ;; :card_schema is mandatory in any column-scoped Card SELECT (toucan guard). Card :type is keywordized
   ;; (:metric / :model); the entity_type is its name string.
-  (->> (apply t2/select [:model/Card :id :name :description :type :card_schema]
-              (cond-> [:collection_id [:in lib-ids], :archived false, :type [:in ["metric" "model"]]]
-                id (conj :id id)))
+  (->> (entity-retrieval.db/library-cards-in-collections lib-ids id)
        (map (fn [c] (->library-entity (name (:type c)) (:id c) (:name c) (:description c))))))
 
 (defn- library-tables [lib-ids id]
   ;; A published table's user-facing label is its display_name; fall back to the raw name.
-  (->> (apply t2/select [:model/Table :id :name :display_name :description]
-              (cond-> [:collection_id [:in lib-ids], :is_published true, :active true]
-                id (conj :id id)))
+  (->> (entity-retrieval.db/library-tables-in-collections lib-ids id)
        (map (fn [t] (->library-entity "table" (:id t) (or (:display_name t) (:name t)) (:description t))))))
 
 (defn- library-measures [table-ids id]
-  (->> (apply t2/select [:model/Measure :id :name :description]
-              (cond-> [:table_id [:in table-ids], :archived false]
-                id (conj :id id)))
+  (->> (entity-retrieval.db/library-measures-of-tables table-ids id)
        (map (fn [mv] (->library-entity "measure" (:id mv) (:name mv) (:description mv))))))
 
 (defn- library-segments [table-ids id]
-  (->> (apply t2/select [:model/Segment :id :name :description]
-              (cond-> [:table_id [:in table-ids], :archived false]
-                id (conj :id id)))
+  (->> (entity-retrieval.db/library-segments-of-tables table-ids id)
        (map (fn [s] (->library-entity "segment" (:id s) (:name s) (:description s))))))
 
 (defn- library-entities
@@ -171,9 +204,9 @@
 
         (#{"measure" "segment"} entity-type)
         ;; A measure/segment is a member only when its parent table is a current library table.
-        (when-let [table-id (t2/select-one-fn :table_id
-                                              (if (= entity-type "measure") :model/Measure :model/Segment)
-                                              :id entity-local-id)]
+        (when-let [table-id (if (= entity-type "measure")
+                              (entity-retrieval.db/measure-table-id entity-local-id)
+                              (entity-retrieval.db/segment-table-id entity-local-id))]
           (when (seq (library-tables lib-ids table-id))
             (first (if (= entity-type "measure")
                      (library-measures [table-id] entity-local-id)
@@ -202,7 +235,7 @@
   card's live metric/model type). One row per card is guaranteed by the normalized storage key."
   []
   (u/index-by entity-class :ai_context
-              (t2/select [:model/OsiAiContext :entity_type :entity_local_id :ai_context])))
+              (entity-retrieval.db/ai-contexts)))
 
 (defn- dedup-by-doc-id [docs]
   ;; distinct-by doc_id so an exact duplicate (same doc_type and text, e.g. a synonym listed twice)
@@ -225,9 +258,8 @@
   (if-let [member (library-entity entity-type entity-local-id)]
     ;; Match ai_context by the normalized storage type: a card's row is stored as `card`, so look it up by
     ;; `card` whichever live label (metric/model) drove this targeted run.
-    (let [ai-ctx (t2/select-one-fn :ai_context :model/OsiAiContext
-                                   :entity_local_id entity-local-id
-                                   :entity_type (entity-retrieval/normalize-entity-type entity-type))]
+    (let [ai-ctx (entity-retrieval.db/ai-context entity-local-id
+                                                 (entity-retrieval/normalize-entity-type entity-type))]
       (dedup-by-doc-id (entity->docs member ai-ctx)))
     []))
 
@@ -241,8 +273,8 @@
   [conn]
   (u/index-by :doc_id #(select-keys % [:entity_type :entity_local_id])
               (jdbc/execute! conn
-                             [(format "SELECT doc_id, entity_type, entity_local_id FROM \"%s\""
-                                      index-table/*vectors-table*)]
+                             [(format "SELECT doc_id, entity_type, entity_local_id FROM %s"
+                                      (index-table/vectors-table-sql))]
                              {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 (defn- stored-docs-for-entity
@@ -255,8 +287,8 @@
           (comp (filter #(= target-class (entity-class %)))
                 (map (juxt :doc_id #(select-keys % [:entity_type :entity_local_id]))))
           (jdbc/execute! conn
-                         [(format "SELECT doc_id, entity_type, entity_local_id FROM \"%s\" WHERE entity_local_id = ?"
-                                  index-table/*vectors-table*)
+                         [(format "SELECT doc_id, entity_type, entity_local_id FROM %s WHERE entity_local_id = ?"
+                                  (index-table/vectors-table-sql))
                           entity-local-id]
                          {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
 
@@ -289,7 +321,7 @@
                         docs)]
       (when (seq records)
         (jdbc/execute! conn
-                       (-> (sql.helpers/insert-into (keyword index-table/*vectors-table*))
+                       (-> (sql.helpers/insert-into (keyword (index-table/vectors-table)))
                            (sql.helpers/values (vec records))
                            (sql.helpers/on-conflict :doc_id)
                            (sql.helpers/do-nothing)
@@ -299,7 +331,7 @@
 (defn- delete-rows! [conn doc-ids]
   (when (seq doc-ids)
     (jdbc/execute! conn
-                   (-> (sql.helpers/delete-from (keyword index-table/*vectors-table*))
+                   (-> (sql.helpers/delete-from (keyword (index-table/vectors-table)))
                        (sql.helpers/where [:in :doc_id (vec doc-ids)])
                        (sql/format {:quoted true})))))
 
@@ -316,10 +348,14 @@
         (jdbc/execute-one! conn
                            [(format (str "SELECT count(*) AS documents, "
                                          "count(distinct (entity_type, entity_local_id)) AS entities "
-                                         "FROM \"%s\"")
-                                    index-table/*vectors-table*)]
+                                         "FROM %s")
+                                    (index-table/vectors-table-sql))]
                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     {:documents documents :entities entities}))
+
+(defn- capture-reconcile-watermark [conn]
+  (:now (jdbc/execute-one! conn ["SELECT now() AS now"]
+                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 ;; Scalability — targeted writes, full-diff backstop.
 ;; The full diff is O(total index size) per run, not O(changes). Embeddings — the only expensive resource —
@@ -334,11 +370,12 @@
 (defn- reconcile-against-appdb!
   "The full diff body — assumes the reconcile advisory lock is held on `conn`. See the namespace docstring."
   [conn embedding-model]
-  (let [desired     (desired-docs)
-        desired-ids (set (map :doc_id desired))
-        stored      (stored-docs conn)
-        to-insert   (remove #(contains? stored (:doc_id %)) desired)
-        orphans     (remove desired-ids (keys stored))
+  (let [reconciled-at (capture-reconcile-watermark conn)
+        desired       (desired-docs)
+        desired-ids   (set (map :doc_id desired))
+        stored        (stored-docs conn)
+        to-insert     (remove #(contains? stored (:doc_id %)) desired)
+        orphans       (remove desired-ids (keys stored))
         ;; entity classes whose insert failed this run — their orphans are spared (see below).
         failed      (volatile! #{})
         inserted    (transduce
@@ -349,8 +386,8 @@
                                (insert-batch! conn embedding-model batch)
                                (catch Exception e
                                  (vswap! failed into (map entity-class batch))
-                                 (log/error e "library entity index: failed to insert batch of"
-                                            (count batch) "docs; will retry next run")
+                                 (log/error "library entity index: failed to insert batch of"
+                                            (count batch) "docs; will retry next run:" (ex-message e))
                                  0)))))
                      0
                      to-insert)
@@ -360,6 +397,15 @@
         to-delete   (cond->> orphans
                       (seq @failed) (remove #(contains? @failed (entity-class (get stored %)))))]
     (delete-rows! conn to-delete)
+    ;; Record freshness when the run converged as far as it can -- no *transient* batch failure this run
+    ;; (@failed is populated only by a caught insert exception). A doc silently dropped for exceeding the
+    ;; per-item token limit is a permanent, expected shortfall (`inserted` < `(count to-insert)` forever), so
+    ;; gating on the insert count instead would freeze reconciled_at the moment one un-embeddable doc enters
+    ;; the library -- NLQ staleness would then climb to critical (or stay NaN) even though every reconcile is
+    ;; doing all it can. Gate on the absence of retryable failures, not on full insertion. Persist the
+    ;; pre-read watermark so changes made during a long reconcile never look newer than the source snapshot.
+    (when (empty? @failed)
+      (index-table/touch-reconciled-at! conn reconciled-at))
     ;; index-size after the writes feeds the document/entity gauges (full reconcile only).
     (merge (diff-result desired to-insert inserted (count to-delete))
            (index-size conn))))
@@ -377,8 +423,8 @@
         inserted    (try
                       (if (seq to-insert) (insert-batch! conn embedding-model to-insert) 0)
                       (catch Exception e
-                        (log/error e "library entity index: failed to reconcile entity"
-                                   entity-type entity-local-id "; will retry next run")
+                        (log/error "library entity index: failed to reconcile entity"
+                                   entity-type entity-local-id "; will retry next run:" (ex-message e))
                         ::failed))
         failed?     (= ::failed inserted)
         to-delete   (if failed? [] orphans)]
@@ -402,28 +448,19 @@
   `ensure-tables!` (which may drop+rebuild on a model/format change) runs under the lock too, so a rebuild
   can't pull the table out from under a concurrent node's in-flight run."
   [pgvector resolve-model f]
-  (with-open [^Connection conn (jdbc/get-connection pgvector)]
-    ;; Per-batch commits, not one big transaction: the run tolerates partial failure across runs, so each
-    ;; insert/delete must commit on its own. Some pools hand out autocommit-off connections (which would
-    ;; silently roll the whole run back on close), so force it on and restore the prior setting before the
-    ;; connection goes back to the pool. (ensure-tables! flips this to a transaction for its DDL.)
-    (let [autocommit (.getAutoCommit conn)]
-      (.setAutoCommit conn true)
-      (try
-        (jdbc/execute! conn [(format "SELECT pg_advisory_lock(%d)" reconcile-lock-id)])
-        (try
-          (let [embedding-model (resolve-model)
-                status          (index-table/ensure-tables! conn embedding-model)
-                ;; :created (first build / healed manual drop) and :rebuilt (model/format change) both leave
-                ;; an empty table, so a targeted caller must do a full repopulate rather than index one entity.
-                emptied?        (contains? #{:created :rebuilt} status)]
-            (when emptied?
-              (log/info "library entity index: vectors table is empty (" status "); repopulating"))
-            (assoc (f conn embedding-model emptied?) :rebuilt? (= :rebuilt status)))
-          (finally
-            (jdbc/execute! conn [(format "SELECT pg_advisory_unlock(%d)" reconcile-lock-id)])))
-        (finally
-          (.setAutoCommit conn autocommit))))))
+  (with-index-write-lock
+    pgvector
+    (fn [conn]
+      ;; Per-batch commits, not one big transaction: the run tolerates partial failure across runs. The
+      ;; shared lock helper forces autocommit on; ensure-tables! temporarily wraps its DDL in a transaction.
+      (let [embedding-model (resolve-model)
+            status          (index-table/ensure-tables! conn embedding-model)
+            ;; :created (first build / healed manual drop) and :rebuilt (model/format change) both leave
+            ;; an empty table, so a targeted caller must do a full repopulate rather than index one entity.
+            emptied?        (contains? #{:created :rebuilt} status)]
+        (when emptied?
+          (log/info "library entity index: vectors table is empty (" status "); repopulating"))
+        (assoc (f conn embedding-model emptied?) :rebuilt? (= :rebuilt status))))))
 
 (defn reconcile!
   "Full reconcile of the pgvector `library_entity_index` with the appdb, blocking until it completes;

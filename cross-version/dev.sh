@@ -2,8 +2,8 @@
 #
 # Interactive dev environment for writing cross-version e2e tests.
 #
-# Starts an older Metabase version in Docker with H2 and opens Cypress.
-# Uses H2 with a shared volume so snapshot/restore works via test endpoints.
+# Starts the specified Metabase version and opens Cypress.
+# Uses Postgres with a shared volume so snapshot/restore works via test endpoints.
 #
 # Resolves which spec folder to use:
 #   e2e/cross-version/{major}/ if it exists, otherwise e2e/cross-version/latest/
@@ -63,9 +63,14 @@ cli() {
   bun "$SCRIPT_DIR/cli.ts" "$@"
 }
 
+# Compose wrapper: pinned to this directory's project so it keeps working
+# after we cd into the repo root to open Cypress (and from the exit trap)
+compose() {
+  docker compose -f "$SCRIPT_DIR/docker-compose.yml" "$@"
+}
+
 IMAGE=$(cli image "$VERSION")
 MAJOR=$(cli major "$VERSION")
-H2_DIR="$SCRIPT_DIR/.xv-h2/v${MAJOR}"
 LOG_FILE="$SCRIPT_DIR/.xv-metabase.log"
 
 # Resolve spec folder: exact match, then closest older-version folder, then latest
@@ -74,6 +79,8 @@ if [[ ! -d "$SPECS_DIR" ]]; then
   closest=""
   closest_dist=999
   for dir in "$REPO_ROOT"/e2e/cross-version/[0-9]*/; do
+    # Skip the literal pattern when the glob matches no numbered folders
+    [[ -d "$dir" ]] || continue
     v=$(basename "$dir")
     (( v < MAJOR )) && continue
     dist=$(( v - MAJOR ))
@@ -95,7 +102,6 @@ log "============================================"
 log "Version: $VERSION"
 log "Image:   $IMAGE"
 log "Port:    $PORT"
-log "H2 dir:  $H2_DIR"
 log "Logs:    $LOG_FILE"
 log "Specs:   $SPECS_DIR"
 log "============================================"
@@ -103,37 +109,28 @@ log "============================================"
 # Clean up previous session
 rm -f "$LOG_FILE"
 
-# Start with a clean app db every time
-# H2 files are owned by the Docker container's user, so use Docker to clean up
-if [[ -d "$H2_DIR" ]]; then
-  docker run --rm -v "$(dirname "$H2_DIR"):/data" alpine rm -rf "/data/$(basename "$H2_DIR")"
-fi
-mkdir -p "$H2_DIR"
+LOGS_PID=""
 
 cleanup() {
   log "Stopping Metabase..."
-  docker rm -f xv-dev-metabase 2>/dev/null || true
+  # Removing the containers ends the log streams, so the follower exits on its
+  # own once this returns — and its last writes are the shutdown logs
+  compose down --volumes 2>/dev/null || true
+  if [[ -n "$LOGS_PID" ]]; then
+    wait "$LOGS_PID" 2>/dev/null || true
+  fi
+  log "Logs from this session: $LOG_FILE"
 }
 
 trap cleanup EXIT
 
-# Remove any leftover container from a previous run (e.g., after SIGKILL)
-docker rm -f xv-dev-metabase 2>/dev/null || true
-
 log "Starting Metabase ${VERSION}..."
-docker run -d \
-  --name xv-dev-metabase \
-  -p "${PORT}:3000" \
-  -v "${H2_DIR}:/metabase.db" \
-  -e MB_ENABLE_TEST_ENDPOINTS=true \
-  -e MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE=true \
-  "$IMAGE"
+METABASE_IMAGE="$IMAGE" \
+METABASE_PORT="$PORT" compose up -d
 
-# Stream backend logs to file for debugging (docker logs xv-dev-metabase)
-docker logs -f xv-dev-metabase > "$LOG_FILE" 2>&1 &
-
-# Create snapshots dir inside the container for /api/testing/snapshot and /api/testing/restore
-docker exec xv-dev-metabase sh -c "mkdir -p /e2e/snapshots && chmod 777 /e2e/snapshots"
+# Follow container logs into a file for debugging (tail -f it in another shell)
+compose logs --no-color --follow > "$LOG_FILE" 2>&1 &
+LOGS_PID=$!
 
 log "Waiting for Metabase to be ready..."
 TIMEOUT=120
@@ -142,7 +139,7 @@ while true; do
   ELAPSED=$(( $(date +%s) - START ))
   if (( ELAPSED >= TIMEOUT )); then
     error "Timed out after ${TIMEOUT}s"
-    docker logs xv-dev-metabase
+    tail -n 100 "$LOG_FILE"
     exit 1
   fi
   if curl -sf "http://localhost:${PORT}/api/health" 2>/dev/null | grep -q '"ok"'; then
@@ -152,14 +149,10 @@ while true; do
 done
 log "Metabase is ready at http://localhost:${PORT}"
 
-log "Saving blank snapshot..."
-curl -sf -X POST "http://localhost:${PORT}/api/testing/snapshot/blank"
-
 log ""
 log "Opening Cypress..."
 cd "$REPO_ROOT"
 
-CROSS_VERSION_DEV_MODE=true \
 CYPRESS_BASE_URL="http://localhost:${PORT}" \
   bunx cypress open \
     --e2e \

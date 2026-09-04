@@ -6,12 +6,12 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.schema :as qp.schema]
+   ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,15 +30,9 @@
       ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
       ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
       (cluster-lock/with-cluster-lock {:lock cluster-lock/card-statistics-lock :retry-transient? true}
-        (t2/query {:update [(t2/table-name :model/Card)]
-                   :where  [:in :id (keys card-id->timestamp)]
-                   :set    {:last_used_at (into [:case]
-                                                (mapcat (fn [[id timestamp]]
-                                                          [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
-                                                        card-id->timestamp))
-                            :updated_at :updated_at}}))
+        (query-processor.db/update-cards-last-used-at! card-id->timestamp))
       (catch Throwable e
-        (log/error e "Error updating used cards")))))
+        (log/errorf "Error updating used cards: %s" (ex-message e))))))
 
 (defonce ^:private update-used-cards-queue
   (delay

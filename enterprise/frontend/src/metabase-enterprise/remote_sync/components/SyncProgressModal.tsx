@@ -2,8 +2,8 @@ import { msgid, ngettext, t } from "ttag";
 
 import { ActionButton } from "metabase/common/components/ActionButton";
 import { useToast } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Group, Modal, Progress, Stack, Text } from "metabase/ui";
 import { useCancelRemoteSyncCurrentTaskMutation } from "metabase-enterprise/api";
 import type { RemoteSyncOutcome, RemoteSyncTaskType } from "metabase-types/api";
@@ -52,6 +52,7 @@ export function SyncProgressModal({
         message,
         icon: "warning",
         toastColor: "feedback-negative",
+        timeout: 60000,
       });
 
       if (message.match(/no active task/i)) {
@@ -65,7 +66,7 @@ export function SyncProgressModal({
   if (isError) {
     return (
       <Modal onClose={onDismiss} opened size="md" title={t`Sync failed`}>
-        <Stack mt="md" gap="md">
+        <Stack mt="lg" gap="lg">
           <Text>{t`An error occurred during sync.`}</Text>
           {errorMessage && <Text>{errorMessage}</Text>}
           <Group justify="flex-end">
@@ -85,7 +86,7 @@ export function SyncProgressModal({
 
     return (
       <Modal onClose={onDismiss} opened size="md" title={successTitle}>
-        <Stack mt="md" gap="md">
+        <Stack mt="lg" gap="lg">
           <Text>{getSuccessMessage(outcome, taskType)}</Text>
           <Group justify="flex-end">
             <Button
@@ -109,7 +110,7 @@ export function SyncProgressModal({
       title={title}
       withCloseButton={false}
     >
-      <Stack mt="md" gap="md">
+      <Stack mt="lg" gap="lg">
         {isStalled ? (
           <Text ta="center">{getStalledMessage(minutesSinceLastUpdate)}</Text>
         ) : (

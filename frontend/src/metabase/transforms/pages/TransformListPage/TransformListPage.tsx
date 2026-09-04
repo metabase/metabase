@@ -9,18 +9,19 @@ import {
   useListTransformsQuery,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Outlet, type WithRouterProps } from "metabase/router";
+import { Outlet, useLocation } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
+import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Ellipsified } from "metabase/ui";
@@ -30,6 +31,7 @@ import {
   Flex,
   Group,
   Icon,
+  type RenderRowLink,
   Stack,
   TextInput,
   TreeTable,
@@ -72,6 +74,24 @@ const isRowDisabled = (row: Row<TreeNode>) => {
   return row.original.can_read === false;
 };
 
+const getRowHref = (row: Row<TreeNode>) => {
+  if (isRowDisabled(row)) {
+    return null;
+  }
+  if (row.original.nodeType === "transform" && row.original.transformId) {
+    return Urls.transform(row.original.transformId);
+  }
+  if (row.original.nodeType === "library" && row.original.url) {
+    return row.original.url;
+  }
+  return null;
+};
+
+const renderRowLink: RenderRowLink<TreeNode> = (row, props) => {
+  const href = getRowHref(row);
+  return href ? <Link to={href} {...props} /> : props.children;
+};
+
 const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
   folder: "text-secondary",
   transform: "core-brand",
@@ -94,13 +114,14 @@ const globalFilterFn = (
   );
 };
 
-type TransformListPageProps = WithRouterProps;
-
-export const TransformListPage = ({ location }: TransformListPageProps) => {
+export const TransformListPage = () => {
+  const location = useLocation();
   const { transformsDatabases = [], isLoadingDatabases } =
     useTransformPermissions();
   const targetCollectionId =
-    Urls.extractEntityId(location.query?.collectionId) ?? null;
+    Urls.extractEntityId(
+      new URLSearchParams(location.search).get("collectionId") ?? undefined,
+    ) ?? null;
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
@@ -260,19 +281,6 @@ export const TransformListPage = ({ location }: TransformListPageProps) => {
     ];
   }, [hasPythonTransformsFeature, warningsByTransformId, getNodeSyncColor]);
 
-  const getRowHref = useCallback((row: Row<TreeNode>) => {
-    if (isRowDisabled(row)) {
-      return null;
-    }
-    if (row.original.nodeType === "transform" && row.original.transformId) {
-      return Urls.transform(row.original.transformId);
-    }
-    if (row.original.nodeType === "library" && row.original.url) {
-      return row.original.url;
-    }
-    return null;
-  }, []);
-
   const treeTableInstance = useTreeTableInstance({
     data: treeData,
     columns: columnDefs,
@@ -316,20 +324,14 @@ export const TransformListPage = ({ location }: TransformListPageProps) => {
 
   return (
     <PageContainer data-testid="transforms-list" gap={0}>
-      <PaneHeader
-        breadcrumbs={
-          <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
-        }
-        showMetabotButton
-        py={0}
-      />
+      <TransformsHeader showMetabotButton />
       <Stack className={CS.overflowHidden}>
         {isMeterLocked && <LockedTransformsBanner />}
-        <Flex gap="md">
+        <Flex gap="lg">
           <TextInput
             placeholder={t`Search...`}
             leftSection={<Icon name="search" />}
-            bdrs="md"
+            bdrs="sm"
             flex="1"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -353,7 +355,7 @@ export const TransformListPage = ({ location }: TransformListPageProps) => {
               }
               onRowClick={handleRowClick}
               isRowDisabled={isRowDisabled}
-              getRowHref={getRowHref}
+              renderRowLink={renderRowLink}
               classNames={{ rowDisabled: S.rowDisabled }}
             />
           )}

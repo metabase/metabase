@@ -20,12 +20,10 @@ import {
 import { Palette } from "./Palette";
 
 const setup = ({
-  routeProps,
   initialRoute,
   searchResults = [],
   searchResultsDelay,
 }: {
-  routeProps?: { disableCommandPalette?: boolean };
   initialRoute?: string;
   searchResults?: SearchResult[];
   searchResultsDelay?: number;
@@ -37,11 +35,7 @@ const setup = ({
     collections: [createMockCollection({ id: "root", can_write: true })],
   });
   renderWithProviders(
-    <Route
-      path={initialRoute ? "*" : "/"}
-      element={<Palette />}
-      props={routeProps}
-    />,
+    <Route path={initialRoute ? "*" : "/"} element={<Palette />} />,
     {
       withKBar: true,
       withRouter: true,
@@ -64,15 +58,15 @@ describe("command palette", () => {
     expect(screen.getByTestId("command-palette")).toBeInTheDocument();
   });
 
-  it("should not render if the route has disabled the command palette", async () => {
-    setup({ routeProps: { disableCommandPalette: true } });
+  it("should not render on a path that disables the command palette", async () => {
+    setup({ initialRoute: "/setup" });
 
     await userEvent.keyboard("[ControlLeft>]k");
     expect(screen.queryByTestId("command-palette")).not.toBeInTheDocument();
   });
 
   it("should not call recents API when palette is disabled", async () => {
-    setup({ routeProps: { disableCommandPalette: true } });
+    setup({ initialRoute: "/setup" });
 
     await userEvent.keyboard("[ControlLeft>]k");
 
@@ -94,10 +88,14 @@ describe("command palette", () => {
     const calls = () =>
       fetchMock.callHistory.calls(/\/api\/setting\/color-scheme/);
 
+    // wait for the call to be recorded: reading at(-1) too early re-reads the
+    // previous request, whose body is already consumed
+    await waitFor(() => expect(calls()).toHaveLength(1));
     expect(await calls().at(-1)?.request?.json()).toEqual({ value: "dark" });
 
     await userEvent.click(await screen.findByText("Toggle dark/light mode"));
 
+    await waitFor(() => expect(calls()).toHaveLength(2));
     expect(await calls().at(-1)?.request?.json()).toEqual({
       value: "auto",
     });

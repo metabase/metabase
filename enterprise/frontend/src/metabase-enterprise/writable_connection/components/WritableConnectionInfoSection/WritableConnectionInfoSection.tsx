@@ -6,13 +6,13 @@ import {
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { useUpdateDatabaseMutation } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   hasDbRoutingEnabled,
   isDbModifiable,
 } from "metabase/common/utils/database";
 import type { WritableConnectionInfoSectionProps } from "metabase/plugins/oss/writable-connection";
-import { Link } from "metabase/router";
 import { Alert, Button, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -48,7 +48,7 @@ export function WritableConnectionInfoSection({
       description={t`You can add a separate writable connection to use with features like transforms and editable tables.`}
       data-testid="writable-connection-info-section"
     >
-      <Group justify="space-between" gap="lg">
+      <Group justify="space-between" gap="xl">
         {hasWritableConnection && (
           <DatabaseConnectionHealthInfo
             databaseId={database.id}
@@ -70,10 +70,10 @@ export function WritableConnectionInfoSection({
         <>
           <DatabaseInfoSectionDivider />
           <Alert
+            size="compact"
             variant="light"
-            color="info"
             icon={<Icon name="info" />}
-            mb="md"
+            mb="lg"
           >
             {t`Writable connection can't be enabled when Database Routing is enabled.`}
           </Alert>

@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
@@ -269,8 +270,7 @@
   (let [collections (when (seq collections)
                       (let [current-states (into {}
                                                  (map (juxt :id :is_remote_synced))
-                                                 (t2/select [:model/Collection :id :is_remote_synced]
-                                                            :id [:in (keys collections)]))]
+                                                 (remote-sync.db/collection-sync-states (keys collections)))]
                         (not-empty
                          (into {}
                                (filter (fn [[id desired]]
@@ -292,8 +292,10 @@
         (remote-sync.core/bulk-set-remote-sync collections)
         (catch Exception e
           (throw (ex-info (or (ex-message e) "Invalid collection settings")
-                          {:error       (ex-message e)
-                           :status-code 400} e)))))
+                          (assoc (ex-data e)
+                                 :error       (ex-message e)
+                                 :status-code 400)
+                          e)))))
     (events/publish-event! :event/remote-sync-settings-update
                            {:details {:remote-sync-type remote-sync-type}
                             :user-id api/*current-user-id*})
@@ -316,7 +318,7 @@
       (let [branch-list (source.p/branches source)]
         {:items branch-list})
       (catch Exception e
-        (log/errorf e "Failed to get branches from source: %s" (ex-message e))
+        (log/errorf "Failed to get branches from source: %s" (ex-message e))
         (let [error-msg (impl/source-error-message e)]
           (throw (ex-info error-msg {:status-code 400}
                           e)))))))

@@ -12,6 +12,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
@@ -20,9 +21,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.workspaces.table-remapping :as ws.table-remapping]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -98,9 +97,8 @@
   [database    :- i/DatabaseInstance
    db-metadata :- i/DatabaseMetadata]
   (log/infof "Found new version for DB: %s" (:version db-metadata))
-  (t2/update! :model/Database (u/the-id database)
-              {:details
-               (assoc (:details database) :version (:version db-metadata))}))
+  (sync.db/update-database! (u/the-id database)
+                            {:details (assoc (:details database) :version (:version db-metadata))}))
 
 (mu/defn- cruft-dependent-cols :- :map
   [{table-name :name :as table} :- :map
@@ -135,8 +133,7 @@
    Throws an exception if there is already a table with the same name, schema and database ID."
   [database :- i/DatabaseInstance
    table    :- :map]
-  (t2/insert-returning-instance!
-   :model/Table
+  (sync.db/insert-table!
    (merge (cruft-dependent-cols table database ::create)
           {:active                  true
            :db_id                   (:id database)
@@ -162,23 +159,19 @@
   is the app-DB Table instance we already hold, so we don't re-select it."
   [database :- i/DatabaseInstance
    existing :- (ms/InstanceOf :model/Table)]
-  (t2/update! :model/Table (:id existing)
-              (cond-> (cruft-dependent-cols existing database ::reactivate)
-                ;; do not unhide tables w/ cruft settings
-                (some? (:visibility_type existing)) (dissoc :visibility_type)
-                true                                (assoc :active true)
-                (:is_sample database)               (assoc :data_authority :ingested
-                                                           :data_source    :ingested))))
+  (sync.db/update-table! (:id existing)
+                         (cond-> (cruft-dependent-cols existing database ::reactivate)
+                           ;; do not unhide tables w/ cruft settings
+                           (some? (:visibility_type existing)) (dissoc :visibility_type)
+                           true                                (assoc :active true)
+                           (:is_sample database)               (assoc :data_authority :ingested
+                                                                      :data_source    :ingested))))
 
 (mu/defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if a matching inactive one exists."
   [database :- i/DatabaseInstance
    {schema :schema table-name :name :as table} :- :map]
-  (if-let [existing (t2/select-one :model/Table
-                                   :db_id (u/the-id database)
-                                   :schema schema
-                                   :name table-name
-                                   :active false)]
+  (if-let [existing (sync.db/inactive-table-by-schema-and-name (u/the-id database) schema table-name)]
     (reactivate-table! database existing)
     (create-table! database table)))
 
@@ -240,7 +233,7 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (when (seq table-ids)
     (log/info "Marking tables as inactive:" (pr-str table-ids))
-    (t2/update! :model/Table {:id [:in table-ids] :active true} {:active false})))
+    (sync.db/deactivate-tables! table-ids)))
 
 (def ^:private keys-to-update
   [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
@@ -282,7 +275,7 @@
                  v))
     (boolean
      (when (seq changes)
-       (t2/update! :model/Table (:id metabase-table) changes)
+       (sync.db/update-table! (:id metabase-table) changes)
        true))))
 
 (mu/defn- update-tables-metadata-if-needed! :- :int
@@ -329,10 +322,10 @@
    tables]
   (let [names (into [] (comp (map :name) (distinct)) tables)]
     (if (seq names)
-      (t2/select-fn->fn table-name+schema identity
-                        (into [:model/Table :id :name :schema :data_authority :active] keys-to-update)
-                        :db_id (u/the-id database)
-                        :name [:in names])
+      (m/index-by table-name+schema
+                  (sync.db/tables-by-name (into [:model/Table :id :name :schema :data_authority :active] keys-to-update)
+                                          (u/the-id database)
+                                          names))
       {})))
 
 (mu/defn- adjusted-schemas :- [:maybe [:map-of :string :string]]
@@ -349,7 +342,7 @@
         (cond-> accum
           (not= schema new-schema) (assoc schema new-schema)))))
    nil
-   (t2/reducible-select [:model/Table :schema] :db_id (u/the-id database))))
+   (sync.db/table-schemas-reducible (u/the-id database))))
 
 (mu/defn- adjust-table-schemas!
   "Apply the `{old-schema new-schema}` renames from [[adjusted-schemas]] to the app-DB Table rows."
@@ -358,10 +351,7 @@
   (when schemas-to-update
     (log/infof "Renaming schemas: %s" (pr-str schemas-to-update)))
   (doseq [[schema new-schema] schemas-to-update]
-    (t2/update! :model/Table
-                :db_id (:id database)
-                :schema schema
-                {:schema new-schema})))
+    (sync.db/rename-table-schema! (:id database) schema new-schema)))
 
 (def ^:private
   ^{:doc "threshold after which deactivated tables will be archived"}
@@ -380,12 +370,7 @@
         threshold-expr (apply
                         (requiring-resolve 'metabase.util.honey-sql-2/add-interval-honeysql-form)
                         (mdb/db-type) :%now archive-tables-threshold)
-        tables-to-archive (t2/select :model/Table
-                                     :db_id (u/the-id database)
-                                     :active false
-                                     :archived_at nil
-                                     :transform_target false
-                                     :deactivated_at [:< threshold-expr])
+        tables-to-archive (sync.db/tables-to-archive (u/the-id database) threshold-expr)
         archived (atom 0)]
     (doseq [table tables-to-archive
             :let [new-name (str (:name table) suffix)]]
@@ -401,16 +386,12 @@
                   ;; in the extremely unlikely case that there already exists a table with our
                   ;; archived name, we let it fail from hitting the unique constraints violation
                   ;; and just report the failure
-                  [(t2/update! :model/Table
-                               {:id (:id table)
-                                :active false}
-                               {:archived_at (mi/now)
-                                :name new-name})]
+                  [(sync.db/archive-inactive-table! (:id table) (mi/now) new-name)]
                   (catch Throwable t
                     [0 t]))]
             (when (zero? did-update)
               (if err
-                (log/errorf err "Failed archiving table %s" (sync-util/name-for-logging table))
+                (log/errorf "Failed archiving table %s: %s" (sync-util/name-for-logging table) (ex-message err))
                 (log/warnf "Did not archive table %s" (sync-util/name-for-logging table))))
             (swap! archived + did-update)))))
     @archived))
@@ -429,8 +410,7 @@
 
   Captures any `_metabase_metadata` table(s) from the raw batch (for the downstream metabase-metadata
   step), then narrows the batch -- dropping tables we never sync, collapsing duplicate `(name, schema)`,
-  dropping names too long for the app DB, and dropping workspace-isolated tables (they back canonical
-  Tables via remap, so they get no `:model/Table` of their own) -- and creates/reactivates new tables
+  and dropping names too long for the app DB -- and creates/reactivates new tables
   and updates metadata on existing ones. The reconcile is error-handled per batch: on failure we log,
   skip the batch, and mark the sync incomplete so retirement is skipped."
   [database :- i/DatabaseInstance
@@ -440,8 +420,7 @@
   (letfn [(reconcile! []
             (let [tables         (as-> batch <>
                                    (into #{} (comp (remove ignore-table?) (m/distinct-by table-name+schema)) <>)
-                                   (remove-tables-with-too-long-names database <>)
-                                   (ws.table-remapping/filter-workspace-side-tables <> (u/the-id database)))
+                                   (remove-tables-with-too-long-names database <>))
                   existing       (existing-tables-by-name+schema database tables)
                   existing-row   #(get existing (table-name+schema %))
                   already-active (into #{} (filter #(:active (existing-row %))) tables)
@@ -481,10 +460,9 @@
 
 (mu/defn- retire-unseen-tables! :- :int
   "Retire active app-DB tables the warehouse no longer reports. `seen` holds the `:model/Table` id of
-  every table reconciled this sync (accumulated by [[sync-table-batch!]], including the injected
-  workspace-canonical tuples). Streams the active app-DB table ids and retires, a batch at a time, the
-  ones not in `seen` -- so we never hold either the full active set or the full retire set in memory.
-  Returns the number retired."
+  every table reconciled this sync (accumulated by [[sync-table-batch!]]). Streams the active app-DB
+  table ids and retires, a batch at a time, the ones not in `seen` -- so we never hold either the full
+  active set or the full retire set in memory. Returns the number retired."
   [database :- i/DatabaseInstance
    seen     :- [:set ::lib.schema.id/table]]
   (transduce
@@ -493,7 +471,7 @@
                  (retire-tables! (set batch))
                  (+ retired (count batch))))
    0
-   (t2/reducible-select [:model/Table :id] :db_id (u/the-id database) :active true)))
+   (sync.db/active-table-ids-reducible (u/the-id database))))
 
 (mu/defn sync-tables-and-database!
   "Sync the `:model/Table` rows for `database` against its driver's `describe-database`, and the DB
@@ -525,7 +503,6 @@
                                {:created 0, :updated 0, :complete? true
                                 :seen (transient #{}), :metabase-metadata []}
                                (:tables db-metadata))
-           context  (reconcile-batch context (ws.table-remapping/inject-workspace-canonical-tuples [] (u/the-id database)))
            {:keys [created updated complete?]} context]
        (when-let [holder (:metabase-metadata-tables db-metadata)]
          (vreset! holder (:metabase-metadata context)))
@@ -537,4 +514,4 @@
          {:updated-tables (cond-> (+ created updated)
                             (int? retired)  (+ retired)
                             (int? archived) (+ archived))
-          :total-tables   (t2/count :model/Table :db_id (u/the-id database) :active true)})))))
+          :total-tables   (sync.db/active-table-count (u/the-id database))})))))

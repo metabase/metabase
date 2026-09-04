@@ -8,6 +8,7 @@
    [metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries
     :as qp.middleware.audit]
    [metabase.app-db.core :as mdb]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.query-processor.schema :as qp.schema]
@@ -84,6 +85,7 @@
   (mdb/memoize-for-application-db
    (memoize/ttl
     (fn []
+      ;; the JDBC-spec variant works on the app-db datasource without building a driver connection pool
       #_{:clj-kondo/ignore [:deprecated-var]}
       (sql-jdbc.sync/db-default-timezone (mdb/db-type) {:datasource (mdb/app-db)}))
     :ttl/threshold (u/hours->ms 1))))
@@ -106,8 +108,10 @@
   (let [driver         (mdb/db-type)
         [sql & params] (compile-honeysql driver honeysql-query)]
     ;; MySQL driver normalizies timestamps. Setting `*results-timezone-id-override*` is a shortcut
-    ;; instead of mocking up a chunk of regular QP pipeline.
-    (binding [qp.timezone/*results-timezone-id-override* (application-db-default-timezone)]
+    ;; instead of mocking up a chunk of regular QP pipeline. `*driver*` must be bound too: the MySQL
+    ;; timestamp reader calls `results-timezone-id`, whose `:keyword` driver arg is validated in tests.
+    (binding [driver/*driver*                            driver
+              qp.timezone/*results-timezone-id-override* (application-db-default-timezone)]
       (try
         (with-open [conn (.getConnection (mdb/app-db))
                     stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
@@ -180,15 +184,25 @@
   (add-search-clause {} \"birds\" :t.name :db.name)"
   [query query-string & fields-to-search]
   (sql.helpers/where query (when (seq query-string)
-                             (let [query-string (str \% (u/lower-case-en query-string) \%)]
+                             (let [query-string (h2x/like-substring query-string)]
                                (cons
                                 :or
                                 (for [field fields-to-search]
                                   [:like (lowercase-field field) query-string]))))))
+
+(def ^:private sort-directions
+  "The only two directions an audit page may sort in."
+  {"asc" :asc, "desc" :desc})
 
 (defn add-sort-clause
   "Add an `ORDER BY` clause to `query` on `sort-column` and `sort-direction`.
 
   Most queries will just have explicit default `ORDER BY` clauses"
   [query sort-column sort-direction]
-  (sql.helpers/order-by query [(keyword sort-column) (keyword sort-direction)]))
+  (let [direction (get sort-directions (u/lower-case-en (if (keyword? sort-direction)
+                                                          (name sort-direction)
+                                                          (str sort-direction))))]
+    (when-not direction
+      (throw (ex-info (tru "Invalid sort direction: {0}" (pr-str sort-direction))
+                      {:status-code 400})))
+    (sql.helpers/order-by query [(keyword sort-column) direction])))

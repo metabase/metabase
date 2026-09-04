@@ -4,13 +4,13 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.sql.common :as metabot.tools.sql.common]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,11 +26,23 @@
 (defn- validate-database-access
   "Check if the current user has access to the database."
   [database-id]
-  (when-not (t2/exists? :model/Database :id database-id)
+  (when-not (metabot.db/database-exists? database-id)
     (throw (ex-info (tru "Database {0} not found" database-id)
                     {:agent-error? true
                      :database-id database-id})))
-  (api/read-check :model/Database database-id))
+  (try
+    (api/read-check :model/Database database-id)
+    (catch clojure.lang.ExceptionInfo e
+      ;; 403 is terminal like the native check below -- no retry grants access. 404 means the
+      ;; database vanished after the existence check, which re-listing databases can recover from.
+      (let [{:keys [status-code] :as data} (ex-data e)]
+        (throw (cond
+                 (= 403 status-code) (ex-info (tru "You do not have access to this database.")
+                                              (assoc data :agent-error? true :terminal-error? true)
+                                              e)
+                 (= 404 status-code) (ex-info (ex-message e) (assoc data :agent-error? true) e)
+                 :else               e)))))
+  (metabot.tools.sql.common/check-native-query-access! database-id))
 
 (mu/defn create-sql-query :- ::metabot.tools.sql.common/operation-result
   "Create a new SQL query in memory.
@@ -46,10 +58,9 @@
   - :query-id - The ID of the created query
   - :query-content - The SQL content
   - :database - Database ID"
-  [{:keys [database-id sql name]}]
+  [{:keys [database-id sql]}]
   (log/info "Creating SQL query"
             {:database-id database-id
-             :name name
              :sql-length (count sql)})
 
   ;; Validate access

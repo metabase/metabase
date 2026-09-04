@@ -91,6 +91,10 @@
     (let [session-id (extended-session-id {:v 1 :ui true})]
       (is (true? (mcp.session/valid-id? session-id)))
       (is (true? (mcp.session/supports-mcp-ui? session-id)))))
+  (testing "unknown keys in a known-version hint are ignored, not rejected"
+    (let [session-id (extended-session-id {:v 1 :ui true :a 1})]
+      (is (true? (mcp.session/valid-id? session-id)))
+      (is (true? (mcp.session/supports-mcp-ui? session-id)))))
   (testing "unknown payload versions keep the session valid but disable UI capability"
     (let [session-id (extended-session-id {:v 2 :ui true})]
       (is (true? (mcp.session/valid-id? session-id)))
@@ -111,6 +115,20 @@
           "should be a v8 (custom/vendor-defined) UUID per RFC 9562")
       (is (= 2 (.variant ^java.util.UUID parsed))
           "should carry the RFC 4122 variant (10xx)"))))
+
+(deftest ui-credential-validation-test
+  (let [user-id    (mt/user->id :crowberto)
+        session-id (mcp.session/create! user-id)
+        credential (mcp.session/issue-ui-credential session-id user-id)]
+    (testing "a fresh credential resolves to its user and MCP session"
+      (is (=? {:uid user-id :sid session-id}
+              (mcp.session/resolve-ui-credential credential))))
+    (testing "invalid credentials are rejected"
+      (is (nil? (mcp.session/resolve-ui-credential (str credential "x")))))
+    (testing "expired credentials are rejected"
+      (with-redefs [mcp.session/ui-credential-lifetime-seconds -1]
+        (is (nil? (mcp.session/resolve-ui-credential
+                   (mcp.session/issue-ui-credential session-id user-id))))))))
 
 (deftest get-or-create-session-key-test
   (testing "first call creates a core_session and returns the derived embedding key"

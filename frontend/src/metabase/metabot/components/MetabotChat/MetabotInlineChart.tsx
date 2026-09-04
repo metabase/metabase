@@ -1,4 +1,4 @@
-import { useClipboard } from "@mantine/hooks";
+import { useClipboard, useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -10,17 +10,15 @@ import {
   useGetCardQuery,
 } from "metabase/api";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
-import { useSaveMetabotEntityMutation } from "metabase/api/metabot";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
-import { useSetting } from "metabase/common/hooks";
-import { serializeCardForUrl } from "metabase/common/utils/card";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { getSavedChartCardId, markChartSaved } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
   Anchor,
@@ -35,22 +33,22 @@ import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
-import {
-  getDatasetError,
-  getGenericErrorMessage,
-} from "metabase/visualizations/lib/errors";
+import { getDatasetError, getGenericErrorMessage } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { DashboardTabId } from "metabase-types/api";
+
+import { useSaveMetabotEntityMutation } from "../../api";
 
 import S from "./MetabotInlineChart.module.css";
 
 /**
  * Renders a Metabot-generated `card` entity as a live, read-only chart inline in
  * the conversation: it runs the card's embedded query ad-hoc and renders the
- * result; the title bar links out to the full question.
+ * result, in readonly mode only once Run query is clicked; the title bar links
+ * out to the full question.
  */
 export function MetabotInlineChart({
-  value: { id: chartId, title, description, display, query },
+  value,
   readonly = false,
   conversationId,
 }: {
@@ -58,6 +56,7 @@ export function MetabotInlineChart({
   readonly?: boolean;
   conversationId: string;
 }) {
+  const { id: chartId, title, description, display, query } = value;
   const datasetQuery = query.query;
   const clipboard = useClipboard();
   const recordedCardId = useSelector((state) =>
@@ -107,11 +106,15 @@ export function MetabotInlineChart({
     () =>
       savedCardId != null
         ? Urls.question(question.setId(savedCardId))
-        : `/question#${serializeCardForUrl(card, { includeDisplayIsLocked: true })}`,
-    [card, question, savedCardId],
+        : Urls.generatedCard(value),
+    [question, savedCardId, value],
   );
 
-  const { data: dataset, error } = useGetAdhocQueryQuery(datasetQuery);
+  const [isRunRequested, { open: requestRun }] = useDisclosure(false);
+  const shouldRunQuery = !readonly || isRunRequested;
+  const { data: dataset, error } = useGetAdhocQueryQuery(
+    shouldRunQuery ? datasetQuery : skipToken,
+  );
 
   const rawSeries = useMemo(
     () => (dataset ? [{ card, data: dataset.data }] : null),
@@ -157,8 +160,18 @@ export function MetabotInlineChart({
         />
       </Flex>
       <Box className={S.viz}>
-        {chartError ? (
-          <Center h="100%" p="md">
+        {!shouldRunQuery ? (
+          <Center h="100%" p="lg">
+            <Button
+              variant="filled"
+              leftSection={<Icon name="play_outlined" aria-hidden />}
+              onClick={requestRun}
+            >
+              {t`Run query`}
+            </Button>
+          </Center>
+        ) : chartError ? (
+          <Center h="100%" p="lg">
             <ErrorView error={chartError.message} icon={chartError.icon} />
           </Center>
         ) : !rawSeries ? (
@@ -189,6 +202,7 @@ function SaveChartAction({
   readonly: boolean;
 }) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [saveMetabotEntity] = useSaveMetabotEntityMutation();
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
@@ -212,7 +226,7 @@ function SaveChartAction({
         message: t`Saved`,
         extraAction: {
           label: t`View`,
-          action: () => dispatch(push(Urls.question(savedQuestion))),
+          action: () => navigate(Urls.question(savedQuestion)),
         },
       }),
     );

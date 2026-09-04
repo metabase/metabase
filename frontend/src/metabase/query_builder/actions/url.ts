@@ -1,10 +1,9 @@
 import { parse as parseUrl } from "url";
 
-import type { LocationDescriptor } from "history";
-
 import { isEqualCard } from "metabase/common/utils/card";
 import { createThunkAction } from "metabase/redux";
-import { push, replace } from "metabase/router";
+import type { Path } from "metabase/router";
+import { getIsNavigationPending, navigate } from "metabase/router";
 import { getBasename } from "metabase/utils/basename";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -17,7 +16,7 @@ import {
   getQueryBuilderMode,
   getQuestion,
   getUiControls,
-} from "../selectors";
+} from "../store/selectors";
 import { getQueryBuilderModeFromLocation } from "../typed-utils";
 import {
   getCurrentQueryParams,
@@ -109,7 +108,7 @@ export const updateUrl = createThunkAction(
         tableUrl ?? getURLForCardState(newState, dirty, queryParams, objectId);
 
       const urlParsed = parseUrl(url);
-      const locationDescriptor: LocationDescriptor = {
+      const to: Partial<Path> = {
         pathname: getPathNameFromQueryBuilderMode({
           pathname: urlParsed.pathname || "",
           queryBuilderMode,
@@ -117,13 +116,12 @@ export const updateUrl = createThunkAction(
         }),
         search: urlParsed.search ?? undefined,
         hash: urlParsed.hash ?? undefined,
-        state: newState,
       };
 
       const isSameURL =
-        locationDescriptor.pathname === window.location.pathname &&
-        (locationDescriptor.search || "") === (window.location.search || "") &&
-        (locationDescriptor.hash || "") === (window.location.hash || "");
+        to.pathname === window.location.pathname &&
+        (to.search || "") === (window.location.search || "") &&
+        (to.hash || "") === (window.location.hash || "");
       const isSameCard =
         currentState && isEqualCard(currentState.card, newState.card);
 
@@ -131,10 +129,19 @@ export const updateUrl = createThunkAction(
         return;
       }
 
+      // Saving a card finishes asynchronously, so this can run after the user
+      // has already been sent somewhere else, for instance to the dashboard the
+      // question was just saved into. A `route.lazy` destination keeps the query
+      // builder mounted until its chunk resolves, and this navigation would
+      // replace that pending one. The URL only mirrors the card, so there is
+      // nothing to write if we are leaving.
+      if (getIsNavigationPending()) {
+        return;
+      }
+
       if (replaceState == null) {
         const isSameMode =
-          getQueryBuilderModeFromLocation(locationDescriptor)
-            .queryBuilderMode ===
+          getQueryBuilderModeFromLocation(to).queryBuilderMode ===
           getQueryBuilderModeFromLocation(window.location).queryBuilderMode;
 
         // if the serialized card is identical replace the previous state instead of adding a new one
@@ -147,15 +154,14 @@ export const updateUrl = createThunkAction(
 
       try {
         if (replaceState) {
-          const replaceDescriptor = preserveNavbarState
-            ? {
-                ...locationDescriptor,
-                state: { ...locationDescriptor.state, preserveNavbarState },
-              }
-            : locationDescriptor;
-          dispatch(replace(replaceDescriptor));
+          navigate(to, {
+            replace: true,
+            state: preserveNavbarState
+              ? { ...newState, preserveNavbarState }
+              : newState,
+          });
         } else {
-          dispatch(push(locationDescriptor));
+          navigate(to, { state: newState });
         }
       } catch (e) {
         // saving the location state can exceed the session storage quota (metabase#25312)

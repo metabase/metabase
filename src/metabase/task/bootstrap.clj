@@ -1,14 +1,16 @@
 (ns metabase.task.bootstrap
   (:require
    [metabase.classloader.core :as classloader]
+   [metabase.task.secure-delegate :as secure-delegate]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
-;; Custom `ConnectionProvider` implementation that uses our application DB connection pool to provide connections.
+;; Custom `ConnectionProvider` implementation that uses a dedicated connection pool for the application DB to provide
+;; connections.
 
-(defn- app-db ^javax.sql.DataSource []
-  ((requiring-resolve 'metabase.app-db.core/app-db)))
+(defn- quartz-data-source ^javax.sql.DataSource []
+  ((requiring-resolve 'metabase.app-db.core/quartz-data-source)))
 
 ;; Optional interceptor for wrapping JDBC connections before Quartz uses them.
 ;; Set by task.tracing to add SQL-level tracing. nil means no interception.
@@ -24,13 +26,17 @@
   org.quartz.utils.ConnectionProvider
   (initialize [_])
   (getConnection [_]
-    ;; get a connection from our application DB connection pool. Quartz will close it (i.e., return it to the pool)
-    ;; when it's done
+    ;; get a connection from the dedicated Quartz connection pool. Quartz will close it (i.e., return it to the pool)
+    ;; when it's done.
     ;;
-    ;; very important! Fetch a new connection from the connection pool rather than using currently bound Connection if
-    ;; one already exists -- because Quartz will close this connection when done, we don't want to screw up the
-    ;; calling block
-    (let [conn (.getConnection (app-db))]
+    ;; very important! Fetch a new connection from the connection pool rather than reusing a Connection already bound
+    ;; to the calling thread (e.g. toucan2's *current-connectable*) -- Quartz manages the connection's whole
+    ;; lifecycle (setAutoCommit/commit/rollback/close), and its cluster locking relies on commit/rollback to release
+    ;; row locks on the QRTZ_LOCKS table, so it must never share a connection with an outer transaction.
+    ;;
+    ;; the pool is separate from the main application DB pool so that a Quartz operation triggered by a thread inside
+    ;; a `with-transaction` block can't deadlock when application code has saturated the main pool.
+    (let [conn (.getConnection (quartz-data-source))]
       (if-let [interceptor @connection-interceptor]
         (interceptor conn)
         conn)))
@@ -73,16 +79,15 @@
   connection properties ahead of time, we'll need to set these at runtime rather than Setting them in the
   `quartz.properties` file.)
 
-  Sets the default per-DB `DriverDelegate` (`PostgreSQLDelegate` on Postgres for BLOB handling,
-  otherwise the `StdJDBCDelegate` from `quartz.properties`), then runs any setters registered via
-  [[register-jdbc-property-setter!]] — e.g. the `mq` module's queue node-affinity delegate, which
-  overrides the delegate with a filtering subclass. A registered setter that throws is logged and
+  Installs Metabase's per-DB `DriverDelegate` (see [[metabase.task.secure-delegate]]): a
+  `StdJDBCDelegate`/`PostgreSQLDelegate` subclass that reads BLOB columns through a class allow-list, so
+  Quartz reconstructs only the plain-data classes Metabase's job data is made of. Then runs any setters
+  registered via [[register-jdbc-property-setter!]]. A registered setter that throws is logged and
   skipped so the scheduler still gets a working delegate."
   [db-type]
-  (when (= db-type :postgres)
-    (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate"))
+  (secure-delegate/install! db-type)
   (doseq [setter @jdbc-property-setters]
     (try
       (setter db-type)
       (catch Throwable t
-        (log/warn t "A registered Quartz JDBC property setter failed; continuing")))))
+        (log/warnf "A registered Quartz JDBC property setter failed; continuing: %s" (ex-message t))))))

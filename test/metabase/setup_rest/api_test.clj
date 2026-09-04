@@ -140,7 +140,7 @@
 
 (def ^:private create-database-trigger-sync-test-event (atom nil))
 
-(derive :event/database-create ::create-database-trigger-sync-test-events)
+(events/derive! :event/database-create ::create-database-trigger-sync-test-events)
 
 (methodical/defmethod events/publish-event! ::create-database-trigger-sync-test-events
   [topic event]

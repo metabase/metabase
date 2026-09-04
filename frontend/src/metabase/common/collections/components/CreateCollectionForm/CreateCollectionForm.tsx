@@ -20,7 +20,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { useRouter } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { Button, Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
@@ -70,7 +70,8 @@ function CreateCollectionForm({
   namespaces,
   showAuthorityLevelPicker = true,
 }: Props) {
-  const { location, params } = useRouter();
+  const location = useLocation();
+  const params = useParams();
   const defaultInitialCollectionId = useInitialCollectionId({
     collectionId,
     location,
@@ -132,14 +133,14 @@ function CreateCollectionForm({
               label={t`Name`}
               placeholder={t`My new fantastic collection`}
               data-autofocus
-              mb="md"
+              mb="lg"
             />
             <FormTextarea
               name="description"
               label={t`Description`}
               placeholder={t`It's optional but oh, so helpful`}
               minRows={5}
-              mb="md"
+              mb="lg"
               nullable
             />
             {showCollectionPicker && (
@@ -159,7 +160,7 @@ function CreateCollectionForm({
             {showAuthorityLevelPicker && !isParentTenantCollection && (
               <FormAuthorityLevelField />
             )}
-            <FormFooter mt="lg">
+            <FormFooter mt="xl">
               <FormErrorMessage />
               <Flex style={{ flexShrink: 1 }} justify="flex-end" gap="sm">
                 {!!onCancel && (

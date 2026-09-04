@@ -106,7 +106,7 @@ visualization_settings:
       line.size: M
       line.style: solid
       show_series_values: true
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: UEWVldEEZ-3sYUjjN54qz
   label: revenue_over_time__line_

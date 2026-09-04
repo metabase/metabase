@@ -3,15 +3,14 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private valid-chart-types
   "Valid chart types supported by Metabase."
-  #{:table :bar :line :pie :sunburst :treemap :area :combo :row :pivot
-    :scatter :waterfall :sankey :scalar :smartscalar :gauge
-    :progress :funnel :object :map})
+  (into #{} (map keyword) shared/chart-types))
 
 (defn- format-chart-for-llm
   "Format chart data as XML for LLM consumption."
@@ -70,8 +69,7 @@
                       :query-id query-id
                       :chart-type chart-type}]
       (log/info "Created chart" {:chart-id chart-id
-                                 :chart-type chart-type
-                                 :results-url results-url})
+                                 :chart-type chart-type})
       {:chart-id chart-id
        :chart-content (format-chart-for-llm chart-data)
        :chart-link (format-chart-link chart-id)

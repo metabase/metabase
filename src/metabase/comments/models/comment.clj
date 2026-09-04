@@ -1,9 +1,13 @@
 (ns metabase.comments.models.comment
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.channel.urls :as channel.urls]
+   [metabase.comments.db :as comments.db]
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/Comment [_model] :comment)
@@ -18,15 +22,16 @@
 ;; future migration.
 
 (t2/deftransforms :model/Comment
-  {:content mi/transform-json})
+  {:content mi/transform-json
+   :context mi/transform-json})
 
 (methodical/defmethod t2/batched-hydrate [:model/Comment :creator]
   "Hydrate the creator (user) of a comment based on the creator_id."
   [_model k comments]
   (mi/instances-with-hydrated-data
    comments k
-   #(t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
-                      :id (keep :creator_id comments))
+   #(when-let [creator-ids (seq (keep :creator_id comments))]
+      (comments.db/users-by-id creator-ids))
    :creator_id
    {:default {}}))
 
@@ -44,8 +49,61 @@
 
 ;;;
 
+(defonce ^{:private true
+           :doc "Filter applied to comments' `:context` before they are returned, installed at init.
+
+                 A comment's context describes what was commented on, and for an exploration that
+                 includes the identity of a chart data point — values read out of the creator's
+                 result set. The target's own read check cannot adjudicate that: an Exploration is
+                 read-checked on collection permissions alone, because its data-access gate is
+                 applied by its read endpoints rather than by `can-read?`. So the owning module
+                 registers the verdict here.
+
+                 `comments` cannot call that module directly — the module graph runs one way — so
+                 the consumer registers a callback."}
+  context-gate
+  (atom (fn [_target-type _target-id comments] comments)))
+
+(defn register-context-gate!
+  "Install the comment-context gate. Called once at the consuming module's
+  init. `f` takes `[target-type target-id comments]` and returns the comments to serve."
+  [f]
+  (reset! context-gate f))
+
+(defn apply-context-gate
+  "Run the registered gate over `comments` for one target."
+  [target-type target-id comments]
+  (@context-gate target-type target-id comments))
+
+(defn- page-id-child-target?
+  "Whether `child_target_id` identifies an exploration page (decimal integer string) rather than
+  a Summary prose-mirror node `_id` (uuid)."
+  [child]
+  (boolean (and child (re-matches #"\d+" (str child)))))
+
+(defn- exploration-comment-url
+  "Build URL for an exploration comment. Integer `child_target_id` values deep-link to the
+  page; anything else (Summary block uuids) deep-links to the Summary view."
+  [exploration-id comment]
+  (let [base    (channel.urls/exploration-path exploration-id)
+        child   (:child_target_id comment)
+        context (:context comment)]
+    (if child
+      (let [path      (if (page-id-child-target? child)
+                        (str base "/page/" (codec/url-encode (str child)))
+                        (str base "/summary"))
+            params    (cond-> {:comments (str child)}
+                        (:timeline_id context) (assoc :timeline (:timeline_id context)))
+            query-str (->> params
+                           (map (fn [[k v]] (str (codec/url-encode (name k))
+                                                 "="
+                                                 (codec/url-encode (str v)))))
+                           (str/join "&"))]
+        (str path "?" query-str "#comment-" (:id comment)))
+      base)))
+
 (defn url
-  "Generate an URL to an entity anchored to a comment"
+  "Generate a URL to an entity anchored to a comment."
   [entity comment]
   (case (t2/model entity)
     :model/Document (if (:child_target_id comment)
@@ -57,12 +115,17 @@
                       ;; feel the need to have this clause
                       (format "/document/%s#comment-%s"
                               (:id entity)
-                              (:id comment)))))
+                              (:id comment)))
+
+    :model/Exploration (exploration-comment-url (:id entity) comment)))
 
 (defn mentions
   "Find mentioned users inside of a comment content"
   [content]
-  (->> (tree-seq :content :content content)
-       (filter #(and (= "smartLink" (-> % :type))
-                     (= "user" (-> % :attrs :model))))
-       (mapv #(-> % :attrs :entityId))))
+  (into []
+        (comp (filter #(and (= "smartLink" (:type %))
+                            (= "user" (-> % :attrs :model))))
+              (keep #(let [entity-id (-> % :attrs :entityId)]
+                       (when (pos-int? entity-id)
+                         entity-id))))
+        (tree-seq :content :content content)))

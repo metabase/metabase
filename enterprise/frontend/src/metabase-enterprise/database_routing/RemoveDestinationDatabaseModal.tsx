@@ -3,26 +3,25 @@ import { t } from "ttag";
 import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
 import { useDeleteDatabaseMutation, useGetDatabaseQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate, useParams } from "metabase/router";
 import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-export const RemoveDestinationDatabaseModal = ({
-  params,
-}: {
-  params: { databaseId: string; destinationDatabaseId: string };
-}) => {
-  const dispatch = useDispatch();
+export const RemoveDestinationDatabaseModal = () => {
+  const params = useParams<{
+    databaseId: string;
+    destinationDatabaseId: string;
+  }>();
+  const navigate = useNavigate();
 
-  const dbId = parseInt(params.databaseId, 10);
-  const destDbId = parseInt(params.destinationDatabaseId, 10);
+  const dbId = parseInt(params.databaseId ?? "", 10);
+  const destDbId = parseInt(params.destinationDatabaseId ?? "", 10);
 
   const { data: db, isLoading, error } = useGetDatabaseQuery({ id: destDbId });
   const [deleteDatabase] = useDeleteDatabaseMutation();
 
   const handleCloseModal = () => {
-    dispatch(push(Urls.viewDatabase(dbId)));
+    navigate(Urls.viewDatabase(dbId));
   };
 
   const handleDelete = async () => {
@@ -31,7 +30,7 @@ export const RemoveDestinationDatabaseModal = ({
 
   if (isLoading || error || !db) {
     return (
-      <Modal opened onClose={handleCloseModal} padding="xl">
+      <Modal opened onClose={handleCloseModal} padding="xxl">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Modal>
     );

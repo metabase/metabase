@@ -15,6 +15,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
+   [metabase.parameters.db :as parameters.db]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
@@ -23,8 +24,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :as perf]
-   [toucan2.core :as t2]))
+   [metabase.util.performance :as perf]))
 
 ;;; ------------------------------------------------- source=static-list --------------------------------------------------
 
@@ -99,15 +99,12 @@
                                      (log/warnf "Cannot get values from Card %d: Card query has no visible columns"
                                                 card-id))]
         (when-let [value-column (or (lib/find-matching-column query -1 field-ref visible-columns)
-                                    (log/warnf "Cannot get values from Card %d: failed to find column for ref %s\nFound: %s"
-                                               card-id
-                                               (pr-str field-ref)
-                                               (pr-str (map (some-fn :lib/source-column-alias :name) visible-columns))))]
+                                    (log/warnf "Cannot get values from Card %d: failed to find matching column for ref"
+                                               card-id))]
           (let [label-column    (when label-field
                                   (or (lib/find-matching-column query -1 label-field visible-columns)
-                                      (log/warnf "Cannot get labels from Card %d: failed to find column for ref %s"
-                                                 card-id
-                                                 (pr-str label-field))))
+                                      (log/warnf "Cannot get labels from Card %d: failed to find matching column for ref"
+                                                 card-id)))
                 search-column   (or label-column value-column)
                 value-textual?  (lib.types.isa/string? value-column)
                 search-textual? (lib.types.isa/string? search-column)
@@ -205,7 +202,7 @@
   (case (:values_source_type parameter)
     :static-list (static-list-values parameter query-string)
     :card        (let [config (:values_source_config parameter)
-                       card   (t2/select-one :model/Card :id (:card_id config))]
+                       card   (parameters.db/card (:card_id config))]
                    (when-not (mi/can-read? card)
                      (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
                    (or (when-not (:archived card)
@@ -225,7 +222,7 @@
   [field-ids]
   (when (and (seq field-ids) (every? pos-int? field-ids))
     (let [field-id-set (set field-ids)
-          fields (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-id-set])]
+          fields (parameters.db/fields-fk-info field-id-set)]
       ;; when every field could be found and all are keys
       (when (and (= (count field-id-set) (count fields))
                  (every? (fn [{:keys [semantic_type fk_target_field_id]}]
@@ -255,7 +252,7 @@
   field, the card is unreadable/archived, or no matching row is found."
   [{config :values_source_config :as _param} value]
   (when-let [label-field (:label_field config)]
-    (when-let [card (t2/select-one :model/Card :id (:card_id config))]
+    (when-let [card (parameters.db/card (:card_id config))]
       (when (and (not (:archived card)) (mi/can-read? card))
         (when-let [query (card-query (:id card) (not-empty (:dataset_query card)))]
           (when (can-get-card-values? query (:value_field config))

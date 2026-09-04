@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { Fragment } from "react";
 
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { Link } from "metabase/router";
 import { Box, Group, type GroupProps } from "metabase/ui";
 
 import type { NodeLink } from "../../../types";
@@ -16,7 +16,7 @@ type GraphBreadcrumbsProps = GroupProps & {
 export function GraphBreadcrumbs({ links, ...props }: GraphBreadcrumbsProps) {
   return (
     <Group c="text-secondary" gap="sm" wrap="nowrap" {...props}>
-      <Group fz="sm" gap="xs">
+      <Group fz="sm" gap="xxs">
         {links.map((link, linkIndex) => (
           <Fragment key={linkIndex}>
             {linkIndex > 0 && <Box>/</Box>}

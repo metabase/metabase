@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
 import { trackCustomHomepageDashboardEnabled } from "metabase/common/analytics";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector";
 import { PLUGIN_HOMEPAGE_SETTING } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
-import { refreshCurrentUser } from "metabase/redux/user";
+import { useAdminSetting } from "metabase/settings";
 import { Box, Radio, Stack, Text } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
@@ -28,8 +26,6 @@ export function getHomepageMode(
 }
 
 export function HomepageSetting() {
-  const dispatch = useDispatch();
-
   const { value: customHomepage, updateSettings } =
     useAdminSetting("custom-homepage");
   const { value: customHomepageDashboardId } = useAdminSetting(
@@ -66,7 +62,6 @@ export function HomepageSetting() {
         "custom-homepage": false,
       });
     }
-    await dispatch(refreshCurrentUser());
   };
 
   const handleDashboardChange = async (newDashboardId?: DashboardId) => {
@@ -78,7 +73,6 @@ export function HomepageSetting() {
     if (newDashboardId && wasUnset) {
       trackCustomHomepageDashboardEnabled("admin");
     }
-    await dispatch(refreshCurrentUser());
   };
 
   return (
@@ -94,18 +88,18 @@ export function HomepageSetting() {
         name="homepage-mode"
         aria-label={t`Homepage`}
       >
-        <Stack gap="md">
+        <Stack gap="lg">
           <Radio value="default" label={t`Default Metabase home`} />
 
-          <Stack gap="xs">
+          <Stack gap="xxs">
             <Radio value="dashboard" label={t`Dashboard`} />
             {mode === "dashboard" && (
-              <Box pl="xl" data-testid="custom-homepage-dashboard-setting">
+              <Box pl="xxl" data-testid="custom-homepage-dashboard-setting">
                 <DashboardSelector
                   value={customHomepageDashboardId ?? undefined}
                   onChange={handleDashboardChange}
                 />
-                <Text size="xs" c="text-secondary" mt="xs">
+                <Text size="xs" c="text-secondary" mt="xxs">
                   {t`Users without dashboard access see the default home.`}
                 </Text>
               </Box>
@@ -113,13 +107,13 @@ export function HomepageSetting() {
           </Stack>
 
           {PLUGIN_HOMEPAGE_SETTING.CustomUrlOption && (
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <Radio
                 value="url"
                 label={PLUGIN_HOMEPAGE_SETTING.CustomUrlOption.label}
               />
               {mode === "url" && (
-                <Box pl="xl">
+                <Box pl="xxl">
                   <PLUGIN_HOMEPAGE_SETTING.CustomUrlOption.Control />
                 </Box>
               )}

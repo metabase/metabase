@@ -3,12 +3,13 @@ import { c, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
 import type {
   ContinueWithoutDataComponent,
   FormLocation,
 } from "metabase/databases/types";
 import { FormSubmitButton } from "metabase/forms/components/FormSubmitButton";
+import { useSetting } from "metabase/settings";
 import { Button, Flex, Text } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 
@@ -45,7 +46,7 @@ export const DatabaseFormFooter = ({
     return (
       <FormFooter
         data-testid="form-footer"
-        px={location === "full-page" ? undefined : "xl"}
+        px={location === "full-page" ? undefined : "xxl"}
       >
         <Flex justify="space-between" align="center" w="100%">
           {isNew ? (
@@ -97,7 +98,7 @@ export const DatabaseFormFooter = ({
     );
     return (
       <>
-        <Button variant="filled" mb="md" mt="lg" onClick={onCancel}>
+        <Button variant="filled" mb="lg" mt="xl" onClick={onCancel}>
           {t`Continue with sample data`}
         </Button>
         <Text fz="sm">
@@ -111,7 +112,7 @@ export const DatabaseFormFooter = ({
   }
 
   return (
-    <Button variant="filled" mt="lg" onClick={onCancel}>
+    <Button variant="filled" mt="xl" onClick={onCancel}>
       {t`I'll add my data later`}
     </Button>
   );

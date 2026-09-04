@@ -52,10 +52,9 @@ export function RelativeDatePicker({
   const tabs = getAvailableTabs(initialValue, availableDirections);
   const direction = getDirection(value);
 
-  const handleTabChange = (tabValue: string | null) => {
-    const tab = tabs.find((tab) => tab.direction === tabValue);
-    if (tab) {
-      setValue(setDirection(value, tab.direction));
+  const handleTabChange = (nextDirection: RelativeIntervalDirection | null) => {
+    if (nextDirection) {
+      setValue(setDirection(value, nextDirection));
     }
   };
 
@@ -106,7 +105,7 @@ export function RelativeDatePicker({
               onSubmit={handleSubmit}
             />
           ) : (
-            <Box p="md">
+            <Box p="lg">
               <CurrentDatePicker
                 value={value}
                 availableUnits={availableUnits}

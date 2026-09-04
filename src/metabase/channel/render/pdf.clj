@@ -39,6 +39,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.js.svg :as js.svg]
@@ -1401,7 +1402,7 @@
                            #(draw-markdown-in-cell! doc cs x top-y cell-w % (:align-h cell) (:align-v cell) (:text cell)))
                 nil)
               (catch Throwable e
-                (log/error e "Error rendering dashboard PDF cell; substituting placeholder")
+                (log/errorf "Error rendering dashboard PDF cell; substituting placeholder: %s" (ex-message e))
                 (draw-text-block! cs (font/face :regular) 10.0 nil x top-y cell-w cell-h
                                   "[Unable to render this card]")))))
         (finally
@@ -1468,9 +1469,9 @@
                                     (map (juxt #(-> % :dashcard :id) identity)))
                            parts)
            dims      (paper-dims paper-key)
-           dash      (t2/select-one :model/Dashboard :id dashboard-id)
-           tabs      (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})
-           dcs       (t2/hydrate (t2/select :model/DashboardCard :dashboard_id dashboard-id) :card)
+           dash      (channel.db/dashboard dashboard-id)
+           tabs      (channel.db/dashboard-tabs dashboard-id)
+           dcs       (t2/hydrate (channel.db/dashcards dashboard-id) :card)
            ;; only treat a dashboard as tabbed when there's more than one tab -- a lone tab isn't shown as a tab in
            ;; the UI, so the PDF shouldn't draw (or reserve space for) its title either
            tabbed?   (> (count tabs) 1)
@@ -1513,7 +1514,7 @@
              (try
                (run! #(some-> % :result :data :rows notification.payload/cleanup!) parts)
                (catch Throwable e
-                 (log/warn e "Error cleaning up temp files for dashboard PDF"))))))))))
+                 (log/warnf "Error cleaning up temp files for dashboard PDF: %s" (ex-message e)))))))))))
 
 (defn render-dashboard-to-pdf-file
   "Convenience wrapper for the REPL: render the dashboard to PDF and write it to `path`."

@@ -1,5 +1,4 @@
 import type { NodeViewProps } from "@tiptap/react";
-import { createMemoryHistory } from "history";
 
 import {
   setupCardEndpoints,
@@ -10,7 +9,7 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route, Router, useRouterHistory } from "metabase/router";
+import { RouterProviderMemory } from "metabase/router";
 import {
   createMockCard,
   createMockCollection,
@@ -50,7 +49,7 @@ function setup({
   updateAttributes?: NodeViewProps["updateAttributes"];
 }) {
   const props = createProps(model, entity, label, updateAttributes);
-  renderWithProviders(<SmartLinkComponent {...props} />);
+  renderWithProviders(<SmartLinkComponent {...props} />, { withRouter: true });
 }
 
 describe("SmartLink", () => {
@@ -204,16 +203,13 @@ describe("SmartLink", () => {
 
       setupDashboardEndpoints(dashboard);
 
-      const historyWithBasename = useRouterHistory(createMemoryHistory)({
-        basename: "/subpath",
-        entries: ["/"],
-      });
-
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
-        <Router history={historyWithBasename}>
-          <Route path="*" element={<SmartLinkComponent {...props} />} />
-        </Router>,
+        <RouterProviderMemory
+          initialRoute="/subpath"
+          basename="/subpath"
+          routes={[{ path: "*", element: <SmartLinkComponent {...props} /> }]}
+        />,
       );
 
       await waitFor(() => {
@@ -235,15 +231,12 @@ describe("SmartLink", () => {
 
       setupDashboardEndpoints(dashboard);
 
-      const historyNoBasename = useRouterHistory(createMemoryHistory)({
-        entries: ["/"],
-      });
-
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
-        <Router history={historyNoBasename}>
-          <Route path="*" element={<SmartLinkComponent {...props} />} />
-        </Router>,
+        <RouterProviderMemory
+          initialRoute="/"
+          routes={[{ path: "*", element: <SmartLinkComponent {...props} /> }]}
+        />,
       );
 
       await waitFor(() => {

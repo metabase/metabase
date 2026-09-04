@@ -27,7 +27,8 @@
 }
 
 .inputContainer {
-  padding: 0 0.75rem 0 0.3rem;
+  position: relative;
+  padding: 0 0.75rem 0 0.5rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -142,7 +143,7 @@
 }
 
 .messageContainerAgent + .messageContainerAgent {
-  margin-top: var(--mantine-spacing-md);
+  margin-top: var(--mantine-spacing-lg);
 }
 
 .promptSuggestionsContainer {
@@ -169,9 +170,35 @@
   }
 }
 
-.textInputContainer {
-  padding: 0 1rem 1rem;
+.footerContainer {
+  display: flex;
+  flex-direction: column;
+  padding: 0 1rem;
   width: 100%;
   max-width: 48rem;
   margin-inline: auto;
+}
+
+.textInputContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.footerRow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 0.25rem;
+
+  > :first-child {
+    grid-column: 2;
+  }
+}
+
+.contextUsage {
+  grid-column: 3;
+  justify-self: end;
 }

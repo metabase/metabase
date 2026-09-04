@@ -6,14 +6,14 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
+   [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.core :as analytics]
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
    [metabase.collections.curation :as curation]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -124,12 +124,7 @@
   (into {}
         (mapcat (fn [chunk]
                   (map (juxt :table_id :field_count)
-                       (t2/query {:select   [:table_id [:%count.* :field_count]]
-                                  :from     [:metabase_field]
-                                  :where    [:and
-                                             [:= :active true]
-                                             [:in :table_id chunk]]
-                                  :group-by [:table_id]}))))
+                       (data-complexity-score.db/active-field-counts-by-table chunk))))
         (partition-all in-clause-chunk-size table-ids)))
 
 (defn- table-measure-names
@@ -139,9 +134,7 @@
   (into {}
         (mapcat (fn [chunk]
                   (u/group-by :table_id :name
-                              (t2/select [:model/Measure :table_id :name]
-                                         :archived false
-                                         :table_id [:in chunk]))))
+                              (data-complexity-score.db/unarchived-measure-names chunk))))
         (partition-all in-clause-chunk-size table-ids)))
 
 (defn- ->card-entity
@@ -180,7 +173,7 @@
   [collection-id]
   (when collection-id
     (into #{collection-id}
-          (when-let [root (t2/select-one :model/Collection :id collection-id)]
+          (when-let [root (data-complexity-score.db/collection collection-id)]
             (collections/descendant-ids root)))))
 
 (defn- verified-card-id-set
@@ -188,22 +181,19 @@
   []
   ;; Called only when `metabot-scope` requests curated-only filtering — avoids a `moderation_review`
   ;; join on the universe Card select by pushing the check into a small auxiliary lookup.
-  (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                    :moderated_item_type "card"
-                    :most_recent         true
-                    :status              "verified"))
+  (data-complexity-score.db/verified-card-ids))
 
 (defn- official-collection-id-set
   "Set of collection ids with `official` authority level."
   []
-  (t2/select-fn-set :id :model/Collection :authority_level "official"))
+  (data-complexity-score.db/official-collection-ids))
 
 (defn- routed-child-database-id-set
   "Set of database ids whose `router_database_id` is non-nil — the routed child databases whose
    tables Metabot/search hide. Tables with `:db_id` in this set are excluded from the `:metabot`
    catalog, mirroring the table-visibility rule in `metabase.warehouse-schema.models.table`."
   []
-  (t2/select-fn-set :id :model/Database :router_database_id [:not= nil]))
+  (data-complexity-score.db/routed-child-database-ids))
 
 (defn- pick-by-row
   "Filter `entities` by `row-pred` applied to the correspondingly-indexed `rows`. Preserves
@@ -244,14 +234,8 @@
         ;; library/metabot derivations below — they're ignored by `->card-entity` /
         ;; `->table-entity`. `:card_schema` is required by `:model/Card`'s post-select hooks
         ;; even when we don't otherwise use it.
-        universe-cards    (t2/select [:model/Card :id :name :type :collection_id :card_schema]
-                                     :type        [:in ["metric" "model"]]
-                                     :archived    false
-                                     :database_id [:not= audit/audit-db-id])
-        universe-tables   (t2/select [:model/Table :id :name :collection_id :is_published
-                                      :visibility_type :db_id :data_layer :data_authority]
-                                     :active true
-                                     :db_id  [:not= audit/audit-db-id])
+        universe-cards    (data-complexity-score.db/universe-cards audit/audit-db-id)
+        universe-tables   (data-complexity-score.db/universe-tables audit/audit-db-id)
         field-counts      (table-field-counts  (mapv :id universe-tables))
         measure-names     (table-measure-names (mapv :id universe-tables))
         card-entities     (mapv ->card-entity universe-cards)
@@ -392,7 +376,7 @@
           pairs         (synonym-pair-count known-vectors synonym-similarity-threshold)]
       (component-score :synonym-pair pairs))
     (catch Throwable t
-      (log/warn t "Complexity score: synonym detection failed; cascading nil through aggregates")
+      (log/warnf "Complexity score: synonym detection failed; cascading nil through aggregates: %s" (ex-message t))
       (let [msg (some-> (.getMessage t) str/trim)
             err (if (str/blank? msg)
                   (or (some-> (class t) .getName) "synonym detection failed")
@@ -528,7 +512,7 @@
              {::snowplow-published? (boolean (try
                                                (emit-snowplow! score)
                                                (catch Throwable t
-                                                 (log/warn t "Failed to re-publish cached complexity score to Snowplow"))))}))
+                                                 (log/warnf "Failed to re-publish cached complexity score to Snowplow: %s" (ex-message t)))))}))
 
 (defn score-from-entities
   "Pure: compute the full complexity score from pre-built entity vectors and an embedder. No DB
@@ -635,7 +619,7 @@
                                              (try
                                                (emit-snowplow! result)
                                                (catch Throwable t
-                                                 (log/warn t "Failed to publish complexity score to Snowplow")))))))]
+                                                 (log/warnf "Failed to publish complexity score to Snowplow: %s" (ex-message t))))))))]
         (with-meta result {::snowplow-published? published?}))
       (finally
         (analytics.interface/observe! :metabase-data-complexity/scoring-duration-ms

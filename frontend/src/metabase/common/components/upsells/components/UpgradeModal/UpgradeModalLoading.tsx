@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { useGetSettingsQuery } from "metabase/api";
 import { useTokenRefreshUntil } from "metabase/api/utils";
+import { useGetSettingsQuery } from "metabase/settings";
 import { Button, Flex, Icon, Loader, Stack, Text, Title } from "metabase/ui";
 
 import type { UpgradeFlow } from "./types";
@@ -31,10 +31,10 @@ export function UpgradeModalLoading({
         t`Setting up Metabase Pro, please wait`;
 
     return (
-      <Stack align="center" gap="lg" py="xl">
+      <Stack align="center" gap="xl" py="xxl">
         <Loader size="xl" />
 
-        <Stack align="center" gap="xs">
+        <Stack align="center" gap="xxs">
           <Title order={3} ta="center">
             {title}
           </Title>
@@ -59,7 +59,7 @@ export function UpgradeModalLoading({
       t`Metabase Pro is ready to use`;
 
   return (
-    <Stack align="center" gap="lg" py="xl">
+    <Stack align="center" gap="xl" py="xxl">
       <Flex
         align="center"
         justify="center"
@@ -71,7 +71,7 @@ export function UpgradeModalLoading({
         <Icon name="check" c="core-white" size={32} />
       </Flex>
 
-      <Stack align="center" gap="xs">
+      <Stack align="center" gap="xxs">
         <Title order={3} ta="center">
           {successTitle}
         </Title>

@@ -5,9 +5,8 @@ import type {
   SortDirection,
 } from "metabase-types/api";
 
-const BASE_URL = `/data-studio`;
-const GRAPH_URL = `${BASE_URL}/dependencies`;
-const DIAGNOSTICS_URL = `${BASE_URL}/dependency-diagnostics`;
+const GRAPH_URL = `/data-studio/dependencies`;
+const DIAGNOSTICS_URL = `/monitor/dependency-diagnostics`;
 
 export type DependencyGraphParams = {
   entry?: DependencyEntry;

@@ -1,14 +1,15 @@
 (ns metabase.permissions.models.data-permissions
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.db :as permissions.db]
    [metabase.permissions.published-tables :as published-tables]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -105,6 +106,12 @@
    :type       mi/transform-keyword
    :value      mi/transform-keyword})
 
+(t2/define-after-select :model/DataPermissions
+  [permissions]
+  ;; unique_perms_helper is a generated column backing the unique constraint; it is not part of the
+  ;; model and must not round-trip into inserts.
+  (dissoc permissions :unique_perms_helper))
+
 ;;; ------------------------------------------- Misc Utils ------------------------------------------------------------
 
 (defn least-permissive-value
@@ -143,118 +150,6 @@
   [perm-type perm-value]
   (validate-perm-value! perm-type perm-value))
 
-;;; ---------------------------------------- Caching ------------------------------------------------------------------
-
-(defn- relevant-permissions-for-user-and-dbs
-  "Returns all relevant rows for permissions for the user, excluding permissions for deactivated tables for the given sequence of database ids."
-  [user-id db-ids]
-  (t2/select :model/DataPermissions
-             {:select [:p.* [:pgm.user_id :user_id]]
-              :from [[:permissions_group_membership :pgm]]
-              :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                     [:data_permissions :p] [:= :p.group_id :pg.id]]
-              :left-join [[:metabase_table :mt] [:= :mt.id :p.table_id]]
-              :where [:and
-                      [:= :pgm.user_id user-id]
-                      [:in :p.db_id db-ids]
-                      [:or
-                       [:= :p.table_id nil]
-                       [:= :mt.active true]]]}))
-
-(defn- relevant-permissions-for-user-perm-and-db
-  "Returns all relevant rows for a given user, permission type, and db_id, excluding permissions for deactivated
-  tables."
-  [user-id perm-type db-id]
-  (t2/select :model/DataPermissions
-             {:select [:p.* [:pgm.user_id :user_id]]
-              :from [[:permissions_group_membership :pgm]]
-              :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                     [:data_permissions :p] [:= :p.group_id :pg.id]]
-              :left-join [[:metabase_table :mt] [:= :mt.id :p.table_id]]
-              :where [:and
-                      [:= :pgm.user_id user-id]
-                      [:= :p.perm_type (u/qualified-name perm-type)]
-                      [:= :p.db_id db-id]
-                      [:or
-                       [:= :p.table_id nil]
-                       [:= :mt.active true]]]}))
-
-(def ^:dynamic *permissions-for-user*
-  "A dynamically-bound atom containing a cache of data permissions that have been fetched so far for the current user.
-   Keys are:
-    - :db-ids -> A set of the IDs of databases which have already been fetched.
-    - :perms  -> A map of permissions, with the structure `{user-id {perm-type {db-id perms }` so that we NEVER
-                 accidentally use the cache of the wrong user, and `perms` are vectors of data_permissions entries.
-
-  When checking permissions, if a DB has not been fetched, it will be added to the cache before the check returns."
-  (atom {:db-ids #{} :perms {}}))
-
-(defn prime-db-cache
-  "Prime the permissions cache for a given user and database IDs.
-  This can be called directly prior to checking the permissions for a large number of databases to improve performance"
-  [db-ids]
-  (let [{cached-db-ids :db-ids perms :perms} @*permissions-for-user*
-        filtered-ids (filter #(not (some #{%} cached-db-ids)) db-ids)]
-    (when (seq filtered-ids)
-      (let [fetched-perm-rows (relevant-permissions-for-user-and-dbs api/*current-user-id* filtered-ids)
-            new-cache (reduce (fn [m {:keys [user_id perm_type db_id] :as row}]
-                                (update-in m [user_id perm_type db_id] u/conjv row))
-                              perms
-                              fetched-perm-rows)]
-        (reset! *permissions-for-user*
-                {:db-ids (into (or cached-db-ids #{}) db-ids)
-                 :perms  new-cache})))))
-
-(defenterprise enforced-sandboxes-for-user
-  "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is
-  cached for the duration of a request. Empty on OSS instances."
-  metabase-enterprise.sandbox.api.util
-  [_user-id]
-  #{})
-
-(def ^:dynamic *sandboxes-for-user*
-  "Filled by `enforced-sandboxes-for-user`. Empty on OSS instances, or EE instances without the `sandboxes` feature."
-  (delay nil))
-
-(defn sandboxes-for-user
-  "Derefs the *sandboxes-for-user* dynamic variable so it can be contained to this namespace"
-  []
-  @*sandboxes-for-user*)
-
-(defmacro with-relevant-permissions-for-user
-  "Populates the `*permissions-for-user*` and `*sandboxes-for-user*` dynamic vars for use by the cache-aware functions
-  in this namespace."
-  [user-id & body]
-  `(binding [*permissions-for-user* (atom {:db-ids #{} :perms {}})
-             *sandboxes-for-user*   (delay (enforced-sandboxes-for-user ~user-id))]
-     ~@body))
-
-(def ^:dynamic *use-perms-cache?*
-  "Bind to `false` to intentionally bypass the permissions cache and fetch data straight from the DB."
-  true)
-
-(defmacro disable-perms-cache
-  "Intentionally bypass the permissions cache and fetch data straight from the DB."
-  {:style/indent 0}
-  [& body]
-  `(binding [*use-perms-cache?* false]
-     ~@body))
-
-(defn- use-cache?
-  [user-id]
-  (and *use-perms-cache?*
-       (= user-id api/*current-user-id*)))
-
-(defn- get-permissions [user-id perm-type db-id]
-  (if (use-cache? user-id)
-    (do ; Use the cache if we can
-      (prime-db-cache [db-id])
-      (get-in (:perms @*permissions-for-user*) [user-id perm-type db-id]))
-    ;; If we're checking permissions for a *different* user than ourselves, fetch it straight from the DB
-    (relevant-permissions-for-user-perm-and-db user-id perm-type db-id)))
-
-;;; ---------------------------------------- Fetching a user's permissions --------------------------------------------
-
 (defmulti coalesce
   "Coalesce a set of permission values into a single value. This is used to determine the permission to enforce for a
   user in multiple groups with conflicting permissions. By default, this returns the *most* permissive value that the
@@ -289,42 +184,379 @@
   (let [ordered-values (-> permissions.schema/data-permissions perm-type :values reverse)]
     (first (filter (set perm-values) ordered-values))))
 
+;;; -------------------------------------------- Shared caching helpers --------------------------------------------
+
+;;; Every permission-checking function below has its own request-scoped cache — one atom, one hand-written aggregate
+;;; query, one cache structure that fits exactly the question the function answers. All the atoms are bound by
+;;; [[with-relevant-permissions-for-user]] and key `:perms` by user ID so we NEVER accidentally use the cache of the
+;;; wrong user.
+;;;
+;;; All coalescing happens in SQL: each permission value is mapped to its rank (see `permissions.db`'s
+;;; `value-rank-case`) and rows
+;;; are aggregated with GROUP BY, so result sets scale with tables/schemas/databases rather than with raw
+;;; data_permissions row counts (dbs x groups x tables x duplicate values). A bucket's (min, max) rank pair is
+;;; enough to reconstruct [[coalesce]] exactly (see [[ranks->most-permissive-value]]), and the
+;;; most-restrictive-within-a-group-then-most-permissive-across-groups questions nest two levels of GROUP BY, so
+;;; even group identity collapses.
+;;;
+;;; All caches are point-in-time snapshots for the request: nothing invalidates them when data_permissions is
+;;; written, so code that mutates permissions and re-checks them within the same request scope reads pre-write
+;;; answers, and the caches may observe a concurrent write at different first-load moments.
+
+(defn- ranks->most-permissive-value
+  "Reconstructs [[coalesce]] over a bucket of values from the bucket's `[min-rank max-rank]` pair. Verified
+  exhaustively against [[coalesce]] for every permission type and value subset: the most permissive value is the one
+  at the minimum rank, except for :perms/view-data's special rule where a :blocked row overrides
+  :legacy-no-self-service (but not :unrestricted). Returns nil for a nil pair (no rows), matching what coalescing an
+  empty value set returns for callers that fall back to the least permissive value."
+  [perm-type pair]
+  (when-let [[mn mx] pair]
+    (let [^PersistentVector values (-> permissions.schema/data-permissions perm-type :values)]
+      (if (and (= perm-type :perms/view-data)
+               (= (nth values mx) :blocked)
+               (not= (nth values mn) :unrestricted))
+        :blocked
+        (nth values mn)))))
+
+(defn- combine-rank-pairs
+  "Merges `[min max]` rank pairs — equivalent to coalescing the union of the buckets they summarize."
+  [& pairs]
+  (when-let [pairs (seq (remove nil? pairs))]
+    [(apply min (map first pairs))
+     (apply max (map second pairs))]))
+
+(def ^:private max-ids-per-query
+  "How many IDs to list in one load. Each is a bound parameter and Postgres caps a statement at 65535 of them, so a
+  caller passing a very large set is split across several queries rather than failing outright."
+  5000)
+
+(def ^:dynamic *use-perms-cache?*
+  "Bind to `false` to intentionally bypass the permissions caches and fetch data straight from the DB."
+  true)
+
+(defmacro disable-perms-cache
+  "Intentionally bypass the permissions caches and fetch data straight from the DB."
+  {:style/indent 0}
+  [& body]
+  `(binding [*use-perms-cache?* false]
+     ~@body))
+
+(defn- use-cache?
+  [user-id]
+  (and *use-perms-cache?*
+       (= user-id api/*current-user-id*)))
+
+(def ^:dynamic *perms-cache-misses-are-errors?*
+  "Whether a permission check that has to load turns into an exception rather than a query. Bound to true by
+  [[with-relevant-permissions-for-user]] in dev and test, so an unprimed batch of checks fails loudly there and
+  passes silently -- as one query per entity -- in production."
+  false)
+
+(def ^:private max-cache-misses
+  "How many loads one cache may serve in a request before the pattern is treated as an unprimed run rather than a few
+  unrelated checks.
+
+  A handful is ordinary. Something has to load the cache, and a request can legitimately check several unrelated
+  things -- a dashboard whose parameters span two databases, an entity read followed by a chain-filter on a field
+  elsewhere, a card touching a few tables. Those cost a bounded number of queries.
+
+  Five is where measurement put the line. Across the search, sandbox, dashboard and sync suites -- discounting the
+  failures those suites already have when batched together -- a limit of two flags 19 sites and three flags 10, all
+  of them bounded: an entity read plus a chain-filter elsewhere, a dashboard whose parameters span two databases. At
+  four and above none of them flag. So this is deliberately a backstop against runs that grow with the data, not a
+  linter for every second check."
+  5)
+
+(def ^:private prime-fn-for-kind
+  "The prime function that covers each kind of check, for the message [[cache-miss!]] throws. Keyed by what the caller
+  was asking about rather than by which cache missed -- a table check reads the database cache on its way through, and
+  the fix for that is still `prime-table-perms-cache`.
+
+  Spelled out rather than built from `kind`, so that renaming one of these functions turns up this map. They can't be
+  var references: all three are defined further down, after the caches they load."
+  {:table    "prime-table-perms-cache"
+   :schema   "prime-schema-perms-cache"
+   :database "prime-database-perms-cache"})
+
+(defn- cache-miss!
+  "Called from a read-through cache when a check has to load rather than read. Counts the loads and throws once they
+  pass [[max-cache-misses]], so an unprimed run fails loudly in dev and test.
+
+  `kind` names what was being checked rather than which cache missed; see [[prime-fn-for-kind]]. `id` is the entity
+  the check was for, so the message points at a specific table or database rather than just a shape."
+  [kind id cache]
+  (when *perms-cache-misses-are-errors?*
+    (let [{:keys [misses]} (swap! cache update :misses (fnil inc 0))]
+      (when (>= misses max-cache-misses)
+        (throw (ex-info (format "Permission checks are running one query per entity, this one for %s %s. Load the scope up front with [[%s]]."
+                                (name kind) id (prime-fn-for-kind kind))
+                        {:kind kind, :id id}))))))
+
 (defn is-superuser?
   "Returns true if the given user ID is a superuser. Avoids a DB query when checking the current user."
   [user-id]
   (if (= user-id api/*current-user-id*)
     api/*is-superuser?*
-    (t2/select-one-fn :is_superuser :model/User :id user-id)))
+    (permissions.db/user-superuser? user-id)))
 
 (defn is-data-analyst?
   "Returns true if the given user ID is a data analyst. Avoids a DB query when checking the current user."
   [user-id]
   (if (= user-id api/*current-user-id*)
     api/*is-data-analyst?*
-    (t2/select-one-fn :is_data_analyst :model/User :id user-id)))
+    (permissions.db/user-data-analyst? user-id)))
 
-(mu/defn database-permission-for-user :- ::permissions.schema/data-permission-value
-  "Returns the effective permission value for a given user, permission type, and database ID. If the user has
-  multiple permissions for the given type in different groups, they are coalesced into a single value."
-  [user-id perm-type database-id]
-  (when (not= :model/Database (model-by-perm-type perm-type))
-    (throw (ex-info (tru "Permission type {0} is a table-level permission." perm-type)
-                    {perm-type (permissions.schema/data-permissions perm-type)})))
-  (if (is-superuser? user-id)
-    (most-permissive-value perm-type)
-    (let [perm-values (->> (get-permissions user-id perm-type database-id)
-                           (map :perm_value)
-                           (into #{}))]
-      (or (coalesce perm-type perm-values)
-          (least-permissive-value perm-type)))))
+;;; --------------------------------------------- Database level cache ---------------------------------------------
 
-(mu/defn user-has-permission-for-database? :- :boolean
-  "Returns a Boolean indicating whether the user has the specified permission value for the given database ID and table ID,
-   or a more permissive value."
-  [user-id perm-type perm-value database-id]
-  (at-least-as-permissive? perm-type
-                           (database-permission-for-user user-id perm-type database-id)
-                           perm-value))
+(def ^:dynamic *db-permission-cache*
+  "Request cache for every whole-database question:
+  `{user-id {perm-type {db-id {:database v :every-table v :any-table v}}}}`.
+
+  The three differ in *how much of the database the value has to hold for*:
+
+  - `:database`    — the grant attached to the database itself, ignoring per-table grants. It applies to every table
+                     in the database, so [[table-permission-for-user]] coalesces it with each table's own value. It
+                     lives here rather than in the table cache because it is a property of the database: a check
+                     against a table that doesn't exist still has to see it.
+  - `:every-table` — the level the user holds over the whole database: within each group the most restrictive value
+                     across its tables, then the best of those across the user's groups. Answers \"may they do this
+                     to everything here?\" A database-level row counts as granting every table, which is exactly how
+                     [[set-table-permissions!]] stores a permission that is uniform across a database.
+  - `:any-table`   — the level the user holds on at least one table: the loosest value found anywhere in the database.
+                     Answers \"may they do this to anything here?\"
+
+  `:every-table` and `:any-table` bracket the truth: no table in the database is more restricted than the first, and
+  none is more permissive than the second. Neither can be derived from the other, because values coalesce per group
+  before they coalesce across groups — a user can hold `:unrestricted` on every table without any single group
+  granting it on all of them.
+
+  All three are aggregations of the same rows (see `permissions.db`'s `perm-rows-query-base`), so one query computes all of them, for
+  every database it is asked about, at once. `:db-ids` records which those were: this cache only ever answers for a
+  database it actually loaded, so one created later is fetched rather than read as having no permissions.
+
+  Checks that walk a list of databases should [[prime-database-perms-cache]] first, exactly as table checks do."
+  (atom {:db-ids #{} :perms {}}))
+
+(def ^:dynamic *all-db-permission-cache*
+  "Request cache for the questions that scan *every* database rather than asking about one --
+  [[user-has-any-perms-of-type?]]. Shaped like [[*db-permission-cache*]]'s `:perms`, but loaded in full, so it needs
+  no record of what it covers."
+  (atom {}))
+
+(defn- load-database-perms
+  "Whole-database values for `db-ids`, or for every database when nil."
+  [user-id db-ids]
+  (let [value (fn [perm-type mn mx] (when mn (ranks->most-permissive-value perm-type [mn mx])))]
+    (reduce (fn [m {:keys [perm_type db_id any_mn any_mx every_mn every_mx db_mn db_mx]}]
+              (let [perm-type (keyword perm_type)]
+                (assoc-in m [perm-type db_id]
+                          {:database    (value perm-type db_mn db_mx)
+                           :every-table (value perm-type every_mn every_mx)
+                           :any-table   (value perm-type any_mn any_mx)})))
+            {}
+            (permissions.db/database-permission-rank-rows user-id db-ids))))
+
+(defn- load-database-perms!
+  "Load `db-ids` into [[*db-permission-cache*]] and return the resulting per-user map."
+  [user-id db-ids]
+  (let [loaded (load-database-perms user-id db-ids)]
+    (-> (swap! *db-permission-cache*
+               (fn [cache]
+                 (-> cache
+                     (update :db-ids into db-ids)
+                     (update-in [:perms user-id] #(merge-with merge % loaded)))))
+        (get-in [:perms user-id]))))
+
+(defn prime-database-perms-cache
+  "Eagerly load whole-database permissions for `:db-ids` for the current user, so that a run of per-database checks
+  costs one query instead of one per database. A no-op for superusers, whose checks never read the cache.
+
+  The counterpart of [[prime-table-perms-cache]], for the checks that walk a list of databases."
+  [{:keys [db-ids]}]
+  (when (and (use-cache? api/*current-user-id*)
+             (not api/*is-superuser?*))
+    (let [missing (into #{} (remove (:db-ids @*db-permission-cache*)) db-ids)]
+      (doseq [batch (partition-all max-ids-per-query missing)]
+        (load-database-perms! api/*current-user-id* (set batch))))
+    nil))
+
+(defn- cached-database-perms
+  "The `{perm-type {db-id {:database v :every-table v :any-table v}}}` map for `user-id`, able to answer for
+  `database-id`, loading it if this request hasn't yet. Loads straight through without caching when the request cache
+  doesn't apply.
+
+  `table-id` affects reporting only. [[table-permission-for-user]] reads this cache on its way to a table check, so a
+  miss reached that way is a table check running one query per entity, and the fix is [[prime-table-perms-cache]] --
+  not [[prime-database-perms-cache]], which would leave the table half of the check unprimed."
+  ([user-id database-id]
+   (cached-database-perms user-id database-id nil))
+  ([user-id database-id table-id]
+   (if (use-cache? user-id)
+     (if (contains? (:db-ids @*db-permission-cache*) database-id)
+       (get-in @*db-permission-cache* [:perms user-id])
+       (do
+         (if table-id
+           (cache-miss! :table table-id *db-permission-cache*)
+           (cache-miss! :database database-id *db-permission-cache*))
+         (load-database-perms! user-id #{database-id})))
+     (load-database-perms user-id [database-id]))))
+
+(defn- all-database-perms
+  "Like [[cached-database-perms]] but for every database at once, for the questions that scan them all."
+  [user-id]
+  (if (use-cache? user-id)
+    (or (get @*all-db-permission-cache* user-id)
+        (let [loaded (load-database-perms user-id nil)]
+          (swap! *all-db-permission-cache* assoc user-id loaded)
+          loaded))
+    (load-database-perms user-id nil)))
+
+;;; ---------------------------------------------- Schema level cache ----------------------------------------------
+
+(def ^:dynamic *schema-permission-cache*
+  "Request cache for [[schema-permission-for-user]]: `{:db-ids #{} :perms {user-id {perm-type {db-id entry}}}}`
+  where each entry is `{:default v, :schemas {schema v}}` — per schema, the coalesced value of the schema's table
+  rows combined with the db-level rows; `:default` (the db-level value alone) answers schemas with no rows of their
+  own. Schema names are normalized (nil = \"\"). Loaded per database, all permission types at once."
+  (atom {:db-ids #{} :perms {}}))
+
+(defn- load-schema-permission-perms
+  [user-id db-ids]
+  (let [folded (reduce (fn [m {:keys [perm_type db_id schema_name table_level mn mx]}]
+                         (if (pos? table_level)
+                           (update-in m [(keyword perm_type) db_id :schemas (or schema_name "")]
+                                      combine-rank-pairs [mn mx])
+                           (assoc-in m [(keyword perm_type) db_id :db-level] [mn mx])))
+                       {}
+                       (permissions.db/schema-permission-rank-rows user-id db-ids))]
+    (into {}
+          (map (fn [[perm-type db-id->folded]]
+                 [perm-type
+                  (update-vals db-id->folded
+                               (fn [{:keys [db-level schemas]}]
+                                 {:default (ranks->most-permissive-value perm-type db-level)
+                                  :schemas (update-vals schemas
+                                                        #(ranks->most-permissive-value
+                                                          perm-type
+                                                          (combine-rank-pairs db-level %)))}))]))
+          folded)))
+
+(defn- cached-schema-perms
+  "Read-through for [[*schema-permission-cache*]]: the per-user `{perm-type {db-id entry}}` map, loading whichever of
+  `db-ids` isn't cached yet. Loads straight through without caching when the request cache doesn't apply."
+  [user-id db-ids]
+  (if (use-cache? user-id)
+    (do
+      (let [missing-db-ids (into [] (remove (:db-ids @*schema-permission-cache*)) db-ids)]
+        (when (seq missing-db-ids)
+          (cache-miss! :schema missing-db-ids *schema-permission-cache*)
+          (let [loaded (load-schema-permission-perms user-id missing-db-ids)]
+            (swap! *schema-permission-cache*
+                   (fn [cache]
+                     (-> cache
+                         (update :db-ids into missing-db-ids)
+                         (update-in [:perms user-id] #(merge-with merge % loaded))))))))
+      (get-in @*schema-permission-cache* [:perms user-id]))
+    (load-schema-permission-perms user-id db-ids)))
+
+;;; ---------------------------------------------- Table level cache -----------------------------------------------
+
+(def ^:dynamic *table-permission-cache*
+  "Request cache for [[table-permission-for-user]]:
+
+    {:db-ids    #{db-id}     -- every table in these databases is loaded
+     :table-ids #{table-id}  -- these tables are loaded individually
+     :perms     {user-id {perm-type {db-id {table-id value}}}}}
+
+  Only table-granular rows live here. The grant attached to the database itself is a property of the database, not of
+  any table, so it comes from [[*db-permission-cache*]]'s `:database` — which means a table with no rows of its
+  own, or no row in `metabase_table` at all, still resolves correctly.
+
+  Nothing invalidates this within a request, so a permission written after a check has already loaded is not seen by
+  later checks in the same request. That was always true per database; it now spans every database the user can see.
+
+  Two completeness sets because a load comes in one of two shapes. A whole-database load answers for any table in it,
+  including tables with no rows of their own. A table-scoped load answers only for the tables it asked about — an
+  unrequested table is indistinguishable from one with no permissions, and answering for it would invent a
+  permission. So `:table-ids` records what was *asked for*, not what came back, and a scoped load never touches
+  `:db-ids`."
+  (atom {:db-ids #{} :table-ids #{} :perms {}}))
+
+(defn- load-table-permission-perms
+  "Table-granular permissions for one scope — either `{:table-ids …}` or `{:db-ids …}`. Database-level rows are
+  excluded; see [[*table-permission-cache*]]."
+  [user-id {:keys [db-ids table-ids]}]
+  (reduce (fn [m {:keys [perm_type db_id table_id mn mx]}]
+            (assoc-in m [(keyword perm_type) db_id table_id]
+                      (ranks->most-permissive-value (keyword perm_type) [mn mx])))
+          {}
+          (permissions.db/table-permission-rank-rows user-id db-ids table-ids)))
+
+(defn- merge-table-perms
+  "Merge freshly loaded table permissions into cached ones, unioning the per-database table maps rather than replacing
+  them — the same database is loaded more than once, once per batch of tables."
+  [cached loaded]
+  (merge-with #(merge-with merge %1 %2) cached loaded))
+
+(defn- load-table-perms!
+  "Load one scope into [[*table-permission-cache*]] and return the resulting per-user perms map."
+  [user-id {:keys [db-ids table-ids] :as scope}]
+  (let [loaded (load-table-permission-perms user-id scope)]
+    (-> (swap! *table-permission-cache*
+               (fn [cache]
+                 (-> cache
+                     (update (if (seq table-ids) :table-ids :db-ids) into (or (not-empty table-ids) db-ids))
+                     (update-in [:perms user-id] merge-table-perms loaded))))
+        (get-in [:perms user-id]))))
+
+(defn prime-table-perms-cache
+  "Eagerly load table-granular permissions for the current user, so that a run of per-table checks costs one query
+  instead of one per table. A no-op for superusers, whose checks never read the cache.
+
+  Takes `{:db-ids #{…} :table-ids #{…}}`, and `:table-ids` decides the shape:
+
+  - **given** — load exactly those tables. Right when the candidate set is already small and known: the tables a
+    card's query reads, a page of recents, the tables behind a list of measures.
+  - **absent** — load every table in `:db-ids`. Right when the candidate set *is* a database or a schema of one, where
+    listing the IDs would just be a longhand way of naming the database.
+
+  Supplying both loads the tables and ignores `:db-ids` *for the table load*, since the table list is the narrower
+  scope. Note also that a table already covered by a fully-loaded database is re-requested, because mapping a table ID
+  back to its database would itself take a query.
+
+  `:db-ids` is never wasted, though: whichever shape is used, it also primes [[*db-permission-cache*]], because
+  [[table-permission-for-user]] reads the database's own grant as well as the table's. A caller that passes only
+  `:table-ids` still pays one query per distinct database, so pass `:db-ids` too whenever the rows are already in
+  hand -- it costs nothing extra when they are."
+  [{:keys [db-ids table-ids]}]
+  (when (and (use-cache? api/*current-user-id*)
+             (not api/*is-superuser?*))
+    (let [user-id api/*current-user-id*
+          cache   @*table-permission-cache*]
+      (if (seq table-ids)
+        (doseq [batch (partition-all max-ids-per-query
+                                     (into #{} (remove (:table-ids cache)) table-ids))]
+          (load-table-perms! user-id {:table-ids (set batch)}))
+        (doseq [batch (partition-all max-ids-per-query
+                                     (into #{} (remove (:db-ids cache)) db-ids))]
+          (load-table-perms! user-id {:db-ids (set batch)})))
+      (prime-database-perms-cache {:db-ids db-ids})
+      nil)))
+
+(defn- cached-table-perms
+  "Read-through for [[*table-permission-cache*]]: the per-user `{perm-type {db-id {table-id value}}}` map, loading
+  `table-id` first if it isn't covered yet. Callers checking many tables should [[prime-table-perms-cache]] first."
+  [user-id db-id table-id]
+  (if (use-cache? user-id)
+    (if (or (contains? (:db-ids @*table-permission-cache*) db-id)
+            (contains? (:table-ids @*table-permission-cache*) table-id))
+      (get-in @*table-permission-cache* [:perms user-id])
+      (do
+        (cache-miss! :table table-id *table-permission-cache*)
+        (load-table-perms! user-id {:table-ids #{table-id}})))
+    (load-table-permission-perms user-id {:table-ids #{table-id}})))
+
+;;; ---------------------------------------------- Table level checks ----------------------------------------------
 
 (def ^:dynamic *additional-table-permissions*
   "See the `with-additional-table-permission` macro below."
@@ -347,36 +579,6 @@
 (defn- get-additional-table-permission! [{:keys [db-id table-id]} perm-type]
   (get-in *additional-table-permissions* [db-id table-id perm-type]))
 
-(mu/defn table-permission-for-groups :- ::permissions.schema/data-permission-value
-  "Returns the effective permission value provided by a set of *group-ids*, for a provided permission type, database
-  ID, and table ID."
-  [group-ids perm-type database-id table-id]
-  (when (not= :model/Table (model-by-perm-type perm-type))
-    (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
-                    {perm-type (permissions.schema/data-permissions perm-type)})))
-  (let [perm-values (t2/select-fn-set :value
-                                      :model/DataPermissions
-                                      {:select [[:p.perm_value :value]]
-                                       :from [[:data_permissions :p]]
-                                       :where [:and
-                                               [:in :p.group_id group-ids]
-                                               [:= :p.perm_type (u/qualified-name perm-type)]
-                                               [:= :p.db_id database-id]
-                                               [:or
-                                                [:= :table_id table-id]
-                                                [:= :table_id nil]]]})]
-    (or (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
-                                                                                perm-type)))
-        (least-permissive-value perm-type))))
-
-(mu/defn groups-have-permission-for-table? :- :boolean
-  "Returns a Boolean indicating whether the provided groups grant the specified permission level or higher for the given
-  table ID, or a more permissive value. (i.e. if a user is in all of these groups, would they have this permission?)"
-  [group-ids perm-type perm-value database-id table-id]
-  (at-least-as-permissive? perm-type
-                           (table-permission-for-groups group-ids perm-type database-id table-id)
-                           perm-value))
-
 (mu/defn table-permission-for-user :- ::permissions.schema/data-permission-value
   "Returns the effective permission value for a given user, permission type, and database ID, and table ID. If the user
   has multiple permissions for the given type in different groups, they are coalesced into a single value."
@@ -393,13 +595,17 @@
     (most-permissive-value perm-type)
 
     :else
-    (let [perm-values (into #{}
-                            (comp (filter #(or (= (:table_id %) table-id)
-                                               (nil? (:table_id %))))
-                                  (map :perm_value))
-                            (get-permissions user-id perm-type database-id))
-          table-perm (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
-                                                                                             perm-type)))]
+    (let [db-perm    (get-in (cached-database-perms user-id database-id table-id) [perm-type database-id :database])
+          table-perm (if (= db-perm (most-permissive-value perm-type))
+                       db-perm
+                       (coalesce perm-type
+                                 (into #{}
+                                       (remove nil?)
+                                       [db-perm
+                                        (get-in (cached-table-perms user-id database-id table-id)
+                                                [perm-type database-id table-id])
+                                        (get-additional-table-permission! {:db-id database-id :table-id table-id}
+                                                                          perm-type)])))]
       (or (when-not (= table-perm (least-permissive-value perm-type))
             table-perm)
           (when (pos-int? table-id)
@@ -414,76 +620,19 @@
                            (table-permission-for-user user-id perm-type database-id table-id)
                            perm-value))
 
-(defn- most-restrictive-per-group
-  "Given a perm-type and a collection of maps that look like `{:group-id 1 :value :permission-value}`, returns a set
-  containing the most restrictive permission value in each group."
-  [perm-type perms]
-  (->> perms
-       (group-by :group-id)
-       (m/map-vals (fn [ps]
-                     (->> ps (map :value) set (coalesce-most-restrictive perm-type))))
-       vals
-       set))
+;;; --------------------------------------------- Schema level checks ----------------------------------------------
 
-(mu/defn full-schema-permission-for-user :- ::permissions.schema/data-permission-value
-  "Returns the effective *schema-level* permission value for a given user, permission type, and database ID, and
-  schema name. If the user has multiple permissions for the given type in different groups, they are coalesced into a
-  single value. The schema-level permission is the *most* restrictive table-level permission within that schema."
-  [user-id perm-type database-id schema-name]
-  (when (not= :model/Table (model-by-perm-type perm-type))
-    (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
-                    {perm-type (permissions.schema/data-permissions perm-type)})))
-  (cond
-    (is-superuser? user-id)
-    (most-permissive-value perm-type)
-
-    (and (= perm-type :perms/manage-table-metadata)
-         (is-data-analyst? user-id))
-    (most-permissive-value perm-type)
-
-    :else
-    ;; The schema-level permission is the most-restrictive table-level permission within a schema. So for each group,
-    ;; select the most-restrictive table-level permission. Then use normal coalesce logic to select the *least*
-    ;; restrictive group permission.
-    (let [perm-values (most-restrictive-per-group
-                       perm-type
-                       (->> (get-permissions user-id perm-type database-id)
-                            (filter #(or (= (:schema_name %) schema-name)
-                                         (nil? (:table_id %))))
-                            (map #(set/rename-keys % {:group_id :group-id
-                                                      :perm_value :value}))
-                            (map #(select-keys % [:group-id :value]))))]
-      (or (coalesce perm-type perm-values)
-          (least-permissive-value perm-type)))))
-
-(mu/defn full-db-permission-for-user :- ::permissions.schema/data-permission-value
-  "Returns the effective *db-level* permission value for a given user, permission type, and database ID. If the user
-  has multiple permissions for the given type in different groups, they are coalesced into a single value. The
-  db-level permission is the *most* restrictive table-level permission within that database."
-  [user-id perm-type database-id]
-  (when (not= :model/Table (model-by-perm-type perm-type))
-    (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
-                    {perm-type (permissions.schema/data-permissions perm-type)})))
-  (cond
-    (is-superuser? user-id)
-    (most-permissive-value perm-type)
-
-    (and (= perm-type :perms/manage-table-metadata)
-         (is-data-analyst? user-id))
-    (most-permissive-value perm-type)
-
-    :else
-    ;; The DB-level permission is the most-restrictive table-level permission within a DB. So for each group, select the
-    ;; most-restrictive table-level permission. Then use normal coalesce logic to select the *least* restrictive group
-    ;; permission.
-    (let [perm-values (most-restrictive-per-group
-                       perm-type
-                       (->> (get-permissions user-id perm-type database-id)
-                            (map #(set/rename-keys % {:group_id :group-id
-                                                      :perm_value :value}))
-                            (map #(select-keys % [:group-id :value]))))]
-      (or (coalesce perm-type perm-values)
-          (least-permissive-value perm-type)))))
+(defn prime-schema-perms-cache
+  "Eagerly load schema-level permissions for `:db-ids` for the current user, so that a run of per-schema checks across
+  several databases costs one query instead of one per database. A no-op for superusers, whose checks never read the
+  cache."
+  [{:keys [db-ids]}]
+  (when (and (use-cache? api/*current-user-id*)
+             (not api/*is-superuser?*)
+             (seq db-ids))
+    (binding [*perms-cache-misses-are-errors?* false]
+      (cached-schema-perms api/*current-user-id* db-ids))
+    nil))
 
 (mu/defn schema-permission-for-user :- ::permissions.schema/data-permission-value
   "Returns the effective *schema-level* permission value for a given user, permission type, and database ID, and
@@ -505,16 +654,10 @@
     (most-permissive-value perm-type)
 
     :else
-    ;; The schema-level permission is the most-restrictive table-level permission within a schema. So for each group,
-    ;; select the most-restrictive table-level permission. Then use normal coalesce logic to select the *least*
-    ;; restrictive group permission.
-    (let [schema-name (or schema-name "")
-          perm-values (->> (get-permissions user-id perm-type database-id)
-                           (filter #(or (= (or (:schema_name %) "") schema-name)
-                                        (nil? (:table_id %))))
-                           (map :perm_value)
-                           (into #{}))]
-      (or (coalesce perm-type perm-values)
+    (let [{:keys [default schemas]} (get-in (cached-schema-perms user-id [database-id])
+                                            [perm-type database-id])]
+      (or (get schemas (or schema-name ""))
+          default
           (least-permissive-value perm-type)))))
 
 (mu/defn user-has-permission-for-schema? :- :boolean
@@ -525,9 +668,69 @@
                            (schema-permission-for-user user-id perm-type database-id schema)
                            perm-value))
 
-(mu/defn most-permissive-database-permission-for-user :- ::permissions.schema/data-permission-value
-  "Similar to checking _partial_ permissions with permissions paths - what is the *most permissive* permission the
-  user has on any of the tables within this database?"
+(defn- full-schema-permission-rank-pair
+  "The `[min max]` rank pair summarizing one `(db-id, schema-name, perm-type)`: within each group, the most
+  restrictive rank across the schema's table rows and that group's database-level rows; then min/max of those
+  per-group values. Returns nil when the user has no rows at all.
+
+  Selecting the schema's table rows and the database-level rows together is what keeps this a single flat aggregate:
+  a database-level row applies to every schema, so restricting to one schema needs no expansion step."
+  [user-id perm-type database-id schema-name]
+  (let [{:keys [mn mx]} (permissions.db/schema-permission-rank-pair user-id perm-type database-id schema-name)]
+    (when mn [mn mx])))
+
+(mu/defn full-schema-permission-for-user :- ::permissions.schema/data-permission-value
+  "Returns the effective *schema-level* permission value for a given user, permission type, and database ID, and
+  schema name. If the user has multiple permissions for the given type in different groups, they are coalesced into a
+  single value. The schema-level permission is the *most* restrictive table-level permission within that schema.
+
+  Deliberately uncached: the only caller is the upload path, which asks about a single schema of a single database.
+  It asks twice, once per permission type, so a cache would save at most one small scoped query per uploads-enabled
+  database -- not worth keeping a fifth cache alive for."
+  [user-id perm-type database-id schema-name]
+  (when (not= :model/Table (model-by-perm-type perm-type))
+    (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
+                    {perm-type (permissions.schema/data-permissions perm-type)})))
+  (cond
+    (is-superuser? user-id)
+    (most-permissive-value perm-type)
+
+    (and (= perm-type :perms/manage-table-metadata)
+         (is-data-analyst? user-id))
+    (most-permissive-value perm-type)
+
+    :else
+    (or (ranks->most-permissive-value
+         perm-type
+         (full-schema-permission-rank-pair user-id perm-type database-id schema-name))
+        (least-permissive-value perm-type))))
+
+;;; -------------------------------------------- Database level checks ---------------------------------------------
+
+(mu/defn database-permission-for-user :- ::permissions.schema/data-permission-value
+  "Returns the effective permission value for a given user, permission type, and database ID. If the user has
+  multiple permissions for the given type in different groups, they are coalesced into a single value."
+  [user-id perm-type database-id]
+  (when (not= :model/Database (model-by-perm-type perm-type))
+    (throw (ex-info (tru "Permission type {0} is a table-level permission." perm-type)
+                    {perm-type (permissions.schema/data-permissions perm-type)})))
+  (if (is-superuser? user-id)
+    (most-permissive-value perm-type)
+    (or (get-in (cached-database-perms user-id database-id) [perm-type database-id :database])
+        (least-permissive-value perm-type))))
+
+(mu/defn user-has-permission-for-database? :- :boolean
+  "Returns a Boolean indicating whether the user has the specified permission value for the given database ID and table ID,
+   or a more permissive value."
+  [user-id perm-type perm-value database-id]
+  (at-least-as-permissive? perm-type
+                           (database-permission-for-user user-id perm-type database-id)
+                           perm-value))
+
+(mu/defn full-database-permission-for-user :- ::permissions.schema/data-permission-value
+  "Returns the effective *db-level* permission value for a given user, permission type, and database ID. If the user
+  has multiple permissions for the given type in different groups, they are coalesced into a single value. The
+  db-level permission is the *most* restrictive table-level permission within that database."
   [user-id perm-type database-id]
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
@@ -541,57 +744,127 @@
     (most-permissive-value perm-type)
 
     :else
-    (let [perm-values (->> (get-permissions user-id perm-type database-id)
-                           (map :perm_value)
-                           (into #{}))]
-      (or (coalesce perm-type perm-values)
-          (least-permissive-value perm-type)))))
+    (or (get-in (cached-database-perms user-id database-id) [perm-type database-id :every-table])
+        (least-permissive-value perm-type))))
 
 (mu/defn native-download-permission-for-user :- ::permissions.schema/data-permission-value
   "Returns the effective download permission value for a given user and database ID, for native queries on the database.
   For each group, the native download permission for a database is equal to the lowest permission level of any table in
-  the database."
+  the database — exactly [[full-database-permission-for-user]] for :perms/download-results, whose cache it shares."
   [user-id     :- ::lib.schema.id/user
    database-id :- ::lib.schema.id/database]
-  (if (is-superuser? user-id)
-    (most-permissive-value :perms/download-results)
-    (let [perm-values
-          (->> (get-permissions user-id :perms/download-results database-id)
-               (map (fn [{:keys [perm_value group_id]}]
-                      {:group_id group_id :value perm_value})))
+  (full-database-permission-for-user user-id :perms/download-results database-id))
 
-          value-by-group
-          (-> (group-by :group_id perm-values)
-              (update-vals (fn [perms]
-                             (let [values (set (map :value perms))]
-                               (coalesce-most-restrictive :perms/download-results values)))))]
-      (or (coalesce :perms/download-results (vals value-by-group))
-          (least-permissive-value :perms/download-results)))))
+(mu/defn most-permissive-database-permission-for-user :- ::permissions.schema/data-permission-value
+  "Similar to checking _partial_ permissions with permissions paths - what is the *most permissive* permission the
+  user has on any of the tables within this database?
+
+  Called without a `database-id`, answers the same question across every database at once -- for asking about the
+  user's access to the instance as a whole. That takes one query, where walking the databases would take one each."
+  ([user-id perm-type]
+   (most-permissive-database-permission-for-user user-id perm-type nil))
+
+  ([user-id perm-type database-id]
+   (when (not= :model/Table (model-by-perm-type perm-type))
+     (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
+                     {perm-type (permissions.schema/data-permissions perm-type)})))
+   (cond
+     (is-superuser? user-id)
+     (most-permissive-value perm-type)
+
+     (and (= perm-type :perms/manage-table-metadata)
+          (is-data-analyst? user-id))
+     (most-permissive-value perm-type)
+
+     database-id
+     (or (get-in (cached-database-perms user-id database-id) [perm-type database-id :any-table])
+         (least-permissive-value perm-type))
+
+     :else
+     (let [ordered (-> permissions.schema/data-permissions perm-type :values)
+           values  (into #{} (keep :any-table) (vals (get (all-database-perms user-id) perm-type)))]
+       (or (first (filter values ordered))
+           (least-permissive-value perm-type))))))
 
 (mu/defn user-has-any-perms-of-type? :- :boolean
   "Returns a Boolean indicating whether the user has the highest level of access for the given permission type in any
-  group, for at least one database or table. Optionally takes `:exclude-db-ids` to exclude specific databases from the check."
+  group, for at least one database or table. Optionally takes `:exclude-db-ids` to exclude specific databases from the
+  check.
+
+  Answered from [[*db-permission-cache*]] — one aggregated query, memoized per request — so callers that invoke this
+  repeatedly within one request (e.g. once per snippet in a list) cost at most one query, however many databases the
+  instance has. Note that permission rows for inactive tables do not count."
   [user-id perm-type & {:keys [exclude-db-ids]}]
   (or (is-superuser? user-id)
       (and (= perm-type :perms/manage-table-metadata)
            (is-data-analyst? user-id))
-      (let [value (most-permissive-value perm-type)]
-        (t2/exists? :model/DataPermissions
-                    {:select [[:p.perm_value :value]]
-                     :from [[:permissions_group_membership :pgm]]
-                     :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                            [:data_permissions :p]   [:= :p.group_id :pg.id]]
-                     :where (into [:and
-                                   [:= :pgm.user_id user-id]
-                                   [:= :p.perm_type (u/qualified-name perm-type)]
-                                   [:= :p.perm_value (u/qualified-name value)]]
-                                  (when (seq exclude-db-ids)
-                                    [[:not-in :p.db_id exclude-db-ids]]))}))))
+      (let [value    (most-permissive-value perm-type)
+            exclude? (set exclude-db-ids)]
+        (boolean (some (fn [[db-id vals]]
+                         (and (= (:any-table vals) value)
+                              (not (exclude? db-id))))
+                       (get (all-database-perms user-id) perm-type))))))
+
+;;; --------------------------------------- cache assembly ------------------------------------------------------------
+
+(defenterprise enforced-sandboxes-for-user
+  "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is
+  cached for the duration of a request. Empty on OSS instances."
+  metabase-enterprise.sandbox.api.util
+  [_user-id]
+  #{})
+
+(def ^:dynamic *sandboxes-for-user*
+  "Filled by `enforced-sandboxes-for-user`. Empty on OSS instances, or EE instances without the `sandboxes` feature."
+  (delay nil))
+
+(defn sandboxes-for-user
+  "Derefs the *sandboxes-for-user* dynamic variable so it can be contained to this namespace"
+  []
+  @*sandboxes-for-user*)
+
+(defmacro with-relevant-permissions-for-user
+  "Populates the per-function permission caches above (and `*sandboxes-for-user*`) for use by the cache-aware
+  functions in this namespace."
+  [user-id & body]
+  `(binding [*table-permission-cache*  (atom {:db-ids #{} :table-ids #{} :perms {}})
+             *schema-permission-cache* (atom {:db-ids #{} :perms {}})
+             *db-permission-cache*     (atom {:db-ids #{} :perms {}})
+             *all-db-permission-cache* (atom {})
+             *perms-cache-misses-are-errors?* (or config/is-dev? config/is-test?)
+             *sandboxes-for-user*           (delay (enforced-sandboxes-for-user ~user-id))]
+     ~@body))
+
+;;; ---------------------------------------- Fetching a user's permissions --------------------------------------------
+
+(mu/defn table-permission-for-groups :- ::permissions.schema/data-permission-value
+  "Returns the effective permission value provided by a set of *group-ids*, for a provided permission type, database
+  ID, and table ID."
+  [group-ids perm-type database-id table-id]
+  (when (not= :model/Table (model-by-perm-type perm-type))
+    (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
+                    {perm-type (permissions.schema/data-permissions perm-type)})))
+  (let [perm-values (permissions.db/table-permission-values-for-groups group-ids
+                                                                       (u/qualified-name perm-type)
+                                                                       database-id
+                                                                       table-id)]
+    (or (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
+                                                                                perm-type)))
+        (least-permissive-value perm-type))))
+
+(mu/defn groups-have-permission-for-table? :- :boolean
+  "Returns a Boolean indicating whether the provided groups grant the specified permission level or higher for the given
+  table ID, or a more permissive value. (i.e. if a user is in all of these groups, would they have this permission?)"
+  [group-ids perm-type perm-value database-id table-id]
+  (at-least-as-permissive? perm-type
+                           (table-permission-for-groups group-ids perm-type database-id table-id)
+                           perm-value))
 
 (defn- admin-permission-graph
   "Returns the graph representing admin permissions for all groups"
   [& {:keys [db-id perm-type]}]
-  (let [db-ids     (if db-id [db-id] (t2/select-pks-vec :model/Database))
+  ;; destination databases are reachable only through their router and never carry permissions of their own
+  (let [db-ids     (if db-id [db-id] (permissions.db/non-destination-database-ids))
         perm-types (if perm-type [perm-type] (keys permissions.schema/data-permissions))]
     (into {} (map (fn [db-id]
                     [db-id (into {} (map (fn [perm] [perm (most-permissive-value perm)])
@@ -607,19 +880,7 @@
   [user-id & {:keys [db-id perm-type]}]
   (if (is-superuser? user-id)
     (admin-permission-graph :db-id db-id :perm-type perm-type)
-    (let [data-perms    (t2/select :model/DataPermissions
-                                   {:select [[:p.perm_type :perm-type]
-                                             [:p.group_id :group-id]
-                                             [:p.perm_value :value]
-                                             [:p.db_id :db-id]
-                                             [:p.table_id :table-id]]
-                                    :from [[:permissions_group_membership :pgm]]
-                                    :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                                           [:data_permissions :p]   [:= :p.group_id :pg.id]]
-                                    :where [:and
-                                            [:= :pgm.user_id user-id]
-                                            (when db-id [:= :db_id db-id])
-                                            (when perm-type [:= :perm_type (u/qualified-name perm-type)])]})
+    (let [data-perms    (permissions.db/user-data-permissions user-id db-id perm-type)
           path->perms     (group-by (fn [{:keys [db-id perm-type table-id]}]
                                       (if table-id
                                         [db-id perm-type table-id]
@@ -670,11 +931,12 @@
   (assert-value-matches-perm-type perm_type perm_value))
 
 ;; Memoized per application DB. Destination status is immutable after creation, so the cache can't go stale.
+
 (def ^:private destination-db-id?
   "Whether `db-id` is a destination database — one with `router_database_id` set."
   (mdb/memoize-for-application-db
    (fn [db-id]
-     (t2/exists? :model/Database :id db-id :router_database_id [:not= nil]))))
+     (permissions.db/destination-database? db-id))))
 
 (defn assert-no-destination-db-permissions!
   "Throws if any row in `perm-rows` targets a destination database — one with `router_database_id`
@@ -698,6 +960,14 @@
 (def ^:private TheIdable
   "An ID, or something with an ID."
   [:or pos-int? [:map [:id pos-int?]]])
+
+(defn- merge-perm-changes
+  "Merges `{:to-delete [...] :to-insert [...]}` maps, deduping as it concatenates: several implication
+  paths can produce the same row — e.g. `view-data :blocked` implies `:perms/transforms :no` both
+  directly and via the implied `create-queries :no` — and inserting every copy creates duplicate
+  data_permissions rows (UXW-4927)."
+  [& changes]
+  (apply merge-with (fn [a b] (distinct (concat a b))) changes))
 
 (mu/defn- build-database-permission
   "Builds a sequence of DataPermissions models to delete and insert for setting a single permission to a specified
@@ -734,7 +1004,7 @@
 
                           (and (= perm-type :perms/create-queries) (not= value :query-builder-and-native))
                           (conj (build-database-permission perms group-or-id db-or-id :perms/transforms :no)))]
-    (apply merge-with concat
+    (apply merge-perm-changes
            {:to-delete existing-perms
             :to-insert [new-perm]}
            recursive-calls)))
@@ -750,14 +1020,14 @@
   ;; are ever inserted by a path that bypasses the hook (e.g. t2/query).
   #_(assert-no-destination-db-permissions! new-perms)
   (doseq [batched-new-perms (partition-all permission-batch-size new-perms)]
-    (t2/insert! :model/DataPermissions batched-new-perms)))
+    (permissions.db/insert-data-permissions! batched-new-perms)))
 
 (defn batch-delete-permissions!
   "Much like on insert, sometimes we have to delete more permission models than the psql limit of MAX 16-bit parameters.
   This batches our deletes into groups of `permission-batch-size`."
   [to-delete-ids]
   (doseq [batched-to-delete-ids (partition-all permission-batch-size to-delete-ids)]
-    (t2/delete! :model/DataPermissions :id [:in batched-to-delete-ids])))
+    (permissions.db/delete-data-permissions! batched-to-delete-ids)))
 
 (defn index-database-permissions
   "Given seqs of `group-ids` and `db-ids`, computes an index of all relevant permissions.
@@ -772,7 +1042,7 @@
   [group-ids db-ids]
   (when (and (seq group-ids) (seq db-ids))
     (group-by (juxt :group_id :db_id :perm_type)
-              (t2/select :model/DataPermissions :group_id [:in group-ids] :db_id [:in db-ids]))))
+              (permissions.db/data-permissions-for-groups-and-databases group-ids db-ids))))
 
 (mu/defn set-database-permission!
   "Set a single permission to a specified value for a given group and database. If a permission value already exists
@@ -827,7 +1097,7 @@
          (let [{:keys [id db_id schema]}
                (if (map? table)
                  table
-                 (t2/select-one [:model/Table :id :db_id :schema] :id table))]
+                 (permissions.db/table-location table))]
            {:perm_type   perm-type
             :group_id    group-id
             :perm_value  value
@@ -866,13 +1136,9 @@
       {:to-delete [] :to-insert []}
       ;; If we're setting any table permissions to a value that is different from the database-level permission,
       ;; we need to replace it with individual permission rows for every table in the database instead.
-      (let [other-new-perms (->> (t2/select :model/Table {:where
-                                                          [:and
-                                                           [:= :db_id db-id]
-                                                           ;; We can't filter out *everything* here because
-                                                           ;; max number of parameters is capped. But we might
-                                                           ;; as well filter out what we can (conservatively).
-                                                           [:not [:in :id (take 10000 table-ids)]]]})
+      ;; We can't filter out *everything* in the database because the max number of parameters is capped. But we
+      ;; might as well filter out what we can (conservatively).
+      (let [other-new-perms (->> (permissions.db/table-ids-and-schemas-excluding db-id (take 10000 table-ids))
                                  (keep (fn [table]
                                          ;; See above: we filtered out what we could in the database, but if
                                          ;; the number of tables is large we need to filter them out in
@@ -894,14 +1160,12 @@
 (defn- handle-no-db-permission
   "Handles the case where there's no existing database-level permission."
   [group-id db-id perm-type table-ids values new-perms]
-  (let [existing-table-perms (t2/select :model/DataPermissions
-                                        {:where [:and
-                                                 [:= :group_id group-id]
-                                                 [:= :db_id db-id]
-                                                 [:= :perm_type (u/qualified-name perm-type)]
-                                                 [:not= :table_id nil]
-                                                 [:not [:in :table_id table-ids]]]})
-        existing-table-values (set (map :perm_value existing-table-perms))]
+  (let [existing-table-values (into #{}
+                                    (map (comp keyword :perm_value))
+                                    (permissions.db/other-table-permission-values group-id
+                                                                                  db-id
+                                                                                  (u/qualified-name perm-type)
+                                                                                  table-ids))]
     (if (and (= (count existing-table-values) 1)
              (= values existing-table-values))
       ;; If all tables would have the same permissions after we update these ones, we can replace all of the table
@@ -909,11 +1173,8 @@
       (build-database-permission (index-database-permissions [group-id] [db-id])
                                  group-id db-id perm-type (first values))
       ;; Otherwise, just replace the rows for the individual table perm
-      (let [table-perms-to-delete (t2/select :model/DataPermissions
-                                             {:where [:and
-                                                      [:= :perm_type (u/qualified-name perm-type)]
-                                                      [:= :group_id group-id]
-                                                      [:in :table_id table-ids]]})]
+      ;; only :id is consumed downstream (see [[set-table-permissions-internal!]]), so don't fetch full rows
+      (let [table-perms-to-delete (permissions.db/table-permission-ids (u/qualified-name perm-type) group-id table-ids)]
         {:to-delete table-perms-to-delete
          :to-insert new-perms}))))
 
@@ -940,14 +1201,12 @@
       (when (not= (count (set (map :db_id new-perms))) 1)
         (throw (ex-info (tru "All tables must belong to the same database.")
                         {:new-perms new-perms})))
-      (apply merge-with concat
-             (if-let [existing-db-perm (t2/select-one :model/DataPermissions
-                                                      {:where
-                                                       [:and
-                                                        [:= :perm_type (u/qualified-name perm-type)]
-                                                        [:= :group_id  group-id]
-                                                        [:= :db_id     db-id]
-                                                        [:= :table_id  nil]]})]
+      ;; merge-perm-changes rather than plain concat: the main case and the recursive implications can
+      ;; produce the same row — e.g. setting `create-queries` coalesces to a DB-level row whose
+      ;; implications include `view-data :unrestricted`, and the recursive table-level `view-data`
+      ;; call coalesces to that same DB-level row.
+      (apply merge-perm-changes
+             (if-let [existing-db-perm (permissions.db/database-level-permission (u/qualified-name perm-type) group-id db-id)]
                (handle-existing-db-permission existing-db-perm
                                               values
                                               group-id
@@ -991,7 +1250,7 @@
   (let [table-or-id (first (keys table-perms))
         db-id (if (map? table-or-id)
                 (:db_id table-or-id)
-                (t2/select-one-fn :db_id :model/Table table-or-id))]
+                (permissions.db/table-database-id table-or-id))]
     (with-cluster-lock {:perm-type (u/qualified-name perm-type)
                         :db-id db-id}
       (set-table-permissions-internal! group-or-id perm-type table-perms))))
@@ -1038,11 +1297,8 @@
             :perm_value perm-value
             :db_id      db-id}))
         ;; Regular groups: compute based on All Users group
-        (let [au-id    (t2/select-one-pk :model/PermissionsGroup
-                                         :magic_group_type "all-internal-users")
-              au-perms (t2/select :model/DataPermissions
-                                  {:select-distinct [:db_id :perm_type :perm_value]
-                                   :where [:= :group_id au-id]})
+        (let [au-id    (permissions.db/group-id-by-magic-type "all-internal-users")
+              au-perms (permissions.db/distinct-database-permission-values-for-group au-id)
               au-by-db (reduce (fn [acc {:keys [db_id perm_type perm_value]}]
                                  (update-in acc [db_id perm_type] (fnil conj #{}) perm_value))
                                {}
@@ -1085,14 +1341,9 @@
           ;; Batch-fetch distinct (group, perm-type, value) triples — we only need the set of unique values per
           ;; group to find the most restrictive level;
           all-perms    (when-not is-audit
-                         (t2/query {:select-distinct [:group_id :perm_type :perm_value]
-                                    :from   [[(t2/table-name :model/DataPermissions)]]
-                                    :where  [:and
-                                             [:in :group_id group-ids]
-                                             [:in :perm_type ["perms/create-queries" "perms/download-results"]]
-                                             [:not-in :db_id {:select [:id]
-                                                              :from [(t2/table-name :model/Database)]
-                                                              :where [:= :is_audit true]}]]}))
+                         (permissions.db/non-audit-permission-values-for-groups
+                          group-ids
+                          ["perms/create-queries" "perms/download-results"]))
           ;; Group by (group_id, perm_type) → set of values
           perms-by-grp (when all-perms
                          (reduce (fn [acc {:keys [group_id perm_type perm_value]}]
@@ -1159,24 +1410,19 @@
   for new tables on `db-id`."
   [db-id group-ids perm-types]
   (let [qn          (mapv u/qualified-name perm-types)
-        db-level    (t2/select :model/DataPermissions
-                               {:where [:and [:= :db_id db-id] [:= :table_id nil]
-                                        [:in :group_id group-ids] [:in :perm_type qn]]})
+        db-level    (permissions.db/database-level-permissions db-id group-ids qn)
         ;; `schema-vals-idx` only needs the set of distinct perm-values per
         ;; (group, perm-type, schema). Selecting DISTINCT on those four columns
         ;; keeps the result bounded by groups × perm-types × schemas × values
         ;; instead of growing with the table count, which can be millions of
         ;; rows on databases with very many tables (see #76077).
-        table-level (t2/select :model/DataPermissions
-                               {:select-distinct [:group_id :perm_type :schema_name :perm_value]
-                                :where [:and [:= :db_id db-id] [:not= :table_id nil]
-                                        [:in :group_id group-ids] [:in :perm_type qn]]})]
+        table-level (permissions.db/distinct-table-level-permission-values db-id group-ids qn)]
     {:db-id            db-id
      :db-level-idx     (into {} (map (juxt (juxt :group_id :perm_type) identity)) db-level)
      :schema-vals-idx  (reduce (fn [acc {:keys [group_id perm_type schema_name perm_value]}]
                                  (update-in acc [group_id perm_type schema_name] (fnil conj #{}) perm_value))
                                {} table-level)
-     :all-db-tables    (t2/select [:model/Table :id :db_id :schema] :db_id db-id :active true)
+     :all-db-tables    (permissions.db/active-table-locations-for-database db-id)
      :view-data-levels (new-table-view-data-permission-levels db-id group-ids)}))
 
 (defn- compute-actual-value
@@ -1249,8 +1495,12 @@
                                (keep #(classify-key ctx %)))
           to-delete       (mapcat :deletes results)
           to-insert       (mapcat :rows results)]
-      (when (seq to-delete) (batch-delete-permissions! to-delete))
-      (when (seq to-insert) (batch-insert-permissions! to-insert)))))
+      (when (or (seq to-delete) (seq to-insert))
+        ;; One transaction so a failed insert (e.g. a unique-constraint violation) can't leave the
+        ;; DB-level rows deleted but the table-level expansion half-written.
+        (t2/with-transaction [_conn]
+          (when (seq to-delete) (batch-delete-permissions! to-delete))
+          (when (seq to-insert) (batch-insert-permissions! to-insert)))))))
 
 (defn set-default-table-permissions!
   "Set default permissions for a newly-created table across all relevant
@@ -1265,7 +1515,7 @@
   [table group-perm-defaults]
   (let [table (if (map? table)
                 table
-                (t2/select-one [:model/Table :id :db_id :schema] :id table))]
+                (permissions.db/table-location table))]
     (set-default-table-permissions-bulk! (:db_id table) [[table group-perm-defaults]])))
 
 (defenterprise download-perms-level

@@ -8,7 +8,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.db :as warehouses.db]))
 
 (mu/defn get-database
   "Retrieve database respecting `include-editable-data-model?`, `exclude-uneditable-details?` and `include-mirror-databases?`"
@@ -23,8 +23,8 @@
         [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (let [filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))
          database               (api/check-404 (if include-destination-databases?
-                                                 (t2/select-one :model/Database :id id)
-                                                 (t2/select-one :model/Database :id id :router_database_id nil)))
+                                                 (warehouses.db/database id)
+                                                 (warehouses.db/non-destination-database id)))
          router-db-id           (:router_database_id database)]
      (cond-> database
        filter-by-data-access? api/read-check
@@ -61,7 +61,7 @@
         {:message (tru "Unable to connect to database.")})
       (catch Throwable e
         (when (and log-exception (not (some->> e ex-cause ex-data ::driver/can-connect-message?)))
-          (log/error e "Cannot connect to Database"))
+          (log/errorf "Cannot connect to Database: %s" (ex-message e)))
         (if (-> e ex-data :message)
           (ex-data e)
           {:message (ex-message e)})))))

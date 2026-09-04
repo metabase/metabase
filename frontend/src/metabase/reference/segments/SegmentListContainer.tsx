@@ -1,90 +1,60 @@
 import cx from "classnames";
-import type { Location } from "history";
-import { Component } from "react";
+import { useEffect } from "react";
+import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
+import { connect, useDispatch, useSelector } from "metabase/redux";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
+import { fetchSegmentListData } from "metabase/reference/fetch-data";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import * as actions from "metabase/reference/reference";
 import { SegmentList } from "metabase/reference/segments/SegmentList";
-import { type InjectedRouteProps, withRouteProps } from "metabase/router";
+import { useReferenceFetch } from "metabase/reference/use-reference-fetch-state";
+import { useLocation } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
-import type {
-  ReferenceRouteParams,
-  ReferenceRouteProps,
-  StateWithReference,
-} from "../selectors";
-import { getDatabaseId, getIsEditing } from "../selectors";
-
-const mapStateToProps = (
-  state: StateWithReference,
-  props: ReferenceRouteProps,
-) => ({
-  databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state),
-});
+import type { ClearStateProps } from "../reference";
+import { getIsEditing } from "../selectors";
 
 const mapDispatchToProps = {
-  ...metadataActions,
   ...actions,
 };
 
-interface SegmentListContainerProps extends FetchProps, ClearStateProps {
-  // From React Router
-  params: ReferenceRouteParams;
-  location: Location;
+type SegmentListContainerProps = ClearStateProps;
 
-  // From route definition / parent
-  style: React.CSSProperties;
+function SegmentListContainer(props: SegmentListContainerProps) {
+  const { pathname } = useLocation();
+  const previousPathname = usePrevious(pathname);
 
-  // From mapStateToProps
-  isEditing?: boolean;
+  const dispatch = useDispatch();
+  const isEditing = useSelector(getIsEditing);
 
-  // From mapDispatchToProps
-  fetchSegments: (id?: number) => Promise<unknown>;
-}
+  const { loading, loadingError } = useReferenceFetch(() =>
+    fetchSegmentListData(dispatch),
+  );
 
-class SegmentListContainer extends Component<SegmentListContainerProps> {
-  fetchContainerData() {
-    actions.wrappedFetchSegments(this.props);
-  }
-
-  UNSAFE_componentWillMount() {
-    this.fetchContainerData();
-  }
-
-  UNSAFE_componentWillReceiveProps(newProps: SegmentListContainerProps) {
-    if (this.props.location.pathname === newProps.location.pathname) {
-      return;
+  useEffect(() => {
+    const pathnameChanged =
+      previousPathname !== undefined && previousPathname !== pathname;
+    if (pathnameChanged) {
+      actions.clearState(props);
     }
+  }, [pathname, previousPathname, props]);
 
-    actions.clearState(newProps);
-  }
-
-  render() {
-    const { isEditing } = this.props;
-
-    return (
-      <SidebarLayout
-        className={cx(CS.flexFull, CS.relative)}
-        style={isEditing ? { paddingTop: "43px" } : {}}
-        sidebar={<BaseSidebar />}
-      >
-        <SegmentList {...this.props} />
-      </SidebarLayout>
-    );
-  }
+  return (
+    <SidebarLayout
+      className={cx(CS.flexFull, CS.relative)}
+      style={isEditing ? { paddingTop: "43px" } : {}}
+      sidebar={<BaseSidebar />}
+    >
+      <SegmentList loading={loading} loadingError={loadingError} />
+    </SidebarLayout>
+  );
 }
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default withRouteProps(
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-    // Unjustified type cast. FIXME
-  )(SegmentListContainer as unknown as React.ComponentType<InjectedRouteProps>),
-);
+export default connect(
+  null,
+  mapDispatchToProps,
+  // Unjustified type cast. FIXME
+)(SegmentListContainer as unknown as React.ComponentType);

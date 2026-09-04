@@ -12,12 +12,14 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.transforms.core :as transforms]
@@ -50,12 +52,9 @@
 
 (defmethod post-deps-cleanup! :transform [_ {:keys [id target] :as transform}]
   (let [db-id                (transforms/transform-source-database transform)
-        downstream-table-ids (t2/select-fn-set :from_entity_id :model/Dependency
-                                               :from_entity_type :table
-                                               :to_entity_type   :transform
-                                               :to_entity_id     id)
+        downstream-table-ids (dependencies.db/downstream-table-ids-of-transform id)
         downstream-tables    (when (seq downstream-table-ids)
-                               (t2/select :model/Table :id [:in downstream-table-ids]))
+                               (dependencies.db/tables downstream-table-ids))
         outdated-tables      (remove (fn [table]
                                        (and (= (:schema table) (:schema target))
                                             (= (:name   table) (:name   target))
@@ -66,11 +65,7 @@
                                      downstream-table-ids)]
     (when-let [outdated-downstream-table-ids (seq (into (set not-found-table-ids)
                                                         (map :id) outdated-tables))]
-      (t2/delete! :model/Dependency
-                  :from_entity_type :table
-                  :from_entity_id   [:in outdated-downstream-table-ids]
-                  :to_entity_type   :transform
-                  :to_entity_id     id))))
+      (dependencies.db/delete-table-dependencies-on-transform! outdated-downstream-table-ids id))))
 
 ;;; ------------------------------ Backfill orchestration ------------------------------
 
@@ -92,37 +87,38 @@
 
 (defn- backfill-entity-batch!
   [entity-type batch-size]
-  (let [type-name (name entity-type)
-        instances (processable-instances entity-type batch-size)]
-    (when (seq instances)
-      (log/infof "Processing a batch of %s %s(s)..." (count instances) type-name))
-    (reduce (fn [total entity]
-              (+ total
-                 (try
-                   (compute-deps-for-entity! entity-type entity)
-                   1
-                   (catch Exception e
-                     (let [id (:id entity)]
-                       (try
-                         (deps.dependency-status/record-failure!
-                          entity-type id max-retries
-                          (deps.settings/dependency-backfill-delay-minutes))
-                         (let [{:keys [fail_count terminal]} (t2/select-one :model/DependencyStatus
-                                                                            :entity_type entity-type
-                                                                            :entity_id id)]
-                           (if terminal
-                             (log/errorf e "Entity %s %s failed %d times, marking as terminally broken."
-                                         type-name id fail_count)
-                             (log/warnf e "Entity %s %s failed, failure count: %d."
-                                        type-name id fail_count)))
-                         (catch Exception record-ex
-                           (log/errorf e "Entity %s %s failed during dependency calculation."
-                                       type-name id)
-                           (log/errorf record-ex "Additionally, failed to record the failure for %s %s."
-                                       type-name id))))
-                     0))))
-            0
-            instances)))
+  (lib-be/with-metadata-provider-cache
+    (let [type-name (name entity-type)
+          instances (processable-instances entity-type batch-size)]
+      (when (seq instances)
+        (log/infof "Processing a batch of %s %s(s)..." (count instances) type-name))
+      (reduce (fn [total entity]
+                (+ total
+                   (try
+                     (compute-deps-for-entity! entity-type entity)
+                     1
+                     (catch Throwable e ;; catch OOMs
+                       (let [id (:id entity)]
+                         (try
+                           (deps.dependency-status/record-failure!
+                            entity-type id max-retries
+                            (deps.settings/dependency-backfill-delay-minutes))
+                           (let [{:keys [fail_count terminal]} (dependencies.db/dependency-status entity-type id)]
+                             (if terminal
+                               (log/errorf "Entity %s %s failed %d times, marking as terminally broken: %s"
+                                           type-name id fail_count (ex-message e))
+                               (log/warnf "Entity %s %s failed, failure count: %d. %s"
+                                          type-name id fail_count (ex-message e))))
+                           (catch Exception record-ex
+                             (log/errorf "Entity %s %s failed during dependency calculation: %s"
+                                         type-name id (ex-message e))
+                             (log/errorf "Additionally, failed to record the failure for %s %s: %s"
+                                         type-name id (ex-message record-ex)))))
+                       (when-not (instance? Exception e) ;; re-throw Errors
+                         (throw e))
+                       0))))
+              0
+              instances))))
 
 (defn- backfill-dependencies!
   "Job to backfill dependencies for all entities.
@@ -140,10 +136,43 @@
                 entity-types)
         (< 1))))
 
-(defn- has-pending-retries? []
-  (deps.dependency-status/has-pending-retries?))
+(defn- has-pending-retries?
+  "Whether any entity is in retry backoff that this instance can actually act on.
+
+  Fails open on an indeterminate token status. `has-feature?` cannot tell a network failure from being unlicensed, and
+  both inputs to the job's reschedule decision consult the licence, so reading a blip as `false` would stop the job
+  for good — nothing re-fires when the check recovers, because the token never changed. Only a definitive `false`
+  counts as unlicensed here — which is the common case, since no token at all answers `false`. A token that cannot be
+  validated answers `nil` and keeps the job alive. Doing the work still fails closed — see
+  [[backfill-dependencies!]]."
+  []
+  (and (not (false? (premium-features/canonically-has-feature? :dependencies)))
+       (deps.dependency-status/has-pending-retries?)))
 
 (declare schedule-run!)
+
+(defn- next-run-delay []
+  (deps.task-util/job-delay
+   (deps.settings/dependency-backfill-delay-minutes)
+   (deps.settings/dependency-backfill-variance-minutes)))
+
+(defn- run-and-reschedule!
+  "Process a batch, then schedule the next run if there is more to do.
+
+  Reschedules on the way out of a failure too, then rethrows. This job is one-shot self-rescheduling with no cron
+  backstop, so anything escaping the batch would otherwise end the chain until a content-change event or a restart —
+  survivable for an `OutOfMemoryError` that takes the process with it, not for a `StackOverflowError` from
+  pathological SQL that leaves a live process behind."
+  [scheduler]
+  (try
+    (let [full-batch-selected? (backfill-dependencies!)
+          retries?             (has-pending-retries?)]
+      (if (or full-batch-selected? retries?)
+        (schedule-run! scheduler (next-run-delay))
+        (log/info "No more entities to backfill for, stopping.")))
+    (catch Throwable e
+      (schedule-run! scheduler (next-run-delay))
+      (throw e))))
 
 (defn- log-job-start
   [^JobExecutionContext ctx]
@@ -159,20 +188,14 @@
   BackfillDependencies [ctx]
   (let [ctx ^JobExecutionContext ctx]
     (log-job-start ctx)
-    (let [full-batch-selected? (backfill-dependencies!)
-          retries? (has-pending-retries?)]
-      (if (or full-batch-selected?
-              retries?)
-        (let [delay-in-seconds (deps.task-util/job-delay
-                                (deps.settings/dependency-backfill-delay-minutes)
-                                (deps.settings/dependency-backfill-variance-minutes))]
-          (schedule-run! (.getScheduler ctx) delay-in-seconds))
-        (log/info "No more entities to backfill for, stopping.")))))
+    (run-and-reschedule! (.getScheduler ctx))))
 
 (def ^:private job-key     "metabase.task.dependency-backfill.job")
 (def ^:private trigger-key "metabase.task.dependency-backfill.trigger")
 
-(defn- schedule-run! [scheduler delay-in-seconds]
+(defn- schedule-run!
+  "Schedule a run of the backfill job `delay-in-seconds` from now."
+  [scheduler delay-in-seconds]
   (let [start-at (-> (t/instant)
                      (t/+ (t/duration delay-in-seconds :seconds))
                      java.util.Date/from)
@@ -185,23 +208,28 @@
     (task/schedule-task! scheduler job trigger)))
 
 (defn trigger-backfill-job!
-  "Trigger the BackfillDependencies job to run after a brief delay.
-  The 1-second delay ensures the calling transaction has committed before
-  the job checks for stale entities."
+  "Trigger the BackfillDependencies job to run after a brief delay, unless the batch size disables it.
+
+  The 1-second delay ensures the calling transaction has committed before the job checks for stale entities. Entity
+  changes fire this, so leaving it ungated is what made a disabled job wake roughly once a second; the job's own
+  periodic schedule is left alone so it still resumes if the batch size becomes positive.
+
+  Disable with MB_DEPENDENCY_BACKFILL_BATCH_SIZE=0"
   []
-  (schedule-run! (task/scheduler) 1))
+  (when (pos? (deps.settings/dependency-backfill-batch-size))
+    (schedule-run! (task/scheduler) 1)))
 
 (defmethod task/init! ::DependencyBackfill [_]
-  (if (pos? (deps.settings/dependency-backfill-batch-size))
-    (schedule-run!
-     (task/scheduler)
-     (deps.task-util/job-initial-delay
-      (deps.settings/dependency-backfill-variance-minutes)))
-    (log/info "Not starting dependency backfill job because the batch size is not positive")))
+  (when-not (pos? (deps.settings/dependency-backfill-batch-size))
+    (log/info "Dependency backfill batch size is not positive; the job will run but process nothing"))
+  (schedule-run!
+   (task/scheduler)
+   (deps.task-util/job-initial-delay
+    (deps.settings/dependency-backfill-variance-minutes))))
 
-(derive ::backfill :metabase/event)
-(derive :event/serdes-load ::backfill)
-(derive :event/set-premium-embedding-token ::backfill)
+(events/derive! ::backfill :metabase/event)
+(events/derive! :event/serdes-load ::backfill)
+(events/derive! :event/set-premium-embedding-token ::backfill)
 
 (methodical/defmethod events/publish-event! ::backfill
   [_ _]

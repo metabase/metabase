@@ -1,5 +1,19 @@
+.root {
+  --stepper-content-padding: var(--mantine-spacing-lg);
+  --stepper-spacing: var(--mantine-spacing-lg);
+}
+
 .step {
+  --separator-spacing: calc(var(--mantine-spacing-xxs) / 2);
+
   width: 100%;
+
+  &:not(:last-of-type) {
+    min-height: calc(
+      var(--stepper-icon-size) + var(--mantine-spacing-xxl) +
+        var(--separator-spacing)
+    );
+  }
 }
 
 .stepLabel {
@@ -41,7 +55,8 @@
 }
 
 .stepDescription {
-  padding: 0.625rem 0 1.25rem 0;
+  /* padding so the card shadow isn't clipped */
+  padding: 0.625rem 0.25rem 1.25rem 0;
 }
 
 .stepCard {
@@ -74,15 +89,6 @@
   border: 1px solid var(--mb-color-core-metabase_brand) !important;
 }
 
-.infoAlertWrapper {
-  align-items: flex-start;
-}
-
-.infoAlertIcon {
-  margin-right: var(--mantine-spacing-xs);
-}
-
 .infoAlertMessage {
   white-space: pre;
-  color: var(--mb-color-text-primary);
 }

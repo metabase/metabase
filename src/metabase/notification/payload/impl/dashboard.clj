@@ -2,6 +2,7 @@
   (:require
    [metabase.channel.render.core :as channel.render]
    [metabase.events.core :as events]
+   [metabase.notification.db :as notification.db]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.notification.send :as notification.send]
@@ -25,13 +26,32 @@
    shared.params/param-val-or-default
    (the-parameters dashboard-subscription-params dashboard-params)))
 
+(defn- attachment-only?
+  "True when every handler only sends attachments, and none needs the full dashboard for a PDF."
+  [handlers]
+  (boolean (and (seq handlers)
+                (every? :attachment_only handlers)
+                (not-any? :include_pdf handlers))))
+
+(defn- attached-card-ids
+  "Ids of the cards selected for attachment on a dashboard subscription."
+  [dashboard-subscription]
+  (->> (:dashboard_subscription_dashcards dashboard-subscription)
+       (filter #(or (:include_csv %) (:include_xls %)))
+       (into #{} (keep :card_id))))
+
 (mu/defmethod notification.payload/payload :notification/dashboard
-  [{:keys [creator_id dashboard_subscription] :as _notification-info} :- ::notification.payload/Notification]
+  [{:keys [creator_id dashboard_subscription handlers] :as _notification-info} :- ::notification.payload/Notification]
   (log/with-context {:dashboard_id (:dashboard_id dashboard_subscription)}
     (let [dashboard-id (:dashboard_id dashboard_subscription)
-          dashboard    (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :tabs)
-          parameters   (parameters (:parameters dashboard_subscription) (:parameters dashboard))]
-      {:dashboard_parts        (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters)
+          dashboard    (t2/hydrate (notification.db/dashboard dashboard-id) :tabs)
+          parameters   (parameters (:parameters dashboard_subscription) (:parameters dashboard))
+          attached-ids (attached-card-ids dashboard_subscription)
+          only-card-ids (when (attachment-only? handlers)
+                          attached-ids)]
+      {:dashboard_parts        (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters
+                                                                                {:only-card-ids     only-card-ids
+                                                                                 :attached-card-ids attached-ids})
                                  (:skip_if_empty dashboard_subscription)
                                  (remove (fn [{part-type :type :as part}]
                                            (and
@@ -65,7 +85,7 @@
   (try
     (run! #(some-> % :result :data :rows notification.payload/cleanup!) (->> notification-payload :payload :dashboard_parts))
     (catch Exception e
-      (log/warn e "Error cleaning up temp files for notification" id)))
+      (log/warn "Error cleaning up temp files for notification" id (ex-message e))))
   (when-not skipped?
     (events/publish-event! :event/subscription-send
                            {:id      id

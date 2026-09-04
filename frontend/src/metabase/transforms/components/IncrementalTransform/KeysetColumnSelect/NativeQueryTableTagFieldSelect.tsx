@@ -12,6 +12,7 @@ import {
 import type * as Lib from "metabase-lib";
 
 import { useAutoSelectFirstOption } from "../useAutoSelectFirstOption";
+import { useClearUnsupportedLookback } from "../useClearUnsupportedLookback";
 import { useNativeCheckpointFieldOptions } from "../useNativeCheckpointFieldOptions";
 
 type NativeQueryTableTagFieldSelectProps = {
@@ -52,9 +53,11 @@ export function NativeQueryTableTagFieldSelect({
     disabled: disabled || isLoading,
   });
 
+  useClearUnsupportedLookback({ name, options: fieldOptions });
+
   if (noQueryMessage) {
     return (
-      <Alert icon={<Icon name="warning" />} color="warning">
+      <Alert size="compact" icon={<Icon name="warning" />} color="warning">
         {noQueryMessage}
       </Alert>
     );

@@ -6,5 +6,6 @@ import { animationStyles } from "metabase/visualizations/components/skeletons/Ch
 export const SkeletonImage = styled.svg`
   ${animationStyles};
   flex: 1 1 0;
+  width: 100%;
   margin-top: 1.5rem;
 `;

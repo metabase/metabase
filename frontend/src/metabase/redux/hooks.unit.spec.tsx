@@ -1,26 +1,25 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import type { State } from "metabase/redux/store";
-import { createMockUser } from "metabase-types/api/mocks";
+import { createMockAppState } from "metabase/redux/store/mocks";
 
 import { useDispatch, useSelector } from "./hooks";
 
-const DEFAULT_USER = createMockUser({ email: undefined });
-const TEST_EMAIL = "test_email@metabase.test";
+const getIsNavbarOpen = (state: State) => state.app.isNavbarOpen;
 
 describe("useSelector", () => {
   it("should allow access to redux store", () => {
     const Component = () => {
-      const email = useSelector((state) => state.currentUser?.email);
-      return <>{email || "No email found"}</>;
+      const isNavbarOpen = useSelector((state) => getIsNavbarOpen(state));
+      return <>{isNavbarOpen ? "Navbar open" : "Navbar closed"}</>;
     };
 
     renderWithProviders(<Component />, {
       storeInitialState: {
-        currentUser: { ...DEFAULT_USER, email: TEST_EMAIL },
+        app: createMockAppState({ isNavbarOpen: false }),
       },
     });
-    expect(screen.getByText(TEST_EMAIL)).toBeInTheDocument();
-    expect(screen.queryByText("No email found")).not.toBeInTheDocument();
+    expect(screen.getByText("Navbar closed")).toBeInTheDocument();
+    expect(screen.queryByText("Navbar open")).not.toBeInTheDocument();
   });
 });
 
@@ -48,21 +47,20 @@ describe("useDispatch", () => {
     });
 
     it("should properly dispatch thunks that use `getState`", () => {
-      const foundEmailState = jest.fn();
-      const didNotFindEmailState = jest.fn();
+      const foundNavbarOpenState = jest.fn();
+      const didNotFindNavbarOpenState = jest.fn();
 
       setup({
         thunk: () => (_dispatch: any, getState: () => State) => {
-          const email = getState().currentUser?.email;
-          if (email) {
-            foundEmailState();
+          if (getIsNavbarOpen(getState())) {
+            foundNavbarOpenState();
           } else {
-            didNotFindEmailState();
+            didNotFindNavbarOpenState();
           }
         },
       });
-      expect(foundEmailState).toHaveBeenCalled();
-      expect(didNotFindEmailState).not.toHaveBeenCalled();
+      expect(foundNavbarOpenState).toHaveBeenCalled();
+      expect(didNotFindNavbarOpenState).not.toHaveBeenCalled();
     });
 
     it("should properly dispatch thunks that use `dispatch`", () => {

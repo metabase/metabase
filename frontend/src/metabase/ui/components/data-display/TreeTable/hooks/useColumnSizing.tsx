@@ -1,6 +1,6 @@
 import { type Row, type Table, flexRender } from "@tanstack/react-table";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { Root } from "react-dom/client";
+import { type Root, createRoot } from "react-dom/client";
 
 import { SortableHeaderPill } from "metabase/ui";
 import { MeasurementProviders } from "metabase/ui/components/theme/MeasurementProviders";
@@ -8,7 +8,6 @@ import {
   createMeasurementContainer,
   removeMeasurementContainer,
 } from "metabase/utils/measure-container";
-import { renderRoot } from "metabase/utils/react-compat";
 
 import {
   CELL_HORIZONTAL_PADDING,
@@ -109,6 +108,9 @@ function getContentWidth<TData extends TreeNodeData>(
   const baseWidth = contentWidths[column.id] ?? MIN_COLUMN_WIDTH;
   const padding = column.widthPadding ?? 0;
   let width = baseWidth + padding;
+  if (typeof column.minWidth === "number") {
+    width = Math.max(width, column.minWidth);
+  }
   if (column.maxAutoWidth != null) {
     width = Math.min(width, column.maxAutoWidth);
   }
@@ -380,7 +382,7 @@ export function useColumnSizing<TData extends TreeNodeData>({
   const [isMeasured, setIsMeasured] = useState(false);
   const measureRootRef = useRef<{
     element: HTMLDivElement;
-    tree: Root | undefined;
+    tree: Root;
   } | null>(null);
 
   const allRows = table.getRowModel().flatRows;
@@ -457,7 +459,8 @@ export function useColumnSizing<TData extends TreeNodeData>({
       </MeasurementProviders>
     );
 
-    const tree = renderRoot(content, measureElement);
+    const tree = createRoot(measureElement);
+    tree.render(content);
     measureRootRef.current = { element: measureElement, tree };
   }, [
     measurementColumnsKey,

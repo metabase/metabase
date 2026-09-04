@@ -6,6 +6,7 @@ import { ComponentProvider } from "embedding-sdk-bundle/components/public/Compon
 import { InteractiveQuestionInternal } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
 import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotQuestion/MetabotQuestion";
 import { StaticQuestionInternal } from "embedding-sdk-bundle/components/public/StaticQuestion";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import type {
   MetabotChartProps,
@@ -13,12 +14,15 @@ import type {
   MetabotErrorMessage as SdkMetabotErrorMessage,
   UseMetabotResult,
 } from "embedding-sdk-bundle/types/metabot";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
-import { getFinalNavigateToMessageIdsPerTurn } from "metabase/metabot/state";
+import {
+  getFinalChartMessageIdsPerTurn,
+  getMetabotConversationId,
+} from "metabase/metabot/state";
 import type { MetabotChatMessage } from "metabase/metabot/state/types";
 import { useSelector } from "metabase/redux";
+import * as Urls from "metabase/urls";
 
 /**
  * Public-facing hook for interacting with Metabot in the SDK.
@@ -80,18 +84,21 @@ export const useMetabot = (): UseMetabotResult => {
     agentCreateNewConversation();
   }, [agentCreateNewConversation]);
 
-  // keep only the last navigate_to per turn — agent may emit several mid-stream
-  const finalNavigateToIds = useSelector((state) =>
-    getFinalNavigateToMessageIdsPerTurn(state, "omnibot"),
+  // keep only the last chart per turn — agent may emit several mid-stream
+  const finalChartIds = useSelector((state) =>
+    getFinalChartMessageIdsPerTurn(
+      state,
+      getMetabotConversationId(state, "omnibot"),
+    ),
   );
   const messages = useMemo<MetabotMessage[]>(
     () =>
       agent.messages
-        .filter((message) => isPublicMessage(message, finalNavigateToIds))
+        .filter((message) => isPublicMessage(message, finalChartIds))
         .map((message) =>
           mapMessage(message, chartComponentsCache.current, authConfig),
         ),
-    [agent.messages, finalNavigateToIds, authConfig],
+    [agent.messages, finalChartIds, authConfig],
   );
 
   const errorMessages = useMemo<SdkMetabotErrorMessage[]>(
@@ -114,6 +121,8 @@ export const useMetabot = (): UseMetabotResult => {
     messages,
     errorMessages,
     isProcessing: agent.isDoingScience,
+    contextWindowPercentUsage: agent.contextWindowPercentUsage,
+    isContextWindowFull: agent.isContextWindowFull,
 
     CurrentChart,
   };
@@ -160,17 +169,18 @@ function getCachedChartComponent(
 type PublicChatMessage =
   | Extract<MetabotChatMessage, { type: "text" }>
   | (Extract<MetabotChatMessage, { type: "data_part" }> & {
-      part: { type: "data-navigate_to" };
+      part: { type: "data-generated_entity"; data: { type: "card" } };
     });
 
 const isPublicMessage = (
   message: MetabotChatMessage,
-  finalNavigateToIds: Set<string>,
+  finalChartIds: Set<string>,
 ): message is PublicChatMessage =>
   message.type === "text" ||
   (message.type === "data_part" &&
-    message.part.type === "data-navigate_to" &&
-    finalNavigateToIds.has(message.id));
+    message.part.type === "data-generated_entity" &&
+    message.part.data.type === "card" &&
+    finalChartIds.has(message.id));
 
 const mapMessage = (
   message: PublicChatMessage,
@@ -189,9 +199,13 @@ const mapMessage = (
         ({ id, role: "agent", type: "text", message }) as const,
     )
     .with(
-      { role: "agent", type: "data_part", part: { type: "data-navigate_to" } },
+      {
+        role: "agent",
+        type: "data_part",
+        part: { type: "data-generated_entity", data: { type: "card" } },
+      },
       ({ id, part }) => {
-        const questionPath = part.data;
+        const questionPath = Urls.generatedCard(part.data);
         const Chart = authConfig
           ? getCachedChartComponent(questionPath, cache, authConfig)
           : FallbackChartComponent;

@@ -1,11 +1,11 @@
-import type { Location } from "history";
 import { useMemo } from "react";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { getUser, getUserPersonalCollectionId } from "metabase/current-user";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
+import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls/collections";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -49,10 +49,9 @@ export function useInitialCollectionId({
     disabled ? skipToken : collectionIdParam(idFromSlug),
   );
 
-  // Unjustified type cast. FIXME
-  const idFromQuery = location?.query?.collectionId as
-    | Collection["id"]
-    | undefined;
+  const idFromQuery = Urls.extractCollectionId(
+    new URLSearchParams(location?.search).get("collectionId") ?? undefined,
+  );
   const { data: fromQuery } = useGetCollectionQuery(
     disabled ? skipToken : collectionIdParam(idFromQuery),
   );

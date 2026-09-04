@@ -2,9 +2,9 @@ import { makeDistortionCallback } from "./distortions";
 import type { SandboxRealm } from "./types";
 
 // A minimal stand-in for the iframe window the data-app sandbox is built on.
-// `fetch`/`XMLHttpRequest` are the native refs the membrane passes to the
-// distortion callback; `makeDistortionCallback` should route those to the
-// allowlist wrappers and delegate everything else to the shared callback.
+// These are the native refs the membrane passes to the distortion callback;
+// `makeDistortionCallback` should route them to the data-app-specific wrappers
+// and delegate everything else to the shared callback.
 const fakeWindow = (): SandboxRealm => ({
   fetch: async () => new Response("native"),
   XMLHttpRequest: class NativeXHR extends XMLHttpRequest {},
@@ -64,20 +64,16 @@ describe("makeDistortionCallback", () => {
     expect(realFetch).toHaveBeenCalledTimes(1);
   });
 
-  it("routes window.XMLHttpRequest to the allowlisted subclass when allowed_hosts is set", () => {
+  it("never allowlists window.XMLHttpRequest, even when allowed_hosts is set", () => {
     const win = fakeWindow();
     const callback = makeDistortionCallback("sales", win, [
       "https://api.example.com",
     ]);
-    // Same signature erasure as above: the membrane hands the constructor back
-    // as a bare `object`.
-    const Distorted = callback(win.XMLHttpRequest) as typeof XMLHttpRequest;
-
-    expect(Distorted).not.toBe(win.XMLHttpRequest);
-    const xhr = new Distorted();
-    expect(() => xhr.open("GET", "https://evil.example.org/")).toThrow(
-      /blocked XMLHttpRequest/,
-    );
+    // XHR can't opt out of following a redirect back to the instance, so it is
+    // never allowlisted: it passes through to the shared hard block (in production
+    // `blockHostRealmXhr` has already replaced it with a throwing stub before the
+    // membrane is built).
+    expect(callback(win.XMLHttpRequest)).toBe(win.XMLHttpRequest);
   });
 
   it("does not wrap fetch/XHR when allowed_hosts is empty (shared hard block stands)", () => {
@@ -87,6 +83,64 @@ describe("makeDistortionCallback", () => {
     // whose default-deny block of fetch/XHR is covered by the shared module.
     expect(callback(win.fetch)).toBe(win.fetch);
     expect(callback(win.XMLHttpRequest)).toBe(win.XMLHttpRequest);
+  });
+
+  // The sandboxed iframe is same-origin with the main app, and Near-Membrane
+  // remaps the guest's `window.parent` to the target's real parent — an ungated
+  // realm whose fetch carries the session. The callback must redirect every
+  // ancestor to the gated target window and hide the host frame element.
+  it("redirects ancestor windows and hides the frame element", () => {
+    const grandparent = { name: "top" };
+    const parent = { name: "main-app", parent: grandparent };
+    const frameElement = { tagName: "IFRAME" };
+
+    const frameElementGetter = () => frameElement;
+    const windowPrototype = {};
+
+    Object.defineProperty(windowPrototype, "frameElement", {
+      configurable: true,
+      get: frameElementGetter,
+    });
+
+    // The real realm is a `Window`; the distortion only reads `parent`/`top`/
+    // `frameElement` off it, which this stand-in supplies. Cast through the
+    // narrow `SandboxRealm` the callback is typed against.
+    const win = {
+      ...fakeWindow(),
+      parent,
+      top: grandparent,
+    } as unknown as SandboxRealm;
+
+    Object.setPrototypeOf(win, windowPrototype);
+
+    const callback = makeDistortionCallback("sales", win, []);
+    const distortedFrameElementGetter = callback(frameElementGetter);
+
+    // Every ancestor reachable from the realm resolves back to the gated realm.
+    expect(callback(parent)).toBe(win);
+    expect(callback(grandparent)).toBe(win);
+
+    expect(Object.hasOwn(win, "frameElement")).toBe(false);
+    expect(distortedFrameElementGetter).not.toBe(frameElementGetter);
+    expect(distortedFrameElementGetter).toEqual(expect.any(Function));
+
+    if (typeof distortedFrameElementGetter !== "function") {
+      throw new Error("Expected frameElement getter distortion");
+    }
+
+    expect(distortedFrameElementGetter()).toBeNull();
+    expect(callback(frameElement)).toBe(frameElement);
+  });
+
+  it("leaves the target window itself untouched (parent chain stops at self)", () => {
+    // A top-level realm: parent === self, so the walk finds no foreign ancestor.
+    // Assigning `parent` needs the extra field the narrow type doesn't declare.
+    const win = fakeWindow() as SandboxRealm & { parent: unknown };
+    win.parent = win;
+    const callback = makeDistortionCallback("sales", win, []);
+
+    const plain = {};
+    expect(callback(plain)).toBe(plain);
   });
 
   it("delegates non-network values to the shared callback", () => {
@@ -142,30 +196,6 @@ describe("makeDistortionCallback", () => {
       expect(onBlocked).toHaveBeenCalledWith({
         type: "network",
         api: "fetch",
-        url: "https://evil.example.org/",
-        reason: "evil.example.org (not in allowed_hosts)",
-      });
-    });
-
-    it("reports a blocked XMLHttpRequest", () => {
-      const onBlocked = jest.fn();
-      const win = fakeWindow();
-      const callback = makeDistortionCallback(
-        "sales",
-        win,
-        ["https://api.example.com"],
-        onBlocked,
-      );
-      // Same signature erasure as above.
-      const Distorted = callback(win.XMLHttpRequest) as typeof XMLHttpRequest;
-
-      expect(() =>
-        new Distorted().open("GET", "https://evil.example.org/"),
-      ).toThrow();
-
-      expect(onBlocked).toHaveBeenCalledWith({
-        type: "network",
-        api: "xhr",
         url: "https://evil.example.org/",
         reason: "evil.example.org (not in allowed_hosts)",
       });

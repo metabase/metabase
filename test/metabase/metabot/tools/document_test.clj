@@ -143,3 +143,20 @@
         (is (= {:database 1
                 :type "query"}
                (:dataset_query structured)))))))
+
+(deftest document-construct-model-chart-new-chart-types-test
+  (testing "the tool schema accepts newly added chart types"
+    (mt/with-dynamic-fn-redefs [construct-tools/construct-notebook-query-tool
+                                (fn [_]
+                                  {:structured-output {:query-id "3"
+                                                       :query {:database 1
+                                                               :type "query"}}})]
+      (doseq [chart-type ["treemap" "boxplot"]]
+        (let [result (document-tools/document-construct-model-chart-tool
+                      {:name "Test Name"
+                       :description "Test Desc"
+                       :query ""
+                       :viz_settings {:chart_type chart-type}})
+              structured (:structured-output result)]
+          (is (= chart-type (:display structured)))
+          (is (= chart-type (:chart_type structured))))))))

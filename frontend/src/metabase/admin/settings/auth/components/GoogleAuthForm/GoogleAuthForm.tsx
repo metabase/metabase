@@ -5,17 +5,8 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-  useUpdateGoogleAuthMutation,
-} from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import {
-  useDocsUrl,
-  useHasTokenFeature,
-  useSetting,
-} from "metabase/common/hooks";
+import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -23,9 +14,15 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+  useSetting,
+} from "metabase/settings";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import type { SettingDefinition, Settings } from "metabase-types/api";
 
+import { useUpdateGoogleAuthMutation } from "../../../api/google";
 import { GOOGLE_SCHEMA } from "../../constants";
 
 const ENABLED_KEY = "google-auth-enabled";
@@ -80,7 +77,7 @@ export const GoogleAuthForm = (): JSX.Element => {
         >
           {({ dirty }) => (
             <Form disabled={!dirty}>
-              <Stack gap="md">
+              <Stack gap="lg">
                 <Title order={2}>{t`Sign in with Google`}</Title>
                 <Text c="text-secondary">
                   {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}

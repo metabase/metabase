@@ -4,6 +4,7 @@ import { t } from "ttag";
 import {
   skipToken,
   useGetUserQuery,
+  useListPermissionsGroupsQuery,
   useUpdateUserMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -24,6 +25,9 @@ export const EditUserModal = ({
 }: EditUserModalProps) => {
   const userId = params.userId ? parseInt(params.userId) : null;
   const { data: user, isLoading, error } = useGetUserQuery(userId ?? skipToken);
+  const { data: groups } = useListPermissionsGroupsQuery({
+    tenancy: external ? "external" : "internal",
+  });
   const [updateUser] = useUpdateUserMutation();
 
   const initialValues = useMemo(
@@ -56,13 +60,14 @@ export const EditUserModal = ({
   };
 
   return (
-    <Modal opened title={t`Edit user`} padding="xl" onClose={onClose}>
+    <Modal opened title={t`Edit user`} padding="xxl" onClose={onClose}>
       <LoadingAndErrorWrapper loading={isLoading} error={error}>
         <UserForm
           onCancel={onClose}
           initialValues={initialValues}
           onSubmit={handleSubmit}
           external={external}
+          groups={groups}
           userId={userId}
           edit
         />

@@ -1,9 +1,13 @@
-import type { Location } from "history";
-
 import { createMockState } from "metabase/redux/store/mocks";
+import type { Location } from "metabase/router";
 import type { RouterProps } from "metabase/selectors/app";
+import { createMockUser } from "metabase-types/api/mocks";
 
-import { getIsCollectionPathVisible } from "./selectors";
+import {
+  getIsAppBarVisible,
+  getIsCollectionPathVisible,
+  getIsNavBarEnabled,
+} from "./selectors";
 
 const createLocation = (pathname: string): Location =>
   // Unjustified type cast. FIXME
@@ -41,5 +45,39 @@ describe("getIsCollectionPathVisible", () => {
     const props = createRouterProps("/browse/databases");
 
     expect(getIsCollectionPathVisible(state, props)).toBe(false);
+  });
+});
+
+describe("NavBar / AppBar visibility", () => {
+  const stateWithUser = () =>
+    createMockState({ currentUser: createMockUser() });
+
+  it("hides the navbar and app bar within Monitor, Data Studio", () => {
+    const state = stateWithUser();
+
+    expect(getIsNavBarEnabled(state, createRouterProps("/monitor"))).toBe(
+      false,
+    );
+    expect(getIsNavBarEnabled(state, createRouterProps("/data-studio"))).toBe(
+      false,
+    );
+
+    expect(getIsAppBarVisible(state, createRouterProps("/monitor"))).toBe(
+      false,
+    );
+    expect(getIsAppBarVisible(state, createRouterProps("/data-studio"))).toBe(
+      false,
+    );
+  });
+
+  it("keeps the navbar and app bar on a regular page", () => {
+    const state = stateWithUser();
+
+    expect(
+      getIsNavBarEnabled(state, createRouterProps("/browse/databases")),
+    ).toBe(true);
+    expect(
+      getIsAppBarVisible(state, createRouterProps("/browse/databases")),
+    ).toBe(true);
   });
 });

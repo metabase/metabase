@@ -4,8 +4,8 @@ import { t } from "ttag";
 import type { IconName } from "metabase/embedding-sdk/types/icon";
 import { Combobox, Flex, Icon, Text, useCombobox } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import visualizations from "metabase/visualizations";
 import type { Visualization } from "metabase/visualizations/types";
+import { getIconForVisualizationType, visualizations } from "metabase/viz-core";
 import type { CardDisplayType } from "metabase-types/api";
 
 import { useQuestionVisualization } from "../../hooks/use-question-visualization";
@@ -97,11 +97,13 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
       return null;
     }
 
+    const icon = getIconForVisualizationType(visualizationType);
+
     return {
       value: visualizationType,
       label: visualization.getUiName(),
-      iconName: visualization.iconName,
-      iconUrl: visualization.iconUrl,
+      iconName: icon.name,
+      iconUrl: icon.iconUrl,
     };
   };
 
@@ -143,8 +145,8 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
           isHighlighted={false}
           variant="default"
           px={undefined}
-          pr="md"
-          rightSection={<Icon ml="xs" size={10} name="chevrondown" />}
+          pr="lg"
+          rightSection={<Icon ml="xxs" size={10} name="chevrondown" />}
           className={ToolbarButtonS.PrimaryToolbarButton}
           onClick={() => combobox.toggleDropdown()}
         />
@@ -161,7 +163,7 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
           <Text
             c="text-disabled"
             size="sm"
-            py="xs"
+            py="xxs"
             px="sm"
           >{t`More charts`}</Text>
           {nonsensibleItems.map((item, index) => (
@@ -189,7 +191,7 @@ function Option(props: OptionProps) {
   const { value, selected, iconName, iconUrl, label } = props;
 
   return (
-    <Combobox.Option px="sm" py="xs" value={value} selected={selected}>
+    <Combobox.Option px="sm" py="xxs" value={value} selected={selected}>
       <Flex align="center" gap="sm">
         {iconUrl ? (
           <img

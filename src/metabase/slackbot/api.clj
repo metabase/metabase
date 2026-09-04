@@ -7,6 +7,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
@@ -14,6 +15,7 @@
    [metabase.settings.core :as setting]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.config :as slackbot.config]
+   [metabase.slackbot.db :as slackbot.db]
    [metabase.slackbot.events :as slackbot.events]
    [metabase.slackbot.persistence :as slackbot.persistence]
    [metabase.slackbot.settings :as slackbot.settings]
@@ -28,8 +30,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [ring.util.codec :as codec]
-   [toucan2.core :as t2])
+   [ring.util.codec :as codec])
   (:import
    (java.util.concurrent ExecutorService Executors ThreadFactory)))
 
@@ -73,7 +74,7 @@
         (when ok
           permalink))
       (catch Exception e
-        (log/warn e "Unable to fetch Slack permalink for metabot conversation")
+        (log/warnf "Unable to fetch Slack permalink for metabot conversation: %s" (ex-message e))
         nil))))
 
 ;; ------------------------- VALIDATION ----------------------------------
@@ -101,12 +102,7 @@
   signing secret version, so that rotating the secret automatically invalidates existing identity links. Legacy
   identities without an explicit version are treated as version 0."
   [slack-user-id]
-  (let [identity (t2/select-one [:model/AuthIdentity :user_id :metadata]
-                                :provider "slack-connect"
-                                :provider_id slack-user-id
-                                {:join     [[:core_user :user] [:= :user.id :auth_identity.user_id]]
-                                 :where    [:= :user.is_active true]
-                                 :order-by [[:created_at :desc]]})]
+  (let [identity (slackbot.db/active-slack-connect-identity slack-user-id)]
     (when (= (auth-identity-signing-secret-version identity)
              (current-signing-secret-version))
       (:user_id identity))))
@@ -242,7 +238,7 @@
                  (finally
                    (analytics/observe! :metabase-slackbot/response-duration-ms {:source source} (u/since-ms timer)))))))
          (catch Exception e
-           (log/errorf e "[slackbot] Error processing %s: %s" event-type (ex-message e))))))))
+           (log/errorf "[slackbot] Error processing %s: %s" event-type (ex-message e))))))))
 
 (defn- ignore-event
   "Handle any event we don't care to process"
@@ -371,7 +367,7 @@
                                            :source   "reaction"
                                            :reaction reaction))))
     (catch Exception e
-      (log/error e "[slackbot] Error handling delete reaction"))))
+      (log/errorf "[slackbot] Error handling delete reaction: %s" (ex-message e)))))
 
 (defn- assert-setup-complete
   "Asserts that all required Slack settings have been configured."
@@ -431,7 +427,8 @@
   "Respond to activities in Slack"
   [_route-params
    _query-params
-   body :- [:multi {:dispatch :type}
+   body :- [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+                    :dispatch         :type}
             ["url_verification" slackbot.events/SlackUrlVerificationEvent]
             ["event_callback"   slackbot.events/SlackEventCallbackEvent]
             [::mc/default       [:map [:type :string]]]]
@@ -561,7 +558,7 @@
                                                      :message_ts          message-ts
                                                      :message_external_id message_external_id})})
         (catch Exception e
-          (log/errorf e "[slackbot] Error opening feedback modal: %s" (ex-data e)))))))
+          (log/errorf "[slackbot] Error opening feedback modal: %s" (ex-message e)))))))
 
 (defn- handle-delete-action
   "Handle replacing a metabot response message with a removed notice.
@@ -576,7 +573,7 @@
            (try
              (replace-response-with-removed-notice! client channel-id message-ts (:request-user-id authorization))
              (catch Exception e
-               (log/errorf e "[slackbot] Error replacing metabot response with removed notice: %s" (ex-data e)))))))
+               (log/errorf "[slackbot] Error replacing metabot response with removed notice: %s" (ex-message e)))))))
 
       (log-ignored-delete-request (assoc authorization :source "action")))))
 
@@ -589,9 +586,7 @@
   [{:keys [message_external_id channel_id message_ts]}]
   (or message_external_id
       (when (and channel_id message_ts)
-        (t2/select-one-fn :external_id :model/MetabotMessage
-                          :channel_id   channel_id
-                          :slack_msg_id message_ts))))
+        (slackbot.db/metabot-message-external-id channel_id message_ts))))
 
 (defn- handle-feedback-modal-submission
   "Handle submission of the feedback details modal.
@@ -618,16 +613,19 @@
                :issue_type        issue-type
                :freeform_feedback freeform}))
            (catch Exception e
-             (log/warnf e "[slackbot] Feedback submission failed (external_id=%s user_id=%s)"
-                        external-id user_id))))))))
+             (log/warnf "[slackbot] Feedback submission failed (external_id=%s user_id=%s): %s"
+                        external-id user_id (ex-message e)))))))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/interactive"
   "Handle interactive payloads from Slack (button clicks, modal submissions)."
-  [_route-params _query-params _body request]
+  [_route-params
+   _query-params
+   {:keys [payload]} :- [:map
+                         [:payload ms/NonBlankString]]
+   request]
   (assert-valid-slack-req request)
-  (let [payload (-> (get-in request [:params :payload])
-                    (json/decode true))]
+  (let [payload (json/decode payload true)]
     (case (:type payload)
       "block_actions"
       (let [actions    (:actions payload)

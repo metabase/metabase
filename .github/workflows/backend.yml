@@ -6,6 +6,38 @@ on:
       skip:
         type: boolean
         default: false
+      force-run:
+        description: Run the full suite regardless of the diff (master / release branches).
+        type: boolean
+        default: false
+      run-project-backend-checks:
+        description: Run project-level backend checks.
+        type: boolean
+        default: false
+      run-project-migration-checks:
+        description: Run project-level migration checks.
+        type: boolean
+        default: false
+      run-project-ratchet-checks:
+        description: Run the ratchet check for a diff that touches nothing but the ratchets file.
+        type: boolean
+        default: false
+
+  # Run the backend test suite on demand, against the ref you dispatch on, optionally under a
+  # profiler. Everything else about the jobs -- matrix legs, tag filters, quarantine gating -- is
+  # whatever the normal CI run uses, because they are the same jobs.
+  workflow_dispatch:
+    inputs:
+      tests:
+        description: 'Optional: run only these tests, comma- or space-separated, e.g. metabase.query-processor-test/some-test. Bare namespaces work too. Blank runs each leg''s usual set.'
+        type: string
+        required: false
+        default: ''
+      profile:
+        description: 'Profile the test run and attach a flamegraph to the job. Adds sampling overhead.'
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-backend
@@ -15,10 +47,106 @@ concurrency:
 # (secrets: inherit is already set on the backend call in run-tests.yml).
 # See DEV-2224.
 env:
-  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  # Both read by the be-tests run step below. Set here rather than passed per job so that turning
+  # either on is one line. Empty (and so off) on workflow_call, where neither input exists.
+  #
+  # ONLY_TESTS replaces the leg's own test selection, so every matrix leg runs the whole list: the
+  # partition args no longer apply, and legs that hold none of the named tests run nothing.
+  PROFILE_TESTS: ${{ inputs.profile }}
+  ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
+  project-checks:
+    name: 'Project tests: Suites'
+    if: >-
+      ${{ inputs.force-run ||
+      inputs.run-project-backend-checks ||
+      inputs.run-project-migration-checks ||
+      inputs.run-project-ratchet-checks }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      # Bootstrap the shared Mage runtime before concurrent commands try to install it themselves.
+      - name: Prepare Mage
+        run: ./bin/mage
+      - parallel:
+        - name: Run backend checks
+          if: ${{ inputs.force-run || inputs.run-project-backend-checks }}
+          run: ./bin/mage project-tests backend
+        - name: Run migration checks
+          if: ${{ inputs.force-run || inputs.run-project-migration-checks }}
+          run: ./bin/mage project-tests migrations
+        # Babashka, not a JVM test run, so it is cheap enough to run alongside the backend checks.
+        # It still needs the JDK prepare-backend installs, to resolve clj-kondo on a cold cache.
+        - name: Run ratchet checks
+          if: ${{ inputs.force-run || inputs.run-project-backend-checks || inputs.run-project-ratchet-checks }}
+          run: ./bin/mage kondo-ratchets
+
+  project-tests:
+    name: Project tests
+    needs: project-checks
+    if: ${{ always() && !cancelled() }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Check Project tests status
+        uses: actions/github-script@v9
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+            const jobs = Object.entries(needs).map(
+              ([jobName, jobValues]) => ({
+                name: jobName,
+                result: jobValues.result
+              }));
+
+            if (jobs.every(job => job.result === 'skipped' || job.result === 'success')) {
+              console.log('');
+              console.log('          |>>>             |>>>             |>>>');
+              console.log('          |                |                |');
+              console.log('      _  _|_  _        _  _|_  _        _  _|_  _');
+              console.log('     | |_| |_| |______| |_| |_| |______| |_| |_| |');
+              console.log('     |         |      |         |      |         |');
+              console.log('     | []   [] |      | []   [] |      | []   [] |');
+              console.log('     |         |______|         |______|         |');
+              console.log('     |                    ___                    |');
+              console.log('     |___________________|   |___________________|');
+              console.log('                         |___|');
+              console.log('');
+              console.log('Everything is up to code and structurally sound.');
+              process.exit(0);
+            }
+
+            console.log('');
+            console.log('              .-===========-.____');
+            console.log('             /_______________\\   \\____');
+            console.log('            |  .-----------.  |        \\___');
+            console.log('            |  |  x     x  |  |            \\__');
+            console.log('            |  |     ~     |  |              _\\_');
+            console.log("            |  `-----------'  |             /___\\");
+            console.log('            |    o     o      |');
+            console.log("            `-----------------'");
+            console.log('              /=============\\');
+            console.log('             / O O O O O O O \\');
+            console.log('             \\_______________/');
+            console.log('');
+            console.log('One or more project checks are off the blueprint. Hard hats required.');
+
+            jobs.forEach((job) => {
+              if (job.result !== 'success' && job.result !== 'skipped') {
+                console.log(`${job.name} - ${job.result}`);
+              }
+            });
+
+            process.exit(1);
+
   be-linter-clj-kondo:
     if: ${{ !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -45,7 +173,7 @@ jobs:
 
   be-linter-eastwood-test:
     # Master / release safety net: lint every backend test namespace.
-    if: ${{ !inputs.skip && github.event_name == 'push' && (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x')) }}
+    if: ${{ !inputs.skip && inputs.force-run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: Eastwood (tests only)
@@ -53,12 +181,12 @@ jobs:
       - uses: actions/checkout@v6
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
+      - run: clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
         name: Run Eastwood linter on our backend tests
 
   be-linter-eastwood-test-changed:
-    # PR / merge queue: lint only the test namespaces touched by the diff.
-    if: ${{ !inputs.skip && (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
+    # Lint only the test namespaces touched by the diff.
+    if: ${{ !inputs.skip && !inputs.force-run && github.event_name == 'pull_request' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     name: Eastwood (changed tests only)
@@ -72,8 +200,8 @@ jobs:
       - name: Compute changed test namespaces
         id: changed
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
 
@@ -81,13 +209,14 @@ jobs:
           # last synced don't widen our scope. Falls back to BASE_SHA if older than fetched depth.
           git fetch --no-tags --depth=200 origin "$BASE_SHA"
           DIFF_BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || echo "$BASE_SHA")
-          # Test roots we lint: core, EE, and each driver module's test tree.
+          # Test roots we lint: core, EE, dev/test, and each driver module's test tree.
           # :eastwood/test derives matching :source-paths from the classpath, so any
           # namespace we name here is reachable. Include renames (R) so a test that
           # was just renamed still gets linted under its new name.
           FILES=$(git diff --name-only --diff-filter=AMR "$DIFF_BASE" "$HEAD_SHA" \
                     -- 'test/**/*.clj' 'test/**/*.cljc' \
                        'enterprise/backend/test/**/*.clj' 'enterprise/backend/test/**/*.cljc' \
+                       'dev/test/**/*.clj' 'dev/test/**/*.cljc' \
                        'modules/drivers/**/test/**/*.clj' 'modules/drivers/**/test/**/*.cljc')
 
           if [ -z "$FILES" ]; then
@@ -103,7 +232,14 @@ jobs:
             exit 1
           fi
 
-          NS=$(sed -E 's#^(test/|enterprise/backend/test/|modules/drivers/[^/]+/test/)##; s#\.cljc?$##; s#/#.#g; s#_#-#g' <<<"$FILES" \
+          # Convert each test path to a Clojure namespace: strip its known test root and
+          # extension, then translate path separators and underscores. Keep these roots
+          # aligned with FILES above and the Eastwood classpath aliases below.
+          NS=$(sed -E \
+                 -e 's#^(test/|enterprise/backend/test/|dev/test/|modules/drivers/[^/]+/test/)##' \
+                 -e 's#\.cljc?$##' \
+                 -e 's#/#.#g' \
+                 -e 's#_#-#g' <<<"$FILES" \
                  | sort -u \
                  | paste -sd' ' -)
           echo "Changed test namespaces: $NS"
@@ -112,7 +248,7 @@ jobs:
         if: steps.changed.outputs.namespaces != ''
         env:
           NAMESPACES: ${{ steps.changed.outputs.namespaces }}
-        run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces "[$NAMESPACES]"
+        run: clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces "[$NAMESPACES]"
 
   be-tests:
     if: ${{ !inputs.skip }}
@@ -158,21 +294,9 @@ jobs:
               :partition/index 1
     name: "Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
     env:
-      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
-      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
-      # it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: >-
-        ${{
-          (
-            github.event_name == 'push' &&
-            (
-              github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-x')
-            ) &&
-            ''
-          ) ||
-          ':mb/old-migrations-test'
-        }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # GDGT-3126: re-enable and properly fix old migrations tests
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
     steps:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
@@ -191,23 +315,106 @@ jobs:
         # below can link failures to this exact job. Best-effort.
         uses: ./.github/actions/resolve-job-id
 
+      # Granular rerun: on a re-run of a failed job, restore the list of tests
+      # that failed on the previous attempt (uploaded below) so the test step
+      # can target only those instead of the whole partition. Best-effort: a
+      # missing/empty artifact leaves no file and the run falls back to the full
+      # partition. First attempts skip this entirely.
+      #
+      # Scoped to the IMMEDIATELY preceding attempt: an attempt that passed, or
+      # that failed with nothing attributable to a var, uploads no artifact, and
+      # a narrow set must not outlive it. Reading `attempt - 1` means "only what
+      # the last attempt actually recorded" — anything else falls back to the
+      # full partition. Workflow expressions have no arithmetic, so the shell
+      # computes it.
+      - name: Resolve previous attempt
+        if: ${{ github.run_attempt != '1' }}
+        run: echo "RERUN_PREV_ATTEMPT=$((GITHUB_RUN_ATTEMPT - 1))" >> "$GITHUB_ENV"
+
+      # `pattern` (not `name`) because the artifact is legitimately absent whenever the
+      # previous attempt recorded nothing: `name` treats that as an error, `pattern`
+      # downloads nothing and moves on. The value is a literal — no glob metacharacters —
+      # so it matches exactly one artifact, which lands at `target/failed-tests`. A pattern
+      # that ever matched two would nest them under their artifact names instead, leaving
+      # the file absent and falling back to the full partition.
+      - name: Restore previously-failed tests
+        if: ${{ github.run_attempt != '1' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          pattern: failed-tests-be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}-attempt-${{ env.RERUN_PREV_ATTEMPT }}
+          path: target
+
       - name: "Test Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
         id: run-java-tests
-        run: >-
-          clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev
-          :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
-          ${{ matrix.job.test-args }}
+        # On a rerun with a non-empty failed-tests file, target only those vars
+        # via hawk `:only`, dropping the tag/partition args — the listed vars are
+        # exactly this job's failures, already filtered and partitioned on the
+        # first attempt. Otherwise run exactly as before. Quote the file so the
+        # whole `[ns/var ...]` vector reaches clojure -X as a single argument.
+        run: |
+          BASE="clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev"
+          # `:profile-tests` overrides `:test`'s exec-fn, so it has to come last. See dev.profile-tests.
+          # The `profiled` output is what the collection steps below key off, so that the decision is
+          # recorded by the step that acts on it rather than re-derived from the environment.
+          if [ "$PROFILE_TESTS" = "true" ]; then
+            echo "Profiling this run; a flamegraph will be attached to the job."
+            echo "profiled=true" >> "$GITHUB_OUTPUT"
+            BASE="$BASE:profile-tests"
+          fi
+          # An explicit selection wins over the rerun narrowing below: it was asked for by hand, on this
+          # attempt. Names may be separated by commas or spaces; hawk wants them as one vector argument.
+          if [ -n "$ONLY_TESTS" ]; then
+            ONLY="[$(echo "$ONLY_TESTS" | tr ',' ' ')]"
+            echo "Running only: $ONLY"
+            $BASE :only "$ONLY"
+          elif [ "${{ github.run_attempt }}" != "1" ] && [ -s target/failed-tests ]; then
+            echo "Granular rerun of previously-failed tests: $(cat target/failed-tests)"
+            $BASE :only "$(cat target/failed-tests)"
+          else
+            $BASE :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]' ${{ matrix.job.test-args }}
+          fi
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
 
+      - name: Collect profile
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/collect-profile
+        with:
+          profiled: ${{ steps.run-java-tests.outputs.profiled }}
+          artifact-name: profile-be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
+
       - name: Report failed tests to ci-conductor
-        if: ${{ !cancelled() && steps.run-java-tests.outcome == 'failure' }}
+        if: ${{ !cancelled() && ( steps.run-java-tests.outcome == 'failure' || github.run_attempt != '1' ) }}
         # This step should NEVER fail the job!
         continue-on-error: true
         uses: ./.github/actions/report-failures-to-ci-conductor
         with:
           test-suite: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
           adapter: backend
+
+      # Granular rerun: record which tests failed so a re-run of this job targets
+      # only those (restored above). Reuses the backend JUnit adapter from the
+      # ci-conductor sources the report step just prepared. Best-effort: writes
+      # nothing unless every failure is attributable to a var, so an
+      # unattributable failure falls back to a full partition rerun.
+      - name: Collect failed tests for rerun
+        if: ${{ !cancelled() && steps.run-java-tests.outcome == 'failure' }}
+        continue-on-error: true
+        # Clear the restored set first, so a collector that dies before deciding
+        # can't leave the previous attempt's file to be uploaded as this one's.
+        run: |
+          rm -f target/failed-tests
+          bun release/ci-conductor/src/collect-failed-backend.ts
+
+      - name: Upload failed tests for rerun
+        if: ${{ !cancelled() && steps.run-java-tests.outcome == 'failure' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: failed-tests-be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}-attempt-${{ github.run_attempt }}
+          path: target/failed-tests
+          if-no-files-found: ignore
 
       - name: Quarantine gate
         if: ${{ !cancelled() && steps.run-java-tests.outcome == 'failure' }}
@@ -218,19 +425,6 @@ jobs:
           adapter: backend
           test-suite: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
           enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
-
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.edition }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.run-java-tests.outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
       - name: Publish Test Report (JUnit)
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
@@ -267,7 +461,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
       # TODO -- we should probably also check WITHOUT ee -- do a check with only OSS namespaces on the classpath
       - name: Check namespaces
-        run: clojure -M:ee:drivers:check
+        run: clojure -M:ee:drivers:load-namespaces
 
   be-cljfmt:
     if: ${{ !inputs.skip }}
@@ -283,6 +477,7 @@ jobs:
 
   be-tests-result:
     needs:
+      - project-tests
       - be-linter-eastwood
       - be-linter-eastwood-test
       - be-linter-eastwood-test-changed
@@ -291,7 +486,7 @@ jobs:
       - be-check
       - be-tests
     if: always() && !cancelled()
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       needs: ${{ toJson(needs) }}

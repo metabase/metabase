@@ -1,4 +1,12 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  setupGetTransformEndpoint,
+  setupListDatabaseSchemasEndpoint,
+} from "__support__/server-mocks";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import type { TransformRun } from "metabase-types/api";
 import {
   createMockTransform,
@@ -13,6 +21,10 @@ type SetupOpts = {
 
 function setup({ run = createMockTransformRun() }: SetupOpts = {}) {
   const onClose = jest.fn();
+  if (run.transform) {
+    setupGetTransformEndpoint(run.transform);
+    setupListDatabaseSchemasEndpoint(run.transform.target.database, []);
+  }
   renderWithProviders(
     <RunSidebar
       run={run}
@@ -26,10 +38,11 @@ function setup({ run = createMockTransformRun() }: SetupOpts = {}) {
 }
 
 describe("RunSidebar", () => {
-  it("should render the transform name in the header", () => {
+  it("should render the transform name in the header", async () => {
     const transform = createMockTransform({ name: "Test Transform" });
     const run = createMockTransformRun({ transform });
     setup({ run });
+    await waitForLoaderToBeRemoved();
 
     expect(screen.getByText("Test Transform")).toBeInTheDocument();
   });

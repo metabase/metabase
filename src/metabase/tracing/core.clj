@@ -177,7 +177,7 @@
       (catch ClassNotFoundException _
         nil)
       (catch Exception e
-        (log/debug e "Could not resolve PyroscopeAsyncProfiler")
+        (log/debugf "Could not resolve PyroscopeAsyncProfiler: %s" (ex-message e))
         nil))))
 
 ;; AsyncProfiler.setTracingContext(long spanId, long spanNameId)
@@ -231,7 +231,7 @@
                                      (Long/valueOf span-name-id)]))
         (.setAttribute span "pyroscope.profile.id" span-id-hex))
       (catch Exception e
-        (log/debug e "Error setting Pyroscope profiling context")))))
+        (log/debugf "Error setting Pyroscope profiling context: %s" (ex-message e))))))
 
 (defn clear-pyroscope-context!
   "Clear profiling context for current thread. No-op if Pyroscope is not available."
@@ -375,7 +375,7 @@
           (init-enabled-groups! groups-str log-level-str)
           (log/info "OpenTelemetry tracing initialized successfully")))
       (catch Exception e
-        (log/error e "Failed to initialize OpenTelemetry tracing — tracing will be disabled")))))
+        (log/errorf "Failed to initialize OpenTelemetry tracing — tracing will be disabled: %s" (ex-message e))))))
 
 (defn shutdown!
   "Shutdown the OTel SDK, flushing any pending spans. Called during application shutdown."
@@ -385,7 +385,7 @@
     (try
       (otel-sdk/close-otel-sdk! otel)
       (catch Exception e
-        (log/warn e "Error shutting down OpenTelemetry SDK")))
+        (log/warnf "Error shutting down OpenTelemetry SDK: %s" (ex-message e))))
     (reset! otel-sdk-instance nil)
     (shutdown-groups!)
     (log/info "OpenTelemetry tracing shut down")))

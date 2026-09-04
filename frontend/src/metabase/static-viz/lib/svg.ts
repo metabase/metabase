@@ -1,3 +1,25 @@
+import Color from "color";
+
+const FUNCTIONAL_COLOR_ATTRIBUTE_REGEX = /="((?:hsla?|rgba?)\([^")]*\))"/g;
+
+/**
+ * Batik (the backend SVG rasterizer) only understands CSS2 color syntax and
+ * rejects elements with functional color notations like `hsl()`/`hsla()`.
+ * Colors resolved through the static rendering context are already hex, but
+ * anything that bypasses it would break rendering, so rewrite any leftover
+ * functional color in an attribute value to hex (dropping alpha, same as
+ * `getHexColor`).
+ */
+export const replaceFunctionalColors = (svgString: string) => {
+  return svgString.replace(FUNCTIONAL_COLOR_ATTRIBUTE_REGEX, (match, value) => {
+    try {
+      return `="${Color(value).hex()}"`;
+    } catch {
+      return match;
+    }
+  });
+};
+
 const transformSvgForOutline = (svgString: string) => {
   const regex =
     /<text([^>]*fill="([^"]+)"[^>]*stroke="([^"]+)"[^>]*)>(.*?)<\/text>/g;
@@ -44,8 +66,9 @@ export const sanitizeSvgForBatik = (
     return svgString;
   }
 
-  return [transformSvgForOutline, patchDominantBaseline].reduce(
-    (currSVGString, transform) => transform(currSVGString),
-    svgString,
-  );
+  return [
+    transformSvgForOutline,
+    patchDominantBaseline,
+    replaceFunctionalColors,
+  ].reduce((currSVGString, transform) => transform(currSVGString), svgString);
 };

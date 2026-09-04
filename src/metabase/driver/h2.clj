@@ -20,8 +20,6 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
-   [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
@@ -31,18 +29,42 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [every? some]])
   (:import
-   (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement Types)
+   (java.sql Clob ResultSet ResultSetMetaData SQLException)
    (java.time OffsetTime)
+   (org.h2.api JavaObjectSerializer)
    (org.h2.command CommandInterface Parser)
    (org.h2.engine SessionLocal)
-   (org.h2.util StringUtils)))
+   (org.h2.util JdbcUtils StringUtils)))
 
 (set! *warn-on-reflection* true)
 
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)
 
-(driver/register! :h2, :parent #{:sql-mbql5 :sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+(driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+
+;; H2 materializes a JAVA_OBJECT column value by deserializing its bytes with an ObjectInputStream. That
+;; can happen anywhere a JAVA_OBJECT appears in a result — a top-level column, an ARRAY element, a nested
+;; row — not just where a column's declared type is JAVA_OBJECT. Metabase never reads Java objects out of
+;; query results, so we register the JavaObjectSerializer H2 routes all such deserialization through and
+;; refuse it at that single point, covering every position uniformly. (`read-column-thunk :h2` below also
+;; rejects a top-level JAVA_OBJECT column, for a clearer error on the common case.)
+(def ^:private java-object-serializer
+  (reify JavaObjectSerializer
+    (serialize [_ _obj]
+      (throw (ex-info "Reading and writing Java objects is not supported for H2." {})))
+    (deserialize [_ _bytes]
+      (throw (ex-info "Reading Java objects is not supported for H2." {})))))
+
+(when-not *compile-files*
+  (set! (. JdbcUtils serializer) java-object-serializer))
+
+(defmethod driver/connection-hosts :h2
+  [_driver {:keys [db]}]
+  (if (and (string? db)
+           (re-find #"(?i)(?:^|:)(?:tcp|ssl)://" db))
+    (driver/hosts-from-details {:db db} [:db])
+    []))
 
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
@@ -78,9 +100,6 @@
                               :test/jvm-timezone-setting false
                               :uuid-type                 true
                               :uploads                   true
-                              ;; (Ngoc - 2026-01-27) we have the code to support workspace isolation but since workspace
-                              ;; is useless with out transforms, so we disable it for now
-                              :workspace                 false
                               :database-routing          true
                               :describe-is-generated     true
                               :describe-is-nullable      true
@@ -180,7 +199,7 @@
     (when (= (keyword query-type) :native)
       (let [details (-> (driver-api/metadata-provider) driver-api/database driver.conn/effective-details)
             user              (db-details->user details)]
-        (when (and config/is-prod? ;; we elevated permissions in workspace tests
+        (when (and config/is-prod? ;; permissions are elevated in some tests
                    (or (str/blank? user)
                        (= user "sa")))        ; "sa" is the default USER
           (throw
@@ -618,22 +637,17 @@
        (.setReadOnly conn (not write?)))
      (f conn))))
 
-;; de-CLOB any CLOB values that come back
+;; de-CLOB any CLOB values that come back. (A JAVA_OBJECT value is refused during reads by the
+;; JavaObjectSerializer registered above, so it needs no handling here.)
 (defmethod sql-jdbc.execute/read-column-thunk :h2
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [col-type (.getColumnType rsmeta i)]
-    (when (= col-type Types/JAVA_OBJECT)
-      (throw (ex-info "Unable to parse jdbc type"
-                      {:column-index i
-                       :column-name  (.getColumnName rsmeta i)
-                       :column-type  col-type})))
-    (let [classname (some-> (.getColumnClassName rsmeta i)
-                            (Class/forName true (driver-api/the-classloader)))]
-      (if (isa? classname Clob)
-        (fn []
-          (driver-api/clob->str (.getObject rs i)))
-        (fn []
-          (.getObject rs i))))))
+  (let [classname (some-> (.getColumnClassName rsmeta i)
+                          (Class/forName true (driver-api/the-classloader)))]
+    (if (isa? classname Clob)
+      (fn []
+        (driver-api/clob->str (.getObject rs i)))
+      (fn []
+        (.getObject rs i)))))
 
 (defmethod sql-jdbc.execute/set-parameter [:h2 OffsetTime]
   [driver prepared-statement i t]
@@ -731,96 +745,6 @@
 (defmethod sql/default-schema :h2
   [_]
   "PUBLIC")
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Workspace Isolation                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- replace-credentials
-  "Replace USER and PASSWORD in an H2 connection string."
-  [connection-string new-user new-password]
-  (let [[file options] (connection-string->file+options connection-string)]
-    (file+options->connection-string file (assoc options "USER" new-user "PASSWORD" new-password))))
-
-(defn- get-user-from-connection-string
-  "Extract the USER from an H2 connection string."
-  [connection-string]
-  (let [[_file options] (connection-string->file+options connection-string)]
-    (get options "USER")))
-
-(defmethod driver/workspace-isolation-details :h2
-  [_driver database workspace]
-  ;; H2 embeds credentials in the :db connection string, so build a new one off the
-  ;; connection's (admin-overlay-resolved) string rather than returning :user/:password.
-  (let [username    (driver.u/workspace-isolation-user-name workspace)
-        password    (driver.u/random-workspace-password)
-        original-db (:db (driver.conn/effective-details database))]
-    {:schema           (driver.u/workspace-isolation-namespace-name workspace)
-     :database_details {:db (replace-credentials original-db username password)}}))
-
-(defmethod driver/init-workspace-isolation! :h2
-  [driver database workspace]
-  (let [schema-name (:schema workspace)
-        [_file {username "USER" password "PASSWORD"}]
-        (connection-string->file+options (-> workspace :database_details :db))
-        escaped-password (sql.u/escape-sql password :ansi)]
-    ;; No transaction: H2 DDL (CREATE USER/SCHEMA, GRANT) commits any open
-    ;; transaction, so a wrapper would be decorative. Failure recovery is
-    ;; compensation via the idempotent destroy, not rollback.
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
-     (fn [^Connection conn]
-       (with-open [^Statement stmt (.createStatement conn)]
-         (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username escaped-password)
-                      ;; the user may survive a failed teardown; without this it would keep
-                      ;; its old password while the new one gets persisted
-                      (format "ALTER USER \"%s\" SET PASSWORD '%s'" username escaped-password)
-                      (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
-                      (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
-           (.addBatch ^Statement stmt ^String sql))
-         (try
-           (.executeBatch ^Statement stmt)
-           (catch Throwable t
-             (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password])))))))
-    nil))
-
-(defmethod driver/destroy-workspace-isolation! :h2
-  [driver database workspace]
-  (let [schema-name (:schema workspace)
-        username    (-> workspace :database_details :db get-user-from-connection-string)]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
-     (fn [^Connection conn]
-       (with-open [^Statement stmt (.createStatement conn)]
-         (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema
-                      (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
-                      (format "DROP USER IF EXISTS \"%s\"" username)]]
-           (.addBatch ^Statement stmt ^String sql))
-         (try
-           (.executeBatch ^Statement stmt)
-           (catch Throwable t
-             (throw (driver.u/batch-exception t)))))))))
-
-(defmethod driver/grant-workspace-read-access! :h2
-  [driver database workspace schemas]
-  (let [username (-> workspace :database_details :db get-user-from-connection-string)
-        qu       (sql.u/quote-name :h2 :field username)
-        schemas  (distinct schemas)]
-    ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName.
-    ;; Schema-wide grant covers existing + future tables. Per-table grants
-    ;; are not emitted: workspace input shape is per-namespace, not per-table.
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
-     (fn [^Connection conn]
-       (with-open [^Statement stmt (.createStatement conn)]
-         (doseq [schema schemas]
-           (.addBatch ^Statement stmt
-                      ^String (format "GRANT SELECT ON SCHEMA %s TO %s"
-                                      (sql.u/quote-name :h2 :schema schema) qu)))
-         (try
-           (.executeBatch ^Statement stmt)
-           (catch Throwable t
-             (throw (driver.u/batch-exception t)))))))))
 
 (defmethod driver/llm-sql-dialect-resource :h2 [_]
   "metabot/prompts/dialects/h2.md")

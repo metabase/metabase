@@ -4,6 +4,7 @@
   Consumers outside this module must go through this namespace; they must not require mfa.gate,
   or mfa.settings directly."
   (:require
+   [metabase-enterprise.mfa.db :as mfa.db]
    [metabase-enterprise.mfa.gate :as gate]
    [metabase-enterprise.mfa.settings]
    [metabase-enterprise.mfa.verification :as verification]
@@ -11,8 +12,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [potemkin :as p]
-   [toucan2.core :as t2]))
+   [potemkin :as p]))
 
 (comment metabase-enterprise.mfa.settings/keep-me)
 
@@ -59,11 +59,11 @@
                        ;; nil = no confirmed enrollment — same message, no oracle semantics
                        (throw (ex-info (tru "Authentication session expired. Please log in again.")
                                        {:status-code 401})))
-        user-email (t2/select-one-fn :email :model/User :id user-id)]
+        user-email (mfa.db/user-email user-id)]
     (try
       (messages/send-mfa-login-code-email! user-email code)
       (catch Throwable e
-        (log/warn e "Failed to send MFA email OTP")
+        (log/warnf "Failed to send MFA email OTP: %s" (ex-message e))
         ;; don't tell an unauthenticated caller "the code exists but the email failed"
         (throw (ex-info (tru "Failed to send the sign-in code. Please try again or contact your administrator.")
                         {:status-code 500}))))))

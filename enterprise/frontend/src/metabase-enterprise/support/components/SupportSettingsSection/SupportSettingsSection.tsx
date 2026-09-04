@@ -3,17 +3,16 @@ import { t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Box, Button, Flex, LoadingOverlay, Text, Title } from "metabase/ui";
-import { adminToolsGrantAccess } from "metabase/urls";
+import { adminHelpGrantAccess } from "metabase/urls";
 
 import { useAccessGrantsQuery } from "../../hooks/useAccessGrantsQuery";
 
 import { AccessGrantList } from "./AccessGrantList";
 
 export function SupportSettingsSection() {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const {
     accessGrants,
     accessGrantsError,
@@ -47,17 +46,17 @@ export function SupportSettingsSection() {
         error={accessGrantsError}
         loading={isLoadingAccessGrants}
       >
-        <Box pb="lg">
+        <Box pb="xl">
           <Button
             disabled={!!currentAccessGrant}
-            onClick={() => dispatch(push(adminToolsGrantAccess()))}
+            onClick={() => navigate(adminHelpGrantAccess())}
             variant="filled"
             title={
               currentAccessGrant
                 ? t`You already have an active access grant`
                 : undefined
             }
-            mt="md"
+            mt="lg"
             mb="sm"
           >
             {t`Request a helping hand`}
@@ -71,9 +70,9 @@ export function SupportSettingsSection() {
               <LoadingOverlay
                 visible={isFetchingAccessGrants}
                 zIndex={1000}
-                overlayProps={{ radius: "sm", blur: 0.25 }}
+                overlayProps={{ radius: "xs", blur: 0.25 }}
               />
-              <Title lh="2.5rem" order={4} pt="lg">
+              <Title lh="2.5rem" order={4} pt="xl">
                 {t`History`}
               </Title>
               <AccessGrantList accessGrants={accessGrants} />

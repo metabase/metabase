@@ -1,13 +1,13 @@
 (ns metabase-enterprise.analytics.stats
   (:require
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
+   [metabase-enterprise.analytics.db :as analytics.db]
    [metabase-enterprise.mfa.core :as mfa]
    [metabase-enterprise.scim.core :as scim]
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase-enterprise.sso.settings :as ee-sso-settings]
    [metabase.driver :as driver]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [toucan2.core :as t2]))
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]))
 
 (defenterprise ee-snowplow-features-data
   "A subset of feature information included in the daily Snowplow stats report. This function only returns information
@@ -31,14 +31,11 @@
                     (mfa/mfa-enabled?))}
    {:name      :sandboxes
     :available (and (premium-features/enable-official-collections?)
-                    (t2/exists? :model/Database :engine [:in (descendants driver/hierarchy :sql)]))
-    :enabled   (t2/exists? :model/Sandbox)}
+                    (analytics.db/database-with-engine-exists? (descendants driver/hierarchy :sql)))
+    :enabled   (analytics.db/sandbox-exists?)}
    {:name      :email-allow-list
     :available (premium-features/enable-email-allow-list?)
     :enabled   (some? (advanced-config.settings/subscription-allowed-domains))}
    {:name      :semantic-search
     :available (premium-features/enable-semantic-search?)
-    :enabled   (semantic-search/supported?)}
-   {:name      :workspaces
-    :available (premium-features/enable-workspaces?)
-    :enabled   (t2/exists? :model/Workspace)}])
+    :enabled   (semantic-search/supported?)}])

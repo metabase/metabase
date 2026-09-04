@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import type React from "react";
 import {
   type RefObject,
@@ -12,13 +11,14 @@ import {
 } from "react";
 import _ from "underscore";
 
-import { useStore } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
   getUserIsAdmin,
-} from "metabase/selectors/user";
+} from "metabase/current-user";
+import { dayjs } from "metabase/dayjs";
+import { useStore } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import type {
   MetabotChatContext,
   MetabotSuggestedTransform,
@@ -168,7 +168,6 @@ export const MetabotProvider = ({
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
       // Unjustified type cast. FIXME
       capabilities: _.compact([
-        "frontend:navigate_user_v1",
         hasDataAccess && "permission:save_questions",
         hasNativeWrite && "permission:write_sql_queries",
         isAdmin && "permission:write_transforms",

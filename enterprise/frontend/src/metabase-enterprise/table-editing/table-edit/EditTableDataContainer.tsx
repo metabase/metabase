@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { Location } from "history";
 import { useCallback, useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
@@ -10,10 +9,11 @@ import {
 } from "metabase/common/components/BulkActionBar";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { useCloseNavbarOnMount } from "metabase/common/hooks/use-close-navbar-on-mount";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useLocation, useParams } from "metabase/router";
 import { Box, Flex, Stack, Text } from "metabase/ui";
-import { extractRemappedColumns } from "metabase/visualizations";
+import { extractRemappedColumns } from "metabase/viz-core";
 
 import type { TableEditingActionScope } from "../api/types";
 import { TableHeader } from "../common/TableHeader";
@@ -38,23 +38,21 @@ import {
 import { useEditingTableRowSelection } from "./use-table-row-selection";
 import { useTableEditingStateAdHocQueryUpdateStrategy } from "./use-table-state-adhoc-query-update-strategy";
 
-type EditTableDataContainerProps = {
-  params: {
-    dbId: string;
-    tableId: string;
-    objectId?: string;
-  };
-  location: Location<{ query?: string }>;
+type EditTableDataContainerParams = {
+  dbId: string;
+  tableId: string;
+  objectId: string;
 };
 
-export const EditTableDataContainer = ({
-  params: { dbId: dbIdParam, tableId: tableIdParam },
-  location,
-}: EditTableDataContainerProps) => {
+export const EditTableDataContainer = () => {
+  const location = useLocation();
+  const { dbId: dbIdParam, tableId: tableIdParam } =
+    useParams<EditTableDataContainerParams>();
+
   useCloseNavbarOnMount();
 
-  const databaseId = parseInt(dbIdParam, 10);
-  const tableId = parseInt(tableIdParam, 10);
+  const databaseId = parseInt(dbIdParam ?? "", 10);
+  const tableId = parseInt(tableIdParam ?? "", 10);
 
   const { data: database } = useGetDatabaseQuery({ id: databaseId });
   const { data: table } = useGetTableQuery({ id: tableId });

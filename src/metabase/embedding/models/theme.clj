@@ -18,13 +18,9 @@
 ;;;; transforms
 
 (t2/deftransforms :model/EmbeddingTheme
-  {:settings mi/transform-json})
+  {:settings mi/transform-json-no-keywordization})
 
 ;;;; serialization
-
-(defmethod serdes/hash-fields :model/EmbeddingTheme
-  [_embedding-theme]
-  [:name :created_at])
 
 (defmethod serdes/make-spec "EmbeddingTheme"
   [_model-name _opts]

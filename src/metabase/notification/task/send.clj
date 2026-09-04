@@ -6,13 +6,13 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
+   [metabase.notification.db :as notification.db]
    [metabase.notification.send :as notification.send]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.util TimeZone)
    (org.quartz CronTrigger DisallowConcurrentExecution JobExecutionContext TriggerKey)))
@@ -100,9 +100,9 @@
 
 (defn- send-notification*
   [subscription-id]
-  (let [subscription    (t2/select-one :model/NotificationSubscription subscription-id)
+  (let [subscription    (notification.db/subscription subscription-id)
         notification-id (:notification_id subscription)
-        notification    (t2/select-one :model/Notification notification-id)]
+        notification    (notification.db/notification notification-id)]
     (log/with-context {:subscription-id subscription-id
                        :notification-id notification-id}
       (cond
@@ -120,7 +120,7 @@
                 (notification.send/send-notification! (assoc notification :triggering_subscription subscription)))
               (log/info "Submitted to the notification queue")
               (catch Exception e
-                (log/error e "Failed to submit to the notification queue")
+                (log/errorf "Failed to submit to the notification queue: %s" (ex-message e))
                 (throw e)))))
 
         (nil? notification)
@@ -135,14 +135,7 @@
 
 (defn- active-cron-subscription-id->subscription
   []
-  (t2/select-pk->fn identity :model/NotificationSubscription
-                    :type :notification-subscription/cron
-                    {:select [:ns.*]
-                     :from   [[:notification_subscription :ns]]
-                     :join   [[:notification :n] [:= :ns.notification_id :n.id]]
-                     :where   [:and
-                               [:= :ns.type "notification-subscription/cron"]
-                               [:= :n.active true]]}))
+  (notification.db/active-cron-subscriptions-by-id))
 
 (defn update-send-notification-triggers-timezone!
   "Update the timezone of all SendNotification triggers if the report timezone changes."

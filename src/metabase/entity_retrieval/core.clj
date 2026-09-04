@@ -3,22 +3,28 @@
 
   The library entity index is a pgvector index of every library entity's name/description plus its OSI
   `ai_context` synonyms/examples (see [[metabase.osi.models.osi-ai-context]]).
-  [[search]] matches a natural-language request against it by vector similarity (enterprise; returns []
-  in OSS). [[ai-context-instructions]] reads curator instructions live from the appdb."
+  [[search-unfiltered]] matches a natural-language request against it by vector similarity (enterprise;
+  returns [] in OSS). [[ai-context-instructions]] reads curator instructions live from the appdb.
+
+  The index is user-agnostic, so [[search-unfiltered]] hits are not permission-filtered. A caller that
+  returns anything derived from them must first resolve each entity against the appdb and keep only the ones
+  the current user can read."
   (:require
    [clojure.string :as str]
+   [metabase.entity-retrieval.db :as entity-retrieval.db]
    [metabase.entity-retrieval.mirror]
-   [potemkin :as p]
-   [toucan2.core :as t2]))
+   [potemkin :as p]))
 
 (comment metabase.entity-retrieval.mirror/keep-me)
 
+;; Re-exporting the var is not raw access: this namespace only bridges OSS/EE, and never reads a result.
+#_{:clj-kondo/ignore [:discouraged-var]}
 (p/import-vars
  [metabase.entity-retrieval.mirror
   entity-retrieval-available?
   force-reconcile!
   library-entity-keys
-  search])
+  search-unfiltered])
 
 (def card-entity-types
   "The real entity_type strings the CRUD and tool APIs speak that all denote a Card: `question`/`metric`/
@@ -62,18 +68,13 @@
   ref's) differs from the type it was curated under (a card-flavor relabel)."
   [entity-refs]
   (if-let [wanted (seq (into #{} (map (juxt :model :id)) entity-refs))]
-    ;; row-value IN isn't portable across our app DBs, so match the wanted (type, id) pairs with OR-of-ANDs.
     ;; Normalize each ref's type to the stored key, so a card ref (metric/model) matches its `card` row.
-    (let [clause   (into [:or]
-                         (map (fn [[t id]]
-                                [:and
-                                 [:= :entity_type (normalize-entity-type t)]
-                                 [:= :entity_local_id id]]))
-                         wanted)
-          by-class (into {} (remove (comp str/blank? val))
-                         (t2/select-fn->fn #(entity-class (:entity_type %) (:entity_local_id %))
-                                           (comp :instructions :ai_context)
-                                           :model/OsiAiContext {:where clause}))]
+    (let [pairs    (map (fn [[t id]] [(normalize-entity-type t) id]) wanted)
+          by-class (into {}
+                         (comp (map (juxt #(entity-class (:entity_type %) (:entity_local_id %))
+                                          (comp :instructions :ai_context)))
+                               (remove (comp str/blank? second)))
+                         (entity-retrieval.db/ai-contexts-for-entities pairs))]
       ;; key the result back by the caller's original [type id] ref
       (into {} (keep (fn [[t id]]
                        (when-let [instr (by-class (entity-class t id))]

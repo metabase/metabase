@@ -7,6 +7,7 @@
    [metabase.pulse.task.send-pulses :as task.send-pulses]
    [metabase.task.core :as task]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -48,8 +49,8 @@
 
 (defn- create-pulse!
   [pulse pulse-cards pcs+recipients]
-  (let [pulse-id (t2/insert-returning-pk! :pulse (add-timestamp pulse))]
-    (t2/insert! :pulse_card (map #(assoc % :pulse_id pulse-id) pulse-cards))
+  (let [pulse-id (t2/insert-returning-pk! :pulse (assoc (add-timestamp pulse) :entity_id (u/generate-nano-id)))]
+    (t2/insert! :pulse_card (map #(assoc % :pulse_id pulse-id :entity_id (u/generate-nano-id)) pulse-cards))
     (doseq [pcr pcs+recipients]
       (let [pc-id (t2/insert-returning-pk! :model/PulseChannel (-> pcr (assoc :pulse_id pulse-id) (dissoc :recipients) add-timestamp))]
         (when (seq (:recipients pcr))

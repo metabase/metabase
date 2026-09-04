@@ -7,9 +7,9 @@ import {
   type ActiveStatus,
 } from "metabase/admin/people/constants";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Group, Tabs, Title } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 
@@ -38,10 +38,9 @@ export const TenantsListingApp = () => {
     [data?.data],
   );
 
-  const handleTabChange = (tab: string | null) => {
+  const handleTabChange = (tab: ActiveStatus | null) => {
     if (tab) {
-      // Unjustified type cast. FIXME
-      setStatus(tab as ActiveStatus);
+      setStatus(tab);
     }
   };
 
@@ -56,7 +55,7 @@ export const TenantsListingApp = () => {
   return (
     // Make the layout narrow when there are no tenants
     <Box maw={hasNoTenants ? "700px" : undefined} mx="auto">
-      <Group justify="space-between" w="100%" mb="lg">
+      <Group justify="space-between" w="100%" mb="xl">
         <Title order={1}>{t`Tenants`}</Title>
 
         <Group gap="sm">
@@ -69,7 +68,7 @@ export const TenantsListingApp = () => {
         <Tabs
           value={status}
           onChange={handleTabChange}
-          pl="md"
+          pl="lg"
           listBorder={false}
         >
           <Tabs.List>

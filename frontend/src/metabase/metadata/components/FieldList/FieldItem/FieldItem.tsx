@@ -4,8 +4,8 @@ import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
+import { Link } from "metabase/common/components/Link";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { Link } from "metabase/router";
 import { Box, Card, Ellipsified, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
@@ -101,7 +101,7 @@ const FieldItemBase = ({
         justify="space-between"
         mih={rem(40)}
         pos="relative"
-        px="md"
+        px="lg"
         py={rem(12)}
         to={href}
         w="100%"
@@ -126,7 +126,7 @@ const FieldItemBase = ({
               lh="normal"
               maw="50%"
               mb={rem(-4)}
-              mr="xs"
+              mr="xxs"
               mt={rem(-3)}
             >
               <Ellipsified lines={1} tooltip={parent.display_name}>

@@ -13,12 +13,15 @@ You are judged on whether the produced query matches the user's intent against t
 {% include "metabot/prompts/shared/prompt_snippets/grounding.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/data-sources.selmer" %}
+{% include "metabot/prompts/shared/prompt_snippets/data-sources-curation-signals.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/discovery.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/mbql-shape.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/communication.selmer" %}
+
+You don't need to be silent between tool calls — short thinking-out-loud is fine and sometimes helpful. But keep the final message to the user focused on results and decisions, not on your process.
 
 {% include "metabot/prompts/shared/prompt_snippets/field-references.selmer" %}
 

@@ -2,7 +2,7 @@ import { skipToken, useGetTransformQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Outlet } from "metabase/router";
+import { Outlet, useParams } from "metabase/router";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Card, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -14,14 +14,9 @@ export type TransformDependenciesPageParams = {
   transformId: string;
 };
 
-type TransformDependenciesPageProps = {
-  params?: TransformDependenciesPageParams;
-};
-
-export function TransformDependenciesPage({
-  params,
-}: TransformDependenciesPageProps) {
-  const id = Urls.extractEntityId(params?.transformId);
+export function TransformDependenciesPage() {
+  const params = useParams<TransformDependenciesPageParams>();
+  const id = Urls.extractEntityId(params.transformId);
   const {
     data: transform,
     isLoading: isLoadingTransform,

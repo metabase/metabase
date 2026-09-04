@@ -22,9 +22,7 @@
          "<instructions>\n" (instructions/chart-created-instructions chart-id) "\n</instructions>")))
 
 (def ^:private chart-type-enum
-  [:enum "table" "bar" "line" "pie" "sunburst" "treemap" "area" "combo"
-   "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
-   "smartscalar" "gauge" "progress" "funnel" "object" "map"])
+  (into [:enum] shared/chart-types))
 
 (def ^:private create-chart-schema
   [:map {:closed true}
@@ -55,16 +53,14 @@
       {:output            (format-chart-output structured)
        :structured-output structured
        :data-parts        [(streaming/viz-part
-                            {:inline?     (shared/inline-viz-capable?)
-                             :entity-id   (:chart-id result)
+                            {:entity-id   (:chart-id result)
                              :query-id    (:query-id result)
                              :query       (links/->legacy-mbql (:query result))
                              :display     (:chart-type result)
                              :title       title
-                             :description description
-                             :link        (:results-url result)})]})
+                             :description description})]})
     (catch Exception e
-      (log/error e "Error creating chart")
+      (log/errorf "Error creating chart: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to create chart: " (or (ex-message e) "Unknown error"))}))))
@@ -96,7 +92,8 @@
           (edit-chart-tools/edit-chart
            {:chart-id chart_id
             :new-chart-type new-viz
-            :charts-state (shared/current-charts-state)})
+            :charts-state (shared/current-charts-state)
+            :query query})
 
           structured (assoc result :result-type :chart)]
       ;; Add the new chart to memory so it can be referenced in the conversation going forward.
@@ -104,20 +101,15 @@
         (swap! shared/*memory-atom* memory/set-chart (:chart_id new-chart-data) new-chart-data))
       {:output            (format-chart-output structured)
        :structured-output structured
-       :data-parts        [(streaming/viz-part
-                            {:inline?     (shared/inline-viz-capable?)
-                             :entity-id   (or (:chart_id new-chart-data) chart_id)
-                             :query-id    (or (:query_id chart) (str (random-uuid)))
-                             :query       (links/->legacy-mbql query)
-                             :display     new-viz
-                             :title       title
-                             :description description
-                             :link        (links/pseudo-card->link
-                                           {:dataset_query query
-                                            :display new-viz
-                                            :displayIsLocked true})})]})
+       :data-parts [(streaming/viz-part
+                     {:entity-id   (or (:chart_id new-chart-data) chart_id)
+                      :query-id    (or (:query_id new-chart-data) (str (random-uuid)))
+                      :query       (links/->legacy-mbql query)
+                      :display     new-viz
+                      :title       title
+                      :description description})]})
     (catch Exception e
-      (log/error e "Error editing chart")
+      (log/errorf "Error editing chart: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to edit chart: " (or (ex-message e) "Unknown error"))}))))

@@ -118,6 +118,7 @@ databaseChangeLog:
         - not:
             foreignKeyConstraintExists:
               foreignKeyName: fk_transform_collection_id
+              foreignKeyTableName: transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform
@@ -1526,6 +1527,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_collection_workspace_id
+                foreignKeyTableName: collection
       changes:
         - addForeignKeyConstraint:
             baseTableName: collection
@@ -1629,6 +1631,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_log_workspace_id
+                foreignKeyTableName: workspace_log
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_log
@@ -1864,6 +1867,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_transform_workspace_id
+                foreignKeyTableName: workspace_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_transform
@@ -1882,6 +1886,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_transform_global_id
+                foreignKeyTableName: workspace_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_transform
@@ -1900,6 +1905,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_transform_collection_id
+                foreignKeyTableName: workspace_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_transform
@@ -1918,6 +1924,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_transform_creator_id
+                foreignKeyTableName: workspace_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_transform
@@ -2119,6 +2126,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_input_workspace_id
+                foreignKeyTableName: workspace_input
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_input
@@ -2137,6 +2145,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_input_table_id
+                foreignKeyTableName: workspace_input
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_input
@@ -2307,6 +2316,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_output_workspace_id
+                foreignKeyTableName: workspace_output
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_output
@@ -2325,6 +2335,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_output_ref_id
+                foreignKeyTableName: workspace_output
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_output
@@ -2415,6 +2426,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_merge_workspace_id
+                foreignKeyTableName: workspace_merge
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_merge
@@ -2433,6 +2445,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_merge_creator_id
+                foreignKeyTableName: workspace_merge
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_merge
@@ -2555,6 +2568,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_merge_transform_workspace_merge_id
+                foreignKeyTableName: workspace_merge_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_merge_transform
@@ -2573,6 +2587,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_merge_transform_workspace_id
+                foreignKeyTableName: workspace_merge_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_merge_transform
@@ -2591,6 +2606,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_merge_transform_transform_id
+                foreignKeyTableName: workspace_merge_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_merge_transform
@@ -2609,6 +2625,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_merge_transform_merging_user_id
+                foreignKeyTableName: workspace_merge_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_merge_transform
@@ -2837,6 +2854,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_output_external_workspace_id
+                foreignKeyTableName: workspace_output_external
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_output_external
@@ -2855,6 +2873,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_output_external_transform_id
+                foreignKeyTableName: workspace_output_external
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_output_external
@@ -2989,6 +3008,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_input_external_workspace_id
+                foreignKeyTableName: workspace_input_external
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_input_external
@@ -3103,6 +3123,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_graph_workspace_id
+                foreignKeyTableName: workspace_graph
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_graph

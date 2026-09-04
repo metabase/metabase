@@ -1,4 +1,3 @@
-import type { LocationDescriptor } from "history";
 import { memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -18,16 +17,17 @@ import {
   getCollectionIcon,
   nonPersonalOrArchivedCollection,
 } from "metabase/common/collections/utils";
+import {
+  getIsTenantUser,
+  getUser,
+  getUserCanWriteToCollections,
+} from "metabase/current-user";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import { logout } from "metabase/redux/auth";
 import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import {
-  getIsTenantUser,
-  getUser,
-  getUserCanWriteToCollections,
-} from "metabase/selectors/user";
+import type { To } from "metabase/router";
 import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection, User } from "metabase-types/api";
@@ -54,7 +54,7 @@ interface Props extends MainNavbarProps {
   currentUser: User | null;
   selectedItems: SelectedItem[];
   logout: () => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
+  onChangeLocation: (location: To) => void;
 }
 
 function MainNavbarContainer({

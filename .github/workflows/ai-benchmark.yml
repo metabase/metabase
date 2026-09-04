@@ -1,21 +1,226 @@
 name: AI Benchmark
-
-# Runs the ai-benchmark E2E test suite against a Metabase instance.
-#
-# NOTE: This is a stub. The real workflow — which builds the benchmark Docker
-# image, boots Metabase + Postgres with a preloaded data dump, runs the
-# benchmark suite, and uploads results as artifacts — is being developed on a
-# feature branch. This stub exists on master so that the "Run workflow" button
-# is available in the GitHub Actions UI, which lets us dispatch the real
-# workflow against feature branches during development.
+run-name: "Evals · ${{ github.event_name == 'pull_request' && 'label' || 'manual' }} · ${{ github.event.pull_request.number || inputs.pr || inputs.ref || github.sha }}"
 
 on:
+  pull_request:
+    types: [labeled]
   workflow_dispatch:
+    inputs:
+      pr:
+        description: "Metabase PR number (sets ref to the PR head)"
+        required: false
+        default: ""
+      ref:
+        description: "Metabase branch, tag or sha (resolved to a full sha; overrides the PR head, and must sit on the PR's branch when both are given)"
+        required: false
+        default: ""
+      scope:
+        description: "Scope"
+        required: true
+        type: choice
+        options: [smoke, full, "all (EXPENSIVE)"]
+        default: smoke
+      sample:
+        description: "Sample (0 = full suite)"
+        required: false
+        default: "5"
+      evals_branch:
+        description: "Evals branch"
+        default: main
+
+concurrency:
+  group: evals-dispatch-${{ (github.event.label.name == 'evals/smoke' && github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-  placeholder:
-    name: Placeholder
-    runs-on: ubuntu-latest
+  prepare:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository
+      && github.event_name == 'pull_request'
+      && github.event.label.name == 'evals/smoke'
+      || github.event_name == 'workflow_dispatch'
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      pr: ${{ steps.prepare.outputs.pr }}
+      ref: ${{ steps.prepare.outputs.ref }}
+      scope: ${{ steps.prepare.outputs.scope }}
+      sample: ${{ steps.prepare.outputs.sample }}
+      evals_branch: ${{ steps.prepare.outputs.evals_branch }}
     steps:
-      - name: Stub
-        run: echo "ai-benchmark workflow stub — real implementation pending"
+      - name: Prepare
+        id: prepare
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          LABEL_PR: ${{ github.event.pull_request.number }}
+          INPUT_PR: ${{ inputs.pr }}
+          INPUT_REF: ${{ inputs.ref }}
+          INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_SAMPLE: ${{ inputs.sample }}
+          INPUT_EVALS_BRANCH: ${{ inputs.evals_branch }}
+        run: |
+          set -euo pipefail
+          # The two paths are mutually exclusive, and `on:` admits no other trigger.
+          if [[ "$EVENT_NAME" == 'pull_request' ]]; then
+            PR="$LABEL_PR"; REF=''; SCOPE='smoke'
+            SAMPLE='5'; EVALS_BRANCH='main'
+          else
+            PR="$INPUT_PR"; REF="$INPUT_REF"; SCOPE="$INPUT_SCOPE"
+            SAMPLE="${INPUT_SAMPLE:-5}"; EVALS_BRANCH="$INPUT_EVALS_BRANCH"
+          fi
+          # None of these is ever multi-line; a newline would forge extra output entries.
+          for v in PR REF SCOPE SAMPLE EVALS_BRANCH; do
+            if [[ "${!v}" == *$'\n'* ]]; then
+              echo "::error::${v} must be a single line"
+              exit 1
+            fi
+          done
+          {
+            echo "pr=$PR"
+            echo "ref=$REF"
+            echo "scope=$SCOPE"
+            echo "sample=$SAMPLE"
+            echo "evals_branch=$EVALS_BRANCH"
+          } >> "$GITHUB_OUTPUT"
+
+  announce:
+    needs: prepare
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      comment_id: ${{ steps.post.outputs.comment_id }}
+    steps:
+      - name: Comment (building)
+        id: post
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = `🤖 **Evals smoke** — ⏳ building the image… ([logs](${runUrl}))`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            // Drop earlier verdicts first: they describe shas that are no longer head, and a stale
+            // green one reads as this PR passing. The prefix survives eval-run's rewrites.
+            const existing = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            for (const c of existing.filter(c => c.body.startsWith('🤖 **Evals'))) {
+              await github.rest.issues.deleteComment({ owner, repo, comment_id: c.id }).catch(() => {});
+            }
+            const { data } = await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            core.setOutput('comment_id', String(data.id));
+
+  resolve:
+    needs: prepare
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+    steps:
+      - name: Resolve pr/ref to a full commit sha
+        id: sha
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ needs.prepare.outputs.pr }}
+          REF: ${{ needs.prepare.outputs.ref }}
+          DEFAULT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # `ref` wins over `pr`, matching evals' eval-run.yml, which this dispatches into — same two
+          # inputs with opposite precedence in chained workflows would be a trap. eval-run also
+          # rejects a ref that doesn't sit on the PR's branch; that check stays there rather than
+          # being duplicated here.
+          if [[ -n "$REF" ]]; then
+            # `ref` accepts a branch or tag; fetch-artifact and the image tag need a full sha.
+            SHA=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${REF}" --jq .sha)
+            echo "ref ${REF} -> ${SHA}"
+          elif [[ -n "$PR" ]]; then
+            SHA=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" --jq .head.sha)
+            echo "PR #${PR} head -> ${SHA}"
+          else
+            SHA="$DEFAULT_SHA"
+            echo "neither pr nor ref given; using this run's commit -> ${SHA}"
+          fi
+          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::could not resolve a full commit sha (got '${SHA}')"
+            exit 1
+          fi
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+
+  image:
+    needs: resolve
+    uses: ./.github/workflows/build-private-ee-docker-image.yml
+    secrets:
+      PR_ENV_IAM_ROLE: ${{ secrets.PR_ENV_IAM_ROLE }}
+      PR_ENV_AWS_ACCOUNT_ID: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}
+    with:
+      commit: ${{ needs.resolve.outputs.sha }}
+
+  dispatch:
+    needs: [prepare, announce, resolve, image]
+    if: >-
+      !cancelled()
+      && needs.prepare.result == 'success'
+      && (needs.announce.result == 'success' || needs.announce.result == 'skipped')
+      && needs.resolve.result == 'success'
+      && needs.image.result == 'success'
+    timeout-minutes: 5
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    steps:
+      - name: Dispatch eval-run
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          EVALS_BRANCH: ${{ needs.prepare.outputs.evals_branch }}
+          PR: ${{ needs.prepare.outputs.pr }}
+          SHA: ${{ needs.resolve.outputs.sha }}
+          SCOPE: ${{ needs.prepare.outputs.scope }}
+          SAMPLE: ${{ needs.prepare.outputs.sample }}
+          COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
+        run: |
+          gh api repos/metabase/evals/actions/workflows/eval-run.yml/dispatches \
+            -f ref="$EVALS_BRANCH" \
+            -f "inputs[pr]=$PR" \
+            -f "inputs[ref]=$SHA" \
+            -f "inputs[scope]=$SCOPE" \
+            -f "inputs[surfaces]=all" \
+            -f "inputs[sample]=$SAMPLE" \
+            -f "inputs[evals_branch]=$EVALS_BRANCH" \
+            -f "inputs[comment_id]=$COMMENT_ID"
+
+  finalize:
+    needs: [announce, resolve, image, dispatch]
+    if: always() && needs.announce.result == 'success' && needs.dispatch.result != 'success'
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    env:
+      COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
+      NEEDS_JSON: ${{ toJSON(needs) }}
+    steps:
+      - name: Comment (build/dispatch failed)
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const cancelled = Object.values(JSON.parse(process.env.NEEDS_JSON))
+              .some(j => j.result === 'cancelled');
+            const body = cancelled
+              ? `🤖 **Evals** — ⚪ cancelled before evals started ([logs](${runUrl}))`
+              : `🤖 **Evals** — ❌ build or dispatch failed before evals started ([logs](${runUrl}))`;
+            // The replacement run deletes this comment on its way in, so a concurrency cancel can
+            // land here with nothing to patch. Losing the stamp is fine; failing the job isn't.
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              comment_id: Number(process.env.COMMENT_ID), body })
+              .catch(e => core.warning(`could not update comment (deleted?): ${e.message}`));
+            // eval-run only consumes the label once it has taken the run over, so anything failing
+            // before the dispatch leaves it applied — and `labeled` only fires on a transition, which
+            // makes re-applying it to retry a no-op. Hand it back.
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              name: 'evals/smoke',
+            }).catch(() => {});

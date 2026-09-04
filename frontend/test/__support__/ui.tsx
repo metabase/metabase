@@ -1,5 +1,11 @@
 import { Global } from "@emotion/react";
-import type { Middleware, Reducer, Store } from "@reduxjs/toolkit";
+import type {
+  AnyAction,
+  Middleware,
+  Reducer,
+  Store,
+  ThunkDispatch,
+} from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher, RenderHookOptions } from "@testing-library/react";
 import {
@@ -8,36 +14,44 @@ import {
   render as testingLibraryRender,
   waitFor,
 } from "@testing-library/react";
-import type { History } from "history";
-import { createMemoryHistory } from "history";
-import { useCallback, useMemo, useState } from "react";
+import {
+  Children,
+  Fragment,
+  isValidElement,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import { createPortal } from "react-dom";
 import _ from "underscore";
 
+import "metabase/auth/plugins";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";
-import { useUpdateSettingMutation } from "metabase/api/settings";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
-import { HistoryProvider } from "metabase/history";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { MetabaseReduxProvider, useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import {
-  ReactRouterRoute,
-  type RouterEngine,
-  RouterProvider,
-  routerMiddleware,
-  routing as routingReducer,
-  useRouterHistory,
+  type StoreSeedState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import {
+  type Location,
+  type MemoryTestRouterHolder,
+  Route,
+  type RouteObject,
+  RouterProviderMemory,
+  createLocationMirror,
+  toFacadeLocation,
+  toRouteObjects,
 } from "metabase/router";
-import { RouterProviderV7Memory } from "metabase/router/v7/RouterProviderV7";
-import { createV7Navigator } from "metabase/router/v7/navigator";
+import { useUpdateSettingMutation } from "metabase/settings";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
 import { PortalContainer, ThemeProvider, useMantineTheme } from "metabase/ui";
@@ -59,10 +73,8 @@ export interface RenderWithProvidersOptions {
   // public or sdk-specific tests
   mode?: "default" | "public";
   initialRoute?: string;
-  storeInitialState?: Partial<State>;
+  storeInitialState?: Partial<StoreSeedState>;
   withRouter?: boolean;
-  /** Which router engine hosts the tree when `withRouter` is set. Defaults to v3. */
-  routerEngine?: RouterEngine;
   /** Renders children wrapped with kbar provider */
   withKBar?: boolean;
   withDND?: boolean;
@@ -83,7 +95,6 @@ export function renderWithProviders(
     initialRoute = "/",
     storeInitialState = {},
     withRouter = false,
-    routerEngine = "v3",
     withKBar = false,
     withDND = false,
     withUndos = false,
@@ -92,12 +103,11 @@ export function renderWithProviders(
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  const { wrapper, store, history } = getTestStoreAndWrapper({
+  const { wrapper, store, router } = getTestStoreAndWrapper({
     mode,
     initialRoute,
     storeInitialState,
     withRouter,
-    routerEngine,
     withKBar,
     withDND,
     withUndos,
@@ -113,8 +123,29 @@ export function renderWithProviders(
   return {
     ...utils,
     store,
-    history,
+    router,
   };
+}
+
+/**
+ * Renders route objects, for a spec that has them already, such as the app's own
+ * `getRoutes`. Pass a function to build them from the store the harness makes.
+ */
+export function renderRoutes(
+  routes: RouteObject[] | ((store: Store<State>) => RouteObject[]),
+  { initialRoute = "/", ...options }: RenderWithProvidersOptions = {},
+) {
+  const {
+    wrapper: Wrapper,
+    store,
+    router,
+  } = getTestStoreAndWrapper({ ...options, initialRoute, withRouter: true });
+
+  const utils = testingLibraryRender(
+    <Wrapper routes={typeof routes === "function" ? routes(store) : routes} />,
+  );
+
+  return { ...utils, store, router };
 }
 
 export function renderHookWithProviders<TProps, TResult>(
@@ -124,7 +155,6 @@ export function renderHookWithProviders<TProps, TResult>(
     initialRoute = "/",
     storeInitialState = {},
     withRouter = false,
-    routerEngine = "v3",
     withKBar = false,
     withDND = false,
     withUndos = false,
@@ -136,13 +166,12 @@ export function renderHookWithProviders<TProps, TResult>(
   const {
     wrapper: Wrapper,
     store,
-    history,
+    router,
   } = getTestStoreAndWrapper({
     mode,
     initialRoute,
     storeInitialState,
     withRouter,
-    routerEngine,
     withKBar,
     withDND,
     withUndos,
@@ -153,7 +182,7 @@ export function renderHookWithProviders<TProps, TResult>(
   const WrapperWithRoute = ({ children, ...props }: any) => {
     return (
       <Wrapper {...props}>
-        <ReactRouterRoute path="/" component={() => <>{children}</>} />
+        <Route path="*" element={<>{children}</>} />
       </Wrapper>
     );
   };
@@ -162,7 +191,7 @@ export function renderHookWithProviders<TProps, TResult>(
 
   const renderHookReturn = renderHook(hook, { wrapper, ...renderHookOptions });
 
-  return { ...renderHookReturn, store, history };
+  return { ...renderHookReturn, store, router };
 }
 
 type GetTestStoreAndWrapperOptions = RenderWithProvidersOptions &
@@ -173,30 +202,30 @@ export function getTestStoreAndWrapper({
   initialRoute,
   storeInitialState,
   withRouter,
-  routerEngine = "v3",
   withKBar,
   withDND,
   withUndos,
   customReducers,
   theme,
 }: GetTestStoreAndWrapperOptions) {
-  const isV7Router = withRouter && routerEngine === "v7";
-  let { routing, ...initialState }: Partial<State> =
-    createMockState(storeInitialState);
+  let {
+    // Pull settings and currentUser out because they have no reducer;
+    // createMockState mirrors them into the bootstrap / getCurrentUser cache.
+    settings,
+    currentUser,
+    ...initialState
+  }: Partial<StoreSeedState> = createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
     initialState = _.pick(initialState, ...publicReducerNames);
   }
 
-  // We need to call `useRouterHistory` to ensure the history has a `query` object,
-  // since some components and hooks rely on it to read/write query params.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const browserHistory = useRouterHistory(createMemoryHistory)({
-    entries: [initialRoute],
-  });
-  // v7 owns its own in-memory history; only the v3 engine uses this one.
-  const history = withRouter && !isV7Router ? browserHistory : undefined;
+  // The router can only be built once the route tree is known, which is at
+  // render. Specs still get their handle up front, so hand it a holder the
+  // provider fills in.
+  const routerHolder: MemoryTestRouterHolder = { current: null };
+  const router = withRouter ? createTestRouter(routerHolder) : undefined;
 
   let reducers;
 
@@ -206,24 +235,11 @@ export function getTestStoreAndWrapper({
     reducers = makeMainReducers();
   }
 
-  if (withRouter) {
-    Object.assign(reducers, { routing: routingReducer });
-    Object.assign(initialState, { routing });
-  }
   if (customReducers) {
     reducers = { ...reducers, ...customReducers };
   }
 
-  // Drive navigation through v3 history or the v7 navigator, matching the engine.
-  const routerNavigator = isV7Router
-    ? createV7Navigator()
-    : history
-      ? history
-      : undefined;
-  const storeMiddleware = _.compact([
-    Api.middleware,
-    routerNavigator && routerMiddleware(routerNavigator),
-  ]);
+  const storeMiddleware = [Api.middleware];
 
   // Unjustified type cast. FIXME
   const store = getStore(
@@ -231,16 +247,17 @@ export function getTestStoreAndWrapper({
     initialState,
     // Unjustified type cast. FIXME
     storeMiddleware as Middleware[],
-  ) as unknown as Store<State>;
+  ) as unknown as Store<State> & {
+    dispatch: ThunkDispatch<State, void, AnyAction>;
+  };
 
   const wrapper = (props: any) => {
     return (
       <TestWrapper
         {...props}
         store={store}
-        history={history}
+        routerHolder={routerHolder}
         withRouter={withRouter}
-        routerEngine={routerEngine}
         initialRoute={initialRoute}
         withDND={withDND}
         withUndos={withUndos}
@@ -250,7 +267,7 @@ export function getTestStoreAndWrapper({
     );
   };
 
-  return { wrapper, store, history };
+  return { wrapper, store, router };
 }
 
 /**
@@ -290,10 +307,10 @@ const TestColorSchemeProvider = ({ children }: React.PropsWithChildren) => {
 
 export function TestWrapper({
   children,
+  routes,
   store,
-  history,
+  routerHolder,
   withRouter,
-  routerEngine = "v3",
   initialRoute = "/",
   withKBar,
   withDND,
@@ -302,11 +319,15 @@ export function TestWrapper({
   displayTheme,
   withCssVariables = false,
 }: {
-  children: React.ReactElement;
+  children?: React.ReactElement;
+  /**
+   * Routes to mount, for a spec that has them as objects already, such as the
+   * app's own `getRoutes`. Takes the place of rendering a `<Route>` tree.
+   */
+  routes?: RouteObject[];
   store: any;
-  history?: History;
+  routerHolder?: MemoryTestRouterHolder;
   withRouter: boolean;
-  routerEngine?: RouterEngine;
   initialRoute?: string;
   withKBar: boolean;
   withDND: boolean;
@@ -342,8 +363,8 @@ export function TestWrapper({
                 <MaybeKBar hasKBar={withKBar}>
                   <MaybeRouter
                     hasRouter={withRouter}
-                    routerEngine={routerEngine}
-                    history={history}
+                    routes={routes}
+                    routerHolder={routerHolder}
                     initialRoute={initialRoute}
                   >
                     {children}
@@ -359,36 +380,129 @@ export function TestWrapper({
   );
 }
 
+/**
+ * The router handle specs drive and assert against, backed by the memory data
+ * router.
+ */
+export type TestRouter = {
+  navigate(to: string, options?: { replace?: boolean }): void;
+  back(): void;
+  forward(): void;
+  readonly location: Location;
+  /**
+   * Observe every location the router passes through, for specs asserting on
+   * transient navigations that `location` alone cannot show. Returns an
+   * unsubscribe.
+   */
+  onLocationChange(listener: (location: Location) => void): () => void;
+};
+
+function createTestRouter(holder: MemoryTestRouterHolder): TestRouter {
+  const requireRouter = () => {
+    if (!holder.current) {
+      throw new Error("The router handle is only available after render");
+    }
+    return holder.current;
+  };
+
+  // Swallow the router's promise rather than handing it back: specs drive these
+  // inside `act()`, which switches to its async mode the moment the callback
+  // returns a thenable.
+  return {
+    navigate: (to, options) => {
+      requireRouter().navigate(to, options);
+    },
+    back: () => {
+      requireRouter().navigate(-1);
+    },
+    forward: () => {
+      requireRouter().navigate(1);
+    },
+    get location() {
+      // `toFacadeLocation` normalizes `state` from v7's `null` to `undefined`,
+      // which the legacy readers, and the specs covering them, test for.
+      return toFacadeLocation(requireRouter().state.location);
+    },
+    onLocationChange: (listener) => {
+      const router = requireRouter();
+      // The router notifies on every state update, not just navigations, so
+      // compare keys to report a location once.
+      let lastKey = router.state.location.key;
+      return router.subscribe(({ location }) => {
+        if (location.key === lastKey) {
+          return;
+        }
+        lastKey = location.key;
+        listener(toFacadeLocation(location));
+      });
+    },
+  };
+}
+
+function childrenAreRouteTree(children: React.ReactNode): boolean {
+  return Children.toArray(children).some((child) => {
+    if (!isValidElement(child)) {
+      return false;
+    }
+    if (child.type === Route) {
+      return true;
+    }
+    // Routes are often grouped in a fragment (`<><Route/><Route/></>`); descend
+    // so the tree is still recognized, matching how react-router unwraps fragments.
+    if (child.type === Fragment) {
+      return childrenAreRouteTree(child.props.children);
+    }
+    return false;
+  });
+}
+
 function MaybeRouter({
   children,
+  routes,
   hasRouter,
-  routerEngine,
-  history,
+  routerHolder,
   initialRoute,
 }: {
-  children: React.ReactElement;
+  children?: React.ReactElement;
+  routes?: RouteObject[];
   hasRouter: boolean;
-  routerEngine: RouterEngine;
-  history?: History;
+  routerHolder?: MemoryTestRouterHolder;
   initialRoute: string;
 }): JSX.Element {
+  const dispatch = useDispatch();
+  const onLocationChange = useMemo(
+    () => createLocationMirror(dispatch),
+    [dispatch],
+  );
+
   if (!hasRouter) {
-    return children;
-  }
-  if (routerEngine === "v7") {
-    return (
-      <RouterProviderV7Memory initialRoute={initialRoute}>
-        {children}
-      </RouterProviderV7Memory>
-    );
-  }
-  if (!history) {
-    return children;
+    return <>{children}</>;
   }
   return (
-    <HistoryProvider history={history}>
-      <RouterProvider>{children}</RouterProvider>
-    </HistoryProvider>
+    <RouterProviderMemory
+      routes={routes ?? toRoutes(children)}
+      initialRoute={initialRoute}
+      routerHolder={routerHolder}
+      onLocationChange={onLocationChange}
+    />
+  );
+}
+
+/**
+ * Tests render either a `<Route>` tree or a bare component. Only a bare
+ * component needs anything doing to it: it gets a catch-all route to sit in.
+ * A spec that has routes as objects passes them as `routes` instead.
+ */
+function toRoutes(children?: React.ReactElement): RouteObject[] {
+  if (!children) {
+    return [];
+  }
+  return toRouteObjects(
+    childrenAreRouteTree(children) ? (
+      children
+    ) : (
+      <Route path="*" element={children} />
+    ),
   );
 }
 
@@ -485,6 +599,21 @@ export const mockOffsetHeightAndWidth = (value = 50) => {
     .mockReturnValue(value);
 };
 
+export const createMockDOMRect = (
+  overrides: Partial<DOMRect> = {},
+): DOMRect => ({
+  height: 200,
+  width: 200,
+  top: 0,
+  left: 0,
+  bottom: 0,
+  right: 0,
+  x: 0,
+  y: 0,
+  toJSON: () => {},
+  ...overrides,
+});
+
 /**
  * jsdom doesn't have getBoundingClientRect, so we need to mock it for any components
  * with virtualization to work in tests, like the entity picker
@@ -492,20 +621,20 @@ export const mockOffsetHeightAndWidth = (value = 50) => {
 export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
   jest
     .spyOn(window.Element.prototype, "getBoundingClientRect")
-    .mockImplementation(() => {
-      return {
-        height: 200,
-        width: 200,
-        top: 0,
-        left: 0,
-        bottom: 0,
-        right: 0,
-        x: 0,
-        y: 0,
-        toJSON: () => {},
-        ...options,
-      };
-    });
+    .mockImplementation(() => createMockDOMRect(options));
+};
+
+/**
+ * Forces `useIsTruncated` (used by `Ellipsified`) to detect overflow, so a
+ * hover-triggered truncation tooltip becomes testable.
+ */
+export const mockTextOverflow = () => {
+  jest
+    .spyOn(window.Element.prototype, "getBoundingClientRect")
+    .mockReturnValue(createMockDOMRect({ width: 100, height: 20 }));
+  jest
+    .spyOn(window.Range.prototype, "getBoundingClientRect")
+    .mockReturnValue(createMockDOMRect({ width: 500, height: 20 }));
 };
 
 /**

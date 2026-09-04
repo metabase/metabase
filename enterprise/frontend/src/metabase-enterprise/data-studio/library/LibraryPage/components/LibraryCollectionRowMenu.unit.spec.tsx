@@ -6,7 +6,6 @@ import {
   setupUpdateCollectionEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
@@ -55,7 +54,6 @@ function setup({
             remote_sync: true,
           }),
         }),
-        entities: createMockEntitiesState({ collections: [parentCollection] }),
       }),
     },
   );
@@ -117,7 +115,7 @@ describe("LibraryCollectionRowMenu", () => {
 
     expect(
       screen.getByText(
-        "Archiving this collection will also unpublish the tables inside it and archive any other child items.",
+        "Archiving this collection will also unpublish the tables inside it (and any tables that depend on them) and archive any other child items.",
       ),
     ).toBeInTheDocument();
   });

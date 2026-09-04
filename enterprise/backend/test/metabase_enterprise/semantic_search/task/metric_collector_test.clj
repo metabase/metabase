@@ -12,6 +12,7 @@
    [metabase-enterprise.semantic-search.task.metric-collector :as semantic.task.collector]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase-enterprise.semantic-search.util :as semantic.u]
+   [metabase.search.index-health :as search.index-health]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
 
@@ -66,19 +67,38 @@
    pgvector
    (sql/format {:delete-from [[:raw (:gate-table-name index-metadata)]]})))
 
+(deftest shared-index-metrics-survive-semantic-collector-failure-test
+  (let [refreshes (atom 0)]
+    (mt/with-dynamic-fn-redefs
+      [semantic.u/semantic-search-active?                (constantly true)
+       semantic.env/get-pgvector-datasource!             #(throw (ex-info "pgvector unavailable" {}))
+       search.index-health/refresh-search-index-metrics! #(swap! refreshes inc)]
+      (@#'semantic.task.collector/collect-metrics!)
+      (is (= 1 @refreshes)))))
+
+(deftest interrupted-semantic-collector-skips-shared-refresh-test
+  (let [refreshes (atom 0)]
+    (mt/with-dynamic-fn-redefs
+      [semantic.u/semantic-search-active?                (constantly true)
+       semantic.env/get-pgvector-datasource!             #(throw (InterruptedException.))
+       search.index-health/refresh-search-index-metrics! #(swap! refreshes inc)]
+      (is (thrown? InterruptedException (@#'semantic.task.collector/collect-metrics!)))
+      (is (zero? @refreshes)))))
+
 (deftest metric-collector-test
   (mt/with-premium-features #{:semantic-search}
     (mt/with-prometheus-system! [_ system]
       (let [pgvector       (semantic.env/get-pgvector-datasource!)
             index-metadata (semantic.tu/unique-index-metadata)
             model semantic.tu/mock-embedding-model]
-        (mt/with-dynamic-fn-redefs [semantic.env/get-index-metadata (fn [] index-metadata)
-                                    semantic.env/get-configured-embedding-model (fn [] model)
-                                    ;; supported? requires a configured embedder for engine selection
-                                    semantic.embedding/get-configured-model (fn [] model)
-                                    ;; collect-metrics! only runs when semantic is the active engine; pin it so a
-                                    ;; sibling test leaking the search-engine setting can't make this read 0
-                                    semantic.u/semantic-search-active? (fn [] true)]
+        (mt/with-dynamic-fn-redefs
+          [semantic.env/get-index-metadata             (constantly index-metadata)
+           semantic.env/get-configured-embedding-model (constantly model)
+           ;; supported? requires a configured embedder for engine selection
+           semantic.embedding/get-configured-model     (constantly model)
+           ;; collect-metrics! only runs when semantic is the active engine; pin it so a sibling test
+           ;; leaking the search-engine setting can't make this read 0
+           semantic.u/semantic-search-active?          (constantly true)]
           (testing "Missing tables are handled gracefully"
             (let [result (try
                            (@#'semantic.task.collector/collect-metrics!)

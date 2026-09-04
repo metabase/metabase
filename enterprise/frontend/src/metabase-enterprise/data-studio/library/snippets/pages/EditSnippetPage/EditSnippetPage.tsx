@@ -19,7 +19,7 @@ import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHe
 import { useToast } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import type { Route } from "metabase/router";
+import { useParams } from "metabase/router";
 import { Alert, Card, Center, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -32,12 +32,8 @@ type EditSnippetPageParams = {
   snippetId: string;
 };
 
-type EditSnippetPageProps = {
-  params: EditSnippetPageParams;
-  route: Route;
-};
-
-export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
+export function EditSnippetPage() {
+  const params = useParams<EditSnippetPageParams>();
   const snippetId = Urls.extractEntityId(params.snippetId);
   const [sendToast] = useToast();
   const remoteSyncReadOnly = useSelector(
@@ -111,7 +107,7 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
 
   return (
     <>
-      <PageContainer pos="relative" data-testid="edit-snippet-page" gap="md">
+      <PageContainer pos="relative" data-testid="edit-snippet-page" gap="lg">
         <SnippetHeader
           snippet={snippet}
           actions={
@@ -126,19 +122,18 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
         />
         {isReadOnly && (
           <Alert
+            size="compact"
             className={S.flexStart}
             color="warning"
-            p="0.75rem"
             title={
               snippet?.archived
                 ? t`This snippet is archived and cannot be edited. Unarchive it to edit.`
                 : t`This snippet is not editable because Remote Sync is in read-only mode.`
             }
-            variant="outline"
             w="auto"
           />
         )}
-        <Flex flex={1} w="100%" gap="sm" mt="md">
+        <Flex flex={1} w="100%" gap="sm" mt="lg">
           <Card
             withBorder
             p={0}
@@ -165,7 +160,7 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
               }}
             />
           </Card>
-          <Stack p="md" gap="lg" flex="0 0 20rem">
+          <Stack p="lg" gap="xl" flex="0 0 20rem">
             <SnippetDescriptionSection
               snippet={snippet}
               isDisabled={isReadOnly}
@@ -179,7 +174,6 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
       </PageContainer>
       <LeaveRouteConfirmModal
         key={snippetId}
-        route={route}
         isEnabled={isDirty && !isSaving}
       />
     </>

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import type { UtmProps } from "metabase/selectors/settings";
 import {
   Alert,
@@ -74,6 +74,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
       active={0}
       orientation="vertical"
       classNames={{
+        root: S.root,
         stepLabel: S.stepLabel,
         verticalSeparator: S.verticalSeparator,
         stepIcon: S.stepIcon,
@@ -122,7 +123,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                             data-next-step={isNextCard}
                           >
                             <Stack justify="space-between" h="100%">
-                              <Stack gap="xs" h="100%">
+                              <Stack gap="xxs" h="100%">
                                 <Text
                                   size={card.optional ? "md" : "lg"}
                                   fw="bold"
@@ -144,7 +145,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                 <Flex justify="flex-end">
                                   {match(card)
                                     .with({ done: true }, () => (
-                                      <Group gap="xs">
+                                      <Group gap="xxs">
                                         <Icon
                                           name="check"
                                           c="feedback-positive-selected"
@@ -159,7 +160,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                       </Group>
                                     ))
                                     .with({ locked: true }, () => (
-                                      <Group gap="xs">
+                                      <Group gap="xxs">
                                         <Icon
                                           name="lock"
                                           c="text-secondary"
@@ -237,15 +238,11 @@ const StepAlert = ({
   message: string;
 }) => (
   <Alert
-    icon={<Icon size={14} name={type === "success" ? "check" : "info"} />}
-    mt="xl"
+    size="compact"
+    icon={<Icon name={type === "success" ? "check" : "info"} />}
+    mt="xxl"
     color={type === "info" ? "core-brand" : type}
-    lh="lg"
-    classNames={{
-      wrapper: S.infoAlertWrapper,
-      icon: S.infoAlertIcon,
-      message: S.infoAlertMessage,
-    }}
+    classNames={{ message: S.infoAlertMessage }}
   >
     {message}
   </Alert>

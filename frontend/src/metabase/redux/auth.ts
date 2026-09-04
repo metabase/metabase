@@ -4,28 +4,22 @@ import {
   createReducer,
 } from "@reduxjs/toolkit";
 
+import { Api } from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
 import {
   type MfaChallengeResponse,
   isMfaChallenge,
   sessionApi,
 } from "metabase/api/session";
+import { getUser, refetchCurrentUser } from "metabase/current-user";
 import { openNavbar } from "metabase/redux/app";
-import { refreshSiteSettings } from "metabase/redux/settings";
-import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { push } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
-import { getUser } from "metabase/selectors/user";
+import { navigate } from "metabase/router";
+import { getSetting, refetchSiteSettings } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isSmallScreen, reload } from "metabase/utils/dom";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-
-export interface LoginData {
-  username: string;
-  password: string;
-  remember?: boolean;
-}
+import type { LoginData } from "metabase-types/api";
 
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
 export const refreshLocale = createAsyncThunk(
@@ -51,8 +45,8 @@ export const refreshSession = createAsyncThunk(
   REFRESH_SESSION,
   async (_, { dispatch }) => {
     await Promise.all([
-      dispatch(refreshCurrentUser()),
-      dispatch(refreshSiteSettings()),
+      dispatch(refetchCurrentUser()),
+      dispatch(refetchSiteSettings()),
     ]);
     await dispatch(refreshLocale()).unwrap();
   },
@@ -143,18 +137,19 @@ export const logout = createAsyncThunk(
         const { "saml-logout-url": samlLogoutUrl } =
           (await initiateSLO(dispatch)) ?? {};
 
-        dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
+
+        dispatch(Api.util.resetApiState());
 
         if (samlLogoutUrl) {
           window.location.href = samlLogoutUrl;
         }
       } else {
         await deleteSession(dispatch);
-        dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
 
-        dispatch(push(Urls.login()));
+        navigate(Urls.login());
+        dispatch(Api.util.resetApiState());
         reload(); // clears redux state and browser caches
       }
     } catch (error) {

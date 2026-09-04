@@ -1,20 +1,35 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
-import { useCreateUserMutation } from "metabase/api";
+import {
+  skipToken,
+  useCreateUserMutation,
+  useListInviteGroupIdsQuery,
+  useListPermissionsGroupsQuery,
+} from "metabase/api";
 import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
 import {
   trackInviteToViewOpened,
   trackUserInvited,
 } from "metabase/common/analytics";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
+import { Link } from "metabase/common/components/Link";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { UserForm } from "metabase/common/components/UserForm";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
-import { Link } from "metabase/router";
-import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
-import { Button, Group, Icon, Modal, Stack, Text } from "metabase/ui";
+import { isSsoEnabled } from "metabase/selectors/settings";
+import { getSetting, useSetting } from "metabase/settings";
+import {
+  Button,
+  Center,
+  Group,
+  Icon,
+  Loader,
+  Modal,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { generatePassword } from "metabase/utils/password";
 import type { InviteTarget, User } from "metabase-types/api";
 
@@ -52,6 +67,27 @@ export const InviteToViewModal = ({
   useEffect(() => {
     trackInviteToViewOpened({ triggeredFrom, targetId });
   }, [triggeredFrom, targetId]);
+
+  // isLoading, not isFetching: a tag-invalidated background refetch must not unmount the form mid-typing.
+  const {
+    data: groups,
+    isLoading: isLoadingGroups,
+    isError: isGroupsError,
+    refetch: refetchGroups,
+  } = useListPermissionsGroupsQuery(
+    inviteTarget ? { tenancy: "internal" } : skipToken,
+  );
+
+  // The access set changes whenever collection permissions do, so refetch on every open.
+  const {
+    data: accessGroupIds,
+    isFetching: isFetchingAccessGroupIds,
+    isError: isAccessGroupIdsError,
+    refetch: refetchAccessGroupIds,
+  } = useListInviteGroupIdsQuery(
+    inviteTarget ? { type: inviteTarget.type, id: inviteTarget.id } : skipToken,
+    { refetchOnMountOrArgChange: true },
+  );
 
   const createInvitedUser = async (
     values: Partial<User>,
@@ -112,10 +148,52 @@ export const InviteToViewModal = ({
         onClose={onClose}
       />
     );
+  } else if (isLoadingGroups || isFetchingAccessGroupIds) {
+    body = (
+      <Center py="xxl">
+        <Loader />
+      </Center>
+    );
+  } else if (isGroupsError || isAccessGroupIdsError) {
+    // Without the access data the picker loses its "can view" safety net, so fail loudly instead.
+    body = (
+      <Stack gap="xl" align="center" py="xxl">
+        <Text>{t`Couldn't load groups. Please try again.`}</Text>
+        <Button
+          onClick={() => {
+            refetchGroups();
+            refetchAccessGroupIds();
+          }}
+        >
+          {t`Try again`}
+        </Button>
+      </Stack>
+    );
   } else {
+    const accessCopy: Record<
+      InviteTarget["type"],
+      { sectionLabel: string; warningMessage: string }
+    > = {
+      dashboard: {
+        sectionLabel: t`Can view this dashboard`,
+        warningMessage: t`None of the selected groups can view this dashboard, so this person won't be able to see it.`,
+      },
+      question: {
+        sectionLabel: t`Can view this question`,
+        warningMessage: t`None of the selected groups can view this question, so this person won't be able to see it.`,
+      },
+    };
     body = (
       <UserForm
         initialValues={{}}
+        groups={groups}
+        inviteTargetAccess={
+          inviteTarget &&
+          accessGroupIds && {
+            groupIds: accessGroupIds,
+            ...accessCopy[inviteTarget.type],
+          }
+        }
         submitText={t`Send invitation`}
         onCancel={onClose}
         onSubmit={
@@ -128,7 +206,7 @@ export const InviteToViewModal = ({
   }
 
   return (
-    <Modal opened title={title} padding="xl" onClose={onClose}>
+    <Modal opened title={title} padding="xxl" onClose={onClose}>
       {body}
     </Modal>
   );
@@ -141,7 +219,7 @@ const EmailSetupPrompt = ({
   shareUrl: string;
   onClose: () => void;
 }) => (
-  <Stack gap="lg">
+  <Stack gap="xl">
     <Text>{t`To invite people by email, set up email first. Or share this link, they'll land on it after signing in:`}</Text>
     <CopyTextInput label={t`Link to share`} value={shareUrl} />
     <Group justify="flex-end">
@@ -169,7 +247,7 @@ const TemporaryPasswordSuccess = ({
   shareUrl: string;
   onClose: () => void;
 }) => (
-  <Stack gap="lg">
+  <Stack gap="xl">
     <Text>
       {jt`We couldn't send an email invitation. Share this temporary password with ${(
         <strong key="email">{email}</strong>

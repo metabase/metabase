@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
@@ -40,16 +39,6 @@
            (mt/with-temp [:model/Field field {column unknown-type}]
              field))))))
 
-(deftest identity-hash-test
-  (testing "Field hashes are composed of the name, the table's identity-hash, and the parent's identity-hash"
-    (mt/with-temp [:model/Database db    {:name "field-db" :engine :h2}
-                   :model/Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
-                   :model/Field    field {:name "sku" :table_id (:id table)}]
-      (let [table-hash (serdes/identity-hash table)]
-        (is (= "edc06d97"
-               (serdes/raw-hash ["sku" table-hash "<none>"])
-               (serdes/identity-hash field)))))))
-
 (deftest nested-field-names->field-id-test
   (mt/with-temp
     [:model/Database {db-id :id}              {}
@@ -67,37 +56,6 @@
     (testing "return nothing if field does not exist"
       (is (= nil
              (field/nested-field-names->field-id table-id ["top" "nested" "not-exists"]))))))
-
-(deftest nested-fields-with-duplicate-names-test
-  (mt/with-temp
-    [:model/Database {db-id :id} {:name "field-db", :engine :h2}
-     :model/Table    table       {:schema  "PUBLIC"
-                                  :name    "widget"
-                                  :db_id   db-id}
-     :model/Field    parent1     {:name    "parent1"
-                                  :table_id (:id table)}
-     :model/Field    parent2     {:name    "parent2"
-                                  :table_id (:id table)}
-     ;; These two have the same name but different parents.
-     :model/Field    child1      {:name      "child"
-                                  :table_id  (:id table)
-                                  :parent_id (:id parent1)}
-     :model/Field    child2      {:name      "child"
-                                  :table_id  (:id table)
-                                  :parent_id (:id parent2)}]
-    (testing "nested fields with the same name and different parents have unique identity-hashes"
-      (is (= "204a7209"
-             (serdes/raw-hash ["parent1" (serdes/identity-hash table) "<none>"])
-             (serdes/identity-hash parent1)))
-      (is (= "be1bb68e"
-             (serdes/raw-hash ["parent2" (serdes/identity-hash table) "<none>"])
-             (serdes/identity-hash parent2)))
-      (is (= "7f203b41"
-             (serdes/raw-hash ["child" (serdes/identity-hash table) (serdes/identity-hash parent1)])
-             (serdes/identity-hash child1)))
-      (is (= "913269d5"
-             (serdes/raw-hash ["child" (serdes/identity-hash table) (serdes/identity-hash parent2)])
-             (serdes/identity-hash child2))))))
 
 ;;; ---------------------------------------- Field permission delegation tests ----------------------------------------
 
@@ -351,3 +309,38 @@
                        :model/Table {table-id :id} {:db_id db-id}]
           (let [field-id (op table-id)]
             (assert-coercion-effective-type-invariant! field-id label)))))))
+
+(deftest data-sensitivity-transform-round-trip-test
+  (testing "data_sensitivity is stored as the enum string and read back as a keyword"
+    (mt/with-temp [:model/Field {field-id :id} {:data_sensitivity :PII}]
+      (is (= "PII" (t2/select-one-fn :data_sensitivity :metabase_field :id field-id)))
+      (is (= :PII (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))))
+  (testing "a field with no label reads nil and has no user-settings row"
+    (mt/with-temp [:model/Field {field-id :id}]
+      (is (nil? (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
+      (is (not (t2/exists? :model/FieldUserSettings :field_id field-id))))))
+
+(deftest data-sensitivity-user-setting-overlay-test
+  (testing "a user-set label wins over a bare update to the Field"
+    (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
+      (field-user-settings/upsert-user-settings field {:data_sensitivity :PUBLIC})
+      (t2/update! :model/Field field-id {:data_sensitivity :PII})
+      (is (= :PUBLIC (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
+      (is (= :PUBLIC (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)))))
+  (testing "a user-set label also overlays an update that does not mention data_sensitivity"
+    (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
+      (field-user-settings/upsert-user-settings field {:data_sensitivity :PUBLIC})
+      (t2/update! :model/Field field-id {:description "touched"})
+      (is (= :PUBLIC (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))))
+  (testing "a nil user setting does not block a bare update to the Field"
+    (mt/with-temp [:model/Field {field-id :id :as field}]
+      (field-user-settings/upsert-user-settings field {:data_sensitivity nil})
+      (is (t2/exists? :model/FieldUserSettings :field_id field-id))
+      (t2/update! :model/Field field-id {:data_sensitivity :PII})
+      (is (= :PII (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
+      (is (nil? (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)))))
+  (testing "upsert-user-settings with a nil value clears a previously set label on the mirror"
+    (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
+      (field-user-settings/upsert-user-settings field {:data_sensitivity :PUBLIC})
+      (field-user-settings/upsert-user-settings field {:data_sensitivity nil})
+      (is (nil? (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id))))))

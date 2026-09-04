@@ -5,9 +5,9 @@ import { useWindowSize } from "react-use";
 
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { ResizeHandle } from "metabase/common/components/ResizeHandle";
-import { useSetting } from "metabase/common/hooks";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
+import { useSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -39,6 +39,7 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
 
 type QueryEditorBodyProps = {
   extraButton?: ReactNode;
+  parametersList: ReactNode;
   question: Question;
   proposedQuestion: Question | undefined;
   modalSnippet?:
@@ -83,6 +84,7 @@ type QueryEditorBodyProps = {
 
 export function QueryEditorBody({
   extraButton,
+  parametersList,
   question,
   proposedQuestion,
   modalSnippet,
@@ -208,8 +210,7 @@ export function QueryEditorBody({
         onAcceptProposed={onAcceptProposed}
         onRejectProposed={onRejectProposed}
       >
-        <NativeQueryEditor.TopBar>
-          <NativeQueryEditor.ParametersList />
+        <NativeQueryEditor.TopBar leftContent={parametersList}>
           {topBarInnerContent}
           <NativeQueryEditor.Sidebar
             features={NATIVE_EDITOR_SIDEBAR_FEATURES}

@@ -1,19 +1,30 @@
-import type { Row, SortingState, Updater } from "@tanstack/react-table";
+import type {
+  OnChangeFn,
+  Row,
+  RowSelectionState,
+  SortingState,
+  Updater,
+} from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useScrollToTop } from "metabase/common/hooks";
+import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { listChannelSummaries } from "metabase/monitor/tools/notifications/utils";
-import type { SelectionState, TreeTableColumnDef } from "metabase/ui";
+import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Badge,
   Card,
   Ellipsified,
   Flex,
   Icon,
+  LoadingOverlay,
   Text,
   Tooltip,
   TreeTable,
+  TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
@@ -29,13 +40,14 @@ import {
 type Props = {
   notifications: AdminNotification[];
   error: unknown;
+  isFetching: boolean;
   isLoading: boolean;
-  getSelectionState: (row: Row<AdminNotification>) => SelectionState;
+  page: number;
+  rowSelection: RowSelectionState;
   selectedDetailId: NotificationId | undefined;
   sorting: SortingState;
   onSortingChange: (sorting: SortingState) => void;
-  onToggleRow: (id: NotificationId) => void;
-  onToggleAll: () => void;
+  onRowSelectionChange: OnChangeFn<RowSelectionState>;
   onRowClick?: (id: NotificationId) => void;
 };
 
@@ -44,13 +56,14 @@ const getNodeId = (notification: AdminNotification) => String(notification.id);
 export const NotificationsTable = ({
   notifications,
   error,
+  isFetching,
   isLoading,
-  getSelectionState,
+  page,
+  rowSelection,
   selectedDetailId,
   sorting,
   onSortingChange,
-  onToggleRow,
-  onToggleAll,
+  onRowSelectionChange,
   onRowClick,
 }: Props) => {
   const selectedRowId =
@@ -64,13 +77,6 @@ export const NotificationsTable = ({
     [sorting, onSortingChange],
   );
 
-  const handleCheckboxClick = useCallback(
-    (row: Row<AdminNotification>) => {
-      onToggleRow(row.original.id);
-    },
-    [onToggleRow],
-  );
-
   const columns = useMemo<TreeTableColumnDef<AdminNotification>[]>(
     () => [
       {
@@ -81,7 +87,7 @@ export const NotificationsTable = ({
         accessorFn: (notification) => notification.id,
         cell: ({ row }) => (
           <Flex justify="center">
-            <Badge variant="outline" size="sm" miw={29}>
+            <Badge variant="light" color="brand" size="xs" miw={29}>
               {row.original.id}
             </Badge>
           </Flex>
@@ -116,7 +122,7 @@ export const NotificationsTable = ({
           const name = getUserLabel(creator);
           const isDeactivated = creator?.is_active === false;
           return (
-            <Flex gap="xs" align="center" miw={0}>
+            <Flex gap="xxs" align="center" miw={0}>
               <Ellipsified tooltip={name}>{name}</Ellipsified>
               {isDeactivated && (
                 <Tooltip label={t`Deactivated owner`}>
@@ -145,7 +151,7 @@ export const NotificationsTable = ({
             <Flex gap="sm" align="center" wrap="wrap">
               {summaries.map(({ channel, count }) => (
                 <Tooltip key={channel} label={getChannelLabel(channel)}>
-                  <Flex gap="xs" align="center">
+                  <Flex gap="xxs" align="center">
                     <Icon
                       name={getChannelIconName(channel)}
                       c="text-secondary"
@@ -187,12 +193,23 @@ export const NotificationsTable = ({
     [],
   );
 
+  const handleRowActivate = useCallback(
+    (row: Row<AdminNotification>) => {
+      onRowClick?.(row.original.id);
+    },
+    [onRowClick],
+  );
+
   const instance = useTreeTableInstance<AdminNotification>({
     data: notifications,
     columns,
     getNodeId,
     sorting,
     manualSorting: true,
+    enableRowSelection: true,
+    rowSelection,
+    onRowSelectionChange,
+    onRowActivate: handleRowActivate,
     onSortingChange: handleSortingChange,
     selectedRowId,
   });
@@ -202,12 +219,11 @@ export const NotificationsTable = ({
     setActiveRowId(selectedRowId);
   }, [selectedRowId, setActiveRowId]);
 
-  const handleRowClick = useCallback(
-    (row: Row<AdminNotification>) => {
-      onRowClick?.(row.original.id);
-    },
-    [onRowClick],
-  );
+  useScrollToTop({
+    ref: instance.containerRef,
+    keys: [page, sorting],
+    skip: isFetching,
+  });
 
   const getRowProps = useCallback(
     (row: Row<AdminNotification>) => ({
@@ -216,31 +232,46 @@ export const NotificationsTable = ({
     [],
   );
 
-  if (isLoading || error !== undefined) {
+  if (error !== undefined) {
     return (
-      <Card withBorder p="lg" data-testid="notifications-admin-table">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      <Card
+        flex="0 1 auto"
+        mih={0}
+        withBorder
+        p="xl"
+        data-testid="notifications-admin-table"
+      >
+        <LoadingAndErrorWrapper error={error} />
       </Card>
     );
   }
 
   return (
-    <Card withBorder p={0} data-testid="notifications-admin-table">
-      <TreeTable
-        instance={instance}
-        hierarchical={false}
-        showCheckboxes
-        getSelectionState={getSelectionState}
-        onCheckboxClick={handleCheckboxClick}
-        onHeaderCheckboxClick={onToggleAll}
-        headerCheckboxAriaLabel={t`Select all`}
-        ariaLabel={t`Notifications`}
-        onRowClick={handleRowClick}
-        getRowProps={getRowProps}
-        emptyState={
-          <Flex c="text-disabled" justify="center">{t`No results`}</Flex>
-        }
-      />
-    </Card>
+    <MonitorTableCard
+      aria-busy={isFetching}
+      data-testid="notifications-admin-table"
+    >
+      {isLoading ? (
+        <TreeTableSkeleton
+          showCheckboxes
+          columnWidths={[0.06, 0.28, 0.18, 0.16, 0.16, 0.16]}
+        />
+      ) : (
+        <>
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={instance}
+            hierarchical={false}
+            showCheckboxes
+            onHeaderCheckboxClick={() => instance.table.toggleAllRowsSelected()}
+            headerCheckboxAriaLabel={t`Select all`}
+            ariaLabel={t`Notifications`}
+            onRowClick={handleRowActivate}
+            getRowProps={getRowProps}
+            emptyState={<MonitorEmptyState label={t`No alerts`} />}
+          />
+        </>
+      )}
+    </MonitorTableCard>
   );
 };

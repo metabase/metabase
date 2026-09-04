@@ -105,6 +105,24 @@ function BundleHost({ name }: { name: string }) {
   );
 }
 
+function DataAppStandaloneMessage({ message }: { message: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+        textAlign: "center",
+        color: color("text-secondary"),
+      }}
+    >
+      {message}
+    </div>
+  );
+}
+
 /**
  * Iframe-top React app. Reads the data-app name from the URL, mounts the
  * bundle, and gets out of the way. Any sub-routes the bundle navigates to
@@ -114,11 +132,17 @@ function BundleHost({ name }: { name: string }) {
 export const DataAppIframeApp = () => {
   const name = useMemo(() => readNameFromUrl(), []);
 
+  if (window.parent === window) {
+    return (
+      <DataAppStandaloneMessage
+        message={t`This data app can’t be opened directly.`}
+      />
+    );
+  }
+
   if (!name) {
     return (
-      <div style={{ padding: 16, color: color("error") }}>
-        {t`Missing data-app name in URL`}
-      </div>
+      <DataAppStandaloneMessage message={t`Missing data-app name in URL`} />
     );
   }
 

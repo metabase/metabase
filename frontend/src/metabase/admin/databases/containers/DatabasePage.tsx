@@ -3,9 +3,8 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { getEngines } from "metabase/databases/selectors";
-import { useSelector } from "metabase/redux";
-import type { Route } from "metabase/router";
+import { useParams } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Button,
@@ -27,13 +26,9 @@ import { useDatabaseConnection } from "../hooks/use-database-connection";
 
 import { trackHelpButtonClick } from "./analytics";
 
-interface DatabasePageProps {
-  params: { databaseId: string };
-  route: Route;
-}
-
-export function DatabasePage({ params, route }: DatabasePageProps) {
-  const engines = useSelector(getEngines);
+export function DatabasePage() {
+  const params = useParams<{ databaseId: string }>();
+  const engines = useSetting("engines");
   const { database, databaseReq, handleCancel, handleOnSubmit, title, config } =
     useDatabaseConnection({ databaseId: params.databaseId, engines });
   const [showSidePanel, { open: openSidePanel, close: closeSidePanel }] =
@@ -66,13 +61,13 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
   return (
     <Flex direction="row" h="100%" bg="background_page-secondary">
       <Box h="100%" w="100%" component={ScrollArea}>
-        <Box w="100%" maw="54rem" mx="auto" p={{ base: "md", sm: "xl" }}>
+        <Box w="100%" maw="54rem" mx="auto" p={{ base: "lg", sm: "xxl" }}>
           <Flex
-            mb="lg"
+            mb="xl"
             align="center"
             justify="space-between"
             wrap="wrap"
-            columnGap="lg"
+            columnGap="xl"
           >
             <Title order={1} fz="h2">
               {title}
@@ -88,7 +83,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
                   variant="subtle"
                 >
                   {t`Help is here`}
-                  <Icon name="chevronright" size={12} ml="xs" />
+                  <Icon name="chevronright" size={12} ml="xxs" />
                 </Button>
               </Text>
             )}
@@ -99,7 +94,6 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
               isAttachedDWH={database?.is_attached_dwh ?? false}
               initializeError={databaseReq.error}
               onSubmitted={handleOnSubmit}
-              route={route}
               onCancel={handleCancel}
               config={config}
               formLocation="full-page"

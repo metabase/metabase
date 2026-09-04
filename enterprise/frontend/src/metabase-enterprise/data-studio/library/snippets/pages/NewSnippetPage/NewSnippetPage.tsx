@@ -18,9 +18,8 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useToast } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
-import type { Route } from "metabase/router";
-import { push } from "metabase/router";
+import { useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import { Card, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -32,12 +31,8 @@ import S from "./NewSnippetPage.module.css";
 
 const SNIPPET_NAME_MAX_LENGTH = 254;
 
-type NewSnippetPageProps = {
-  route: Route;
-};
-
-export function NewSnippetPage({ route }: NewSnippetPageProps) {
-  const dispatch = useDispatch();
+export function NewSnippetPage() {
+  const navigate = useNavigate();
   const [sendToast] = useToast();
   const [name, setName] = useState(t`New SQL snippet`);
   const [description, setDescription] = useState("");
@@ -74,9 +69,9 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
 
   useEffect(() => {
     if (savedSnippet) {
-      dispatch(push(Urls.dataStudioSnippet(savedSnippet.id)));
+      navigate(Urls.dataStudioSnippet(savedSnippet.id));
     }
-  }, [savedSnippet, dispatch]);
+  }, [savedSnippet, navigate]);
 
   const handleSave = async () => {
     if (!PLUGIN_SNIPPET_FOLDERS.isEnabled) {
@@ -87,7 +82,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.dataStudioLibrary()));
+    navigate(Urls.dataStudioLibrary());
   };
 
   const handleCollectionSelected = async (
@@ -157,7 +152,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
               }}
             />
           </Card>
-          <Stack p="md" flex="0 0 20rem">
+          <Stack p="lg" flex="0 0 20rem">
             <EditableText
               initialValue={description}
               placeholder={t`No description`}
@@ -167,10 +162,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
           </Stack>
         </Flex>
       </PageContainer>
-      <LeaveRouteConfirmModal
-        route={route}
-        isEnabled={!savedSnippet && !isSaving}
-      />
+      <LeaveRouteConfirmModal isEnabled={!savedSnippet && !isSaving} />
       <PLUGIN_SNIPPET_FOLDERS.CollectionPickerModal
         isOpen={isCollectionPickerOpen}
         onSelect={handleCollectionSelected}

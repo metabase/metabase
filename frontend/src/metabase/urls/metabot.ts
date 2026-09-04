@@ -1,12 +1,52 @@
 import { serializeCardForUrl } from "metabase/common/utils/card";
-import type { CardDisplayType, DatasetQuery } from "metabase-types/api";
+import type {
+  CardDisplayType,
+  DatasetQuery,
+  UnsavedCard,
+} from "metabase-types/api";
+
+import { serializedQuestion } from "./questions";
 
 export function newMetabotConversation({ prompt }: { prompt: string }) {
   return `/metabot/new?q=${encodeURIComponent(prompt)}`;
 }
 
+type GeneratedCardLink = {
+  type: "card";
+  query: { query: DatasetQuery };
+  display?: CardDisplayType;
+};
+
+type GeneratedDashboardLink = {
+  type: "dashboard";
+  url: string;
+};
+
+type GeneratedEntityLink = GeneratedCardLink | GeneratedDashboardLink;
+
+export function generatedCard(card: GeneratedCardLink) {
+  const unsavedCard: UnsavedCard = {
+    dataset_query: card.query.query,
+    display: card.display ?? "table",
+    visualization_settings: {},
+    displayIsLocked: card.display != null,
+  };
+  return serializedQuestion(unsavedCard, { includeDisplayIsLocked: true });
+}
+
+export function generatedEntity(entity: GeneratedEntityLink) {
+  switch (entity.type) {
+    case "card":
+      return generatedCard(entity);
+    case "dashboard":
+      return entity.url;
+  }
+}
+
+export const CONVERSATION_BASE_PATH = "metabot/conversation";
+
 export function metabotConversation(conversationId: string) {
-  return `/metabot/conversation/${conversationId}`;
+  return `/${CONVERSATION_BASE_PATH}/${conversationId}`;
 }
 
 export type ConversationChart = {

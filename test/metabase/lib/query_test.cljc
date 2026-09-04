@@ -222,9 +222,12 @@
                           (lib/aggregate (lib/count))
                           (lib/breakout (meta/field-metadata :people :created-at))
                           (lib/breakout (meta/field-metadata :people :birth-date)))
-      false :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+      true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
                           (lib/breakout (meta/field-metadata :people :name)))
+      true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (meta/field-metadata :people :id)))
       false  :metric  (-> (lib.tu/venues-query)
                           (lib/aggregate (lib/count))
                           (lib/append-stage)
@@ -257,9 +260,12 @@
                           (lib/aggregate (lib/count))
                           (lib/breakout (meta/field-metadata :people :created-at))
                           (lib/breakout (meta/field-metadata :people :birth-date)))
-      false :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+      true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
                           (lib/breakout (meta/field-metadata :people :id)))
+      true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (meta/field-metadata :people :name)))
       false  :metric  (-> (lib.tu/venues-query)
                           (lib/aggregate (lib/count))
                           (lib/append-stage)
@@ -636,6 +642,7 @@
            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error creating query from legacy query"
                                  (lib/query meta/metadata-provider legacy)))))
        (testing "a fatal Error thrown while converting a legacy query propagates unwrapped"
+         ;; ->mbql5 is a multimethod, which with-dynamic-fn-redefs refuses; plain with-redefs is required
          #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
          (with-redefs [lib.convert/->mbql5 (fn [& _] (throw (Error. "boom")))]
            (is (thrown? Error

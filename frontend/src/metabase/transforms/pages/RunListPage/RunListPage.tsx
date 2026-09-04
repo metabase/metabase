@@ -1,8 +1,6 @@
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
-import type { Location } from "history";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
-import { t } from "ttag";
 
 import {
   useListTransformRunsQuery,
@@ -10,13 +8,11 @@ import {
   useListTransformsQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import { useSetting } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
-import { replace } from "metabase/router";
+import { useLocation, useNavigate } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
+import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { isActiveRunStatus } from "metabase/transforms/utils";
 import { Center, Flex, Group, Stack } from "metabase/ui";
@@ -42,11 +38,8 @@ import {
 
 const EMPTY_RUNS: TransformRun[] = [];
 
-type RunListPageProps = {
-  location: Location;
-};
-
-export function RunListPage({ location }: RunListPageProps) {
+export function RunListPage() {
+  const location = useLocation();
   const params = getParsedParams(location);
   const { page = 0 } = params;
   const { ref: containerRef, width: containerWidth } = useElementSize();
@@ -56,7 +49,7 @@ export function RunListPage({ location }: RunListPageProps) {
     TransformRunId | undefined
   >();
   const [isPolling, setIsPolling] = useState(false);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const {
     data,
@@ -117,9 +110,9 @@ export function RunListPage({ location }: RunListPageProps) {
 
   const handleParamsChange = useCallback(
     (newParams: Urls.TransformRunListParams) => {
-      dispatch(replace(Urls.transformRunList(newParams)));
+      navigate(Urls.transformRunList(newParams), { replace: true });
     },
-    [dispatch],
+    [navigate],
   );
 
   const handleFilterOptionsChange = useCallback(
@@ -162,18 +155,14 @@ export function RunListPage({ location }: RunListPageProps) {
       wrap="nowrap"
       data-testid="transforms-run-list"
     >
-      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
-        <PaneHeader
-          breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
-          py={0}
-          showMetabotButton
-        />
+      <Stack className={S.main} flex={1} px="3.5rem" pb="lg" gap={0}>
+        <TransformsHeader showMetabotButton />
         {!data || isLoading || error != null ? (
           <Center h="100%">
             <LoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <Stack flex="0 1 auto" mih={0} gap="lg" pt="2.5rem">
+          <Stack flex="0 1 auto" mih={0} gap="xl" pt="2.5rem">
             {isMeterLocked && <LockedTransformsBanner />}
             <Group justify="space-between" align="center" wrap="nowrap">
               <RunFilterBar

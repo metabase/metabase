@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
-import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import { MetabotLongChatNotice } from "metabase/metabot/components/MetabotChat/MetabotLongChatNotice";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
 import type { MetabotChatMessage } from "metabase/metabot/state";
@@ -10,7 +10,12 @@ import { Stack } from "metabase/ui";
 import S from "./MetabotQuestion.module.css";
 
 const isQuestionNavigationMessage = (message: MetabotChatMessage) =>
-  message.type === "data_part" && message.part.type === "data-navigate_to";
+  message.type === "data_part" &&
+  message.part.type === "data-generated_entity" &&
+  message.part.data.type === "card";
+
+const isHiddenInEmbedding = (message: MetabotChatMessage) =>
+  message.type === "chain_of_thought";
 
 const AGENT_ID = "omnibot";
 
@@ -21,7 +26,12 @@ export function MetabotChatHistory() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const chatMessages = useMemo(
-    () => messages.filter((message) => !isQuestionNavigationMessage(message)),
+    () =>
+      messages.filter(
+        (message) =>
+          !isQuestionNavigationMessage(message) &&
+          !isHiddenInEmbedding(message),
+      ),
     [messages],
   );
 
@@ -41,22 +51,25 @@ export function MetabotChatHistory() {
       flex={1}
       gap={0}
       style={{ overflowY: "auto" }}
-      p="md"
+      p="lg"
       className={S.chatHistory}
     >
       {hasMessages ? (
         <Messages
           messages={chatMessages}
           onRetryMessage={metabot.retryMessage}
+          onContinueMessage={metabot.submitInput}
           isDoingScience={metabot.isDoingScience}
           debug={metabot.debugMode}
           conversationId={metabot.conversationId}
           onInternalLinkClick={setNavigateToPath}
         />
       ) : null}
-      {metabot.isLongConversation && (
-        <MetabotResetLongChatButton
-          onResetConversation={metabot.createNewConversation}
+      {metabot.longChatNotice && !metabot.isDoingScience && (
+        <MetabotLongChatNotice
+          variant={metabot.longChatNotice}
+          className={hasMessages ? S.longChatNotice : undefined}
+          onNewChat={metabot.createNewConversation}
         />
       )}
     </Stack>

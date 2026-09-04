@@ -1,13 +1,13 @@
-import type { Query } from "history";
 import { VisualState, useKBar, useMatches } from "kbar";
 import { useEffect, useMemo } from "react";
 import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
+import { Link } from "metabase/common/components/Link";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import { trackSearchClick } from "metabase/common/search/analytics";
-import { Link } from "metabase/router";
+import { queryToSearch } from "metabase/router";
 import {
   Flex,
   Group,
@@ -19,6 +19,7 @@ import {
   Text,
   rem,
 } from "metabase/ui";
+import type { SearchQuery } from "metabase/utils/browser";
 import type { SearchResponse } from "metabase-types/api";
 
 import type { PaletteActionImpl } from "../types";
@@ -36,7 +37,7 @@ const FullSearchCTA = ({
   debouncedSearchTerm,
   onClick,
 }: {
-  locationQuery: Query;
+  locationQuery: SearchQuery;
   searchResults: SearchResponse;
   debouncedSearchTerm: string;
   onClick: () => void;
@@ -57,10 +58,10 @@ const FullSearchCTA = ({
       id="search-results-metadata"
       to={{
         pathname: "search",
-        query: {
+        search: queryToSearch({
           ...locationQuery,
           q: debouncedSearchTerm,
-        },
+        }),
       }}
       className={S.viewAndFilterResults}
       onClick={onClick}
@@ -78,7 +79,7 @@ const FullSearchCTA = ({
 };
 
 type Props = Omit<StackProps, "children"> & {
-  locationQuery: Query;
+  locationQuery: SearchQuery;
   searchRequestId?: string;
   searchResults?: SearchResponse;
   liveSearchTerm: string;
@@ -160,10 +161,10 @@ export const PaletteResults = ({
                 <Group
                   fz="14px"
                   justify="space-between"
-                  px="lg"
-                  pt="md"
+                  px="xl"
+                  pt="lg"
                   pb="sm"
-                  mt={isFirst ? undefined : "md"}
+                  mt={isFirst ? undefined : "lg"}
                   w="100%"
                 >
                   {item}
@@ -205,10 +206,10 @@ function PaletteEmptyState() {
   return (
     <Stack align="center" justify="center" py="6rem" px="2rem" gap={0}>
       <Image src={NoResults} alt="no results" w={115} h={65} />
-      <Text c="text-secondary" fw={700} mt="xl">
+      <Text c="text-secondary" fw={700} mt="xxl">
         {t`No recent items`}
       </Text>
-      <Text c="text-disabled" size="sm" mt="xs" ta="center">
+      <Text c="text-disabled" size="sm" mt="xxs" ta="center">
         {t`Items you've recently viewed will appear here.`}
       </Text>
     </Stack>

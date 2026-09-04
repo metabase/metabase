@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/settings";
 import { Stack, Text, TextInput } from "metabase/ui";
 import type { GenericErrorResponse } from "metabase/utils/errors";
 
@@ -42,7 +42,7 @@ export function LandingPageUrlField() {
   };
 
   return (
-    <Stack gap="xs">
+    <Stack gap="xxs">
       <TextInput
         id="landing-page"
         data-testid="landing-page"

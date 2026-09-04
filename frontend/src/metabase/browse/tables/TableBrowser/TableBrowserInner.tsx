@@ -6,10 +6,10 @@ import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
+import { getShallowDatabases as getDatabases } from "metabase/metadata-store";
 import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getShallowDatabases as getDatabases } from "metabase/selectors/metadata";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Flex, Group, Icon, Loader, Paper } from "metabase/ui";
 import { isSyncInProgress } from "metabase/utils/syncing";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -63,7 +63,7 @@ export const TableBrowserInner = ({
 
   return (
     <>
-      <Flex align="center" pt="md" pr="sm" pb="sm">
+      <Flex align="center" pt="lg" pr="sm" pb="sm">
         <BrowserCrumbs
           crumbs={[
             { title: t`Databases`, to: "/browse/databases" },
@@ -72,7 +72,7 @@ export const TableBrowserInner = ({
           ]}
         />
       </Flex>
-      <BrowseGrid pt="lg">
+      <BrowseGrid pt="xl">
         {tables.map((table) => (
           <TableBrowserItem
             key={table.id}

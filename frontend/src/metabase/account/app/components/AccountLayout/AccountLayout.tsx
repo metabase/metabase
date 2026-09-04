@@ -1,5 +1,3 @@
-import type { Path } from "history";
-
 import { Outlet } from "metabase/router";
 import { Box, rem } from "metabase/ui";
 import type { User } from "metabase-types/api";
@@ -9,7 +7,7 @@ import { AccountHeader } from "../AccountHeader";
 interface AccountLayoutProps {
   user: User | null;
   path?: string;
-  onChangeLocation: (nextLocation: Path) => void;
+  onChangeLocation: (nextLocation: string) => void;
 }
 
 const AccountLayout = ({
@@ -30,8 +28,8 @@ const AccountLayout = ({
       />
       <Box
         mx="auto"
-        px={{ base: "sm", sm: "md" }}
-        py={{ base: "sm", sm: "xl" }}
+        px={{ base: "sm", sm: "lg" }}
+        py={{ base: "sm", sm: "xxl" }}
         w={{ base: "100%", sm: rem(540) }}
       >
         <Outlet />

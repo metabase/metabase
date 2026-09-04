@@ -2,7 +2,9 @@ import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { DeleteObjectModal } from "metabase/actions/components/DeleteObjectModal";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import { getActionItems } from "metabase/actions/utils";
 import {
   actionApi,
   skipToken,
@@ -12,6 +14,7 @@ import {
 } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { NotFound } from "metabase/common/components/ErrorPages";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   DetailsGroup,
@@ -24,7 +27,6 @@ import {
   getRowName,
 } from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/redux";
-import { Link } from "metabase/router";
 import {
   Box,
   Button,
@@ -37,7 +39,6 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
-import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -51,7 +52,7 @@ import type {
 } from "metabase-types/api";
 
 import { Sidesheet } from "./Sidesheet";
-import { extractData, getActionItems, getModelId } from "./utils";
+import { extractData, getModelId } from "./utils";
 
 interface Props {
   columnSettings: TableColumnOrderSetting[] | undefined;
@@ -356,7 +357,7 @@ export function DetailViewSidesheet({
       >
         <Stack gap={0} mih="100%">
           {headerColumns.length > 0 && (
-            <Box pb="md" pt="xs" px={rem(56)}>
+            <Box pb="lg" pt="xxs" px={rem(56)}>
               <Box
                 // intentionally misalign the header to create an "optical alignment effect" (due to rounded avatar)
                 ml={rem(-8)}
@@ -366,7 +367,7 @@ export function DetailViewSidesheet({
             </Box>
           )}
 
-          <Group pb={rem(48)} pt="xl" px={rem(56)}>
+          <Group pb={rem(48)} pt="xxl" px={rem(56)}>
             <Stack gap={rem(64)} h="100%" maw={rem(900)} w="100%">
               {columns.length > 0 && (
                 <DetailsGroup

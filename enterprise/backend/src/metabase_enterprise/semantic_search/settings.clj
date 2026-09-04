@@ -1,5 +1,6 @@
 (ns metabase-enterprise.semantic-search.settings
   (:require
+   [clojure.string :as str]
    [metabase.events.core :as events]
    [metabase.llm.settings :as llm-settings]
    [metabase.search.config :as search.config]
@@ -8,26 +9,23 @@
 
 ;; Topic for the just-in-time HNSW build, handled in metabase-enterprise.semantic-search.events. Declared
 ;; here, not there, so it's valid wherever the setter runs regardless of handler-namespace load order.
-(derive :event/semantic-search-hnsw-enabled :metabase/event)
-
-(def ^:private valid-embedding-providers
-  "The set of valid embedding provider names."
-  #{"ai-service" "openai" "ollama"})
+(events/derive! :event/semantic-search-hnsw-enabled :metabase/event)
 
 (defsetting ee-embedding-provider
-  (deferred-tru "The embedding provider to use (`openai`, `ollama`, or `ai-service`)")
-  :encryption :no
+  (deferred-tru "The registered embedding provider to use")
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default "ai-service"
   :type :string
   :export? false
   :doc false
   :setter (fn [new-value]
-            (when (and new-value (not (contains? valid-embedding-providers new-value)))
-              (throw (ex-info (str "Invalid embedding provider: " (pr-str new-value)
-                                   ". Valid providers are: " (pr-str valid-embedding-providers))
-                              {:invalid-value new-value
-                               :valid-values  valid-embedding-providers})))
+            ;; Provider plugins may be configured before they are loaded. Readiness reports an unregistered
+            ;; provider as unavailable, so validation here only needs to protect the registry key contract.
+            (when-not (or (nil? new-value)
+                          (and (string? new-value) (not (str/blank? new-value))))
+              (throw (ex-info "Embedding provider must be a non-blank string."
+                              {:invalid-value new-value})))
             (setting/set-value-of-type! :string :ee-embedding-provider new-value)))
 
 (defsetting ee-embedding-model
@@ -41,8 +39,9 @@
 (defsetting ee-embedding-query-prefix
   (deferred-tru
    (str "Prefix prepended to search queries (but not indexed documents) before embedding them, as expected by "
-        "asymmetric retrieval models such as the snowflake-arctic-embed family (`query: `). It is prepended "
-        "verbatim, so include any trailing separator. Leave empty to use the default for the model family."))
+        "asymmetric retrieval models such as the snowflake-arctic-embed family. It is prepended verbatim, so "
+        "include any trailing separator. Leave empty to use the default for the model, which varies by "
+        "generation: Arctic Embed v2.0 expects `query: `, earlier versions expect a longer instruction."))
   :encryption :no
   :visibility :settings-manager
   :default    nil
@@ -71,7 +70,7 @@
 
 (defsetting ee-embedding-service-base-url
   (deferred-tru "URL of the OpenAI-compatible embedding service (e.g. a LiteLLM proxy).")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default    nil
   :export?    false
@@ -83,6 +82,17 @@
   :sensitive? true
   :visibility :settings-manager
   :export?    false
+  :doc        false)
+
+(defsetting semantic-search-embedder-circuit-breaker-enabled
+  (deferred-tru
+   (str "Wrap embedding-service calls in a circuit breaker that fails fast after repeated failures. "
+        "Runtime kill switch; the breaker thresholds are fixed."))
+  :type       :boolean
+  :default    true
+  :encryption :no
+  :export?    false
+  :visibility :internal
   :doc        false)
 
 (defsetting openai-max-tokens-per-batch

@@ -79,15 +79,6 @@
           (is (= schema-name
                  (t2/select-one-fn :schema :model/Table :id table-id))))))))
 
-(deftest identity-hash-test
-  (testing "Table hashes are composed of the schema name, table name and the database's identity-hash"
-    (mt/with-temp [:model/Database db    {:name "field-db" :engine :h2}
-                   :model/Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-      (let [db-hash (serdes/identity-hash db)]
-        (is (= "0395fe49"
-               (serdes/raw-hash ["PUBLIC" "widget" db-hash])
-               (serdes/identity-hash table)))))))
-
 (deftest set-new-table-permissions!-test
   (testing "New permissions are set appropriately for a new table, for all groups"
     (mt/with-full-data-perms-for-all-users!
@@ -169,7 +160,16 @@
            (mt/id :venues :name)  (mt/malli=? [:sequential {:min 1} :any])}
           (-> (t2/select-one :model/Table (mt/id :venues))
               (t2/hydrate :field_values)
-              :field_values))))
+              :field_values)))
+  (testing "batched hydration of several tables"
+    (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name)))
+    (is (=? {(mt/id :venues)     {(mt/id :venues :price)    (mt/malli=? [:sequential {:min 1} :any])
+                                  (mt/id :venues :name)     (mt/malli=? [:sequential {:min 1} :any])}
+             (mt/id :categories) {(mt/id :categories :name) (mt/malli=? [:sequential {:min 1} :any])}}
+            (->> (t2/select :model/Table :id [:in [(mt/id :venues) (mt/id :categories)]])
+                 (#(t2/hydrate % :field_values))
+                 (map (juxt :id :field_values))
+                 (into {}))))))
 
 (deftest pk-field-hydration-test
   (is (= (mt/id :venues :id)

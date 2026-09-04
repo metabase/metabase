@@ -2,12 +2,12 @@ import userEvent from "@testing-library/user-event";
 
 import {
   findRequests,
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
-  setupUpdateSettingEndpoint,
+  setupStatefulSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -33,8 +33,7 @@ const setup = ({
     [SETTING_NAME]: value,
   });
 
-  setupPropertiesEndpoints(settings);
-  setupUpdateSettingEndpoint();
+  setupStatefulSettingsEndpoints(settings);
   setupSettingsEndpoints([
     createMockSettingDefinition({
       key: SETTING_NAME,
@@ -50,6 +49,11 @@ const setup = ({
       <AnonymousTrackingInput />
       <UndoListing />
     </div>,
+    {
+      storeInitialState: {
+        settings: createMockSettingsState({ [SETTING_NAME]: value }),
+      },
+    },
   );
 };
 
@@ -67,6 +71,7 @@ describe("AnonymousTrackingInput", () => {
 
   it("should toggle the anonymous tracking setting off", async () => {
     setup({ value: true });
+    expect(screen.getByRole("switch")).toBeChecked();
     await userEvent.click(screen.getByRole("switch"));
     expect(trackingFN).toHaveBeenCalledWith(false);
 
@@ -79,6 +84,7 @@ describe("AnonymousTrackingInput", () => {
 
   it("should toggle the anonymous tracking setting on", async () => {
     setup({ value: false });
+    expect(screen.getByRole("switch")).not.toBeChecked();
     await userEvent.click(screen.getByRole("switch"));
 
     const [{ url, body }] = await findRequests("PUT");

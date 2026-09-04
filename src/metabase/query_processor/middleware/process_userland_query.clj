@@ -15,7 +15,9 @@
    [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
    [metabase.lib.computed :as lib.computed]
+   [metabase.lib.core :as lib]
    [metabase.queries.models.query :as query]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
@@ -24,9 +26,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? empty? get-in not-empty]]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [metabase.util.performance :refer [every? empty? get-in not-empty]]))
 
 (set! *warn-on-reflection* true)
 
@@ -57,15 +57,15 @@
       (try
         (query/save-queries-and-update-average-execution-times! entries)
         (catch Throwable e
-          (log/error e "Error updating query average execution times"))))
+          (log/errorf "Error updating query average execution times: %s" (ex-message e)))))
     (try
       (let [{with-context true, no-context false} (group-by (comp some? :context) query-executions)]
         (when (seq no-context)
           (log/warnf "Cannot save %d QueryExecution(s), missing :context" (count no-context)))
         (when (seq with-context)
-          (t2/insert! :model/QueryExecution (map #(dissoc % :json_query) with-context))))
+          (query-processor.db/insert-query-executions! (map #(dissoc % :json_query) with-context))))
       (catch Throwable e
-        (log/error e "Error saving query execution info")))))
+        (log/errorf "Error saving query execution info: %s" (ex-message e))))))
 
 (defonce ^:private save-execution-metadata-queue
   (delay (grouper/start!
@@ -88,6 +88,12 @@
       (grouper/submit! @save-execution-metadata-queue execution-info')
       (save-execution-metadata!* [execution-info']))))
 
+(defn flush-execution-metadata!
+  "Block until every `QueryExecution` submitted by [[save-execution-metadata!]] so far has been written. Needed by
+  anything that reads the `query_execution` table back and cannot tolerate the batching lag."
+  []
+  (grouper/flush! @save-execution-metadata-queue))
+
 (defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows]
   (let [qe-map (assoc query-execution
                       :cache_hit       (boolean (:cached cache-details))
@@ -100,7 +106,7 @@
   (try
     (save-execution-metadata! (assoc query-execution :error (str message)))
     (catch Throwable e
-      (log/errorf e "Unexpected error saving failed query execution: %s" (ex-message e)))))
+      (log/errorf "Unexpected error saving failed query execution: %s" (ex-message e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
@@ -156,34 +162,37 @@
     parameters                     :parameters
     :as                            query} :- ::qp.schema/any-query]
   {:pre [(bytes? query-hash)]}
-  (let [json-query (if original-query
-                     (-> original-query
-                         (dissoc :info)
-                         (assoc :was-pivot true))
-                     (cond-> (dissoc query :info)
-                       (empty? (:parameters query)) (dissoc :parameters)))]
-    {:database_id       database-id
-     :executor_id       executed-by
-     :action_id         action-id
-     :card_id           card-id
-     :dashboard_id      dashboard-id
-     :transform_id      transform-id
-     :lens_id           lens-id
-     :lens_params       lens-params
-     :pulse_id          pulse-id
-     :context           context
-     :hash              query-hash
-     :parameterized     (and (boolean (seq parameters))
-                             (every? #(some? (:value %)) parameters))
-     :native            (= (keyword query-type) :native)
-     :json_query        json-query
-     :tenant_id         (:tenant_id @api/*current-user*)
-     :parameters        (when (and (seq parameters) (analytics.settings/analytics-pii-retention-enabled))
-                          (json/encode parameters))
-     :started_at        (t/zoned-date-time)
-     :running_time      0
-     :result_rows       0
-     :start_time_millis (System/currentTimeMillis)}))
+  (letfn [(->json-query [q]
+            (cond-> (dissoc q :info)
+              (= (lib/normalized-query-type q) :mbql/query) lib/prepare-for-serialization
+              (seq (:parameters q))                         (assoc :parameters (:parameters q))
+              (empty? (:parameters q))                      (dissoc :parameters)))]
+    (let [json-query (if original-query
+                       (assoc (->json-query original-query) :was-pivot true)
+                       (->json-query query))]
+      {:database_id       database-id
+       :executor_id       executed-by
+       :action_id         action-id
+       :card_id           card-id
+       :dashboard_id      dashboard-id
+       :transform_id      transform-id
+       :lens_id           lens-id
+       :lens_params       lens-params
+       :pulse_id          pulse-id
+       :context           context
+       :hash              query-hash
+       :parameterized     (and (boolean (seq parameters))
+                               (every? #(some? (:value %)) parameters))
+       :native            (or (= (keyword query-type) :native)
+                              (lib/native-only-query? query))
+       :json_query        json-query
+       :tenant_id         (:tenant_id @api/*current-user*)
+       :parameters        (when (and (seq parameters) (analytics.settings/analytics-pii-retention-enabled))
+                            (json/encode parameters))
+       :started_at        (t/zoned-date-time)
+       :running_time      0
+       :result_rows       0
+       :start_time_millis (System/currentTimeMillis)})))
 
 (defn- snapshot-execution-context
   "Reads the postprocessing-middleware dynamic vars (`*impersonation-role*`, `*destination-database-id*`) and
@@ -240,7 +249,7 @@
 
   3. Add extra info like `running_time` and `started_at` to the results
 
-  4. Submit a background job to analyze field usages"
+  4. Submit a background job to save execution info"
   [qp :- ::qp.schema/qp]
   (mu/fn [query :- ::qp.schema/any-query
           rff   :- ::qp.schema/rff]
@@ -257,8 +266,7 @@
         (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
               execution-info (query-execution-info query)]
           (letfn [(rff* [metadata]
-                    (let [;; we only need the preprocessed query to find field usages, so make sure we don't return it
-                          result         (rff (dissoc metadata :preprocessed_query))
+                    (let [result         (rff metadata)
                           execution-info (enrich-with-execution-context execution-info)]
                       (add-and-save-execution-metadata-xform! execution-info result)))]
             (try

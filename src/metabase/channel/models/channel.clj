@@ -4,7 +4,9 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.template.handlebars :as handlebars]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -35,14 +37,15 @@
 
 (t2/deftransforms :model/Channel
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))
-   :details mi/transform-encrypted-json})
+   :details (mi/transform-encrypted-json "channel.details")})
 
 (mr/def ::Channel
   "Channel schema."
   [:map
    [:name                         string?]
    [:type                         :keyword]
-   [:details                      :map]
+   ;; per-channel-type connection config (a Slack token, an HTTP url and auth, ...) -- free-form like database details
+   [:details                      ms/Map]
    [:active      {:optional true} :boolean]
    [:description {:optional true} [:maybe string?]]])
 
@@ -56,11 +59,20 @@
   (or (mi/superuser?)
       (perms/current-user-has-application-permissions? :setting)))
 
+(methodical/defmethod mi/to-json :model/Channel
+  "Only include `:details` for callers who can write the channel, matching `remove-details-if-needed` in the channel
+  API. Encoding at the model boundary keeps every response that returns a Channel consistent."
+  [channel json-generator]
+  (next-method (if (mi/can-write? channel)
+                 channel
+                 (dissoc channel :details))
+               json-generator))
+
 (t2/define-before-update :model/Channel
   [instance]
   (let [deactivation? (false? (:active (t2/changes instance)))]
     (when deactivation?
-      (t2/delete! :model/PulseChannel :channel_id (:id instance)))
+      (channel.db/delete-pulse-channels-for-channel! (:id instance)))
     (cond-> instance
       deactivation?
       ;; Channel.name has an unique constraint and it's a useful property for serialization
@@ -70,11 +82,9 @@
 
 (defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
 
-(defmethod serdes/hash-fields :model/Channel [_instance] [:name :type])
-
 (defmethod serdes/load-find-local "Channel"
   [path]
-  (t2/select-one :model/Channel :name (:id (last path))))
+  (channel.db/channel-by-name (:id (last path))))
 
 (defmethod serdes/generate-path "Channel" [_ channel]
   [(serdes/infer-self-path "Channel" channel)])
@@ -106,7 +116,8 @@
     [:type                            (apply ms/enum-keywords-and-strings channel-template-details-type)]
     [:subject                         string?]
     [:recipient-type {:optional true} (ms/enum-keywords-and-strings :cc :bcc)]]
-   [:multi {:dispatch (comp keyword :type)}
+   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+            :dispatch         (comp keyword :type)}
     [:email/handlebars-resource
      [:map
       [:path [:and
@@ -117,16 +128,20 @@
      [:map
       [:body string?]]]]])
 
+(def ^:private channel-template-entries
+  "Entries every channel template has, whatever its `:channel_type`."
+  [[:id           {:optional true} ms/PositiveInt]
+   [:name         {:optional true} ms/NonBlankString]
+   [:channel_type                  [:fn #(= "channel" (-> % keyword namespace))]]])
+
 (mr/def ::ChannelTemplate
   "Channel Template schema."
   [:merge
-   [:map
-    [:channel_type [:fn #(= "channel" (-> % keyword namespace))]]]
-   [:multi {:dispatch :channel_type}
-    [:channel/email
-     [:map
-      [:details ::ChannelTemplateEmailDetails]]]
-    [::mc/default [:map]]]])
+   (into [:map] channel-template-entries)
+   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+            :dispatch         (comp keyword :channel_type)}
+    [:channel/email [:map [:details ::ChannelTemplateEmailDetails]]]
+    [::mc/default   [:map]]]])
 
 (mr/def ::ChannelTemplateEmailDetailsUserProvided
   "Email template details schema for API-provided templates. Only handlebars-text is allowed;
@@ -140,33 +155,22 @@
 (mr/def ::ChannelTemplateUserProvided
   "Channel Template schema for API-provided templates. Does not allow handlebars-resource."
   [:merge
-   [:map
-    [:channel_type [:fn #(= "channel" (-> % keyword namespace))]]]
-   [:multi {:dispatch :channel_type}
-    [:channel/email
-     [:map
-      [:details ::ChannelTemplateEmailDetailsUserProvided]]]
-    [::mc/default [:map]]]])
+   (into [:map] channel-template-entries)
+   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+            :dispatch         (comp keyword :channel_type)}
+    [:channel/email [:map [:details ::ChannelTemplateEmailDetailsUserProvided]]]
+    [::mc/default   [:map]]]])
 
 (defn- check-valid-channel-template
   [channel-template]
   (mu/validate-throw ::ChannelTemplate channel-template))
 
-(defn- user-provided-template?
-  "Returns true if the template details represent a user-provided inline template (handlebars-text)
-  as opposed to a built-in resource template."
-  [details]
-  (= :email/handlebars-text (keyword (:type details))))
-
 (defn- log-template-change!
   "Log template creation or update with relevant details for observability."
   [action {:keys [channel_type details] :as _instance}]
   (let [template-type (keyword (:type details))]
-    (if (user-provided-template? details)
-      (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s user_id=%s body=%s"
-                 (name action) channel_type template-type api/*current-user-id* (pr-str (:body details)))
-      (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s user_id=%s"
-                 (name action) channel_type template-type api/*current-user-id*))
+    (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s user_id=%s"
+               (name action) channel_type template-type api/*current-user-id*)
     (analytics/inc! (case action
                       :create :metabase-notification/template-create
                       :update :metabase-notification/template-update)

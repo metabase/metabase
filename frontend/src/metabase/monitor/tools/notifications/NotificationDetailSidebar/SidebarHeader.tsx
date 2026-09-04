@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   ActionIcon,
   Flex,
@@ -39,9 +39,12 @@ export const SidebarHeader = ({
 }: SidebarHeaderProps) => {
   const cardName = notification?.payload?.card?.name ?? t`Untitled question`;
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const isEditDisabled =
+    notification == null || isQuestionLoading || isBulkLoading;
 
   const handleCopyLink = async () => {
-    const url = `${window.location.origin}${Urls.adminToolsNotificationDetail(notificationId)}`;
+    const url = `${window.location.origin}${Urls.monitorNotificationDetail(notificationId)}`;
     await navigator.clipboard.writeText(url);
     trackAlertsManagementLinkCopied(notificationId);
     dispatch(addUndo({ message: t`Link copied to clipboard` }));
@@ -50,12 +53,12 @@ export const SidebarHeader = ({
   const handleNavigate = (id: NotificationId | undefined) => {
     if (id !== undefined) {
       trackAlertsManagementAlertOpened(id, "sidebar_navigation");
-      dispatch(push(Urls.adminToolsNotificationDetail(id)));
+      navigate(Urls.monitorNotificationDetail(id));
     }
   };
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Flex justify="space-between" align="center">
         <Group gap="sm">
           <ActionIcon
@@ -113,8 +116,8 @@ export const SidebarHeader = ({
             aria-label={t`Edit`}
             size="lg"
             c="icon-primary"
-            disabled={isQuestionLoading || isBulkLoading}
-            onClick={!isQuestionLoading ? onEdit : undefined}
+            disabled={isEditDisabled}
+            onClick={!isEditDisabled ? onEdit : undefined}
           >
             {isQuestionLoading ? <Loader size="sm" /> : <Icon name="pencil" />}
           </ActionIcon>

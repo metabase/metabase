@@ -1,5 +1,3 @@
-import type { Location } from "history";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { BreakoutLegend } from "metabase/metrics-viewer/components/BreakoutLegend/BreakoutLegend";
 import { DimensionPickerSidebar } from "metabase/metrics-viewer/components/DimensionPickerSidebar";
@@ -18,12 +16,8 @@ import { Box, Center, Flex, Stack } from "metabase/ui";
 
 import S from "./MetricsViewerPage.module.css";
 
-export type MetricsViewerPageProps = {
-  location: Location;
-};
-
-export function MetricsViewerPage(props: MetricsViewerPageProps) {
-  const viewerState = useViewerState(props);
+export function MetricsViewerPage() {
+  const viewerState = useViewerState();
 
   if (!viewerState.initialLoadComplete) {
     // parsing formulas won't work until the initial set of definitions are loaded
@@ -55,16 +49,16 @@ function MetricsViewerPageBody() {
 
   return (
     <Stack px="3rem" h="100%" gap={0} className={S.root}>
-      <Box pt="md" flex="0 0 auto">
+      <Box pt="lg" flex="0 0 auto">
         <MetricSearchPanel />
       </Box>
       <Flex flex="1 1 auto" mih={0}>
         <Stack gap={0} flex={1} mih={0} miw={0}>
-          <Flex flex="1 1 auto" mih={0} pt="lg">
+          <Flex flex="1 1 auto" mih={0} pt="xl">
             <Flex
               direction="column"
-              pt="md"
-              pb="lg"
+              pt="lg"
+              pb="xl"
               flex={1}
               miw={0}
               className={S.content}

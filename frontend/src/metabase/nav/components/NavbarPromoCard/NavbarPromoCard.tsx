@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import { Anchor, Flex, Icon, Paper, Stack, Text } from "metabase/ui";
 
 import S from "./NavbarPromoCard.module.css";
@@ -30,7 +30,7 @@ export function NavbarPromoCard({
   external,
 }: Props) {
   return (
-    <Paper p="md" shadow="md" withBorder>
+    <Paper p="lg" shadow="sm" withBorder>
       <Stack gap="sm">
         <Flex justify="space-between" align="flex-start">
           <span className={S.IconWrapper}>{icon}</span>

@@ -7,8 +7,11 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.resources :as resources-tools]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
-   [metabase.test :as mt]))
+   [metabase.models.interface :as mi]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel format-current-time-test
   (testing "formats time from context with timezone"
@@ -211,7 +214,7 @@
 
 (deftest ^:parallel format-viewing-context-test-2h
   (testing "handles multiple viewing items"
-    (let [context {:user_is_viewing [{:type "table" :id 1 :name "users"}
+    (let [context {:user_is_viewing [{:type "table" :id 321 :name "users"}
                                      {:type "question" :id 2 :name "Top Users"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
@@ -312,7 +315,8 @@
 
 (deftest ^:parallel format-entity-includes-measures-and-segments-test
   (testing "table viewing context includes measures and segments when present"
-    (mt/with-dynamic-fn-redefs [entity-details/get-table-details
+    (mt/with-dynamic-fn-redefs [resources-tools/check-table-resource-database (constantly nil)
+                                entity-details/get-table-details
                                 (fn [{:keys [table-id with-measures? with-segments?]}]
                                   ;; Verify that with-measures? and with-segments? are requested
                                   (is (true? with-measures?) "should request measures")
@@ -341,7 +345,8 @@
 
 (deftest ^:parallel format-entity-includes-measures-and-segments-test-2
   (testing "model viewing context includes measures and segments when present"
-    (mt/with-dynamic-fn-redefs [entity-details/get-table-details
+    (mt/with-dynamic-fn-redefs [resources-tools/check-card-resource-database (constantly nil)
+                                entity-details/get-table-details
                                 (fn [{:keys [model-id with-measures? with-segments?]}]
                                   (is (true? with-measures?) "should request measures for model")
                                   (is (true? with-segments?) "should request segments for model")
@@ -367,7 +372,8 @@
 
 (deftest ^:parallel format-entity-includes-measures-and-segments-test-3
   (testing "table viewing context omits measures/segments sections when none exist"
-    (mt/with-dynamic-fn-redefs [entity-details/get-table-details
+    (mt/with-dynamic-fn-redefs [resources-tools/check-table-resource-database (constantly nil)
+                                entity-details/get-table-details
                                 (fn [{:keys [entity-id]}]
                                   {:structured-output
                                    {:id entity-id
@@ -424,6 +430,53 @@
         (is (re-find #"(?i)orders" result))
         (is (re-find #"(?i)field" result))))))
 
+(deftest format-entity-rejects-destination-database-table-test
+  (testing "a table on a destination (routed) database in the viewing context is not surfaced with its
+            real details -- a destination database is a routing internal, not a resource users should
+            reach directly (see check-resource-database)"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {router-id :id}      {}
+                     :model/Database {destination-id :id} {:router_database_id router-id}]
+        ;; A table can't exist on a destination in production (destinations aren't synced), so a normal
+        ;; `with-temp :model/Table` trips a different guard. Insert it directly, like
+        ;; `read-destination-backed-entities-return-errors-test` does for the read_resource tool.
+        (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                {:db_id      destination-id
+                                                 :name       "destination-table"
+                                                 :active     true
+                                                 :created_at :%now
+                                                 :updated_at :%now})]
+          (with-redefs [mi/can-read? (constantly true)]
+            (let [result (user-context/format-viewing-context
+                          {:user_is_viewing [{:type "table" :id table-id}]})]
+              (is (not (str/includes? result "destination-table"))))))))))
+
+(deftest format-entity-rejects-destination-database-card-test
+  (testing "a model/question/metric on a destination (routed) database in the viewing context is not
+            surfaced with its real details"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {router-id :id}      {}
+                     :model/Database {destination-id :id} {:router_database_id router-id}
+                     :model/Card     {model-id :id}       {:name "Destination Model" :type :model
+                                                           :database_id destination-id}
+                     :model/Card     {question-id :id}    {:name "Destination Question" :type :question
+                                                           :database_id destination-id}
+                     :model/Card     {metric-id :id}      {:name "Destination Metric" :type :metric
+                                                           :database_id destination-id}]
+        (with-redefs [mi/can-read? (constantly true)]
+          (testing "model"
+            (let [result (user-context/format-viewing-context
+                          {:user_is_viewing [{:type "model" :id model-id}]})]
+              (is (not (str/includes? result "Destination Model")))))
+          (testing "question"
+            (let [result (user-context/format-viewing-context
+                          {:user_is_viewing [{:type "question" :id question-id}]})]
+              (is (not (str/includes? result "Destination Question")))))
+          (testing "metric"
+            (let [result (user-context/format-viewing-context
+                          {:user_is_viewing [{:type "metric" :id metric-id}]})]
+              (is (not (str/includes? result "Destination Metric"))))))))))
+
 (deftest ^:parallel format-user-context-with-legacy-query-test
   (let [lq {:database 1111
             :type :native
@@ -443,7 +496,7 @@
         "Formatting result should contain database id")))
 
 (deftest ^:parallel format-transform-source-mbql-renders-repr-json-test
-  (testing "transform sources with a structured MBQL `:query` are rendered as a portable repr JSON code block, not pprint'd pMBQL"
+  (testing "transform sources with a structured MBQL `:query` are rendered as a portable repr JSON code block, not pprint'd MBQL 5"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
         (let [mp     (mt/metadata-provider)
@@ -454,7 +507,7 @@
                       (assoc source :transform-source-type :query))]
           (is (string? text))
           (is (re-find #"```json" text)
-              "output is a JSON code block (the portable representations form), not pprint'd pMBQL")
+              "output is a JSON code block (the portable representations form), not pprint'd MBQL 5")
           (is (re-find #"\"lib/type\"\s*:\s*\"mbql/query\"" text))
           (is (re-find #"\"source-table\"" text))
           (is (not (re-find #"lib/metadata" text))
@@ -501,3 +554,12 @@
             (let [out (user-context/format-viewing-context (viewing db-id))]
               (is (str/includes? out "notebook editor"))
               (is (not (str/includes? out "source-table"))))))))))
+
+(deftest ^:parallel enrich-context-omits-research-plan-test
+  (testing "the draft Research plan is an explorations-only, system-prompt concern, so it must not
+            leak into the generic user-message injection context. message_injection.selmer has no
+            {{research_plan}} placeholder; the plan is rendered into the system prompt instead (see
+            metabase.metabot.tools.explorations/research-plan-system-context)."
+    (let [plan {:name "Why was revenue down?" :groups [] :timelines []}
+          enriched (user-context/enrich-context-for-template {:research_plan plan})]
+      (is (not (contains? enriched :research_plan))))))

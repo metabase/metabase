@@ -13,7 +13,7 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 
 - **New code must not introduce `any`, explicit or implicit.** No `any` annotations, no `as any` / `as unknown as`, no untyped parameters or returns that infer `any`, no implicitly-`any` destructures or array/object literals.
 - **Untyped third-party / boundary values** must be typed at the boundary (a declared type, `unknown` + type guard, or a small typed wrapper) — never let `any` propagate inward.
-- **Mandatory LSP verification.** After writing or editing any TS/TSX, inspect the changed symbols with the TypeScript Language Server (hover to read inferred types; `goToDefinition` to confirm sources) and run the project type-check.
+- **Mandatory type verification.** Before finishing a TS/TSX change, run `bun run type-check-pure`. If TypeScript LSP tools are available, also inspect changed symbols with hover and go-to-definition; otherwise skip LSP check.
 
 ## Type tightening
 
@@ -74,10 +74,6 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 
 - **No comments by default**. Well-named identifiers carry the `what`.
 - **Comments should be concise**. Add a short, concise comment only when the `why` is non-obvious: a workaround, a hidden invariant, a subtle ordering constraint, a clever reduction. Never document the actual implementation, focus on the intent and the why.
-
-## TypeScript Migration
-
-**When touching existing JavaScript files, propose to convert them to TypeScript first**. Create a separate PR for the conversion, then implement the changes.
 
 ## Verify before done
 

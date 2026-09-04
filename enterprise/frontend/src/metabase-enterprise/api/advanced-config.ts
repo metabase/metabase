@@ -1,7 +1,7 @@
 import type { ApplyAdvancedConfigRequest } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { invalidateTags, listTag, tag } from "./tags";
+import { invalidateTags, listTag } from "./tags";
 
 export const advancedConfigApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -16,11 +16,7 @@ export const advancedConfigApi = EnterpriseApi.injectEndpoints({
         };
       },
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [
-          tag("workspace"),
-          listTag("workspace"),
-          listTag("database"),
-        ]),
+        invalidateTags(error, [listTag("database")]),
     }),
   }),
 });

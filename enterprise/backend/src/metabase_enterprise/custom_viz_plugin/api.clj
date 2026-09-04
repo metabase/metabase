@@ -4,17 +4,17 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
-   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
    [metabase.server.streaming-response :as sr]
+   [metabase.util.http :as u.http]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.io BufferedReader File InputStream InputStreamReader OutputStream)
    (java.nio.file Files)))
@@ -47,6 +47,15 @@
 
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 
+(def ^:private BundleUploadParts
+  "The multipart parts carrying a tar.gz bundle. `:size` is what [[check-upload!]] enforces the size limit with, so it
+  has to be declared here for it to survive param decoding."
+  [:map
+   [:file [:map
+           [:filename :string]
+           [:size     ms/IntGreaterThanOrEqualToZero]
+           [:tempfile (ms/InstanceOfClass File)]]]])
+
 (def ^:private CustomVizPluginResponse
   [:map
    [:id              ms/PositiveInt]
@@ -61,6 +70,7 @@
    [:dev_only        :boolean]
    [:manifest        {:optional true} [:maybe :any]]
    [:metabase_version {:optional true} [:maybe :string]]
+   [:warnings        [:sequential [:map [:type :string]]]]
    [:created_at      :any]
    [:updated_at      :any]])
 
@@ -73,7 +83,8 @@
    [:bundle_url      ms/NonBlankString]
    [:bundle_hash     {:optional true} [:maybe :string]]
    [:dev_bundle_url  {:optional true} [:maybe :string]]
-   [:manifest        {:optional true} [:maybe :any]]])
+   [:manifest        {:optional true} [:maybe :any]]
+   [:warnings        [:sequential [:map [:type :string]]]]])
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
@@ -82,11 +93,19 @@
   [plugin]
   (nil? (:bundle_hash plugin)))
 
+(defn- plugin-warnings
+  "Version warnings for a plugin. Dev-only plugins get no warnings."
+  [plugin]
+  (if (dev-only-plugin? plugin)
+    []
+    (manifest/warnings plugin)))
+
 (defn- plugin->response
   "Convert a plugin record to API response format."
   [plugin]
   (-> plugin
-      (assoc :dev_only (dev-only-plugin? plugin))
+      (assoc :dev_only (dev-only-plugin? plugin)
+             :warnings (plugin-warnings plugin))
       ;; never expose the raw bundle bytes
       (dissoc :bundle)))
 
@@ -94,7 +113,8 @@
   "Convert a plugin record to the safe runtime response shape.
    `bundle_url` is suffixed with `?v=<bundle_hash>` so that a re-uploaded bundle is fetched
    instead of served from the browser's `immutable` cache."
-  [{:keys [id identifier display_name icon bundle_hash manifest dev_bundle_url]}]
+  [{:keys [id identifier display_name icon bundle_hash manifest dev_bundle_url]
+    :as   plugin}]
   (cond-> {:id           id
            :identifier   identifier
            :display_name display_name
@@ -102,7 +122,8 @@
            :bundle_url   (cond-> (format "/api/ee/custom-viz-plugin/%d/bundle" id)
                            bundle_hash (str "?v=" bundle_hash))
            :bundle_hash  bundle_hash
-           :manifest     manifest}
+           :manifest     manifest
+           :warnings     (plugin-warnings plugin)}
     dev_bundle_url (assoc :dev_bundle_url dev_bundle_url)))
 
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
@@ -118,14 +139,7 @@
                :max-file-count 1}}
   [_route-params
    _query-params
-   _body
-   {{file "file"} :multipart-params, :as _request}
-   :- [:map
-       [:multipart-params
-        [:map
-         ["file" [:map
-                  [:filename :string]
-                  [:tempfile (ms/InstanceOfClass File)]]]]]]]
+   {:keys [file]} :- BundleUploadParts]
   (api/check-superuser)
   (let [tempfile (check-upload! file)]
     (try
@@ -133,7 +147,7 @@
             validated    (cache/validate-bundle! bundle-bytes)
             identifier   (get-in validated [:manifest :name])
             _            (api/check-400
-                          (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
+                          (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
                           (format "A custom visualization with identifier \"%s\" already exists." identifier))
             plugin       (cache/insert-bundle! identifier validated)]
         (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
@@ -161,20 +175,19 @@
                                            "Could not fetch metabase-plugin.json from the dev server.")
                                          {:status-code 400})))
         _            (api/check-400
-                      (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
+                      (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
                       (format "A custom visualization with identifier \"%s\" already exists." identifier))
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
         version-str  (get-in manifest [:metabase :version])
-        plugin       (first (t2/insert-returning-instances! :model/CustomVizPlugin
-                                                            :display_name    display-name
-                                                            :identifier      identifier
-                                                            :status          :active
-                                                            :enabled         true
-                                                            :dev_bundle_url  dev_bundle_url
-                                                            :icon            icon
-                                                            :manifest        manifest
-                                                            :metabase_version version-str))]
+        plugin       (custom-viz-plugin.db/insert-plugin! {:display_name     display-name
+                                                           :identifier       identifier
+                                                           :status           :active
+                                                           :enabled          true
+                                                           :dev_bundle_url   dev_bundle_url
+                                                           :icon             icon
+                                                           :manifest         manifest
+                                                           :metabase_version version-str})]
     (cache/set-or-clear-dev-bundle! (:id plugin) dev_bundle_url)
     (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
                                                             :user-id api/*current-user-id*})
@@ -184,28 +197,25 @@
   "List all registered custom visualization plugins."
   []
   (api/check-superuser)
-  (->> (custom-viz-plugin/select-non-blob {:order-by [[:display_name :asc]]})
+  (->> (custom-viz-plugin.db/non-blob-plugins)
        (mapv (comp plugin->response api/read-check))))
 
 (api.macros/defendpoint :get "/list" :- [:sequential CustomVizPluginRuntimeResponse]
   "List active and enabled custom visualization plugins. Available to any authenticated user.
-   Plugins with incompatible Metabase version requirements are excluded.
+   Plugins with version mismatches are included, with soft `warnings` attached.
    Dev-only plugins are excluded when dev mode is disabled."
   []
   (let [dev-mode? (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
-        plugins   (custom-viz-plugin/select-non-blob :status :active
-                                                     :enabled true
-                                                     {:order-by [[:display_name :asc]]})]
+        plugins   (custom-viz-plugin.db/active-enabled-non-blob-plugins)]
     (->> plugins
-         (filter manifest/compatible?)
          (remove #(and (not dev-mode?) (dev-only-plugin? %)))
          (mapv (comp plugin->runtime-response api/read-check)))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Remove a custom visualization plugin and evict its on-disk cache."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [plugin (api/write-check (custom-viz-plugin/select-one-non-blob :id id))]
-    (t2/delete! :model/CustomVizPlugin :id id)
+  (let [plugin (api/write-check (custom-viz-plugin.db/non-blob-plugin id))]
+    (custom-viz-plugin.db/delete-plugin! id)
     (cache/purge-plugin-cache! plugin)
     (events/publish-event! :event/custom-viz-plugin-delete {:object  plugin
                                                             :user-id api/*current-user-id*})
@@ -217,11 +227,11 @@
    _query-params
    body :- [:map
             [:enabled {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check (custom-viz-plugin/select-one-non-blob :id id))
+  (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
         updates  (select-keys body [:enabled])]
     (when (seq updates)
-      (t2/update! :model/CustomVizPlugin id updates))
-    (let [result (custom-viz-plugin/select-one-non-blob :id id)]
+      (custom-viz-plugin.db/update-plugin! id updates))
+    (let [result (custom-viz-plugin.db/non-blob-plugin id)]
       (events/publish-event! :event/custom-viz-plugin-update {:object          result
                                                               :previous-object existing
                                                               :user-id         api/*current-user-id*})
@@ -235,15 +245,8 @@
                :max-file-count 1}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   _body
-   {{file "file"} :multipart-params, :as _request}
-   :- [:map
-       [:multipart-params
-        [:map
-         ["file" [:map
-                  [:filename :string]
-                  [:tempfile (ms/InstanceOfClass File)]]]]]]]
-  (let [existing (api/write-check (custom-viz-plugin/select-one-non-blob :id id))
+   {:keys [file]} :- BundleUploadParts]
+  (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
         tempfile (check-upload! file)]
     (try
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
@@ -261,35 +264,6 @@
       (finally
         (try (.delete tempfile) (catch Exception _))))))
 
-(def ^:private sandbox-host-html
-  "Minimal HTML doc that the patched `@locker/near-membrane-dom` loads as the iframe document
-   so plugin code can be `eval`'d under a relaxed, per-iframe CSP."
-  "<!doctype html><html><head><meta charset=\"utf-8\"></head><body></body></html>")
-
-(def ^:private sandbox-host-csp
-  "CSP applied ONLY to the sandbox iframe document.
-   - `'unsafe-eval'` required by near-membrane to evaluate plugin code inside the realm.
-   - `frame-ancestors 'self'` - so Metabase can embed this document."
-  (str "default-src 'none'; "
-       "script-src 'unsafe-eval'; "
-       "frame-ancestors 'self';"))
-
-(api.macros/defendpoint :get "/sandbox-host" :- :any
-  "Serve a minimal HTML document used as the iframe `src` for the near-membrane custom-viz
-   sandbox. The response carries a per-document `Content-Security-Policy` that permits
-   `'unsafe-eval'` only inside this iframe, so the main Metabase document keeps its strict
-   nonce-based CSP."
-  []
-  {:status  200
-   :headers {"Content-Type"                 "text/html; charset=utf-8"
-             "Content-Security-Policy"      sandbox-host-csp
-             "X-Frame-Options"              "SAMEORIGIN"
-             "X-Content-Type-Options"       "nosniff"
-             "Cross-Origin-Resource-Policy" "same-origin"
-             "Referrer-Policy"              "no-referrer"
-             "Cache-Control"                "public, max-age=60"}
-   :body    sandbox-host-html})
-
 (api.macros/defendpoint :get "/:id/bundle" :- :any
   "Serve the JS bundle for a plugin from the on-disk cache.
    Returns application/javascript with ETag and Cache-Control headers.
@@ -301,7 +275,7 @@
    respond
    raise]
   (try
-    (let [plugin  (api/read-check (custom-viz-plugin/select-one-non-blob :id id))
+    (let [plugin  (api/read-check (custom-viz-plugin.db/non-blob-plugin id))
           dev-url (cache/resolve-dev-bundle id)
           entry   (cache/resolve-bundle plugin)]
       (if entry
@@ -333,7 +307,7 @@
    respond
    raise]
   (try
-    (let [plugin       (api/read-check (custom-viz-plugin/select-one-non-blob :id id))
+    (let [plugin       (api/read-check (custom-viz-plugin.db/non-blob-plugin id))
           content-type (or (manifest/asset-content-type path)
                            (throw (ex-info "Unsupported asset type" {:status-code 404})))
           dev?         (cache/resolve-dev-bundle id)
@@ -361,7 +335,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [dev_bundle_url]} :- [:map [:dev_bundle_url [:maybe :string]]]]
-  (api/write-check (custom-viz-plugin/select-one-non-blob :id id))
+  (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
   (check-dev-mode-enabled!)
   (cache/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})
@@ -384,27 +358,32 @@
                                              "X-Accel-Buffering"  "no"}}
                              [^OutputStream os canceled-chan]
         (try
-          (let [resp (http/get sse-url {:as               :stream
-                                        :socket-timeout   0
-                                        :connection-timeout 5000
-                                        :headers          {"Accept" "text/event-stream"}})]
+          ;; the SSE stream is long-lived and idle between events, so override the 5s read timeout
+          ;; from dev-http-opts (0 = no read timeout)
+          (let [resp (http/get sse-url (merge cache/dev-http-opts
+                                              {:as             :stream
+                                               :socket-timeout 0
+                                               :headers        {"Accept" "text/event-stream"}}))]
             (with-open [^InputStream is (:body resp)
                         rdr (BufferedReader. (InputStreamReader. is "UTF-8"))]
-              (loop []
-                (when-not (a/poll! canceled-chan)
-                  (when-let [line (.readLine rdr)]
-                    (.write os (.getBytes (str line "\n") "UTF-8"))
-                    (.flush os)
-                    (recur))))))
+              (if-not (= "text/event-stream" (u.http/response-content-type resp))
+                (sr/write-error! os {:message "Dev server did not return an event stream"} nil 400)
+                (loop []
+                  (when-not (a/poll! canceled-chan)
+                    (when-let [line (.readLine rdr)]
+                      (.write os (.getBytes (str line "\n") "UTF-8"))
+                      (.flush os)
+                      (recur)))))))
           (catch Exception e
-            (log/debugf "SSE proxy for plugin %d ended: %s" id (ex-message e))))))))
+            (log/debugf "SSE proxy for plugin %d ended: %s" id (ex-message e))
+            (sr/write-error! os e nil)))))))
 
 (api.macros/defendpoint :post "/:id/refresh" :- CustomVizPluginResponse
   "Re-fetch the manifest from the dev server for a dev-only plugin. For uploaded
    plugins this is a no-op — to update an upload-backed plugin, PUT a new bundle
    to `/:id/bundle`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [plugin (api/write-check (custom-viz-plugin/select-one-non-blob :id id))]
+  (let [plugin (api/write-check (custom-viz-plugin.db/non-blob-plugin id))]
     (api/check-400 (dev-only-plugin? plugin)
                    "Refresh is only supported for dev-only plugins; upload a new bundle to update an upload-backed plugin.")
     (let [dev-url      (or (cache/resolve-dev-bundle id)
@@ -412,12 +391,12 @@
           manifest     (or (cache/fetch-dev-manifest dev-url)
                            (throw (ex-info "Failed to fetch manifest from dev server" {:status-code 502})))
           version-str  (get-in manifest [:metabase :version])]
-      (t2/update! :model/CustomVizPlugin id
-                  {:display_name     (or (:name manifest) (:identifier plugin))
-                   :icon             (:icon manifest)
-                   :manifest         manifest
-                   :metabase_version version-str})
-      (let [result (custom-viz-plugin/select-one-non-blob :id id)]
+      (custom-viz-plugin.db/update-plugin! id
+                                           {:display_name     (or (:name manifest) (:identifier plugin))
+                                            :icon             (:icon manifest)
+                                            :manifest         manifest
+                                            :metabase_version version-str})
+      (let [result (custom-viz-plugin.db/non-blob-plugin id)]
         (events/publish-event! :event/custom-viz-plugin-update {:object          result
                                                                 :previous-object plugin
                                                                 :user-id         api/*current-user-id*})

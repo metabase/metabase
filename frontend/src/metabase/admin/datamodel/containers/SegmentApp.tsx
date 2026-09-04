@@ -10,11 +10,9 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { trackSegmentCreated } from "metabase/common/data-studio/analytics";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch } from "metabase/redux";
-import type { Route } from "metabase/router";
-import { push } from "metabase/router";
+import { useNavigate, useParams } from "metabase/router";
 import type {
   CreateSegmentRequest,
   Segment,
@@ -23,20 +21,16 @@ import type {
 
 import { SegmentForm } from "../components/SegmentForm";
 
-type SegmentAppOwnProps = {
-  params: {
-    id: string;
-  };
-  route: Route;
+type SegmentAppParams = {
+  id: string;
 };
 
 type UpdateSegmentFormProps = {
-  route: Route;
   segmentId: number;
 };
 
-function UpdateSegmentForm({ route, segmentId }: UpdateSegmentFormProps) {
-  const dispatch = useDispatch();
+function UpdateSegmentForm({ segmentId }: UpdateSegmentFormProps) {
+  const navigate = useNavigate();
   const [isDirty, setIsDirty] = useState(false);
   const [updateSegment] = useUpdateSegmentMutation();
 
@@ -62,9 +56,9 @@ function UpdateSegmentForm({ route, segmentId }: UpdateSegmentFormProps) {
         setIsDirty(isDirty);
         return;
       }
-      dispatch(push("/admin/datamodel/segments"));
+      navigate("/admin/datamodel/segments");
     },
-    [dispatch, segmentId, updateSegment, isDirty],
+    [segmentId, updateSegment, isDirty, navigate],
   );
 
   const isLoading = isLoadingSegment || isLoadingTable;
@@ -82,17 +76,13 @@ function UpdateSegmentForm({ route, segmentId }: UpdateSegmentFormProps) {
         onSubmit={handleSubmit}
       />
 
-      <LeaveRouteConfirmModal isEnabled={isDirty} route={route} />
+      <LeaveRouteConfirmModal isEnabled={isDirty} />
     </>
   );
 }
 
-type CreateSegmentFormProps = {
-  route: Route;
-};
-
-function CreateSegmentForm({ route }: CreateSegmentFormProps) {
-  const dispatch = useDispatch();
+function CreateSegmentForm() {
+  const navigate = useNavigate();
   const [isDirty, setIsDirty] = useState(false);
   const { sendErrorToast } = useMetadataToasts();
   const [createSegment] = useCreateSegmentMutation();
@@ -122,29 +112,29 @@ function CreateSegmentForm({ route }: CreateSegmentFormProps) {
           "admin_datamodel_segments",
           result.data?.id,
         );
-        dispatch(push("/admin/datamodel/segments"));
+        navigate("/admin/datamodel/segments");
       });
     },
-    [scheduleCallback, createSegment, dispatch, sendErrorToast, isDirty],
+    [scheduleCallback, createSegment, navigate, sendErrorToast, isDirty],
   );
 
   return (
     <>
       <SegmentForm onIsDirtyChange={setIsDirty} onSubmit={handleSubmit} />
 
-      <LeaveRouteConfirmModal isEnabled={isDirty} route={route} />
+      <LeaveRouteConfirmModal isEnabled={isDirty} />
     </>
   );
 }
 
-export function SegmentApp({ params, route }: SegmentAppOwnProps) {
+export function SegmentApp() {
+  const params = useParams<SegmentAppParams>();
+
   if (params.id) {
-    return (
-      <UpdateSegmentForm route={route} segmentId={parseInt(params.id, 10)} />
-    );
+    return <UpdateSegmentForm segmentId={parseInt(params.id, 10)} />;
   }
 
-  return <CreateSegmentForm route={route} />;
+  return <CreateSegmentForm />;
 }
 
 function toUpdateSegmentRequest(

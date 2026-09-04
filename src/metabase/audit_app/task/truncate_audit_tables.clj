@@ -7,6 +7,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.settings :as audit-app.settings]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.task-history.core :as task-history]
@@ -19,26 +20,14 @@
 
 (defn- truncate-table-batched!
   [table-name time-column]
-  (t2/query-one
-   (case (mdb/db-type)
-     (:postgres :h2)
-     {:delete-from (keyword table-name)
-      :where [:in
-              :id
-              {:select [:id]
-               :from (keyword table-name)
-               :where [:<=
-                       (keyword time-column)
-                       (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))]
-               :order-by [[:id :asc]]
-               :limit (audit-app.settings/audit-table-truncation-batch-size)}]}
+  (let [cutoff     (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))
+        batch-size (audit-app.settings/audit-table-truncation-batch-size)]
+    (case (mdb/db-type)
+      (:postgres :h2)
+      (audit-app.db/delete-oldest-by-id-subquery! (keyword table-name) (keyword time-column) cutoff batch-size)
 
-     (:mysql :mariadb)
-     {:delete-from (keyword table-name)
-      :where [:<=
-              (keyword time-column)
-              (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))]
-      :limit (audit-app.settings/audit-table-truncation-batch-size)})))
+      (:mysql :mariadb)
+      (audit-app.db/delete-oldest-with-limit! (keyword table-name) (keyword time-column) cutoff batch-size))))
 
 (defn- truncate-table!
   "Given a model, deletes all rows older than the configured threshold"
@@ -59,13 +48,16 @@
                   (log/infof "%s cleanup successful, %d rows were deleted" table-name total-rows-deleted)
                   (log/infof "%s cleanup successful, no rows were deleted" table-name)))))
           (catch Throwable e
-            (log/errorf e "%s cleanup failed" table-name)))))))
+            (log/errorf "%s cleanup failed: %s" table-name (ex-message e))))))))
 
 (defenterprise audit-models-to-truncate
   "List of models to truncate. OSS implementation only truncates `query_execution` table."
   metabase-enterprise.audit-app.task.truncate-audit-tables
   []
-  [{:model :model/QueryExecution :timestamp-col :started_at}])
+  ;; postgres has partitioned query_execution; we detach partitions instead of deleting
+  (if (= :postgres (mdb/db-type))
+    []
+    [{:model :model/QueryExecution :timestamp-col :started_at}]))
 
 (defn- truncate-audit-tables!
   []

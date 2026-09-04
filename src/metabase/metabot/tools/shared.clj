@@ -5,6 +5,14 @@
 
 (set! *warn-on-reflection* true)
 
+(def chart-types
+  "Display types the chart tools can produce, as model-facing strings. The main
+  and document chart tool enums derive from this list; the Slackbot query tool
+  has its own smaller enum."
+  ["table" "bar" "line" "pie" "sunburst" "treemap" "boxplot" "area" "combo"
+   "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
+   "smartscalar" "gauge" "progress" "funnel" "object" "map"])
+
 (def ^:dynamic *memory-atom*
   "Dynamic memory atom bound for tools that need access to agent state."
   nil)
@@ -52,11 +60,6 @@
   "Returns the current agent context from memory."
   []
   (get (current-memory) :context))
-
-(defn inline-viz-capable?
-  "True when the current profile should render visualizations inline."
-  []
-  (= *profile-id* :nlq))
 
 (defn with-memory
   "Helper for debugging memory-bound tools when needed."

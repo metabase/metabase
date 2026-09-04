@@ -7,6 +7,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.query-processor.core :as qp]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -15,9 +16,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private chart-type-enum
-  [:enum "table" "bar" "line" "pie" "sunburst" "area" "combo"
-   "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
-   "smartscalar" "gauge" "progress" "funnel" "object" "map"])
+  (into [:enum] shared/chart-types))
 
 (defn- parse-reference
   [[k v]]
@@ -83,8 +82,9 @@
     (catch Exception e
       (ex-message e))))
 
-(mu/defn ^{:tool-name "document_schema_collect"
-           :scope     scope/agent-document-read}
+(mu/defn ^{:tool-name    "document_schema_collect"
+           :scope        scope/agent-document-read
+           :capabilities #{:permission-write-sql-queries}}
   document-schema-collect-tool
   "Collects the schema of a database in order to construct a SQL query.
 
@@ -116,14 +116,15 @@
                                "</result>\n"
                                "<instructions>\n"
                                "NEXT: construct a SQL query based on the user's instructions and this schema.\n"
-                               "THEN: call `document_construct_sql_chart` with SQL and chart settings.\n"
+                               "THEN: call `document_construct_sql_chart` with SQL and chart settings, passing "
+                               "database_id=" database-id " (the id of the database above).\n"
                                "SQL engine: " (:engine db) ".\n"
                                "</instructions>")]
           {:output output
            :structured-output {:database_id database-id
                                :sql_engine  (:engine db)}})))
     (catch Exception e
-      (log/error e "Error collecting document schema")
+      (log/errorf "Error collecting document schema: %s" (ex-message e))
       {:output (str "Failed to collect schema: " (or (ex-message e) "Unknown error"))})))
 
 (def ^:private sql-chart-schema
@@ -137,8 +138,9 @@
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
-(mu/defn ^{:tool-name "document_construct_sql_chart"
-           :scope     scope/agent-document-create}
+(mu/defn ^{:tool-name    "document_construct_sql_chart"
+           :scope        scope/agent-document-create
+           :capabilities #{:permission-write-sql-queries}}
   document-construct-sql-chart-tool
   "Construct SQL-backed chart draft payload for document insertion."
   [{:keys [database_id name description analysis approach sql viz_settings]} :- sql-chart-schema]
@@ -173,9 +175,9 @@
             {:output "Draft chart payload generated from SQL query."
              :structured-output structured}))))
     (catch Exception e
-      (log/error e "Error constructing SQL chart draft")
+      (log/errorf "Error constructing SQL chart draft: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
+        (metabot.tools.u/handle-agent-error e)
         {:output (str "Failed to construct SQL chart draft: " (or (ex-message e) "Unknown error"))}))))
 
 (def ^:private model-chart-schema
@@ -220,7 +222,7 @@
         (or result
             {:output "Failed to construct model chart draft."})))
     (catch Exception e
-      (log/error e "Error constructing model chart draft")
+      (log/errorf "Error constructing model chart draft: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
+        (metabot.tools.u/handle-agent-error e)
         {:output (str "Failed to construct model chart draft: " (or (ex-message e) "Unknown error"))}))))

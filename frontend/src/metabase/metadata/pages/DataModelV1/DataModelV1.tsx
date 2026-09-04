@@ -1,5 +1,4 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import type { Location } from "history";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -10,7 +9,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Outlet } from "metabase/router";
+import { Outlet, useLocation, useParams } from "metabase/router";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -32,12 +31,9 @@ import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
 import type { RouteParams } from "./types";
 import { getTableMetadataQuery, parseRouteParams } from "./utils";
 
-interface Props {
-  location: Location;
-  params: RouteParams;
-}
-
-export const DataModelV1 = ({ location, params }: Props) => {
+export const DataModelV1 = () => {
+  const location = useLocation();
+  const params = useParams<RouteParams>();
   const parsedParams = parseRouteParams(params);
   const { databaseId, fieldId, schemaName, tableId } = parsedParams;
   const { data: databasesData, isLoading: isLoadingDatabases } =
@@ -112,7 +108,7 @@ export const DataModelV1 = ({ location, params }: Props) => {
           tableId={tableId}
         />
 
-        <Box className={S.footer} mx="xl" py="sm">
+        <Box className={S.footer} mx="xxl" py="sm">
           <SegmentsLink active={isSegments} to="/admin/datamodel/segments" />
         </Box>
       </Stack>
@@ -129,7 +125,7 @@ export const DataModelV1 = ({ location, params }: Props) => {
                 h="100%"
                 justify="center"
                 miw={rem(400)}
-                p="xl"
+                p="xxl"
               >
                 <LoadingAndErrorWrapper error={t`Not found.`} />
               </Stack>
@@ -178,7 +174,7 @@ export const DataModelV1 = ({ location, params }: Props) => {
             >
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
                 {field && table && (
-                  <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max} p="lg">
+                  <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max} p="xl">
                     <FieldSection
                       /**
                        * Make sure internal component state is reset when changing fields.
@@ -210,7 +206,7 @@ export const DataModelV1 = ({ location, params }: Props) => {
               bg="accent-gray-light"
               flex={COLUMN_CONFIG.preview.flex}
               h="100%"
-              p="lg"
+              p="xl"
               maw={COLUMN_CONFIG.preview.max}
               miw={COLUMN_CONFIG.preview.min}
             >

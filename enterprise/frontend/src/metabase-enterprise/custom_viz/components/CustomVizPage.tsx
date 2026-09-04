@@ -14,8 +14,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Box,
   Button,
@@ -74,7 +73,7 @@ const validationSchema: Yup.SchemaOf<FormState> = Yup.object({
 });
 
 export function CustomVizPage({ params }: Props) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const pluginId = params?.id ? parseInt(params.id, 10) : undefined;
   const { data: plugins } = useListAllCustomVizPluginsQuery();
   const plugin = pluginId ? plugins?.find((p) => p.id === pluginId) : undefined;
@@ -94,44 +93,47 @@ export function CustomVizPage({ params }: Props) {
       }
       if (isEdit && plugin) {
         try {
-          await replaceBundle({ id: plugin.id, file }).unwrap();
-          trackCustomVizPluginUpdated("success");
+          const updatedPlugin = await replaceBundle({
+            id: plugin.id,
+            file,
+          }).unwrap();
+          trackCustomVizPluginUpdated("success", updatedPlugin.warnings);
         } catch (error) {
           trackCustomVizPluginUpdated("failure");
           throw error;
         }
       } else {
         try {
-          await createPlugin({ file }).unwrap();
-          trackCustomVizPluginCreated("success");
+          const createdPlugin = await createPlugin({ file }).unwrap();
+          trackCustomVizPluginCreated("success", createdPlugin.warnings);
         } catch (error) {
           trackCustomVizPluginCreated("failure");
           throw error;
         }
       }
-      dispatch(push(Urls.customViz()));
+      navigate(Urls.customViz());
     },
-    [createPlugin, replaceBundle, plugin, isEdit, dispatch],
+    [createPlugin, replaceBundle, plugin, isEdit, navigate],
   );
 
   const handleCancel = useCallback(() => {
-    dispatch(push(Urls.customViz()));
-  }, [dispatch]);
+    navigate(Urls.customViz());
+  }, [navigate]);
 
   const shouldRedirectToList = isEdit && !plugin && !!plugins;
   const shouldRedirectToDev = isEdit && !!plugin?.dev_only;
 
   useEffect(() => {
     if (shouldRedirectToList) {
-      dispatch(push(Urls.customViz()));
+      navigate(Urls.customViz());
     }
-  }, [shouldRedirectToList, dispatch]);
+  }, [shouldRedirectToList, navigate]);
 
   useEffect(() => {
     if (shouldRedirectToDev) {
-      dispatch(push(Urls.customVizDev()));
+      navigate(Urls.customVizDev());
     }
-  }, [shouldRedirectToDev, dispatch]);
+  }, [shouldRedirectToDev, navigate]);
 
   if (shouldRedirectToList || shouldRedirectToDev) {
     return null;
@@ -160,7 +162,7 @@ export function CustomVizPage({ params }: Props) {
       </Stack>
       <SettingsSection>
         <Box
-          bdrs="md"
+          bdrs="sm"
           bg="background_page-primary"
           data-testid="custom-viz-settings-form"
         >
@@ -172,7 +174,7 @@ export function CustomVizPage({ params }: Props) {
             {({ dirty }) => (
               <Form>
                 <Stack gap="40px">
-                  <Stack gap="md">
+                  <Stack gap="lg">
                     <Title order={2}>
                       {isEdit && plugin
                         ? t`Replace bundle for ${plugin.display_name}`

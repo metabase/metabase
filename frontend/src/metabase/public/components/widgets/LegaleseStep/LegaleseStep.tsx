@@ -2,8 +2,7 @@ import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LegaleseStepDetailsContainer } from "metabase/public/components/widgets/LegaleseStep/LegaleseStep.styled";
-import { useDispatch } from "metabase/redux";
-import { updateSetting } from "metabase/redux/settings";
+import { useUpdateSettingMutation } from "metabase/settings";
 import { Button, Center, Stack, Text, Title } from "metabase/ui";
 
 export const LegaleseStep = ({
@@ -11,15 +10,13 @@ export const LegaleseStep = ({
 }: {
   goToNextStep: () => void;
 }) => {
-  const dispatch = useDispatch();
+  const [updateSetting] = useUpdateSettingMutation();
 
   const onAcceptTerms = () => {
-    dispatch(
-      updateSetting({
-        key: "show-static-embed-terms",
-        value: false,
-      }),
-    );
+    updateSetting({
+      key: "show-static-embed-terms",
+      value: false,
+    });
     goToNextStep();
   };
 
@@ -28,7 +25,7 @@ export const LegaleseStep = ({
       <Stack align="center" gap="3rem">
         <Title order={3} fz="1.25rem">{t`First, some legalese`}</Title>
 
-        <LegaleseStepDetailsContainer p="lg" w="40rem">
+        <LegaleseStepDetailsContainer p="xl" w="40rem">
           <Text fw={700}>
             {jt`By clicking "Agree and continue" you're agreeing to ${(
               <ExternalLink

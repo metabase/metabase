@@ -1,10 +1,12 @@
 import { useClipboard, useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import type { MetabotDebugToolCallMessage } from "metabase/metabot/state";
+import { parseToolCallResult } from "metabase/metabot/utils/tool-call-result";
 import {
   ActionIcon,
   Badge,
@@ -14,20 +16,73 @@ import {
   Modal,
   Stack,
   Text,
+  Tooltip,
 } from "metabase/ui";
 
 import Styles from "./MetabotChat.module.css";
 
-const ToolCallDetailsModal = ({
+export const ToolCallTitle = ({
   message,
-  onClose,
 }: {
   message: MetabotDebugToolCallMessage;
-  onClose: () => void;
+}) => (
+  <Flex align="center" gap="sm">
+    {t`Tool Call: ${message.name}`}
+    <Badge color="brand" size="sm" variant="light">
+      {message.id}
+    </Badge>
+  </Flex>
+);
+
+const ToolCallSection = ({
+  title,
+  value,
+  isJson = true,
+  copyLabel,
+  badge,
+}: {
+  title: string;
+  value: string;
+  isJson?: boolean;
+  copyLabel: string;
+  badge?: ReactNode;
 }) => {
   const clipboard = useClipboard();
-  const copy = (value: any) => clipboard.copy(JSON.stringify(value, null, 2));
 
+  return (
+    <Stack gap="xxs">
+      <Flex gap="xxs">
+        <Flex align="center" gap="sm">
+          <Text fw="bold">{title}</Text>
+          {badge}
+        </Flex>
+        <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
+          <ActionIcon
+            h="sm"
+            aria-label={copyLabel}
+            onClick={() => clipboard.copy(value)}
+          >
+            <Icon name="copy" size="1rem" />
+          </ActionIcon>
+        </Tooltip>
+      </Flex>
+      <Box p="xxs" bd="1px solid var(--mb-color-border-neutral)" bdrs="xs">
+        <CodeEditor
+          value={value}
+          language={isJson ? "json" : undefined}
+          lineNumbers={isJson}
+          readOnly
+        />
+      </Box>
+    </Stack>
+  );
+};
+
+export const ToolCallDetailsContent = ({
+  message,
+}: {
+  message: MetabotDebugToolCallMessage;
+}) => {
   const parsedArgs = useMemo(() => {
     try {
       return message.args
@@ -40,99 +95,104 @@ const ToolCallDetailsModal = ({
     }
   }, [message.args]);
 
-  const parsedResult = useMemo(() => {
-    if (!message.result) {
-      return "";
-    }
-    try {
-      return JSON.stringify(JSON.parse(message.result), null, 2);
-    } catch {
-      return message.result;
-    }
-  }, [message.result]);
+  const { output, structuredOutput, extra } = useMemo(
+    () => parseToolCallResult(message.result),
+    [message.result],
+  );
 
   return (
-    <Modal
-      opened
-      onClose={onClose}
-      size="lg"
-      title={
-        <Flex align="center" gap="sm">
-          {t`Tool Call: ${message.name}`}
-          <Badge color="brand" size="sm" variant="light">
-            {message.id}
-          </Badge>
-        </Flex>
-      }
-      data-testid="tool-call-details-modal"
-    >
-      <Stack gap="md">
-        {message.args && (
-          <Stack gap="xs">
-            <Flex gap="xs">
-              <Text fw="bold">{t`Request`}</Text>
-              <ActionIcon h="sm" onClick={() => copy(parsedArgs)}>
-                <Icon name="copy" size="1rem" />
-              </ActionIcon>
-            </Flex>
-            <Box mx="-1.5rem">
-              <CodeEditor value={parsedArgs} language="json" readOnly />
-            </Box>
-          </Stack>
-        )}
+    <Stack gap="lg">
+      {message.args && (
+        <ToolCallSection
+          title={t`Request`}
+          value={parsedArgs}
+          copyLabel={t`Copy request JSON`}
+        />
+      )}
 
-        {message.result && (
-          <Stack gap="xs">
-            <Flex gap="xs">
-              <Flex align="center" gap="sm">
-                <Text fw="bold">{t`Response`}</Text>
-                {message.is_error && (
-                  <Badge color="negative" size="sm">
-                    {t`Errored`}
-                  </Badge>
-                )}
-              </Flex>
-              <ActionIcon h="sm" onClick={() => copy(parsedResult)}>
-                <Icon name="copy" size="1rem" />
-              </ActionIcon>
-            </Flex>
-            <Box mx="-1.5rem">
-              <CodeEditor value={parsedResult} language="json" readOnly />
-            </Box>
-          </Stack>
-        )}
-      </Stack>
-    </Modal>
+      {output && (
+        <ToolCallSection
+          title={t`Response`}
+          value={output}
+          isJson={false}
+          copyLabel={t`Copy response`}
+          badge={
+            message.is_error && (
+              <Badge color="negative" size="sm">
+                {t`Errored`}
+              </Badge>
+            )
+          }
+        />
+      )}
+
+      {structuredOutput && (
+        <ToolCallSection
+          title={t`Structured output`}
+          value={structuredOutput}
+          copyLabel={t`Copy structured output`}
+        />
+      )}
+
+      {extra && (
+        <ToolCallSection
+          title={t`Other fields`}
+          value={extra}
+          copyLabel={t`Copy other fields`}
+        />
+      )}
+    </Stack>
   );
 };
 
-export const AgentToolCallMessage = ({
+const ToolCallDetailsModal = ({
   message,
+  onClose,
 }: {
   message: MetabotDebugToolCallMessage;
+  onClose: () => void;
+}) => (
+  <Modal
+    opened
+    onClose={onClose}
+    size="lg"
+    title={<ToolCallTitle message={message} />}
+    data-testid="tool-call-details-modal"
+  >
+    <ToolCallDetailsContent message={message} />
+  </Modal>
+);
+
+export const AgentToolCallMessage = ({
+  message,
+  onSelect,
+}: {
+  message: MetabotDebugToolCallMessage;
+  onSelect?: (message: MetabotDebugToolCallMessage) => void;
 }) => {
-  const [modalOpen, { open, close }] = useDisclosure(false);
+  const [isModalOpen, { open, close }] = useDisclosure(false);
   const clipboard = useClipboard();
   const handleCopy = () => clipboard.copy(JSON.stringify(message, null, 2));
+  const handleClick = () => (onSelect ? onSelect(message) : open());
 
   return (
     <>
       <Flex
         p="sm"
-        pl="md"
+        pl="lg"
         bd="1px solid var(--mb-color-border-neutral)"
-        bdrs="sm"
+        bdrs="xs"
         direction="row"
         align="center"
         justify="space-between"
         className={cx(Styles.agentPartCard, Styles.agentPartClickable)}
         role="button"
         tabIndex={0}
-        onClick={open}
+        onClick={handleClick}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            open();
+            handleClick();
           }
         }}
       >
@@ -140,20 +200,25 @@ export const AgentToolCallMessage = ({
           <Icon name="gear" c="text-secondary" mr="sm" />
           <Text fw="bold">{message.name}</Text>
         </Flex>
-        <Flex align="center" gap="xs" className={Styles.agentPartActions}>
-          <ActionIcon
-            h="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCopy();
-            }}
-            className={Styles.agentPartActionIcon}
-          >
-            <Icon name="copy" size="1rem" />
-          </ActionIcon>
+        <Flex align="center" gap="xxs" className={Styles.agentPartActions}>
+          <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
+            <ActionIcon
+              h="sm"
+              aria-label={t`Copy tool call JSON`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCopy();
+              }}
+              className={Styles.agentPartActionIcon}
+            >
+              <Icon name="copy" size="1rem" />
+            </ActionIcon>
+          </Tooltip>
         </Flex>
       </Flex>
-      {modalOpen && <ToolCallDetailsModal message={message} onClose={close} />}
+      {isModalOpen && (
+        <ToolCallDetailsModal message={message} onClose={close} />
+      )}
     </>
   );
 };

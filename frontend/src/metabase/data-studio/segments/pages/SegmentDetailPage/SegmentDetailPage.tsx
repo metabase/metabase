@@ -6,11 +6,10 @@ import { useUpdateSegmentMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import type { Route } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Segment } from "metabase-types/api";
@@ -21,7 +20,6 @@ import { useSegmentQuery } from "../../hooks/use-segment-query";
 import type { SegmentTabUrls } from "../../types";
 
 type SegmentDetailPageProps = {
-  route: Route;
   segment: Segment;
   tabUrls: SegmentTabUrls;
   breadcrumbs: ReactNode;
@@ -29,7 +27,6 @@ type SegmentDetailPageProps = {
 };
 
 export function SegmentDetailPage({
-  route,
   segment,
   tabUrls,
   breadcrumbs,
@@ -134,7 +131,6 @@ export function SegmentDetailPage({
       {canWriteSegments && (
         <LeaveRouteConfirmModal
           key={segment.id}
-          route={route}
           isEnabled={isDirty && !isSaving}
         />
       )}

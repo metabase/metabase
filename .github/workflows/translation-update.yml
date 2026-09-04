@@ -59,7 +59,7 @@ jobs:
         run: | # sh
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git checkout -b $BRANCH_NAME
+          git checkout -b "$BRANCH_NAME"
 
           DATE=$(date +'%Y-%m-%d')
 
@@ -72,7 +72,7 @@ jobs:
 
           git add locales/
           git commit -a -m "Update translations $Date" --allow-empty --no-verify
-          git push -u origin $BRANCH_NAME
+          git push -u origin "$BRANCH_NAME"
 
       - name: Upload i18n violations report
         id: upload-violations
@@ -105,7 +105,7 @@ jobs:
 
           URL=$(gh pr create \
             --base master \
-            --head $BRANCH_NAME \
+            --head "$BRANCH_NAME" \
             --title "Update translations $DATE" \
             --body "Synchronize translations with Crowdin" \
             --label "no-backport" \
@@ -113,7 +113,7 @@ jobs:
 
           PR_NUMBER=${URL##*/}
 
-          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
 
       - name: Comment violations summary on PR
         if: ${{ steps.create_pr.outputs.pr_number && hashFiles('target/i18n-violations.csv') != '' }}
@@ -144,14 +144,12 @@ jobs:
           EOF
           )"
 
-      - name: Auto approve PR
-        uses: juliangruber/approve-pull-request-action@68fcc9a5a73b5641cadf757cf99d73720dcb05d0 # v2.1.0
-        with:
-          github-token: ${{ github.token }}
-          number: ${{ steps.create_pr.outputs.pr_number }}
-
-      - name: Enable Pull Request Automerge
-        run: gh pr merge --squash --auto "$PR_NUMBER"
+      - name: Approve and Merge the PR
+        run: |
+          gh pr review --approve "$PR_NUMBER"
+          gh pr merge --squash --auto "$PR_NUMBER"
+        shell: bash
         env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          # uses a different token than the token that created the PR so we can approve and merge it
+          GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ steps.create_pr.outputs.pr_number }}

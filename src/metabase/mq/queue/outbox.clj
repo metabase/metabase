@@ -19,6 +19,7 @@
   (:require
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
+   [metabase.mq.db :as mq.db]
    [metabase.mq.payload :as payload]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.registry :as q.registry]
@@ -72,9 +73,7 @@
   "Insert one already-encoded batch `payload` for `channel` as a `queue_message_outbox` row and return
   its primary key."
   [channel payload]
-  (t2/insert-returning-pk! :queue_message_outbox
-                           {:queue_name (name channel)
-                            :payload    payload}))
+  (mq.db/insert-outbox-row! (name channel) payload))
 
 (defn insert-outbox-rows!
   "before-commit callback: for every channel buffered in `*transaction-state*`, apply the queue's
@@ -108,13 +107,13 @@
                            (transport/publish-encoded! channel payload)
                            (conj ids id)
                            (catch Exception e
-                             (log/error e "Error publishing outbox row; recovery sweep will retry"
-                                        {:channel channel :outbox-id id})
+                             (log/error "Error publishing outbox row; recovery sweep will retry"
+                                        {:channel channel :outbox-id id :error (ex-message e)})
                              ids)))
                        []
                        (::rows @state))]
     (when (seq published-ids)
-      (t2/delete! :queue_message_outbox :id [:in published-ids]))))
+      (mq.db/delete-outbox-rows! published-ids))))
 
 (defn defer-transactional!
   "Routes `msgs` for `channel` through the transactional outbox. Accumulates them per channel in
@@ -139,8 +138,8 @@
   [acc ^Instant now {:keys [id queue_name publish_attempts]} ^Exception e]
   (let [next-attempts (inc publish_attempts)
         delay-ms      (retry-delay-ms next-attempts)]
-    (log/warn e "Failed to publish queue outbox row during recovery; will retry with backoff"
-              {:queue queue_name :outbox-id id :publish-attempts next-attempts :retry-delay-ms delay-ms})
+    (log/warn "Failed to publish queue outbox row during recovery; will retry with backoff"
+              {:queue queue_name :outbox-id id :publish-attempts next-attempts :retry-delay-ms delay-ms :error (ex-message e)})
     (analytics/inc! :metabase-mq/batches-retried {:channel queue_name :reason "outbox-recovery"})
     (update acc :bumps conj {:id id :next-attempt-at (Timestamp/from (.plusMillis now delay-ms))})))
 
@@ -155,17 +154,11 @@
   (t2/with-transaction [_conn]
     (let [now    (Instant/now)
           now-ts (Timestamp/from now)
-          rows (t2/query {:select   [:id :queue_name :payload :publish_attempts]
-                          :from     [:queue_message_outbox]
-                          :where    [:and
-                                     [:> :id after-id]
-                                     [:or
-                                      [:and [:= :next_attempt_at nil]
-                                       [:< :created_at (Timestamp/from (.minusMillis now recovery-age-ms))]]
-                                      [:<= :next_attempt_at now-ts]]]
-                          :order-by [[:id :asc]]
-                          :limit    recovery-page-size
-                          :for      (for-update-clause)})
+          rows (mq.db/due-outbox-rows after-id
+                                      now-ts
+                                      (Timestamp/from (.minusMillis now recovery-age-ms))
+                                      recovery-page-size
+                                      (for-update-clause))
           {:keys [recover-ids bumps backend-down?]}
           (reduce (fn [acc {:keys [id queue_name payload] :as row}]
                     (try
@@ -180,11 +173,9 @@
                   {:recover-ids [] :bumps [] :backend-down? false}
                   rows)]
       ;; published rows are removed; message-specific failures have their attempt count bumped and next retry scheduled.
-      (when (seq recover-ids) (t2/delete! :queue_message_outbox :id [:in recover-ids]))
+      (when (seq recover-ids) (mq.db/delete-outbox-rows! recover-ids))
       (doseq [{:keys [id next-attempt-at]} bumps]
-        (t2/update! :queue_message_outbox :id id
-                    {:publish_attempts [:+ :publish_attempts [:inline 1]]
-                     :next_attempt_at  next-attempt-at}))
+        (mq.db/bump-outbox-row! id next-attempt-at))
       (when backend-down?
         (log/info "Outbox recovery: backend unavailable, remaining rows retry next run"))
       ;; nil next-after-id stops the sweep: no more due rows, or the backend is down.

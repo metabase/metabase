@@ -20,6 +20,7 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.internal-stats.core :as internal-stats]
+   [metabase.premium-features.db :as premium-features.db]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.settings.core :as setting]
@@ -76,10 +77,7 @@
              ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
              ;; is from a different thread and is invalid by the time we get to use it
              (let [result (binding [t2.conn/*current-connectable* nil]
-                            ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid
-                            ;; the `after-select` method on users, which calls an EE method that needs ... a token
-                            ;; check :|
-                            (t2/count (t2/table-name :model/User) :is_active true :type "personal"))]
+                            (premium-features.db/active-personal-user-count))]
                (log/debug (u/colorize :green "=>") result)
                result))
       lock (Object.)]
@@ -229,7 +227,7 @@
                         :content-type :json
                         :throw-exceptions false})
             (catch Throwable e
-              (log/error e "Error sending metering events"))))))))
+              (log/errorf "Error sending metering events: %s" (ex-message e)))))))))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 
@@ -244,9 +242,7 @@
         (when (pos? max-users) max-users)))))
 
 (defn- active-user-count []
-  ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid the `after-select` method
-  ;; on users, which calls an EE method that needs ... a token check :|
-  (t2/count (t2/table-name :model/User) :is_active true, :type "personal"))
+  (premium-features.db/active-personal-user-count))
 
 (defn assert-valid-airgap-user-count!
   "Asserts that, in an airgap context, the current user count does not exceed the allowed maximum.
@@ -365,7 +361,7 @@
 (defn- read-cache-from-db
   "Read a cached token status hash from the premium_features_token_cache table. Returns nil if not found."
   [token-hash]
-  (t2/select-one [:model/PremiumFeaturesCache :token_status_hash :updated_at] :token_hash token-hash))
+  (premium-features.db/token-status-cache token-hash))
 
 (defn- write-cache-to-db!
   "Upsert a token status hash into the premium_features_token_cache table.
@@ -374,23 +370,19 @@
   [token-hash result-hash]
   (t2/with-connection [_conn (app-db/app-db)]
     (let [now     (t/offset-date-time)
-          updated (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
-                              {:token_status_hash result-hash :updated_at now})]
+          updated (premium-features.db/update-token-status-cache! token-hash result-hash now)]
       (when (zero? updated) ;; even though toucan2 returns 0 if we match a row but don't update it
         ;; we should always be updating this row with the timestamp if it's there.
         (try
-          (t2/insert! :model/PremiumFeaturesCache {:token_hash        token-hash
-                                                   :token_status_hash result-hash
-                                                   :updated_at        now})
+          (premium-features.db/insert-token-status-cache! token-hash result-hash now)
           (catch Exception _e
             ;; Another instance inserted first — update instead.
-            (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
-                        {:token_status_hash result-hash :updated_at now})))))))
+            (premium-features.db/update-token-status-cache! token-hash result-hash now)))))))
 
 (defn- clear-db-cache!
   "Delete all rows from the premium_features_token_cache table."
   []
-  (t2/delete! :model/PremiumFeaturesCache))
+  (premium-features.db/delete-token-status-cache!))
 
 (defn- extract-locks
   "Project a `:meters` map to `{meter-keyword -> boolean}` of `:is-locked` values.
@@ -407,7 +399,7 @@
     (try
       (premium-features.settings/locked-meters! (extract-locks (:meters result)))
       (catch Throwable t
-        (log/warn t "Failed to mirror :locked-meters from token-check response")))))
+        (log/warnf "Failed to mirror :locked-meters from token-check response: %s" (ex-message t))))))
 
 (def ^:dynamic *testing-only-call-after-refresh*
   "When non-nil, a zero-arg function called after async background refresh completes.
@@ -464,7 +456,7 @@
                           (try
                             (do-refresh! token token-hash)
                             (catch Exception e
-                              (log/error e "Background premium features refresh failed"))
+                              (log/errorf "Background premium features refresh failed: %s" (ex-message e)))
                             (finally
                               (reset! refresh-in-progress? false)
                               (when-let [after *testing-only-call-after-refresh*]
@@ -567,7 +559,7 @@
   ([checker token]
    (-check-token checker token)))
 
-(derive :event/set-premium-embedding-token :metabase/event)
+(events/derive! :event/set-premium-embedding-token :metabase/event)
 
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."
@@ -594,7 +586,7 @@
     (setting/set-value-of-type! :string :premium-embedding-token new-value)
     (events/publish-event! :event/set-premium-embedding-token {})
     (catch Throwable e
-      (log/error e "Error setting premium features token")
+      (log/errorf "Error setting premium features token: %s" (ex-message e))
       ;; merge in error-details if present
       (throw (ex-info (.getMessage e) (merge
                                        {:message (.getMessage e), :status-code 400}
@@ -608,8 +600,7 @@
 (let [cached-logger (memoize/ttl
                      ^{::memoize/args-fn (fn [[token _e]] [token])}
                      (fn [_token e]
-                       (log/error "Error validating token:" (ex-message e))
-                       (log/debug e "Error validating token"))
+                       (log/errorf "Error validating token: %s" (ex-message e)))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
   (mu/defn ^:dynamic *token-features* :- [:set ms/NonBlankString]

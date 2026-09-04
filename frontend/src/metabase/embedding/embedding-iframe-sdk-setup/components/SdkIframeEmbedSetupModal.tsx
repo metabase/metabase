@@ -6,8 +6,6 @@ import { t } from "ttag";
 import "react-resizable/css/styles.css";
 
 import noResultsSource from "assets/img/no_results.svg";
-import { useUpdateSettingsMutation } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeGuestEmbedStatusBar";
 import { EMBED_STEPS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
@@ -15,6 +13,7 @@ import { isSiteUrlMatchingCurrentOrigin } from "metabase/embedding/embedding-ifr
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { closeModal } from "metabase/redux/ui";
+import { useSetting, useUpdateSettingsMutation } from "metabase/settings";
 import {
   Box,
   Button,
@@ -120,8 +119,8 @@ export const SdkIframeEmbedSetupContent = () => {
     >
       <SidebarResizer>
         <Box className={S.Sidebar} component="aside">
-          <Stack className={S.SidebarContent} gap="md">
-            <Stack gap="md" flex={1}>
+          <Stack className={S.SidebarContent} gap="lg">
+            <Stack gap="lg" flex={1}>
               <StepContent />
             </Stack>
           </Stack>
@@ -157,7 +156,7 @@ export const SdkIframeEmbedSetupContent = () => {
           ) : (
             <Card h="100%">
               <Flex h="100%" align="center" justify="center">
-                <Stack align="center" gap="md">
+                <Stack align="center" gap="lg">
                   <Image
                     w={120}
                     h={120}

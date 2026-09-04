@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.test :as mt]
@@ -65,8 +66,8 @@
       (testing (str "Spec for " model-key)
         (let [tracking (:tracking spec)]
           (is (or (contains? tracking :select-fields)
-                  (contains? tracking :hydrate-query))
-              "tracking should have either :select-fields or :hydrate-query")
+                  (:hydrate-query? tracking))
+              "tracking should have either :select-fields or :hydrate-query? true")
           (is (map? (:field-mappings tracking))
               "tracking :field-mappings should be a map"))))))
 
@@ -473,6 +474,25 @@
       (is (= {:entity_id [:not= transforms-python/builtin-entity-id]}
              (spec/removal-conditions spec))))))
 
+(deftest document-spec-excludes-explorations-test
+  (testing "Document spec filters out exploration Summary documents via :conditions (UXW-4091)"
+    (let [spec (spec/spec-for-model-key :model/Document)]
+      (is (= {:exploration_id nil} (:conditions spec))
+          "Document :conditions should require exploration_id IS NULL")
+      (is (= {:exploration_id nil} (spec/export-conditions spec)))
+      (is (= {:exploration_id nil} (spec/removal-conditions spec)))))
+  (testing "check-eligibility returns false for an exploration document, even in a remote-synced collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :location "/" :is_remote_synced true}]
+      (let [spec        (spec/spec-for-model-key :model/Document)
+            plain-doc   {:id 1 :collection_id coll-id :exploration_id nil}
+            explo-doc   {:id 2 :collection_id coll-id :exploration_id 42}
+            partial-doc {:id 3 :collection_id coll-id}]
+        (is (true? (spec/check-eligibility spec plain-doc)))
+        (is (false? (spec/check-eligibility spec explo-doc)))
+        (testing "a payload MISSING the conditioned key does not match the nil condition (fail closed)"
+          (is (false? (spec/check-eligibility spec partial-doc))
+              "eligibility needs an explicit nil, not an absent key — a partial payload must not sneak an exploration Summary into sync scope"))))))
+
 (deftest transform-tag-spec-uses-conditions-test
   (testing "TransformTag spec still uses :conditions (not split)"
     (let [spec (spec/spec-for-model-key :model/TransformTag)]
@@ -484,6 +504,33 @@
       (is (= {:built_in_type nil} (spec/removal-conditions spec))
           "removal-conditions falls back to :conditions for TransformTag"))))
 
+(deftest removal-condition-exprs-value-shapes-test
+  (testing "removal conditions render each value shape into a well-formed HoneySQL fragment"
+    (testing "a scalar value renders as [:= k v]"
+      (is (= [[:= :built_in_type nil]]
+             (#'remote-sync.db/removal-condition-exprs {:built_in_type nil}))))
+    (testing "an :entity_id [op value] pair keeps its operator"
+      (is (= [[:not= :entity_id "builtin-eid"]]
+             (#'remote-sync.db/removal-condition-exprs {:entity_id [:not= "builtin-eid"]}))))
+    (testing "a vector value on any other key renders as [:in k v], not a broken scalar [:= k v]"
+      (is (= [[:in :status ["removed" "delete"]]]
+             (#'remote-sync.db/removal-condition-exprs {:status ["removed" "delete"]}))))))
+
+(deftest check-eligibility-applies-conditions-uniformly-test
+  (testing ":conditions are enforced for non-:collection eligibility types"
+    (testing "TransformTag (:setting): built-in tags fail eligibility even when the setting is on"
+      (mt/with-temporary-setting-values [remote-sync-transforms true]
+        (let [spec (spec/spec-for-model-key :model/TransformTag)]
+          (is (true?  (spec/check-eligibility spec {:id 1 :name "user-tag"   :built_in_type nil})))
+          (is (false? (spec/check-eligibility spec {:id 2 :name "system-tag" :built_in_type "system"}))
+              "built-in TransformTag must NOT be eligible — was previously creating wasteful RSO churn")
+          (is (= {1 true 2 false}
+                 (spec/batch-check-eligibility spec [{:id 1 :built_in_type nil}
+                                                     {:id 2 :built_in_type "system"}]))))))
+    (testing "TransformTag (:setting): setting off short-circuits regardless of conditions"
+      (mt/with-temporary-setting-values [remote-sync-transforms false]
+        (let [spec (spec/spec-for-model-key :model/TransformTag)]
+          (is (false? (spec/check-eligibility spec {:id 1 :built_in_type nil}))))))))
 (deftest check-deletion-conflicts-test
   (testing "unsynced transform-family content absent from an import is flagged; synced content is excluded"
     (mt/with-temporary-setting-values [remote-sync-transforms true]
@@ -544,10 +591,10 @@
         (is (= 1 (:count conflict)) "the unsynced snippet is flagged; the synced one is excluded")
         (is (= ["Local Snippet"] (:names conflict)))))))
 
-(deftest removal-where-clauses-parity-test
+(deftest removal-exprs-parity-test
   (testing "GHY-4019: the deletion-conflict warning is exactly the unsynced subset of what an import removes"
     ;; Both the delete path (remove-unsynced!) and the warning build their WHERE from
-    ;; spec/removal-where-clauses, so they can't diverge. This locks in that relationship: the rows the
+    ;; remote-sync.db/removal-exprs, so they can't diverge. This locks in that relationship: the rows the
     ;; predicate removes (absent from the import, in a synced collection) minus the already-synced ones are
     ;; exactly the rows the warning flags.
     (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/"}
@@ -560,10 +607,13 @@
             imported-data {:by-entity-id {"Card" imported-eids}}
             synced-ids    (spec/all-syncable-collection-ids)
             card-spec     (spec/spec-for-model-key :model/Card)
+            removal-opts  {:scope-key             (get-in card-spec [:removal :scope-key])
+                           :synced-collection-ids synced-ids
+                           :entity-ids            imported-eids
+                           :removal-conditions    (spec/removal-conditions card-spec)}
             ;; what remove-unsynced! would delete for Card (its predicate, run as a SELECT rather than a delete)
             would-delete  (t2/select-fn-set :name :model/Card
-                                            {:where (into [:and] (spec/removal-where-clauses
-                                                                  card-spec synced-ids imported-eids))})
+                                            {:where (into [:and] (#'remote-sync.db/removal-exprs removal-opts))})
             flagged       (into #{}
                                 (comp (filter #(= "Card" (:model %))) (mapcat :names))
                                 (spec/check-content-deletion-conflicts imported-data))]

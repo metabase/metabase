@@ -17,6 +17,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.sync.analyze :as analyze]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -28,8 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.core :as warehouses]
-   [toucan2.core :as t2])
+   [metabase.warehouses.core :as warehouses])
   (:import
    (org.quartz
     CronTrigger
@@ -76,7 +76,7 @@
 (defn- sync-and-analyze-database*!
   [database-id]
   (log/infof "Starting sync task for Database %d." database-id)
-  (when-let [database (or (t2/select-one :model/Database :id database-id)
+  (when-let [database (or (sync.db/database database-id)
                           (do
                             (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
                             (log/warnf "Cannot sync Database %d: Database does not exist." database-id)))]
@@ -89,7 +89,7 @@
                   nil
                   (catch Throwable e
                     e))]
-      (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
+      (log/warnf "Cannot sync Database %d: %s" database-id (ex-message ex))
       (database-routing/with-database-routing-off
         (let [db-id            (:id database)
               metadata-results (tracing/with-span :sync "sync.metadata" {:db/id db-id}
@@ -122,7 +122,7 @@
                            :raw-job-context job-context
                            :job-context (pr-str job-context)}))))
 
-      (t2/select-one-fn :is_stub :model/Database :id database-id)
+      (sync.db/database-stub? database-id)
       (log/warnf "Skipping scheduled sync for Database %d: it is a stub." database-id)
 
       :else
@@ -141,7 +141,7 @@
       (log/debugf "Skipping scheduled field-values update for Database %d: disable-auto-sync is on." database-id)
       (do
         (log/infof "Update Field values task triggered for Database %d." database-id)
-        (when-let [database (or (t2/select-one :model/Database :id database-id)
+        (when-let [database (or (sync.db/database database-id)
                                 (do
                                   (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
                                   (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
@@ -298,9 +298,9 @@
       ;; delete the existing trigger
       (nil? new-trigger)
       (do
-        (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed. It will no longer run on a schedule."
+        (log/infof "Trigger for \"%s\" of Database %d has been removed. It will no longer run on a schedule."
                    (:name task-info)
-                   (:name database))
+                   (u/the-id database))
         (delete-trigger! database task-info))
 
       ;; need to recreate the new trigger
@@ -308,13 +308,13 @@
            (nil? existing-trigger-with-same-schedule))
       (do
         (if (delete-trigger! database task-info)
-          (log/infof "Trigger for \"%s\" of Database \"%s\" has been updated. The new schedule is: \"%s\""
+          (log/infof "Trigger for \"%s\" of Database %d has been updated. The new schedule is: \"%s\""
                      (:name task-info)
-                     (:name database)
+                     (u/the-id database)
                      (cron-schedule database task-info))
-          (log/infof "A trigger for \"%s\" of Database \"%s\" has been enabled with schedule: \"%s\""
+          (log/infof "A trigger for \"%s\" of Database %d has been enabled with schedule: \"%s\""
                      (:name task-info)
-                     (:name database)
+                     (u/the-id database)
                      (cron-schedule database task-info)))
         (task/add-trigger! new-trigger))
 
@@ -366,29 +366,21 @@
                 counter)
                ([counter db]
                 (try
-                  (t2/update! :model/Database (u/the-id db)
-                              (sync.schedules/schedule-map->cron-strings
-                               ;; TODO (edpaget): this can go away after this patch is deployed to cloud
-                               (if (= sync.schedules/old-sample-metadata-sync-schedule-cron-string
-                                      (:metadata_sync_schedule db))
-                                 (sync.schedules/default-randomized-schedule {:excluded-minute 43})
-                                 (sync.schedules/default-randomized-schedule))))
+                  (sync.db/update-database! (u/the-id db)
+                                            (sync.schedules/schedule-map->cron-strings
+                                             ;; TODO (edpaget): this can go away after this patch is deployed to cloud
+                                             (if (= sync.schedules/old-sample-metadata-sync-schedule-cron-string
+                                                    (:metadata_sync_schedule db))
+                                               (sync.schedules/default-randomized-schedule {:excluded-minute 43})
+                                               (sync.schedules/default-randomized-schedule))))
                   (inc counter)
                   (catch Exception e
-                    (log/warnf e "Error updating database %d for randomized schedules" (u/the-id db))
+                    (log/warnf "Error updating database %d for randomized schedules: %s" (u/the-id db) (ex-message e))
                     counter))))
-             (t2/reducible-query
-              {:select [:*]
-               :from   [:metabase_database]
-               :where  [:or
-                        [:and [:= :is_sample true]
-                         [:= :metadata_sync_schedule sync.schedules/old-sample-metadata-sync-schedule-cron-string]]
-                        [:in
-                         :metadata_sync_schedule
-                         sync.schedules/default-metadata-sync-schedule-cron-strings]
-                        [:in
-                         :cache_field_values_schedule
-                         sync.schedules/default-cache-field-values-schedule-cron-strings]]})))
+             (sync.db/databases-with-schedules-reducible
+              sync.schedules/old-sample-metadata-sync-schedule-cron-string
+              sync.schedules/default-metadata-sync-schedule-cron-strings
+              sync.schedules/default-cache-field-values-schedule-cron-strings)))
 
 (defmethod task/init! ::SyncDatabases
   [_]

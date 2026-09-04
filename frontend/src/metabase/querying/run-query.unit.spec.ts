@@ -3,8 +3,8 @@ import fetchMock from "fetch-mock";
 import { getMainStore } from "__support__/entities-store";
 import { createMockEntitiesState } from "__support__/store";
 import { waitFor } from "__support__/ui";
+import { getMetadata } from "metabase/metadata-store";
 import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -110,7 +110,6 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
         `path:/api/card/${question.id()}/query`,
       );
       expect(await call?.request?.json()).toEqual({
-        collection_preview: false,
         ignore_cache: false,
         parameters: [],
       });
@@ -129,7 +128,6 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
         `path:/api/card/pivot/${question.id()}/query`,
       );
       expect(await call?.request?.json()).toEqual({
-        collection_preview: false,
         ignore_cache: false,
         parameters: [],
       });
@@ -146,7 +144,6 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
         `path:/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${question.id()}/query`,
       );
       expect(await call?.request?.json()).toEqual({
-        collection_preview: false,
         ignore_cache: false,
         parameters: [],
       });
@@ -167,7 +164,6 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
         `path:/api/dashboard/pivot/${dashboardId}/dashcard/${dashcardId}/card/${question.id()}/query`,
       );
       expect(await call?.request?.json()).toEqual({
-        collection_preview: false,
         ignore_cache: false,
         parameters: [],
       });
@@ -219,7 +215,7 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
         dataset_query: {
           type: "internal",
           fn: "metabase-enterprise.audit-app.pages.queries/bad-table",
-          args: [null, null, null, "last_run_at", "desc"],
+          args: [null, "last_run_at", "desc"],
         } as unknown as UnsavedCard["dataset_query"],
       });
 
@@ -342,7 +338,7 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
       // Two callers running the same saved card must not co-subscribe to a
       // single RTK Query request: otherwise one caller aborting (e.g. the SDK
       // cancelling the previous run on every re-run) would abort the other's
-      // query too, hanging/blanking the result. A unique `_refetchDeps` per
+      // query too, hanging/blanking the result. A unique `__rtkCacheKey` per
       // call keeps the cache keys — and therefore the requests — distinct.
       const question = createMockSavedQuestion();
       const path = getQueryEndpointPath(question);

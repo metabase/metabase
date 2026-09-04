@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { getCurrentVersion } from "metabase/admin/app/selectors";
-import { useGetVersionInfoQuery } from "metabase/api";
 import { useSelector } from "metabase/redux";
+import { useGetVersionInfoQuery } from "metabase/settings";
 import { Indicator } from "metabase/ui";
 import { newVersionAvailable } from "metabase/utils/version";
 
