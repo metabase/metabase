@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { skipToken, useListTimelinesQuery } from "metabase/api";
 import {
@@ -36,8 +36,12 @@ const EMPTY_EVENTS: TimelineEvent[] = [];
 const canLoadTimelineEvents = () =>
   !isPublicEmbedding() && !isStaticEmbedding() && !isEmbeddingSdk();
 
+// dashcards render before their datasets arrive, despite the series type
 const hasSeriesData = (series: VisualizationProps["series"]) =>
   series.length > 0 && series.every((single) => single.data != null);
+
+const getEventIdsKey = (events: TimelineEvent[]) =>
+  events.map((event) => event.id).join(",");
 
 export function useTimelineEvents({
   timelineEvents: explicitEvents,
@@ -95,8 +99,14 @@ export function useTimelineEvents({
     settings,
   ]);
 
+  const shownEventIdsKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (timelineEvents.length > 0) {
+    const eventIdsKey = getEventIdsKey(timelineEvents);
+    if (
+      timelineEvents.length > 0 &&
+      eventIdsKey !== shownEventIdsKeyRef.current
+    ) {
+      shownEventIdsKeyRef.current = eventIdsKey;
       onTimelineEventsShown?.(timelineEvents);
     }
   }, [timelineEvents, onTimelineEventsShown]);

@@ -99,15 +99,15 @@ const setup = ({
   setupTimelinesEndpoints(timelines);
   const settings = getComputedSettingsForSeries(series);
   return renderHookWithProviders(
-    () =>
+    (props: Pick<VisualizationProps, "series">) =>
       useTimelineEvents({
         timelineEvents,
         timelineEventsVisibility,
         settings,
-        series,
         onTimelineEventsShown,
+        ...props,
       }),
-    {},
+    { initialProps: { series } },
   );
 };
 
@@ -209,6 +209,18 @@ describe("useTimelineEvents", () => {
     await waitFor(() => {
       expect(onTimelineEventsShown).toHaveBeenCalledWith([SHOWN_EVENT]);
     });
+  });
+
+  it("reports the shown events once when the chart data is refreshed", async () => {
+    const onTimelineEventsShown = jest.fn();
+    const { rerender } = setup({ onTimelineEventsShown });
+    await waitFor(() => {
+      expect(onTimelineEventsShown).toHaveBeenCalledTimes(1);
+    });
+
+    rerender({ series: getSeries(SAVED_VISIBILITY) });
+
+    expect(onTimelineEventsShown).toHaveBeenCalledTimes(1);
   });
 
   it.each([
