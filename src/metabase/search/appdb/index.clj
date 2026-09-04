@@ -140,7 +140,7 @@
       (let [dropped (volatile! [])]
         (doseq [table (orphan-indexes)]
           (try
-            (t2/query (sql.helpers/drop-table table))
+            (t2/query (sql.helpers/drop-table :if-exists table))
             (vswap! dropped conj table)
             ;; Deletion could fail if it races with other instances
             (catch Exception e
