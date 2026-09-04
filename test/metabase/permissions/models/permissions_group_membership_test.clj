@@ -98,3 +98,79 @@
       (is (thrown-with-msg? Exception #"Do not use `t2/delete!`"
                             (t2/delete! :model/PermissionsGroupMembership
                                         :user_id user-id :group_id group-id))))))
+
+(defn- data-analyst-group-id []
+  (u/the-id (perms-group/data-analyst)))
+
+(defn- in-data-analyst-group? [user-id]
+  (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id (data-analyst-group-id)))
+
+(defn- is-data-analyst-flag [user-id]
+  (t2/select-one-fn :is_data_analyst :model/User :id user-id))
+
+(deftest add-to-data-analyst-group-without-advanced-permissions-test
+  (testing "adding a user to the Data Analysts group is refused without the :advanced-permissions feature"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (mt/with-premium-features #{}
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Advanced Permissions"
+             (perms/add-user-to-group! user-id (data-analyst-group-id))))
+        (testing "no membership is created"
+          (is (not (in-data-analyst-group? user-id))))
+        (testing "the is_data_analyst flag is not set"
+          (is (not (is-data-analyst-flag user-id))))))))
+
+(deftest existing-data-analysts-are-grandfathered-test
+  (testing "an existing member keeps their membership when the feature goes away"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (perms/add-user-to-group! user-id (data-analyst-group-id)))
+      (mt/with-premium-features #{}
+        (testing "nothing revokes the membership or the flag"
+          (is (in-data-analyst-group? user-id))
+          (is (true? (boolean (is-data-analyst-flag user-id)))))
+        (testing "but the group can only shrink from here"
+          (mt/with-temp [:model/User {other-user-id :id} {}]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo #"Advanced Permissions"
+                 (perms/add-user-to-group! other-user-id (data-analyst-group-id))))))))))
+
+(deftest add-to-data-analyst-group-with-advanced-permissions-test
+  (testing "adding a user to the Data Analysts group works with the :advanced-permissions feature"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (perms/add-user-to-group! user-id (data-analyst-group-id))
+        (is (in-data-analyst-group? user-id))
+        (testing "and mirrors the membership onto the is_data_analyst flag"
+          (is (true? (boolean (is-data-analyst-flag user-id)))))))))
+
+(deftest remove-from-data-analyst-group-is-never-gated-test
+  (testing "removing a user from the Data Analysts group works without the :advanced-permissions feature"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (perms/add-user-to-group! user-id (data-analyst-group-id)))
+      (mt/with-premium-features #{}
+        (perms/remove-user-from-group! user-id (data-analyst-group-id))
+        (is (not (in-data-analyst-group? user-id)))
+        (testing "and unsets the is_data_analyst flag"
+          (is (not (is-data-analyst-flag user-id))))))))
+
+(deftest add-to-other-groups-is-not-gated-test
+  (testing "the Data Analysts gate does not affect other groups"
+    (mt/with-temp [:model/User {user-id :id} {}
+                   :model/PermissionsGroup {group-id :id} {:name "Test Group"}]
+      (mt/with-premium-features #{}
+        (perms/add-user-to-group! user-id group-id)
+        (is (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id))))))
+
+(deftest add-to-data-analyst-group-in-a-batch-is-gated-test
+  (testing "a batched add that includes the Data Analysts group is refused entirely"
+    (mt/with-temp [:model/User {user-id :id} {}
+                   :model/PermissionsGroup {group-id :id} {:name "Test Group"}]
+      (mt/with-premium-features #{}
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Advanced Permissions"
+             (perms/add-user-to-groups! user-id [group-id (data-analyst-group-id)])))
+        (is (not (in-data-analyst-group? user-id)))
+        (testing "and the rest of the batch is not applied either"
+          (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id))))))))

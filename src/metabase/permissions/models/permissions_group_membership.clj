@@ -5,6 +5,7 @@
    [metabase.events.core :as events]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -18,6 +19,11 @@
 (def fail-to-remove-last-admin-msg
   "Exception message when try to remove the last admin."
   (deferred-tru "You cannot remove the last member of the ''Admin'' group!"))
+
+(def fail-to-add-data-analyst-msg
+  "Exception message when trying to add a member to the Data Analysts group without the `:advanced-permissions`
+  premium feature."
+  (deferred-tru "Adding people to the ''Data Analysts'' group requires the Advanced Permissions feature, which is not enabled on this instance."))
 
 (def ^:dynamic *allow-changing-all-users-group-members*
   "Should we allow people to be added to or removed from the All Users permissions group? By default, this is `false`,
@@ -58,6 +64,32 @@
     (when-not *allow-changing-all-external-users-group-members*
       (throw (ex-info (tru "You cannot add or remove users to/from the ''All tenant users'' group.")
                       {:status-code 400})))))
+
+(defn- check-can-add-to-data-analyst-group
+  "Throw an Exception if we're trying to *add* a user to the Data Analysts group on an instance without the
+  `:advanced-permissions` premium feature, so that the premium capability isn't quietly available for free.
+
+  Additions only. A downgraded instance keeps its existing Data Analysts and their powers -- downgrade is a bounded
+  grace period, not a clawback -- but the group can only shrink from there: grandfathered members keep curating until
+  an admin removes them, on the admin's own schedule, and once the group is empty it goes away until a token returns.
+  Gating removals would strand admins in the grace period, so removals are never gated.
+
+  Monotonic shrinking is also what upholds the group's visibility invariant. The group is shown whenever the feature
+  is enabled *or* the group has members, so a populated group on a downgraded instance stays visible in the groups and
+  people pages -- nothing is affecting permissions behind the admin's back. The addition gate is what keeps the other
+  side of that predicate true: an invisible group is empty, and therefore affects nobody. Invisibility is a
+  consequence of this check, not its reason.
+
+  Lives on [[add-users-to-groups!]] rather than on the before-insert hook, because that function inserts via raw
+  HoneySQL and so never fires Toucan's hooks. Since direct `t2/insert!` is refused outright, that makes this the one
+  check every production caller passes through."
+  [group-id]
+  (when (and (= group-id (:id (perms-group/data-analyst)))
+             (not (premium-features/enable-advanced-permissions?)))
+    ;; `:status-code` on its own (no other ex-data) makes the API middleware return the message as the response body,
+    ;; which is what we want here -- the message is the whole point of this error.
+    (throw (ex-info (str fail-to-add-data-analyst-msg)
+                    {:status-code 402}))))
 
 (defn throw-if-last-admin!
   "Throw an Exception if there are no admins left besides this one. The assumption is that the one admin is about to be
@@ -109,6 +141,11 @@
 
 (t2/define-before-insert :model/PermissionsGroupMembership
   [membership]
+  ;; NOTE: the sigil branch deliberately skips [[check-can-add-to-data-analyst-group]]. It is a test-fixture escape
+  ;; hatch, not a production path -- every real insertion goes through `add-users-to-groups!`, which is gated -- and
+  ;; tests need it ungated to set up the grandfathered case: an existing Data Analyst on an instance that no longer
+  ;; has the feature.
+  ;;
   ;; this should generally only be set by the `with-temp` defaults for `:model/PermissionsGroupMembership`. Ideally we'll move to only
   (if-not (:__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships membership)
     (throw (ex-info "Do not use `t2/insert!` with PermissionsGroupMembership directly. Use `add-users-to-groups` or related instead"
@@ -160,7 +197,8 @@
                                                :group-is-tenant? (group-id->tenant? group-id)}))))
           _ (doseq [group-id group-ids]
               (check-not-all-users-group group-id)
-              (check-not-all-external-users-group group-id))
+              (check-not-all-external-users-group group-id)
+              (check-can-add-to-data-analyst-group group-id))
           _ (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
               (when (and is-group-manager? (user-id->tenant? user-id))
                 (throw (ex-info (tru "Tenant users cannot be made group managers")

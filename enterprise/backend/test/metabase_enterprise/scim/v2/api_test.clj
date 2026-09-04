@@ -436,3 +436,38 @@
                                          {:where [:in :id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
         (doseq [entity-id entity-ids]
           (scim-client :delete 404 (format "ee/scim/v2/Groups/%s" entity-id)))))))
+
+(deftest update-data-analyst-group-membership-requires-advanced-permissions-test
+  (testing "PUT /Groups/:id cannot add members to the Data Analysts group without :advanced-permissions"
+    (let [group    (perms-group/data-analyst)
+          group-id (:id group)]
+      (mt/with-temp [:model/User {user-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
+        (mt/with-premium-features #{}
+          (with-scim-setup!
+            (let [entity-id    (t2/select-one-fn :entity_id :model/PermissionsGroup :id group-id)
+                  group-update {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+                                :id          entity-id
+                                :displayName (:name group)
+                                :members     [{:value (t2/select-one-fn :entity_id :model/User :id user-id)}]}
+                  response     (scim-client :put 402 (format "ee/scim/v2/Groups/%s" entity-id) group-update)]
+              (testing "the error names the required feature"
+                (is (re-find #"Advanced Permissions" (str response))))
+              (testing "no membership was created"
+                (is (not (t2/exists? :model/PermissionsGroupMembership
+                                     :user_id user-id :group_id group-id)))))))))))
+
+(deftest update-data-analyst-group-membership-with-advanced-permissions-test
+  (testing "PUT /Groups/:id can add members to the Data Analysts group with :advanced-permissions"
+    (let [group    (perms-group/data-analyst)
+          group-id (:id group)]
+      (mt/with-temp [:model/User {user-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
+        (mt/with-premium-features #{:advanced-permissions}
+          (with-scim-setup!
+            (let [entity-id    (t2/select-one-fn :entity_id :model/PermissionsGroup :id group-id)
+                  group-update {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+                                :id          entity-id
+                                :displayName (:name group)
+                                :members     [{:value (t2/select-one-fn :entity_id :model/User :id user-id)}]}]
+              (scim-client :put 200 (format "ee/scim/v2/Groups/%s" entity-id) group-update)
+              (is (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id))
+              (is (true? (boolean (t2/select-one-fn :is_data_analyst :model/User :id user-id)))))))))))
