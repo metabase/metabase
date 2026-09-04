@@ -145,4 +145,26 @@ describe("VisualizationResult", () => {
       ).toBeInTheDocument();
     });
   });
+
+  describe("with no results", () => {
+    it("should render the no-results action", () => {
+      setup({
+        result: createMockDataset(),
+        noResultsAction: <p>Alert prompt</p>,
+      });
+
+      expect(screen.getByText("No results")).toBeInTheDocument();
+      expect(screen.getByText("Alert prompt")).toBeInTheDocument();
+    });
+
+    it("should not render an alert link without a no-results action", () => {
+      setup({ result: createMockDataset() });
+
+      expect(screen.getByText("No results")).toBeInTheDocument();
+      expect(screen.queryByText(/get an alert/)).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Back to previous results" }),
+      ).toBeInTheDocument();
+    });
+  });
 });

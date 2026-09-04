@@ -192,13 +192,13 @@ const StaticQuestionInner = (
             className={InteractiveQuestionS.Container}
             w="100%"
             h="100%"
-            gap="xs"
+            gap="xxs"
           >
             <RenderIfHasContent
               component={Stack}
               className={InteractiveQuestionS.TopBar}
               gap="sm"
-              p="md"
+              p="lg"
               data-testid="static-question-top-bar"
             >
               {title && <DefaultViewTitle title={title} />}

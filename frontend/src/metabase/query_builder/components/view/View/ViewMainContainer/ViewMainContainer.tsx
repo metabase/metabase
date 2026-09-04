@@ -3,6 +3,7 @@ import cx from "classnames";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
+import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
 import { Mode } from "metabase/querying/click-actions/Mode";
 import { getQueryMode } from "metabase/querying/click-actions/lib/modes";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
@@ -46,6 +47,7 @@ interface ViewMainContainerProps {
   isNativeEditorOpen: boolean;
   isRunnable: boolean;
   isRunning: boolean;
+  isDirty: boolean;
   isResultDirty: boolean;
 
   isShowingDataReference: boolean;
@@ -94,6 +96,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const {
     queryBuilderMode,
     question,
+    isDirty,
     showLeftSidebar,
     showRightSidebar,
     parameters,
@@ -150,6 +153,9 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           className={CS.spread}
           mode={clickActionMode}
           hasColumnReordering
+          noResultsAction={
+            !isDirty && <HasResultsAlertPrompt question={question} />
+          }
           onUpdateQuestion={updateQuestion}
         />
       </DebouncedFrame>

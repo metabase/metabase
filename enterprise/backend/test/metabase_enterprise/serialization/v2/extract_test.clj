@@ -1134,24 +1134,34 @@
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database {db-id        :id} {:name "My Database"}
                        :model/Table    {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
-                       :model/Field    {field-id     :id} {:name "Some Field" :table_id no-schema-id}
+                       :model/Field    {field-id     :id} {:name             "Some Field"
+                                                           :table_id         no-schema-id
+                                                           :data_sensitivity :PII}
+                       :model/Field    {plain-id     :id} {:name "Plain Field" :table_id no-schema-id}
                        :model/FieldUserSettings {description :description}
-                       {:field_id              field-id
-                        :description "Some custom Description"}]
+                       {:field_id         field-id
+                        :description      "Some custom Description"
+                        :data_sensitivity :PII}]
       (testing "field values"
         (let [ser (serdes/extract-one "FieldUserSettings" {} (t2/select-one :model/FieldUserSettings :field_id field-id))]
-          (is (=? {:serdes/meta [{:model "Database" :id "My Database"}
-                                 {:model "Table"    :id "Schemaless Table"}
-                                 {:model "Field"    :id "Some Field"}
-                                 {:model "FieldUserSettings" :id "1"}] ; Always 1.
-                   :created_at  string?
-                   :description description}
+          (is (=? {:serdes/meta      [{:model "Database" :id "My Database"}
+                                      {:model "Table"    :id "Schemaless Table"}
+                                      {:model "Field"    :id "Some Field"}
+                                      {:model "FieldUserSettings" :id "1"}] ; Always 1.
+                   :created_at       string?
+                   :description      description
+                   :data_sensitivity :PII}
                   ser))
           (is (not (contains? ser :field_id))
               ":field_id is dropped; its implied by the path")
           (testing "depend only on the Database; the parent Field is synthesized on import if missing"
             (is (= #{[{:model "Database"   :id "My Database"}]}
                    (set (serdes/deserialization-dependencies ser)))))))
+      (testing "data_sensitivity on the Field itself"
+        (is (= :PII (:data_sensitivity (ts/extract-one "Field" field-id)))
+            "a labeled field exports the keyword as-is")
+        (is (not (contains? (ts/extract-one "Field" plain-id) :data_sensitivity))
+            "an unlabeled field exports no key, so nil never reaches the YAML"))
       (testing "extract-metabase behavior"
         (let [models (->> {} (extract/extract) (map (comp :model last :serdes/meta)))]
           (is (= 1
@@ -1178,6 +1188,12 @@
           (is (= #{["FieldUserSettings" f2-id]}
                  (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc))))))
         (t2/delete! :model/FieldUserSettings :field_id f2-id))
+      (testing "with user-edits-only and a FieldUserSettings row holding only data_sensitivity: that field appears as FieldUserSettings"
+        (t2/insert! :model/FieldUserSettings {:field_id f1-id :data_sensitivity :PII})
+        (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
+          (is (= #{["FieldUserSettings" f1-id]}
+                 (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc))))))
+        (t2/delete! :model/FieldUserSettings :field_id f1-id))
       (testing "with user-edits-only and all fields edited: all appear as FieldUserSettings, not Field"
         (t2/insert! :model/FieldUserSettings {:field_id f1-id})
         (t2/insert! :model/FieldUserSettings {:field_id f2-id})

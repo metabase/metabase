@@ -19,7 +19,7 @@ export const ReadOnlyBranchSection = () => {
 
   return (
     <RemoteSyncSettingsSection title={t`Branch to sync with`}>
-      <Stack gap="md">
+      <Stack gap="lg">
         <Box style={{ flex: 1 }}>
           <FormTextInput
             name={BRANCH_KEY}
