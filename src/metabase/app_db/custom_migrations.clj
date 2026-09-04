@@ -46,8 +46,7 @@
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
    (liquibase.exception ValidationErrors)
-   (liquibase.util BooleanUtil)
-   (org.mindrot.jbcrypt BCrypt)))
+   (liquibase.util BooleanUtil)))
 
 (set! *warn-on-reflection* true)
 
@@ -1122,44 +1121,36 @@
       ;; use the table, not model/Database because we don't want to trigger the hooks
       (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil}))))
 
-(defn- hash-bcrypt
-  "Hashes a given plaintext password using bcrypt.  Should be used to hash
-   passwords included in stored user credentials that are to be later verified
-   using `bcrypt-credential-fn`."
-  [password]
-  (BCrypt/hashpw password (BCrypt/gensalt)))
-
 (defn- internal-user-exists? []
   (pos? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:= :id config/internal-mb-user-id]})))))
 
 (define-migration CreateInternalUser
   ;; the internal user may have been created in a previous version for Metabase Analytics, so don't add it again if it
-  ;; exists already.
+  ;; exists already. It has no password: it is inactive and can never log in, and a password would be copied into
+  ;; `auth_identity` bare by the v58 SQL changesets.
   (when (not (internal-user-exists?))
-    (let [salt     (str (random-uuid))
-          password (hash-bcrypt (str salt (random-uuid)))
-          user     {;; we insert the internal user ID directly because it's
-                    ;; deliberately high enough to not conflict with any other
-                    :id               config/internal-mb-user-id
-                    :password_salt    salt
-                    :password         password
-                    :email            "internal@metabase.com"
-                    :first_name       "Metabase"
-                    :locale           nil
-                    :last_login       nil
-                    :is_active        false
-                    :settings         nil
-                    :type             "internal"
-                    :is_qbnewb        true
-                    :updated_at       nil
-                    :reset_triggered  nil
-                    :is_superuser     false
-                    :login_attributes nil
-                    :reset_token      nil
-                    :last_name        "Internal"
-                    :date_joined      :%now
-                    :sso_source       nil
-                    :is_datasetnewb   true}]
+    (let [user {;; we insert the internal user ID directly because it's
+                ;; deliberately high enough to not conflict with any other
+                :id               config/internal-mb-user-id
+                :password_salt    nil
+                :password         nil
+                :email            "internal@metabase.com"
+                :first_name       "Metabase"
+                :locale           nil
+                :last_login       nil
+                :is_active        false
+                :settings         nil
+                :type             "internal"
+                :is_qbnewb        true
+                :updated_at       nil
+                :reset_triggered  nil
+                :is_superuser     false
+                :login_attributes nil
+                :reset_token      nil
+                :last_name        "Internal"
+                :date_joined      :%now
+                :sso_source       nil
+                :is_datasetnewb   true}]
       (t2/query {:insert-into :core_user :values [user]}))
     (let [all-users-id (first (vals (t2/query-one {:select [:id] :from :permissions_group :where [:= :name "All Users"]})))
           perms-group  {:user_id config/internal-mb-user-id :group_id all-users-id}]

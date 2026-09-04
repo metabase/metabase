@@ -1598,8 +1598,8 @@
                   :first_name       "Metabase"
                   :last_name        "Internal"
                   :email            "internal@metabase.com"
-                  :password         some?
-                  :password_salt    some?
+                  :password         nil
+                  :password_salt    nil
                   :is_active        false
                   :is_superuser     false
                   :login_attributes nil
