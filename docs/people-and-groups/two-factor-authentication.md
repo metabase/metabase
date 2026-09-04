@@ -11,16 +11,23 @@ Two-factor authentication (2FA) adds a second step to signing in. On top of peop
 
 Metabase's native 2FA applies to password logins and LDAP logins. 2FA for Single Sign-on (SSO) via JWT, SAML, or OIDC is managed through your identity provider.
 
-## Turn on two-factor authentication
+## Enable two-factor authentication
 
-An admin can turn 2FA on for your Metabase:
+To enable two-factor authentication:
 
-1. Go to **Admin settings** > **Settings** > **Authentication**.
-2. Find the **Two-factor authentication** card.
-3. Toggle it to **Enabled**.
-   Once enabled, a **Two-factor authentication** section shows up in each person's account settings under the **Authentication** tab, where they can enroll in 2FA.
+1. Go to **Admin** > **Settings** > **Authentication** > **Overview**. <!-- TODO: verify path against branch -->
+2. Scroll to the **Two-factor authentication** card.
+3. Enable the **Allow two-factor authentication** toggle. Once enabled, people who log in with a password or LDAP can enroll in 2FA from the **Authentication** tab in their account settings.
+4. In **Require two-factor authentication**, select an option:
+   - **Don't require**: People can enroll in 2FA, but they don't have to. This is the default.
+   - **Require now**: Metabase logs out everyone (including you) who hasn't logged in with 2FA. Anyone who hasn't enrolled sets up 2FA at their next login.
+   - **Require by a certain date**: Under **Enrollment deadline**, select a date when 2FA becomes required for everyone.
 
-If you configure Metabase through environment variables or a [config file](../configuring-metabase/config-file.md), the matching setting is [`MB_MFA_ENFORCEMENT`](../configuring-metabase/environment-variables.md#mb_mfa_enforcement). Set `MB_MFA_ENFORCEMENT` to `optional` to let people enroll, or `off` to turn 2FA off.
+Requiring 2FA doesn't affect API keys.
+
+If you configure Metabase through environment variables or a [config file](../configuring-metabase/config-file.md), the matching setting is [`MB_MFA_ENFORCEMENT`](../configuring-metabase/environment-variables.md#mb_mfa_enforcement). Set `MB_MFA_ENFORCEMENT` to `optional` to let people enroll, `required` to make enrollment mandatory, or `off` to turn 2FA off.
+
+To set the enrollment deadline, use [`MB_MFA_REQUIREMENT_DEADLINE`](../configuring-metabase/environment-variables.md#mb_mfa_requirement_deadline).
 
 ## Supported methods
 
@@ -44,7 +51,7 @@ Metabase requires people to use an email address as a login, but that doesn't me
 
 ## See who's enrolled
 
-When 2FA is on, go to **Admin settings** > **Settings** > **Authentication** > **Two-factor authentication**. The 2FA card shows how many people have enrolled in 2FA and how many haven't.
+When 2FA is on, go to **Admin** > **Settings** > **Authentication** > **Overview** and scroll to the **Two-factor authentication** card. The card shows how many people have enrolled in 2FA and how many haven't. Click a count to see the list of people.
 
 ## Further reading
 
