@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import NoResultsImg from "assets/img/no_results.svg";
@@ -17,6 +18,7 @@ import {
   DEFAULT_VISIBLE_COLUMNS_LIST,
 } from "metabase/collections/components/CollectionContent/constants";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
+import { trackCollectionItemsFiltered } from "metabase/common/collections/analytics";
 import type {
   CreateBookmark,
   DeleteBookmark,
@@ -44,7 +46,6 @@ import type {
   SortingOptions,
 } from "metabase-types/api";
 
-import S from "./CollectionContent.module.css";
 import { CollectionItemsToolbar } from "./CollectionItemsToolbar";
 
 const shouldDebounceSearchText = (
@@ -170,6 +171,7 @@ export const CollectionItemsTable = ({
   );
   const trimmedSearchText =
     searchText.trim().length > 0 ? debouncedSearchText.trim() : "";
+  const previousTrimmedSearchText = usePrevious(trimmedSearchText);
 
   const [itemsSorting, setItemsSorting] = useState<
     SortingOptions<ListCollectionItemsSortColumn>
@@ -184,6 +186,12 @@ export const CollectionItemsTable = ({
     setFilterSelection({ collectionId, value: null });
   }, [collectionId, resetPage]);
 
+  useEffect(() => {
+    if (previousTrimmedSearchText === "" && trimmedSearchText.length > 0) {
+      trackCollectionItemsFiltered({ collectionId, filter: "search" });
+    }
+  }, [collectionId, previousTrimmedSearchText, trimmedSearchText]);
+
   const handleSearchTextChange = useCallback(
     (value: string) => {
       setSearch({ collectionId, value });
@@ -194,10 +202,13 @@ export const CollectionItemsTable = ({
 
   const handleSelectedFiltersChange = useCallback(
     (nextFilters: CollectionItemModel[] | null) => {
+      if (selectedFilters == null && nextFilters != null) {
+        trackCollectionItemsFiltered({ collectionId, filter: "type" });
+      }
       setFilterSelection({ collectionId, value: nextFilters });
       setPage(0);
     },
-    [collectionId, setPage],
+    [collectionId, selectedFilters, setPage],
   );
 
   const handleItemsSortingChange = useCallback(
@@ -356,7 +367,7 @@ const CollectionItemsTableContent = ({
       )}
       {showNoResults && <CollectionNoResults hasSearchText={hasSearchText} />}
       {showTable && (
-        <Box className={S.table} data-testid="collection-table">
+        <Box data-testid="collection-table">
           <ItemsTable
             databases={databases}
             bookmarks={bookmarks}

@@ -1,5 +1,6 @@
 (ns metabase-enterprise.dependencies.events
   (:require
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
@@ -9,8 +10,7 @@
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 ;; ## Maintaining the dependency graph
 ;; The below listens for inserts, updates and deletes of cards, snippets and transforms in order to keep the
@@ -45,8 +45,8 @@
 (methodical/defmethod events/publish-event! ::card-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :card :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :card :entity_id (:id object))))
+    (dependencies.db/delete-dependencies-from! :card (:id object))
+    (dependencies.db/delete-dependency-status! :card (:id object))))
 
 ;; ### Snippets
 (events/derive! ::snippet-deps :metabase/event)
@@ -64,8 +64,8 @@
 (methodical/defmethod events/publish-event! ::snippet-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :snippet :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :snippet :entity_id (:id object))))
+    (dependencies.db/delete-dependencies-from! :snippet (:id object))
+    (dependencies.db/delete-dependency-status! :snippet (:id object))))
 
 ;; ### Transforms
 (events/derive! ::transform-deps :metabase/event)
@@ -84,8 +84,8 @@
   [_ {:keys [id]}]
   ;; TODO: (Braden 09/18/2025) Shouldn't we be deleting the downstream deps for dead edges as well as upstream?
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :transform :from_entity_id id)
-    (t2/delete! :model/DependencyStatus :entity_type :transform :entity_id id)))
+    (dependencies.db/delete-dependencies-from! :transform id)
+    (dependencies.db/delete-dependency-status! :transform id)))
 
 ;; On *executing* a transform, its (freshly synced) output table is made to depend on the transform.
 ;; (And if the target has changed, the old table's dep on the transform is dropped.)
@@ -96,7 +96,7 @@
 (defn- transform-table-deps! [{:keys [db-id output-schema output-table transform-id] :as _details}]
   (let [;; output-table is a keyword like :my_schema/my_table
         table-name (name output-table)]
-    (when-let [table-id (t2/select-one-fn :id :model/Table :db_id db-id :schema output-schema :name table-name)]
+    (when-let [table-id (dependencies.db/table-id-by-name db-id output-schema table-name)]
       (models.dependency/replace-dependencies! :table table-id {:transform #{transform-id}}))))
 
 (methodical/defmethod events/publish-event! ::transform-run
@@ -120,8 +120,8 @@
 (methodical/defmethod events/publish-event! ::dashboard-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :dashboard :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :dashboard :entity_id (:id object))))
+    (dependencies.db/delete-dependencies-from! :dashboard (:id object))
+    (dependencies.db/delete-dependency-status! :dashboard (:id object))))
 
 ;; ### Documents
 (events/derive! ::document-deps :metabase/event)
@@ -139,8 +139,8 @@
 (methodical/defmethod events/publish-event! ::document-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :document :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :document :entity_id (:id object))))
+    (dependencies.db/delete-dependencies-from! :document (:id object))
+    (dependencies.db/delete-dependency-status! :document (:id object))))
 
 ;; ### Sandboxes
 (events/derive! ::sandbox-deps :metabase/event)
@@ -158,8 +158,8 @@
 (methodical/defmethod events/publish-event! ::sandbox-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :sandbox :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :sandbox :entity_id (:id object))))
+    (dependencies.db/delete-dependencies-from! :sandbox (:id object))
+    (dependencies.db/delete-dependency-status! :sandbox (:id object))))
 
 ;; ### Segments
 (events/derive! ::segment-deps :metabase/event)
@@ -177,8 +177,8 @@
 (methodical/defmethod events/publish-event! ::segment-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :segment :entity_id (:id object))))
+    (dependencies.db/delete-dependencies-from! :segment (:id object))
+    (dependencies.db/delete-dependency-status! :segment (:id object))))
 
 ;; ### Measures
 (events/derive! ::measure-deps :metabase/event)
@@ -196,8 +196,8 @@
 (methodical/defmethod events/publish-event! ::measure-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :measure :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :measure :entity_id (:id object))))
+    (dependencies.db/delete-dependencies-from! :measure (:id object))
+    (dependencies.db/delete-dependency-status! :measure (:id object))))
 
 ;; ## Checking dependents for breakage (analysis_finding staleness)
 ;;
@@ -285,31 +285,7 @@
 
   Returns the set of table IDs which have dependents that need re-analysis, possibly empty."
   [db-id]
-  (t2/select-fn-set :table_id :model/AnalysisFinding
-                    {:select    [:field_updates/table_id]
-                     :from      [[^:allow-subquery {:select    [[:table/id :table_id]
-                                                                [:table/updated_at :last_table_update]
-                                                                [[:max :field/updated_at] :last_field_update]]
-                                                    :from      [[(t2/table-name :model/Table) :table]]
-                                                    :left-join [[(t2/table-name :model/Field) :field]
-                                                                [:= :field/table_id :table/id]]
-                                                    :where     [:= :table/db_id db-id]
-                                                    :group-by  [:table/id
-                                                                :table/updated_at]}
-                                  :field_updates]]
-                     :inner-join [[(t2/table-name :model/Dependency) :dep]
-                                  [:and
-                                   [:= :dep/to_entity_type "table"]
-                                   [:= :field_updates/table_id :dep/to_entity_id]]
-                                  [(t2/table-name :model/AnalysisFinding) :finding]
-                                  [:and
-                                   [:= :finding/analyzed_entity_type :dep/from_entity_type]
-                                   [:= :finding/analyzed_entity_id   :dep/from_entity_id]]]
-                     :where      [:and
-                                  [:!= :finding/analyzed_entity_id nil]
-                                  [:or
-                                   [:< :finding/analyzed_at :field_updates/last_table_update]
-                                   [:< :finding/analyzed_at :field_updates/last_field_update]]]}))
+  (dependencies.db/table-ids-with-outdated-findings db-id))
 
 (events/derive! ::sync-completed-on-database :metabase/event)
 (events/derive! :event/sync-end ::sync-completed-on-database)
@@ -351,7 +327,7 @@
    for dependency re-analysis. See the OSS declaration in `metabase.warehouses.models.database`."
   :feature :dependencies
   [db-id]
-  (when-let [transform-ids (not-empty (t2/select-pks-set :model/Transform :source_database_id db-id))]
+  (when-let [transform-ids (not-empty (dependencies.db/transform-ids-of-source-database db-id))]
     (deps.analysis-finding/mark-stale! :transform transform-ids)
     (deps.findings/mark-transitive-dependents-stale! {:transform transform-ids})
     (task.entity-check/trigger-entity-check-job!)))

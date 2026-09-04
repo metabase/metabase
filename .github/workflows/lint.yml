@@ -20,12 +20,12 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
-      actionlint: ${{ steps.changes.outputs.actionlint }}
-      actionlint_files: ${{ steps.changes.outputs.actionlint_files }}
       codeql: ${{ steps.changes.outputs.codeql }}
       i18n: ${{ steps.changes.outputs.i18n }}
       openapi: ${{ steps.changes.outputs.openapi }}
       snowplow: ${{ steps.changes.outputs.snowplow }}
+      workflows: ${{ steps.changes.outputs.workflows }}
+      workflows_files: ${{ steps.changes.outputs.workflows_files }}
       yaml: ${{ steps.changes.outputs.yaml }}
     steps:
       - uses: actions/checkout@v6
@@ -54,7 +54,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Setup actionlint
-        if: needs.files-changed.outputs.actionlint == 'true'
+        if: needs.files-changed.outputs.workflows == 'true'
         id: download
         shell: bash
         run: |
@@ -66,19 +66,29 @@ jobs:
           fi
 
       - parallel:
-          # Lint whitespace, always runs
-          - name: Run Whitespace Linter
-            run: clojure -T:whitespace-linter lint :whitespace-linter/progress-bar false
+        # Deliberately ungated. This guards a coupling that drifts silently, so running it only when a
+        # path filter says .github changed would reintroduce the failure it exists to catch - and the
+        # filters here cover .github/workflows only, not the actions and scripts it also reads.
+        - name: Check cache-warm pre-resolves every alias combination CI uses
+          run: .github/scripts/check-preresolve-aliases.sh
 
-          # Lint YAML
-          - name: Lint YAML files
-            if: needs.files-changed.outputs.yaml == 'true'
-            run: bun run lint-yaml
+        # Lint whitespace, always runs
+        - name: Run Whitespace Linter
+          run: clojure -T:whitespace-linter lint :whitespace-linter/progress-bar false
 
-          # Lint Github Actions
-          - name: Run actionlint
-            if: needs.files-changed.outputs.actionlint == 'true'
-            run: ${{ steps.download.outputs.executable }} --color --verbose ${{ needs.files-changed.outputs.actionlint_files }}
+        # Lint YAML
+        - name: Lint YAML files
+          if: needs.files-changed.outputs.yaml == 'true'
+          run: bun run lint-yaml
+
+        # Lint Github Actions
+        - name: Run actionlint
+          if: needs.files-changed.outputs.workflows == 'true'
+          run: ${{ steps.download.outputs.executable }} --color --verbose ${{ needs.files-changed.outputs.workflows_files }}
+
+        - name: Check every workflow job sets a timeout
+          if: needs.files-changed.outputs.workflows == 'true'
+          run: .github/scripts/check-job-timeouts.sh ${{ needs.files-changed.outputs.workflows_files }}
 
   validate-openapi:
     needs: files-changed
@@ -156,6 +166,7 @@ jobs:
     needs: files-changed
     if: needs.files-changed.outputs.snowplow == 'true'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v6

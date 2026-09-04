@@ -3,17 +3,21 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.snake-hating-map :as snake-hating-map])
   (:import
    (javax.net.ssl SSLSocketFactory)))
 
@@ -480,6 +484,22 @@
               (is (= []
                      (log-messages))))))))))
 
+(deftest features-batched-matches-per-feature-test
+  (testing "bounding the whole scan instead of each check does not change which features come back"
+    (let [db (driver.u/ensure-lib-database (mt/db))]
+      (is (= (#'driver.u/features* :h2 db)
+             (#'driver.u/features-batched* :h2 db))))))
+
+(deftest features-batched-falls-back-when-budget-blown-test
+  (testing "a blown batch budget falls back to the per-feature path instead of throwing or truncating"
+    (let [db (driver.u/ensure-lib-database (mt/db))]
+      (with-redefs [driver.u/supports?-timeout-ms 20
+                    driver/database-supports? (fn [_ _ _] (Thread/sleep 50) true)]
+        ;; every per-feature check times out too and degrades to false, which is exactly what the unbatched
+        ;; path returns under the same stall
+        (is (= (#'driver.u/features* :h2 db)
+               (#'driver.u/features-batched* :h2 db)))))))
+
 (deftest sqlite-in-available-drivers
   (with-redefs [driver.impl/hierarchy (->  (derive (make-hierarchy) :sqlite :metabase.driver/driver)
                                            (derive :sqlite :metabase.driver.impl/concrete))]
@@ -805,6 +825,75 @@
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
       (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1" :port 5432})))
       (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "10.224.7.141"}))))))
+
+(deftest with-database-network-policy-test
+  (mt/with-premium-features #{:attached-dwh}
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (if config/ee-available?
+        (testing "the attached DWH relaxes an external-only policy to allow-private"
+          (driver.u/with-database-network-policy {:is_attached_dwh true}
+            (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "10.224.7.141"})))
+            (testing "and no further: loopback and link-local are still refused"
+              (is (=? {:status-code 400}
+                      (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))
+              (is (=? {:status-code 400}
+                      (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "169.254.169.254"})))))))
+        (testing "on an OSS build no token feature can be present, so not even the attached DWH is relaxed"
+          (driver.u/with-database-network-policy {:is_attached_dwh true}
+            (is (=? {:status-code 400}
+                    (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "10.224.7.141"})))))))
+      (testing "an ordinary database is not relaxed"
+        (driver.u/with-database-network-policy {:name "ordinary"}
+          (is (=? {:status-code 400}
+                  (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "10.224.7.141"})))))))
+    (testing "an explicit allow-all policy is left alone"
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
+        (driver.u/with-database-network-policy {:is_attached_dwh true}
+          (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))))
+
+(deftest network-exempt-warehouse?-test
+  (testing "the exemption needs both the database's attached-DWH flag and the :attached-dwh token feature"
+    (mt/with-premium-features #{:attached-dwh}
+      ;; the token can only carry a feature at all when EE code is available, so on an OSS build the flag confers
+      ;; nothing even with the feature in the (test-stubbed) token
+      (let [exempt? config/ee-available?]
+        (testing "a Toucan row or config-file entry carries the flag in snake_case"
+          (is (= exempt? (driver.u/network-exempt-warehouse? {:is_attached_dwh true})))
+          (is (false? (driver.u/network-exempt-warehouse? {:is_attached_dwh false})))
+          (is (false? (driver.u/network-exempt-warehouse? {:name "ordinary"}))))
+        (testing "a Lib metadata database carries it in kebab-case, in a map that throws on snake_case lookups"
+          (is (= exempt? (driver.u/network-exempt-warehouse?
+                          (snake-hating-map/snake-hating-map {:lib/type :metadata/database, :is-attached-dwh true}))))
+          (is (false? (driver.u/network-exempt-warehouse?
+                       (snake-hating-map/snake-hating-map {:lib/type :metadata/database, :name "ordinary"})))))))
+    (mt/with-premium-features #{}
+      (is (false? (driver.u/network-exempt-warehouse? {:is_attached_dwh true}))))))
+
+(deftest pool-creation-attached-dwh-network-exemption-test
+  (mt/with-premium-features #{:attached-dwh}
+    ;; the exemption requires the :attached-dwh token feature, which an OSS build can never have -- there the
+    ;; attached DWH cannot even be written with these details (covered by the model-level tests)
+    (when config/ee-available?
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+        (mt/with-temp [:model/Database database {:engine          :postgres
+                                                 :is_attached_dwh true
+                                                 :details         {:host "10.224.7.141", :port 5432, :dbname "dwh"}}]
+          (try
+            (testing "an attached DWH on a private address still gets a connection pool"
+              ;; fetch by id so the database takes the metadata-provider path, which must carry `is-attached-dwh`
+              (is (some? (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database)))))
+            (finally
+              (sql-jdbc.conn/invalidate-pool-for-db! database))))))
+    ;; write the ordinary row under allow-all, the way a formerly-lax instance would have, then flip the policy
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
+      (mt/with-temp [:model/Database database {:engine  :postgres
+                                               :details {:host "10.224.7.141", :port 5432, :dbname "dwh"}}]
+        (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+          (testing "an ordinary database with the same details is still refused at pool time"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"private or internal network address"
+                 (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database))))))))))
 
 (deftest warehouse-allowed-networks-default-test
   (testing "self-hosted, with nothing configured, all networks are allowed"

@@ -14,6 +14,8 @@
 
 (api.macros/defendpoint :get "/" :- [:sequential ::result]
   "Get a list of recent health check runs."
-  [_route-params {:keys [limit] :as _query-params} _body]
+  [_route-params
+   {:keys [limit]} :- [:map
+                       [:limit {:optional true} ms/PositiveInt]]]
   (api/check-superuser)
   (health/list-runs (min (or limit 32) 512)))

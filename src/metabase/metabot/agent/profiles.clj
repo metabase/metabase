@@ -106,7 +106,7 @@
 (register-profile!
  {:name            :embedding_next
   :prompt-template "embedding-next.selmer"
-  :max-iterations  10
+  :max-iterations  15
   :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
@@ -117,7 +117,7 @@
 (register-profile!
  {:name            :internal
   :prompt-template "internal.selmer"
-  :max-iterations  10
+  :max-iterations  15
   :tools           [#'tools/search-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/read-resource-tool
@@ -182,7 +182,7 @@
 (register-profile!
  {:name            :nlq
   :prompt-template "natural-language-querying-only.selmer"
-  :max-iterations  10
+  :max-iterations  15
   :tools           [#'tools/retrieve-library-entities-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
@@ -193,7 +193,7 @@
 (register-profile!
  {:name            :nlq-fallback
   :prompt-template "natural-language-querying-fallback.selmer"
-  :max-iterations  10
+  :max-iterations  15
   :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
@@ -204,7 +204,7 @@
 (register-profile!
  {:name            :document-generate-content
   :prompt-template "document-generate-content.selmer"
-  :max-iterations  10
+  :max-iterations  15
   :required-tool-call? true
   ;; Producing a chart draft is the answer; a successful construct ends the turn (schema collection
   ;; is a non-terminal preparatory step). Failed constructs don't terminate, so the model retries.
@@ -219,7 +219,7 @@
 (register-profile!
  {:name            :slackbot
   :prompt-template "slackbot.selmer"
-  :max-iterations  10
+  :max-iterations  15
   :tools           [#'tools/search-tool
                     #'tools/slackbot-construct-notebook-query-tool
                     #'tools/list-available-fields-tool
@@ -231,7 +231,7 @@
 (register-profile!
  {:name            :explorations
   :prompt-template "explorations.selmer"
-  :max-iterations  10
+  :max-iterations  15
   :temperature     0.3
   :system-prompt-context #'tools.explorations/research-plan-system-context
   :skills?         false

@@ -1,15 +1,17 @@
 import type { CustomVisualization } from "custom-viz";
 import type { ComponentType } from "react";
 
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type {
   Visualization,
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
+import { columnSettings } from "metabase/viz-core";
 import type {
   CustomVizPluginRuntime,
+  Series,
   VisualizationDisplay,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import { sanitizePluginSettings } from "./custom-viz-settings";
@@ -43,7 +45,11 @@ export function applyDefaultVisualizationProps(
       ...columnSettings({ getHidden: () => true }),
       ...sanitizePluginSettings(vizDef.settings, vizDef.mount, plugin),
     },
-    checkRenderable: vizDef.checkRenderable,
+    checkRenderable: (series: Series, vizSettings: VisualizationSettings) => {
+      if (typeof vizDef.checkRenderable === "function") {
+        vizDef.checkRenderable(series, vizSettings);
+      }
+    },
     noHeader: vizDef.noHeader ?? false,
     canSavePng: vizDef.canSavePng ?? false,
     hidden: false,

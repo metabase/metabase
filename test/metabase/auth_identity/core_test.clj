@@ -2,6 +2,7 @@
   "Integration tests for the AuthIdentity system."
   (:require
    [clojure.test :refer :all]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -12,6 +13,7 @@
 (deftest auth-identity-model-test
   (testing "AuthIdentity model basic operations"
     (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "test-password")
       (testing "can create an AuthIdentity"
         (mt/with-model-cleanup [:model/AuthIdentity]
           ;; Use google provider to avoid conflict with auto-created password AuthIdentity
@@ -25,7 +27,6 @@
             (is (= {:email "test@example.com"}
                    (:metadata auth-identity))))))
       (testing "can update an AuthIdentity"
-        ;; Use the auto-created password AuthIdentity
         (let [auth-identity (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")]
           (t2/update! :model/AuthIdentity (:id auth-identity)
                       {:credentials {:password_hash "new_hash"
@@ -56,6 +57,7 @@
   (testing "Cannot create duplicate AuthIdentity for same user and provider"
     (mt/with-model-cleanup [:model/AuthIdentity :model/User]
       (let [user-id (t2/insert-returning-pk! :model/User (mt/with-temp-defaults :model/User))]
+        (auth-identity/set-password! user-id "some-password")
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"duplicate|Duplicate|Unique"
@@ -69,7 +71,7 @@
 (deftest multiple-providers-per-user-test
   (testing "A user can have multiple authentication providers"
     (mt/with-temp [:model/User user {}]
-      ;; User already has password AuthIdentity from creation
+      (auth-identity/set-password! (:id user) "test-password")
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             google-auth (t2/insert-returning-instance! :model/AuthIdentity
                                                        {:user_id (:id user)

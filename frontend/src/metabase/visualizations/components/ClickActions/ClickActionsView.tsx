@@ -32,8 +32,8 @@ export const ClickActionsView = ({
     <Stack
       data-testid="click-actions-view"
       gap="sm"
-      px="lg"
-      py="md"
+      px="xl"
+      py="lg"
       fw={700}
       {...divProps}
     >
@@ -45,7 +45,6 @@ export const ClickActionsView = ({
         );
         const withBottomDivider =
           sectionKey === "records" && !hasOnlyOneSection;
-        const withTopDivider = sectionKey === "details" && !hasOnlyOneSection;
 
         return (
           <ClickActionsViewSection
@@ -54,7 +53,6 @@ export const ClickActionsView = ({
             title={sectionTitle}
             contentDirection={contentDirection}
           >
-            {withTopDivider && <Divider mx="-lg" my="sm" />}
             {actions.map((action) => (
               <ClickActionControl
                 key={action.name}
@@ -66,7 +64,7 @@ export const ClickActionsView = ({
                 }}
               />
             ))}
-            {withBottomDivider && <Divider mx="-lg" my="sm" />}
+            {withBottomDivider && <Divider mx="-xl" my="sm" />}
           </ClickActionsViewSection>
         );
       })}

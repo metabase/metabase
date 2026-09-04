@@ -33,20 +33,16 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
-import { CanAccessTenantSpecificRoute } from "./components/CanAccessTenantSpecificRoute";
 import { CreateTenantsOnboardingStep } from "./components/CreateTenantsOnboardingStep";
 import { MainNavSharedCollections } from "./components/MainNavSharedCollections";
 import { ReactivateExternalUserButton } from "./components/ReactivateExternalUserButton";
 import { TenantCollectionItemList } from "./components/TenantCollectionItemList";
-import { TenantCollectionList } from "./components/TenantCollectionList";
 import { TenantCollectionPermissionsPage } from "./components/TenantCollectionPermissionsPage";
 import { TenantDisplayName } from "./components/TenantDisplayName";
 import { FormTenantWidget } from "./components/TenantFormWidget";
 import { TenantGroupHintIcon } from "./components/TenantGroupHintIcon";
 import { TenantSpecificCollectionPermissionsPage } from "./components/TenantSpecificCollectionPermissionsPage";
 import { TenantSpecificCollectionsItemList } from "./components/TenantSpecificCollectionsItemList";
-import { TenantUsersList } from "./components/TenantUsersList";
-import { TenantUsersPersonalCollectionList } from "./components/TenantUsersPersonalCollectionList";
 import { TenantsSummaryOnboardingStep } from "./components/TenantsSummaryOnboardingStep";
 import { EditTenantModal } from "./containers/EditTenantModal";
 import { NewTenantModal } from "./containers/NewTenantModal";
@@ -94,14 +90,47 @@ const externalGroupDetail = () =>
     Component: ExternalGroupDetailApp,
   }));
 
+/**
+ * The collection-facing tenant pages stay out of the `tenants` chunk above. That
+ * chunk holds the admin listings, and a tenant user has no reason to download
+ * them.
+ */
+const canAccessTenantSpecificRoute = () =>
+  import(
+    /* webpackChunkName: "tenant-collections" */ "./components/CanAccessTenantSpecificRoute"
+  ).then(({ CanAccessTenantSpecificRoute }) => ({
+    Component: CanAccessTenantSpecificRoute,
+  }));
+
+const tenantCollectionList = () =>
+  import(
+    /* webpackChunkName: "tenant-collections" */ "./components/TenantCollectionList"
+  ).then(({ TenantCollectionList }) => ({ Component: TenantCollectionList }));
+
+const tenantUsersList = () =>
+  import(
+    /* webpackChunkName: "tenant-users" */ "./components/TenantUsersList"
+  ).then(({ TenantUsersList }) => ({
+    Component: TenantUsersList,
+  }));
+
+const tenantUsersPersonalCollectionList = () =>
+  import(
+    /* webpackChunkName: "tenant-user-collections" */ "./components/TenantUsersPersonalCollectionList"
+  ).then(({ TenantUsersPersonalCollectionList }) => ({
+    Component: TenantUsersPersonalCollectionList,
+  }));
+
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
 
-    PLUGIN_TENANTS.useListActiveTenants = () => {
-      const { data, isLoading, error } = useListTenantsQuery({
-        status: "active",
-      });
+    PLUGIN_TENANTS.useListActiveTenants = ({ skip } = {}) => {
+      const { data, isLoading, error } = useListTenantsQuery(
+        { status: "active" },
+        { skip },
+      );
+
       return { data: data?.data, isLoading, error };
     };
 
@@ -215,11 +244,11 @@ export function initializePlugin() {
     PLUGIN_TENANTS.TenantCollectionItemList = TenantCollectionItemList;
     PLUGIN_TENANTS.TenantSpecificCollectionsItemList =
       TenantSpecificCollectionsItemList;
-    PLUGIN_TENANTS.TenantCollectionList = TenantCollectionList;
-    PLUGIN_TENANTS.CanAccessTenantSpecificRoute = CanAccessTenantSpecificRoute;
-    PLUGIN_TENANTS.TenantUsersList = TenantUsersList;
-    PLUGIN_TENANTS.TenantUsersPersonalCollectionList =
-      TenantUsersPersonalCollectionList;
+    PLUGIN_TENANTS.tenantCollectionList = tenantCollectionList;
+    PLUGIN_TENANTS.canAccessTenantSpecificRoute = canAccessTenantSpecificRoute;
+    PLUGIN_TENANTS.tenantUsersList = tenantUsersList;
+    PLUGIN_TENANTS.tenantUsersPersonalCollectionList =
+      tenantUsersPersonalCollectionList;
     PLUGIN_TENANTS.canPlaceEntityInCollection = canPlaceEntityInCollection;
 
     // Category 1: UI Components

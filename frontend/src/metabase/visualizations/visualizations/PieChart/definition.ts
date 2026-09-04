@@ -5,31 +5,25 @@ import { formatValue } from "metabase/value-formatting";
 import {
   ChartSettingsError,
   MinRowsError,
-} from "metabase/visualizations/lib/errors";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { nestedSettings } from "metabase/visualizations/lib/settings/nested";
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
-import {
+  SERIES_SETTING_KEY,
+  type VisualizationDefinition,
+  columnSettings,
   dimensionSetting,
-  metricSetting,
-} from "metabase/visualizations/lib/settings/utils";
-import {
   getDefaultPercentVisibility,
   getDefaultPieColumns,
   getDefaultShowLabels,
   getDefaultShowLegend,
   getDefaultShowTotal,
+  getDefaultSize,
   getDefaultSliceThreshold,
   getDefaultSortRows,
+  getMinSize,
   getPieRows,
   getPieSortRowsDimensionSetting,
-} from "metabase/visualizations/shared/settings/pie";
-import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
-import {
-  getDefaultSize,
-  getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+  keyForSingleSeries,
+  metricSetting,
+  nestedSettings,
+} from "metabase/viz-core";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { SingleSeries } from "metabase-types/api";
 
@@ -93,6 +87,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       },
       showColumnSetting: true,
       getDefault: (rawSeries) => getDefaultPieColumns(rawSeries).metric,
+      persistDefault: true,
     }),
     ...columnSettings({ getHidden: () => true }),
     ...dimensionSetting("pie.dimension", {
@@ -102,6 +97,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       },
       showColumnSetting: true,
       getDefault: (rawSeries) => getDefaultPieColumns(rawSeries).dimension,
+      persistDefault: true,
     }),
     "pie.rows": {
       getHidden: () => true,

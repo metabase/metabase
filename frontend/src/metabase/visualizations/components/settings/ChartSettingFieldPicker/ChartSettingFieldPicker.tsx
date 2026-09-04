@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Group, Icon } from "metabase/ui";
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+import { keyForSingleSeries } from "metabase/viz-core";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn, Series } from "metabase-types/api";
 
@@ -135,7 +135,14 @@ export const ChartSettingFieldPicker = ({
         onChange={(value) => onChange?.(String(value))}
         leftSection={
           hasLeftSection ? (
-            <Group wrap="nowrap" gap="xs" p="xs" ml="sm" mr="md" align="center">
+            <Group
+              wrap="nowrap"
+              gap="xxs"
+              p="xxs"
+              ml="sm"
+              mr="lg"
+              align="center"
+            >
               {showDragHandle && (
                 <Icon
                   // Unjustified type cast. FIXME

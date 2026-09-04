@@ -237,7 +237,8 @@
 ;;; empty? Unclear. I don't think it matters tho.
 (mr/def ::dimension.options
   [:map
-   {:error/message "dimension options"}
+   {:error/message    "dimension options"
+    :decode/normalize lib.schema.common/normalize-map}
    [:stage-number {:optional true} :int]])
 
 ;;; TODO (Cam 8/8/25) -- seems really WACK to have dimension use MBQL 4 clause order even in Lib... I guess it's not a
@@ -378,6 +379,7 @@
 (mr/def ::parameter.options
   "Options the frontend attaches to a parameter value."
   [:map
+   {:decode/normalize lib.schema.common/normalize-map}
    [:case-sensitive  {:optional true} :boolean]
    [:include-current {:optional true} :boolean]])
 
@@ -390,7 +392,9 @@
   [:and
    {:description "parameter must be a map with a :type key"}
    [:map
-    {:decode/normalize #'normalize-parameter}
+    {:decode/normalize #'normalize-parameter
+     :decode/api       #'lib.schema.common/remove-internal-keys
+     :encode/serialize #'lib.schema.common/remove-internal-keys}
     [:type [:ref ::type]]
     ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
     ;; At some point we need to go fix those tests and then make these keys required

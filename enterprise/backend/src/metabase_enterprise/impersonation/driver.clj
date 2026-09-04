@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.impersonation.db :as impersonation.db]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -11,8 +12,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.warehouse-schema.models.field :as field]
-   [toucan2.core :as t2])
+   [metabase.warehouse-schema.models.field :as field])
   (:import
    (java.sql Connection)))
 
@@ -31,14 +31,7 @@
   (let [non-impersonated-group-ids (set/difference (set group-ids)
                                                    (set (map :group_id impersonations)))
         perm-values                (when (seq non-impersonated-group-ids)
-                                     (t2/select-fn-set :perm_value
-                                                       :model/DataPermissions
-                                                       {:where
-                                                        [:and
-                                                         [:= :db_id (u/the-id db-or-id)]
-                                                         [:= :table_id nil]
-                                                         [:= :perm_type (u/qualified-name :perms/view-data)]
-                                                         [:in :group_id non-impersonated-group-ids]]}))]
+                                     (impersonation.db/view-data-permission-values (u/the-id db-or-id) non-impersonated-group-ids))]
     ;; Just check if any other non-impersonated groups have unrestricted access to the DB. We don't need to worry
     ;; about block permissions here because it would have been enforced earlier in the QP middleware stack.
     (not (contains? perm-values :unrestricted))))
@@ -48,7 +41,7 @@
   [db-or-id]
   (boolean
    (when (and db-or-id (premium-features/enable-advanced-permissions?))
-     (t2/exists? :model/ConnectionImpersonation :db_id (u/id db-or-id)))))
+     (impersonation.db/impersonation-exists-for-database? (u/id db-or-id)))))
 
 (defn enforced-impersonations-for-db
   "Returns the connection impersonation policies which should be enforced for the provided DB for the current user, if
@@ -59,11 +52,9 @@
   Note: this returns a list of policies. Typically a user should only be in one group with an impersonation policy at a time,
   but there may be policies in multiple groups if they use the same user attribute."
   [db-or-id]
-  (let [group-ids           (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id api/*current-user-id*)
+  (let [group-ids           (impersonation.db/group-ids-for-user api/*current-user-id*)
         conn-impersonations (when (seq group-ids)
-                              (t2/select :model/ConnectionImpersonation
-                                         :group_id [:in group-ids]
-                                         :db_id (u/the-id db-or-id)))]
+                              (impersonation.db/impersonations-for-groups-and-database group-ids (u/the-id db-or-id)))]
     (when (and (seq conn-impersonations) (sandboxed? db-or-id))
       (throw (ex-info (tru "Conflicting sandboxing and impersonation policies found.")
                       {:user-id api/*current-user-id*
@@ -89,7 +80,11 @@
           (let [conn-impersonation (first conn-impersonations)
                 role-attribute     (:attribute conn-impersonation)
                 user-attributes    (api/current-user-attributes)
-                role               (get user-attributes role-attribute)]
+                role               (get user-attributes role-attribute)
+                database           (if (map? database-or-id)
+                                     database-or-id
+                                     (impersonation.db/database (u/the-id database-or-id)))
+                default-role       (driver.sql/default-database-role (driver.u/database->driver database) database)]
             (cond
               (nil? role)
               (throw (ex-info (tru "User does not have attribute required for connection impersonation.")
@@ -101,6 +96,13 @@
               (throw (ex-info (tru "Connection impersonation attribute is invalid: role must be a single non-empty string.")
                               {:user-id api/*current-user-id*
                                :conn-impersonations conn-impersonations}))
+
+              (and default-role
+                   (= (u/lower-case-en role) (u/lower-case-en default-role)))
+              (throw (ex-info (tru "Connection impersonation attribute is invalid: role must not be the database default role.")
+                              {:user-id api/*current-user-id*
+                               :conn-impersonations conn-impersonations}))
+
               :else
               role)))))))
 

@@ -4,9 +4,12 @@
   (:refer-clojure :exclude [get-in mapv select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.audit-app.core :as audit-app]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.db :as driver.db]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
@@ -16,9 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [get-in mapv select-keys]]
-   [potemkin :as p]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [potemkin :as p])
   (:import
    (com.mchange.v2.c3p0 DataSources)
    (javax.sql DataSource)
@@ -172,7 +173,16 @@
    ;; request. IRL the Metabase server and data warehouse are likely to be located in closer geographical proximity to
    ;; one another than my trans-contintental tests. Thus in the majority of cases the overhead should be next to
    ;; nothing, and in the worst case close to imperceptible.
-   "testConnectionOnCheckout"             true
+   ;;
+   ;; Tests are the exception: CI drives remote warehouses over a slow link, and on Snowflake `isValid()` is a
+   ;; heartbeat REST call, which makes the per-checkout test one of the largest single costs in the driver test
+   ;; suite. There, verify on c3p0's background thread instead -- the same pairing the app DB pool
+   ;; uses (see [[metabase.app-db.connection-pool-setup]]) -- so a stale connection is still culled without putting
+   ;; a round trip in front of every query.
+   "testConnectionOnCheckout"             (not driver-api/is-test?)
+   ;; Seconds between background tests of idle, checked-in connections. Zero disables it, which is what we want
+   ;; whenever `testConnectionOnCheckout` is already covering every connection handed out.
+   "idleConnectionTestPeriod"             (if driver-api/is-test? 60 0)
    ;; [From dox] Number of seconds that Connections in excess of minPoolSize should be permitted to remain idle in the
    ;; pool before being culled. Intended for applications that wish to aggressively minimize the number of open
    ;; Connections, shrinking the pool back towards minPoolSize if, following a spike, the load level diminishes and
@@ -248,7 +258,8 @@
         ;; before the tunnel is set up, since incorporating it rewrites `:host` to the local tunnel entrance. Checking
         ;; here as well as at connection-test time narrows the DNS-rebinding window and covers databases that never
         ;; went through a connection test (serialization import, config files).
-        _                   (driver.u/validate-connection-hosts! driver details)
+        _                   (driver.u/with-database-network-policy database
+                              (driver.u/validate-connection-hosts! driver details))
         details-with-tunnel (driver/incorporate-ssh-tunnel-details ;; If the tunnel is disabled this returned unchanged
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))
@@ -401,7 +412,7 @@
       ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
       ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
       ;; our app DB, and see if it STILL doesn't match
-      (not= curr-hash (-> (t2/select-one [:model/Database :id :engine :details :write_data_details :admin_details] :id database-id)
+      (not= curr-hash (-> (driver.db/database-connection-details database-id)
                           jdbc-spec-hash)))))
 
 (defn- get-canonical-pool
@@ -448,11 +459,14 @@
           details-hash (jdbc-spec-hash db)]
       (driver.conn/track-connection-acquisition! (driver.conn/effective-details db))
       (cond
-        ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
-        ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
-        ;; not in [[pool-cache-key->connection-pool]].
-        (or (:is-audit db) (get-in db [:details :is-audit-dev]))
+        (or (:is-audit db)
+            (and (audit-app/analytics-dev-mode)
+                 (get-in db [:details :is-audit-dev])))
         {:datasource (driver-api/data-source)}
+
+        (get-in db [:details :is-audit-dev])
+        (throw (ex-info (tru "Cannot open a connection for an analytics-dev database unless analytics dev mode is enabled.")
+                        {:database-id (:id db)}))
 
         :else
         (or
@@ -517,9 +531,16 @@
   "Default implementation of [[driver/can-connect?]] for SQL JDBC drivers. Checks whether we can perform a simple
   `SELECT 1` query."
   [driver details]
-  (with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
-    (or (:is-audit-dev details)
-        (can-connect-with-spec? jdbc-spec))))
+  ;; An `:is-audit-dev` database is a handle onto the app-db (see [[db->pooled-connection-spec]]); it has no real
+  ;; connection to test. That is only a valid state while analytics dev mode is on — otherwise reaching here is an
+  ;; invariant violation, so throw rather than reporting the database as connectable.
+  (if (:is-audit-dev details)
+    (if (audit-app/analytics-dev-mode)
+      true
+      (throw (ex-info (tru "Cannot connect to an analytics-dev database unless analytics dev mode is enabled.")
+                      {})))
+    (with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
+      (can-connect-with-spec? jdbc-spec))))
 
 (defmethod driver/connection-spec :sql-jdbc [_driver db]
   (db->pooled-connection-spec  db))

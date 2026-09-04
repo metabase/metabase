@@ -28,11 +28,12 @@ import type { CollectionId } from "metabase-types/api";
 import { QuestionList } from "./QuestionList";
 import S from "./QuestionPicker.module.css";
 import { addDashboardQuestion } from "./actions";
+import { useCollectionsWithTenants } from "./hooks/use-collections-with-tenants";
 import {
   COLLECTIONS_TOP_LEVEL_ID,
   SHARED_TENANT_COLLECTIONS_ROOT_ID,
-  useCollectionsWithTenants,
-} from "./hooks/use-collections-with-tenants";
+  TENANT_SPECIFIC_COLLECTIONS_ROOT_ID,
+} from "./utils/tenant-collection-tree";
 
 interface QuestionPickerProps {
   onSelect: BaseSelectListItemProps["onSelect"];
@@ -59,11 +60,22 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
     SEARCH_DEBOUNCE_DURATION,
   );
 
-  const collectionsById = useCollectionsWithTenants(baseCollectionsById);
+  // getExpandedCollectionsById always creates a root collection,
+  // but we only want to show it if the user has access to it.
+  const canReadRootCollection = allCollectionsList.some(
+    ({ id }) => id === ROOT_COLLECTION.id,
+  );
+
+  const collectionsById = useCollectionsWithTenants(
+    baseCollectionsById,
+    canReadRootCollection,
+  );
 
   const isAtTopLevel = currentCollectionId === COLLECTIONS_TOP_LEVEL_ID;
   const isAtSharedTenantRoot =
     currentCollectionId === SHARED_TENANT_COLLECTIONS_ROOT_ID;
+  const isAtTenantSpecificRoot =
+    currentCollectionId === TENANT_SPECIFIC_COLLECTIONS_ROOT_ID;
   const collection = collectionsById[currentCollectionId];
   const crumbs = getCollectionBreadCrumbs(
     collection,
@@ -107,7 +119,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
       />
 
       {(hasDataAccess || hasNativeWrite) && (
-        <Flex gap="sm" mb="md" data-testid="new-button-bar">
+        <Flex gap="sm" mb="lg" data-testid="new-button-bar">
           {hasDataAccess && (
             <Button
               w="50%"
@@ -165,10 +177,11 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
         </>
       )}
 
-      {/* Hide the question list at top-level "Collections"
-          and "Shared collections" root. These have fake IDs that don't map to
-          real collections, so querying questions against them would fail. */}
-      {((!isAtSharedTenantRoot && !isAtTopLevel) || debouncedSearchText) && (
+      {/* Hide the question list at top-level "Collections" and tenant roots.
+          These have fake IDs that don't map to real collections, so querying
+          questions against them would fail. */}
+      {((!isAtSharedTenantRoot && !isAtTenantSpecificRoot && !isAtTopLevel) ||
+        debouncedSearchText) && (
         <QuestionList
           hasCollections={collections.length > 0}
           searchText={debouncedSearchText}

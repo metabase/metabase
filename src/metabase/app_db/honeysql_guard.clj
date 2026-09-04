@@ -82,10 +82,9 @@
   [query]
   (if (map? query)
     (and (not (or (raw-honeysql-map? query) (inline-honeysql-map? query)))
-         (every? safe-value? (vals (dissoc query :values :set :do-update-set)))
+         (every? safe-value? (vals (dissoc query :values :set)))
          (every? safe-row? (:values query))
-         (safe-row? (:set query))
-         (safe-row? (:do-update-set query)))
+         (safe-row? (:set query)))
     (safe-value? query)))
 
 (methodical/defmethod t2.pipeline/build :around [:toucan.query-type/select.exists :default clojure.lang.IPersistentMap]

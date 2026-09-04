@@ -1,6 +1,7 @@
 (ns metabase.channel.impl.http
   (:require
    [clj-http.client :as http]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.channel.core :as channel]
@@ -9,6 +10,7 @@
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.urls :as urls]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -24,7 +26,7 @@
   [:map {:closed true}
    [:url                           ms/Url]
    [:auth-method                   [:enum "none" "header" "query-param" "request-body"]]
-   [:auth-info    {:optional true} ms/KeywordizedMap]
+   [:auth-info    {:optional true} ms/Map]
    ;; used by the frontend to display the auth info properly
    [:fe-form-type {:optional true} [:enum "api-key" "bearer" "basic" "none"]]
    ;; request method
@@ -36,37 +38,43 @@
    [:details HTTPDetails]])
 
 (defn- check-url!
-  [url]
+  [strategy url]
   (when (str/blank? url)
     (throw (ex-info (tru "No URL is configured for this webhook.") {:status-code 400})))
-  (when-not (try
-              (u/valid-host? (channel.settings/http-channel-host-strategy) url)
+  (let [url (try
+              (io/as-url url)
               (catch Exception e
                 (throw (ex-info (tru "Invalid webhook URL: {0}" (ex-message e))
                                 {:status-code 400
                                  :url         url}
-                                e))))
-    (throw (ex-info (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")
-                    {:status-code 400}))))
+                                e))))]
+    (when-not (u.http/host-allowed-for-network-policy? strategy url)
+      (throw (ex-info (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")
+                      {:status-code 400})))))
 
 (mu/defmethod channel/send! :channel/http
   [{{:keys [url method auth-method auth-info]} :details} :- HTTPChannel
    request]
-  (check-url! url)
-  (let [req (merge
-             {:accept       :json
-              :content-type :json
-              :method       :post
-              :url          url}
-             (when method
-               {:method (keyword method)})
-             (cond-> request
-               (= "request-body" auth-method) (update :body merge auth-info)
-               (= "header" auth-method)       (update :headers merge auth-info)
-               (= "query-param" auth-method)  (update :query-params merge auth-info)))]
-    (http/request (cond-> req
-                    (or (map? (:body req))
-                        (sequential? (:body req))) (update :body json/encode)))))
+  (let [strategy (channel.settings/http-channel-allowed-networks)
+        resolver (u.http/network-policy-dns-resolver strategy)]
+    (check-url! strategy url)
+    (let [req (-> (merge
+                   {:accept       :json
+                    :content-type :json
+                    :method       :post}
+                   (when method
+                     {:method (keyword method)})
+                   (cond-> request
+                     (= "request-body" auth-method) (update :body merge auth-info)
+                     (= "header" auth-method)       (update :headers merge auth-info)
+                     (= "query-param" auth-method)  (update :query-params merge auth-info)))
+                  (assoc :url url)
+                  ;; Remove an incoming resolver under :allow-all; rendered requests must not control
+                  ;; DNS resolution.
+                  (u/assoc-dissoc :dns-resolver resolver))]
+      (http/request (cond-> req
+                      (or (map? (:body req))
+                          (sequential? (:body req))) (update :body json/encode))))))
 
 (defn- maybe-parse-json
   [x]

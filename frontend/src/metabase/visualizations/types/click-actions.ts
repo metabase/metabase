@@ -44,6 +44,7 @@ export type ClickActionSection =
   | "breakout-popover"
   | "combine"
   | "combine-popover"
+  | "copy"
   | "details"
   | "extract"
   | "extract-popover"

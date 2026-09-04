@@ -1,21 +1,23 @@
 (ns metabase-enterprise.semantic-search.db.migration.impl
   (:require
+   [clojure.string :as str]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.db :as semantic-search.db]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.collections.curation :as collections.curation]
    [metabase.config.core :as config]
+   [metabase.embeddings.provider :as embeddings.provider]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as jdbc.rs]
-   [toucan2.core :as t2]))
+   [next.jdbc.result-set :as jdbc.rs]))
 
 (def schema-version
   "Version to compare the [[metabase-enterprise.semantic-search.db.migration/db-version]] with. If this is higher,
   schema migration will be performed."
-  2)
+  3)
 
 (def ^:private app-db-sentinel-tables
   "Tables specific to a Metabase application database, chosen to avoid generic names (e.g. Liquibase's
@@ -91,14 +93,56 @@
                       {:drop-table [[[:raw (str (semantic.util/quote-ident schemaname) "."
                                                 (semantic.util/quote-ident tablename))]]]})))))
 
+(defn- quoted-table-name
+  [table-name]
+  (->> (semantic.util/qualified-table-parts table-name)
+       (remove nil?)
+       (map semantic.util/quote-ident)
+       (str/join ".")))
+
+(defn- add-embedding-space-metadata!
+  "Migration 3: preserve existing semantic indexes and add immutable embedding-space metadata."
+  [tx index-metadata]
+  (let [table-name        (:metadata-table-name index-metadata)
+        control-table-name (:control-table-name index-metadata)
+        table             (keyword table-name)]
+    (jdbc/execute! tx [(format "ALTER TABLE %s ADD COLUMN IF NOT EXISTS embedding_space_id TEXT"
+                               (quoted-table-name table-name))])
+    ;; Legacy rows have no trustworthy revision provenance. Keep this nullable and let their backfilled
+    ;; embedding-space ID represent the old, explicitly unspecified revision.
+    (jdbc/execute! tx [(format "ALTER TABLE %s ADD COLUMN IF NOT EXISTS model_revision TEXT"
+                               (quoted-table-name table-name))])
+    (doseq [{:keys [id provider model_name vector_dimensions]}
+            (jdbc/execute! tx
+                           (sql/format {:select [:id :provider :model_name :vector_dimensions]
+                                        :from   [table]})
+                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+      (let [space-id (:embedding-space-id
+                      (embeddings.provider/legacy-resolved-model
+                       {:provider provider :model-name model_name :vector-dimensions vector_dimensions}))]
+        (jdbc/execute! tx
+                       (sql/format {:update table
+                                    :set    {:embedding_space_id space-id}
+                                    :where  [:= :id id]}))))
+    (jdbc/execute! tx [(format "ALTER TABLE %s ALTER COLUMN embedding_space_id SET NOT NULL"
+                               (quoted-table-name table-name))])
+    (jdbc/execute! tx
+                   (sql/format {:update (keyword control-table-name)
+                                :set    {:version (:version index-metadata)}
+                                :where  [:= :id 0]}
+                               :quoted true))))
+
 (defn migrate-schema!
   "Migrate schema (control, metadata, gate, ...). Migration author is responsible for removing leftovers if necessary
   and in general leaving schema in desired state."
-  [tx {:keys [index-metadata] :as _opts}]
-  ;; ideally index_table indexed are manipulated in dynamic schema part but for now it does not matter
-  (drop-all-but-migration-table index-metadata tx)
-  (semantic.index-metadata/create-tables-if-not-exists! tx index-metadata)
-  (semantic.index-metadata/ensure-control-row-exists! tx index-metadata))
+  [tx {:keys [index-metadata from-version] :as _opts}]
+  (if (= 2 from-version)
+    (add-embedding-space-metadata! tx index-metadata)
+    (do
+      ;; Older versions retain the existing reset migration. Only v2 has enough metadata to backfill safely.
+      (drop-all-but-migration-table index-metadata tx)
+      (semantic.index-metadata/create-tables-if-not-exists! tx index-metadata)
+      (semantic.index-metadata/ensure-control-row-exists! tx index-metadata))))
 
 (defn ensure-schema-compatibility!
   "Apply non-destructive additions that existing databases at the current schema version also need."
@@ -167,11 +211,8 @@
   ;; Catch covers test setups that exercise pgvector before the appdb schema is up;
   ;; production semantic-search init always runs after appdb migration.
   (try
-    (u/for-map [{root-id :id root-type :type} (t2/select [:model/Collection :id :type]
-                                                         :type [:in library-types]
-                                                         :location "/")
-                coll-id (cons root-id (t2/select-pks-set :model/Collection
-                                                         :location [:like (str "/" root-id "/%")]))]
+    (u/for-map [{root-id :id root-type :type} (semantic-search.db/library-root-collections library-types)
+                coll-id (cons root-id (semantic-search.db/descendant-collection-ids root-id))]
       [coll-id root-type])
     (catch Exception e
       (log/warnf "Skipping Library forest backfill — appdb lookup failed: %s" (ex-message e))
@@ -232,11 +273,7 @@
            (= :authoritative data_authority)        (update :authoritative conj id)
            (and is_published (= :final data_layer)) (update :published conj id))))
      {:authoritative [] :published []}
-     (t2/reducible-select [:model/Table :id :is_published :data_layer :data_authority]
-                          {:where [:and
-                                   [:= :active true]
-                                   [:or [:= :is_published true]
-                                    [:= :data_authority ^:allow-raw-sql [:inline "authoritative"]]]]}))
+     (semantic-search.db/curated-tables-reducible))
     (catch Exception e
       (when-not config/is-test?
         (throw e))
@@ -250,13 +287,11 @@
   Throws outside tests if the appdb lookup fails."
   []
   (try
-    (let [official-coll-ids (t2/select-pks-set :model/Collection :authority_level :official)]
+    (let [official-coll-ids (semantic-search.db/official-collection-ids)]
       (if (empty? official-coll-ids)
         []
         (into [] (map (comp str :id))
-              (t2/reducible-select [:model/Dashboard :id]
-                                   {:where [:and [:= :archived false]
-                                            [:in :collection_id (vec official-coll-ids)]]}))))
+              (semantic-search.db/unarchived-dashboard-ids-in-collections-reducible (vec official-coll-ids)))))
     (catch Exception e
       (when-not config/is-test?
         (throw e))

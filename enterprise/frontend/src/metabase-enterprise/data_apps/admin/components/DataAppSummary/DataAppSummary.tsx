@@ -74,7 +74,13 @@ export const DataAppSummary = ({ app }: Props) => {
           </Text>
         )}
 
-        <Group gap="xs" align="center" wrap="wrap">
+        {app.description && (
+          <Text size="sm" c="text-secondary" lh="1.4" my="xxs">
+            {app.description}
+          </Text>
+        )}
+
+        <Group gap="xxs" align="center" wrap="wrap">
           <Text
             size="sm"
             c="text-secondary"

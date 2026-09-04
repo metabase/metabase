@@ -1,4 +1,7 @@
 name: Data App Template
+
+description: A summary of what this app does
+
 path: ./dist/index.js
 
 # Origins this app may call with fetch/XHR. Everything else is blocked — both in

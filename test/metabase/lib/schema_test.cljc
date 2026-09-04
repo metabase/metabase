@@ -118,7 +118,6 @@
       {:lib/type     :mbql.stage/mbql
        :source-table 1
        :joins        [{:lib/type    :mbql/join
-                       :lib/options {:lib/uuid (str (random-uuid))}
                        :alias       "Q1"
                        :fields      :all
                        :conditions  [[:=
@@ -131,7 +130,7 @@
                                       :order-by     [[:asc
                                                       {:lib/uuid (str (random-uuid))}
                                                       [:aggregation {:lib/uuid (str (random-uuid))} good-ref]]]}
-                                     {:lib/type :mbql.stage/mbql, :lib/options {:lib/uuid (str (random-uuid))}}]}]}
+                                     {:lib/type :mbql.stage/mbql}]}]}
       nil)))
 
 (def ^:private valid-expression
@@ -167,7 +166,6 @@
     {:lib/type     :mbql.stage/mbql
      :source-table 1
      :joins        [{:lib/type    :mbql/join
-                     :lib/options {:lib/uuid (str (random-uuid))}
                      :alias       "Q1"
                      :fields      :all
                      :conditions  [[:=
@@ -180,7 +178,7 @@
                                     :order-by     [[:asc
                                                     {:lib/uuid (str (random-uuid))}
                                                     [:expression {:lib/uuid (str (random-uuid))} "price + 2"]]]}
-                                   {:lib/type :mbql.stage/mbql, :lib/options {:lib/uuid (str (random-uuid))}}]}]}
+                                   {:lib/type :mbql.stage/mbql}]}]}
     nil))
 
 (defn- valid-join
@@ -194,7 +192,6 @@
 
   ([join-alias condition]
    {:lib/type    :mbql/join
-    :lib/options {:lib/uuid (str (random-uuid))}
     :alias       join-alias
     :conditions  [condition]
     :stages      [{:lib/type     :mbql.stage/mbql

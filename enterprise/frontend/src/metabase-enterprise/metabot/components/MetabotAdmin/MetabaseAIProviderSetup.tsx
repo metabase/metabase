@@ -1,14 +1,14 @@
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { useRefreshTokenStatusMutation } from "metabase/api";
+import {
+  useCreateLlmProviderMutation,
+  useRefreshTokenStatusMutation,
+} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { getUserIsAdmin } from "metabase/current-user";
-import {
-  useAIProviderConfigurationContext,
-  useUpdateMetabotSettingsMutation,
-} from "metabase/metabot";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import type { MetabaseAIProviderSetupProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -16,6 +16,7 @@ import { useSetting } from "metabase/settings";
 import {
   Anchor,
   Box,
+  Button,
   Checkbox,
   Flex,
   Group,
@@ -23,7 +24,6 @@ import {
   Skeleton,
   Stack,
   Text,
-  Title,
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
@@ -31,15 +31,12 @@ import { formatNumber } from "metabase/utils/formatting";
 import {
   type MetabotUsageResponse,
   useGetMetabotUsageQuery,
-  useRemoveCloudAddOnMutation,
 } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import {
   METABASE_MANAGED_AI_FEATURE,
-  METABASE_MANAGED_AI_PRODUCT_TYPE,
   METABASE_MANAGED_AI_TERMS_URL,
-  METABASE_TIERED_AI_PRODUCT_TYPE,
   METABOT_V3_FEATURE,
   OFFER_METABASE_MANAGED_AI_FEATURE,
 } from "../../constants";
@@ -52,8 +49,18 @@ import { usePurchaseMetabaseManagedAi } from "../../usePurchaseMetabaseManagedAi
 
 import { MetabotSettingUpModal } from "./MetabotSettingUpModal";
 
+export function hasMetabaseManagedProviderDetails() {
+  return (
+    !!hasPremiumFeature(METABASE_MANAGED_AI_FEATURE) ||
+    (!!hasPremiumFeature(METABOT_V3_FEATURE) &&
+      !!hasPremiumFeature(OFFER_METABASE_MANAGED_AI_FEATURE))
+  );
+}
+
 export function MetabaseAIProviderSetup({
   onConnect,
+  onCancel,
+  isConnected,
 }: MetabaseAIProviderSetupProps) {
   const offerMetabaseManagedAi = !!hasPremiumFeature(
     OFFER_METABASE_MANAGED_AI_FEATURE,
@@ -63,17 +70,18 @@ export function MetabaseAIProviderSetup({
   );
   const hasDeprecatedMetabaseAiProvider =
     !!hasPremiumFeature(METABOT_V3_FEATURE);
-  const isConfigured = !!useSetting("llm-metabot-configured?");
+  const isMetabotConfigured = !!useSetting("llm-metabot-configured?");
+  const isConfigured = isConnected ?? isMetabotConfigured;
 
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const [updateMetabotSettings, updateMetabotSettingsResult] =
-    useUpdateMetabotSettingsMutation();
+  const [createLlmProvider, createLlmProviderResult] =
+    useCreateLlmProviderMutation();
 
   const handleConnect = useCallback(async () => {
-    await updateMetabotSettings({ provider: "metabase", model: "" }).unwrap();
+    await createLlmProvider({ type: "metabase" }).unwrap();
     onConnect?.();
-  }, [onConnect, updateMetabotSettings]);
+  }, [onConnect, createLlmProvider]);
 
   const {
     pricing: metabaseManagedAiPricing,
@@ -83,9 +91,6 @@ export function MetabaseAIProviderSetup({
   );
 
   const metabaseManagedAiPurchase = usePurchaseMetabaseManagedAi();
-  const [removeCloudAddOn, removeCloudAddOnResult] =
-    useRemoveCloudAddOnMutation();
-
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [isSettingUpModalOpen, setIsSettingUpModalOpen] = useState(false);
 
@@ -103,7 +108,6 @@ export function MetabaseAIProviderSetup({
   }, [handleConnect, hasAcceptedTerms, metabaseManagedAiPurchase]);
 
   const connectAction = match({
-    hasAcceptedTerms,
     hasMetabaseManagedAiProviderFeature,
     hasDeprecatedMetabaseAiProvider,
     isConfigured,
@@ -112,60 +116,14 @@ export function MetabaseAIProviderSetup({
     .with({ isConfigured: true }, () => null)
     .with({ hasMetabaseManagedAiProviderFeature: true }, () => handleConnect)
     .with({ hasDeprecatedMetabaseAiProvider: true }, () => handleConnect)
-    .with(
-      { hasMetabaseManagedAiProviderFeature: false, hasAcceptedTerms: false },
-      () => null,
-    )
     .with({ isAdmin: false }, () => null)
     .otherwise(() => handleMetabasePurchase);
 
-  const onDisconnect = useCallback(async () => {
-    const feature = match({
-      offerMetabaseManagedAi,
-      hasMetabaseManagedAiProviderFeature,
-      hasDeprecatedMetabaseAiProvider,
-    })
-      .returnType<
-        | typeof METABASE_MANAGED_AI_PRODUCT_TYPE
-        | typeof METABASE_TIERED_AI_PRODUCT_TYPE
-        | null
-      >()
-      .with(
-        { hasMetabaseManagedAiProviderFeature: true },
-        () => METABASE_MANAGED_AI_PRODUCT_TYPE,
-      )
-      .with(
-        { offerMetabaseManagedAi: true, hasDeprecatedMetabaseAiProvider: true },
-        () => METABASE_TIERED_AI_PRODUCT_TYPE,
-      )
-      .with(
-        {
-          offerMetabaseManagedAi: false,
-          hasDeprecatedMetabaseAiProvider: true,
-        },
-        // If we can't upgrade to managed AI, we don't want to disable the existing one.
-        () => null,
-      )
-      .otherwise(() => {
-        throw new Error("No feature is enabled to cancel");
-      });
+  const needsTermsAcceptance =
+    connectAction === handleMetabasePurchase && !hasAcceptedTerms;
 
-    if (!feature) {
-      return;
-    }
-
-    await removeCloudAddOn({
-      product_type: feature,
-    }).unwrap();
-  }, [
-    offerMetabaseManagedAi,
-    hasMetabaseManagedAiProviderFeature,
-    hasDeprecatedMetabaseAiProvider,
-    removeCloudAddOn,
-  ]);
-
-  const { isMutating, handleDisconnect, resetProvider, isModal } =
-    useAIProviderConfigurationContext(connectAction, onDisconnect);
+  const isMutating =
+    createLlmProviderResult.isLoading || metabaseManagedAiPurchase.isLoading;
 
   const metabaseManagedAiPurchaseError = metabaseManagedAiPurchase.error
     ? getErrorMessage(
@@ -174,17 +132,10 @@ export function MetabaseAIProviderSetup({
       )
     : undefined;
 
-  const updateMetabotSettingsError = updateMetabotSettingsResult.error
+  const createLlmProviderError = createLlmProviderResult.error
     ? getErrorMessage(
-        updateMetabotSettingsResult.error,
+        createLlmProviderResult.error,
         t`Unable to connect to this AI provider.`,
-      )
-    : undefined;
-
-  const removeMetabaseManagedAiError = removeCloudAddOnResult.error
-    ? getErrorMessage(
-        removeCloudAddOnResult.error,
-        t`Unable to disconnect from this AI provider.`,
       )
     : undefined;
 
@@ -199,26 +150,19 @@ export function MetabaseAIProviderSetup({
             hasMetabaseManagedAiProviderFeature
           }
           offerMetabaseManagedAi={offerMetabaseManagedAi}
-          isModal={isModal}
-          resetProvider={resetProvider}
-          handleDisconnect={handleDisconnect}
         />
       ) : (
         <>
-          <Stack gap="md">
-            <Title order={4}>{
-              // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
-              t`About Metabase AI service`
-            }</Title>
+          <Stack gap="lg">
             <Text>{
               // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
               t`The simplest way to get started with AI in Metabase. We pick a benchmarked, cost effective model for you, and billing is managed through your Metabase account.`
             }</Text>
             {isLoadingMetabaseManagedAiPricing ? (
-              <Group gap="xs" align="center">
+              <PricingCallout>
                 <Skeleton h="1rem" w="14rem" />
-                <Skeleton h={14} w={14} circle />
-              </Group>
+                <Skeleton h="1rem" w="18rem" />
+              </PricingCallout>
             ) : metabaseManagedAiPricing ? (
               <MetabasePricingText pricing={metabaseManagedAiPricing} />
             ) : null}
@@ -268,6 +212,28 @@ export function MetabaseAIProviderSetup({
                 )}`}
               />
             ))}
+
+          {(onCancel || connectAction) && (
+            <Flex justify="end">
+              <Group gap="sm">
+                {onCancel && (
+                  <Button disabled={isMutating} onClick={onCancel}>
+                    {t`Back`}
+                  </Button>
+                )}
+                {connectAction && (
+                  <Button
+                    variant="filled"
+                    loading={isMutating}
+                    disabled={isMutating || needsTermsAcceptance}
+                    onClick={connectAction}
+                  >
+                    {t`Connect`}
+                  </Button>
+                )}
+              </Group>
+            </Flex>
+          )}
         </>
       )}
 
@@ -277,22 +243,16 @@ export function MetabaseAIProviderSetup({
         </Text>
       )}
 
-      {updateMetabotSettingsError && (
+      {createLlmProviderError && (
         <Text size="sm" c="feedback-negative">
-          {updateMetabotSettingsError}
-        </Text>
-      )}
-
-      {removeMetabaseManagedAiError && (
-        <Text size="sm" c="feedback-negative">
-          {removeMetabaseManagedAiError}
+          {createLlmProviderError}
         </Text>
       )}
 
       <MetabotSettingUpModal
         isSavingConfiguration={
           isSettingUpModalOpen &&
-          (updateMetabotSettingsResult.isLoading ||
+          (createLlmProviderResult.isLoading ||
             metabaseManagedAiPurchase.isLoading)
         }
         opened={isSettingUpModalOpen}
@@ -308,18 +268,12 @@ function MetabaseManagedProviderCard({
   hasDeprecatedMetabaseAiProvider,
   hasMetabaseManagedAiProviderFeature,
   offerMetabaseManagedAi,
-  isModal,
-  resetProvider,
-  handleDisconnect,
 }: {
   isLoadingPricing: boolean;
   pricing: MetabaseManagedAiPricing | null;
   hasDeprecatedMetabaseAiProvider: boolean;
   hasMetabaseManagedAiProviderFeature: boolean;
   offerMetabaseManagedAi: boolean;
-  isModal: boolean;
-  resetProvider: VoidFunction;
-  handleDisconnect: VoidFunction;
 }) {
   const { data: metabotUsage } = useGetMetabotUsageQuery();
   const isLocked = metabotUsage?.is_locked;
@@ -334,7 +288,7 @@ function MetabaseManagedProviderCard({
   const hasFreeTokens = freeTokens > 0 && tokens <= freeTokens;
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       {!hasMetabaseManagedAiProviderFeature &&
         hasDeprecatedMetabaseAiProvider &&
         offerMetabaseManagedAi && (
@@ -350,18 +304,14 @@ function MetabaseManagedProviderCard({
       })
         .with({ hasMetabaseManagedAiProviderFeature: false }, () => null)
         .with({ isLocked: true }, () => (
-          <Flex direction="column" gap="xs">
+          <Flex direction="column" gap="xxs">
             <Text c="text-primary" fw={500} lh={1.4}>
               {t`You've run out of AI service tokens`}
             </Text>
             <Text c="text-secondary" fz="sm" lh={1.4}>
               {t`You've used all of your included AI service tokens. To keep using AI features you can either end your trial early and start your subscription, or stay in the trial and add your own AI provider API key.`}
             </Text>
-            <MetabotManagedProviderLimitActions
-              inline
-              mt="sm"
-              onConfigure={isModal ? resetProvider : handleDisconnect}
-            />
+            <MetabotManagedProviderLimitActions inline mt="sm" />
           </Flex>
         ))
         .with(
@@ -379,7 +329,7 @@ function MetabaseManagedProviderCard({
                   label={t`Price per token afterward`}
                 />
               ) : (
-                <Flex align="center" justify="space-between" gap="md">
+                <Flex align="center" justify="space-between" gap="lg">
                   <Skeleton h="1rem" w="7rem" />
                   <Box flex={1} h={1} bg="border-neutral" />
                   <Skeleton h="1rem" w="8rem" />
@@ -400,7 +350,7 @@ function MetabaseManagedProviderCard({
               {!isLoadingPricing && pricing ? (
                 <MetabasePricingRow pricing={pricing} />
               ) : (
-                <Flex align="center" justify="space-between" gap="md">
+                <Flex align="center" justify="space-between" gap="lg">
                   <Skeleton h="1rem" w="7rem" />
                   <Box flex={1} h={1} bg="border-neutral" />
                   <Skeleton h="1rem" w="8rem" />
@@ -420,7 +370,7 @@ function MetabaseManagedProviderCard({
 
 function MetabaseUsageRow({ label, value }: { label: string; value: string }) {
   return (
-    <Flex align="center" justify="space-between" gap="md">
+    <Flex align="center" justify="space-between" gap="lg">
       <Text lh={1}>{label}</Text>
       <Box
         flex={1}
@@ -445,7 +395,7 @@ function MetabasePricingRow({
   pricing: MetabaseManagedAiPricing;
 }) {
   return (
-    <Flex align="center" justify="space-between" gap="md">
+    <Flex align="center" justify="space-between" gap="lg">
       <Text lh="1">
         <Flex align="center" gap="sm">
           {label ?? t`Price per token`}
@@ -479,32 +429,47 @@ function MetabasePricingRow({
   );
 }
 
+function PricingCallout({ children }: { children: ReactNode }) {
+  return (
+    <Stack gap="xxs" bg="background-secondary" p="lg" bdrs="sm">
+      {children}
+    </Stack>
+  );
+}
+
 export function MetabasePricingText({
   pricing,
 }: {
   pricing: MetabaseManagedAiPricing;
 }) {
   return (
-    <Group gap="xs" align="center">
-      <Text lh="1">
-        {pricing.freeUnits
-          ? t`You get ${pricing.freeUnits} tokens for free. Price per token afterward - ${pricing.price} per ${pricing.unit} tokens`
-          : t`Price per token - ${pricing.price} per ${pricing.unit} tokens`}
-      </Text>
-      <Tooltip
-        label={t`Tokens are chunks of text used by AI models. Usage includes both prompts and responses.`}
-        multiline
-        maw="20rem"
-      >
-        <UnstyledButton
-          aria-label={t`AI pricing details`}
-          data-testid="metabase-ai-pricing-details"
-          style={{ lineHeight: 0 }}
+    <PricingCallout>
+      {pricing.freeUnits && (
+        <Text fw="bold" lh="1">
+          {t`You get ${pricing.freeUnits} tokens for free.`}
+        </Text>
+      )}
+      <Group gap="xxs" align="center">
+        <Text lh="1">
+          {pricing.freeUnits
+            ? t`Price per token afterward - ${pricing.price} per ${pricing.unit} tokens`
+            : t`Price per token - ${pricing.price} per ${pricing.unit} tokens`}
+        </Text>
+        <Tooltip
+          label={t`Tokens are chunks of text used by AI models. Usage includes both prompts and responses.`}
+          multiline
+          maw="20rem"
         >
-          <Icon name="info" size={14} c="text-secondary" />
-        </UnstyledButton>
-      </Tooltip>
-    </Group>
+          <UnstyledButton
+            aria-label={t`AI pricing details`}
+            data-testid="metabase-ai-pricing-details"
+            style={{ lineHeight: 0 }}
+          >
+            <Icon name="info" size={14} c="text-secondary" />
+          </UnstyledButton>
+        </Tooltip>
+      </Group>
+    </PricingCallout>
   );
 }
 

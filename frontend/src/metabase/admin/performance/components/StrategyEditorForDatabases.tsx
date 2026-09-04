@@ -1,76 +1,41 @@
-import cx from "classnames";
-import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellCacheConfig } from "metabase/admin/upsells";
-import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { Box, Flex } from "metabase/ui";
-import type { CacheableModel } from "metabase-types/api";
 
 import { rootId } from "../constants/simple";
 import { useCacheConfigs } from "../hooks/useCacheConfigs";
 import { useConfirmIfFormIsDirty } from "../hooks/useConfirmIfFormIsDirty";
 import { useSaveStrategy } from "../hooks/useSaveStrategy";
-import type { UpdateTargetId } from "../types";
 
+import { PerformancePageContent } from "./PerformancePageContent";
 import S from "./StrategyEditorForDatabases.module.css";
 import { StrategyForm } from "./StrategyForm";
 
-/** Rounded outer container for the two-column launcher + form layout. */
-function RoundedBox({
-  children,
-  twoColumns,
-}: {
-  children: ReactNode;
-  twoColumns?: boolean;
-}) {
-  return (
-    <Box
-      w="100%"
-      maw={twoColumns ? "100%" : "30rem"}
-      bd="2px solid var(--mb-color-border-neutral)"
-      className={cx(S.roundedBox, { [S.roundedBoxTwoColumns]: twoColumns })}
-    >
-      {children}
-    </Box>
-  );
-}
+export const StrategyEditorForDatabases = () => {
+  if (PLUGIN_CACHING.canOverrideRootStrategy) {
+    return <PLUGIN_CACHING.DatabaseCachingEditor />;
+  }
+  return <RootCachingStrategyEditor />;
+};
 
-export const StrategyEditorForDatabases: React.FC = () => {
-  const { canOverrideRootStrategy } = PLUGIN_CACHING;
-
+const RootCachingStrategyEditor = () => {
   const [
     // The targetId is the id of the model that is currently being edited
     targetId,
     setTargetId,
   ] = useState<number | null>(null);
 
-  const model: CacheableModel[] = useMemo(() => {
-    const ret: CacheableModel[] = ["root"];
-    if (canOverrideRootStrategy) {
-      ret.push("database");
-    }
-    return ret;
-  }, [canOverrideRootStrategy]);
-
   const {
     configs,
-    rootStrategyOverriddenOnce,
-    rootStrategyRecentlyOverridden,
     error: configsError,
     isLoading: areConfigsLoading,
-  } = useCacheConfigs({ model });
-
-  const databasesResult = useListDatabasesQuery();
-  const databases = databasesResult.data?.data ?? [];
-
-  const shouldShowResetButton =
-    rootStrategyOverriddenOnce || rootStrategyRecentlyOverridden;
+  } = useCacheConfigs({ model: ["root"] });
 
   /** The config for the model currently being edited */
   const targetConfig = findWhere(configs ?? [], {
@@ -79,107 +44,65 @@ export const StrategyEditorForDatabases: React.FC = () => {
 
   const savedStrategy = targetConfig?.strategy;
 
-  const {
-    askBeforeDiscardingChanges,
-    confirmationModal,
-    isStrategyFormDirty,
-    setIsStrategyFormDirty,
-  } = useConfirmIfFormIsDirty();
-
-  /** Update the targetId (the id of the currently edited model) but confirm if the form is unsaved */
-  const updateTargetId: UpdateTargetId = (newTargetId, isFormDirty) => {
-    if (targetId !== newTargetId) {
-      const update = () => setTargetId(newTargetId);
-      if (isFormDirty) {
-        askBeforeDiscardingChanges(update);
-      } else {
-        update();
-      }
-    }
-  };
+  const { confirmationModal, setIsStrategyFormDirty } =
+    useConfirmIfFormIsDirty();
 
   useEffect(() => {
-    if (!canOverrideRootStrategy && targetId === null) {
+    if (targetId === null) {
       setTargetId(rootId);
     }
-  }, [canOverrideRootStrategy, targetId]);
-
-  const targetDatabase = databases.find((db) => db.id === targetId);
-
-  const shouldAllowInvalidation = useMemo(() => {
-    if (
-      targetId === null ||
-      targetId === rootId ||
-      savedStrategy?.type === "nocache"
-    ) {
-      return false;
-    }
-    const inheritingRootStrategy = ["inherit", undefined].includes(
-      savedStrategy?.type,
-    );
-    const rootConfig = findWhere(configs ?? [], { model_id: rootId });
-    const inheritingDoNotCache =
-      inheritingRootStrategy && !rootConfig?.strategy;
-    return !inheritingDoNotCache;
-  }, [configs, savedStrategy?.type, targetId]);
+  }, [targetId]);
 
   const saveStrategy = useSaveStrategy(targetId, "database");
 
-  const error = configsError || databasesResult.error;
-  const loading = areConfigsLoading || databasesResult.isLoading;
-  if (error || loading) {
-    return <DelayedLoadingAndErrorWrapper error={error} loading={loading} />;
+  if (configsError || areConfigsLoading) {
+    return (
+      <DelayedLoadingAndErrorWrapper
+        error={configsError}
+        loading={areConfigsLoading}
+      />
+    );
   }
 
   return (
-    <SettingsPageWrapper
-      title={t`Database caching`}
-      aria-label={t`Data caching settings`}
-      description={
-        <>
-          {t`Speed up queries by caching their results.`}
-          <PLUGIN_CACHING.GranularControlsExplanation />
-        </>
-      }
-      h="calc(100vh - 7rem)"
-    >
-      {confirmationModal}
-      <Flex gap="xl" className={S.scrollableLayout}>
-        <RoundedBox twoColumns={canOverrideRootStrategy}>
-          {canOverrideRootStrategy && (
-            <PLUGIN_CACHING.StrategyFormLauncherPanel
-              configs={configs ?? []}
-              targetId={targetId}
-              updateTargetId={updateTargetId}
-              databases={databases}
-              isStrategyFormDirty={isStrategyFormDirty}
-              shouldShowResetButton={shouldShowResetButton}
-            />
-          )}
+    <PerformancePageContent>
+      <SettingsPageWrapper
+        title={t`Database caching`}
+        aria-label={t`Data caching settings`}
+        description={t`Speed up queries by caching their results.`}
+        h="calc(100vh - 9rem)"
+      >
+        {confirmationModal}
+        <Flex gap="xxl" className={S.scrollableLayout}>
           <Box
-            component="section"
-            bg="background_page-primary"
-            h="100%"
-            className={cx(S.formPanel, {
-              [S.formPanelWithLeftBorder]: canOverrideRootStrategy,
-            })}
+            w="100%"
+            maw="30rem"
+            bd="2px solid var(--mb-color-border-neutral)"
+            className={S.roundedBox}
           >
-            {targetId !== null && (
-              <StrategyForm
-                targetId={targetId}
-                targetModel={targetId === rootId ? "root" : "database"}
-                targetName={targetDatabase?.name || t`Untitled database`}
-                setIsDirty={setIsStrategyFormDirty}
-                saveStrategy={saveStrategy}
-                savedStrategy={savedStrategy}
-                shouldAllowInvalidation={shouldAllowInvalidation}
-                shouldShowName={targetId !== rootId}
-              />
-            )}
+            <Box
+              component="section"
+              bg="background_page-primary"
+              h="100%"
+              className={S.formPanel}
+            >
+              {targetId !== null && (
+                <StrategyForm
+                  targetId={targetId}
+                  targetModel="root"
+                  targetName={t`Default policy`}
+                  setIsDirty={setIsStrategyFormDirty}
+                  saveStrategy={saveStrategy}
+                  savedStrategy={savedStrategy}
+                  shouldAllowInvalidation={false}
+                  shouldShowName={false}
+                />
+              )}
+            </Box>
           </Box>
-        </RoundedBox>
-        <UpsellCacheConfig location="performance-data_cache" />
-      </Flex>
-    </SettingsPageWrapper>
+          <UpsellCacheConfig location="performance-data_cache" />
+        </Flex>
+      </SettingsPageWrapper>
+    </PerformancePageContent>
   );
 };

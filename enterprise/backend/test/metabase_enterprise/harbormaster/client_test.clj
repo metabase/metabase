@@ -57,6 +57,28 @@
             (is (= (str "Bearer " api-key)
                    (get-in req [:headers "Authorization"])))))))))
 
+(defn- call-ex-data! [thrown]
+  (mt/with-dynamic-fn-redefs [hm.client/client (constantly (mock-client "test-key"))]
+    (with-redefs [martian/response-for (fn [& _] (throw thrown))]
+      (try
+        (hm.client/call :test-op)
+        (catch Exception e
+          (ex-data e))))))
+
+(deftest ^:synchronized call-error-ex-data-test
+  (testing "the Store's HTTP status and decoded error body are both available on ex-data"
+    (is (= {:status         400
+            :upsert-add-ons "This organization already has a product with the same metric-name."}
+           (call-ex-data! (ex-info "clj-http: status 400"
+                                   {:status 400
+                                    :body   "{\"upsert-add-ons\":\"This organization already has a product with the same metric-name.\"}"})))))
+  (testing "a non-map body is dropped but the status is kept"
+    (is (= {:status 502}
+           (call-ex-data! (ex-info "clj-http: status 502" {:status 502 :body "<html>Bad Gateway</html>"})))))
+  (testing "a failure with no response at all has no status"
+    (is (= {}
+           (call-ex-data! (ex-info "Connection refused" {}))))))
+
 (deftest request-user-email-header-test
   (testing "user-email-header uses the current user at request time, not client creation time"
     ;; The mock client is created once, outside any user binding.
