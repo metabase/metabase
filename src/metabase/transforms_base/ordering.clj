@@ -264,12 +264,10 @@
                              (assoc :source_database_id db-id
                                     :target_table_id    (live-target-table-id to-check))
                              (dissoc :table_dependencies))
-        transforms       (map (fn [{:keys [id] :as transform}]
-                                (if (= id transform-id)
-                                  to-check
-                                  transform))
-                              (t2/select [:model/Transform :id :name :target :target_table_id
-                                          :source_database_id :table_dependencies]))
+        transforms       (conj (vec (t2/select [:model/Transform :id :name :target :target_table_id
+                                                :source_database_id :table_dependencies]
+                                               :id [:not= transform-id]))
+                               to-check)
         transforms-by-id (into {}
                                (map (juxt :id identity))
                                transforms)
