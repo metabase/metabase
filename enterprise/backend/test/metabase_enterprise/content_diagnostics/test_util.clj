@@ -1,7 +1,18 @@
 (ns metabase-enterprise.content-diagnostics.test-util
   "Shared fixtures for the content-diagnostics suites."
   (:require
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
+
+(defn insert-finding!
+  "Insert one finding, returning its id. A nil `invalidated-at` leaves the row active."
+  [scan-id entity-id invalidated-at]
+  (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                   {:scan_id        scan-id
+                                    :entity_type    :card
+                                    :entity_id      entity-id
+                                    :finding_type   :stale
+                                    :invalidated_at invalidated-at})))
 
 (defn with-authorized-reader!
   "`clojure.test` fixture giving `:rasta` the data-analyst role, so suites driving the finding-list

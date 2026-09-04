@@ -4,6 +4,7 @@
   served set (NULL = active)."
   (:require
    [metabase-enterprise.content-diagnostics.common :as common]
+   [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -20,6 +21,41 @@
    :card_type    mi/transform-keyword
    :entity_kind  mi/transform-keyword
    :details      mi/transform-json})
+
+(def ^:private delete-batch-size
+  "Rows per DELETE, so a backlog is cleared in short transactions rather than one long one."
+  1000)
+
+(defn- delete-batch!
+  "Delete up to `delete-batch-size` findings invalidated before `cutoff`; returns the row count.
+  MySQL and MariaDB reject a subquery reading the table being deleted from (error 1093), so they get
+  `DELETE ... LIMIT` instead."
+  [cutoff]
+  (let [table (t2/table-name :model/ContentDiagnosticsFinding)]
+    (t2/query-one
+     (case (mdb/db-type)
+       (:postgres :h2)
+       {:delete-from table
+        :where       [:in :id ^:allow-subquery {:select   [:id]
+                                                :from     [table]
+                                                :where    [:< :invalidated_at cutoff]
+                                                :order-by [[:id :asc]]
+                                                :limit    delete-batch-size}]}
+
+       (:mysql :mariadb)
+       {:delete-from table
+        :where       [:< :invalidated_at cutoff]
+        :limit       delete-batch-size}))))
+
+(defn delete-invalidated-before!
+  "Hard-delete every finding invalidated before `cutoff`, a batch at a time; returns the row count.
+  Active findings need no guard - their `invalidated_at` is NULL, and NULL < cutoff is never true."
+  [cutoff]
+  (loop [deleted 0]
+    (let [n (long (delete-batch! cutoff))]
+      (if (< n delete-batch-size)
+        (+ deleted n)
+        (recur (+ deleted n))))))
 
 (defn invalidate-superseded!
   "Soft-invalidate (stamp `invalidated_at`, never delete) every still-active finding of `finding-types`

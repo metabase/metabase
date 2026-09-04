@@ -5,7 +5,9 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.content-diagnostics.models.finding :as finding]
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
+   [metabase-enterprise.content-diagnostics.test-util :as cd.test-util]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -33,6 +35,10 @@
 (deftest stale-threshold-setting-default-test
   (testing "the staleness window defaults to 90 days"
     (is (= 90 (cd.settings/content-diagnostics-stale-threshold-days)))))
+
+(deftest finding-retention-setting-default-test
+  (testing "invalidated findings are kept for 30 days before the trimmer deletes them"
+    (is (= 30 (cd.settings/content-diagnostics-finding-retention-days)))))
 
 (deftest slow-threshold-setting-defaults-test
   (testing "the slow-card query-time threshold defaults to 15 seconds"
@@ -72,3 +78,46 @@
             row     (t2/select-one :model/ContentDiagnosticsFinding :id fid)]
         (is (= details (:details row)))
         (is (= 2 (:duplicate_count row)))))))
+
+;;; ----------------------------------- trimming invalidated findings -----------------------------------
+
+(def ^:private long-ago
+  "Cutoff for every trim below. Years back, so a run matches only this suite's own rows - at a cutoff
+  of `now` it would delete whatever expired findings another suite left in the shared app DB."
+  (t/minus (t/offset-date-time) (t/years 5)))
+
+(defn- insert-finding!
+  [entity-id invalidated-at]
+  (cd.test-util/insert-finding! "finding-trim-test" entity-id invalidated-at))
+
+(deftest delete-invalidated-before-cutoff-test
+  (testing "only findings invalidated before the cutoff are deleted"
+    (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+      (let [old    (insert-finding! 1 (t/minus long-ago (t/days 1)))
+            recent (insert-finding! 2 (t/plus long-ago (t/days 1)))]
+        (finding/delete-invalidated-before! long-ago)
+        (is (= #{recent}
+               (t2/select-pks-set :model/ContentDiagnosticsFinding
+                                  {:where [:in :id [old recent]]})))))))
+
+(deftest delete-invalidated-before-spares-active-findings-test
+  (testing "active findings (invalidated_at NULL) survive however old they are"
+    (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+      ;; the expired peer keeps the assertion discriminating - without it, a trim that deleted
+      ;; nothing at all would pass just as well
+      (let [active  (insert-finding! 3 nil)
+            expired (insert-finding! 4 (t/minus long-ago (t/days 1)))]
+        (finding/delete-invalidated-before! long-ago)
+        (is (= #{active}
+               (t2/select-pks-set :model/ContentDiagnosticsFinding
+                                  {:where [:in :id [active expired]]})))))))
+
+(deftest delete-invalidated-before-clears-more-than-one-batch-test
+  (testing "every matching finding is deleted, not just the first batch"
+    (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+      (let [ids (mapv #(insert-finding! % (t/minus long-ago (t/days 1))) (range 1000 1005))]
+        ;; the count is what pins this - stopping after one batch would return 2, not 5
+        (is (= 5 (with-redefs [finding/delete-batch-size 2]
+                   (finding/delete-invalidated-before! long-ago))))
+        (is (empty? (t2/select-pks-set :model/ContentDiagnosticsFinding
+                                       {:where [:in :id ids]})))))))
