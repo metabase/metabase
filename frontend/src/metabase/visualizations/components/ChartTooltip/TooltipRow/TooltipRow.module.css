@@ -30,36 +30,36 @@
 
   &:first-of-type,
   &:last-of-type {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
+    padding-inline-start: 0.75rem;
+    padding-inline-end: 0.75rem;
   }
 
   &:first-of-type {
-    border-top-left-radius: var(--mantine-radius-xxs);
-    border-bottom-left-radius: var(--mantine-radius-xxs);
+    border-start-start-radius: var(--mantine-radius-xxs);
+    border-end-start-radius: var(--mantine-radius-xxs);
   }
 
   &:last-of-type {
-    border-bottom-right-radius: var(--mantine-radius-xxs);
-    border-top-right-radius: var(--mantine-radius-xxs);
+    border-end-end-radius: var(--mantine-radius-xxs);
+    border-start-end-radius: var(--mantine-radius-xxs);
   }
 }
 
 .colorIndicatorCell {
   width: 1%;
   text-align: center;
-  padding-right: var(--mantine-spacing-xxs);
+  padding-inline-end: var(--mantine-spacing-xxs);
 }
 
 .valueCell {
-  padding-left: var(--mantine-spacing-xxl);
-  text-align: right;
+  padding-inline-start: var(--mantine-spacing-xxl);
+  text-align: end;
 }
 
 .percentCell {
-  padding-left: var(--mantine-spacing-lg);
+  padding-inline-start: var(--mantine-spacing-lg);
   color: var(--mb-color-tooltip-text-secondary);
-  text-align: right;
+  text-align: end;
 }
 
 .totalRowRoot {

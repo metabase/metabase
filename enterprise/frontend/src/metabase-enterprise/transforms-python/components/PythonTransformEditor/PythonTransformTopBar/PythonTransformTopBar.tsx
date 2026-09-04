@@ -51,7 +51,7 @@ export function PythonTransformTopBar({
       className={S.TopBar}
     >
       {isEditMode && canChangeDatabase ? (
-        <Flex h="3rem" ml="sm" align="center" data-testid="selected-database">
+        <Flex h="3rem" ms="sm" align="center" data-testid="selected-database">
           <DatabaseDataSelector
             className={S.databaseSelector}
             selectedDatabaseId={databaseId}
@@ -79,7 +79,7 @@ export function PythonTransformTopBar({
         <Flex
           h="3rem"
           p="lg"
-          ml="sm"
+          ms="sm"
           align="center"
           data-testid="selected-database"
         >
@@ -87,7 +87,7 @@ export function PythonTransformTopBar({
         </Flex>
       )}
       {showEditButton && (
-        <Flex ml="auto" mr="xl" align="center" h="3rem">
+        <Flex ms="auto" me="xl" align="center" h="3rem">
           <EditDefinitionButton
             bg="transparent"
             fz="sm"

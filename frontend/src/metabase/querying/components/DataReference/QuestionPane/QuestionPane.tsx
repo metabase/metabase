@@ -82,7 +82,7 @@ export const QuestionPane = ({
       onBack={onBack}
       onClose={onClose}
     >
-      <Box pl="xl" pr="xl">
+      <Box ps="xl" pe="xl">
         <Box p="0 0.5rem 1rem 0.5rem">
           {card.description ? (
             <Description>{card.description}</Description>
@@ -103,11 +103,11 @@ export const QuestionPane = ({
         </Flex>
         <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <Icon className={S.QuestionPaneIcon} name="label" />
-          <Box component="span" ml="sm" fw="normal">{t`ID #${card.id}`}</Box>
+          <Box component="span" ms="sm" fw="normal">{t`ID #${card.id}`}</Box>
         </Flex>
         <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <Icon className={S.QuestionPaneIcon} name="collection" />
-          <Box component="span" ml="sm" fw="normal">
+          <Box component="span" ms="sm" fw="normal">
             {collection?.name ?? t`Our analytics`}
           </Box>
         </Flex>
@@ -119,7 +119,7 @@ export const QuestionPane = ({
             fw={700}
           >
             <Icon className={S.QuestionPaneIcon} name="calendar" />
-            <Box component="span" ml="sm" fw="normal">
+            <Box component="span" ms="sm" fw="normal">
               {jt`Last edited ${(
                 <DateTime key="day" unit="day" value={lastEditInfo.timestamp} />
               )}`}

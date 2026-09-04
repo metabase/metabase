@@ -26,7 +26,7 @@ export const ExplainerText = styled.div`
 
 export const ExplainerList = styled.ul`
   list-style-type: disc;
-  margin-left: 1.5rem;
+  margin-inline-start: 1.5rem;
 
   li {
     font-weight: 400;
@@ -57,5 +57,5 @@ export const IconContainer = styled.div`
 export const TopRightIcon = styled(Icon)`
   position: absolute;
   top: 0;
-  right: 0;
+  inset-inline-end: 0;
 `;

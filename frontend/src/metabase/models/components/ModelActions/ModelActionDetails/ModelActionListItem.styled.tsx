@@ -36,8 +36,8 @@ export const ActionSubtitle = styled.span`
 export const ActionSubtitlePart = styled.span`
   &:not(:last-child)::after {
     content: "·";
-    margin-left: 6px;
-    margin-right: 6px;
+    margin-inline-start: 6px;
+    margin-inline-end: 6px;
   }
 `;
 
@@ -74,7 +74,7 @@ export const CodeBlock = styled.pre`
 export const ActionRunButtonContainer = styled.div`
   position: absolute;
   top: 0.5rem;
-  right: 0.5rem;
+  inset-inline-end: 0.5rem;
 `;
 
 export const ImplicitActionCardContentRoot = styled.div`

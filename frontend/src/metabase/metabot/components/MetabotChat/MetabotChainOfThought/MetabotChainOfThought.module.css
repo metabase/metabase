@@ -24,7 +24,7 @@
 
 .chevron {
   flex-shrink: 0;
-  margin-left: 0.125rem;
+  margin-inline-start: 0.125rem;
   transition: transform 150ms ease;
 }
 
@@ -123,7 +123,7 @@
 }
 
 .resultCount {
-  margin-left: 0.375rem;
+  margin-inline-start: 0.375rem;
   font-variant-numeric: tabular-nums;
   color: var(--mb-color-text-tertiary);
 }

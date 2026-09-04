@@ -182,7 +182,7 @@ export function DashCardCardParameterMapper({
               <Icon name="sparkles" size="16" />
               <Text
                 component="span"
-                ml="xxs"
+                ms="xxs"
                 fw="bold"
                 fz="sm"
                 lh={1}

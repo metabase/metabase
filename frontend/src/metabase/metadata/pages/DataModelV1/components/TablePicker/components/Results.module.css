@@ -8,10 +8,10 @@
   position: absolute;
   border-radius: 8px;
   cursor: pointer;
-  padding-left: var(--mantine-spacing-sm);
-  padding-right: var(--mantine-spacing-sm);
-  left: var(--mantine-spacing-xxl);
-  right: var(--mantine-spacing-xxl);
+  padding-inline-start: var(--mantine-spacing-sm);
+  padding-inline-end: var(--mantine-spacing-sm);
+  inset-inline-start: var(--mantine-spacing-xxl);
+  inset-inline-end: var(--mantine-spacing-xxl);
 
   &:focus-visible,
   &.selected {
@@ -32,7 +32,7 @@
   }
 
   &.table {
-    padding-left: var(--mantine-spacing-lg);
+    padding-inline-start: var(--mantine-spacing-lg);
   }
 }
 

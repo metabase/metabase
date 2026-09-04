@@ -127,7 +127,7 @@ export const ChartSettingFieldPicker = ({
     >
       <ChartSettingSelect
         variant="unstyled"
-        pl={hasLeftSection ? "sm" : 0}
+        ps={hasLeftSection ? "sm" : 0}
         w="100%"
         defaultDropdownOpened={autoOpenWhenUnset && value === undefined}
         options={options}
@@ -139,8 +139,8 @@ export const ChartSettingFieldPicker = ({
               wrap="nowrap"
               gap="xxs"
               p="xxs"
-              ml="sm"
-              mr="lg"
+              ms="sm"
+              me="lg"
               align="center"
             >
               {showDragHandle && (

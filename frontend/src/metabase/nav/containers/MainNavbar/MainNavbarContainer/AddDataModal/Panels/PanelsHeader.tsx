@@ -26,7 +26,7 @@ export const PanelsHeader = ({
 
   return (
     <Box component="header" className={S.header}>
-      <Group ml="auto" align="center" justify="flex-end" gap="xl">
+      <Group ms="auto" align="center" justify="flex-end" gap="xl">
         {showDatabasesLink && (
           <HeaderLink to={Urls.viewDatabases()} text={t`Manage databases`} />
         )}

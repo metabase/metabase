@@ -7,7 +7,7 @@
 .thumbnail {
   cursor: pointer;
   width: 8rem;
-  margin-right: 1rem;
+  margin-inline-end: 1rem;
 
   img {
     border-radius: 0.5rem;

@@ -27,7 +27,7 @@ export const EmbedServerSnippetLanguageSelect = ({
         label: option.name,
       }))}
       onChange={onChangeOption}
-      ml="auto"
+      ms="auto"
     />
   );
 };

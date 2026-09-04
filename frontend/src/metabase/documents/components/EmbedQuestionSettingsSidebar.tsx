@@ -144,7 +144,7 @@ export const EmbedQuestionSettingsSidebar = ({
                 <Button
                   variant="default"
                   disabled={!selectedElem}
-                  rightSection={<Icon ml="xxs" size={10} name="chevrondown" />}
+                  rightSection={<Icon ms="xxs" size={10} name="chevrondown" />}
                   leftSection={
                     selectedElem?.iconName || selectedElem?.iconUrl ? (
                       <EntityIcon
@@ -208,7 +208,7 @@ export const EmbedQuestionSettingsSidebar = ({
 
           <ActionIcon
             mt="1rem"
-            mr="1rem"
+            me="1rem"
             color="text-primary"
             onClick={handleDone}
           >

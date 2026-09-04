@@ -103,7 +103,7 @@ export const ParametersSettings = ({
                 </h3>
                 <Select
                   aria-label={parameter.name}
-                  ml="auto"
+                  ms="auto"
                   value={visibility}
                   data={[
                     {

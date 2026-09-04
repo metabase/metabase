@@ -221,7 +221,7 @@ const StaticQuestionInner = (
               >
                 {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
 
-                <RenderIfHasContent component={Group} gap="sm" ml="auto">
+                <RenderIfHasContent component={Group} gap="sm" ms="auto">
                   <SdkQuestion.DownloadWidgetDropdown />
 
                   {!isMobile && <QuestionAlertsButton />}

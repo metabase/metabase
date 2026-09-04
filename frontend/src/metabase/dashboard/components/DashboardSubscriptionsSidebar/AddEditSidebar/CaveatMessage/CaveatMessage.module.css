@@ -1,6 +1,6 @@
 .root {
-  margin-left: 2rem;
-  margin-right: 2rem;
+  margin-inline-start: 2rem;
+  margin-inline-end: 2rem;
   margin-top: 1rem;
   padding: 0.8rem;
   color: var(--mb-color-text-primary);

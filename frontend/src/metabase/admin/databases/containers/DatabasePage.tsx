@@ -83,7 +83,7 @@ export function DatabasePage() {
                   variant="subtle"
                 >
                   {t`Help is here`}
-                  <Icon name="chevronright" size={12} ml="xxs" />
+                  <Icon name="chevronright" size={12} ms="xxs" />
                 </Button>
               </Text>
             )}

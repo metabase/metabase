@@ -56,6 +56,9 @@ export interface RowChartProps<TDatum> {
 
   xScaleType?: ContinuousScaleType;
 
+  /** Mirror the chart: bars grow leftwards from a right-hand category axis. */
+  isRtl?: boolean;
+
   style?: React.CSSProperties;
 
   hoveredData?: HoveredData | null;
@@ -97,6 +100,8 @@ export const RowChart = <TDatum,>({
   xScaleType = "linear",
 
   measureTextWidth,
+
+  isRtl = false,
 
   style,
 
@@ -248,8 +253,9 @@ export const RowChart = <TDatum,>({
   );
 
   const rowChartGoal = useMemo(
-    () => getRowChartGoal(goal, theme.goal, measureTextWidth, paddedXScale),
-    [goal, measureTextWidth, theme.goal, paddedXScale],
+    () =>
+      getRowChartGoal(goal, theme.goal, measureTextWidth, paddedXScale, isRtl),
+    [goal, measureTextWidth, theme.goal, paddedXScale, isRtl],
   );
 
   return (
@@ -276,6 +282,7 @@ export const RowChart = <TDatum,>({
       xLabel={xLabel}
       hasXAxis={hasXAxis}
       hasYAxis={hasYAxis}
+      isRtl={isRtl}
       measureTextWidth={measureTextWidth}
       onClick={onClick}
       onHover={onHover}

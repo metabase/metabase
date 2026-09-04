@@ -63,7 +63,7 @@ export const TableBrowserInner = ({
 
   return (
     <>
-      <Flex align="center" pt="lg" pr="sm" pb="sm">
+      <Flex align="center" pt="lg" pe="sm" pb="sm">
         <BrowserCrumbs
           crumbs={[
             { title: t`Databases`, to: "/browse/databases" },

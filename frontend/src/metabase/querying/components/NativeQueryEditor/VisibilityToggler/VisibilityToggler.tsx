@@ -33,7 +33,7 @@ export const VisibilityToggler = ({
       aria-hidden={readOnly}
     >
       {text && (
-        <Text component="span" mr="sm" miw={70}>
+        <Text component="span" me="sm" miw={70}>
           {text}
         </Text>
       )}

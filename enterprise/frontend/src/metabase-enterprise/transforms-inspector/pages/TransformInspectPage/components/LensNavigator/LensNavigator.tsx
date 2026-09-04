@@ -99,7 +99,7 @@ export const LensNavigator = ({
                     }}
                     role="button"
                     aria-label={t`Close tab`}
-                    ml={rem("2px")}
+                    ms={rem("2px")}
                     lh={1}
                     style={{ cursor: "pointer" }}
                   >

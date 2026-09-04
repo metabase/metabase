@@ -75,7 +75,7 @@ export const ValuesYouCanReference = ({
         <UnstyledButton onClick={() => setOpened(!opened)}>
           <Flex align="center" className={S.PopoverTrigger}>
             <h4>{t`Values you can reference`}</h4>
-            <Icon name="chevrondown" ml="sm" size={12} />
+            <Icon name="chevrondown" ms="sm" size={12} />
           </Flex>
         </UnstyledButton>
       </Popover.Target>

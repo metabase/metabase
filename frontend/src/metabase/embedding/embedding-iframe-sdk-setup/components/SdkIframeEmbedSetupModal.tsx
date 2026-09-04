@@ -136,7 +136,7 @@ export const SdkIframeEmbedSetupContent = () => {
               </Button>
             )}
 
-            <Box ml="auto">{nextStepButton}</Box>
+            <Box ms="auto">{nextStepButton}</Box>
           </Group>
         </Box>
       </SidebarResizer>

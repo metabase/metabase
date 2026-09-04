@@ -15,7 +15,7 @@ export const PermissionIconContainer = styled.div<PermissionIconContainerProps>`
   align-items: center;
   justify-content: center;
   border-radius: 0.25rem;
-  margin-right: 0.375rem;
+  margin-inline-end: 0.375rem;
   color: var(--mb-color-text-primary-inverse);
   background-color: ${(props) => color(props.color)};
 `;

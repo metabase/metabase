@@ -360,7 +360,7 @@ export function DetailViewSidesheet({
             <Box pb="lg" pt="xxs" px={rem(56)}>
               <Box
                 // intentionally misalign the header to create an "optical alignment effect" (due to rounded avatar)
-                ml={rem(-8)}
+                ms={rem(-8)}
               >
                 <Header columns={columns} icon={icon} row={row} />
               </Box>

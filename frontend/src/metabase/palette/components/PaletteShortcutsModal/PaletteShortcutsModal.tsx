@@ -72,10 +72,10 @@ export const PaletteShortcutsModal = ({
           <Tabs.Panel
             value={shortcutGroup}
             key={shortcutGroup}
-            pl="xl"
+            ps="xl"
             style={{ height: "100%" }}
           >
-            <ScrollArea h="100%" pr="xl">
+            <ScrollArea h="100%" pe="xl">
               {(() => {
                 const shortcuts = groupedShortcuts[shortcutGroup].filter(
                   (shortcut: ShortcutDef) => !shortcut.hide,

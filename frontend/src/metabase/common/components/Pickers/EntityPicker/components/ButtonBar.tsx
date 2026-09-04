@@ -71,7 +71,7 @@ export const ButtonBar = ({
         overflowX: "auto",
       }}
     >
-      <Flex gap="lg" mr="lg">
+      <Flex gap="lg" me="lg">
         <NewCollectionDialog />
         <NewDashboardDialog />
       </Flex>
@@ -85,7 +85,7 @@ export const ButtonBar = ({
           {cancelButtonText ?? t`Cancel`}
         </Button>
         <Button
-          ml={1}
+          ms={1}
           variant="filled"
           onClick={async () => {
             try {

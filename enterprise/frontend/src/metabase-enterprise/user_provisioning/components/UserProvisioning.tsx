@@ -156,7 +156,7 @@ export const UserProvisioning = () => {
           loading={maskedTokenRequest.isLoading}
           error={scimTokenError}
         >
-          <Stack pl="lg" gap="xl" maw="35rem">
+          <Stack ps="lg" gap="xl" maw="35rem">
             <Stack gap="xl" mb="xl" data-testid="scim-enabled-setting">
               <Text
                 fz="1.25rem"

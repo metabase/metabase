@@ -8,7 +8,7 @@ import { alpha } from "metabase/ui/colors";
 
 export const UndoList = styled.ul`
   position: fixed;
-  left: 0;
+  inset-inline-start: 0;
   bottom: 0;
   margin: var(--mantine-spacing-lg);
   display: flex;
@@ -38,7 +38,7 @@ export const ControlsCardContent = styled(CardContentSide)`
 export const CardIcon = styled(Icon)`
   position: relative;
   top: 1px;
-  margin-right: var(--mantine-spacing-sm);
+  margin-inline-end: var(--mantine-spacing-sm);
   flex-shrink: 0;
 `;
 
@@ -50,7 +50,7 @@ export const UndoButton = styled(Link)`
   font-weight: bold;
   background-color: ${() => alpha("background_page-primary", 0.1)};
   padding: 4px 12px;
-  margin-left: var(--mantine-spacing-sm);
+  margin-inline-start: var(--mantine-spacing-sm);
   border-radius: 8px;
   white-space: nowrap; /* Prevents button from truncating message */
 
@@ -62,7 +62,7 @@ export const UndoButton = styled(Link)`
 export const DismissIcon = styled(Icon)<{ color?: string }>`
   position: relative;
   top: 1px;
-  margin-left: var(--mantine-spacing-lg);
+  margin-inline-start: var(--mantine-spacing-lg);
   cursor: pointer;
 
   :hover {

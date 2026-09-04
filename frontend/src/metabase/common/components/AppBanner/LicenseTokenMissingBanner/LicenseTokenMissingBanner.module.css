@@ -4,7 +4,7 @@
 }
 
 .BannerBody {
-  text-align: left;
+  text-align: start;
   flex-direction: column;
   align-items: flex-start;
 

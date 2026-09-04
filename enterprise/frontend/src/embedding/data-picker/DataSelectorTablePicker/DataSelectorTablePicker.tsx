@@ -202,7 +202,7 @@ const Header = ({
         onClick={onBack ?? undefined}
       >
         {onBack && <Icon name="chevronleft" size={18} />}
-        <Box component="span" ml="sm" data-testid="source-database">
+        <Box component="span" ms="sm" data-testid="source-database">
           {tc(selectedDatabase.name)}
         </Box>
       </Flex>

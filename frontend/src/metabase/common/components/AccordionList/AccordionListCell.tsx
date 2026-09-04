@@ -229,7 +229,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
             </Text>
           )}
           {showSpinner(section) && (
-            <Box ml="0.5rem">
+            <Box ms="0.5rem">
               <Loader size="xs" />
             </Box>
           )}
@@ -297,7 +297,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
           </Text>
         )}
         {showSpinner(section) && (
-          <Box ml="0.5rem">
+          <Box ms="0.5rem">
             <Loader size="xs" />
           </Box>
         )}
@@ -400,7 +400,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
             )}
           </div>
           {showSpinner(item) && (
-            <Box ml="0.5rem">
+            <Box ms="0.5rem">
               <Loader size="xs" />
             </Box>
           )}

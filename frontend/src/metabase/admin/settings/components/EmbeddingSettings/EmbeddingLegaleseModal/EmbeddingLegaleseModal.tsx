@@ -41,10 +41,10 @@ export const EmbeddingLegaleseModal = ({
     >
       <Text mt="xxs">{getTitle(setting)}</Text>
       <List mt="xxs">
-        <List.Item mr="lg">
+        <List.Item me="lg">
           <Text>{t`Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account.`}</Text>
         </List.Item>
-        <List.Item mr="lg">
+        <List.Item me="lg">
           <Text>{t`That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account.`}</Text>
         </List.Item>
       </List>

@@ -173,7 +173,7 @@ const MenuItemLink = ({
       component={Link}
       to={to}
       target="_blank"
-      pl="0"
+      ps="0"
       fw="normal"
     >
       {children}

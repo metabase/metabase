@@ -427,6 +427,13 @@ const buildMetricsAxes = (
   const axes: YAXisOption[] = [];
   const { leftAxisModel, rightAxisModel } = chartModel;
 
+  // In RTL the value axis belongs on the reading-start side, i.e. the right, so
+  // swap where each model is drawn. The models keep their names — only the
+  // physical side flips.
+  const isRtl = renderingContext.direction === "rtl";
+  const primarySide = isRtl ? "right" : "left";
+  const secondarySide = isRtl ? "left" : "right";
+
   if (leftAxisModel != null) {
     axes.push(
       buildMetricAxis(
@@ -434,7 +441,7 @@ const buildMetricsAxes = (
         chartModel.yAxisScaleTransforms,
         chartLayout.ticksDimensions.yTicksWidthLeft,
         settings,
-        "left",
+        primarySide,
         true,
         renderingContext,
       ),
@@ -449,7 +456,7 @@ const buildMetricsAxes = (
         chartModel.yAxisScaleTransforms,
         chartLayout.ticksDimensions.yTicksWidthRight,
         settings,
-        "right",
+        secondarySide,
         isOnlyAxis,
         renderingContext,
       ),

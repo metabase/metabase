@@ -28,7 +28,7 @@ export function FieldMappingSelect({
       <ContainerLabel>
         {t`Field to map to`}
         {tag.dimension == null && (
-          <Text c="feedback-negative" component="span" ml="xxs">
+          <Text c="feedback-negative" component="span" ms="xxs">
             {t`(required)`}
           </Text>
         )}

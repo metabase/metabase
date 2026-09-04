@@ -127,7 +127,7 @@ export const ParameterWidget = ({
           ref={ref}
         >
           <Box mx="xxs">{parameter.name}</Box>
-          <Box ml="auto" onClick={(e) => e.stopPropagation()}>
+          <Box ms="auto" onClick={(e) => e.stopPropagation()}>
             {dragHandle}
           </Box>
         </Flex>

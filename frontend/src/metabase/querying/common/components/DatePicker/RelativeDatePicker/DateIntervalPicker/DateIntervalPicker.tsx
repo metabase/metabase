@@ -93,7 +93,7 @@ export function DateIntervalPicker({
           data={unitOptions}
           value={value.unit}
           aria-label={t`Unit`}
-          ml="lg"
+          ms="lg"
           onChange={handleUnitChange}
           comboboxProps={{
             withinPortal: false,

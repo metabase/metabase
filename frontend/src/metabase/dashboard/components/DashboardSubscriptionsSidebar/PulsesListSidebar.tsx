@@ -82,7 +82,7 @@ function _PulsesListSidebar({
               aria-label={createSubscriptionLabel}
               leftSection={<Icon name="add" size={16} />}
               variant="subtle"
-              mr="1rem"
+              me="1rem"
               onClick={createSubscription}
             />
           </Tooltip>
@@ -93,7 +93,7 @@ function _PulsesListSidebar({
               leftSection={<Icon name="close" size={16} />}
               variant="subtle"
               color="text-secondary"
-              mr="-1rem"
+              me="-1rem"
               onClick={onCancel}
             />
           </Tooltip>

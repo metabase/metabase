@@ -11,7 +11,7 @@
 
 .AddButton {
   width: 34px;
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
   color: var(--mb-color-text-primary-inverse);
 }
 

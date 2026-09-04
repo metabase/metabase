@@ -8,7 +8,7 @@ import { Icon } from "metabase/ui";
 import SidebarLink from "./SidebarLink";
 
 export const DragIcon = styled(Icon)`
-  left: 2px;
+  inset-inline-start: 2px;
   opacity: 0;
   position: absolute;
   top: 50%;
