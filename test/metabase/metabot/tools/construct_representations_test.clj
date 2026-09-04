@@ -16,10 +16,12 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.metabot.agent.links :as links]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]))
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -102,6 +104,21 @@
 
 (defn- with-coerced-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-coerced)
+                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                api/read-check                                  allow-read-check
+                api/query-check                                 allow-read-check]
+    (f)))
+
+(def ^:private mp-temporal
+  "ORDERS with a plain `:type/DateTime` column, for the temporal-clause round-trip tests."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+               {:id 103 :name "CREATED_AT" :table-id 10 :base-type :type/DateTime}]}))
+
+(defn- with-temporal-mp-and-stubs! [f]
+  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-temporal)
                 construct/resolve-database-id-from-first-stage (fn [_] 1)
                 api/read-check                                  allow-read-check
                 api/query-check                                 allow-read-check]
@@ -1319,3 +1336,45 @@
               (is (= 1 (count (get-in structured [:query :stages 0 :joins]))))
               (is (some #(= 301 (:field_id %)) (:result-columns structured))
                   "CAMPAIGNS.NAME resolves from the surfaced artifacts"))))))))
+
+;; A Metabot-built question reaches the frontend as legacy MBQL inside a base64 `/question#` hash,
+;; so it makes a JSON hop that turns every keyword into a string. Legacy normalization has no
+;; `:decode/normalize` on the temporal-unit enums used by `:absolute-datetime`, `:during` or
+;; `:temporal-extract`, so a query carrying one came back un-normalized and the question page 400'd
+;; on `/api/dataset/query_metadata`. The JSON hop is what makes this reproduce - converting to
+;; legacy alone does not, which is why the plain legacy round-trip gates above never caught it
+;; (BOT-2095).
+(deftest legacy-json-round-trip-temporal-filters-test
+  (with-temporal-mp-and-stubs!
+    (fn []
+      (let [created-at ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]]
+        (doseq [[label filter-clause]
+                {"bare date range"
+                 ["between" {} created-at "2025-01-01" "2025-12-31"]
+                 "absolute-datetime literal carrying a bucket"
+                 ["=" {} created-at ["absolute-datetime" {} "2025-01-01" "month"]]
+                 "absolute-datetime literal with the default unit"
+                 ["=" {} created-at ["absolute-datetime" {} "2025-01-01" "default"]]
+                 "during"
+                 ["during" {} created-at "2025-01-01" "month"]
+                 "temporal-extract"
+                 ["=" {} ["temporal-extract" {} created-at "day-of-week"] 2]
+                 "temporal-extract carrying a week mode"
+                 ["=" {} ["temporal-extract" {} created-at "week-of-year-iso"] 2]}]
+          (testing label
+            (let [result (construct/execute-representations-query
+                          (query-data {"lib/type" "mbql/query"
+                                       "database" "Sample"
+                                       "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                                    "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                    "filters"      [filter-clause]
+                                                    "aggregation"  [["count" {}]]}]}))
+                  query  (get-in result [:structured-output :query])
+                  wire   (-> query links/->legacy-mbql json/encode (json/decode true))]
+              ;; `->legacy-mbql` returns the MBQL 5 query unchanged if conversion throws, and a
+              ;; JSON-round-tripped MBQL 5 query passes `lib/query` - so without this the
+              ;; assertion below could hold while proving nothing.
+              (is (= "query" (:type wire))
+                  "->legacy-mbql fell back to MBQL 5 instead of converting")
+              (is (map? (lib/query mp-temporal wire))
+                  "did not survive the JSON round-trip"))))))))
