@@ -585,7 +585,7 @@
                  (apply min)))))
 
 (defn- sum-metrics
-  "Sum two cell metrics, skipping nils; nil only when both are nil. Mirrors the app's `sumMetric`."
+  "Sum two cell metrics, skipping nils; nil only when both are nil. Mirrors the frontend's `sumMetric`."
   [a b]
   (if (and a b)
     (+ a b)
@@ -593,13 +593,14 @@
 
 (defn- fold-cells-by-bin
   "Fold `cells` sharing a lat/long bin into one cell whose `:metric` is the sum, in first-occurrence order.
-  Mirrors the app's `aggregatePointsByCoordinates`."
+  Mirrors the frontend's `aggregatePointsByCoordinates`."
   [cells]
   (->> cells
        ;; a query can break out by more than the two coordinate columns (e.g. also by ID), so one bin can
        ;; arrive on several rows; key on doubles so equal coordinates of different numeric types still fold
        (reduce (fn [folded {:keys [lat lon] :as cell}]
-                 (update folded [(double lat) (double lon)]
+                 (update folded
+                         [(double lat) (double lon)]
                          (fn [existing]
                            (if existing
                              (update existing :metric sum-metrics (:metric cell))
