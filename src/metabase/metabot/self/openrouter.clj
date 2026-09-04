@@ -59,7 +59,6 @@
   `:renderable` streams reasoning text under an explicit `reasoning {:enabled true}`;
   `:renderable-default` streams reasoning summaries under the server default but must receive
   NO directive — an explicit enable verifiably suppresses gpt-5.6's reasoning entirely;
-  `:encrypted-only` streams nothing renderable (opaque encrypted blocks at best);
   `:budget-only` (`supported_efforts` nil in the catalog) silently ignores the unified enable
   and would need an explicit token budget.
   `:reasoning-mandatory?` marks models where `reasoning {:enabled false}` is rejected with a 400."
@@ -84,9 +83,13 @@
    "openai/gpt-5.6-luna"             {:display-name "GPT-5.6 Luna"            :context-window  922000 :reasoning :renderable-default}
    "openai/gpt-5.5"                  {:display-name "GPT-5.5"                 :context-window  922000 :reasoning :renderable-default}
    "openai/gpt-5.5-pro"              {:display-name "GPT-5.5 Pro"             :context-window  922000 :reasoning :renderable-default :reasoning-mandatory? true}
-   "openai/gpt-5.4"                  {:display-name "GPT-5.4"                 :context-window  922000 :reasoning :encrypted-only}
+   ;; re-probed 2026-09-04 (classed :encrypted-only on 2026-08-31): under the explicit enable
+   ;; both stream `reasoning.summary` text through the shared xf (~100 deltas on a hard prompt)
+   ;; and accept the disable; without a directive OpenAI's default is no reasoning at all —
+   ;; 0 reasoning tokens, and the mini answered the probe wrong
+   "openai/gpt-5.4"                  {:display-name "GPT-5.4"                 :context-window  922000 :reasoning :renderable}
+   "openai/gpt-5.4-mini"             {:display-name "GPT-5.4 Mini"            :context-window  272000 :reasoning :renderable}
    "openai/gpt-5.4-pro"              {:display-name "GPT-5.4 Pro"             :context-window  922000 :reasoning :renderable-default :reasoning-mandatory? true}
-   "openai/gpt-5.4-mini"             {:display-name "GPT-5.4 Mini"            :context-window  272000 :reasoning :encrypted-only}
    "qwen/qwen3.8-max"                {:display-name "Qwen3.8 Max"             :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true}
    ;; probed 2026-09-04 (post-dating the 2026-08-31 run): the enable streams reasoning, the
    ;; disable is rejected with a 400 (thinking-only upstream, as on native z.ai), and a forced
@@ -108,9 +111,7 @@
   "Whether `model` streams renderable reasoning back to us through OpenRouter.
 
   True for the `:renderable` and `:renderable-default` classes (see [[supported-models]]).
-  Excluded: gpt-5.4 and gpt-5.4-mini stream nothing renderable — encrypted blocks at best,
-  like Bedrock's openai family (see [[metabase.metabot.self.bedrock/reasoning-model?]]) —
-  and the budget-only Claudes silently ignore the unified enable
+  Excluded: the budget-only Claudes, which silently ignore the unified enable
   (https://openrouter.ai/docs/use-cases/reasoning-tokens)."
   [model]
   (contains? #{:renderable :renderable-default} (reasoning-class model)))
