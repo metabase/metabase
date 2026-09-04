@@ -9,6 +9,7 @@ import { getErrorMessage, getRelativeDefinitionLocation } from "./messages";
 import type { MetabaseClient } from "./metabase-client";
 import { orNullOn404 } from "./metabase-client";
 import { reconcileMetrics, reconcileRemovedMetrics } from "./reconcile-metrics";
+import { collectTableIds } from "./table-ids";
 import type {
   DiscoveredQuery,
   QueryLockEntry,
@@ -490,4 +491,17 @@ export async function reconcileQueries({
   if (!fs.existsSync(path.join(appRoot, RESOURCE_LOCKFILE))) {
     writeResourceLockfile(appRoot, lockfile);
   }
+
+  const queryTableIds = resolvedQueries.flatMap(
+    ({ resolved }) => resolved.table_ids,
+  );
+  const metricTableIds = collectTableIds(
+    resolvedQueries.flatMap(({ resolved }) =>
+      resolved.metrics.map((metric) => metric.dataset_query),
+    ),
+  );
+
+  return [...new Set([...queryTableIds, ...metricTableIds])].sort(
+    (a, b) => a - b,
+  );
 }

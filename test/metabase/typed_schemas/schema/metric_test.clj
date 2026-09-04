@@ -3,11 +3,12 @@
    [clojure.test :refer :all]
    [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.typed-schemas.schema.common :as schema.common]
    [metabase.typed-schemas.schema.metric :as schema.metric]
-   [metabase.typed-schemas.schema.table :as schema.table]
-   [toucan2.core :as t2]))
+   [metabase.typed-schemas.schema.table :as schema.table]))
 
 (deftest ^:parallel metric-dimension-schema-uses-dimension-id-test
   (is (= {:type        "column"
@@ -111,13 +112,13 @@
                                                                        247]]}]}}])
                 schema.metric/metric-details identity
                 schema.metric/metric-schema (fn [details _card] (:id details))
-                t2/select-pks-set (constantly #{247})]
+                typed-schemas.db/metric-ids (constantly #{247})]
     (is (= [247]
            (vec (schema.metric/metric-schemas nil nil))))))
 
 (deftest metric-schemas-does-not-npe-when-a-metric-references-a-non-metric-card-test
   ;; A metric that references a card which is *not* a metric (e.g. it joins a saved question) reaches
-  ;; `metric-dependency-ids`, whose `t2/select-pks-set` returns nil — not #{} — when none of the
+  ;; `metric-dependency-ids`, whose database lookup returns nil — not #{} — when none of the
   ;; referenced cards are metrics (its real contract on an empty result). `metric-schemas` then hits
   ;; `(not-any? nil #{card-id})`, which NPEs. Such a metric is not a metric-to-metric reference, so it
   ;; must be kept, not throw. (The sibling test above masks this by stubbing select-pks-set non-nil.)
@@ -138,13 +139,15 @@
                                                                        999]]}]}}])
                 schema.metric/metric-details identity
                 schema.metric/metric-schema (fn [details _card] (:id details))
-                t2/select-pks-set (constantly nil)]
+                typed-schemas.db/metric-ids (constantly nil)]
     (is (= [247 258]
            (vec (schema.metric/metric-schemas nil nil))))))
 
 (deftest table-source-names-filters-unreadable-tables-test
-  (with-redefs [t2/select (constantly [{:id 10 :name "orders" :display_name "Orders"}
-                                       {:id 20 :name "franchises" :display_name "Franchises"}])
+  (with-redefs [perms/prime-table-perms-cache (constantly nil)
+                typed-schemas.db/table-names
+                (constantly [{:id 10 :name "orders" :display_name "Orders"}
+                             {:id 20 :name "franchises" :display_name "Franchises"}])
                 mi/can-read? (fn [{:keys [id]}] (= id 10))]
     (is (= {10 "orders"}
            (#'schema.metric/table-source-names [10 20])))
@@ -195,10 +198,11 @@
                                 :name     "orders"
                                 :table-id 10}])
                   mi/can-read? (constantly true)
-                  t2/select (fn [columns & _args]
-                              (when (= columns [:model/Table :id :name :display_name])
-                                (swap! table-select-count inc)
-                                [{:id 10 :name "orders" :display_name "Orders"}]))]
+                  perms/prime-table-perms-cache (constantly nil)
+                  typed-schemas.db/table-names
+                  (fn [_table-ids]
+                    (swap! table-select-count inc)
+                    [{:id 10 :name "orders" :display_name "Orders"}])]
       (#'schema.metric/metric-schema
        {:id   247
         :name "Customer Lifetime Value"}
@@ -216,11 +220,11 @@
                                 schema.table/table-by-field-id (fn [field-id]
                                                                  (swap! field-lookup-attempts conj field-id)
                                                                  ({42 10, 84 20} field-id))
-                                t2/select (fn [columns & _args]
-                                            (when (= columns [:model/Field :id :table_id])
-                                              (swap! field-select-count inc)
-                                              [{:id 42 :table_id 10}
-                                               {:id 84 :table_id 20}]))]
+                                typed-schemas.db/field-ids-and-table-ids
+                                (fn [_field-ids]
+                                  (swap! field-select-count inc)
+                                  [{:id 42 :table_id 10}
+                                   {:id 84 :table_id 20}])]
       (is (= (mapv vector dimensions [10 20])
              (#'schema.metric/metric-dimensions-with-table-ids {:id 247} nil)))
       (is (= 1 @field-select-count))

@@ -20,10 +20,13 @@
   `tenancy` (\"external\"/\"internal\"/nil) narrows to tenant/non-tenant groups (nil returns both); when
   `tenancy` is \"external\" and `tenants-enabled?` is false, no groups are returned. `manager-user-id`, when given,
   restricts to the groups that User manages. `advanced-permissions-enabled?` false excludes the data-analyst magic
-  group. `tenants-enabled?` false also excludes tenant groups outright, independent of `tenancy`."
-  [limit offset {:keys [tenancy manager-user-id tenants-enabled? advanced-permissions-enabled?]}]
+  group. `tenants-enabled?` false also excludes tenant groups outright, independent of `tenancy`.
+  `exclude-data-app-groups?` excludes groups that a data app manages."
+  [limit offset {:keys [tenancy manager-user-id tenants-enabled? advanced-permissions-enabled?
+                        exclude-data-app-groups?]}]
   (let [base-where [:and
                     (managed-groups-clause :id manager-user-id)
+                    (when exclude-data-app-groups? [:not :is_data_app_group])
                     (when-not tenants-enabled? [:not :is_tenant_group])
                     (when-not advanced-permissions-enabled?
                       [:or [:= nil :magic_group_type] [:not= "data-analyst" :magic_group_type]])]
@@ -47,6 +50,11 @@
   "Whether a PermissionsGroup with `id` exists."
   [id]
   (t2/exists? :model/PermissionsGroup :id id))
+
+(defn data-app-group?
+  "Whether the PermissionsGroup with `id` is managed by a data app."
+  [id]
+  (t2/exists? :model/PermissionsGroup :id id :is_data_app_group true))
 
 (defn insert-permissions-group!
   "Insert a PermissionsGroup and return the inserted instance."
@@ -82,6 +90,11 @@
   "Whether the User with `user-id` exists and is not a superuser."
   [user-id]
   (t2/exists? :model/User :id user-id :is_superuser false))
+
+(defn active-user-exists?
+  "Whether an active User with `user-id` exists."
+  [user-id]
+  (t2/exists? :model/User :id user-id :is_active true))
 
 (defn group-membership
   "The PermissionsGroupMembership with `id`, or nil."

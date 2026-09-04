@@ -11,6 +11,7 @@
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
+   [metabase-enterprise.data-apps.user-access :as data-app.user-access]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -66,6 +67,8 @@
    [:allowed_hosts   [:sequential :string]]
    [:resource_collection_id [:maybe ms/PositiveInt]]
    [:permission_group_id    [:maybe ms/PositiveInt]]
+   [:table_ids       [:sequential ms/PositiveInt]]
+   [:has_user_permission_warnings {:optional true} :boolean]
    [:bundle_hash     [:maybe :string]]
    [:last_synced_sha [:maybe :string]]
    [:last_synced_at  [:maybe :any]]
@@ -112,6 +115,27 @@
    [:dataset_query ms/Map]
    [:table_ids [:sequential ms/PositiveInt]]
    [:metrics [:sequential MetricResponse]]])
+
+(def ^:private TableDependenciesRequest
+  [:map {:closed true}
+   [:table_ids [:sequential {:distinct true} ms/PositiveInt]]])
+
+(def ^:private PermissionWarningsRequest
+  [:map {:closed true}
+   [:user_ids [:sequential {:min 1 :max 100 :distinct true} ms/PositiveInt]]])
+
+(def ^:private MissingTable
+  [:map {:closed true}
+   [:id ms/PositiveInt]
+   [:name ms/NonBlankString]
+   [:schema [:maybe :string]]
+   [:database_id ms/PositiveInt]
+   [:database_name ms/NonBlankString]])
+
+(def ^:private PermissionWarning
+  [:map {:closed true}
+   [:user_id ms/PositiveInt]
+   [:missing_tables [:sequential MissingTable]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
@@ -167,6 +191,13 @@
     app
     (select-keys app [:name :display_name])))
 
+(defn- data-app-list-response
+  [warning-group-ids app]
+  (cond-> (data-app-response app)
+    api/*is-superuser?*
+    (assoc :has_user_permission_warnings
+           (contains? warning-group-ids (:permission_group_id app)))))
+
 (defn- read-check-data-app
   "Check whether the current user can access a data app. Viewing requires read access to the app's
    resource collection. An app with no linked resource collection has not been published yet: it is
@@ -186,9 +217,11 @@
    to return only enabled apps without sync errors."
   [_route-params
    {:keys [available]} :- [:map [:available {:optional true} [:maybe :boolean]]]]
-  (->> (data-apps.db/non-blob-data-apps available)
-       (map api/read-check)
-       (mapv data-app-response)))
+  (let [apps (->> (data-apps.db/non-blob-data-apps available)
+                  (mapv api/read-check))
+        warning-group-ids (when api/*is-superuser?*
+                            (data-app.user-access/groups-with-permission-warnings apps))]
+    (mapv (partial data-app-list-response warning-group-ids) apps)))
 
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows
 ;; slashes inside a segment, so `/:slug` would otherwise swallow `/x/bundle`.
@@ -216,13 +249,41 @@
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
 
+(api.macros/defendpoint :put ["/:slug/table-dependencies" :slug slug-regex] :- DataAppResponse
+  "Store the tables used by the resources from a successful data app resource synchronization."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+   _query-params
+   {table-ids :table_ids} :- TableDependenciesRequest]
+  (api/check-superuser)
+  (let [app       (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))
+        table-ids (vec (sort table-ids))]
+    (api/check-400 (= (set table-ids)
+                      (data-apps.db/existing-table-ids table-ids))
+                   (tru "One or more tables do not exist."))
+    (data-apps.db/update-data-app! (:id app) {:table_ids table-ids})
+    (data-apps.db/non-blob-data-app (:id app))))
+
+(api.macros/defendpoint :post ["/:slug/user-permission-warnings" :slug slug-regex]
+  :- [:sequential PermissionWarning]
+  "Return warnings for users who cannot access every table used by a data app."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+   _query-params
+   {user-ids :user_ids} :- PermissionWarningsRequest]
+  (api/check-superuser)
+  (let [app   (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))
+        users (data-apps.db/users-for-permission-warnings user-ids)]
+    (api/check-404 (= (count users) (count user-ids)))
+    (api/check-400 (every? :is_active users)
+                   (tru "Deactivated users cannot be added to data apps."))
+    (api/check-400 (every? (comp nil? :tenant_id) users)
+                   (tru "Tenant users cannot be added to data apps."))
+    (data-app.user-access/permission-warnings (:table_ids app) users)))
+
 (defn- referenced-metrics
   "Return direct metric references."
   [query]
   (let [metric-ids (lib/all-source-card-ids query)
-        metrics    (if (seq metric-ids)
-                     (t2/select :model/Card :id [:in metric-ids] :type "metric")
-                     [])]
+        metrics    (data-apps.db/metrics-by-ids metric-ids)]
     (mapv #(update (select-keys % [:id :name :type :collection_id :dataset_query
                                    :database_id :display :visualization_settings :description])
                    :dataset_query

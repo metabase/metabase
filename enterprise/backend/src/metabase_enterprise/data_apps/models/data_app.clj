@@ -27,7 +27,8 @@
 (t2/deftransforms :model/DataApp
   {:bundle        transform-bundle
    ;; JSON array of origins the sandboxed bundle may fetch/XHR (see config.clj).
-   :allowed_hosts mi/transform-json})
+   :allowed_hosts mi/transform-json
+   :table_ids     mi/transform-json})
 
 (doto :model/DataApp
   (derive :metabase/model)
@@ -40,7 +41,8 @@
 (t2/define-after-select :model/DataApp
   [app]
   (cond-> app
-    (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
+    (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))
+    (contains? app :table_ids)     (update :table_ids #(or % []))))
 
 ;; Deliberately ungated: any signed-in user may view a data app, and the `+auth`
 ;; endpoints mean reaching a read check already implies authentication. See the

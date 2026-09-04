@@ -215,10 +215,7 @@
   [metrics]
   (let [referenced-ids (into #{} (mapcat #(lib/all-source-card-ids (:dataset_query %))) metrics)]
     (when (seq referenced-ids)
-      (t2/select-pks-set :model/Card
-                         {:where [:and
-                                  [:in :id referenced-ids]
-                                  [:= :type "metric"]]}))))
+      (typed-schemas.db/metric-ids referenced-ids))))
 
 (defn- fallback-metric-column
   "Returns a stable fallback column when metric result-column inference fails."

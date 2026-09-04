@@ -7,7 +7,7 @@
 (def ^:private non-blob-columns
   "Columns to select for normal data-app metadata reads, excluding the raw bundle blob."
   [:model/DataApp :id :name :display_name :description :bundle_path :enabled :allowed_hosts
-   :resource_collection_id :permission_group_id :draft
+   :resource_collection_id :permission_group_id :table_ids :draft
    :bundle_hash :last_synced_sha :last_synced_at :sync_error
    :created_at :updated_at])
 
@@ -49,6 +49,25 @@
   "The database ID for the Table with `table-id`, or nil."
   [table-id]
   (t2/select-one-fn :db_id :model/Table :id table-id))
+
+(defn existing-table-ids
+  "The IDs from `table-ids` that belong to existing Tables."
+  [table-ids]
+  (if (seq table-ids)
+    (t2/select-pks-set :model/Table :id [:in table-ids])
+    #{}))
+
+(defn users-for-permission-warnings
+  "The fields needed to calculate permission warnings for Users with `user-ids`."
+  [user-ids]
+  (t2/select [:model/User :id :is_superuser :is_active :tenant_id] :id [:in user-ids]))
+
+(defn metrics-by-ids
+  "The metric Cards with `metric-ids`."
+  [metric-ids]
+  (if (seq metric-ids)
+    (t2/select :model/Card :id [:in metric-ids] :type "metric")
+    []))
 
 (defn data-app-exists?
   "Whether a DataApp named `slug` exists."

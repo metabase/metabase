@@ -43,6 +43,14 @@
   [card-id]
   (t2/select-one [:model/Card :dimensions :dimension_mappings] :id card-id))
 
+(defn metric-ids
+  "The IDs among `card-ids` that belong to metric Cards."
+  [card-ids]
+  (t2/select-pks-set :model/Card
+                     {:where [:and
+                              [:in :id card-ids]
+                              [:= :type "metric"]]}))
+
 (defn table-names
   "The id, name, and display name of the Tables with `table-ids`."
   [table-ids]
