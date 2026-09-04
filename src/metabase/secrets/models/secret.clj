@@ -231,8 +231,8 @@
   [ancestor maybe-descendant]
   (let [->normalized-path #(Path/.toAbsolutePath
                             (Path/.normalize (Path/of % (into-array String []))))]
-    (^[Path] Path/.startsWith (->normalized-path maybe-descendant)
-                              (->normalized-path ancestor))))
+    (Path/.startsWith ^Path (->normalized-path maybe-descendant)
+                      ^Path (->normalized-path ancestor))))
 
 (defn- ensure-allowed-path!
   [file-path]
