@@ -1348,6 +1348,7 @@
            api
            app-db
            bookmarks
+           channel
            config
            dashboards
            eid-translation
