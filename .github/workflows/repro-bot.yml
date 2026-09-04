@@ -37,7 +37,7 @@ jobs:
           else
             ISSUE_NUMBER="${{ github.event.issue.number }}"
           fi
-          echo "number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+          echo "number=$ISSUE_NUMBER" >> "$GITHUB_OUTPUT"
           echo "Issue: https://github.com/${{ github.repository }}/issues/$ISSUE_NUMBER"
 
         env:
@@ -58,7 +58,7 @@ jobs:
         run: git clone --bare "https://github.com/${{ github.repository }}.git" repro-bot/git/metabase
 
       - name: Capture Node.js path for MCP subprocesses
-        run: echo "NODE_BIN_DIR=$(dirname $(which node))" >> $GITHUB_ENV
+        run: echo "NODE_BIN_DIR=$(dirname "$(which node)")" >> "$GITHUB_ENV"
 
       - name: Pre-install MCP server dependencies
         run: uv sync --directory repro-bot/mcp
@@ -90,7 +90,7 @@ jobs:
             --main-opts '["-m" "clojure-mcp-light.nrepl-eval"]'
 
           # Add to PATH for the rest of the workflow
-          echo "$HOME/.bbin/bin" >> $GITHUB_PATH
+          echo "$HOME/.bbin/bin" >> "$GITHUB_PATH"
 
           # Verify
           clj-nrepl-eval --help | head -3

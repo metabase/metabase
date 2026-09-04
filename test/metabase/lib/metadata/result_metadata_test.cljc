@@ -1070,7 +1070,6 @@
                                                                     (meta/id :orders :product-id)]
                                                                    [:field {:join-alias "PRODUCTS__via__PRODUCT_ID"}
                                                                     (meta/id :products :id)]]]
-                                            :lib/options         {:lib/uuid "14b26511-68b9-48d6-9968-b115a5089009"}
                                             :fk-field-id         (meta/id :orders :product-id)}]
                             :aggregation  [[:count {:lib/uuid "3a14967e-bd6c-4cdd-a837-b6d098ef513b", :name "count"}]
                                            [:sum {:name "sum"}

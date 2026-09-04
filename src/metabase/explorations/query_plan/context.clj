@@ -14,13 +14,13 @@
   (:require
    [clojure.string :as str]
    [metabase.explorations.blocks :as explorations.blocks]
+   [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -86,24 +86,19 @@
           dim-by-id)))
 
 (defn- metric-context
-  "Per-metric entry for [[metric-and-dim-context]]'s `:metrics` list. Enriches
-  the shared `dim-by-id` with this Card's `:group` metadata before computing
-  applicability, so the planners and the variant builders see the same
-  enrichment."
+  "Per-metric entry for [[metric-and-dim-context]]'s `:metrics` list."
   [tm card mp dim-by-id]
   (let [base-query           (try (lib/query mp (:dataset_query card)) (catch Exception _ nil))
-        card-dims            (u/index-by :id (:dimensions card))
-        enriched-thread-dims (update-vals dim-by-id #(block/enrich-with-card-group % card-dims))
-        appl                 (applicability enriched-thread-dims tm base-query)
+        appl                 (applicability dim-by-id tm base-query)
         default-temp         (when base-query
-                               (qp.mbql/default-temporal-breakout-col base-query))]
+                               (qp.mbql/default-time-dimension-col base-query card))]
     {:metric-id                         (:card_id tm)
      :card                              card
      :mp                                mp
      :applicability                     appl
      :default-temporal-breakout-summary (when-let [[_col unit display-name] default-temp]
                                           {:column display-name
-                                           :unit   (some-> unit name)})
+                                           :unit   (name unit)})
      :segments                          (segment-blurbs base-query)
      :name                              (:name card)
      :description                       (some-> (:description card) str/trim not-empty)
@@ -139,10 +134,10 @@
                               {}
                               metrics)
         ;; Take the per-dim enriched dim from the first metric whose applicability
-        ;; resolves it — that copy carries both `:group` (the dim's source label) and
-        ;; `:fingerprint`. Dims that resolve on no metric in this block are dropped:
-        ;; nothing can be charted from them here, so surfacing them to a planner would
-        ;; just be noise.
+        ;; resolves it — that copy carries the column `:fingerprint` looked up through
+        ;; the metadata provider. Dims that resolve on no metric in this block are
+        ;; dropped: nothing can be charted from them here, so surfacing them to a
+        ;; planner would just be noise.
         enriched-by-id (into {}
                              (keep (fn [dim-id]
                                      (when-let [d (some #(get-in % [:applicability dim-id :dim]) metrics)]
@@ -157,8 +152,7 @@
                              :when dim]
                          {:dimension-id   dim-id
                           :dim            dim
-                          :display-name   (or (:display-name dim) dim-id)
-                          :group-label    (some-> dim :group :display-name)
+                          :display-name   (block/dimension-label dim)
                           :effective-type (:effective-type dim)
                           :semantic-type  (:semantic-type dim)
                           ;; effective-cardinality returns the bin count for auto-binned
@@ -193,15 +187,12 @@
               ...]}
 
   The underlying Card is hydrated with the columns the variant builders need
-  (`:id :name :description :database_id :dataset_query :card_schema :dimensions`), once per
-  Card even when it appears in several blocks."
+  (`:id :name :description :database_id :dataset_query :card_schema :dimensions
+  :dimension_mappings`), once per Card even when it appears in several blocks."
   [blocks]
   (let [card-ids (distinct (mapcat #(map :card_id (:metrics %)) blocks))
         cards    (when (seq card-ids)
-                   (t2/select-pk->fn identity
-                                     [:model/Card :id :name :description :database_id
-                                      :dataset_query :card_schema :dimensions]
-                                     :id [:in card-ids]))
+                   (explorations.db/metric-cards-by-id card-ids))
         mp-by-db (memoize (fn [db-id] (lib-be/application-database-metadata-provider db-id)))]
     {:blocks (mapv #(block-context % cards mp-by-db) blocks)}))
 
@@ -219,24 +210,8 @@
       binning (lib/with-binning target binning)
       :else   target)))
 
-(defn- dim-base-display-name
-  [dim]
-  (or (:display-name dim) (:dimension-id dim)))
-
-(defn- explore-filter-dimension-label
-  "Display label for an explore filter's matched dimension snapshot. Qualifies with the dim's
-  source group only when the base display name is shared by another dimension in the block."
-  [matched-dim block-dimensions]
-  (let [base        (dim-base-display-name matched-dim)
-        name-counts (frequencies (map dim-base-display-name block-dimensions))
-        ambiguous?  (> (get name-counts base 0) 1)
-        group-dn    (some-> matched-dim :group :display-name)]
-    (if (and ambiguous? (not (str/blank? group-dn)))
-      (str group-dn " → " base)
-      base)))
-
 (defn- block-dims-by-field-id
-  "Index enriched block dimensions by the integer Field id of their mapping `:target`, given a
+  "Index block dimensions by the integer Field id of their mapping `:target`, given a
   prebuilt `{dimension_id → target}` index. Used to resolve an explore-filter `field_ref` to a
   dim without per-dim lib column matching."
   [block-dimensions target-by-dim-id]
@@ -248,8 +223,8 @@
           [fid dim])))
 
 (defn- dimension-for-explore-filter
-  "Match `filter-spec` to one of `block-dimensions` via the metric's `:dimension_mappings`,
-  comparing on Field id. `block-dimensions` should already be group-enriched."
+  "Match `filter-spec` to one of the block's dimensions via the metric's `:dimension_mappings`,
+  comparing on Field id."
   [block-dims-by-fid {:keys [field_ref]}]
   (when-let [fid (qp.mbql/target-field-id field_ref)]
     (get block-dims-by-fid fid)))
@@ -268,9 +243,9 @@
 
 (defn- explore-filter-dimension-name
   "Resolve the dimension label for one explore filter given a prebuilt field-id → dim index."
-  [mp card block-dims block-dims-by-fid filter-spec]
+  [mp card block-dims-by-fid filter-spec]
   (or (some-> (dimension-for-explore-filter block-dims-by-fid filter-spec)
-              (explore-filter-dimension-label block-dims))
+              block/dimension-label)
       (explore-filter-column-display-name mp card filter-spec)))
 
 (defn- expression-ref-name
@@ -292,7 +267,7 @@
   [block-dimensions target-by-dim-id field-ref]
   (when-let [expr-name (expression-ref-name field-ref)]
     (some (fn [dim]
-            (when (= expr-name (or (:display-name dim) (:dimension-id dim) "value"))
+            (when (= expr-name (or (block/dimension-label dim) "value"))
               (get target-by-dim-id (:dimension-id dim))))
           block-dimensions)))
 
@@ -300,13 +275,11 @@
   "Normalize and label each request filter. A `top-n-other` bucket's click ref is a synthetic
   expression that exists only on the variant query; remap it to its underlying dimension target
   first, so the drill scopes the real column and the Field-id label lookup below can resolve it.
-  Then stamp the BE-computed `:dimension_name`, preserving the FE-supplied `:display_value` when
-  present. Enriches block dims with `:group` from the metric Card so same-named dimensions qualify
-  the same way as query `:dimension_name` labels."
+  Then stamp the BE-computed `:dimension_name` (the dim's curated [[block/dimension-label]],
+  falling back to the metric query column display name), preserving the FE-supplied
+  `:display_value` when present."
   [mp card block metric-selection explore-filters]
-  (let [card-dims         (u/index-by :id (:dimensions card))
-        block-dims        (mapv #(block/enrich-with-card-group % card-dims)
-                                (or (:dimensions block) []))
+  (let [block-dims        (or (:dimensions block) [])
         target-by-dim-id  (qp.mbql/index-dimension-targets (:dimension_mappings metric-selection))
         block-dims-by-fid (block-dims-by-field-id block-dims target-by-dim-id)]
     (mapv (fn [filter-spec]
@@ -314,15 +287,30 @@
                                                                   (:field_ref filter-spec))
                   filter-spec    (cond-> filter-spec
                                    target (assoc :field_ref target))
-                  dimension-name (explore-filter-dimension-name mp card block-dims
+                  dimension-name (explore-filter-dimension-name mp card
                                                                 block-dims-by-fid filter-spec)]
               (cond-> filter-spec
                 dimension-name (assoc :dimension_name dimension-name))))
           explore-filters)))
 
+(defn- explore-filter-clause
+  "Build the Lib filter clause for one explore-filter spec. Equality filters use `lib/=`;
+  range filters use `lib/between` with ordered bounds."
+  [fref {:keys [operator value values] :as filter-spec}]
+  (case operator
+    "="
+    (lib/= fref value)
+
+    "between"
+    (let [[min-v max-v] (sort values)]
+      (lib/between fref min-v max-v))
+
+    (throw (ex-info "Unknown explore filter operator"
+                    {:operator operator :filter-spec filter-spec}))))
+
 (defn- apply-single-explore-filter
-  "Apply one `{:field_ref ... :value ...}` filter spec to `card`'s `dataset_query`."
-  [mp card {:keys [field_ref value] :as filter-spec}]
+  "Apply one explore-filter spec to `card`'s `dataset_query`."
+  [mp card {:keys [field_ref] :as filter-spec}]
   (when-not field_ref
     (throw (ex-info "Explore filter missing :field_ref" {:filter-spec filter-spec})))
   (let [base       (lib/query mp (:dataset_query card))
@@ -332,15 +320,15 @@
                        (throw (ex-info "Could not resolve explore filter field ref on metric query"
                                        {:field-ref field_ref})))
         fref       (filter-ref-from-click ref-clause col)
-        filtered   (lib/filter base (lib/= fref value))]
+        filtered   (lib/filter base (explore-filter-clause fref filter-spec))]
     (assoc card :dataset_query filtered)))
 
 (defn- apply-explore-filters
   "When the block's metric selection carries `:explore_filters` (added by the \"Explore further\"
-  chart drill), scope the metric Card's `dataset_query` to each `[<bucketed dimension> = <value>]`
-  in order so *every* variant built from it inherits the segment — a single injection point, since
-  all the variant builders re-wrap `(lib/query mp (:dataset_query card))`. Returns `card` untouched
-  when there are no filters."
+  chart drill), scope the metric Card's `dataset_query` to each explore filter in order so
+  *every* variant built from it inherits the segment — a single injection point, since all the
+  variant builders re-wrap `(lib/query mp (:dataset_query card))`. Returns `card` untouched when
+  there are no filters."
   [mp card explore-filters]
   (reduce (fn [card' ef]
             (apply-single-explore-filter mp card' ef))
@@ -360,12 +348,9 @@
   `ExplorationBlock`, reached via the row's `ExplorationPage`, not from
   per-thread metric/dimension tables. The runner calls this per claimed row."
   [{:keys [card_id dimension_id segment_id params page_id]}]
-  (let [card       (t2/select-one :model/Card :id card_id)
+  (let [card       (explorations.db/card card_id)
         block      (when page_id
-                     (t2/select-one :model/ExplorationBlock
-                                    {:join  [[:exploration_page :p]
-                                             [:= :p.exploration_block_id :exploration_block.id]]
-                                     :where [:= :p.id page_id]}))
+                     (explorations.db/block-for-page page_id))
         metric     (some #(when (= card_id (:card_id %)) %) (:metrics block))
         dim-by-id  (u/index-by :dimension-id (:dimensions block))
         thread-dim (get dim-by-id dimension_id)]
@@ -389,7 +374,7 @@
          :card            card
          :target          target
          :dim             thread-dim
-         :dim-label       (or (:display-name thread-dim) dimension_id)
+         :dim-label       (or (block/dimension-label thread-dim) dimension_id)
          :segment         segment
          :params          params
          :explore-filters explore-filters}))))

@@ -53,6 +53,7 @@
   document-construct-sql-chart-tool
   document-construct-model-chart-tool]
  [tools.explorations
+  list-research-metrics-tool
   get-research-candidates-tool
   add-research-groups-tool
   remove-from-research-plan-tool

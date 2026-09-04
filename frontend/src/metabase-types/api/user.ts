@@ -2,6 +2,7 @@ import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { DependencyDiagnosticsUserParams } from "./dependencies";
+import type { ExportFormat, TableExportFormat } from "./export-format";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { ConcreteTableId, SchemaName } from "./table";
 
@@ -71,7 +72,7 @@ export interface User extends BaseUser {
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
   can_write_any_collection: boolean;
-  personal_collection_id: CollectionId;
+  personal_collection_id: CollectionId | null;
   tenant_collection_id: CollectionId | null;
   sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | "oidc" | null;
   custom_homepage: {
@@ -86,7 +87,11 @@ export interface UserListResult {
   last_name: string | null;
   common_name: string;
   email: string;
-  personal_collection_id: CollectionId;
+  /**
+   * `null` for API-key users (see `include-personal-collection-ids`
+   * in `collections/models/collection.clj`).
+   */
+  personal_collection_id: CollectionId | null;
   structured_attributes?: StructuredUserAttributes;
 }
 
@@ -184,8 +189,8 @@ export type UserKeyValue =
       namespace: "last_download_format";
       key: string;
       value: {
-        last_download_format: "csv" | "xlsx" | "json" | "png";
-        last_table_download_format: "csv" | "xlsx" | "json";
+        last_download_format: ExportFormat;
+        last_table_download_format: TableExportFormat;
       };
     }
   | {
@@ -195,7 +200,7 @@ export type UserKeyValue =
     }
   | {
       namespace: "data_studio";
-      key: string;
+      key: "isNavbarOpened" | "hasSeenGuide";
       value: boolean;
     }
   | {

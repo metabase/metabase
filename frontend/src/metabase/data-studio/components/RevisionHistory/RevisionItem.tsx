@@ -1,18 +1,15 @@
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
 import { t } from "ttag";
 
 import { UserAvatar } from "metabase/common/components/UserAvatar";
+import { getUserId } from "metabase/current-user";
+import { dayjs } from "metabase/dayjs";
 import { useSelector } from "metabase/redux";
-import { getUserId } from "metabase/selectors/user";
 import { Box, Flex, Stack, Text, Timeline } from "metabase/ui";
 import type { FieldDiff, Revision, TableId } from "metabase-types/api";
 
 import { RevisionDiff } from "./RevisionDiff";
 import S from "./RevisionHistory.module.css";
 import type { DefinitionType, RevisionActionDescriptor } from "./types";
-
-dayjs.extend(relativeTime);
 
 type RevisionItemProps = {
   revision: Revision;
@@ -44,8 +41,8 @@ export function RevisionItem({
 
   return (
     <Timeline.Item bullet={<UserAvatar user={revision.user} bg={userColor} />}>
-      <Stack gap="sm" ml="md">
-        <Flex justify="space-between" align="flex-start" gap="md">
+      <Stack gap="sm" ml="lg">
+        <Flex justify="space-between" align="flex-start" gap="lg">
           <Stack gap={2}>
             <Text fw={600} size="md">
               {userName}

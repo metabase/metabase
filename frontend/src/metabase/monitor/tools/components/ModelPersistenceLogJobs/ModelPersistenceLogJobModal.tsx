@@ -10,7 +10,6 @@ import {
 import { Link } from "metabase/common/components/Link";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import { Box, Button } from "metabase/ui";
 import { parseNumberParam } from "metabase/urls";
 
@@ -51,11 +50,11 @@ export function ModelPersistenceLogJobModal({
         variant="filled"
         onClick={onRefreshClick}
       >{t`Retry now`}</Button>,
-      <Link
+      <Button
         key="edit"
-        className={ButtonsS.Button}
+        component={Link}
         to={`/model/${persistedModel.card_id}/query`}
-      >{t`Edit model`}</Link>,
+      >{t`Edit model`}</Button>,
     ];
   }, [persistedModel, refreshModelCache]);
 

@@ -58,11 +58,15 @@
   "Resolve `goal-value` against `referenced-entities` (a query result's `[:data :referenced_entities]`,
   keyed by entity type and then by id *string*). Literal numbers and self-column names pass through
   unchanged; an entity reference becomes the referenced column's first-row value. Throws
-  `::unresolved-goal` with `:reason` `:query-failed`/`:column-not-found`/`:not-a-number` when the
-  reference can't produce a finite number."
+  `::unresolved-goal` with `:reason` `:never-ran`/`:query-failed`/`:column-not-found`/`:not-a-number`
+  when the reference can't produce a finite number."
   [goal-value referenced-entities]
   (if-let [{entity-type :type, :keys [id column] :as ref} (goal-source goal-value)]
-    (let [{:keys [status data]} (get-in referenced-entities [entity-type (str id)])]
+    (let [{:keys [status data] :as result} (get-in referenced-entities [entity-type (str id)])]
+      ;; no entry at all: the entity was never queried (cancelled mid-run, or the caller derived its
+      ;; specs from different settings than the ones being resolved here)
+      (when-not result
+        (unresolved! :never-ran ref))
       (when-not (and data (some-> status name (= "completed")))
         (unresolved! :query-failed ref))
       (let [idx (first (keep-indexed (fn [i col] (when (= column (:name col)) i)) (:cols data)))]

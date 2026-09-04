@@ -161,6 +161,7 @@
         tree
         parsed-collapsed-subtotals))))
 
+;; defrecord has no docstring slot for the vars it interns
 #_{:clj-kondo/ignore [:missing-docstring]}
 (defrecord TreeNode [value children value->child-pos isCollapsed])
 
@@ -287,6 +288,7 @@
 
   Takes raw pivot data and generates hierarchical tree structures for both rows
   and columns, along with a lookup map for cell values."
+  ;; settings is only used by the :cljs branch of this function
   #_{:clj-kondo/ignore [:unused-binding]}
   [rows cols row-indexes col-indexes val-indexes settings col-settings]
   (let [row-tree (->TreeNode nil (perf/make-list) (perf/make-map) false)
@@ -451,7 +453,7 @@
                row-tree)))))
 
 (defn display-name-for-col
-  "Translated from frontend/src/metabase/utils/formatting/column.ts"
+  "Translated from frontend/src/metabase/value-formatting/column.ts"
   [column col-settings format-values?]
   (or (if format-values?
         (or
@@ -540,8 +542,14 @@
   (get-subtotals subtotal-values indexes index-values {} value-formatters))
 
 (defn- get-normal-cell-values
-  "Processes and formats values for normal data cells (non-subtotal)."
-  [values-by-key index-values value-formatters color-getter]
+  "Processes and formats values for normal data cells (non-subtotal).
+
+  Each cell's `:clicked` payload carries `:colIdx` — the position of the aggregation column in `cols` — and the raw
+  `:value` for that column, so the FE can enrich the click with the aggregation column metadata. Drill-thrus like
+  `underlying-records` rely on this to identify the clicked aggregation and lift its inner filter (e.g. `count-where`,
+  `sum-where`, `share`). Without them, clicking a pivot cell for `CountIf([X] = Y)` drills without the `X = Y` filter
+  (#79023)."
+  [values-by-key index-values value-formatters val-indexes color-getter]
   (let [{:keys [values valueColNames data dimensions]} (get values-by-key index-values)
         formatted-values (format-values values value-formatters)]
     (if-not data
@@ -550,7 +558,9 @@
        (fn [index value]
          (assoc value
                 :clicked {:data       data
-                          :dimensions dimensions}
+                          :dimensions dimensions
+                          :colIdx     (nth val-indexes index)
+                          :value      (nth values index)}
                 :backgroundColor (color-getter
                                   (nth values index)
                                   index
@@ -577,18 +587,19 @@
 (defn- create-row-section-getter
   "Returns a memoized function that retrieves and formats values for a specific cell
   position in the pivot table."
-  [values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter]
+  [values-by-key subtotal-values value-formatters col-indexes row-indexes val-indexes col-paths row-paths color-getter]
   (fn [col-index row-index]
     (let [col-values (nth col-paths col-index [])
           row-values (nth row-paths row-index [])
           index-values (concat col-values row-values)
           result (if (is-subtotal? row-values col-values row-indexes col-indexes)
                    (handle-subtotal-cell subtotal-values row-values col-values row-indexes col-indexes value-formatters)
-                   (get-normal-cell-values values-by-key index-values value-formatters color-getter))]
+                   (get-normal-cell-values values-by-key index-values value-formatters val-indexes color-getter))]
       ;; Convert to JavaScript object if in ClojureScript context
       #?(:cljs (perf/clj->js result)
          :clj result))))
 
+;; defrecord has no docstring slot for the vars it interns
 #_{:clj-kondo/ignore [:missing-docstring]}
 (defrecord ResultItem [value rawValue clicked isCollapsed hasSubtotal isGrandTotal isSubtotal isValueColumn depth offset
                        hasChildren path span maxDepthBelow])
@@ -683,4 +694,4 @@
       :rowIndex row-paths
       :leftHeaderItems (tree-to-array formatted-row-tree-with-totals)
       :topHeaderItems (tree-to-array formatted-col-tree)
-      :getRowSection (create-row-section-getter values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter)})))
+      :getRowSection (create-row-section-getter values-by-key subtotal-values value-formatters col-indexes row-indexes val-indexes col-paths row-paths color-getter)})))

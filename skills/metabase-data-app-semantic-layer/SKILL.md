@@ -14,7 +14,7 @@ Keep the semantic layer and presentation layer separate.
 - Import data app query helpers from `@metabase/embedding-sdk-react/data-app`.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level table objects.
 - Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, bare table IDs, or metric IDs to SDK components, `useMetabaseQuery`, or `useMetabaseQueryObject`. Prefer generated table and metric schema objects; for simple table-source queries, an explicit source reference like `{ type: "table", id: table.id }` is also valid.
-- Build queries with `source: schema.tables.<name>` or `source: schema.questions.<name>`, generated `fields`, generated `segments`, generated `measures`, generated metrics in `aggregations`, generated metric `dimensions`, `filter(...)`, `breakout(...)`, `orderBy(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`. Do not use `source: schema.metrics.<name>`; metrics are aggregation expressions, not query sources.
+- Build queries with `source: schema.tables.<name>` or `source: schema.questions.<name>`, generated `fields`, generated `segments`, generated `measures`, generated metrics in `aggregations`, generated metric `dimensions`, generated question `columns`, `filter(...)`, `breakout(...)`, `orderBy(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`. Do not use `source: schema.metrics.<name>`; metrics are aggregation expressions, not query sources.
 - Prefer semantically rich table queries over shallow table dumps. Use curated table measures, segments, filters, and breakouts when they make the generated app more useful.
 - Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it instead of recreating the concept from raw rows.
 - Filter UI must default to showing data. Empty controls, "All" options, and incomplete custom ranges should produce no filter instead of blocking queries or showing a blank dashboard.
@@ -28,7 +28,7 @@ Keep the semantic layer and presentation layer separate.
 - Only render values returned by Metabase or deterministic transforms of returned values. Do not invent KPI values, trends, labels, statuses, ratings, timestamps, rankings, insights, segments, or chart series.
 - Do not custom-render ambiguous business fields such as `margin`, `rate`, `score`, `percent`, `health`, `risk`, or `efficiency`. Do not add `%`, multiply by 100, color-code, or render stars unless semantic-layer units explicitly support it; use an SDK table/chart, omit the field, or ask for curation.
 - Visualization data must come from Metabase through `useMetabaseQuery` or `useMetabaseQueryObject` with `InteractiveQuestion`/`StaticQuestion`. Do not hardcode chart-ready arrays, sample data, demo values, or schema-shaped mock values.
-- When wrapping an SDK-rendered question in a card or section that already has its own title, pass `title={false}` to the SDK question component to avoid duplicate generated question titles.
+- Render charts with `InteractiveQuestion`/`StaticQuestion`. When a custom visualization is allowed instead, and which of the two to use, is decided by the setup skill's *Rendering a chart: Metabase first*.
 - `useMetabaseQueryObject(...)` returns `{ query, error, isLoading }`. Pass only the `query` property as `card={{ query }}` to `InteractiveQuestion` or `StaticQuestion`; never pass the whole hook result as `card.query`.
 - `useMetabaseQuery().rows` are keyed objects, not tuple arrays. Never read `row[0]` / `row[1]`, and never silence this with `as unknown as [string, number][]`, `DisplayRow`, or another tuple cast. If TypeScript says property `0` does not exist, it is catching a real bug. For typed `data.rows`, use literal keys such as `row.count` or generated field names such as `row[ordersTable.fields.createdAt.name]`. Use `data.columns` with `rawRows` or after explicitly narrowing a key; do not index typed rows with arbitrary `string` values from `data.columns`.
 - Do not cast query objects to `Parameters<typeof useMetabaseQuery>[0]`. That erases the generated table/metric validation. Use `useMetabaseQuery<typeof table>(...)`, or type a reusable query object with `satisfies MetabaseQueryOptions<typeof table>`.
@@ -129,6 +129,8 @@ const { data, isLoading, error } = useMetabaseQuery({
 ```
 
 For direct row access, prefer letting `useMetabaseQuery(...)` infer the query shape from the inline query object. If you need a reusable query object and table ownership checks, type the object with `satisfies MetabaseQueryOptions<OrdersTable>`, then pass it to `useMetabaseQuery(query)`. Avoid forcing the hook generic on selected-field queries when you need precise row keys from `data.rows`.
+
+**Call each schema entry at most once per render tree.** Multiple `useMetabaseQuery` calls on the same `questionId` (or same `tableId` + identical filters/measures/breakouts) mount independent subscriptions, fire duplicate queries, and let consumers disagree mid-load. Lift the call to the highest component that needs the data; pass `data` / `isLoading` / `error` down as props. Different ids — or the same id with different filters / breakouts — are different data sources; call them separately.
 
 Use keyed schema objects:
 
@@ -245,17 +247,25 @@ A metric aggregation must belong to the table source. Do not use source-card met
 
 ## Saved question query recipes
 
-For a saved question query, pass the generated question object as `source`:
+A saved question source takes the same clauses as a table source — `filters`, `aggregations`, `breakouts`, `orderBys`, `limit` — applied on top of the question's results, with three differences:
+
+- Dimensions come from `schema.questions.<question>.columns`, a positional array in the order the question returns them, not a keyed `fields` record. Read the generated schema for that order.
+- Segments, Measures, and Metrics are rejected; they are scoped to a table source. A generated table field still resolves when its name matches a result column, but prefer the question's `columns` — a renamed or computed column has no matching field.
+- `fields` is not supported: a question query returns the question's columns.
 
 ```ts
 const ordersQuestion = schema.questions.ordersQuestion;
+const [status, amount, createdAt] = ordersQuestion.columns;
 
 const { data } = useMetabaseQuery({
   source: ordersQuestion,
+  filters: [filter(status, "=", "paid")],
+  aggregations: [aggregations.sum(amount)],
+  breakouts: [breakout(createdAt, { unit: "month" })],
 });
 ```
 
-Saved question queries only support `source` and `enabled` today. Do not add `fields`, `filters`, helper aggregations, breakouts, orderBys, or limits to `source: schema.questions.<question>` queries yet; use table-source queries, including metric aggregations, when the app needs post-source query clauses.
+Adding `aggregations` or `breakouts` replaces the question's result columns with the query's own, so `data.rows` is keyed by the breakout and aggregation column names. For reusable query objects, use `satisfies MetabaseQueryOptions<typeof ordersQuestion>`.
 
 SQL parameters stay on the existing `questionId` query path. Do not pass SQL parameter values through `source: schema.questions.<question>`.
 
@@ -266,11 +276,11 @@ When table queries use `fields`, `segments`, `aggregations`, `breakouts`, or `or
 
 ## Interactive Metabase Views
 
-Use Metabase's SDK `InteractiveQuestion` or `StaticQuestion` by default when the UI can be expressed as a normal Metabase question visualization. Build a semantic query with `useMetabaseQueryObject`, then pass it through the SDK question component's `card` prop.
+Whether an element is an SDK question at all — and whether it is `StaticQuestion` or `InteractiveQuestion` — is decided in the data-app setup skill (*Rendering a chart: Metabase first*). Once it is: build a semantic query with `useMetabaseQueryObject`, then pass it through the SDK question component's `card` prop.
 
-`useMetabaseQueryObject` supports generated table queries, including metric aggregations. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization. Do not pass generics to `useMetabaseQueryObject`; it returns `{ query, error, isLoading }`, not query result rows.
+`useMetabaseQueryObject` supports generated table queries, including metric aggregations, and generated saved question queries. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization. Do not pass generics to `useMetabaseQueryObject`; it returns `{ query, error, isLoading }`, not query result rows.
 
-The examples below use `return null` for minimal loading and error handling. In a real app, render the app's existing loading or error UI there. Passing `card={{ query }}` is safe while `query` is `null`; do not pass the full `{ query, error, isLoading }` hook result as `card.query`.
+The examples under *Rendering With SDK Components* use `return null` for minimal loading and error handling. In a real app, render the app's existing loading or error UI there. Passing `card={{ query }}` is safe while `query` is `null`; do not pass the full `{ query, error, isLoading }` hook result as `card.query`.
 
 When wrapping `useMetabaseQueryObject` in a reusable chart/card component, destructure and render `error`; do not read only `{ query }`, because query-construction failures otherwise look like endless loading. Calling the hook inside that child component is valid React. Do not call hooks directly inside loops, conditions, or callbacks in the parent component.
 
@@ -316,38 +326,9 @@ const chartRows = (data?.rows ?? []).map((row) => ({
 }));
 ```
 
-### SDK Chart Heights
+If the result key only comes from `data.columns` at runtime, use `rawRows` with the matching column position, or narrow the key to a literal before indexing `data.rows`.
 
-When an SDK-rendered chart lives in a card, panel, dashboard cell, or any other area that needs a specific height, pass that height to the SDK component that owns the visualization. Setting only the outer container or card height is not enough — the chart can render taller than the card and get cut off.
-
-- Chart only: pass `height` to `InteractiveQuestion.QuestionVisualization`.
-- Default question layout with query bar: pass `height` to `InteractiveQuestion`.
-- Static question: pass `height` to `StaticQuestion`.
-
-Use the actual body height available to the chart. For example, if a card is 560px tall and has a 60px header, pass `height="500px"` to the SDK component.
-
-Prefer `InteractiveQuestion` for:
-
-- standard charts, pivot tables, maps, object/list views, scalar/KPI values, and exploratory views
-- trends, category comparisons, grouped summaries, geographic views, scatter plots, funnels, gauges, progress, waterfall, boxplot, and sankey-shaped queries
-- bar, line, area, row, and trend charts whenever a semantic query with measures and breakouts can produce the needed result
-- tables where users benefit from Metabase interactions such as sorting, column inspection, drill-through, downloading, or changing visualization settings
-- cases where Metabase visualization settings can handle the presentation, such as axes, labels, stacking, goals, trendlines, split panels, series settings, table columns, formatting, pie settings, pivot settings, and list settings
-
-Generated dashboards should use Metabase charts as much as possible. Do not replace a normal bar, line, area, row, trend, pivot, map, or sortable table with a custom SVG/React visualization just to make it look more bespoke.
-
-Use custom React visualizations only when the user's requested presentation does not fit Metabase display types or visualization settings.
-
-Good custom visualization reasons:
-
-- bespoke scorecards, alert panels, narrative layouts, or mixed-content cards that cannot be represented as a normal Metabase chart/table
-- combining multiple Metabase queries into one visual unit
-- custom interactions or product-specific UI that Metabase's chart/table chrome cannot express
-- unusual chart forms such as calendar grids, timelines, heat strips, radial views, custom maps, or domain-specific diagrams
-
-For custom charts, use an existing charting dependency when the app already has one. Otherwise, SVG charts are fine. Keep single-value KPI cards and bespoke summaries on `useMetabaseQuery` when you need direct row data, but first consider whether an SDK scalar/smartscalar/gauge/progress view would be good enough.
-
-If you build a custom chart, map typed SDK rows into an explicit local view model before rendering. Read typed row values with known result keys, such as `schema.tables.orders.fields.orderedAt.name` (`ordered_at`) or aggregation names like `count`/`sum`; do not read generated schema object property names such as `row.orderedAt` unless the returned column name is actually `orderedAt`. If the key only comes from `data.columns` at runtime, use `rawRows` with the matching column position or narrow the key to a literal before indexing `data.rows`. Do not write generic chart components that assume positional rows.
+### Rendering With SDK Components
 
 Chart only, without the toolbar:
 
@@ -419,48 +400,6 @@ return (
   </InteractiveQuestion>
 );
 ```
-
-Do not invent alternate prop names for generated queries. If the SDK type says a prop does not exist, believe it and use the documented `card` prop shape.
-
-```tsx
-const { query, isLoading, error } = useMetabaseQueryObject({
-  source: eventsTable,
-  aggregations: [eventsTable.measures.totalAmount],
-  breakouts: [breakout(eventsTable.fields.occurredAt, { unit: "month" })],
-});
-
-if (error) {
-  return null;
-}
-
-if (isLoading || !query) {
-  return null;
-}
-
-return <InteractiveQuestion card={{ query }} height="500px" />;
-```
-
-Static question:
-
-```tsx
-const { query, isLoading, error } = useMetabaseQueryObject({
-  source: eventsTable,
-  aggregations: [eventsTable.measures.totalAmount],
-  breakouts: [breakout(eventsTable.fields.occurredAt, { unit: "month" })],
-});
-
-if (error) {
-  return null;
-}
-
-if (isLoading || !query) {
-  return null;
-}
-
-return <StaticQuestion card={{ query }} height="500px" />;
-```
-
-Do not wrap `InteractiveQuestion` or `StaticQuestion` in containers that clip or move on hover. Avoid `overflow: hidden`, hover transforms, and hover-driven layout shifts around embedded Metabase UI; popovers, menus, and chart tooltips need stable geometry and visible overflow. If a parent card has a fixed height, also pass the matching available height to `InteractiveQuestion`, `StaticQuestion`, or `InteractiveQuestion.QuestionVisualization`; never rely on the parent height alone.
 
 ## Filters And Breakouts
 

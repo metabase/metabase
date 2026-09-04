@@ -3,10 +3,9 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
-import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
-import CS from "metabase/css/core/index.css";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
+  ActionIcon,
   Alert,
   Button,
   Flex,
@@ -61,8 +60,8 @@ export const SetupKeyModal = (props: SetupKeyDialogProps) => {
                 <Loader size="xs" />
               ) : (
                 <Tooltip label={t`Copy to clipboard`}>
-                  <IconButtonWrapper
-                    aria-label={t`Preview the query`}
+                  <ActionIcon
+                    aria-label={t`Copy to clipboard`}
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(secretValue);
@@ -75,31 +74,26 @@ export const SetupKeyModal = (props: SetupKeyDialogProps) => {
                     }}
                   >
                     <Icon name="copy" />
-                  </IconButtonWrapper>
+                  </ActionIcon>
                 </Tooltip>
               )
             }
             flex="1 0 auto"
             aria-label={t`New secret key`}
           />
-          <Button
-            className={CS.flexNoShrink}
-            variant="filled"
-            onClick={generateToken}
-          >
+          <Button flex="0 0 auto" variant="filled" onClick={generateToken}>
             {t`Regenerate key`}
           </Button>
         </Flex>
         <Stack gap="sm">
           <Alert size="compact" color="warning">
             {t`Make sure you copy this key now and save it in a safe place.`}
-            <br />
-            <Text fw="bold" component="strong">
+            <Text fw="bold" component="strong" display="block">
               {t`You won't be able to see it again.`}
             </Text>
           </Alert>
           {!!currentValue && (
-            <Alert size="compact" color="warning" mt="md">
+            <Alert size="compact" color="warning" mt="lg">
               <Text component="strong" fw="bold">
                 {t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`}
               </Text>

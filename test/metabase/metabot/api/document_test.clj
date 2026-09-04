@@ -2,10 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -17,7 +19,8 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest generate-content-backwards-compatible-route-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider test-provider]
     (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                 (fn [_]
                                   (mut/mock-llm-response
@@ -32,8 +35,18 @@
                                    :post 200 "metabot/document/generate-content"
                                    {:instructions "Show me sales data"}))))))
 
+(deftest generate-content-free-limit-body-test
+  (testing "the 402 body is the message and error code alone, not a map carrying a stack trace"
+    (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly true)]
+      (is (= {:message    "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."
+              :error-code "metabase_ai_managed_locked"}
+             (mt/user-http-request :crowberto
+                                   :post 402 "metabot/document/generate-content"
+                                   {:instructions "Show me sales data"}))))))
+
 (deftest generate-content-prometheus-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider test-provider]
     (mt/with-prometheus-system! [_ system]
       (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                   (fn [_]
@@ -61,7 +74,8 @@
     ;; resolve the test database *before* process-query gets redefed below, so DB sync (which
     ;; itself calls process-query) isn't affected by the mock
     (let [db-id (mt/id)]
-      (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
         (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
                                     (fn [_]
                                       {:validation-result {:valid? true, :dialect "h2"}
@@ -96,7 +110,8 @@
                     response))))))))
 
 (deftest generate-content-snowplow-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider test-provider]
     (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
       (let [rasta-id (mt/user->id :rasta)]
         (mt/with-dynamic-fn-redefs [openrouter/openrouter

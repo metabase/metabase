@@ -16,7 +16,6 @@ import {
   ReorderableTagsInput,
   SortablePill,
 } from "metabase/common/components/ReorderableTagsInput/ReorderableTagsInput";
-import { getColumnExample } from "metabase/querying/components/expressions/CombineColumns/util";
 import {
   ActionIcon,
   Box,
@@ -32,8 +31,9 @@ import {
   Text,
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type * as Lib from "metabase-lib";
+import { getColumnExample } from "metabase-lib/v1/expressions/column-example";
 import type {
   DatasetColumn,
   DatasetData,
@@ -236,7 +236,7 @@ export const ListViewConfiguration = ({
           <Text fw="bold">{t`Customize List columns`}</Text>
           <Box className={S.listViewConfigurationInputs}>
             {/* Icon selector */}
-            <Menu shadow="md" width={200}>
+            <Menu shadow="sm" width={200}>
               <Menu.Target>
                 <Flex className={S.iconMenuButtonContainer}>
                   <ActionIcon
@@ -288,7 +288,7 @@ export const ListViewConfiguration = ({
                 w="16rem"
                 style={{ borderRadius: "var(--mantine-radius-lg)" }}
               >
-                <Box p="md">
+                <Box p="lg">
                   <Switch
                     label={t`Show image`}
                     size="sm"
@@ -308,10 +308,10 @@ export const ListViewConfiguration = ({
                   />
                 </Box>
                 <Menu.Divider m={0} />
-                <SimpleGrid cols={5} p="md">
+                <SimpleGrid cols={5} p="lg">
                   <ActionIcon
                     radius="lg"
-                    p="md"
+                    p="lg"
                     w="2rem"
                     h="2rem"
                     disabled={!imageColumn}
@@ -376,7 +376,7 @@ export const ListViewConfiguration = ({
                   ))}
                 </SimpleGrid>
                 <Menu.Divider m={0} />
-                <SimpleGrid cols={6} p="md" data-testid="list-view-icon-colors">
+                <SimpleGrid cols={6} p="lg" data-testid="list-view-icon-colors">
                   {ENTITY_ICON_COLORS.map((color) => (
                     <Flex justify="center" align="center" key={color}>
                       <Button

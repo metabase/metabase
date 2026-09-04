@@ -93,7 +93,7 @@ export const MoveDashboardStepContent = ({
 
   if (isMoveDashboardDone) {
     return (
-      <Stack gap="md">
+      <Stack gap="lg">
         <Text size="md" c="text-secondary" lh="lg">
           {t`The shared collection already has dashboards.`}
         </Text>
@@ -107,7 +107,7 @@ export const MoveDashboardStepContent = ({
   }
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Text size="md" c="text-secondary" lh="lg">
         {t`This will allow tenant users to see it.`}
       </Text>

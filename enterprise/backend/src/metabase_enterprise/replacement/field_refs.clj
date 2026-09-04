@@ -1,12 +1,12 @@
 (ns metabase-enterprise.replacement.field-refs
   (:require
+   [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.util :as replacement.util]
    [metabase-enterprise.replacement.walk :as replacement.walk]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.source-swap.core :as source-swap]
-   [metabase.visualization-settings.core :as vs]
-   [toucan2.core :as t2]))
+   [metabase.visualization-settings.core :as vs]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,7 +33,7 @@
   [parameters]
   (let [card-ids      (replacement.walk/parameter-source-card-ids parameters)
         card-id->card (when (seq card-ids)
-                        (t2/select-pk->fn identity :model/Card :id [:in card-ids]))]
+                        (replacement.db/cards-by-id card-ids))]
     (if (seq card-ids)
       (replacement.walk/walk-parameter-source-card-refs parameters #(upgrade-source-card-ref %1 %2 card-id->card))
       parameters)))
@@ -71,7 +71,7 @@
                         (assoc :result_metadata (:result_metadata card)
                                :verified-result-metadata? true))]
     (when (seq changes)
-      (t2/update! :model/Card (:id card) changes))))
+      (replacement.db/update-card! (:id card) changes))))
 
 (defn- transform-upgrade-field-refs!
   "Upgrade field refs in `:source` for a transform."
@@ -82,7 +82,7 @@
       (let [query (:query source)
             query' (source-swap/upgrade-field-refs-in-query query)]
         (when (not= query query')
-          (t2/update! :model/Transform (:id transform) {:source (assoc source :query query')}))))))
+          (replacement.db/update-transform! (:id transform) {:source (assoc source :query query')}))))))
 
 (defn- segment-upgrade-field-refs!
   "Upgrade field refs in `:definition` for a segment."
@@ -91,7 +91,7 @@
     (let [query  (:definition segment)
           query' (source-swap/upgrade-field-refs-in-query query)]
       (when (not= query query')
-        (t2/update! :model/Segment (:id segment) {:definition query'})))))
+        (replacement.db/update-segment! (:id segment) {:definition query'})))))
 
 (defn- measure-upgrade-field-refs!
   "Upgrade field refs in `:definition` for a measure."
@@ -100,7 +100,7 @@
     (let [query  (:definition measure)
           query' (source-swap/upgrade-field-refs-in-query query)]
       (when (not= query query')
-        (t2/update! :model/Measure (:id measure) {:definition query'})))))
+        (replacement.db/update-measure! (:id measure) {:definition query'})))))
 
 (defn- upgrade-parameter-target
   "Upgrade field refs in a parameter target."
@@ -128,12 +128,12 @@
                   (not= viz-settings viz-settings')
                   (assoc :visualization_settings viz-settings'))]
     (when (seq changes)
-      (t2/update! :model/DashboardCard (:id dashcard) changes))))
+      (replacement.db/update-dashboard-card! (:id dashcard) changes))))
 
 (defn dashboard-upgrade-field-refs!
   "Upgrade field refs in `:parameters` for the `dashboard`, `:parameter_mappings` and `:visualization_settings` for all dashcards in the `dashboard`."
   [dashboard]
-  (let [dashcards     (t2/select :model/DashboardCard :dashboard_id (:id dashboard))
+  (let [dashcards     (replacement.db/dashboard-cards (:id dashboard))
         parameters    (or (:parameters dashboard) [])
         all-card-ids  (into (replacement.walk/parameter-source-card-ids parameters)
                             (mapcat (fn [dashcard]
@@ -142,14 +142,14 @@
                                        (replacement.walk/viz-settings-click-behavior-card-ids (-> dashcard :visualization_settings vs/db->norm)))))
                             dashcards)
         card-id->card (if (seq all-card-ids)
-                        (t2/select-pk->fn identity :model/Card :id [:in all-card-ids])
+                        (replacement.db/cards-by-id all-card-ids)
                         {})
         parameters'   (replacement.walk/walk-parameter-source-card-refs parameters #(upgrade-source-card-ref %1 %2 card-id->card))
         changes       (cond-> {}
                         (not= parameters parameters')
                         (assoc :parameters parameters'))]
     (when (seq changes)
-      (t2/update! :model/Dashboard (:id dashboard) changes))
+      (replacement.db/update-dashboard! (:id dashboard) changes))
     (doseq [dashcard dashcards]
       (dashcard-upgrade-field-refs! dashcard card-id->card))))
 
@@ -160,11 +160,11 @@
   `entity` is an optional pre-fetched entity from bulk-load-metadata-for-entities!."
   ([[entity-type entity-id :as entity-ref]]
    (upgrade-field-refs! entity-ref (case entity-type
-                                     :card      (t2/select-one :model/Card :id entity-id)
-                                     :transform (t2/select-one :model/Transform :id entity-id)
-                                     :segment   (t2/select-one :model/Segment :id entity-id)
-                                     :measure   (t2/select-one :model/Measure :id entity-id)
-                                     :dashboard (t2/select-one :model/Dashboard :id entity-id)
+                                     :card      (replacement.db/card entity-id)
+                                     :transform (replacement.db/transform entity-id)
+                                     :segment   (replacement.db/segment entity-id)
+                                     :measure   (replacement.db/measure entity-id)
+                                     :dashboard (replacement.db/dashboard entity-id)
                                      nil)))
   ([[entity-type _entity-id] entity]
    (case entity-type

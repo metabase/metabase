@@ -15,19 +15,27 @@ import type {
 } from "metabase-types/api";
 
 import {
+  OPEN_DATA_REFERENCE_AT_QUESTION,
+  SET_DATA_REFERENCE_STACK,
+  SET_MODAL_SNIPPET,
+  SET_NATIVE_EDITOR_SELECTED_RANGE,
+  SET_SNIPPET_COLLECTION_ID,
+  TOGGLE_DATA_REFERENCE,
+  TOGGLE_SNIPPET_SIDEBAR,
+  TOGGLE_TEMPLATE_TAGS_EDITOR,
+} from "../store/actions";
+import {
   getDataReferenceStack,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getQuestion,
   getSnippetCollectionId,
-} from "../selectors";
+} from "../store/selectors";
 
 import { updateQuestion } from "./core/updateQuestion";
 
-export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE);
 
-export const SET_DATA_REFERENCE_STACK = "metabase/qb/SET_DATA_REFERENCE_STACK";
 export const setDataReferenceStack = createAction(SET_DATA_REFERENCE_STACK);
 
 export const POP_DATA_REFERENCE_STACK = "metabase/qb/POP_DATA_REFERENCE_STACK";
@@ -49,8 +57,6 @@ export const pushDataReferenceStack = createThunkAction(
   },
 );
 
-export const OPEN_DATA_REFERENCE_AT_QUESTION =
-  "metabase/qb/OPEN_DATA_REFERENCE_AT_QUESTION";
 export const openDataReferenceAtQuestion = createThunkAction(
   OPEN_DATA_REFERENCE_AT_QUESTION,
   (id: CardId) => async (dispatch: Dispatch) => {
@@ -72,13 +78,10 @@ export const openDataReferenceAtQuestion = createThunkAction(
   },
 );
 
-export const TOGGLE_TEMPLATE_TAGS_EDITOR =
-  "metabase/qb/TOGGLE_TEMPLATE_TAGS_EDITOR";
 export const toggleTemplateTagsEditor = createAction(
   TOGGLE_TEMPLATE_TAGS_EDITOR,
 );
 
-export const TOGGLE_SNIPPET_SIDEBAR = "metabase/qb/TOGGLE_SNIPPET_SIDEBAR";
 export const toggleSnippetSidebar = createAction(TOGGLE_SNIPPET_SIDEBAR);
 
 export const SET_IS_SHOWING_SNIPPET_SIDEBAR =
@@ -90,17 +93,12 @@ export const setIsShowingSnippetSidebar = (
   isShowingSnippetSidebar,
 });
 
-export const SET_NATIVE_EDITOR_SELECTED_RANGE =
-  "metabase/qb/SET_NATIVE_EDITOR_SELECTED_RANGE";
 export const setNativeEditorSelectedRange = createAction(
   SET_NATIVE_EDITOR_SELECTED_RANGE,
 );
 
-export const SET_MODAL_SNIPPET = "metabase/qb/SET_MODAL_SNIPPET";
 export const setModalSnippet = createAction(SET_MODAL_SNIPPET);
 
-export const SET_SNIPPET_COLLECTION_ID =
-  "metabase/qb/SET_SNIPPET_COLLECTION_ID";
 export const setSnippetCollectionId = createAction(SET_SNIPPET_COLLECTION_ID);
 
 export const openSnippetModalWithSelectedText =

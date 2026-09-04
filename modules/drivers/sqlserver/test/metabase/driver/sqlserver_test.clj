@@ -23,6 +23,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -44,6 +45,75 @@
     (let [expr (h2x/with-type-info :test_col {:effective-type :type/Time})]
       (is (= ["TIMEFROMPARTS(DATEPART(hour, \"test_col\"), 0, 0, 0, 0)"]
              (sql.qp/format-honeysql :sqlserver (sql.qp/date :sqlserver :hour expr)))))))
+
+(deftest relative-datetime-against-datetimeoffset-uses-report-timezone-test
+  (testing (str "When a `:relative-datetime` filter value is compared against a `datetimeoffset` column, the value "
+                "must be tagged with the report timezone. Otherwise SQL Server implicitly treats the naive "
+                "`datetime2` result as offset +00:00 during the comparison, shifting the filter window by the "
+                "report tz offset (#78612).")
+    (driver/with-driver :sqlserver
+      (qp.test-util/with-report-timezone-id! "Pacific/Auckland"
+        (let [today    [:relative-datetime {:lib/uuid (str (random-uuid))} 0 :day]
+              tomorrow [:relative-datetime {:lib/uuid (str (random-uuid))} 1 :day]]
+          (testing "datetimeoffset LHS: RHS is wrapped in AT TIME ZONE '<report-tz-windows-name>'"
+            (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetimeoffset"
+                                                              :effective-type :type/DateTimeWithZoneOffset}]
+              (is (= [(str "(CAST(DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), DAY(GETDATE())) AS datetime2)"
+                           " AT TIME ZONE 'New Zealand Standard Time')")]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver today))))
+              (is (= [(str "(CAST(DATEFROMPARTS(YEAR(DATEADD(day, 1, GETDATE())),"
+                           " MONTH(DATEADD(day, 1, GETDATE())),"
+                           " DAY(DATEADD(day, 1, GETDATE()))) AS datetime2)"
+                           " AT TIME ZONE 'New Zealand Standard Time')")]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver tomorrow))))))
+          (testing "plain datetime2 LHS: RHS is unchanged (no AT TIME ZONE wrap)"
+            (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetime2"
+                                                              :effective-type :type/DateTime}]
+              (is (= ["CAST(DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), DAY(GETDATE())) AS datetime2)"]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver today))))))))
+      (testing "with no report timezone set, RHS is unchanged even for a datetimeoffset LHS (nothing to attach)"
+        (qp.test-util/with-report-timezone-id! nil
+          (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetimeoffset"
+                                                            :effective-type :type/DateTimeWithZoneOffset}]
+            (is (= ["CAST(DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), DAY(GETDATE())) AS datetime2)"]
+                   (sql.qp/format-honeysql
+                    :sqlserver
+                    (sql.qp/->honeysql :sqlserver
+                                       [:relative-datetime {:lib/uuid (str (random-uuid))} 0 :day]))))))))))
+
+(deftest absolute-datetime-against-datetimeoffset-uses-report-timezone-test
+  (testing (str "`:absolute-datetime` filter values compared against a `datetimeoffset` column suffer the same "
+                "class of bug as `:relative-datetime` (#78612): a naive `datetime2` RHS is silently treated as "
+                "offset +00:00 during the comparison. Attach the report timezone to the naive literal.")
+    (driver/with-driver :sqlserver
+      (let [today [:absolute-datetime {:lib/uuid (str (random-uuid))} (t/local-date 2026 8 2) :day]]
+        (qp.test-util/with-report-timezone-id! "Pacific/Auckland"
+          (testing "datetimeoffset LHS: RHS is wrapped in AT TIME ZONE '<report-tz-windows-name>'"
+            (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetimeoffset"
+                                                              :effective-type :type/DateTimeWithZoneOffset}]
+              (is (= [(str "(CAST(DATEFROMPARTS(YEAR(?), MONTH(?), DAY(?)) AS datetime2)"
+                           " AT TIME ZONE 'New Zealand Standard Time')")
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver today))))))
+          (testing "plain datetime2 LHS: RHS is unchanged (no AT TIME ZONE wrap)"
+            (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetime2"
+                                                              :effective-type :type/DateTime}]
+              (is (= ["CAST(DATEFROMPARTS(YEAR(?), MONTH(?), DAY(?)) AS datetime2)"
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver today)))))))
+        (testing "with no report timezone set, RHS is unchanged even for a datetimeoffset LHS (nothing to attach)"
+          (qp.test-util/with-report-timezone-id! nil
+            (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetimeoffset"
+                                                              :effective-type :type/DateTimeWithZoneOffset}]
+              (is (= ["CAST(DATEFROMPARTS(YEAR(?), MONTH(?), DAY(?)) AS datetime2)"
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver today)))))))))))
 
 (deftest ^:parallel fix-order-bys-test
   (testing "Remove order-by from joins"
@@ -122,7 +192,6 @@
                                  config/local-process-uuid)
             :database           "birddb"
             :encrypt            false
-            :instanceName       nil
             :loginTimeout       10
             :password           "toucans"
             :port               1433
@@ -136,7 +205,19 @@
                                                     :db                 "birddb"
                                                     :host               "localhost"
                                                     :port               1433
-                                                    :additional-options "trustServerCertificate=false"})))))
+                                                    :additional-options "trustServerCertificate=false"}))))
+  (testing "instanceName is omitted when no instance is supplied — mssql-jdbc treats an empty string as a named instance, which breaks Microsoft Fabric and Synapse serverless endpoints (#81270)"
+    (doseq [instance [nil "" "   "]]
+      (testing (pr-str instance)
+        (is (not (contains? (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                                    {:user "cam", :password "toucans", :db "birddb",
+                                                                     :host "localhost", :port 1433, :instance instance})
+                            :instanceName))))))
+  (testing "instanceName is passed through when the user supplies one"
+    (is (= "MYINSTANCE"
+           (:instanceName (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                                  {:user "cam", :password "toucans", :db "birddb",
+                                                                   :host "localhost", :instance "MYINSTANCE"}))))))
 
 (deftest ^:parallel reject-details-with-dangerous-additional-options-test
   (mt/test-driver :sqlserver
@@ -363,6 +444,7 @@
                             [(t/zoned-date-time  date time (t/zone-id "America/Los_Angeles"))
                              (t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]]]
         (let [expected (or expected t)]
+          ;; pr renders the value into the testing label via with-out-str; nothing hits the console
           #_{:clj-kondo/ignore [:discouraged-var]}
           (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
             (let [sql (format "SELECT %s AS t;" (sql.qp/inline-value :sqlserver t))]
@@ -1140,3 +1222,10 @@
           "column is a doubled-quote identifier")
       (is (str/includes? stmt "name = N'by\"cat''; DROP TABLE x; --'")
           "name in the IF NOT EXISTS guard is a doubled-quote N'' string literal"))))
+
+(deftest ^:parallel connection-parameter-hosts-test
+  (testing "`serverName` in additional-options overrides the host in the URL, so it counts as a connection host"
+    (let [details {:host "real.example.com" :port 1433 :db "db"}
+          hosts   #(set (driver/connection-parameter-hosts :sqlserver %))]
+      (is (contains? (hosts (assoc details :additional-options "serverName=10.0.0.1")) "10.0.0.1"))
+      (is (not (contains? (hosts details) "10.0.0.1"))))))

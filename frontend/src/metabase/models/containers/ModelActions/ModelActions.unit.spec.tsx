@@ -17,7 +17,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import {
   createMockSettingsState,
@@ -54,12 +53,13 @@ import {
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
+import ActionCreatorModal from "../ActionCreatorModal";
+
 import ModelActions from "./ModelActions";
 
-// eslint-disable-next-line react/display-name
-jest.mock("metabase/actions/containers/ActionCreator", () => () => (
-  <div data-testid="mock-action-editor" />
-));
+jest.mock("metabase/querying/action-creator", () => ({
+  ActionCreator: () => <div data-testid="mock-action-editor" />,
+}));
 
 const TEST_DATABASE_ID = 1;
 const TEST_TABLE_ID = 1;
@@ -224,10 +224,10 @@ async function setup({
       <Route path="/model/:slug/detail">
         <Route index element={redirect("actions")} />
         <Route path="actions" element={<ModelActions />}>
-          {modalRoute("new", ActionCreator, {
+          {modalRoute("new", ActionCreatorModal, {
             modalProps: { transitionProps: { duration: 0 } },
           })}
-          {modalRoute(":actionId", ActionCreator, {
+          {modalRoute(":actionId", ActionCreatorModal, {
             modalProps: { transitionProps: { duration: 0 } },
           })}
         </Route>

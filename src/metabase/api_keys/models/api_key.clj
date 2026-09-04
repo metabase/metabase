@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [malli.error :as me]
    [metabase.api-keys.core :as-alias api-keys]
+   [metabase.api-keys.db :as api-keys.db]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
@@ -35,13 +36,7 @@
   (when (seq api-keys)
     (let [api-key-id->permissions-groups
           (group-by :api-key-id
-                    (t2/query {:select [[:pg.name :group-name]
-                                        [:pg.id :group-id]
-                                        [:api_key.id :api-key-id]]
-                               :from   [[:permissions_group :pg]]
-                               :join   [[:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]
-                                        :api_key [:= :api_key.user_id :pgm.user_id]]
-                               :where  [:in :api_key.id (map u/the-id api-keys)]}))
+                    (api-keys.db/api-key-groups (map u/the-id api-keys)))
           api-key-id->group
           (fn [api-key-id]
             (let [{name :group-name
@@ -57,7 +52,8 @@
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/ApiKey
-  {:scope mi/transform-keyword})
+  {:scope mi/transform-keyword
+   :key   (mi/transform-encrypted-text "api_key.key")})
 
 (mu/defn- expose :- :string
   ^String [s :- [:or ::u.secret/secret :string]]
@@ -137,10 +133,10 @@
     (let [key-before (t2/hydrate (t2/instance :model/ApiKey (t2/original api-key)) :user :group :updated_by)]
       ;; update the user name associated with this API key if it was created just for this API key.
       (when-let [new-name (:name (t2/changes api-key))]
-        (t2/update! :model/User :id user-id, :type :api-key, {:first_name new-name, :last_name ""}))
+        (api-keys.db/rename-api-key-user! user-id new-name))
       ;; update user group as well.
       (when-let [new-group-id (::api-keys/group-id (t2/changes api-key))]
-        (assert (= (t2/select-one-fn :type :model/User :id user-id) :api-key)
+        (assert (= (api-keys.db/user-type user-id) :api-key)
                 "Cannot change the Permissions Group for the user associated with an API key that was not created alongside it")
         (user/set-permissions-groups! user-id [(perms/all-users-group) {:id new-group-id}]))
       (u/prog1 (-> api-key
@@ -165,7 +161,7 @@
                    (t2/hydrate :group))
       :user-id api/*current-user-id*})
     ;; if we created a user along with the key (type = :api-key), mark it inactive.
-    (t2/update! :model/User user-id, :type :api-key, {:is_active false})))
+    (api-keys.db/deactivate-api-key-user! user-id)))
 
 (defn- add-masked-key [api-key]
   (if-let [prefix (:key_prefix api-key)]
@@ -184,7 +180,7 @@
                          [(mdb/unique-identifier) user-id])}
    (fn is-api-key-user?*
      [user-id]
-     (= :api-key (t2/select-one-fn :type :model/User user-id)))
+     (= :api-key (api-keys.db/user-type user-id)))
    ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
    ;; large
    :ttl/threshold (* 60 60 1000)))
@@ -197,7 +193,7 @@
           prefix (prefix (u.secret/expose api-key))]
       ;; we could make this more efficient by generating 5 API keys up front and doing one select to remove any
       ;; duplicates. But a duplicate should be rare enough to just do multiple queries for now.
-      (if-not (t2/exists? :model/ApiKey :key_prefix prefix)
+      (if-not (api-keys.db/api-key-prefix-exists? prefix)
         api-key
         (throw (ex-info (tru "could not generate key with unique prefix") {}))))))
 
@@ -207,25 +203,24 @@
    :- [:map {:closed true}
        [:key-name ::api-keys.schema/name]
        [:group-id {:optional true} pos-int?]]]
-  (api/checkp (not (t2/exists? :model/ApiKey :name key-name))
+  (api/checkp (not (api-keys.db/api-key-name-exists? key-name))
               "name" "An API key with this name already exists.")
   (let [unhashed-key (key-with-unique-prefix)
         email        (format "api-key-user-%s@api-key.invalid" (random-uuid))]
     (t2/with-transaction [_conn]
-      (let [user-id (t2/insert-returning-pk! :model/User
-                                             {:email      email
-                                              :first_name key-name
-                                              :last_name  ""
-                                              :type       :api-key
-                                              :password   (str (random-uuid))})]
+      (let [user-id (api-keys.db/insert-user!
+                     {:email      email
+                      :first_name key-name
+                      :last_name  ""
+                      :type       :api-key})]
         (when group-id
           (user/set-permissions-groups! user-id [(perms/all-users-group) group-id]))
-        (-> (t2/insert-returning-instance! :model/ApiKey
-                                           {:user_id                user-id
-                                            :name                   key-name
-                                            ::api-keys/unhashed-key unhashed-key
-                                            :updated_by_id          api/*current-user-id*
-                                            :creator_id             api/*current-user-id*})
+        (-> (api-keys.db/insert-api-key!
+             {:user_id                user-id
+              :name                   key-name
+              ::api-keys/unhashed-key unhashed-key
+              :updated_by_id          api/*current-user-id*
+              :creator_id             api/*current-user-id*})
             (assoc :unmasked_key unhashed-key))))))
 
 (mu/defn regenerate! :- [:map
@@ -234,13 +229,13 @@
                          [:prefix       ::api-keys.schema/prefix]]
   "Generate a new API key for an existing key with `id`."
   [id :- ::api-keys.schema/id]
-  (let [api-key-before (t2/select-one :model/ApiKey id)
+  (let [api-key-before (api-keys.db/api-key id)
         new-key        (key-with-unique-prefix)
         new-prefix     (prefix new-key)]
     (t2/with-transaction [_conn]
-      (t2/update! :model/ApiKey :id id {:key           (hash-bcrypt new-key)
-                                        :key_prefix    new-prefix
-                                        :updated_by_id api/*current-user-id*})
+      (api-keys.db/update-api-key! id {:key           (hash-bcrypt new-key)
+                                       :key_prefix    new-prefix
+                                       :updated_by_id api/*current-user-id*})
       (events/publish-event! :event/api-key-regenerate
                              (let [key-before (-> api-key-before
                                                   (t2/hydrate :group))]

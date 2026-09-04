@@ -128,7 +128,8 @@
         vis-setting-target-ids (fn [link-type]
                                  (into #{} (keep (fn [dashcard]
                                                    (let [cb (:click_behavior (:visualization_settings dashcard))]
-                                                     (when (= (:linkType cb) link-type)
+                                                     (when (and (= (:linkType cb) link-type)
+                                                                (pos-int? (:targetId cb)))
                                                        (:targetId cb))))
                                                  dashcards)))
         vis-setting-card-ids (vis-setting-target-ids "question")
@@ -138,7 +139,8 @@
                                             (map (fn [dashcard]
                                                    (keep (fn [[_col col-setting]]
                                                            (let [cb (:click_behavior col-setting)]
-                                                             (when (= (:linkType cb) link-type)
+                                                             (when (and (= (:linkType cb) link-type)
+                                                                        (pos-int? (:targetId cb)))
                                                                (:targetId cb))))
                                                          (:column_settings (:visualization_settings dashcard))))
                                                  dashcards)))

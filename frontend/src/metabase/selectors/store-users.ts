@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import { getUser } from "metabase/current-user";
 import { getTokenStatus } from "metabase/selectors/settings";
-import { getUser } from "metabase/selectors/user";
 
 export const getStoreUsers = createSelector(
   getUser,

@@ -25,7 +25,7 @@ The theme only applies to your account. The theme doesn't apply to chart colors 
 
 You can change your password here. Note that if your Metabase uses Single Sign-On (SSO), your administrator will have disabled this password section, as your identity provider will manage logins.
 
-If you log in through LDAP, you won't see this password section either, since your directory manages your password. You may get a **Security** tab to enroll in 2FA if your admin has [turned it on](./two-factor-authentication.md#turn-on-two-factor-authentication).
+If you log in through LDAP, you won't see this password section either, since your directory manages your password. You may get a **Authentication** tab to enroll in 2FA if your admin has [turned it on](./two-factor-authentication.md#turn-on-two-factor-authentication).
 
 If you're having trouble logging in, see our [People can't log into Metabase](../troubleshooting-guide/cant-log-in.md).
 
@@ -33,13 +33,13 @@ If you're having trouble logging in, see our [People can't log into Metabase](..
 
 {% include plans-blockquote.html feature="Two-factor authentication" %}
 
-If your admin has turned on [two-factor authentication](./two-factor-authentication.md) (2FA), you'll see a **Security** tab in your account settings. 2FA adds a second step to logging in: after your password, you enter a code from an authenticator app, so your password alone won't let someone into your account.
+If your admin has turned on [two-factor authentication](./two-factor-authentication.md) (2FA), you'll see a **Authentication** tab in your account settings. 2FA adds a second step to logging in: after your password, you enter a code from an authenticator app, so your password alone won't let someone into your account.
 
 ### Set up two-factor authentication on your account
 
 1. Click the grid icon in the upper right.
 2. Click your profile.
-3. On the **Security** tab, click **Set up two-factor authentication**.
+3. On the **Authentication** tab, click **Set up two-factor authentication**.
 4. Confirm your password.
 5. Scan the QR code with an authenticator app like Google Authenticator, 1Password, or Authy. If you can't scan it, enter the key manually in your authenticator app.
 6. Enter the six-digit code from the app.
@@ -55,11 +55,11 @@ Once you set up two-factor authentication, Metabase will ask for a code every ti
 
 ### Regenerate recovery codes
 
-Recovery codes are single-use, so it's worth generating a fresh set if you're running low or think someone else has seen them. On the **Security** tab, click **Generate recovery codes** and confirm with a current authenticator or recovery code. Generating new codes invalidates the old ones.
+Recovery codes are single-use, so it's worth generating a fresh set if you're running low or think someone else has seen them. On the **Authentication** tab, click **Generate recovery codes** and confirm with a current authenticator or recovery code. Generating new codes invalidates the old ones.
 
 ### Turn off two-factor authentication
 
-In your account settings, on the **Security** tab , click **Disable**. Your account will be protected by your password only, and your recovery codes will stop working.
+In your account settings, on the **Authentication** tab , click **Disable**. Your account will be protected by your password only, and your recovery codes will stop working.
 
 ## Account login history
 

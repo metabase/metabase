@@ -2,9 +2,7 @@ import { useCallback, useLayoutEffect } from "react";
 
 import { MenuItemComponent } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 
-import { CreateNativeQuestionModal } from "./CreateNativeQuestionModal";
-import { CreateStructuredQuestionModal } from "./CreateStructuredQuestionModal";
-import type { NewQuestionMenuItem } from "./types";
+import type { NewQuestionMenuItem, NewQuestionModals } from "./types";
 
 interface Props {
   menuItems: NewQuestionMenuItem[];
@@ -14,6 +12,7 @@ interface Props {
   setNewQuestionType: (type: "notebook" | "native" | null) => void;
   onSave: (id: number, name: string) => void;
   onClose: () => void;
+  modals: NewQuestionModals;
 }
 
 export const NewQuestionTypeMenuView = ({
@@ -24,6 +23,7 @@ export const NewQuestionTypeMenuView = ({
   setNewQuestionType,
   onSave,
   onClose,
+  modals: { notebook: NotebookQuestionModal, native: NativeQuestionModal },
 }: Props) => {
   const handleSaveNewQuestion = useCallback(
     (id: number, name: string) => {
@@ -52,17 +52,14 @@ export const NewQuestionTypeMenuView = ({
       ))}
 
       {newQuestionType === "notebook" && (
-        <CreateStructuredQuestionModal
+        <NotebookQuestionModal
           onSave={handleSaveNewQuestion}
           onClose={onClose}
         />
       )}
 
       {newQuestionType === "native" && (
-        <CreateNativeQuestionModal
-          onSave={handleSaveNewQuestion}
-          onClose={onClose}
-        />
+        <NativeQuestionModal onSave={handleSaveNewQuestion} onClose={onClose} />
       )}
     </>
   );

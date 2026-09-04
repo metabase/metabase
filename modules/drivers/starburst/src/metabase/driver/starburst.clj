@@ -51,6 +51,14 @@
 
 (driver/register! :starburst, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
+(defmethod driver/host-carrying-parameters :starburst
+  [_driver]
+  ["httpProxy" "socksProxy"])
+
+(defmethod driver/non-host-parameters :starburst
+  [_driver]
+  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
+
 (set! *warn-on-reflection* true)
 
 (prefer-method driver/database-supports? [:starburst :set-timezone] [:sql-jdbc :set-timezone])

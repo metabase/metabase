@@ -1,13 +1,14 @@
 (ns metabase.actions-rest.api
   "`/api/action/` endpoints."
   (:require
+   [metabase.actions-rest.db :as actions-rest.db]
    [metabase.actions.core :as actions]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.core :as eid-translation]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
@@ -19,6 +20,15 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- check-native-query-perms!
+  "Creating or updating a native query action requires ad-hoc native query permission on the target database."
+  [database-id dataset-query]
+  (when (and (seq dataset-query) (lib/native? dataset-query))
+    (when-let [db-id (or database-id (:database dataset-query))]
+      (api/check-403
+       (= :query-builder-and-native
+          (perms/full-database-permission-for-user api/*current-user-id* :perms/create-queries db-id))))))
+
 (api.macros/defendpoint :get "/" :- [:sequential ::actions.schema/action]
   "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
   `?model-id=<model-id>` to limit to actions on a particular model."
@@ -27,20 +37,13 @@
                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
   (letfn [(actions-for [models]
             (if (seq models)
-              (t2/hydrate (actions/select-actions models
-                                                  :model_id [:in (map :id models)]
-                                                  :archived false)
-                          :creator)
+              (t2/hydrate (actions/select-actions-for-models models (map :id models)) :creator)
               []))]
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
     (let [models (if model-id
                    [(api/read-check :model/Card model-id)]
-                   (t2/select :model/Card {:where
-                                           [:and
-                                            [:= :type "model"]
-                                            [:= :archived false]
-                                            ;; action permission keyed off of model permission
-                                            (collection/visible-collection-filter-clause)]}))]
+                   ;; action permission keyed off of model permission
+                   (actions-rest.db/unarchived-models-visible-to-user))]
       (actions-for models))))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
@@ -48,7 +51,7 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
+  (actions-rest.db/public-actions))
 
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."
@@ -71,7 +74,7 @@
                             {:event     :action-deleted
                              :type      (:type action)
                              :action_id action-id}))
-  (t2/delete! :model/Action :id action-id)
+  (actions-rest.db/delete-action! action-id)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/" :- ::actions.schema/action
@@ -90,6 +93,7 @@
     (throw (ex-info (tru "Must provide a database_id for query actions")
                     {:type        action-type
                      :status-code 400})))
+  (check-native-query-perms! database_id (:dataset_query action))
   (let [model (api/write-check :model/Card model_id)]
     (when (and (= action-type :implicit)
                (not (queries/model-supports-implicit-actions? model)))
@@ -97,7 +101,7 @@
                       {:status-code 400})))
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
-       (t2/select-one :model/Database :id db-id))))
+       (actions-rest.db/database db-id))))
   (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created
@@ -130,6 +134,11 @@
       (throw (ex-info (tru "HTTP actions are not supported.")
                       {:type        :http
                        :status-code 400})))
+    (when-let [model-id (:model_id action)]
+      (when (not= model-id (:model_id existing-action))
+        (api/write-check :model/Card model-id)))
+    (when-let [dataset-query (:dataset_query action)]
+      (check-native-query-perms! (:database_id action) dataset-query))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
     (analytics/track-event! :snowplow/action
@@ -158,9 +167,7 @@
     (actions/check-actions-enabled! action)
     {:uuid (or (:public_uuid action)
                (u/prog1 (str (random-uuid))
-                 (t2/update! :model/Action id
-                             {:public_uuid <>
-                              :made_public_by_id api/*current-user-id*})))}))
+                 (actions-rest.db/set-action-public-uuid! id <> api/*current-user-id*)))}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -179,7 +186,7 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
   (actions/check-actions-enabled! id)
-  (t2/update! :model/Action id {:public_uuid nil, :made_public_by_id nil})
+  (actions-rest.db/set-action-public-uuid! id nil nil)
   {:status 204, :body nil})
 
 (api.macros/defendpoint :post "/:action-id/execute/values" :- [:map-of :string :any]
@@ -190,7 +197,7 @@
                            [:action-id ms/PositiveInt]]
    _query-params
    {:keys [parameters]} :- [:map
-                            [:parameters [:map-of :string :any]]]]
+                            [:parameters ::actions.schema/prefetch-parameter-values]]]
   (actions/check-actions-enabled! action-id)
   (-> (actions/select-action :id action-id :archived false)
       api/read-check
@@ -232,7 +239,7 @@
                     [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map
-                                               [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]
+                                               [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]]
   (let [resolved-id (eid-translation/->id-or-404 :action id)
         {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]
     (when (= type :http)

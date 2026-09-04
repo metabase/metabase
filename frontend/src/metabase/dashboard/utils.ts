@@ -10,11 +10,11 @@ import {
 } from "metabase/utils/dashboard";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";
+import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
   getDatasetPermissionError,
   getGenericErrorMessage,
-} from "metabase/visualizations/lib/errors";
-import { hasNoResults } from "metabase/visualizations/lib/no-results";
+} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
@@ -218,6 +218,13 @@ export function getCurrentTabDashboardCards(
   );
 }
 
+export function isDashboardOrTabEmpty(
+  dashboard: Dashboard,
+  selectedTabId: SelectedTabId,
+): boolean {
+  return getCurrentTabDashboardCards(dashboard, selectedTabId).length === 0;
+}
+
 export function hasDatabaseActionsEnabled(database: Database) {
   return database.settings?.["database-enable-actions"] ?? false;
 }
@@ -270,7 +277,7 @@ export function isDashcardAccessRestricted(
 }
 
 export function getDashcardResultsError(
-  datasets: Dataset[],
+  datasets: Partial<Dataset>[],
   isGuestEmbed: boolean,
 ) {
   const permissionError = datasets

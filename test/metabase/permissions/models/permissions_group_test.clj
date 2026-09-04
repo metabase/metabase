@@ -164,7 +164,10 @@
             (is
              (= {group-id
                  {db-id
-                  {:perms/view-data :unrestricted
+                  ;; When EE code is on the classpath, a new group fails CLOSED to :blocked for a DB
+                  ;; where All Users is blocked, regardless of token features (UXW-4927); only a true
+                  ;; OSS jar falls back to :unrestricted.
+                  {:perms/view-data (if config/ee-available? :blocked :unrestricted)
                    :perms/create-queries :no
                    :perms/download-results :no
                    :perms/manage-table-metadata :no

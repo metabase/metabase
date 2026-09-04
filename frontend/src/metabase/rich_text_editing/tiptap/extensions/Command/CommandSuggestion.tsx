@@ -42,8 +42,13 @@ import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 import type { CommandProps } from "./CommandExtension";
 import CommandS from "./CommandSuggestion.module.css";
 import { NewQuestionTypeMenuView } from "./NewQuestionTypeMenuView";
-import type { CommandOption, CommandSection } from "./types";
-import { useCreateQuestionsMenuItems } from "./use-create-questions-menu-items";
+import type {
+  CommandOption,
+  CommandSection,
+  NewQuestionMenuItem,
+  NewQuestionModals,
+  NewQuestionOption,
+} from "./types";
 import { type MetabotCommandConfig, getAllCommandSections } from "./utils";
 
 export interface CommandSuggestionProps {
@@ -53,6 +58,8 @@ export interface CommandSuggestionProps {
   range: Range;
   query: string;
   metabotCommand?: MetabotCommandConfig | null;
+  newQuestionOptions: NewQuestionOption[];
+  newQuestionModals: NewQuestionModals;
 }
 
 export interface CommandSuggestionRef {
@@ -101,7 +108,14 @@ export const CommandSuggestion = forwardRef<
   CommandSuggestionRef,
   CommandSuggestionProps
 >(function CommandSuggestionComponent(
-  { command, editor, query, metabotCommand },
+  {
+    command,
+    editor,
+    query,
+    metabotCommand,
+    newQuestionOptions,
+    newQuestionModals,
+  },
   ref,
 ) {
   const host = useEditorHost();
@@ -115,9 +129,11 @@ export const CommandSuggestion = forwardRef<
 
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
+  const { capabilities } = host;
+
   const allCommandSections: CommandSection[] = useMemo(
-    () => getAllCommandSections(metabotCommand),
-    [metabotCommand],
+    () => getAllCommandSections(metabotCommand, capabilities),
+    [metabotCommand, capabilities],
   );
 
   const allCommandOptions = useMemo(
@@ -146,11 +162,17 @@ export const CommandSuggestion = forwardRef<
     );
   }, [viewMode, query, allowedCommandOptions]);
 
-  const createQuestionsMenuItems = useCreateQuestionsMenuItems({
-    onSelectItem: setNewQuestionType,
-  });
+  const createQuestionsMenuItems: NewQuestionMenuItem[] = useMemo(
+    () =>
+      newQuestionOptions.map((option) => ({
+        ...option,
+        action: () => setNewQuestionType(option.value),
+      })),
+    [newQuestionOptions],
+  );
 
-  const areChartsAllowed = !editor.isActive("supportingText");
+  const areChartsAllowed =
+    !editor.isActive("supportingText") && capabilities.canEmbedCharts;
   const canBrowseAll = areChartsAllowed || viewMode === "linkTo";
 
   const canCreateNewQuestion =
@@ -399,6 +421,7 @@ export const CommandSuggestion = forwardRef<
 
       {viewMode === "newQuestionType" && (
         <NewQuestionTypeMenuView
+          modals={newQuestionModals}
           menuItems={createQuestionsMenuItems}
           selectedIndex={selectedIndex}
           setSelectedIndex={setSelectedIndex}
@@ -465,8 +488,8 @@ export const CommandSuggestion = forwardRef<
                             size="sm"
                             c="text-primary"
                             px="sm"
-                            pt="xs"
-                            pb="xs"
+                            pt="xxs"
+                            pb="xxs"
                           >
                             {section.title}
                           </Text>

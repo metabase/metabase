@@ -31,7 +31,7 @@ export const MetricsFilterPill = forwardRef(function MetricsFilterPill(
       {...props}
       ref={ref}
       className={cx(S.root, !!onClick && S.clickable)}
-      h="lg"
+      h="xl"
       px="sm"
       fw="normal"
       data-testid="metrics-viewer-filter-pill"
@@ -45,7 +45,7 @@ export const MetricsFilterPill = forwardRef(function MetricsFilterPill(
         c: "text-filter",
       }}
     >
-      <Flex align="center" gap="xs">
+      <Flex align="center" gap="xxs">
         <SourceColorIndicator
           colors={colors}
           fallbackIcon={fallbackIcon}

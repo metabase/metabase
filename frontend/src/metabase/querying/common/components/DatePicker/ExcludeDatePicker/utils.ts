@@ -1,7 +1,7 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { dayjs } from "metabase/dayjs";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,

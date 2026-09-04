@@ -15,6 +15,7 @@ import {
   useHasTokenFeature,
   useStoreUrl,
 } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import {
   CONTENT_MAX_WIDTH,
   ContactAdminAlert,
@@ -23,7 +24,6 @@ import {
   getStorageNotProvisionedSubtitle,
 } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/AddDataModalEmptyStates";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Alert,
   Anchor,
@@ -63,7 +63,7 @@ const PanelWrapper = ({
   );
 
   return (
-    <Stack gap="md" align="center" justify="center" pt="2.5rem">
+    <Stack gap="lg" align="center" justify="center" pt="2.5rem">
       <Center component="img" src={illustration} w="3rem" />
       <Box component="header" ta="center" maw={CONTENT_MAX_WIDTH}>
         <Title order={2} size="h4" mb="sm">

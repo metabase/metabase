@@ -98,15 +98,15 @@ export function CreateDashboardForm({
       {() => (
         <Form as={Stack} gap={0}>
           <FormTextInput
-            labelProps={{ mb: "xs" }}
+            labelProps={{ mb: "xxs" }}
             name="name"
             label={t`Name`}
             placeholder={t`What is the name of your dashboard?`}
             data-autofocus
-            mt="md"
+            mt="lg"
           />
           <FormTextarea
-            labelProps={{ mb: "xs" }}
+            labelProps={{ mb: "xxs" }}
             name="description"
             label={t`Description`}
             placeholder={t`It's optional but oh, so helpful`}
@@ -114,7 +114,7 @@ export function CreateDashboardForm({
             autosize={false}
             minRows={5}
             maxRows={5}
-            my="md"
+            my="lg"
           />
           {!hasTargetCollection && (
             <FormCollectionPicker
@@ -123,7 +123,7 @@ export function CreateDashboardForm({
               entityType="dashboard"
             />
           )}
-          <FormFooter mt="md">
+          <FormFooter mt="lg">
             <FormErrorMessage inline />
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>

@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.curation :as collections.curation]
    [metabase.lib-be.core :as lib-be]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.tracing.core :as tracing]
@@ -177,7 +178,7 @@
                                                        [:attrs :render-terms])
                                                fn-selects))
       :from      [[(t2/table-name (:model spec)) :this]]
-      :where     (:where spec [:inline [:= 1 1]])
+      :where     (:where spec [:= [:inline 1] [:inline 1]])
       :left-join (when (:joins spec)
                    (into []
                          cat
@@ -223,12 +224,12 @@
     (let [spec      (search.spec/spec search-model)
           indexed?  (-> (spec-index-query-where search-model [:= :this.id id])
                         (assoc :select [[[:inline 1] :one]] :limit 1)
-                        t2/query
+                        search.db/rows
                         seq
                         boolean)]
       (cond
         indexed?                              :indexable
-        (t2/exists? (:model spec) :id id)     :excluded
+        (search.db/entity-exists? (:model spec) id)     :excluded
         :else                                 :not-found))))
 
 (def ^:private max-document-error-logs 10)
@@ -275,7 +276,7 @@
   (->> (for [model search.spec/search-models]
          (-> (spec-index-query-where model nil)
              (assoc :select [[:%count.* :count]])
-             t2/query
+             search.db/rows
              first
              :count))
        (filter some?)

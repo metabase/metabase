@@ -11,14 +11,14 @@ export const Container = styled.div`
   width: 100%;
   background-color: var(--mb-color-background_page-primary);
   border-bottom: 1px solid var(--mb-color-border-neutral);
-  padding: var(--mantine-spacing-md) var(--mantine-spacing-xl);
+  padding: var(--mantine-spacing-lg) var(--mantine-spacing-xxl);
 `;
 
 export const LeftHeader = styled.div`
   display: flex;
   align-items: center;
   color: var(--mb-color-text-secondary);
-  gap: var(--mantine-spacing-md);
+  gap: var(--mantine-spacing-lg);
 `;
 
 export const EditableText = styled(EditableTextBase)`

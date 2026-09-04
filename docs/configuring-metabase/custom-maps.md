@@ -9,28 +9,45 @@ summary: Add custom region maps and customize the map tile server.
 
 _Admin > Settings > Maps_
 
-By default, Metabase uses OpenStreetMaps tiles for pin and grid map visualizations, and comes with two built-in region maps - world countries and US states. You can change the tiles used for pin and grid maps, and upload additional region maps.
+By default, Metabase uses OpenStreetMap tiles for pin and grid map visualizations, and comes with two built-in region maps - world countries and US states. You can change the tiles used for pin and grid maps, and upload additional region maps.
 
 To find the map settings:
 
 1. At the top right of the screen, click **grid** icon > **Admin** > **Settings**.
 2. Select `Maps` from the navigation on the left.
 
-![Map Settings](images/MapSettings.png)
-
 ## Map tile server
 
-By default, Metabase uses the [OpenStreetMaps](https://www.openstreetmap.org) tile server for pin and grid maps. If your organization requires a different
-look or level of detail in your map visualizations, you can change the map tile server by adding the map tile server path to the first field on the page.
+By default, Metabase uses the [OpenStreetMap](https://www.openstreetmap.org) tile server for pin and grid maps. If your organization needs a different look or level of detail, you can point Metabase at a different tile server.
+
+The map tile server sets the background imagery for pin and grid maps. It's not the same as a [custom region map](#custom-region-maps), which uses a GeoJSON file to draw region shapes.
+
+![The same pin map with default tiles and with satellite tiles](../questions/images/map-tiles.png)
 
 To change the map tile server:
 
 1. Go to **Admin > Settings > Maps**.
-2. Under **Map tile server URL**, add the path to the new map tile server.
+2. Under **Map tile server URL**, enter the URL template for your tile server.
 
-   The path must either be a URL that starts with `http://` or `https://` or a relative path to a local file in the JVM's classpath.
+### Use a raster tile URL template
 
-Currently, Metabase uses a single tile server per instance. You can't specify different tiles for different maps.
+Metabase renders raster tiles (PNG or JPEG).
+
+The URL must be a template with `{z}`, `{x}`, and `{y}` placeholders, and optionally `{s}` for a subdomain. Metabase fills in the zoom level and tile coordinates as people pan and zoom around the map. The default OpenStreetMap URL is a good example:
+
+```
+https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+```
+
+Tile server URLs must start with `http://` or `https://`.
+
+### Don't put a private key in the tile server URL
+
+Metabase sends the map tile server URL to the browser, including in [embeds](../embedding/start.md) and [public links](../embedding/public-links.md). Anyone who can view a map can read the URL and any key in it.
+
+If your tile server needs a key, use a public, client-side key and restrict it to the domains you serve Metabase from. Mapbox, for example, calls these [public tokens](https://docs.mapbox.com/help/dive-deeper/access-tokens/#public-tokens).
+
+Metabase uses a single tile server per instance. You can't specify different tiles for different maps.
 
 ## Custom region maps
 

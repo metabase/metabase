@@ -1,10 +1,10 @@
 (ns metabase-enterprise.sandbox.models.permissions.delete-sandboxes
   (:require
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase.app-db.core :as app-db]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (defn- should-delete-sandbox?
   "Given the changes map and a candidate sandbox, determine if this sandbox should be deleted.
@@ -16,7 +16,8 @@
       ;; DB-level change (keyword like :unrestricted) → delete all sandboxes for this group+db
       (keyword? view-data-changes) true
       :else
-      (let [schema-changes (get view-data-changes schema)]
+      (let [schema-changes (or (get view-data-changes (or schema ""))
+                               (get view-data-changes schema))]
         (cond
           (nil? schema-changes)     false
           ;; Schema-level change → delete all sandboxes for this group+db+schema
@@ -62,7 +63,7 @@
                                   candidate-sandboxes)]
           (when (seq ids-to-delete)
             (log/debugf "Deleting %d unneeded GTAPs: %s" (count ids-to-delete) (pr-str ids-to-delete))
-            (t2/delete! :model/Sandbox :id [:in ids-to-delete])))))
+            (sandbox.db/delete-sandboxes! ids-to-delete)))))
     (catch Throwable e
       (throw (ex-info (tru "Error deleting Sandboxes: {0}" (ex-message e))
                       {:changes changes}

@@ -22,6 +22,7 @@
 
   javax.sql.DataSource
   (getConnection [_]
+    ;; this shim's job is adapting a raw jdbc spec into a DataSource; it opens the connection itself
     #_{:clj-kondo/ignore [:discouraged-var]}
     (jdbc/get-connection jdbc-spec))
 

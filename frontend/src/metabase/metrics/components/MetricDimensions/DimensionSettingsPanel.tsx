@@ -5,8 +5,8 @@ import {
   useSetDefaultMetricDimensionMutation,
   useUpdateMetricDimensionMutation,
 } from "metabase/api/metric";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { getDimensionIcon } from "metabase/common/utils/columns";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   trackMetricDimensionRemoveDefault,
   trackMetricDimensionSetDefault,
@@ -154,8 +154,8 @@ export function DimensionSettingsPanel({
     <Stack
       className={S.column}
       data-testid="dimension-settings-panel"
-      gap="lg"
-      pt="lg"
+      gap="xl"
+      pt="xl"
     >
       <Group
         align="center"
@@ -217,7 +217,7 @@ export function DimensionSettingsPanel({
       )}
 
       {dimension.default && (
-        <Group gap="xs">
+        <Group gap="xxs">
           <Icon name="star_filled" c="brand" />
           <Text fw="bold">{t`Default dimension`}</Text>
         </Group>

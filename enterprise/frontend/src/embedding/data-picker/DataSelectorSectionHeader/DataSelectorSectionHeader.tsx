@@ -6,15 +6,12 @@ export type DataSelectorSectionHeaderProps = {
   header?: React.ReactElement;
 };
 
-const DataSelectorSectionHeader = ({
+export const DataSelectorSectionHeader = ({
   header,
 }: DataSelectorSectionHeaderProps) => (
-  <Flex p="md" align="center" className={DataSelectorSectionHeaderS.Container}>
+  <Flex p="lg" align="center" className={DataSelectorSectionHeaderS.Container}>
     <Box component="h3" className={DataSelectorSectionHeaderS.Header}>
       {header}
     </Box>
   </Flex>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataSelectorSectionHeader;

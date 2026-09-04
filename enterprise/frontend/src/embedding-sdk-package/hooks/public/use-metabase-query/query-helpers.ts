@@ -14,8 +14,14 @@ import type {
   ValueFilterOperatorForDimension,
 } from "./types";
 
+// The dimension type params are `const` so a hand-built reference passed inline
+// — `filter({ type: "column", name: "STATUS" }, "=", "paid")` — keeps its literal
+// `type`/`name`/`jsType`. `useMetabaseQuery` infers its query type from the
+// argument, so no contextual type reaches these calls to stop the widening, and a
+// widened `type: string` no longer matches a column reference.
+
 export function filter<
-  TDimension,
+  const TDimension,
   TOperator extends ValueFilterOperatorForDimension<TDimension>,
 >(
   dimension: TDimension,
@@ -24,7 +30,7 @@ export function filter<
 ): MetabaseDimensionFilterForOperator<TDimension, TOperator>;
 
 export function filter<
-  TDimension,
+  const TDimension,
   TOperator extends BetweenFilterOperatorForDimension<TDimension>,
 >(
   dimension: TDimension,
@@ -33,7 +39,7 @@ export function filter<
 ): MetabaseDimensionFilterForOperator<TDimension, TOperator>;
 
 export function filter<
-  TDimension,
+  const TDimension,
   TOperator extends UnaryFilterOperatorForDimension<TDimension>,
 >(
   dimension: TDimension,
@@ -68,11 +74,11 @@ export function filter(
   };
 }
 
-export function breakout<TDimension extends object>(
+export function breakout<const TDimension extends object>(
   dimension: TDimension,
 ): TDimension;
 
-export function breakout<TDimension extends object>(
+export function breakout<const TDimension extends object>(
   dimension: TDimension,
   options: BreakoutOptionsArgument<TDimension>,
 ): TDimension & BreakoutOptionsArgument<TDimension>;
@@ -95,12 +101,12 @@ export function orderBy<
   direction?: OrderByDirection,
 ): SchemaColumn & { type: "column"; direction?: OrderByDirection };
 
-export function orderBy<TDimension>(
+export function orderBy<const TDimension>(
   dimension: TDimension,
   direction?: OrderByDirection,
 ): TDimension & { direction?: OrderByDirection };
 
-export function orderBy<TDimension>(
+export function orderBy<const TDimension>(
   dimension: TDimension,
   direction: OrderByDirection | undefined,
   options: BreakoutOptionsArgument<TDimension>,
