@@ -5,6 +5,7 @@ import type {
   DatasetData,
   DatasetQuery,
   GoalSegment,
+  GoalValue,
   IconName,
   RawSeries,
   Series,
@@ -46,6 +47,18 @@ export type ChartSettingGoalInputProps = {
   onChange: (value: number | string) => void;
   columns?: DatasetColumn[];
   valueField?: string;
+};
+
+export type ChartSettingGoalValueProps = {
+  id: string;
+  value: GoalValue | null | undefined;
+  onChange: (value: GoalValue | null | undefined) => void;
+  data?: DatasetData;
+  datasetQuery?: DatasetQuery;
+  // false keeps the plain numeric input of displays that don't resolve references yet
+  isDynamic?: boolean;
+  placeholder?: string;
+  showSelfColumns?: boolean;
 };
 
 export type AggregationFunction = Exclude<

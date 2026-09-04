@@ -5,8 +5,13 @@ import { useSet } from "react-use";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
+import {
+  GoalFailedState,
+  GoalResolvingState,
+} from "metabase/visualizations/components/GoalResolutionState";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
+import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
@@ -22,6 +27,7 @@ import {
   getChartLayout,
   getDashboardAdjustedSettings,
   getLegendItems,
+  getUnresolvedGoalMessage,
   useClickedStateTooltipSync,
   useCloseTooltipOnScroll,
 } from "metabase/viz-core";
@@ -65,7 +71,7 @@ function BoxPlotInner({
     [rawSeries],
   );
 
-  const settings = useMemo(
+  const adjustedSettings = useMemo(
     () =>
       autoAdjustSettings
         ? getDashboardAdjustedSettings({
@@ -76,6 +82,16 @@ function BoxPlotInner({
         : originalSettings,
     [originalSettings, height, width, autoAdjustSettings],
   );
+
+  const goalSettings = useResolvedGoalSettings(
+    card,
+    rawSeries[0].data,
+    adjustedSettings,
+  );
+  const settings =
+    goalSettings.status === "resolved"
+      ? goalSettings.settings
+      : adjustedSettings;
 
   const renderingContext = useBrowserRenderingContext({ fontFamily });
 
@@ -187,6 +203,16 @@ function BoxPlotInner({
   useClickedStateTooltipSync(chartRef.current, clicked);
 
   const hasValidOption = option !== null;
+
+  if (goalSettings.status === "resolving") {
+    return <GoalResolvingState height={height} />;
+  }
+
+  if (goalSettings.status === "failed") {
+    return (
+      <GoalFailedState height={height} message={getUnresolvedGoalMessage()} />
+    );
+  }
 
   return (
     <CartesianChartRoot isQueryBuilder={isQueryBuilder}>

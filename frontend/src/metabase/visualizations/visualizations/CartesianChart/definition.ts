@@ -19,6 +19,7 @@ import {
   validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
+  validateGoalReferences,
   validateStacking,
 } from "metabase/viz-core";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
@@ -68,6 +69,7 @@ const cartesianChartAdditions: CartesianChartAdditions = {
     validateBreakoutSeriesCount(series, settings);
     validateChartDataSettings(settings);
     validateStacking(settings);
+    validateGoalReferences(series, settings);
   },
 
   hasEmptyState: true,

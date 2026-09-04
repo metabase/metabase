@@ -15,7 +15,7 @@ import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatValue } from "metabase/value-formatting";
 import type { ResolvedGoalValue } from "metabase/viz-core";
 
-import { ICON_BUTTON_SIZE } from "../../constants";
+import { ICON_BUTTON_SIZE } from "../constants";
 
 import S from "./GoalValuePill.module.css";
 

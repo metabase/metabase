@@ -7,7 +7,12 @@ import { isWebkit } from "metabase/utils/browser";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
+import {
+  GoalFailedState,
+  GoalResolvingState,
+} from "metabase/visualizations/components/GoalResolutionState";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
+import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
 import { useTimelineEvents } from "metabase/visualizations/hooks/use-timeline-events";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -19,6 +24,7 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 import {
   type TimelineEventGroup,
   getLegendItems,
+  getUnresolvedGoalMessage,
   useCartesianChartSeriesColorsClasses,
   useCloseTooltipOnScroll,
 } from "metabase/viz-core";
@@ -72,7 +78,7 @@ function CartesianChartInner(props: VisualizationProps) {
     selectedTimelineEventIds,
   } = props;
 
-  const settings = useMemo(
+  const adjustedSettings = useMemo(
     () =>
       autoAdjustSettings
         ? getDashboardAdjustedSettings?.({
@@ -83,6 +89,16 @@ function CartesianChartInner(props: VisualizationProps) {
         : originalSettings,
     [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
   );
+
+  const goalSettings = useResolvedGoalSettings(
+    card,
+    rawSeries[0].data,
+    adjustedSettings,
+  );
+  const settings =
+    goalSettings.status === "resolved"
+      ? goalSettings.settings
+      : adjustedSettings;
 
   const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =
     useState<TimelineEventGroup | null>(null);
@@ -172,7 +188,7 @@ function CartesianChartInner(props: VisualizationProps) {
     option,
     renderingContext,
     hovered,
-    props,
+    { ...props, settings },
     chartInstance,
   );
 
@@ -209,6 +225,19 @@ function CartesianChartInner(props: VisualizationProps) {
   );
 
   useCloseTooltipOnScroll(chartRef);
+
+  if (goalSettings.status === "resolving") {
+    return <GoalResolvingState height={outerHeight} />;
+  }
+
+  if (goalSettings.status === "failed") {
+    return (
+      <GoalFailedState
+        height={outerHeight}
+        message={getUnresolvedGoalMessage()}
+      />
+    );
+  }
 
   return (
     <CartesianChartRoot

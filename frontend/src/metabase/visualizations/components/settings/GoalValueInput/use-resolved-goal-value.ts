@@ -1,6 +1,7 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useReferencedEntitiesQuery } from "metabase/visualizations/hooks/use-referenced-entities-query";
+import { useAnsweredGoalData } from "metabase/visualizations/hooks/use-answered-goal-data";
 import {
   type ResolvedGoalValue,
   needsAnswer,
@@ -34,8 +35,9 @@ export function useResolvedGoalValue(
   const unansweredRef =
     needsAnswer(resolved) && isGoalForeignColumnRef(value) ? value : null;
 
-  const { currentData: freshDataset, isError } = useReferencedEntitiesQuery(
+  const answered = useAnsweredGoalData(
     datasetQuery,
+    data,
     unansweredRef != null ? referencedEntities : [],
   );
 
@@ -43,16 +45,16 @@ export function useResolvedGoalValue(
     return resolved;
   }
 
-  if (isError || freshDataset?.error != null) {
-    return resolved.error != null ? resolved : queryFailed(unansweredRef);
-  }
-
-  if (freshDataset?.data == null) {
-    return RESOLVING;
-  }
-
-  const fresh = resolveGoalValue(freshDataset.data, unansweredRef);
-  return fresh.isUnanswered === true ? queryFailed(unansweredRef) : fresh;
+  return match(answered)
+    .with({ status: "resolving" }, () => RESOLVING)
+    .with({ status: "failed" }, () =>
+      resolved.error != null ? resolved : queryFailed(unansweredRef),
+    )
+    .with({ status: "answered" }, ({ data: freshData }) => {
+      const fresh = resolveGoalValue(freshData, unansweredRef);
+      return fresh.isUnanswered === true ? queryFailed(unansweredRef) : fresh;
+    })
+    .exhaustive();
 }
 
 function queryFailed({

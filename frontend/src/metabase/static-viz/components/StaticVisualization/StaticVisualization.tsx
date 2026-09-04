@@ -1,3 +1,4 @@
+import { resolveGoalSettingsForStaticViz } from "metabase/static-viz/lib/dynamic-goals";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import {
   type StaticVisualizationProps,
@@ -31,7 +32,10 @@ export const StaticVisualization = ({
 }: StaticVisualizationProps) => {
   const display = rawSeries[0].card.display;
   const transformedSeries = getVisualizationTransformed(rawSeries).series;
-  const settings = getComputedSettingsForSeries(transformedSeries);
+  const settings = resolveGoalSettingsForStaticViz(
+    rawSeries[0],
+    getComputedSettingsForSeries(transformedSeries),
+  );
   const props = {
     rawSeries,
     settings,

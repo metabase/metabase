@@ -1,6 +1,3 @@
-import { useMemo } from "react";
-
-import { useReferencedEntitiesQuery } from "metabase/visualizations/hooks/use-referenced-entities-query";
 import {
   type ResolvedGoalSegment,
   getUnansweredGoalEntities,
@@ -13,6 +10,8 @@ import type {
   GoalSegment,
 } from "metabase-types/api";
 
+import { useAnsweredGoalData } from "./use-answered-goal-data";
+
 export type GoalSegmentsState =
   | { status: "resolving" }
   | { status: "failed" }
@@ -23,53 +22,17 @@ export function useResolvedGoalSegments(
   data: DatasetData,
   segments: GoalSegment[] | undefined,
 ): GoalSegmentsState {
-  const unansweredEntities = getUnansweredGoalEntities(data, segments);
-
-  const { currentData: freshDataset, isError } = useReferencedEntitiesQuery(
+  const answered = useAnsweredGoalData(
     datasetQuery,
-    unansweredEntities,
+    data,
+    getUnansweredGoalEntities(data, segments),
   );
 
-  const answeredData = useMemo(() => {
-    const freshData = freshDataset?.data;
-
-    if (freshData?.referenced_entities == null) {
-      return null;
-    }
-
-    return {
-      ...data,
-      referenced_entities: {
-        card: {
-          ...data.referenced_entities?.card,
-          ...freshData.referenced_entities.card,
-        },
-        measure: {
-          ...data.referenced_entities?.measure,
-          ...freshData.referenced_entities.measure,
-        },
-      },
-    };
-  }, [data, freshDataset]);
-
-  if (unansweredEntities.length === 0) {
-    return getGoalSegmentsState(data, segments);
+  if (answered.status !== "answered") {
+    return answered;
   }
 
-  if (isError || freshDataset?.error != null) {
-    return { status: "failed" };
-  }
-
-  if (freshDataset?.data == null) {
-    return { status: "resolving" };
-  }
-
-  // completed, but the response has no answer
-  if (answeredData == null) {
-    return { status: "failed" };
-  }
-
-  return getGoalSegmentsState(answeredData, segments);
+  return getGoalSegmentsState(answered.data, segments);
 }
 
 // No further fetch happens past this point, so an unanswered reference counts as failed.

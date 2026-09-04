@@ -41,6 +41,7 @@ import {
   dimensionIsTimeseries,
   formatValueForTooltip,
   getMarkerColorClass,
+  getNumericGoalValue,
   getOtherSeriesAggregationLabel,
   getPercent,
   getTotalValue,
@@ -891,7 +892,7 @@ export const getGoalLineHoverData = (
     return null;
   }
 
-  const goalValue = settings["graph.goal_value"] ?? "";
+  const goalValue = getNumericGoalValue(settings) ?? "";
 
   return {
     element,

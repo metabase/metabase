@@ -20,9 +20,9 @@ import { getSegmentColor, getUnansweredGoalEntities } from "metabase/viz-core";
 import type { GoalSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
+import { ICON_BUTTON_SIZE } from "../GoalValueInput/constants";
 
 import { SegmentBoundInput } from "./SegmentBoundInput";
-import { ICON_BUTTON_SIZE } from "./constants";
 
 export const ChartSettingSegmentsEditor = ({
   data,

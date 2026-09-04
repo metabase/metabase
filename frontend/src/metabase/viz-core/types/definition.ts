@@ -19,6 +19,7 @@ import type { ComputedVisualizationSettings } from "./computed-settings";
 import type {
   ChartSettingColorRangeProps,
   ChartSettingGoalInputProps,
+  ChartSettingGoalValueProps,
   ChartSettingMaxCategoriesProps,
   ChartSettingSegmentedControlProps,
   ChartSettingSegmentsEditorProps,
@@ -212,7 +213,10 @@ export type VisualizationSettingsDefinitions = {
   "graph.colors"?: SeriesSettingDefinition<Value, Props>;
   "graph.dimensions"?: SeriesSettingDefinition<Value, Props>;
   "graph.goal_label"?: SeriesSettingDefinition<Value, Props>;
-  "graph.goal_value"?: SeriesSettingDefinition<Value, Props>;
+  "graph.goal_value"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingGoalValueProps
+  >;
   "graph.metrics"?: SeriesSettingDefinition<Value, Props>;
   /**
    * "graph.label_value_frequency" key is used for 2 different settings:

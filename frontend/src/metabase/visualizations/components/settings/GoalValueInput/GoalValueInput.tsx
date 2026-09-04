@@ -32,17 +32,16 @@ import {
   isGoalSelfColumnRef,
 } from "metabase-types/guards";
 
-import { StaticGoalValueInput } from "../StaticGoalValueInput";
-import { ICON_BUTTON_SIZE } from "../constants";
-import { useResolvedGoalValue } from "../use-resolved-goal-value";
-
 import { GoalColumnMenuItem } from "./GoalColumnMenuItem";
 import { GoalEntityPickers } from "./GoalEntityPickers";
 import S from "./GoalValueInput.module.css";
 import { GoalValuePill } from "./GoalValuePill";
+import { StaticGoalValueInput } from "./StaticGoalValueInput";
+import { ICON_BUTTON_SIZE } from "./constants";
 import type { ColumnOption, PickedItem } from "./types";
 import { useEntityColumnValues } from "./use-entity-column-values";
 import { useReferencedEntity } from "./use-referenced-entity";
+import { useResolvedGoalValue } from "./use-resolved-goal-value";
 import { getNumericColumnOptions } from "./utils";
 
 const ROOT_MENU_MIN_WIDTH = 225;
@@ -59,6 +58,7 @@ export type GoalValueInputProps = {
   id: string;
   placeholder?: string;
   referencedEntities: ReferencedEntity[];
+  showSelfColumns?: boolean;
   value: GoalValue | null;
   onChange: (value: GoalValue | null) => void;
 };
@@ -70,6 +70,7 @@ export const GoalValueInput = ({
   id,
   placeholder,
   referencedEntities,
+  showSelfColumns = true,
   value,
   onChange,
 }: GoalValueInputProps) => {
@@ -83,7 +84,7 @@ export const GoalValueInput = ({
   const numberInputRef = useRef<HTMLInputElement>(null);
 
   const foreignRef = isGoalForeignColumnRef(value) ? value : null;
-  const selfColumns = getNumericColumnOptions(data.cols);
+  const selfColumns = showSelfColumns ? getNumericColumnOptions(data.cols) : [];
   const isSelfRef =
     isGoalSelfColumnRef(value) &&
     selfColumns.some((column) => column.name === value);

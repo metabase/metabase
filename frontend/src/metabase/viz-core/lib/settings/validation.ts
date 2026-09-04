@@ -9,10 +9,17 @@ import type {
   SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isObjectWithRaw } from "metabase-types/guards";
 
+import {
+  hasFailedGoalReferencesForValues,
+  isDynamicGoalSetting,
+} from "../dynamic-goals";
 import { ChartSettingsError, MinRowsError } from "../errors";
 import { getCartesianChartColumns } from "../graph/columns";
 import { MAX_SERIES } from "../utils";
+
+import { getUnresolvedGoalMessage } from "./goal";
 
 export const validateDatasetRows = (series: Series) => {
   const singleSeriesHasNoRows = ({ data: { rows } }: SingleSeries) => {
@@ -93,5 +100,23 @@ export const validateBreakoutSeriesCount = (
     throw new Error(
       t`This chart type doesn't support more than ${MAX_SERIES} series of data.`,
     );
+  }
+};
+
+// Only a failed reference is final: an unanswered one is still being fetched.
+export const validateGoalReferences = (
+  series: Series,
+  settings: VisualizationSettings,
+) => {
+  // the transformed series drop `data.referenced_entities`
+  const rawSeries =
+    isObjectWithRaw(series) && series._raw ? series._raw : series;
+  const [{ card, data }] = rawSeries;
+
+  if (
+    isDynamicGoalSetting(card.display, "graph.goal_value") &&
+    hasFailedGoalReferencesForValues(data, [settings["graph.goal_value"]])
+  ) {
+    throw new Error(getUnresolvedGoalMessage());
   }
 };
