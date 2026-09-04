@@ -34,6 +34,7 @@ export function MetabotIconField() {
   const [iconError, setIconError] = useState("");
 
   const isDefaultIcon = !metabotIcon || metabotIcon === "metabot";
+  const isIllustrationsSectionVisible = !isDefaultIcon || !showIllustrations;
   const iconPreviewSrc =
     !isDefaultIcon && typeof metabotIcon === "string" ? metabotIcon : null;
 
@@ -165,7 +166,7 @@ export function MetabotIconField() {
           </Flex>
         )}
       </Flex>
-      {!isDefaultIcon && (
+      {isIllustrationsSectionVisible && (
         <Stack mt="xl" gap="sm">
           <Text fz="md" fw="bold">
             {t`Metabot illustrations`}
