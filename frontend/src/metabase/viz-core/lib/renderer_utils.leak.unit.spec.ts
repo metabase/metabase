@@ -5,10 +5,6 @@ import {
   settleAndCollect,
 } from "__support__/memory";
 import { dayjs } from "metabase/dayjs";
-import {
-  getXValues,
-  parseXValue,
-} from "metabase/visualizations/lib/renderer_utils";
 import type {
   RowValues,
   Series,
@@ -19,6 +15,8 @@ import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+
+import { getXValues, parseXValue } from "./renderer_utils";
 
 const TIMESERIES: VisualizationSettings = {
   "graph.x_axis.scale": "timeseries",
