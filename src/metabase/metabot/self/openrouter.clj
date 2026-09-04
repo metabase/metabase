@@ -88,8 +88,9 @@
    "openai/gpt-5.4-pro"              {:display-name "GPT-5.4 Pro"             :context-window  922000 :reasoning :renderable-default :reasoning-mandatory? true}
    "openai/gpt-5.4-mini"             {:display-name "GPT-5.4 Mini"            :context-window  272000 :reasoning :encrypted-only}
    "qwen/qwen3.8-max"                {:display-name "Qwen3.8 Max"             :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true}
-   ;; unprobed on OpenRouter (added upstream after the 2026-08-31 probe run); classified from the
-   ;; native z.ai probe: thinking-only, rejects the disable (error 1210) — so mandatory here too
+   ;; probed 2026-09-04 (post-dating the 2026-08-31 run): the enable streams reasoning, the
+   ;; disable is rejected with a 400 (thinking-only upstream, as on native z.ai), and a forced
+   ;; tool call at the floored budget completes
    "z-ai/glm-5.3"                    {:display-name "GLM-5.3"                 :context-window 1048576 :reasoning :renderable :reasoning-mandatory? true}
    "z-ai/glm-5.2"                    {:display-name "GLM-5.2"                 :context-window 1048576 :reasoning :renderable}})
 
