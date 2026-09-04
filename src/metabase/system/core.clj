@@ -12,6 +12,7 @@
   available-fonts
   available-locales
   available-timezones
+  readable-paths
   site-locale
   site-locale!
   site-url

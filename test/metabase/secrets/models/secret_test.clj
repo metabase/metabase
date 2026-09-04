@@ -4,7 +4,9 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.premium-features.core :as premium-features]
    [metabase.secrets.models.secret :as secret]
+   [metabase.system.settings :as system-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -274,3 +276,49 @@
               (is (= (keyword latest-source) (:source secret)))))
           (testing "get-secret-string"
             (is (= latest-value (secret/value-as-string :secret-test-driver details secret-property)))))))))
+
+(deftest secret-loading-from-path-test
+  (testing "Loading secrets from a path only works if it is under an allowed path"
+    (mt/with-temp-file [file-db "-1-key.pem"]
+      (spit file-db "apple")
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
+        (testing "Works when readable paths is set to root"
+          (mt/with-temporary-setting-values
+            [system-settings/readable-paths ["/"]])
+          (testing "from value"
+            (is (= "apple"
+                   (secret/value-as-string
+                    :secret-test-driver
+                    {:keystore-path    file-db
+                     :keystore-options "local"}
+                    "keystore")))))
+        (testing "Cannot read when readable paths has no allowed values"
+          (mt/with-temporary-setting-values
+            [system-settings/readable-paths "NONE"]
+            (is (thrown?
+                 Exception
+                 (secret/value-as-string
+                  :secret-test-driver
+                  {:keystore-path    file-db
+                   :keystore-options "local"}
+                  "keystore"))))
+          (testing "Can read when the readable paths includes the file we want"
+            (mt/with-temporary-setting-values
+              [system-settings/readable-paths (str "/abc," file-db)]
+              (is (=
+                   "apple"
+                   (secret/value-as-string
+                    :secret-test-driver
+                    {:keystore-path    file-db
+                     :keystore-options "local"}
+                    "keystore")))))
+          (testing "Cannot read when the readable paths doesn't include the file we want"
+            (mt/with-temporary-setting-values
+              [system-settings/readable-paths "/abc"]
+              (is (thrown?
+                   Exception
+                   (secret/value-as-string
+                    :secret-test-driver
+                    {:keystore-path    file-db
+                     :keystore-options "local"}
+                    "keystore"))))))))))
