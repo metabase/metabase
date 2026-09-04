@@ -2,6 +2,7 @@
   "Password authentication provider implementation."
   (:require
    [metabase.auth-identity.db :as auth-identity.db]
+   [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.provider :as provider]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -14,7 +15,7 @@
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
 ;; Register password provider in the hierarchy
-(derive :provider/password ::provider/provider)
+(auth-identity.hierarchy/derive! :provider/password ::provider/provider)
 
 ;;; -------------------------------------------------- Multimethod Implementations --------------------------------------------------
 

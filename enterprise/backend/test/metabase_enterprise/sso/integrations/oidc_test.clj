@@ -72,11 +72,11 @@
 
 (defmacro ^:private with-successful-oidc! [& body]
   `(do
-     (derive :provider/custom-oidc :provider/test-oidc-successful)
+     (auth-identity/derive! :provider/custom-oidc :provider/test-oidc-successful)
      (try
        ~@body
        (finally
-         (underive :provider/custom-oidc :provider/test-oidc-successful)))))
+         (auth-identity/underive! :provider/custom-oidc :provider/test-oidc-successful)))))
 
 (defmacro ^:private with-oidc-default-setup! [& body]
   `(mt/test-helpers-set-global-values!
@@ -215,11 +215,11 @@
 
 (defmacro ^:private with-group-sync-oidc! [& body]
   `(do
-     (derive :provider/custom-oidc :provider/test-oidc-with-groups)
+     (auth-identity/derive! :provider/custom-oidc :provider/test-oidc-with-groups)
      (try
        ~@body
        (finally
-         (underive :provider/custom-oidc :provider/test-oidc-with-groups)))))
+         (auth-identity/underive! :provider/custom-oidc :provider/test-oidc-with-groups)))))
 
 (defn- do-with-group-sync-login!
   "Helper that sets up the OIDC provider with group sync config, performs a login, and calls `f`

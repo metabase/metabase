@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as provider]
    [metabase.sso.oidc.discovery :as oidc.discovery]
    [metabase.sso.oidc.tokens :as oidc.tokens]
@@ -325,6 +326,6 @@
 
 (deftest provider-hierarchy-test
   (testing "OIDC provider derives from base provider"
-    (is (isa? :provider/oidc ::provider/provider)))
+    (is (auth-identity/isa? :provider/oidc ::provider/provider)))
   (testing "OIDC provider derives from create-user-if-not-exists"
-    (is (isa? :provider/oidc ::provider/create-user-if-not-exists))))
+    (is (auth-identity/isa? :provider/oidc ::provider/create-user-if-not-exists))))
