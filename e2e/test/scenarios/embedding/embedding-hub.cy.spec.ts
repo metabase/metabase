@@ -631,7 +631,24 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
 });
 
 describe("scenarios > embedding > embedding hub > localization", () => {
-  describe("oss", () => {
+  describe("pro", { tags: "@EE" }, () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+    });
+
+    it("mounts the dictionary configuration", () => {
+      cy.visit("/embedding/localization");
+
+      cy.findByTestId("embedding-hub-main")
+        .findByTestId("content-translation-configuration")
+        .findByText("Translate embedded dashboards and questions")
+        .should("be.visible");
+    });
+  });
+
+  describe("unlicensed", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
