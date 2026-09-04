@@ -230,17 +230,11 @@ export const getRequiredSyncRow = ({
   };
 };
 
-/**
- * The entries the modal lists, in the order it lists them. A missing Library has no row to offer —
- * the message covers it — so it is described rather than listed. What can't be synced sorts first:
- * it needs content moved, and nothing switched on below it helps until that is done.
- */
 export const getListedRequiredSyncs = (
   required: RemoteSyncRequiredSync[],
 ): RemoteSyncRequiredSync[] =>
   required
     .filter(({ remedy }) => remedy.type !== "library")
-    // Stable, so entries keep the order the backend found them in within each group.
     .sort((a, b) => Number(a.syncable) - Number(b.syncable));
 
 export type BlockedReason =
@@ -265,7 +259,6 @@ export const getBlockedReason = (
   return "linked-collections";
 };
 
-// `personal` sits on the remedy — the top-level ancestor — not the collection the dependency is in.
 const isBlockedByPersonalContent = (
   required: RemoteSyncRequiredSync[],
 ): boolean =>
@@ -273,13 +266,10 @@ const isBlockedByPersonalContent = (
     ({ remedy }) => remedy.type === "collection" && remedy.collection.personal,
   );
 
-// A `library` remedy is the backend saying this instance has no Library at all — once one exists a
-// snippet points at it as an ordinary collection remedy, like anything else.
 const isBlockedByMissingLibrary = (
   required: RemoteSyncRequiredSync[],
 ): boolean => required.some(({ remedy }) => remedy.type === "library");
 
-// A `none` remedy leaves nothing to switch on, so the content has to move instead.
 const requiresContentMove = (required: RemoteSyncRequiredSync[]): boolean =>
   required.some(({ remedy }) => remedy.type === "none");
 
