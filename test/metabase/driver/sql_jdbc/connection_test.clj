@@ -36,6 +36,8 @@
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
   (:import
+   (com.mchange.v2.c3p0 C3P0ProxyConnection ComboPooledDataSource)
+   (java.sql DriverManager)
    (org.h2.tools Server)))
 
 (set! *warn-on-reflection* true)
@@ -376,6 +378,24 @@
         (is (= first-pool second-pool))
         (is (= ::audit-db-not-in-cache!
                (get @#'sql-jdbc.conn/pool-cache-key->connection-pool audit-db-id ::audit-db-not-in-cache!)))))))
+
+(deftest is-audit-dev-routing-requires-dev-mode-test
+  (testing "a user-supplied :is-audit-dev detail only routes to the app DB under analytics-dev-mode"
+    (mt/with-temp [:model/Database db {:engine :h2 :details {:is-audit-dev true}
+                                       :is_audit false}]
+      (let [routes-to-app-db? (fn []
+                                (= {:datasource (mdb/data-source)}
+                                   (sql-jdbc.conn/db->pooled-connection-spec (:id db))))]
+        (testing "dev mode off: reaching the connection layer with an :is-audit-dev db is an invariant violation, so
+                  it throws rather than silently building a connection against the wrong host"
+          (mt/with-temporary-setting-values [analytics-dev-mode false]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Cannot open a connection for an analytics-dev database"
+                 (routes-to-app-db?)))))
+        (testing "dev mode on: the flag is honored (the legitimate local-dev path still works)"
+          (mt/with-temporary-setting-values [analytics-dev-mode true]
+            (is (routes-to-app-db?))))))))
 
 (deftest ^:parallel include-unreturned-connection-timeout-test
   (testing "We should be setting unreturnedConnectionTimeout; it should be the same as the query timeout (#33646)"
@@ -805,3 +825,38 @@
     (is (integer? (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver/*driver*))))
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc :-fns [has-default-port?]})
     (is (nil? (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver/*driver*)))))
+
+(def ^:private raw-connection-to-string-method
+  (.getMethod Object "toString" (make-array Class 0)))
+
+(defn- raw-connection-identity
+  "Identify the physical Connection behind a c3p0 proxy, to tell a recycled connection from a freshly acquired one."
+  [^C3P0ProxyConnection conn]
+  (.rawConnectionOperation conn
+                           raw-connection-to-string-method
+                           C3P0ProxyConnection/RAW_CONNECTION
+                           (make-array Object 0)))
+
+(deftest discard-pooled-connection-test
+  (testing "discarding destroys the physical Connection, so the pool acquires a fresh one rather than recycling it"
+    (with-open [ds (doto (ComboPooledDataSource.)
+                     (.setJdbcUrl "jdbc:h2:mem:discard-pooled-connection-test;DB_CLOSE_DELAY=-1")
+                     (.setInitialPoolSize 1)
+                     (.setMinPoolSize 1)
+                     (.setMaxPoolSize 1))]
+      (letfn [(checked-out-identity []
+                (with-open [conn (.getConnection ds)]
+                  (raw-connection-identity conn)))]
+        (let [before (checked-out-identity)]
+          (testing "a plain check-in/check-out cycle hands back the same physical Connection"
+            (is (= before (checked-out-identity))))
+          (with-open [conn (.getConnection ds)]
+            (sql-jdbc.conn/discard-pooled-connection! conn))
+          (testing "after discarding, the next checkout is a different physical Connection"
+            (is (not= before (checked-out-identity)))))))))
+
+(deftest discard-pooled-connection-leaves-unpooled-connection-alone-test
+  (testing "a Connection with no pool behind it has no next query to poison, so it is left open"
+    (with-open [conn (DriverManager/getConnection "jdbc:h2:mem:discard-unpooled-test;DB_CLOSE_DELAY=-1")]
+      (sql-jdbc.conn/discard-pooled-connection! conn)
+      (is (not (.isClosed conn))))))

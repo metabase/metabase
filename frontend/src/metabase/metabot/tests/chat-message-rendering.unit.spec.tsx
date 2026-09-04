@@ -21,6 +21,7 @@ import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import {
   assertConversation,
   continueResponseButton,
+  conversationIdForAgent,
   enterChatMessage,
   input,
   queryContinueResponseButton,
@@ -303,11 +304,7 @@ describe("AgentMessage", () => {
       ]);
       expect(await input()).toHaveTextContent("How many orders?");
 
-      const conversationId =
-        store.getState().metabot.conversations.omnibot?.conversationId;
-      if (!conversationId) {
-        throw new Error("expected an active omnibot conversation");
-      }
+      const conversationId = conversationIdForAgent(store);
       const reloaded: ["user" | "agent", string][] = [
         ["user", "How many orders?"],
         ["agent", "There are 42 orders."],
@@ -361,7 +358,7 @@ describe("AgentMessage", () => {
   describe("turn_incomplete", () => {
     const incompleteMessage = (
       finishReason: MetabotAgentTurnIncompleteMessage["finishReason"],
-    ): MetabotAgentChatMessage => ({
+    ): MetabotAgentTurnIncompleteMessage => ({
       id: "msg",
       role: "agent",
       type: "turn_incomplete",
@@ -392,6 +389,18 @@ describe("AgentMessage", () => {
       expect(onContinue).toHaveBeenCalledWith(
         expect.stringMatching(/Continue working on my last request/),
       );
+    });
+
+    it("shows a terminal notice when the context window is full", () => {
+      setup(
+        { ...incompleteMessage("length"), contextWindowFull: true },
+        { onContinue: jest.fn() },
+      );
+
+      expect(
+        screen.getByText(/reached its maximum length and can't continue/),
+      ).toBeInTheDocument();
+      expect(queryContinueResponseButton()).not.toBeInTheDocument();
     });
 
     it("explains a content-filtered response without offering to continue", () => {

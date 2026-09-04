@@ -54,6 +54,7 @@
   - metabase-enterprise.sso.providers.saml (Enterprise)"
   (:require
    [java-time.api :as t]
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.session :as auth-session]
    [metabase.events.core :as events]
@@ -313,11 +314,11 @@
       (assoc :user
              (or (when-let [user-id (:user-id $)]
                    (if (pos-int? user-id)
-                     (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id)
+                     (auth-identity.db/user-login-columns user-id)
                      (log/errorf "Provider %s returned a non-positive-int :user-id (type %s); refusing to resolve a user."
                                  provider (some-> user-id class .getName))))
                  (when-let [email (get-in $ [:user-data :email])]
-                   (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :%lower.email (u/lower-case-en email))))))
+                   (auth-identity.db/user-login-columns-by-email email)))))
     (cond-> $
       (and (:provider-id $) (:user-data $))
       (assoc-in [:user-data :provider-id] (:provider-id $)))
@@ -354,14 +355,14 @@
    provider :- :keyword]
   (t2/with-transaction [_]
     (let [reactivating? (and (:is_active user-data)
-                             (not (t2/select-one-fn :is_active :model/User :id user-id)))]
-      (t2/update! :model/User user-id
-                  (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
-                    reactivating? (assoc :is_superuser false))))
-    (when-not (t2/exists? :model/AuthIdentity :user_id user-id :provider (name provider))
-      (t2/insert! :model/AuthIdentity (cond-> {:user_id user-id :provider (name provider)}
-                                        (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
-    (t2/select-one [:model/User :id :is_active :last_login] user-id)))
+                             (not (auth-identity.db/user-active? user-id)))]
+      (auth-identity.db/update-user! user-id
+                                     (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
+                                       reactivating? (assoc :is_superuser false))))
+    (when-not (auth-identity.db/auth-identity-exists? user-id (name provider))
+      (auth-identity.db/insert-auth-identity! (cond-> {:user_id user-id :provider (name provider)}
+                                                (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
+    (auth-identity.db/user-login-status user-id)))
 
 (mu/defn- create-user!
   "Create a user from user-data in the request "
@@ -386,12 +387,11 @@
                       {:status-code 500})))
     (t2/with-transaction [_]
       (u/prog1
-        (t2/insert-returning-instance! [:model/User :id :last_login :is_active :tenant_id]
-                                       (select-keys user-data insert-fields))
-        (t2/insert! :model/AuthIdentity (cond-> {:user_id (:id <>) :provider (name provider)}
-                                          (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
+        (auth-identity.db/insert-user-returning-login-columns! (select-keys user-data insert-fields))
+        (auth-identity.db/insert-auth-identity! (cond-> {:user_id (:id <>) :provider (name provider)}
+                                                  (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
         (notification/with-skip-sending-notification true
-          (events/publish-event! :event/user-invited {:object (assoc (t2/select-one :model/User (:id <>))
+          (events/publish-event! :event/user-invited {:object (assoc (auth-identity.db/user (:id <>))
                                                                      :sso_source (name provider))}))))))
 
 (methodical/defmethod login! ::create-user-if-not-exists

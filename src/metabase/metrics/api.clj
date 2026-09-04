@@ -3,10 +3,12 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
+   [metabase.metrics.db :as metrics.db]
    [metabase.metrics.dimension :as metrics.dimension]
    [metabase.metrics.permissions :as metrics.perms]
    [metabase.queries.core :as queries]
@@ -50,14 +52,10 @@
     [:result_column_name   {:optional true} [:maybe :string]]]])
 
 (defn- count-metrics []
-  (t2/count :model/Card {:where (queries/visible-metric-cards-where-clause)}))
+  (metrics.db/metric-card-count (queries/visible-metric-cards-where-clause)))
 
 (defn- select-metrics [limit offset]
-  (-> (t2/select [:model/Card :id :name :description :collection_id]
-                 {:where    (queries/visible-metric-cards-where-clause)
-                  :order-by [[:name :asc]]
-                  :limit    limit
-                  :offset   offset})
+  (-> (metrics.db/metric-cards-page (queries/visible-metric-cards-where-clause) limit offset)
       (t2/hydrate :collection)))
 
 (api.macros/defendpoint :get "/"
@@ -83,9 +81,9 @@
 
 (mu/defn- hydrated-metric [id :- ms/PositiveInt
                            include-orphaned? :- :boolean]
-  (api/read-check (t2/select-one :model/Card :id id :type "metric"))
+  (api/read-check (metrics.db/metric-card id))
   (metrics/sync-dimensions! :metadata/metric id)
-  (cond-> (-> (t2/select-one :model/Card :id id :type "metric")
+  (cond-> (-> (metrics.db/metric-card id)
               metrics.perms/filter-dimensions-for-user
               (update :dimensions #(or % []))
               (update :dimension_mappings #(or % [])))
@@ -173,10 +171,10 @@
                       source-id   (lib-metric/expression-leaf-id leaf)]
                   (case source-type
                     :metric  (do
-                               (api/read-check (t2/select-one :model/Card :id source-id :type "metric"))
+                               (api/read-check (metrics.db/metric-card source-id))
                                [(lib-metric/expression-leaf-uuid leaf) source-id])
                     :measure (do
-                               (api/query-check (t2/select-one :model/Measure :id source-id))
+                               (api/query-check (metrics.db/measure source-id))
                                nil))))
               (lib-metric/expression-leaves expression))))
 
@@ -217,14 +215,20 @@
    Must be called OUTSIDE streaming context to avoid JSON writer conflicts.
   Returns {uuid -> qp-result}."
   [leaves metric-card-ids]
-  (let [uuid->future (into {}
-                           (map (fn [[uuid leaf-plan]]
-                                  [uuid (future (process-leaf-query (:leaf/mbql leaf-plan)
-                                                                    (get metric-card-ids uuid)))]))
-                           leaves)]
-    (into {}
-          (map (fn [[uuid f]] [uuid @f]))
-          uuid->future)))
+  (letfn [(run-leaf [[uuid leaf-plan]]
+            (process-leaf-query (:leaf/mbql leaf-plan) (get metric-card-ids uuid)))]
+    (if (mdb/in-transaction?)
+      ;; A transaction owns one connection, and `future` conveys that binding to each thread. Parallel leaves
+      ;; would therefore interleave app DB writes and savepoints on the same session; one thread's rollback can
+      ;; invalidate its siblings' savepoints. Only tests run this code within a transaction. During a request,
+      ;; each future obtains its own pooled connection.
+      (into {} (map (fn [leaf] [(first leaf) (run-leaf leaf)])) leaves)
+      (let [uuid->future (into {}
+                               (map (fn [leaf] [(first leaf) (future (run-leaf leaf))]))
+                               leaves)]
+        (into {}
+              (map (fn [[uuid f]] [uuid @f]))
+              uuid->future)))))
 
 (defn- stream-arithmetic-results
   "Join leaf results and stream the computed output through the QP reduce pipeline.
@@ -338,10 +342,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- read-check-metric! [id]
-  (api/read-check (t2/select-one :model/Card :id id :type "metric")))
+  (api/read-check (metrics.db/metric-card id)))
 
 (defn- write-check-metric! [id]
-  (api/write-check (t2/select-one :model/Card :id id :type "metric")))
+  (api/write-check (metrics.db/metric-card id)))
 
 ;; The module-local parent keeps the topic publishable in OSS, where no consumer namespace derives
 ;; it. (A direct :metabase/event derive would throw once an EE consumer makes it an ancestor.)

@@ -88,17 +88,27 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
   const {
     value: initialValue,
     updateSetting,
+    updateSettingResult,
     isLoading,
+    isFetching,
     description: settingDescription,
     settingDetails,
   } = useAdminSetting(name);
+  const [resetKey, setResetKey] = useState(0);
   const displayValue = settingDetails?.value ?? initialValue;
+  // The displayed value is stale from the write until the refetch lands, so the
+  // input stays disabled for that whole window, not just while the PUT runs.
+  const isSaving = updateSettingResult.isLoading || isFetching;
 
-  const handleChange = (newValue: EnterpriseSettingValue) => {
-    if (newValue === initialValue) {
+  const handleChange = async (newValue: EnterpriseSettingValue) => {
+    if (newValue === displayValue) {
       return;
     }
-    updateSetting({ key: name, value: newValue });
+    const { error } = await updateSetting({ key: name, value: newValue });
+    if (error && ["boolean", "select", "radio"].includes(inputType)) {
+      // remount resets a click-driven input; a text input would lose what the user typed
+      setResetKey((key) => key + 1);
+    }
   };
 
   if (hidden || isLoading) {
@@ -117,6 +127,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
         <SetByEnvVar varName={settingDetails.env_name} />
       ) : (
         <BasicAdminSettingInput
+          key={resetKey}
           name={name}
           value={displayValue}
           onChange={handleChange}
@@ -125,7 +136,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
           inputType={inputType}
           switchLabel={switchLabel}
           searchable={searchable}
-          disabled={disabled}
+          disabled={disabled || isSaving}
         />
       )}
     </Box>
@@ -212,7 +223,12 @@ export function BasicAdminSettingInput({
         >
           <Stack gap="sm">
             {options?.map(({ label, value }) => (
-              <Radio key={value} value={value} label={label} />
+              <Radio
+                key={value}
+                value={value}
+                label={label}
+                disabled={disabled}
+              />
             ))}
           </Stack>
         </Radio.Group>
@@ -271,7 +287,7 @@ export function SetByEnvVarWrapper<SettingName extends SettingKey>({
 }: SetByEnvVarWrapperProps<SettingName>) {
   if (isSettingSetFromEnvVar(settingDetails)) {
     return (
-      <Box mb="lg">
+      <Box mb="xl">
         <SettingHeader
           id={settingKey}
           title={settingDetails.display_name}

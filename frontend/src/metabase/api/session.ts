@@ -1,5 +1,8 @@
-import type { LoginData } from "metabase/redux/auth";
-import type { MfaMethod, PasswordResetTokenStatus } from "metabase-types/api";
+import type {
+  LoginData,
+  MfaMethod,
+  PasswordResetTokenStatus,
+} from "metabase-types/api";
 
 import { Api } from "./api";
 

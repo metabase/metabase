@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { Flex, Icon, Text, Title } from "metabase/ui";
-import type { PreviousPeriodChange } from "metabase/visualizations/lib/trend-helpers";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
+import type { PreviousPeriodChange } from "metabase/viz-core";
 
 import S from "./TrendInfo.module.css";
 
@@ -20,7 +20,7 @@ export function TrendInfo({ value, dateLabel, change }: TrendInfoProps) {
       <Title order={2} className={S.value}>
         {value}
       </Title>
-      <Flex align="center" gap="xs" mt="xs" wrap="wrap">
+      <Flex align="center" gap="xxs" mt="xxs" wrap="wrap">
         <Text fw={700} c="text-secondary">
           {dateLabel}
         </Text>

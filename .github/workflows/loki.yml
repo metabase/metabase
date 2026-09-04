@@ -2,7 +2,6 @@ name: Loki Visual Regression Testing
 
 on:
   pull_request:
-  merge_group:
 
 jobs:
   files-changed:

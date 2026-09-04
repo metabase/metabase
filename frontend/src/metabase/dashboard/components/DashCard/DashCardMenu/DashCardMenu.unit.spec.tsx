@@ -7,13 +7,13 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { getMetadata } from "metabase/metadata-store";
 import {
   createMockDashboardState,
   createMockState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset } from "metabase-types/api";
 import {
@@ -121,7 +121,6 @@ const setup = ({
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
       questions: [card],
-      dashboards: [mockDashboard],
     }),
     dashboard: createMockDashboardState({
       dashboardId: mockDashboard.id,
@@ -178,6 +177,23 @@ const setup = ({
 };
 
 describe("DashCardMenu", () => {
+  it("supports opening and closing the menu with the keyboard", async () => {
+    setup();
+
+    const menuButton = screen.getByRole("button", { name: "More options" });
+    menuButton.focus();
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(await screen.findByText("Edit question")).toBeInTheDocument();
+    expect(menuButton).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.keyboard("{Escape}");
+
+    expect(menuButton).toHaveAttribute("aria-expanded", "false");
+    expect(menuButton).toHaveFocus();
+  });
+
   it("should display a link to the notebook editor", async () => {
     const { router } = setup();
 
@@ -308,5 +324,64 @@ describe("DashCardMenu", () => {
     // Esc should close the popover
     await userEvent.keyboard("{Esc}");
     expect(screen.queryByText("Download results")).not.toBeInTheDocument();
+  });
+});
+
+describe("DashCardMenu.shouldRender", () => {
+  const dashboard = createMockDashboard();
+  const metadata = getMetadata(
+    createMockState({
+      entities: createMockEntitiesState({
+        databases: [createSampleDatabase()],
+        questions: [TEST_CARD],
+      }),
+    }),
+  );
+  const question = checkNotNull(metadata.question(TEST_CARD.id));
+
+  it("should render when the question is editable", () => {
+    expect(
+      DashCardMenu.shouldRender({
+        question,
+        dashboard,
+        result: TEST_RESULT_ERROR,
+        canEdit: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("should not render when editing is disabled and results cannot be downloaded (#64333)", () => {
+    expect(
+      DashCardMenu.shouldRender({
+        question,
+        dashboard,
+        result: TEST_RESULT_ERROR,
+        canEdit: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("should render when editing is disabled but underlying questions can be opened", () => {
+    expect(
+      DashCardMenu.shouldRender({
+        question,
+        dashboard,
+        result: TEST_RESULT_ERROR,
+        canEdit: false,
+        openUnderlyingQuestionItems: [<div key="question" />],
+      }),
+    ).toBe(true);
+  });
+
+  it("should not render when there are no underlying questions to open", () => {
+    expect(
+      DashCardMenu.shouldRender({
+        question,
+        dashboard,
+        result: TEST_RESULT_ERROR,
+        canEdit: false,
+        openUnderlyingQuestionItems: [],
+      }),
+    ).toBe(false);
   });
 });

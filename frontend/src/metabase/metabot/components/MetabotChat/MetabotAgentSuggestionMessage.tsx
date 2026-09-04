@@ -6,6 +6,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useLazyGetTransformQuery } from "metabase/api";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { MetabotContext } from "metabase/metabot/context";
 import {
   type MetabotAgentDataPartMessage,
@@ -13,10 +14,9 @@ import {
   activateSuggestedTransform,
   getIsSuggestedTransformActive,
 } from "metabase/metabot/state";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   Button,
   Collapse,
@@ -173,13 +173,13 @@ export const AgentSuggestionMessage = ({
   return (
     <Paper
       shadow="none"
-      radius="md"
+      radius="sm"
       bg="background_page-primary"
       className={S.container}
       data-testid="metabot-chat-suggestion"
     >
       <Group
-        p="md"
+        p="lg"
         align="center"
         justify="space-between"
         onClick={toggle}
@@ -193,7 +193,7 @@ export const AgentSuggestionMessage = ({
           <Text size="sm" c={isNew ? "core-blue-saturated" : "text-secondary"}>
             {isNew ? t`New` : t`Revision`}
           </Text>
-          <Flex align="center" justify="center" h="md" w="md">
+          <Flex align="center" justify="center" h="lg" w="lg">
             <Icon name={opened ? "chevrondown" : "chevronup"} size=".75rem" />
           </Flex>
         </Flex>
@@ -207,7 +207,7 @@ export const AgentSuggestionMessage = ({
         {match({ isLoading: isLoading || !isPreviewLoaded, error })
           .with({ error: P.not(P.nullish) }, () => (
             <Flex
-              p="md"
+              p="lg"
               bg="background_page-secondary"
               justify="center"
               align="center"
@@ -221,7 +221,7 @@ export const AgentSuggestionMessage = ({
           ))
           .with({ isLoading: true }, () => (
             <Flex
-              p="md"
+              p="lg"
               bg="background_page-secondary"
               justify="center"
               align="center"
@@ -240,7 +240,7 @@ export const AgentSuggestionMessage = ({
           .exhaustive()}
 
         <Group
-          py="xs"
+          py="xxs"
           px="sm"
           align="center"
           justify="space-between"

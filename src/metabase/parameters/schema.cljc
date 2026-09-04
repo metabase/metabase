@@ -141,7 +141,7 @@
      [:schema
       {:decode/api (fn [x]
                      (cond-> x
-                       (string? x) json/decode+kw))}
+                       (string? x) json/decode))}
       schema]))
 
 #?(:clj
@@ -155,7 +155,8 @@
   the frontend's `normalizeParameters` sends. Distinct from `::lib.schema.parameter/parameter`, which requires `:type`
   and normalizes the value."
   [:map
-   {:description "parameter must be a map with an :id key"}
+   {:description      "parameter must be a map with an :id key"
+    :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:id      ::lib.schema.common/non-blank-string]
    ;; the name of the template tag this value is for, when it can't be inferred from `:target`
    [:name    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]

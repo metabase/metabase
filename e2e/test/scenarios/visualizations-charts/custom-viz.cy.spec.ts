@@ -1802,6 +1802,45 @@ describe("sandbox", () => {
       ),
     },
     {
+      // The `on*` IDL setters reach the same global event types as
+      // addEventListener, so they are gated on the property path too.
+      name: "document.onkeydown setter",
+      payload: "document.onkeydown = function () {};",
+      errorPattern: blockedPattern(/API call: Document\.set onkeydown/),
+    },
+    {
+      name: "document.onpaste setter",
+      payload: "document.onpaste = function () {};",
+      errorPattern: blockedPattern(/API call: Document\.set onpaste/),
+    },
+    {
+      name: "window.onstorage setter",
+      payload: "window.onstorage = function () {};",
+      errorPattern: blockedPattern(/API call: window\.set onstorage/),
+    },
+    {
+      name: "window.onkeydown setter",
+      payload: "window.onkeydown = function () {};",
+      errorPattern: blockedPattern(/API call: window\.set onkeydown/),
+    },
+    {
+      name: "document.body.onstorage setter",
+      payload: "document.body.onstorage = function () {};",
+      errorPattern: blockedPattern(/API call: HTMLBodyElement\.set onstorage/),
+    },
+    {
+      name: "detached body.onstorage setter",
+      payload: 'document.createElement("body").onstorage = function () {};',
+      errorPattern: blockedPattern(/API call: HTMLBodyElement\.set onstorage/),
+    },
+    {
+      name: "detached frameset.onstorage setter",
+      payload: 'document.createElement("frameset").onstorage = function () {};',
+      errorPattern: blockedPattern(
+        /API call: HTMLFrameSetElement\.set onstorage/,
+      ),
+    },
+    {
       name: 'setAttribute("onclick", ...)',
       payload: 'document.body.setAttribute("onclick", "alert(1)");',
       errorPattern: blockedPattern(

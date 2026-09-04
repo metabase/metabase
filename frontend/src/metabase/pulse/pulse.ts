@@ -1,7 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import type { DashboardSubscriptionData } from "metabase/redux/store";
 import { getEmailDomain } from "metabase/utils/email";
 import MetabaseSettings from "metabase/utils/settings";
 import { formatFrame } from "metabase/utils/time-dayjs";
@@ -20,6 +19,7 @@ import type {
   ChannelSpec,
   ChannelSpecs,
   DashboardSubscription,
+  DashboardSubscriptionData,
   Parameter,
   ScheduleSettings,
   User,
@@ -180,7 +180,6 @@ export function createChannel(
     recipients: [],
     schedule_type: channelSpec.schedules[0],
     schedule_day: "mon",
-    schedule_hour: 8,
     schedule_frame: "first",
     ...opts,
   };

@@ -9,8 +9,6 @@ summary: Metabot is Metabase's AI assistant that helps you analyze data, create 
 
 Metabot helps you analyze your data by creating charts from natural language, generating SQL queries, fixing query errors, and analyzing existing visualizations.
 
-> Join us for AI Analytics Week: three live sessions on trusting AI answers, rolling out AI safely, and building on top of AI. [Details and registration →](https://metaba.se/ai-analytics-week)
-
 ## Set up Metabot
 
 To set up Metabot, see [Metabot settings](./settings.md).
@@ -64,9 +62,9 @@ Hover over Metabot's response to:
 
 ![Metabot analyzes a chart](./images/metabot-response.png)
 
-When viewing a question, you can click the Metabot icon in the upper right to analyze a visualization. You can also open the command palette to tell Metabot to analyze the chart.
+When viewing a question, open the [chat sidebar](#the-metabot-chat-sidebar) and ask Metabot to analyze the chart.
 
-When viewing a table of results, Metabase won't display the Metabot button, but you can open the chat to ask Metabot to analyze the table, and it will produce an [X-ray](../exploration-and-organization/x-rays.md) of the results.
+When viewing a table of results, ask Metabot in the chat to analyze the table, and it will produce an [X-ray](../exploration-and-organization/x-rays.md) of the results.
 
 You can also ask Metabot to tell you about specific tables in your database.
 

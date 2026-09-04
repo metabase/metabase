@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
+import {
+  setupDatabaseEndpoints,
+  setupFieldsValuesEndpoints,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -13,6 +16,7 @@ import * as Lib from "metabase-lib";
 import {
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { FilterPicker } from "./FilterPicker";
@@ -153,6 +157,7 @@ function setup({ query = createQuery(), filter }: SetupOpts = {}) {
   const onSelect = jest.fn();
 
   setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES, PRODUCT_VENDOR_VALUES]);
+  setupDatabaseEndpoints(createSampleDatabase());
 
   renderWithProviders(
     <FilterPicker

@@ -3,8 +3,8 @@
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
-   [metabase.metabot.self.claude :as claude]
-   [metabase.metabot.self.openai :as openai]
+   [metabase.metabot.self.catalog :as catalog]
+   [metabase.metabot.self.google :as google]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -58,27 +58,30 @@
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
-  :feature    :ai-controls)
+  :feature    :ai-controls
+  :can-read-from-env? false)
 
 (defsetting metabot-nlq-system-prompt
   (deferred-tru "Custom instructions appended to Metabot''s system prompt for the natural language query (AI exploration) experience.")
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
-  :feature    :ai-controls)
+  :feature    :ai-controls
+  :can-read-from-env? false)
 
 (defsetting metabot-sql-system-prompt
   (deferred-tru "Custom instructions appended to Metabot''s system prompt for the SQL generation experience.")
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
-  :feature    :ai-controls)
+  :feature    :ai-controls
+  :can-read-from-env? false)
 
 (defsetting embedded-metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for embedding.")
@@ -126,6 +129,21 @@
                       {:status-code 400
                        :value       value})))))
 
+(defn- validate-google-model!
+  "Validate the model segment of a google connection's `{publisher}/{model-id}` model.
+  A publisher this provider serves followed by a non-blank model ID without slashes (the ID is one path segment of the
+  request URL).  Throws on invalid input."
+  [value model]
+  (let [[publisher model-id] (str/split (str model) #"/" 2)]
+    (when-not (and (contains? google/model-publishers publisher)
+                   (not (str/blank? model-id))
+                   (not (str/includes? model-id "/")))
+      (throw (ex-info (tru "Invalid Google model {0}. Expected format: <connection>/<publisher>/<model> where <publisher> is one of: {1}"
+                           (pr-str value)
+                           (str/join ", " (sort google/model-publishers)))
+                      {:status-code 400
+                       :value       value})))))
+
 (defn- validate-managed-model!
   "Check `model` against the fixed catalog the Metabase AI proxy serves (see the `metabase` entry in
   [[metabase.llm.provider/provider-types]])."
@@ -156,6 +174,7 @@
                       {:status-code 400 :value value})))
     (case (:type (llm.provider/connection (llm.provider/model-ref->connection-key value)))
       "azure"    (validate-azure-model! value model)
+      "google"   (validate-google-model! value model)
       "metabase" (validate-managed-model! model)
       nil)))
 
@@ -220,23 +239,32 @@
                 (llm.provider/model-ref->connection-key (llm-metabot-provider)))
   :doc        false)
 
-(defn- llm-provider-streams-reasoning?
-  "Whether a model reference names a model that streams its reasoning back to us."
-  [model-ref]
-  (let [{:keys [type model]} (llm.provider/resolve-model-ref model-ref)]
-    (case type
-      "anthropic" (claude/reasoning-model? model)
-      "openai"    (openai/reasoning-model? model)
-      false)))
-
 (defsetting llm-metabot-supports-reasoning?
   "Whether the selected Metabot model streams its reasoning."
   :type       :boolean
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #(llm-provider-streams-reasoning? (llm-metabot-provider))
+  :getter     #(catalog/streams-reasoning? (llm-metabot-provider))
   :doc        false)
+
+(defsetting llm-metabot-supports-fast-mode?
+  "Whether the selected Metabot model can run in fast mode. Settings-manager rather than public:
+  only the admin page reads it, and a public value would tell unauthenticated callers which
+  provider and model tier serves Metabot."
+  :type       :boolean
+  :visibility :settings-manager
+  :setter     :none
+  :export?    false
+  :getter     #(catalog/supports-fast-mode? (llm-metabot-provider))
+  :doc        false)
+
+(defsetting llm-fast-mode
+  (deferred-tru "Run Metabot in the provider''s fast mode when the selected model supports it. Fast mode responds faster at a higher price per token; on Anthropic it requires an account enrolled in the fast-mode research preview and is not available with a Priority Tier commitment.")
+  :type       :boolean
+  :default    false
+  :visibility :settings-manager
+  :export?    false)
 
 (def ^:private metabot-llm-setting-keys
   #{:metabot-enabled? :embedded-metabot-enabled? :llm-metabot-provider})

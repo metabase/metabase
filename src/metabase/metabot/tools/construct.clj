@@ -12,6 +12,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
@@ -26,8 +27,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -265,7 +265,7 @@
   (detect-metabase-uri-source-table! parsed-query)
   (if-let [table-fk (first-stage-source-table-fk parsed-query)]
     (let [db-name (nth table-fk 0)
-          ids     (t2/select-pks-vec :model/Database :name db-name)]
+          ids     (metabot.db/database-ids-by-name db-name)]
       (case (count ids)
         0 (throw (ex-info (tru (str "Unknown database: `{0}`. Use the exact database name as "
                                     "reported by search / `read_resource` (it appears "
@@ -368,7 +368,7 @@
        diagnostics over every custom column / aggregation / filter
        ([[repr.repair/assert-editor-accepts-expressions!]]). Either failure is a retryable
        `:agent-error?` - success on a query the editor rejects is BOT-1442.
-    7. Export that final numeric pMBQL back to the portable form for the LLM-facing
+    7. Export that final numeric MBQL 5 back to the portable form for the LLM-facing
        `:query-json` / `query-content` output.
 
   Returns a map with `:structured-output` and `:instructions` keys. Throws with an
@@ -457,7 +457,7 @@
 (defn- structured->query-data
   "Convert tool structured output to a map suitable for [[llm-shape/query->xml]].
 
-  `:query-content` is the **canonical portable representations JSON** for the final pMBQL
+  `:query-content` is the **canonical portable representations JSON** for the final MBQL 5
   query we actually constructed: repaired and resolved to numeric IDs, normalized by lib,
   then exported back to portable FK paths/entity_ids. By feeding the LLM this final portable
   form (rather than legacy-MBQL JSON or a pre-resolve approximation) on the next turn it can
@@ -542,7 +542,10 @@
                                 "<instructions>\n" instruction-text "\n</instructions>")))
           query-result)))
     (catch Exception e
-      (if (:agent-error? (ex-data e))
+      ;; A 403 counts as agent-facing even without the flag: `api/read-check` throws a bare one,
+      ;; and it means the user can't have the card they named rather than that anything broke.
+      (if (or (:agent-error? (ex-data e))
+              (= 403 (:status-code (ex-data e))))
         ;; Expected agent-facing signal (bad LLM input: unknown table, unknown schema,
         ;; URI-in-source-table, …). Log at debug only — no stacktrace — since the message
         ;; is the tool's result and the LLM is expected to self-correct on the next turn.

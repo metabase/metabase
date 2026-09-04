@@ -237,7 +237,7 @@ function setup({
   );
 }
 
-// pMBQL order-by clause: [direction, opts, ["field", opts, fieldId]]
+// MBQL 5 order-by clause: [direction, opts, ["field", opts, fieldId]]
 type OrderByClause = [string, unknown, [string, unknown, number]];
 
 type EventsMbqlStage = {

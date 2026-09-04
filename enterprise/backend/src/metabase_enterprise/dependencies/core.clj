@@ -4,6 +4,7 @@
   Call [[errors-from-proposed-edits]] to find out what things will break downstream of a set of new/updated entities."
   (:require
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
    [metabase.lib-be.core :as lib-be]
@@ -15,8 +16,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (mr/def ::entity-type
   [:enum :card :transform :snippet :table])
@@ -86,15 +86,15 @@
 (defn- group-by-db [deps]
   (let [by-db (volatile! {})]
     (when (seq (:card deps))
-      (doseq [[db-id card-ids] (->> (t2/select [:model/Card :id :database_id :card_schema] :id [:in (:card deps)])
+      (doseq [[db-id card-ids] (->> (dependencies.db/card-database-ids (:card deps))
                                     (u/group-by :database_id :id conj #{}))]
         (vswap! by-db assoc-in [db-id :card] card-ids)))
     (when (seq (:table deps))
-      (doseq [[db-id table-ids] (->> (t2/select [:model/Table :id :db_id] :id [:in (:table deps)])
+      (doseq [[db-id table-ids] (->> (dependencies.db/table-database-ids (:table deps))
                                      (u/group-by :db_id :id conj #{}))]
         (vswap! by-db assoc-in [db-id :table] table-ids)))
     (when (seq (:transform deps))
-      (doseq [[db-id transform-ids] (->> (t2/select [:model/Transform :id :source] :id [:in (:transform deps)])
+      (doseq [[db-id transform-ids] (->> (dependencies.db/transform-sources (:transform deps))
                                          (u/group-by #(get-in % [:source :query :database]) :id conj #{}))]
         (if db-id
           (vswap! by-db assoc-in [db-id :transform] transform-ids)
@@ -142,8 +142,8 @@
                        (merge errors)))
                  {} by-db))))))
 
-#_{:clj-kondo/ignore [:unresolved-namespace]}
 (comment
+  (require '[metabase.premium-features.core])
   ;; This should work on any fresh-ish Metabase instance; these are the built-in example questions.
   (let [base-mp (lib-be/application-database-metadata-provider 39)
         transform (lib.metadata/transform base-mp 1)
@@ -157,19 +157,11 @@
     #_(deps.provider/all-overrides mp)
     (check-query-soundness mp))
 
-  ;; Checking that we can properly group everything by database. Surprisingly fast even fetching everything.
-  (let [deps {:card      (t2/select-fn-set :id :model/Card)
-              :transform (t2/select-fn-set :id :model/Transform)
-              :table     (t2/select-fn-set :id :model/Table)}]
-    (group-by-db deps))
-
-  (t2/select-fn-vec (juxt :id :name :active :table_id) :model/Field :id [:in [1065 1066 1067 1068 1069]])
-
-  (t2/select-one :model/Card :id 124)
+  (dependencies.db/card 124)
   (deps.graph/transitive-dependents {:transform [{:id 1}]})
   (deps.graph/transitive-dependents {:table [{:id 155}]})
   (metabase.premium-features.core/token-features)
 
-  (let [card (t2/select-one :model/Card :id 121)
+  (let [card (dependencies.db/card 121)
         mp   (lib-be/application-database-metadata-provider (:database_id card))]
     (upstream-deps:card mp card)))

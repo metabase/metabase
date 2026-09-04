@@ -33,6 +33,9 @@ jobs:
       - name: Prepare backend environment
         uses: ./.github/actions/prepare-backend
 
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
       - name: Set up Babashka
         uses: turtlequeue/setup-babashka@d78ec6570aea3b614bc695cafcceb82eb45c2af9 # v1.8.0
         with:
@@ -72,8 +75,32 @@ jobs:
           clojure -M:ee:doc command-documentation
         continue-on-error: false
 
+      - name: Generate AI provider documentation
+        id: generate_ai_provider_docs
+        run: |
+          set -e  # Exit on any error
+          echo "Generating AI provider documentation..."
+          clojure -M:ee:doc ai-providers-documentation
+        continue-on-error: false
+
       - name: Generate usage analytics documentation
         run: ./bin/generate-usage-analytics-docs.bb
+
+      - name: Generate embedding SDK documentation
+        id: generate_embedding_sdk_docs
+        run: |
+          set -e  # Exit on any error
+          echo "Generating embedding SDK documentation..."
+          bun run embedding-sdk:docs:generate
+        continue-on-error: false
+
+      - name: Generate embedding EAJS documentation
+        id: generate_embedding_eajs_docs
+        run: |
+          set -e  # Exit on any error
+          echo "Generating embedding EAJS documentation..."
+          bun run embedding-eajs:docs:generate
+        continue-on-error: false
 
       - name: Check for changes
         id: check_changes
@@ -145,7 +172,10 @@ jobs:
           - \`clojure -M:ee:doc config-template\`
           - \`clojure -M:ee:doc api-documentation\`
           - \`clojure -M:ee:doc command-documentation\`
+          - \`clojure -M:ee:doc ai-providers-documentation\`
           - \`./bin/generate-usage-analytics-docs.bb\`
+          - \`bun run embedding-sdk:docs:generate\`
+          - \`bun run embedding-eajs:docs:generate\`
 
           Please review the changes and merge if they look correct." \
               --label "Type:Documentation" \

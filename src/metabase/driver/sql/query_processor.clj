@@ -1692,6 +1692,7 @@
 
 (def ^:private ^{:deprecated "0.64.0"} LegacyStringValueOrFieldOrExpression
   "Deprecated: use MBQL 5 going forward."
+  ;; a deprecated schema assembled from equally-deprecated legacy MBQL schemas; they go away together
   #_{:clj-kondo/ignore [:deprecated-var]}
   [:or
    [:and driver-api/mbql.schema.value
@@ -1739,6 +1740,7 @@
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
    pre
+   ;; still typed by the deprecated legacy schema above; both go away with the MBQL 5 migration
    [type _ :as arg] :- #_{:clj-kondo/ignore [:deprecated-var]} LegacyStringValueOrFieldOrExpression
    post
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
@@ -1843,39 +1845,36 @@
                  [:effective-type])))
 
 (def ^:dynamic *parent-honeysql-col-type-info*
-  "To be bound in `->honeysql <driver> <op>` where op is on of {:>, :>=, :<, :<=, :=, :between}`. Its value should be
-  `{:base-type keyword? :database-type string?}`. The value is used in `->honeysql <driver> :relative-datetime`,
-  the :snowflake implementation at the time of writing, and later in the [[metabase.query-processor.util.relative-datetime/maybe-cacheable-relative-datetime-honeysql]]
-  to determine (1) format of server-side generated sql temporal string and (2) the database type it should be cast to."
+  "To be bound in `->honeysql <driver> <op>` where op is on of {:>, :>=, :<, :<=, :=, :between}`. It carries the
+  compiled LHS's full HoneySQL type-info (see [[metabase.util.honey-sql-2/type-info]]) merged with `:base-type` and
+  `:effective-type` from the MBQL field clause. Driver-specific keys (e.g. Postgres's `::target-timezone` on a
+  `convertTimezone` output) round-trip through this map."
   nil)
+
+(defn- parent-honeysql-col-type-info
+  [field field-honeysql]
+  (merge (h2x/type-info field-honeysql)
+         (parent-honeysql-col-effective-type-map field)
+         (parent-honeysql-col-base-type-map field)))
 
 (defmethod ->honeysql [:sql :between]
   [driver [_ _opts field min-val max-val]]
   (let [field-honeysql (->honeysql driver field)]
-    (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
-                                                       {:database-type database-type})
-                                                     (parent-honeysql-col-effective-type-map field)
-                                                     (parent-honeysql-col-base-type-map field))]
+    (binding [*parent-honeysql-col-type-info* (parent-honeysql-col-type-info field field-honeysql)]
       [:between field-honeysql (->honeysql driver min-val) (->honeysql driver max-val)])))
 
 (doseq [operator [:> :>= :< :<=]]
   (defmethod ->honeysql [:sql operator] ; [:> :>= :< :<=] -- For grep.
     [driver [_ _opts field value]]
     (let [field-honeysql (->honeysql driver field)]
-      (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
-                                                         {:database-type database-type})
-                                                       (parent-honeysql-col-effective-type-map field)
-                                                       (parent-honeysql-col-base-type-map field))]
+      (binding [*parent-honeysql-col-type-info* (parent-honeysql-col-type-info field field-honeysql)]
         [operator field-honeysql (->honeysql driver value)]))))
 
 (defmethod ->honeysql [:sql :=]
   [driver [_ _opts field value]]
   (assert (some? field))
   (let [field-honeysql (->honeysql driver (maybe-cast-uuid-for-equality driver field value))]
-    (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
-                                                       {:database-type database-type})
-                                                     (parent-honeysql-col-effective-type-map field)
-                                                     (parent-honeysql-col-base-type-map field))]
+    (binding [*parent-honeysql-col-type-info* (parent-honeysql-col-type-info field field-honeysql)]
       [:= field-honeysql (->honeysql driver value)])))
 
 (defn- correct-null-behaviour

@@ -7,16 +7,15 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.llm.db :as llm.db]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
-   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sync.core :as sync]
-   [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2])
+   [metabase.warehouse-schema.models.field-values :as field-values])
   (:import
    (java.io StringWriter Writer)))
 
@@ -43,17 +42,6 @@
                  (parse-long id-str)))
          set)))
 
-(defn- table-match-clause
-  "Build a WHERE clause to match a table by name and optionally schema.
-   When schema is present, matches both; otherwise matches just the table name."
-  [{:keys [schema table]}]
-  (let [table-lower (u/lower-case-en table)]
-    (if schema
-      [:and
-       [:= [:lower :name] table-lower]
-       [:= [:lower :schema] (u/lower-case-en schema)]]
-      [:= [:lower :name] table-lower])))
-
 (defn extract-tables-from-sql
   "Extract table IDs from a raw SQL string.
 
@@ -67,15 +55,10 @@
   [database-id sql-string]
   (if (and database-id (seq sql-string))
     (try
-      (let [driver (t2/select-one-fn :engine :model/Database :id database-id)
+      (let [driver (llm.db/database-engine database-id)
             tables (sql-tools/referenced-tables-raw driver sql-string)]
         (if (seq tables)
-          (let [match-clauses (mapv table-match-clause tables)
-                matched-tables (t2/select :model/Table
-                                          {:where [:and
-                                                   [:= :db_id database-id]
-                                                   [:= :active true]
-                                                   (into [:or] match-clauses)]})]
+          (let [matched-tables (llm.db/active-tables-matching database-id tables)]
             (into #{} (map :id) matched-tables))
           #{}))
       (catch Exception e
@@ -100,31 +83,18 @@
 ;;; ------------------------------------------ Permission-Filtered Fetch ------------------------------------------
 
 (defn- fetch-accessible-tables
-  "Fetch tables by ID, filtering to only those the current user can access.
+  "Fetch tables by ID, filtering to those in `database-id` that the current user can access.
    Returns a map of table-id -> table record."
-  [table-ids]
+  [database-id table-ids]
   (when (seq table-ids)
-    (let [{:keys [clause with]} (mi/visible-filter-clause
-                                 :model/Table :id
-                                 {:user-id       api/*current-user-id*
-                                  :is-superuser? api/*is-superuser?*}
-                                 {:perms/view-data      :unrestricted
-                                  :perms/create-queries :query-builder-and-native})
-          tables (t2/select :model/Table
-                            :id [:in table-ids]
-                            :active true
-                            :visibility_type nil
-                            (cond-> {:where clause}
-                              with (assoc :with with)))]
+    (let [tables (llm.db/visible-tables table-ids database-id api/*current-user-id* api/*is-superuser?*)]
       (into {} (map (juxt :id identity)) tables))))
 
 (defn get-accessible-card-ids
   "Return readable, non-archived Card IDs from `card-ids`."
   [card-ids]
   (when (seq card-ids)
-    (->> (t2/select :model/Card
-                    :id [:in card-ids]
-                    :archived false)
+    (->> (llm.db/unarchived-cards card-ids)
          (filter mi/can-read?)
          (map :id)
          set)))
@@ -144,6 +114,7 @@
            columns     (lib/visible-columns table-query -1 vis-opts)]
        (mapv (fn [col]
                {:id                  (:id col)
+                :table-id            table-id
                 :name                (:name col)
                 :database_type       (or (:database-type col)
                                          (some-> (:base-type col) name))
@@ -153,64 +124,83 @@
                 :fk_target_field_id  (:fk-target-field-id col)})
              columns)))))
 
+(defn- filter-sandbox-restricted-columns
+  "Remove columns that the current user's column-level sandbox does not expose for `table-id`."
+  [table-id columns sandbox-restricted]
+  (if-let [allowed-field-ids (get sandbox-restricted table-id)]
+    (filterv #(contains? allowed-field-ids (:id %)) columns)
+    columns))
+
+(def ^:private max-restricted-field-values-fetches
+  "Per-table cap on how many columns of a row-restricted table [[fetch-field-values]] will fetch
+   synchronously. A restricted table's FieldValues can't be served from the cheap shared cache --
+   each one is a real warehouse query -- so an unbounded table can otherwise turn one request into
+   hundreds of synchronous queries. Unrestricted columns are not capped: they're served by the existing
+   shared FieldValues cache."
+  25)
+
+(defn- cap-restricted-fields
+  "Caps each restricted table's fields at [[max-restricted-field-values-fetches]] independently, so one
+   large restricted table can't starve another restricted table's fields of any fetches at all."
+  [restricted-fields-by-table]
+  (into []
+        (mapcat (fn [[table-id fields]]
+                  (when (> (count fields) max-restricted-field-values-fetches)
+                    (log/infof "Capping restricted-table field values fetch to %d of %d columns for table %d."
+                               max-restricted-field-values-fetches (count fields) table-id))
+                  (take max-restricted-field-values-fetches fields)))
+        restricted-fields-by-table))
+
 (defn- fetch-field-values
   "Returns a map of field-id -> values vector for those `columns` that should have FieldValues.
    Values are the ones the current user is allowed to see, and are fetched from the source database when
-   nothing suitable is cached."
-  [columns]
-  (let [field-ids (->> columns
-                       (keep :id)
-                       (filter pos-int?)
-                       set)]
+   nothing suitable is cached. Fields belonging to a table in `restricted-table-ids` are capped at
+   [[max-restricted-field-values-fetches]] per table -- applied only after narrowing to fields that
+   should have FieldValues, so ineligible fields can't consume another field's budget."
+  [columns restricted-table-ids]
+  (let [field-ids (->> columns (keep :id) (filter pos-int?) set)]
     (when (seq field-ids)
-      (let [fields (t2/select :model/Field :id [:in field-ids])]
+      (let [;; Grouped by the persisted Field's own table_id, not the caller-supplied column's
+            ;; :table-id, consistent with the permission checks elsewhere in this namespace.
+            fields (filter field-values/field-should-have-field-values?
+                           (llm.db/fields field-ids))
+            {restricted true, unrestricted false} (group-by #(contains? restricted-table-ids (:table_id %)) fields)
+            capped-fields (concat unrestricted (cap-restricted-fields (group-by :table_id restricted)))]
         (into {}
               (keep (fn [field]
-                      ;; The per-user path skips this check. Without it, every column of the table would
-                      ;; cost a distinct-values query against the warehouse.
-                      (when (field-values/field-should-have-field-values? field)
-                        (when-let [fv (params.field-values/get-or-create-field-values! field)]
-                          (when-let [values (not-empty (:values fv))]
-                            [(:id field) values])))))
-              fields)))))
+                      (when-let [fv (params.field-values/get-or-create-field-values! field)]
+                        (when-let [values (not-empty (:values fv))]
+                          [(:id field) values]))))
+              capped-fields)))))
 
 (defn- fetch-fk-targets
   "Fetch table.field names for FK target fields.
-   Only includes targets whose Tables the current user can access.
+   Only includes targets in `database-id` whose Table the current user can access and whose column,
+   if sandbox-restricted, is one the current user is allowed to see.
    Returns map of target-field-id -> {:table name :field name}"
-  [columns]
+  [database-id columns]
   (let [target-ids (->> columns
                         (keep :fk_target_field_id)
                         set)]
     (when (seq target-ids)
-      (let [fields            (t2/select [:model/Field :id :name :table_id]
-                                         :id [:in target-ids])
-            table-ids         (into #{} (map :table_id) fields)
-            accessible-tables (fetch-accessible-tables table-ids)]
+      (let [fields              (llm.db/field-names-and-tables target-ids)
+            table-ids           (into #{} (map :table_id) fields)
+            accessible-tables   (fetch-accessible-tables database-id table-ids)
+            sandbox-restricted  (metabot.perms/sandbox-restricted-fields table-ids)]
         (into {}
               (keep (fn [{:keys [id name table_id]}]
-                      (when-let [table (get accessible-tables table_id)]
-                        [id {:table (:name table) :field name}])))
+                      (let [allowed-field-ids (get sandbox-restricted table_id)]
+                        (when (and (get accessible-tables table_id)
+                                   (or (nil? allowed-field-ids) (contains? allowed-field-ids id)))
+                          [id {:table (:name (get accessible-tables table_id)) :field name}]))))
               fields)))))
 
 ;;; ----------------------------------------- On-Demand Metadata Enrichment -----------------------------------------
 
-(defn- row-restricted-user?
-  "Whether impersonation limits the current user to a subset of the rows in `database-id`."
-  [database-id]
-  ;; Sandboxing isn't checked here. Saving a sandbox strips that group's native access, and a sandbox stops
-  ;; being enforced once another group grants unrestricted access to the table, so a sandboxed user normally
-  ;; can't get past the `:query-builder-and-native` check in `fetch-accessible-tables`. Granting native back
-  ;; to a sandboxed group afterwards is the gap; `perms/sandboxed-user-for-db?` closes it on master, but it
-  ;; isn't reachable from OSS code on this branch.
-  (perms/impersonation-enforced-for-db? database-id))
-
 (defn- drop-fingerprints
-  "Removes `:fingerprint` from every column of `tables`."
-  [tables]
-  (mapv (fn [table]
-          (update table :columns #(mapv (fn [col] (dissoc col :fingerprint)) %)))
-        tables))
+  "Removes `:fingerprint` from every column of `table`."
+  [table]
+  (update table :columns #(mapv (fn [col] (dissoc col :fingerprint)) %)))
 
 (defn- enrich-fingerprints-on-demand!
   "For columns missing fingerprints, trigger re-fingerprinting.
@@ -225,11 +215,11 @@
                             (filter pos-int?)
                             set)]
     (when (seq missing-fp-ids)
-      (let [fields (t2/select :model/Field :id [:in missing-fp-ids])]
+      (let [fields (llm.db/fields missing-fp-ids)]
         (doseq [field fields]
           ;; Run with admin perms to match behavior during normal sync.
           (request/as-admin (sync/refingerprint-field! field)))
-        (t2/select-pk->fn :fingerprint :model/Field :id [:in missing-fp-ids])))))
+        (llm.db/field-fingerprints missing-fp-ids)))))
 
 ;;; ------------------------------------------- Fingerprint Formatting -------------------------------------------
 
@@ -396,6 +386,39 @@
       (.append sw \newline))
     (str/trimr (str sw))))
 
+(defn- fetch-accessible-tables-with-columns
+  "Shared prelude for [[build-schema-context]] and [[get-tables-with-columns]]: fetch the tables in
+   `table-ids` the current user can access in `database-id`, and build each one's sandbox-filtered
+   column list (via the metadata provider, so numbers/joins resolve the same way for both callers).
+
+   Does not itself require read access to `database-id` -- a caller that needs a hard 403 for that
+   (like [[build-schema-context]]) must check it before calling this. [[get-tables-with-columns]]
+   deliberately doesn't: it shares this prelude only for its `:tables` behavior, and a caller that
+   only wants its `:card_ids` behavior shouldn't be denied over unrelated table access.
+
+   Returns nil when the user can't reach any of the requested tables in `database-id`; otherwise a
+   vector of `{:id :name :schema :display_name :description :columns}` maps -- possibly empty, if
+   every accessible table's columns were entirely sandboxed away."
+  [database-id table-ids]
+  (let [accessible-tables (fetch-accessible-tables database-id table-ids)]
+    (when (seq accessible-tables)
+      (lib-be/with-metadata-provider-cache
+        (let [mp (lib-be/application-database-metadata-provider database-id)
+              _ (lib.metadata/bulk-metadata mp :metadata/table (keys accessible-tables))
+              sandbox-restricted (metabot.perms/sandbox-restricted-fields (set (keys accessible-tables)))]
+          (vec (keep (fn [[table-id table]]
+                       (when-let [columns (seq (filter-sandbox-restricted-columns
+                                                table-id
+                                                (fetch-table-columns mp table-id)
+                                                sandbox-restricted))]
+                         {:id           table-id
+                          :name         (:name table)
+                          :schema       (:schema table)
+                          :display_name (:display_name table)
+                          :description  (:description table)
+                          :columns      columns}))
+                     accessible-tables)))))))
+
 ;;; ------------------------------------------------- Public API -------------------------------------------------
 
 (defn- enrich-columns-with-comments
@@ -435,6 +458,25 @@
                                          :field_name (:field fk-info)}))))
         columns))
 
+(defn- drop-or-enrich-fingerprints
+  "For each of `tables-with-columns`: drop fingerprints from a table in `restricted-table-ids`
+   (see [[build-schema-context]]'s docstring), or merge in any on-demand fingerprints computed for
+   the columns of one that isn't."
+  [tables-with-columns restricted-table-ids]
+  (let [;; On-demand enrichment: trigger fingerprinting only for columns of tables the current
+        ;; user can see every row of -- a fingerprint covers every row of the field and is
+        ;; computed under the database's default role, with no per-user variant to fall back on.
+        unrestricted-columns (mapcat :columns (remove #(contains? restricted-table-ids (:id %))
+                                                      tables-with-columns))
+        enriched-fp-map (enrich-fingerprints-on-demand! unrestricted-columns)]
+    ;; For a restricted table the only honest answer is to say nothing about ranges or
+    ;; distinct counts.
+    (mapv (fn [table]
+            (if (contains? restricted-table-ids (:id table))
+              (drop-fingerprints table)
+              (update table :columns merge-enriched-fingerprints enriched-fp-map)))
+          tables-with-columns)))
+
 (defn build-schema-context
   "Fetch table metadata for mentioned tables and format as DDL for LLM context.
 
@@ -445,8 +487,10 @@
    For fields missing fingerprints or field values, this function will
    trigger on-demand creation by querying the source database.
 
-   For a user restricted to a subset of rows by impersonation or sandboxing, sample values are fetched under
-   their own role and fingerprint statistics are omitted.
+   For a table where the user's row access is narrowed by sandboxing, connection impersonation, or
+   database routing, sample values are fetched under their own effective access and fingerprint
+   statistics are omitted for that table's columns -- this is decided per table, since sandboxing
+   varies by table even within one request.
 
    Parameters:
    - database-id: Database containing the tables
@@ -458,66 +502,34 @@
    Or nil if no accessible tables found."
   [database-id table-ids]
   (when (and database-id (seq table-ids))
-    (let [accessible-tables (fetch-accessible-tables table-ids)]
-      (when (seq accessible-tables)
-        (lib-be/with-metadata-provider-cache
-          (let [mp (lib-be/application-database-metadata-provider database-id)
-                _ (lib.metadata/bulk-metadata mp :metadata/table (keys accessible-tables))
+    (api/read-check :model/Database database-id)
+    (metabot.perms/with-cache
+      (when-let [tables-with-columns (fetch-accessible-tables-with-columns database-id table-ids)]
+        (let [restricted-table-ids (metabot.perms/row-restricted-table-ids (into #{} (map :id) tables-with-columns))
+              tables-with-enriched-fps (drop-or-enrich-fingerprints tables-with-columns restricted-table-ids)
+              all-enriched-columns (mapcat :columns tables-with-enriched-fps)
 
-                tables-with-columns
-                (keep (fn [[table-id table]]
-                        (when-let [columns (seq (fetch-table-columns mp table-id))]
-                          {:id           table-id
-                           :name         (:name table)
-                           :schema       (:schema table)
-                           :display_name (:display_name table)
-                           :description  (:description table)
-                           :columns      columns}))
-                      accessible-tables)
+              ;; Batch fetch FieldValues (on-demand) and FK targets
+              field-values-map (fetch-field-values all-enriched-columns restricted-table-ids)
+              fk-targets-map   (fetch-fk-targets database-id all-enriched-columns)
 
-                restricted? (row-restricted-user? database-id)
+              ;; Enrich columns with comments for DDL
+              enriched-tables
+              (mapv (fn [table]
+                      (update table :columns
+                              enrich-columns-with-comments
+                              field-values-map
+                              fk-targets-map))
+                    tables-with-enriched-fps)
 
-                ;; Gather all columns for batch operations
-                all-columns (mapcat :columns tables-with-columns)
-
-                ;; On-demand enrichment: trigger fingerprinting for columns missing fingerprints
-                enriched-fp-map (when-not restricted?
-                                  (enrich-fingerprints-on-demand! all-columns))
-
-                ;; A fingerprint covers every row of the field and is computed under the database's default
-                ;; role, and there is no per-user variant to fall back on. For a restricted user the only
-                ;; honest answer is to say nothing about ranges or distinct counts.
-                tables-with-enriched-fps
-                (if restricted?
-                  (drop-fingerprints tables-with-columns)
-                  (mapv (fn [table]
-                          (update table :columns merge-enriched-fingerprints enriched-fp-map))
-                        tables-with-columns))
-
-                ;; Re-gather columns after fingerprint enrichment
-                all-enriched-columns (mapcat :columns tables-with-enriched-fps)
-
-                ;; Batch fetch FieldValues (on-demand) and FK targets
-                field-values-map (fetch-field-values all-enriched-columns)
-                fk-targets-map   (fetch-fk-targets all-enriched-columns)
-
-                ;; Enrich columns with comments for DDL
-                enriched-tables
-                (mapv (fn [table]
-                        (update table :columns
-                                enrich-columns-with-comments
-                                field-values-map
-                                fk-targets-map))
-                      tables-with-enriched-fps)
-
-                ;; Format tables for API response (without :comment, with :fk_target)
-                response-tables
-                (mapv (fn [table]
-                        (update table :columns format-columns-for-response fk-targets-map))
-                      tables-with-enriched-fps)]
-            (when (seq enriched-tables)
-              {:ddl    (format-schema-ddl enriched-tables)
-               :tables response-tables})))))))
+              ;; Format tables for API response (without :comment, with :fk_target)
+              response-tables
+              (mapv (fn [table]
+                      (update table :columns format-columns-for-response fk-targets-map))
+                    tables-with-enriched-fps)]
+          (when (seq enriched-tables)
+            {:ddl    (format-schema-ddl enriched-tables)
+             :tables response-tables}))))))
 
 (defn get-tables-with-columns
   "Fetch tables with their columns for the extract-sources endpoint.
@@ -531,36 +543,10 @@
    :description, and :columns (with FK targets resolved), or nil."
   [database-id table-ids]
   (when (and database-id (seq table-ids))
-    (let [accessible-tables (fetch-accessible-tables table-ids)]
-      (when (seq accessible-tables)
-        (lib-be/with-metadata-provider-cache
-          (let [mp (lib-be/application-database-metadata-provider database-id)
-                _ (lib.metadata/bulk-metadata mp :metadata/table (keys accessible-tables))
-
-                tables-with-columns
-                (keep (fn [[table-id table]]
-                        (when-let [columns (seq (fetch-table-columns mp table-id))]
-                          {:id           table-id
-                           :name         (:name table)
-                           :schema       (:schema table)
-                           :display_name (:display_name table)
-                           :description  (:description table)
-                           :columns      columns}))
-                      accessible-tables)
-
-                all-columns    (mapcat :columns tables-with-columns)
-                fk-targets-map (fetch-fk-targets all-columns)]
-            (mapv (fn [table]
-                    (update table :columns
-                            (fn [cols]
-                              (mapv (fn [col]
-                                      (let [fk-info (get fk-targets-map (:fk_target_field_id col))]
-                                        (cond-> {:id            (:id col)
-                                                 :name          (:name col)
-                                                 :database_type (:database_type col)
-                                                 :description   (:description col)
-                                                 :semantic_type (some-> (:semantic_type col) name)}
-                                          fk-info (assoc :fk_target {:table_name (:table fk-info)
-                                                                     :field_name (:field fk-info)}))))
-                                    cols))))
-                  tables-with-columns)))))))
+    (metabot.perms/with-cache
+      (when-let [tables-with-columns (fetch-accessible-tables-with-columns database-id table-ids)]
+        (let [all-columns    (mapcat :columns tables-with-columns)
+              fk-targets-map (fetch-fk-targets database-id all-columns)]
+          (mapv (fn [table]
+                  (update table :columns format-columns-for-response fk-targets-map))
+                tables-with-columns))))))

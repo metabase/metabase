@@ -39,9 +39,9 @@ export function MeasureList({ table }: MeasureListProps) {
   });
 
   return (
-    <Stack gap="md" data-testid="table-measures-page">
+    <Stack gap="lg" data-testid="table-measures-page">
       {canWriteMeasures && (
-        <Group gap="md" justify="flex-start" wrap="nowrap">
+        <Group gap="lg" justify="flex-start" wrap="nowrap">
           <Button
             component={ForwardRefLink}
             h={32}
@@ -49,7 +49,7 @@ export function MeasureList({ table }: MeasureListProps) {
             onAuxClick={onNewMeasureClick}
             onClickCapture={onNewMeasureClick}
             px="sm"
-            py="xs"
+            py="xxs"
             size="xs"
             to={newMeasureUrl}
           >

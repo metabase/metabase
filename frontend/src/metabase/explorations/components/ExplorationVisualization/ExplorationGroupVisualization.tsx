@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef, Dispatch, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { shallowEqual } from "react-redux";
 import { t } from "ttag";
@@ -18,21 +18,13 @@ import {
   type IconProps,
   Stack,
   Text,
-  UnstyledButton,
 } from "metabase/ui";
 import { is403Error } from "metabase/utils/errors";
-import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type { ClickActionsMode, OnBrush } from "metabase/visualizations/types";
+import { type HighlightedObject, isCartesianChart } from "metabase/viz-core";
 import type {
-  ClickActionsMode,
-  HighlightedObject,
-  OnBrush,
-} from "metabase/visualizations/types";
-import type {
-  Comment,
-  ExplorationBlockNodeType,
   ExplorationId,
   ExplorationPageNode,
   ExplorationQuery,
@@ -46,6 +38,7 @@ import type {
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { useExplorationClickActionsMode } from "../../hooks/useExplorationClickActionsMode";
+import { getHighlightedForChildTarget } from "../../selectors";
 import type { CommentDrafts } from "../../types";
 
 import { ActionToolbar } from "./ActionToolbar";
@@ -57,15 +50,14 @@ import { TimelineEventsSidebar } from "./TimelineEventsSidebar";
 import {
   type LegendItem,
   buildSeriesGroup,
-  getCommentLabel,
-  getHighlightedWithShouldShowTooltip,
+  composeChartsForGroup,
+  resolveHighlightForSeries,
 } from "./utils";
 
 interface ExplorationGroupVisualizationProps {
   explorationId: ExplorationId;
   page: ExplorationPageNode;
   queries: ExplorationQuery[];
-  blockType: ExplorationBlockNodeType;
   exploreFilters?: HydratedExplorationExploreFilter[] | null;
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
@@ -76,6 +68,8 @@ interface ExplorationGroupVisualizationProps {
   isCommentsSidebarOpen: boolean;
   wasCommentsSidebarOpen: boolean;
   onCloseCommentsSidebar: () => void;
+  canAddToSummary?: boolean;
+  setSelectedSummary: (options?: { scrollIntoView?: boolean }) => void;
   onPreviousPage?: () => void;
   onNextPage?: () => void;
 }
@@ -90,15 +84,8 @@ export function ExplorationGroupVisualization(
   const groupName = props.page.long_name ?? props.page.name ?? "";
 
   return (
-    <Stack flex={1} h="100%" pb="3rem" pr="1rem" align="center">
-      <Box
-        flex={1}
-        w="100%"
-        bg="background-primary"
-        bd="1px solid border"
-        bdrs="md"
-        h="100%"
-      >
+    <Box flex={1} h="100%" pb="3rem" pr="1rem">
+      <Box bg="background-primary" bd="1px solid border" bdrs="sm" h="100%">
         <ErrorBoundary
           errorComponent={() => (
             <Message
@@ -111,7 +98,7 @@ export function ExplorationGroupVisualization(
           <ExplorationGroupVisualizationBody groupName={groupName} {...props} />
         </ErrorBoundary>
       </Box>
-    </Stack>
+    </Box>
   );
 }
 
@@ -161,7 +148,6 @@ function ExplorationGroupVisualizationChart({
   explorationId,
   page,
   queries,
-  blockType,
   exploreFilters,
   availableTimelines,
   selectedTimelineId,
@@ -173,21 +159,30 @@ function ExplorationGroupVisualizationChart({
   isCommentsSidebarOpen,
   wasCommentsSidebarOpen,
   onCloseCommentsSidebar,
+  canAddToSummary = false,
+  setSelectedSummary,
   onPreviousPage,
   onNextPage,
 }: ExplorationGroupVisualizationWithGroupNameProps) {
   const dispatch = useDispatch();
 
+  const queryIds = useMemo(() => queries.map((q) => q.id), [queries]);
+  const queriesById = useMemo(
+    () => Object.fromEntries(queries.map((query) => [query.id, query])),
+    [queries],
+  );
+
   const clickActionsMode = useExplorationClickActionsMode({
     explorationId,
     pageId: page.id,
-    blockType,
     queryType: queries[0].query_type,
     commentDrafts,
     setCommentDrafts,
+    seriesQueryIds: queryIds,
+    queriesById,
   });
 
-  const queryIds = useMemo(() => queries.map((q) => q.id), [queries]);
+  const pageChildTargetId = String(page.id);
 
   useEffect(() => {
     const subscriptions = queryIds.map((id) =>
@@ -235,6 +230,13 @@ function ExplorationGroupVisualizationChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queries, ...datasets]);
 
+  const chartsForSummary = useMemo(() => {
+    if (!seriesGroup) {
+      return [];
+    }
+    return composeChartsForGroup(seriesGroup);
+  }, [seriesGroup]);
+
   const showTimelineDropdown = useMemo(() => {
     return (
       seriesGroup?.isTimeseries &&
@@ -244,16 +246,18 @@ function ExplorationGroupVisualizationChart({
     );
   }, [seriesGroup, availableTimelines]);
 
-  const computedSettings = useMemo(
-    () =>
-      seriesGroup
-        ? getComputedSettingsForSeries(seriesGroup.series)
-        : undefined,
-    [seriesGroup],
+  const highlightedCommentState = useSelector((state) =>
+    getHighlightedForChildTarget(state, pageChildTargetId),
   );
-
-  const [highlighted, setHighlighted] = useState<HighlightedObject | null>(
-    null,
+  const highlighted = useMemo(
+    () =>
+      resolveHighlightForSeries(
+        highlightedCommentState,
+        seriesGroup?.series ?? [],
+        seriesGroup?.queryIds ?? [],
+        queriesById,
+      ),
+    [highlightedCommentState, seriesGroup, queriesById],
   );
 
   const [seeAllEvents, setSeeAllEvents] = useState<TimelineEvent[]>([]);
@@ -278,79 +282,6 @@ function ExplorationGroupVisualizationChart({
       onCloseCommentsSidebar();
     },
     [onCloseCommentsSidebar],
-  );
-
-  const renderCommentTags = useCallback(
-    (comment: Comment) => {
-      const context = comment.context;
-
-      const commentHighlight = getHighlightedWithShouldShowTooltip(
-        // comment context is an untyped JSON blob; `highlighted` is written by
-        // us as a HighlightedObject when the comment captures a chart point
-        context?.highlighted as HighlightedObject | undefined,
-        seriesGroup,
-      );
-      const commentLabel = getCommentLabel(
-        commentHighlight,
-        seriesGroup,
-        computedSettings,
-      );
-
-      const timelineId =
-        typeof context?.timeline_id === "number"
-          ? context.timeline_id
-          : undefined;
-      const timeline =
-        timelineId != null
-          ? availableTimelines.find((t) => t.id === timelineId)
-          : undefined;
-
-      if (!commentLabel && !timeline) {
-        return null;
-      }
-
-      return (
-        <Group gap="xs" wrap="wrap">
-          <Icon
-            name="corner_up_right"
-            size={12}
-            c="text-secondary"
-            className={S.commentTagArrow}
-            aria-hidden
-          />
-          {commentLabel && (
-            <CommentBadge
-              label={commentLabel}
-              buttonProps={{
-                onMouseEnter: () => {
-                  if (commentHighlight) {
-                    setHighlighted(commentHighlight);
-                  }
-                },
-                onMouseLeave: () => setHighlighted(null),
-              }}
-            />
-          )}
-          {timeline && (
-            <CommentBadge
-              label={timeline.name}
-              buttonProps={{
-                onClick: () => {
-                  onSelectTimelineId(timelineId ?? null);
-                },
-              }}
-            />
-          )}
-        </Group>
-      );
-    },
-    [
-      availableTimelines,
-      computedSettings,
-      onSelectTimelineId,
-      setHighlighted,
-      seriesGroup,
-    ],
   );
 
   if (!seriesGroup) {
@@ -389,7 +320,7 @@ function ExplorationGroupVisualizationChart({
 
   return (
     <Group flex={1} gap={0} h="100%">
-      <Stack flex={1} p="lg" className={S.chartGridContainer} h="100%">
+      <Stack flex={1} p="xl" className={S.chartGridContainer} h="100%">
         <ExplorationVisualizationHeader
           name={groupName}
           exploreFilters={exploreFilters}
@@ -430,6 +361,9 @@ function ExplorationGroupVisualizationChart({
         <ActionToolbar
           explorationId={explorationId}
           page={page}
+          charts={chartsForSummary}
+          canAddToSummary={canAddToSummary}
+          setSelectedSummary={setSelectedSummary}
           commentDrafts={commentDrafts}
           setCommentDrafts={setCommentDrafts}
           showTimelineDropdown={showTimelineDropdown ?? false}
@@ -454,12 +388,14 @@ function ExplorationGroupVisualizationChart({
             // so we only allow autofocus if the sidebar is truly opening, not just remounting
             disableAutoFocus={wasCommentsSidebarOpen}
             explorationId={explorationId}
-            pageId={String(page.id)}
+            pageId={pageChildTargetId}
+            view="page"
             onClose={onCloseCommentsSidebar}
             context={{
-              timeline_id: selectedTimelineId,
+              timeline_id: selectedTimelineId ?? undefined,
             }}
-            renderCommentTags={renderCommentTags}
+            timelines={availableTimelines}
+            onSelectTimelineId={onSelectTimelineId}
           />
         </Box>
       )}
@@ -545,14 +481,14 @@ function ExplorationMap({
   highlighted,
 }: ExplorationMapProps) {
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       {legendItems.length > 1 && (
         <Group gap="0.75rem" wrap="nowrap" role="list" aria-label={t`Legend`}>
           {legendItems.map(({ name, color }, i) => {
             return (
               <Group
                 key={i}
-                gap="xs"
+                gap="xxs"
                 align="center"
                 wrap="nowrap"
                 role="listitem"
@@ -644,7 +580,7 @@ interface MessageProps {
 
 function Message({ groupName, message, iconProps }: MessageProps) {
   return (
-    <Stack p="lg" h="100%">
+    <Stack p="xl" h="100%">
       <ExplorationVisualizationHeader name={groupName} />
       <Stack
         align="center"
@@ -659,26 +595,5 @@ function Message({ groupName, message, iconProps }: MessageProps) {
         <Text fw="bold">{message}</Text>
       </Stack>
     </Stack>
-  );
-}
-
-interface CommentBadgeProps {
-  label: string;
-  buttonProps?: ComponentPropsWithoutRef<typeof UnstyledButton>;
-}
-
-function CommentBadge({ label, buttonProps }: CommentBadgeProps) {
-  return (
-    <UnstyledButton
-      bdrs="md"
-      py="xs"
-      px="sm"
-      fz="sm"
-      c="text-primary"
-      className={S.commentBadge}
-      {...buttonProps}
-    >
-      {label}
-    </UnstyledButton>
   );
 }

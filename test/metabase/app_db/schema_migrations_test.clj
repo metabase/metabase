@@ -1598,8 +1598,8 @@
                   :first_name       "Metabase"
                   :last_name        "Internal"
                   :email            "internal@metabase.com"
-                  :password         some?
-                  :password_salt    some?
+                  :password         nil
+                  :password_salt    nil
                   :is_active        false
                   :is_superuser     false
                   :login_attributes nil
@@ -2022,6 +2022,7 @@
                  (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
                                    :db_id db-id :table_id table-id-2 :group_id group-id :perm_type "perms/create-queries"))))))))
 
+;; every scenario reuses one expensive test-migrations rollback window; splitting re-runs it per case
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:mb/old-migrations-test split-data-permissions-legacy-no-self-service-migration-test
   (testing "view-data is set to `legacy-no-self-service` for groups that meet specific conditions"
@@ -2558,88 +2559,88 @@
 (deftest ^:mb/old-migrations-test populate-enabled-embedding-settings-works
   (testing "Check that embedding settings are nil when enable-embedding is nil"
     (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
-      (t2/delete! :model/Setting :key "enable-embedding")
+      (t2/delete! :setting :key "enable-embedding")
       (migrate!)
-      (is (= nil (t2/select-one :model/Setting :key "enable-embedding-interactive")))
-      (is (= nil (t2/select-one :model/Setting :key "enable-embedding-static")))
-      (is (= nil (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk")))))
+      (is (= nil (t2/select-one :setting :key "enable-embedding-interactive")))
+      (is (= nil (t2/select-one :setting :key "enable-embedding-static")))
+      (is (= nil (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "enable-embedding-sdk"))))))
   (testing "Check that embedding settings are true when enable-embedding is true"
     (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
-      (t2/delete! :model/Setting :key "enable-embedding")
-      (t2/insert! :model/Setting {:key "enable-embedding" :value "true"})
+      (t2/delete! :setting :key "enable-embedding")
+      (t2/insert! :setting {:key "enable-embedding" :value (encryption/maybe-encrypt "true")})
       (migrate!)
-      (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive")))
-      (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
-      (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk")))))
+      (is (= "true" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "enable-embedding-interactive"))))
+      (is (= "true" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "enable-embedding-static"))))
+      (is (= "true" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "enable-embedding-sdk"))))))
   (testing "Check that embedding settings are false when enable-embedding is false"
     (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
-      (t2/delete! :model/Setting :key "enable-embedding")
-      (t2/insert! :model/Setting {:key "enable-embedding" :value "false"})
+      (t2/delete! :setting :key "enable-embedding")
+      (t2/insert! :setting {:key "enable-embedding" :value (encryption/maybe-encrypt "false")})
       (migrate!)
-      (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive")))
-      (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
-      (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk"))))))
+      (is (= "false" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "enable-embedding-interactive"))))
+      (is (= "false" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "enable-embedding-static"))))
+      (is (= "false" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "enable-embedding-sdk")))))))
 
 (deftest ^:mb/old-migrations-test populate-enabled-embedding-settings-encrypted-works
   (testing "With encryption turned on > "
     (mt/with-temp-env-var-value! [MB_ENCRYPTION_SECRET_KEY "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"]
       (testing "Check that embedding settings are nil when enable-embedding is nil"
         (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
-          (t2/delete! :model/Setting :key "enable-embedding")
+          (t2/delete! :setting :key "enable-embedding")
           (migrate!)
-          (is (= nil (t2/select-one :model/Setting :key "enable-embedding-interactive")))
-          (is (= nil (t2/select-one :model/Setting :key "enable-embedding-static")))
-          (is (= nil (t2/select-one :model/Setting :key "enable-embedding-sdk")))))
+          (is (= nil (t2/select-one :setting :key "enable-embedding-interactive")))
+          (is (= nil (t2/select-one :setting :key "enable-embedding-static")))
+          (is (= nil (t2/select-one :setting :key "enable-embedding-sdk")))))
       (testing "Check that embedding settings are true when enable-embedding is true"
         (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
-          (t2/delete! :model/Setting :key "enable-embedding")
-          (t2/insert! :model/Setting {:key "enable-embedding" :value "true"})
+          (t2/delete! :setting :key "enable-embedding")
+          (t2/insert! :setting {:key "enable-embedding" :value (encryption/maybe-encrypt "true")})
           (migrate!)
-          (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive")))
-          (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
-          (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk")))))
+          (is (= "true" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "enable-embedding-interactive"))))
+          (is (= "true" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "enable-embedding-static"))))
+          (is (= "true" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "enable-embedding-sdk"))))))
       (testing "Check that embedding settings are false when enable-embedding is false"
         (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
-          (t2/delete! :model/Setting :key "enable-embedding")
-          (t2/insert! :model/Setting {:key "enable-embedding" :value "false"})
+          (t2/delete! :setting :key "enable-embedding")
+          (t2/insert! :setting {:key "enable-embedding" :value (encryption/maybe-encrypt "false")})
           (migrate!)
-          (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive")))
-          (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
-          (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk"))))))))
+          (is (= "false" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "enable-embedding-interactive"))))
+          (is (= "false" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "enable-embedding-static"))))
+          (is (= "false" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "enable-embedding-sdk")))))))))
 
 (deftest ^:mb/old-migrations-test populate-embedding-origin-settings-works
   (testing "Check that embedding-origins are unset when embedding-app-origin is unset"
     (impl/test-migrations "v51.2024-09-26T03:04:00" [migrate!]
-      (t2/delete! :model/Setting :key "embedding-app-origin")
+      (t2/delete! :setting :key "embedding-app-origin")
       (migrate!)
-      (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-interactive")))
-      (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-sdk"))))))
+      (is (= nil (t2/select-one :setting :key "embedding-app-origins-interactive")))
+      (is (= nil (t2/select-one :setting :key "embedding-app-origins-sdk"))))))
 
 (deftest ^:mb/old-migrations-test populate-embedding-origin-settings-works-2
   (testing "Check that embedding-origins settings are propigated when embedding-app-origin is set to some value"
     (impl/test-migrations "v51.2024-09-26T03:04:00" [migrate!]
-      (t2/delete! :model/Setting :key "embedding-app-origin")
-      (t2/insert! :model/Setting {:key "embedding-app-origin" :value "1.2.3.4:5555"})
-      (is (= "1.2.3.4:5555" (t2/select-one-fn :value :model/Setting :key "embedding-app-origin")))
+      (t2/delete! :setting :key "embedding-app-origin")
+      (t2/insert! :setting {:key "embedding-app-origin" :value (encryption/maybe-encrypt "1.2.3.4:5555")})
+      (is (= "1.2.3.4:5555" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "embedding-app-origin"))))
       (migrate!)
-      (is (= "1.2.3.4:5555" (t2/select-one-fn :value :model/Setting :key "embedding-app-origins-interactive"))))))
+      (is (= "1.2.3.4:5555" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "embedding-app-origins-interactive")))))))
 
 (deftest ^:mb/old-migrations-test populate-embedding-origin-settings-encrypted-works
   (testing "With encryption turned on > "
     (mt/with-temp-env-var-value! [MB_ENCRYPTION_SECRET_KEY "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"]
       (testing "Check that embedding-origins are unset when embedding-app-origin is unset"
         (impl/test-migrations "v51.2024-09-26T03:04:00" [migrate!]
-          (t2/delete! :model/Setting :key "embedding-app-origin")
+          (t2/delete! :setting :key "embedding-app-origin")
           (migrate!)
-          (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-interactive")))
-          (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-sdk")))))
+          (is (= nil (t2/select-one :setting :key "embedding-app-origins-interactive")))
+          (is (= nil (t2/select-one :setting :key "embedding-app-origins-sdk")))))
       (testing "Check that embedding-origins settings are propigated when embedding-app-origin is set to some value"
         (impl/test-migrations "v51.2024-09-26T03:04:00" [migrate!]
-          (t2/delete! :model/Setting :key "embedding-app-origin")
-          (t2/insert! :model/Setting {:key "embedding-app-origin" :value "1.2.3.4:5555"})
-          (is (= "1.2.3.4:5555" (t2/select-one-fn :value :model/Setting :key "embedding-app-origin")))
+          (t2/delete! :setting :key "embedding-app-origin")
+          (t2/insert! :setting {:key "embedding-app-origin" :value (encryption/maybe-encrypt "1.2.3.4:5555")})
+          (is (= "1.2.3.4:5555" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "embedding-app-origin"))))
           (migrate!)
-          (is (= "1.2.3.4:5555" (t2/select-one-fn :value :model/Setting :key "embedding-app-origins-interactive"))))))))
+          (is (= "1.2.3.4:5555" (encryption/maybe-decrypt-accepting-plaintext (t2/select-one-fn :value :setting :key "embedding-app-origins-interactive")))))))))
 
 ;;;
 ;;; 53+ tests should go below this line please <3
@@ -2843,6 +2844,22 @@
         (testing "the unique constraint rejects a new DB-level duplicate"
           (is (thrown? Exception
                        (perm! {:perm_type "perms/view-data" :perm_value "blocked"}))))))))
+
+(deftest delete-plaintext-encryption-check-marker-test
+  (testing "v58.2026-09-03T00:00:03: the plaintext \"unencrypted\" encryption-check marker is deleted"
+    (impl/test-migrations "v58.2026-09-03T00:00:03" [migrate!]
+      (t2/query {:delete-from :setting :where [:= :key "encryption-check"]})
+      (t2/query {:insert-into :setting :values [{:key "encryption-check" :value "unencrypted"}]})
+      (migrate!)
+      (is (nil? (t2/select-one :setting :key "encryption-check")))))
+  (testing "an encrypted sentinel is left alone"
+    (encryption-test/with-secret-key "encryption-check-marker-key-1234"
+      (impl/test-migrations "v58.2026-09-03T00:00:03" [migrate!]
+        (let [sentinel (encryption/encrypt (str (random-uuid)))]
+          (t2/query {:delete-from :setting :where [:= :key "encryption-check"]})
+          (t2/query {:insert-into :setting :values [{:key "encryption-check" :value sentinel}]})
+          (migrate!)
+          (is (= sentinel (t2/select-one-fn :value :setting :key "encryption-check"))))))))
 
 (deftest dependency-status-segment-handles-missing-column-migration-test
   (testing "The whole 20260402_dependency_status changeset run survives a missing
@@ -3312,3 +3329,36 @@
             "conversations without a blob are untouched")
         (is (thrown? Exception (t2/query "SELECT state FROM metabot_conversation"))
             "metabot_conversation.state is gone")))))
+
+(deftest add-field-data-sensitivity-test
+  (testing "v64.2026-09-01: data_sensitivity is added to metabase_field and metabase_field_user_settings as nullable columns"
+    (impl/test-migrations ["v64.2026-09-01T00:00:00" "v64.2026-09-01T00:00:01"] [migrate!]
+      (let [db-id    (t2/insert-returning-pk! :metabase_database {:name       "Sensitivity Test DB"
+                                                                  :engine     "h2"
+                                                                  :created_at :%now
+                                                                  :updated_at :%now
+                                                                  :details    "{}"})
+            table-id (t2/insert-returning-pk! :metabase_table {:active     true
+                                                               :db_id      db-id
+                                                               :name       "a table"
+                                                               :created_at :%now
+                                                               :updated_at :%now})
+            field-id (t2/insert-returning-pk! :metabase_field {:table_id      table-id
+                                                               :name          "email"
+                                                               :active        true
+                                                               :base_type     "type/Text"
+                                                               :database_type "TEXT"
+                                                               :created_at    :%now
+                                                               :updated_at    :%now})]
+        (migrate!)
+        (testing "an existing field reads NULL"
+          (is (nil? (t2/select-one-fn :data_sensitivity :metabase_field :id field-id))))
+        (testing "a value writes and reads back on metabase_field"
+          (t2/update! :metabase_field field-id {:data_sensitivity "PII"})
+          (is (= "PII" (t2/select-one-fn :data_sensitivity :metabase_field :id field-id))))
+        (testing "a value writes and reads back on the user-settings mirror"
+          (t2/insert! :metabase_field_user_settings {:field_id field-id :data_sensitivity "SYS_TELEMETRY"})
+          (is (= "SYS_TELEMETRY" (t2/select-one-fn :data_sensitivity :metabase_field_user_settings :field_id field-id))))
+        (testing "the mirror column is nullable"
+          (t2/update! :metabase_field_user_settings :field_id field-id {:data_sensitivity nil})
+          (is (nil? (t2/select-one-fn :data_sensitivity :metabase_field_user_settings :field_id field-id))))))))

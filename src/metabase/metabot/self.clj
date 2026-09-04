@@ -19,11 +19,13 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.google :as google]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
@@ -40,11 +42,13 @@
     "anthropic"  claude/claude
     "azure"      azure/azure
     "bedrock"    bedrock/bedrock
+    "deepseek"   deepseek/deepseek
     "google"     google/google
     "mistral"    mistral/mistral
     "moonshot"   moonshot/moonshot
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
+    "vllm"       vllm/vllm
     "zai"        zai/zai
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
@@ -55,14 +59,53 @@
     "anthropic"  claude/list-models
     "azure"      azure/list-models
     "bedrock"    bedrock/list-models
+    "deepseek"   deepseek/list-models
     "google"     google/list-models
     "mistral"    mistral/list-models
     "moonshot"   moonshot/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
+    "vllm"       vllm/list-models
     "zai"        zai/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
+
+(defn- normalize-known-model
+  "Coerce one adapter's `supported-models` value into `{:display-name ... :context-window ...}`. Most adapters store a
+  map already; DeepSeek stores the display name on its own. Anything else throws, so an adapter that invents a third
+  shape fails loudly instead of quietly documenting a model with no name."
+  [provider model-id value]
+  (cond
+    (map? value)    value
+    (string? value) {:display-name value}
+    :else           (throw (ex-info (str "Unrecognized supported-models entry for " provider)
+                                    {:provider provider :model model-id :value value}))))
+
+(defn known-models
+  "The models `provider`'s adapter is willing to offer, as `{model-id {:display-name ... :context-window ...}}`.
+
+  This is the allow-list [[list-models]] intersects with the provider's live catalog, so a model listed here is
+  available only if the connection's credentials can actually reach it. Returns nil for the provider types that have
+  no allow-list: `azure`, whose model is the deployment name the admin gives it, `vllm`, which serves whatever the
+  operator loaded, and `google` and `metabase`, whose catalogs are fixed in [[metabase.llm.provider]] instead."
+  [provider]
+  ;; a `case` like [[resolve-adapter]], so a new adapter that forgets to register here throws rather than reading as
+  ;; a provider that simply has no models
+  (when-let [models (case provider
+                      "anthropic"  claude/supported-models
+                      "bedrock"    bedrock/supported-models
+                      "deepseek"   deepseek/supported-models
+                      "mistral"    mistral/supported-models
+                      "moonshot"   moonshot/supported-models
+                      "openai"     openai/supported-models
+                      "openrouter" openrouter/supported-models
+                      "zai"        zai/supported-models
+                      ("azure" "google" "metabase" "vllm") nil
+                      (throw (ex-info (str "Unknown LLM provider: " provider)
+                                      {:provider provider})))]
+    (into {}
+          (map (fn [[model-id value]] [model-id (normalize-known-model provider model-id value)]))
+          models)))
 
 (defn- parse-provider-model
   "Resolve a `connection-key/model` string into the adapter, model, and credentials needed to serve it.
@@ -81,6 +124,35 @@
      :model       model
      :credentials credentials
      :ai-proxy?   ai-proxy?}))
+
+(defn- resolve-context-window-fn [provider]
+  ;; a `case` inside of function instead of a map so that with-redefs work well
+  (case provider
+    "anthropic"  claude/context-window-tokens
+    "azure"      azure/context-window-tokens
+    "bedrock"    bedrock/context-window-tokens
+    "google"     google/context-window-tokens
+    "mistral"    mistral/context-window-tokens
+    "moonshot"   moonshot/context-window-tokens
+    "openai"     openai/context-window-tokens
+    "openrouter" openrouter/context-window-tokens
+    "zai"        zai/context-window-tokens
+    nil))
+
+(defn context-window-tokens
+  "Input context window (tokens) for a `connection-key/model` string, or nil when the
+  connection, provider, or model isn't one we know.
+
+  This is the ceiling a conversation's context (`contextTokens`, the last call's
+  prompt + completion) cannot grow past: the max *input* tokens for providers that
+  publish split input/output limits (OpenAI's 1,050,000 window is 922,000 input +
+  128,000 output), and the shared context window for providers whose output counts
+  against the window itself (Anthropic et al.)."
+  [model-ref]
+  (let [{:keys [type model]} (llm.provider/resolve-model-ref model-ref)
+        window-fn            (resolve-context-window-fn type)]
+    (when (and window-fn model)
+      (window-fn model))))
 
 (defn list-models
   "List available models for a provider using its configured credentials, or `:credentials` in `opts`.
@@ -141,14 +213,21 @@
   error: `rethrow-api-error!` rethrows e.g. a `Read timed out` as an
   `ExceptionInfo` (with `:error-code :provider-request-failed` and no `:status`)
   whose *cause* is the original `SocketTimeoutException`. Inspecting only the
-  top-level exception would miss it and we'd never retry a transient timeout."
+  top-level exception would miss it and we'd never retry a transient timeout.
+
+  An adapter opts a specific failure out of that default by tagging its ex-data
+  `:retryable? false` (top-level only), which wins over both checks. Note that
+  omitting `:status` does not — the cause walk still matches."
   [^Exception e]
-  (boolean
-   (or (retryable-status? (:status (ex-data e)))
-       ;; Connection errors (e.g. under load, connection refused/reset), possibly
-       ;; wrapped one or more levels deep by a provider adapter. Bounded to 10
-       ;; levels to guard against a cyclic getCause chain.
-       (some connection-error? (take 10 (take-while some? (iterate #(some-> ^Throwable % .getCause) e)))))))
+  (let [data (ex-data e)]
+    (if (false? (:retryable? data))
+      false
+      (boolean
+       (or (retryable-status? (:status data))
+           ;; Connection errors (e.g. under load, connection refused/reset), possibly
+           ;; wrapped one or more levels deep by a provider adapter. Bounded to 10
+           ;; levels to guard against a cyclic getCause chain.
+           (some connection-error? (take 10 (take-while some? (iterate #(some-> ^Throwable % .getCause) e)))))))))
 
 (defn- parse-retry-after-header
   "Extract retry-after seconds from response headers in ex-data, if present and ≤ 60s.
@@ -426,7 +505,8 @@
                                   :tool-choice tool-choice :ai-proxy? ai-proxy?})
          (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
                streaming-opts (cond-> {:model       model :input parts :tools (vals tools)
-                                       :credentials credentials :ai-proxy? ai-proxy?}
+                                       :credentials credentials :ai-proxy? ai-proxy?
+                                       :fast?       (metabot.settings/llm-fast-mode)}
                                 system-msg                  (assoc :system system-msg)
                                 (and (seq tools)
                                      tool-choice)           (assoc :tool_choice tool-choice)

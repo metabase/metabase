@@ -8,6 +8,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import {
   AccordionList,
   type Section as BaseSection,
@@ -32,8 +33,6 @@ import {
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -105,7 +104,10 @@ export function AggregationPicker({
   readOnly,
 }: AggregationPickerProps) {
   const tc = useTranslateContent();
-  const metadata = useSelector(getMetadata);
+  const databaseId = Lib.databaseID(query);
+  const { data: database } = useGetDatabaseQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
   const displayInfo = clause
     ? Lib.displayInfo(query, stageIndex, clause)
     : undefined;
@@ -172,8 +174,6 @@ export function AggregationPicker({
     const sections: Section[] = [];
 
     const measures = Lib.availableMeasures(query, stageIndex);
-    const databaseId = Lib.databaseID(query);
-    const database = metadata.database(databaseId);
     const supportsCustomExpressions =
       database != null && hasFeature(database, "expression-aggregations");
 
@@ -234,7 +234,7 @@ export function AggregationPicker({
 
     return sections;
   }, [
-    metadata,
+    database,
     query,
     stageIndex,
     clauseIndex,
@@ -389,7 +389,7 @@ export function AggregationPicker({
           <Popover
             position="right"
             content={
-              <Box p="md">
+              <Box p="lg">
                 <Markdown disallowHeading unstyleLinks>
                   {tc(item.description)}
                 </Markdown>

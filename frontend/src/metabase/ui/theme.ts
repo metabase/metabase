@@ -24,17 +24,24 @@ import {
   dateInputOverrides,
   datePickerOverrides,
   dateTimePickerOverrides,
+  dialogOverrides,
   dividerOverrides,
+  drawerOverrides,
   fileInputOverrides,
+  gridOverrides,
+  groupOverrides,
   hoverCardOverrides,
   inputOverrides,
   kbdOverrides,
   listOverrides,
+  loaderOverrides,
   menuOverrides,
   modalOverrides,
   monthPickerOverrides,
   multiSelectOverrides,
+  nativeSelectOverrides,
   navLinkOverrides,
+  notificationOverrides,
   numberInputOverrides,
   overlayOverrides,
   paperOverrides,
@@ -45,11 +52,14 @@ import {
   portalOverrides,
   progressOverrides,
   radioOverrides,
+  ringProgressOverrides,
   scrollAreaOverrides,
   segmentedControlOverrides,
   selectOverrides,
+  simpleGridOverrides,
   skeletonOverrides,
   sliderOverrides,
+  stackOverrides,
   switchOverrides,
   tabsOverrides,
   textInputOverrides,
@@ -61,6 +71,61 @@ import {
   tooltipOverrides,
 } from "./components";
 import { getMantineThemeColors } from "./utils/colors";
+
+// Elevation tokens from the design system.
+/* eslint-disable metabase/no-color-literals */
+const LIGHT_SHADOWS = {
+  xs: "0 1px 3px 0 rgba(0, 0, 0, 0.07)",
+  xs_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 3px 0 rgba(0, 0, 0, 0.07)",
+  sm: "0 1px 4px 0 rgba(0, 0, 0, 0.05), 0 5px 15px 0 rgba(0, 0, 0, 0.10)",
+  sm_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 4px 0 rgba(0, 0, 0, 0.05), 0 5px 15px 0 rgba(0, 0, 0, 0.10)",
+  lg_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 5px 15px 0 rgba(0, 0, 0, 0.15), 0 30px 60px 0 rgba(0, 0, 0, 0.20)",
+};
+
+const DARK_SHADOWS = {
+  xs: "0 1px 3px 0 rgba(0, 0, 0, 0.20)",
+  xs_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.20)",
+  sm: "0 1px 4px 0 rgba(0, 0, 0, 0.07), 0 5px 15px 0 rgba(0, 0, 0, 0.20)",
+  sm_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.15), 0 1px 4px 0 rgba(0, 0, 0, 0.07), 0 5px 15px 0 rgba(0, 0, 0, 0.20)",
+  lg_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.15), 0 5px 15px 0 rgba(0, 0, 0, 0.20), 0 30px 60px 0 rgba(0, 0, 0, 0.40)",
+};
+/* eslint-enable metabase/no-color-literals */
+
+export type ShadowScaleKey = keyof typeof LIGHT_SHADOWS;
+
+// Spacing tokens from the design system.
+const SPACING_SCALE = {
+  xxxs: rem(2),
+  xxs: rem(4),
+  xs: rem(6),
+  sm: rem(8),
+  md: rem(12),
+  lg: rem(16),
+  xl: rem(24),
+  xxl: rem(32),
+  xxxl: rem(40),
+};
+
+export type SpacingScaleKey = keyof typeof SPACING_SCALE;
+
+// Radius tokens from the design system.
+const RADIUS_SCALE = {
+  xxxs: rem(2),
+  xxs: rem(4),
+  xs: rem(6),
+  sm: rem(8),
+  md: rem(12),
+  lg: rem(16),
+  xl: rem(24),
+};
+
+export type RadiusScaleKey = keyof typeof RADIUS_SCALE;
 
 export const breakpoints = {
   xs: "23em",
@@ -86,26 +151,11 @@ export const getThemeOverrides = (
     colorScheme,
   },
   shadows: {
-    // eslint-disable-next-line metabase/no-color-literals
-    xs: "0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 3px 0 rgba(0, 0, 0, 0.07)",
-    // eslint-disable-next-line metabase/no-color-literals
-    sm: "0px 1px 4px 2px rgba(0, 0, 0, 0.08)",
-    // eslint-disable-next-line metabase/no-color-literals
-    md: "0px 4px 20px 0px rgba(0, 0, 0, 0.05)",
+    ...(colorScheme === "dark" ? DARK_SHADOWS : LIGHT_SHADOWS),
   },
-  spacing: {
-    xs: rem(4),
-    sm: rem(8),
-    md: rem(16),
-    lg: rem(24),
-    xl: rem(32),
-  },
-  radius: {
-    xs: "4px",
-    sm: "6px",
-    md: "8px",
-    xl: "40px",
-  },
+  spacing: { ...SPACING_SCALE },
+  radius: { ...RADIUS_SCALE },
+  defaultRadius: "xs",
   fontSizes: {
     xs: rem(11),
     sm: rem(12),
@@ -169,15 +219,22 @@ export const getThemeOverrides = (
     ...dateInputOverrides,
     ...datePickerOverrides,
     ...dateTimePickerOverrides,
+    ...dialogOverrides,
     ...dividerOverrides,
+    ...drawerOverrides,
     ...fileInputOverrides,
+    ...gridOverrides,
+    ...groupOverrides,
     ...inputOverrides,
     ...kbdOverrides,
+    ...loaderOverrides,
     ...menuOverrides,
     ...modalOverrides,
     ...monthPickerOverrides,
     ...multiSelectOverrides,
+    ...nativeSelectOverrides,
     ...navLinkOverrides,
+    ...notificationOverrides,
     ...numberInputOverrides,
     ...radioOverrides,
     ...overlayOverrides,
@@ -188,9 +245,12 @@ export const getThemeOverrides = (
     ...popoverOverrides,
     ...portalOverrides,
     ...progressOverrides,
+    ...ringProgressOverrides,
     ...scrollAreaOverrides,
     ...segmentedControlOverrides,
+    ...simpleGridOverrides,
     ...skeletonOverrides,
+    ...stackOverrides,
     ...selectOverrides,
     ...sliderOverrides,
     ...switchOverrides,

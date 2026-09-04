@@ -8,6 +8,9 @@ paths:
   # GitHub added parallel steps (`parallel`, `background`, `wait`, `wait-all`,
   # `cancel`) in June 2026, and actionlint 1.7.12 does not know the schema yet:
   # https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
+  .github/workflows/backend.yml:
+    ignore:
+      - 'step must run script with "run" section or run action with "uses" section'
   .github/workflows/lint.yml:
     ignore:
       - 'step must run script with "run" section or run action with "uses" section'

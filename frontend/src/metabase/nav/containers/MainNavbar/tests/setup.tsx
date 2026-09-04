@@ -12,7 +12,6 @@ import {
   setupSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
   screen,
@@ -186,7 +185,6 @@ export async function setup({
 
   let dashboardId: DashboardId | null = null;
   const dashboardsForState: DashboardState["dashboards"] = {};
-  const dashboardsForEntities: Dashboard[] = [];
   let storeDashboard: StoreDashboard | undefined;
   if (openDashboard) {
     dashboardId = openDashboard.id;
@@ -195,7 +193,6 @@ export async function setup({
       dashcards: openDashboard.dashcards.map((c) => c.id),
     };
     dashboardsForState[openDashboard.id] = storeDashboard;
-    dashboardsForEntities.push(openDashboard);
   }
 
   const storeInitialState = createMockState({
@@ -205,7 +202,6 @@ export async function setup({
       dashboards: dashboardsForState,
     }),
     qb: createMockQueryBuilderState({ card: openQuestionCard }),
-    entities: createMockEntitiesState({ dashboards: dashboardsForEntities }),
     settings: mockSettings({
       "application-name": applicationName,
       "uploads-settings": {

@@ -14,6 +14,7 @@
    "mistral"    {:api-key "mistral-test-key"}
    "zai"        {:api-key "zai-test-key"}
    "moonshot"   {:api-key "sk-moonshot-test-key"}
+   "deepseek"   {:api-key "sk-deepseek-test-key"}
    "google"     {:oauth-access-token "ya29.test-token"
                  :project-id         "my-project"}
    "azure"      {:api-key         "azure-test-key"
@@ -23,6 +24,7 @@
    "bedrock"    {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
                  :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
                  :region            "us-east-1"}
+   "vllm"       {:base-url "http://vllm.internal:8000/v1"}
    "metabase"   {}})
 
 (defn connection
@@ -35,8 +37,8 @@
     :config (merge (get dummy-configs type-name) config-overrides)}))
 
 (def default-connections
-  (mapv connection ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "google" "azure" "bedrock"
-                    "metabase"]))
+  (mapv connection ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure"
+                    "bedrock" "metabase"]))
 
 (defn do-with-connections!
   [connections thunk]

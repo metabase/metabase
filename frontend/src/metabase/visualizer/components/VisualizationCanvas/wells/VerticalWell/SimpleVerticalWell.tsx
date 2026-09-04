@@ -26,7 +26,7 @@ export const SimpleVerticalWell = forwardRef<
       w="42px"
       align="center"
       justify="center"
-      p="xs"
+      p="xxs"
       style={{
         containerType: "size",
       }}

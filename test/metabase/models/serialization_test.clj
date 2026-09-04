@@ -277,7 +277,7 @@
           eid    (fn [c] (apply str (repeat 21 c)))]
       (testing "MBQL ref clauses"
         (doseq [[label serialized raw ser-models raw-models]
-                [["field (pMBQL)"  [:field {} ["DB" "S" "T" "F"]] [:field {} 53]  #{"Database"} #{"Field"}]
+                [["field (MBQL 5)"  [:field {} ["DB" "S" "T" "F"]] [:field {} 53]  #{"Database"} #{"Field"}]
                  ["field (legacy)" [:field ["DB" "S" "T" "F"] {}] [:field 53 {}]  #{"Database"} #{"Field"}]
                  ["metric"         [:metric {} (eid \a)]          [:metric {} 99] #{"Card"}     #{"Card"}]
                  ["segment"        [:segment {} (eid \b)]         [:segment {} 5]  #{"Segment"}  #{"Segment"}]

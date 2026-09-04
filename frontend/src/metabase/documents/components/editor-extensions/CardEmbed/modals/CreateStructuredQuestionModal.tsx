@@ -2,10 +2,10 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getMetadata } from "metabase/metadata-store";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/settings";
 import { Box, Button, Flex, Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -112,7 +112,7 @@ export const CreateStructuredQuestionModal = ({
       onClose={onClose}
       size="80%"
       title={t`Create new question`}
-      padding="lg"
+      padding="xl"
     >
       <Box h="70vh" className={S.notebookContainer}>
         <Notebook
@@ -125,7 +125,7 @@ export const CreateStructuredQuestionModal = ({
           updateQuestion={handleUpdateQuestion}
         />
       </Box>
-      <Flex mt="lg" justify="flex-end" gap="0.5rem">
+      <Flex mt="xl" justify="flex-end" gap="0.5rem">
         <Button variant="subtle" onClick={onClose}>
           {t`Cancel`}
         </Button>

@@ -7,6 +7,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.o11y :refer [with-span]]))
 
@@ -336,20 +337,20 @@
       529 (tru "Anthropic API is overloaded and is asking us to wait")
       (tru "Anthropic API error (HTTP {0})" status))))
 
-(def ^:private supported-models
+(def supported-models
   "Anthropic chat models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
-  {"claude-fable-5"             {:display-name "Claude Fable 5"    :max-tokens 128000}
-   "claude-opus-5"              {:display-name "Claude Opus 5"     :max-tokens 128000}
-   "claude-opus-4-8"            {:display-name "Claude Opus 4.8"   :max-tokens 128000}
-   "claude-opus-4-7"            {:display-name "Claude Opus 4.7"   :max-tokens 128000}
-   "claude-opus-4-6"            {:display-name "Claude Opus 4.6"   :max-tokens 128000}
-   "claude-opus-4-5-20251101"   {:display-name "Claude Opus 4.5"   :max-tokens  64000}
-   "claude-opus-4-1-20250805"   {:display-name "Claude Opus 4.1"   :max-tokens  32000}
-   "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :max-tokens 128000}
-   "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :max-tokens 128000}
-   "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :max-tokens  64000}
-   "claude-haiku-4-5-20251001"  {:display-name "Claude Haiku 4.5"  :max-tokens  64000}})
+  {"claude-fable-5"             {:display-name "Claude Fable 5"    :max-tokens 128000 :context-window 1000000}
+   "claude-opus-5"              {:display-name "Claude Opus 5"     :max-tokens 128000 :context-window 1000000}
+   "claude-opus-4-8"            {:display-name "Claude Opus 4.8"   :max-tokens 128000 :context-window 1000000}
+   "claude-opus-4-7"            {:display-name "Claude Opus 4.7"   :max-tokens 128000 :context-window 1000000}
+   "claude-opus-4-6"            {:display-name "Claude Opus 4.6"   :max-tokens 128000 :context-window 1000000}
+   "claude-opus-4-5-20251101"   {:display-name "Claude Opus 4.5"   :max-tokens  64000 :context-window  200000}
+   "claude-opus-4-1-20250805"   {:display-name "Claude Opus 4.1"   :max-tokens  32000 :context-window  200000}
+   "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :max-tokens 128000 :context-window 1000000}
+   "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :max-tokens 128000 :context-window 1000000}
+   "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :max-tokens  64000 :context-window  200000}
+   "claude-haiku-4-5-20251001"  {:display-name "Claude Haiku 4.5"  :max-tokens  64000 :context-window  200000}})
 
 (def ^:private default-max-tokens
   "`max_tokens` for an unresolved model — low enough to be safe on any of them."
@@ -400,6 +401,11 @@
   [model]
   (get-in supported-models [(strip-vendor-prefix model) :max-tokens]))
 
+(defn context-window-tokens
+  "The input context window for `model`, or nil when it isn't one we know."
+  [model]
+  (get-in supported-models [(strip-vendor-prefix model) :context-window]))
+
 (defn- claude-model-version
   "`[family major minor]` for a Claude opus/sonnet model id, or nil."
   [model]
@@ -437,14 +443,31 @@
   [model]
   (some? (model-thinking-config model)))
 
+(def ^:private fast-mode-models
+  "The models Anthropic documents fast mode for: https://code.claude.com/docs/en/fast-mode"
+  #{"claude-opus-4-8" "claude-opus-5"})
+
+(defn fast-mode-model?
+  "Whether `model` supports Anthropic fast mode. Never through the AI proxy: fast mode is premium-priced,
+  and proxied requests bill through Metabase Cloud rather than the instance's own key."
+  [model ai-proxy?]
+  (and (not ai-proxy?)
+       (contains? fast-mode-models (strip-vendor-prefix model))))
+
 (mu/defn claude-request-body
-  "Build the Anthropic Messages API request body for an LLM request."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning?]
+  "Build the Anthropic Messages API request body for an LLM request.
+
+  A caller-supplied `:reasoning-config` is this dialect's `thinking` block and wins outright: an
+  adapter re-hosting a non-Claude model here knows its own provider's thinking shape and
+  restrictions, which the model-id-derived config and the suppression rules below cannot describe."
+  [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning? reasoning-config fast? ai-proxy?]
     :or   {model "claude-haiku-4-5" reasoning? true}} :- core/LLMRequestOpts]
   (let [;; forced tool choice (structured output, or "required") is incompatible
         ;; with thinking — suppress it there.
-        thinking  (when-not (or (not reasoning?) schema (= "required" (some-> tool_choice name)))
-                    (model-thinking-config model))
+        thinking  (or reasoning-config
+                      (when-not (or (not reasoning?) schema (= "required" (some-> tool_choice name)))
+                        (model-thinking-config model)))
+        fast?     (and fast? (fast-mode-model? model ai-proxy?))
         input     (cond->> input
                     (nil? thinking) (remove #(= :reasoning (:type %))))
         messages  (parts->claude-messages input)
@@ -472,9 +495,34 @@
 
       thinking          (assoc :thinking thinking)
 
+      fast?             (assoc :speed "fast")
+
       ;; sampling params are rejected alongside thinking
       (and temperature (not thinking) (model-supports-temperature? model))
       (assoc :temperature temperature))))
+
+(defn- fast-mode-rejection?
+  "Whether a decoded 400 reads as Anthropic rejecting fast mode itself (account not in the
+  research preview, beta header not recognized) rather than some unrelated malformed request."
+  [res]
+  (boolean (re-find #"(?i)fast[ _-]?mode|\bspeed\b"
+                    (str (get-in res [:body :error :message])))))
+
+(def ^:private fast-mode-cooldown-ms
+  "How long to stop requesting fast mode after Anthropic rejects a fast-mode request.
+  Fast and standard speed don't share prompt-cache prefixes, so flapping between them
+  rewrites the conversation cache on every flip; holding standard for a window keeps
+  the speed (and the cache) stable, and spares doomed fast attempts while the account
+  is over its fast-mode limits or not enrolled at all."
+  (* 5 60 1000))
+
+(def ^:private fast-mode-cooldown-until
+  "Epoch millis until which fast mode is skipped. Process-local, resets on restart."
+  (atom 0))
+
+(defn- fast-mode-cooling-down?
+  []
+  (< (System/currentTimeMillis) @fast-mode-cooldown-until))
 
 (mu/defn claude-raw
   "Perform a streaming request to Claude API.
@@ -482,7 +530,8 @@
   throws when they are missing."
   [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
-  (let [req (claude-request-body opts)]
+  (let [opts (cond-> opts (fast-mode-cooling-down?) (assoc :fast? false))
+        req  (claude-request-body opts)]
     (with-span :info {:name       :metabot.claude/request
                       :model      model
                       :msg-count  (count input)
@@ -498,8 +547,9 @@
                                      {:method  :post
                                       :url     "/v1/messages"
                                       :as      :stream
-                                      :headers {"anthropic-version" "2023-06-01"
-                                                "content-type"      "application/json"}
+                                      :headers (cond-> {"anthropic-version" "2023-06-01"
+                                                        "content-type"      "application/json"}
+                                                 (:speed req) (assoc "anthropic-beta" "fast-mode-2026-02-01"))
                                       :body    (json/encode req)})]
           ;; The SSE body is consumed lazily, after this `try` has exited — wrap
           ;; the reducible so mid-stream IO/timeout failures get the same
@@ -511,7 +561,25 @@
                                      :request  req})
               (core/reducible-with-api-errors "anthropic" anthropic-error-msg)))
         (catch Exception e
-          (core/rethrow-api-error! "anthropic" anthropic-error-msg e))))))
+          ;; decoding the error body also closes the streamed response, so the connection is
+          ;; not leaked when the exception is swallowed by the retry below. Fast mode has its
+          ;; own rate-limit pool, so a 429 here doesn't imply standard speed is limited;
+          ;; a 400 needs its message checked to keep unrelated malformed requests failing fast.
+          (let [status    (:status (ex-data e))
+                res       (when (and (:speed req) (contains? #{400 429 529} status))
+                            (core/decode-error-body e))
+                rejected? (and res (or (not= 400 status) (fast-mode-rejection? res)))]
+            (when rejected?
+              (reset! fast-mode-cooldown-until (+ (System/currentTimeMillis) fast-mode-cooldown-ms))
+              (log/warn "Anthropic rejected the fast-mode request; falling back to standard speed"
+                        {:status status}))
+            ;; 529 means the API itself is overloaded, so no immediate retry: surface it and
+            ;; let the caller's retry loop pace the next attempt, which the armed cooldown
+            ;; keeps at standard speed.
+            (if (and rejected? (not= 529 status))
+              (claude-raw (assoc opts :fast? false))
+              (core/rethrow-api-error! "anthropic" anthropic-error-msg
+                                       (if res (ex-info (str (ex-message e)) res e) e)))))))))
 
 (defn claude
   "Call Claude API, return AISDK stream"

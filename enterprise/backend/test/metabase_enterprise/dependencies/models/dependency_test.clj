@@ -238,21 +238,13 @@
                 (is (= #{[:card id2] [:card id1] [:table (mt/id :orders)]}
                        (set deps)))))
             (testing "with filter excluding card1, omits card1 and its dependencies"
-              (let [filter-fn (fn [entity-type-field entity-id-field]
-                                [:and
-                                 [:= entity-type-field "card"]
-                                 [:in entity-id-field [id2 id3]]])
-                    graph (deps.graph/filtered-graph-dependencies filter-fn)
+              (let [graph (deps.graph/filtered-graph-dependencies {:entity-type :card :ids [id2 id3]})
                     deps (graph/transitive graph [[:card id3]])]
                 (is (= #{[:card id2]}
                        (set deps))
                     "Should only include card2, not card1 or table")))
             (testing "with filter excluding card2, breaks the chain"
-              (let [filter-fn (fn [entity-type-field entity-id-field]
-                                [:and
-                                 [:= entity-type-field "card"]
-                                 [:in entity-id-field [id1 id3]]])
-                    graph (deps.graph/filtered-graph-dependencies filter-fn)
+              (let [graph (deps.graph/filtered-graph-dependencies {:entity-type :card :ids [id1 id3]})
                     deps (graph/transitive graph [[:card id3]])]
                 (is (= #{}
                        (set deps))
@@ -273,21 +265,13 @@
                 (is (= #{[:card id2] [:card id3]}
                        (set deps)))))
             (testing "with filter excluding card3, omits card3"
-              (let [filter-fn (fn [entity-type-field entity-id-field]
-                                [:and
-                                 [:= entity-type-field "card"]
-                                 [:in entity-id-field [id1 id2]]])
-                    graph (deps.graph/filtered-graph-dependents filter-fn)
+              (let [graph (deps.graph/filtered-graph-dependents {:entity-type :card :ids [id1 id2]})
                     deps (graph/transitive graph [[:card id1]])]
                 (is (= #{[:card id2]}
                        (set deps))
                     "Should only include card2, not card3")))
             (testing "with filter excluding card2, breaks the chain"
-              (let [filter-fn (fn [entity-type-field entity-id-field]
-                                [:and
-                                 [:= entity-type-field "card"]
-                                 [:in entity-id-field [id1 id3]]])
-                    graph (deps.graph/filtered-graph-dependents filter-fn)
+              (let [graph (deps.graph/filtered-graph-dependents {:entity-type :card :ids [id1 id3]})
                     deps (graph/transitive graph [[:card id1]])]
                 (is (= #{}
                        (set deps))
@@ -350,3 +334,16 @@
                              :to_entity_type :table
                              :to_entity_id (:id table2)))
               "Should have exactly one dependency to table2"))))))
+
+(deftest replace-dependencies!-rejects-non-integer-ids-test
+  (testing "a non-integer to-entity-id is rejected before it is inserted"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"must be a positive integer"
+         (deps.graph/replace-dependencies! "document" 1 {"card" #{{:raw "x"}}}))))
+  (testing "legitimate integer ids are accepted and inserted"
+    (mt/with-temp [:model/Card card {}]
+      (mt/with-model-cleanup [:model/Dependency]
+        (deps.graph/replace-dependencies! "card" (:id card) {"card" #{(:id card)}})
+        (is (pos? (t2/count :model/Dependency
+                            :from_entity_type "card"
+                            :from_entity_id (:id card))))))))

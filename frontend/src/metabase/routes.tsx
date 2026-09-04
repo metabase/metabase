@@ -32,7 +32,11 @@ import {
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import { QuestionHashRedirect } from "metabase/query_builder/components/QuestionHashRedirect";
+import {
+  QuestionHashRedirect,
+  loadMetabotQueryBuilder,
+  loadQueryBuilder,
+} from "metabase/query_builder";
 import type { State } from "metabase/redux/store";
 import { getReferenceRoutes } from "metabase/reference/routes";
 import {
@@ -88,14 +92,12 @@ export function LegacyBrowseRedirect() {
  * every later navigation to the query builder is synchronous again.
  */
 const queryBuilder = () =>
-  import(
-    /* webpackChunkName: "query-builder" */ "metabase/query_builder/containers/QueryBuilder"
-  ).then(({ QueryBuilder }) => ({ Component: QueryBuilder }));
+  loadQueryBuilder().then(({ QueryBuilder }) => ({ Component: QueryBuilder }));
 
 const metabotQueryBuilder = () =>
-  import(
-    /* webpackChunkName: "metabot-query-builder" */ "metabase/query_builder/components/MetabotQueryBuilder"
-  ).then(({ MetabotQueryBuilder }) => ({ Component: MetabotQueryBuilder }));
+  loadMetabotQueryBuilder().then(({ MetabotQueryBuilder }) => ({
+    Component: MetabotQueryBuilder,
+  }));
 
 /**
  * Documents, in their own chunk. It carries the rich text editing stack, which
@@ -325,12 +327,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               {
                 path: "collection/tenant-specific",
-                element: <PLUGIN_TENANTS.CanAccessTenantSpecificRoute />,
+                lazy: PLUGIN_TENANTS.canAccessTenantSpecificRoute,
                 children: [
-                  {
-                    index: true,
-                    element: <PLUGIN_TENANTS.TenantCollectionList />,
-                  },
+                  { index: true, lazy: PLUGIN_TENANTS.tenantCollectionList },
                 ],
               },
 
@@ -338,12 +337,10 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 path: "collection/tenant-users",
                 element: <IsAdmin />,
                 children: [
-                  { index: true, element: <PLUGIN_TENANTS.TenantUsersList /> },
+                  { index: true, lazy: PLUGIN_TENANTS.tenantUsersList },
                   {
                     path: ":tenantId",
-                    element: (
-                      <PLUGIN_TENANTS.TenantUsersPersonalCollectionList />
-                    ),
+                    lazy: PLUGIN_TENANTS.tenantUsersPersonalCollectionList,
                   },
                 ],
               },

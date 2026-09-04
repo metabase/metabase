@@ -7,6 +7,7 @@
 
 (p/import-vars
  [metabase.batch-processing.impl
+  flush!
   shutdown!
   start!
   submit!])

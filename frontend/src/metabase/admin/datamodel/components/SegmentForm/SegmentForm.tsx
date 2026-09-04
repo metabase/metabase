@@ -5,14 +5,14 @@ import { t } from "ttag";
 
 import { FieldSet } from "metabase/common/components/FieldSet";
 import { Link } from "metabase/common/components/Link";
+import { getMetadata } from "metabase/metadata-store";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
+import { useSelector } from "metabase/redux";
 import {
+  SegmentEditor,
   getSegmentQuery,
   getSegmentQueryDefinition,
-} from "metabase/querying/segments/utils";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+} from "metabase/segments";
 import { Alert, Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -70,7 +70,7 @@ export const SegmentForm = ({
             size="compact"
             color="warning"
             display="inline-flex"
-            mb="md"
+            mb="lg"
             title={t`This segment can't be edited because this table is published and Remote Sync is in read-only mode.`}
             w="auto"
           />
@@ -165,7 +165,7 @@ const SegmentFormActions = ({
         variant="filled"
         size="sm"
         disabled={!isValid}
-        mr="md"
+        mr="lg"
       >
         {t`Save changes`}
       </Button>

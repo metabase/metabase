@@ -7,6 +7,7 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 ### ⚠ BREAKING CHANGES
 
 - `column` and `column_settings` are now reserved setting ids, contributed to every visualization by Metabase to power the built-in per-column formatting popover. Plugins that declared their own settings under these ids must rename them — the `Settings` type now rejects those keys with a type error ([#78128](https://github.com/metabase/metabase/pull/78128)).
+- `ClickObject` is no longer generic and no longer has a `settings` field. Metabase attaches the visualization's current settings to every click itself and ignores anything passed under `settings`, so a click can't redirect dashboard click behavior. A `click_behavior` saved by an earlier plugin version stays in effect until removed ([#81181](https://github.com/metabase/metabase/pull/81181)).
 - The top-level `colorScheme` visualization prop moved into the new `renderingContext` prop (see Features below). Read `props.renderingContext.colorScheme` instead of `props.colorScheme` ([#78429](https://github.com/metabase/metabase/pull/78429)).
 - The module-level `measureText`, `measureTextWidth`, and `measureTextHeight` exports are removed. The functions were stubs that always returned zero-size measurements — for real ones, use `measureText` on the new `renderingContext` prop (see Features below) ([#78429](https://github.com/metabase/metabase/pull/78429)).
 
@@ -16,6 +17,7 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 - New `renderingContext` visualization prop with host rendering helpers: `getColor` resolves a Metabase color name to its current theme value, `measureText` measures text the way Metabase renders it, returning `{ width, height }` from a single measurement (`style.family` defaults to the instance font), `fontFamily` exposes that font for styling your own markup, and `colorScheme` tells you whether Metabase is rendering in light or dark mode ([#78429](https://github.com/metabase/metabase/pull/78429)).
 - New `@metabase/custom-viz pack` command packages a built visualization into an upload-ready `.tgz`. Scaffolded projects call it from their `build` script instead of carrying their own copy of the packaging script, so fixes to packaging and to the bundle size limits now come with a package upgrade. Pass `--dir` to pack a project in another directory.
 - `@metabase/custom-viz pack` stamps the exact `@metabase/custom-viz` version into the packed manifest as `sdk.version`. Your source `metabase-plugin.json` is not modified. Metabase compares the stamp against the SDK versions it was tested with — a plugin outside that range (or outside its own `metabase.version` range) is never rejected; it uploads and runs normally, with a warning shown on the admin page.
+- `checkRenderable` is now optional. Omit it when your visualization can render any data; keep throwing from it to surface a custom error. A visualization without a `checkRenderable` is always considered renderable ([#81181](https://github.com/metabase/metabase/pull/81181)).
 
 ### Bug Fixes
 

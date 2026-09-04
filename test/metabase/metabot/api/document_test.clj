@@ -7,6 +7,7 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -32,6 +33,15 @@
               :error "No chart available"}
              (mt/user-http-request :crowberto
                                    :post 200 "metabot/document/generate-content"
+                                   {:instructions "Show me sales data"}))))))
+
+(deftest generate-content-free-limit-body-test
+  (testing "the 402 body is the message and error code alone, not a map carrying a stack trace"
+    (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly true)]
+      (is (= {:message    "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."
+              :error-code "metabase_ai_managed_locked"}
+             (mt/user-http-request :crowberto
+                                   :post 402 "metabot/document/generate-content"
                                    {:instructions "Show me sales data"}))))))
 
 (deftest generate-content-prometheus-test

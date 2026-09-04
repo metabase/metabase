@@ -165,7 +165,7 @@ config:
     help-link: metabase
     help-link-custom-destination: https://www.metabase.com/help/premium
     hide-stacktraces: false
-    http-channel-host-strategy: external-only
+    http-channel-allowed-networks: external-only
     humanization-strategy: simple
     index-update-thread-count: 2
     jdbc-data-warehouse-connection-pool-checkout-timeout-ms: 0
@@ -201,8 +201,10 @@ config:
     ldap-port: 389
     ldap-security: none
     ldap-sync-user-attributes: true
+    ldap-sync-user-attributes-allowlist: ''
     ldap-sync-user-attributes-blacklist: userPassword,dn,distinguishedName
     ldap-timeout-seconds: 15.0
+    ldap-trust-store: null
     ldap-user-base: null
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true
@@ -219,6 +221,9 @@ config:
     llm-bedrock-secret-access-key: null
     llm-bedrock-session-token: null
     llm-connection-timeout-ms: 10000
+    llm-deepseek-api-base-url: https://api.deepseek.com
+    llm-deepseek-api-key: null
+    llm-fast-mode: false
     llm-google-api-base-url: https://aiplatform.googleapis.com
     llm-google-location: null
     llm-google-oauth-access-token: null
@@ -240,11 +245,15 @@ config:
     llm-rate-limit-per-ip: 100
     llm-rate-limit-per-user: 20
     llm-request-timeout-ms: 120000
+    llm-vllm-api-base-url: null
+    llm-vllm-api-key: null
+    llm-vllm-request-timeout-ms: 300000
     llm-zai-api-base-url: https://api.z.ai/api/paas/v4
     llm-zai-api-key: null
     loading-message: doing-science
     login-page-illustration: default
     login-page-illustration-custom: null
+    map-tile-server-allowed-networks: null
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
     mcp-apps-cors-custom-origins: ''
     mcp-apps-cors-enabled-clients: []
@@ -372,6 +381,7 @@ config:
     usage-metadata-retention-days: 90
     usage-metadata-schedule: 0 0 2 * * ? *
     use-native-pivot-tables: false
+    use-tenants: false
     user-visibility: all
     warehouse-allowed-networks: null
 ```
