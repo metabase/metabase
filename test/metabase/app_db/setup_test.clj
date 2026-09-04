@@ -5,6 +5,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.data-source :as mdb.data-source]
+   [metabase.app-db.db :as mdb.db]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.app-db.setup :as mdb.setup]
@@ -208,6 +209,39 @@
           (reset! (:status mdb.connection/*application-db*) ::not-set-up)
           (mdb/setup-db! :create-sample-content? false :manage-encryption-state? false)
           (is (= ciphertext (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))))
+
+(deftest setup-db-warns-about-settings-from-an-older-version-test
+  (testing "a setting row written by a version without value_with_aad is reported once and then filled in"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (is (not (mdb.db/unmigrated-settings?)))
+      (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
+      (is (mdb.db/unmigrated-settings?))
+      (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+      (mt/with-log-messages-for-level [messages :warn]
+        (mdb/setup-db! :create-sample-content? false)
+        (is (=? [{:level :warn, :message #"(?s)Some settings were saved by an older version of Metabase.*"}]
+                (filter #(re-find #"older version" (:message %)) (messages)))))
+      (is (not (mdb.db/unmigrated-settings?)))
+      (is (= "Sad Can" (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))
+
+(deftest migrate-settings-decides-by-decrypting-test
+  (testing "the value_with_aad backfill treats a value as encrypted only if it decrypts, and copes with one that encrypts to nothing"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+        (let [shaped (str (apply str (repeat 86 "a")) "==")]
+          (is (encryption/possibly-encrypted-string? shaped))
+          (t2/query {:insert-into :setting, :values [{:key "shaped", :value shaped}
+                                                     {:key "blank", :value (encryption/encrypt "")}]})
+          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+          (is (= :done (mdb/setup-db! :create-sample-content? false)))
+          (testing "a plaintext value that merely looks like ciphertext is a value, not skipped"
+            (is (= shaped (encryption/maybe-decrypt (t2/select-one-fn :value_with_aad :setting :key "shaped")
+                                                    {:aad (mdb.setting/setting-aad "shaped")}))))
+          (testing "an encrypted blank value has nothing to store, and is written as NULL rather than failing"
+            (is (nil? (t2/select-one-fn :value_with_aad :setting :key "blank")))))))))
 
 (deftest encryption-check-status-falls-back-to-value-test
   (testing "the sentinel is read from `value`, whatever `value_with_aad` holds -- an older version rewrites only `value`"
