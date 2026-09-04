@@ -750,8 +750,8 @@
     (is (false? (google/reasoning-model? "anthropic/claude-haiku-4-5@20251001")))))
 
 (deftest reasoning-model?-gemini-test
-  (testing "Gemini sends thinking only as :thought parts, which the adapter drops"
-    (is (false? (google/reasoning-model? "google/gemini-3.5-flash")))
+  (testing "catalog Geminis stream thought summaries; off-catalog Geminis stay dark"
+    (is (true?  (google/reasoning-model? "google/gemini-3.5-flash")))
     (is (false? (google/reasoning-model? "google/gemini-3.6-pro")))))
 
 (deftest reasoning-model?-unqualified-test
