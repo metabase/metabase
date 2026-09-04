@@ -110,9 +110,11 @@ describe("ManageDataAppUsersPage", () => {
     setup();
 
     const breadcrumb = await screen.findByTestId("breadcrumbs");
+
     const dataAppsLink = within(breadcrumb).getByRole("link", {
       name: "Data apps",
     });
+
     expect(dataAppsLink).toHaveAttribute("href", "/admin/settings/apps");
     expect(within(breadcrumb).getByText("Sales")).toBeInTheDocument();
   });
