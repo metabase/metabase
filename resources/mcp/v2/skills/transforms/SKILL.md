@@ -5,7 +5,7 @@ description: Authoring transforms with transform_write — the query source (def
 
 # Transforms
 
-A transform is a saved query Metabase **runs to materialize its results into a real table** in your warehouse. Questions, other transforms, and anything else that can reach the database then query that table like any other. That materialization is the whole point — a model is a saved query resolved at read time, a transform is a table that exists between runs.
+A transform is a saved query Metabase **runs to materialize its results into a real warehouse table**, which questions, other transforms, and anything reaching the database then query like any table. (A model is resolved at read time; a transform is a table that exists between runs.)
 
 ```
 transform_write {"method": "create", "name": "Daily revenue",
@@ -13,53 +13,41 @@ transform_write {"method": "create", "name": "Daily revenue",
                  "target": {"name": "daily_revenue", "schema": "analytics"}}
 ```
 
-## Build the query first, then save the handle
+## Query source — exactly one of `query_handle` | `definition`
 
-The reliable loop: author with `execute_query` (or `execute_sql` for native), run it, then pass the `query_handle` it returned — the handle saves *exactly what ran*, so what you verified is what the transform stores. Native SQL is fine; save an `execute_sql` handle.
-
-The alternative is inline `definition`, which is the transform's **source map**, not a bare query:
+Preferred: author and run with `execute_query` (or `execute_sql` for native — fine here), then pass the returned `query_handle`; it saves exactly what ran. The alternative, inline `definition`, is the transform's **source map**, not a bare query — the shape `get_content`'s `"definition"` include returns, so read-modify-write round-trips; the inner query is the `execute_query` dialect (`learn("query-dialect")`), numeric ids:
 
 ```
 "definition": {"type": "query", "query": {"lib/type": "mbql/query", "stages": [...]}}
 ```
 
-That is the shape `get_content`'s `"definition"` include returns for a transform, so a read-modify-write round-trips. The inner query is the same dialect `execute_query` takes (`learn("query-dialect")`) — numeric ids.
+A bare query in `definition` is the common miss (older transforms stored it that way) and a teaching error.
 
-Pass **exactly one** of `definition` or `query_handle` — never both. Passing a bare query straight into `definition` is the common miss and a teaching error: older transforms stored it that way, so the shapes look alike.
-
-## The target table
+## Target table
 
 `target` is `{name, schema?}` — the table the transform writes, **recreated in full on every run**.
 
-- `schema` is required on databases that have schemas; omit it only on those that don't.
-- On update, `target` is **patched, not replaced** — so passing only `name` renames the output table and keeps the schema. That is the supported rename.
-- Creating a transform whose target table **already exists is refused**. A transform creates its table; it does not adopt one. Pick another name or schema.
-- Never set `target.database`. The target always follows the database the query reads — it is not an independent choice, and naming a different one is an error telling you so.
-- `target.type` is always `"table"`. Incremental target types are configured in Metabase, not here.
+- `schema` is required on databases that have schemas.
+- On update `target` is **patched, not replaced**: passing only `name` renames the output table and keeps the schema — the supported rename.
+- A new transform whose target table **already exists is refused** — it creates its table, never adopts one. Pick another name or schema.
+- Never set `target.database`: the target follows the database the query reads; naming another is an error.
+- `target.type` is always `"table"`; incremental types are configured in Metabase.
 
-## What this tool deliberately won't author
+## Refused, not degraded
 
-Two shapes are **refused rather than degraded**, because rewriting them would quietly destroy how the transform loads:
+Two shapes are rejected outright, because rewriting them would silently change how the transform loads: **Python transforms** (an update that would rewrite one is refused) and **incremental loading** — checkpoint (`definition.source-incremental-strategy`) and append/merge (`target.target-incremental-strategy`). Configure those in Metabase; the *query* of an incremental transform is still editable here as long as those keys stay out.
 
-- **Python transforms** — authored in Metabase. An update that would rewrite one is rejected.
-- **Incremental loading** — checkpoint (`definition.source-incremental-strategy`) and append/merge (`target.target-incremental-strategy`). Configure incrementality in Metabase; you can still edit the *query* here, as long as you leave those keys out.
+`transform_write` only authors: no run (saving doesn't execute), no archive, no delete (transforms have no trash — remove in Metabase). `get_content` on a transform reports source type, target, and latest run.
 
-There is also **no archive and no delete** — transforms have no trash, so removing one happens in Metabase. And **running is separate from writing**: `transform_write` saves the definition, it does not execute it. `get_content` on a transform reports its source type, target, and latest run.
+## Folders, tags, permissions
 
-## Folders and tags
-
-- `collection_id` files the transform in a transform folder; omit for the top level of the transforms tree.
-- `tag_ids` labels it — **jobs select transforms by tag**, so tags are how a transform gets scheduled. The list is replaced wholesale, so pass the full set you want, or `[]` to clear it.
-
-## Requirements
-
-Transforms permission on the source database, plus the transforms feature. Both are enforced by the same checks as the REST API, so a permission you lack fails the same way it would in the UI.
+- `collection_id` files it in a transform folder; omit for the top of the transforms tree.
+- `tag_ids` — **jobs select transforms by tag**, so tags are how a transform gets scheduled. Replaced wholesale: pass the full set, or `[]` to clear.
+- Needs transforms permission on the source database plus the transforms feature, enforced exactly as the REST API and UI enforce them.
 
 ## Don't
 
-- Don't pass both `definition` and `query_handle` — exactly one query source.
-- Don't put a bare query in `definition` — it takes the source map `{"type": "query", "query": …}`.
-- Don't set `target.database` — it follows the query's database.
-- Don't point a new transform at a table that already exists — it creates its table rather than adopting one.
-- Don't try to convert a python or incremental transform by rewriting it — the write is refused, not degraded; change those in Metabase.
-- Don't expect `transform_write` to run, archive, or delete anything — it only authors.
+- Don't expect saving to run the transform — nothing executes until a job does.
+- Don't pass a partial `tag_ids` — the list is replaced wholesale and the rest are dropped.
+- Don't pass a partial `target` expecting a replacement — it is patched, so the old schema stays.
+- Don't rely on rows surviving between runs — the table is recreated in full each time.
