@@ -12986,7 +12986,7 @@
         "additionalProperties" : false
       },
       "metabase.notification.api.notification.CreateNotificationParams" : {
-        "description" : "Notification schema for a create request.",
+        "description" : "Notification schema for a create request, or for sending one that was never saved. Like\n  FullyHydratedNotification but restricts templates to user-provided types only (no handlebars-resource),\n  and carries no ids since the body has no row of its own.",
         "oneOf" : [ {
           "type" : "object",
           "properties" : {
@@ -13077,13 +13077,6 @@
             "payload" : {
               "$ref" : "#/components/schemas/metabase.notification.models.CreateNotificationCardParams"
             },
-            "payload_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "payload_type" : {
               "type" : "string",
               "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
@@ -13183,13 +13176,6 @@
                 "required" : [ "channel_type" ]
               }
             },
-            "payload_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "payload_type" : {
               "type" : "string",
               "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
@@ -13204,245 +13190,8 @@
           "required" : [ "payload_type" ]
         } ]
       },
-      "metabase.notification.api.notification.NotificationApiInput" : {
-        "description" : "Notification schema for API input. Like FullyHydratedNotification but restricts templates\n  to user-provided types only (no handlebars-resource).",
-        "oneOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "payload_type" : {
-              "type" : "string",
-              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
-            },
-            "payload_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "handlers" : {
-              "type" : "array",
-              "items" : {
-                "type" : "object",
-                "properties" : {
-                  "template_id" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "channel_id" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "recipients" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
-                    }
-                  },
-                  "template" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "channel_type" : { },
-                  "channel" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "notification_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "active" : {
-                    "oneOf" : [ {
-                      "type" : "boolean"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  }
-                },
-                "required" : [ "channel_type" ]
-              }
-            },
-            "id" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            },
-            "creator" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "active" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "payload" : {
-              "$ref" : "#/components/schemas/metabase.notification.models.NotificationCard"
-            },
-            "creator_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "subscriptions" : {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
-              }
-            }
-          },
-          "required" : [ "payload_type", "payload" ]
-        }, {
-          "type" : "object",
-          "properties" : {
-            "active" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "creator" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "creator_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "handlers" : {
-              "type" : "array",
-              "items" : {
-                "type" : "object",
-                "properties" : {
-                  "template_id" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "channel_id" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "recipients" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
-                    }
-                  },
-                  "template" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "channel_type" : { },
-                  "channel" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "notification_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "active" : {
-                    "oneOf" : [ {
-                      "type" : "boolean"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  }
-                },
-                "required" : [ "channel_type" ]
-              }
-            },
-            "id" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            },
-            "payload_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "payload_type" : {
-              "type" : "string",
-              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
-            },
-            "subscriptions" : {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
-              }
-            }
-          },
-          "required" : [ "payload_type" ]
-        } ]
-      },
       "metabase.notification.api.notification.NotificationApiUpdateInput" : {
-        "description" : "::NotificationApiInput restricted to what `notification-update-spec` writes. On PUT the URL,\n  not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped.",
+        "description" : "Notification schema for an update request, restricted to what `notification-update-spec` writes. On PUT\n  the URL, not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped.",
         "oneOf" : [ {
           "type" : "object",
           "properties" : {
@@ -44440,7 +44189,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.notification.api.notification.NotificationApiInput"
+                "$ref" : "#/components/schemas/metabase.notification.api.notification.CreateNotificationParams"
               }
             }
           }
