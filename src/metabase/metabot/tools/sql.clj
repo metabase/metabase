@@ -9,6 +9,7 @@
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.tools.sql.edit :as edit-sql-query-tools]
    [metabase.metabot.tools.sql.replace :as replace-sql-query-tools]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -104,7 +105,7 @@
     (catch Exception e
       (log/error e "Error creating SQL query")
       (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
+        (metabot.tools.u/handle-agent-error e)
         {:output (str "Failed to create SQL query: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name    "create_sql_query"
@@ -112,25 +113,28 @@
   create-sql-query-code-edit-tool
   "Create a new SQL query and update the code editor buffer."
   [{:keys [database_id sql_query]} :- create-sql-schema]
-  (let [buffer-id (first-code-editor-buffer-id)]
-    (if (nil? buffer-id)
-      {:output "No active code editor buffer found for SQL editing."}
-      (let [{:keys [validation-result action-result]}
-            (create-sql-query-tools/create-sql-query
-             {:database-id database_id
-              :sql sql_query})
-            {:keys [valid? dialect error-message]} validation-result
-            {:keys [query-id query-content]} action-result]
-        (if valid?
-          (let [structured (assoc action-result :result-type :query)
-                instr      (instructions/query-created-instructions-for query-id)]
-            {:output (format-query-output structured instr {:preamble? true})
-             :structured-output structured
-             :instructions instr
-             :data-parts [(code-edit-part buffer-id query-content)]})
-          (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-            {:output (format-validation-error-output instr)
-             :instructions instr}))))))
+  (try
+    (let [buffer-id (first-code-editor-buffer-id)]
+      (if (nil? buffer-id)
+        {:output "No active code editor buffer found for SQL editing."}
+        (let [{:keys [validation-result action-result]}
+              (create-sql-query-tools/create-sql-query
+               {:database-id database_id
+                :sql sql_query})
+              {:keys [valid? dialect error-message]} validation-result
+              {:keys [query-id query-content]} action-result]
+          (if valid?
+            (let [structured (assoc action-result :result-type :query)
+                  instr      (instructions/query-created-instructions-for query-id)]
+              {:output (format-query-output structured instr {:preamble? true})
+               :structured-output structured
+               :instructions instr
+               :data-parts [(code-edit-part buffer-id query-content)]})
+            (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
+              {:output (format-validation-error-output instr)
+               :instructions instr})))))
+    (catch Exception e
+      (metabot.tools.u/handle-agent-error e))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Edit SQL query
@@ -173,7 +177,7 @@
     (catch Exception e
       (log/error e "Error editing SQL query")
       (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
+        (metabot.tools.u/handle-agent-error e)
         {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name    "edit_sql_query"
@@ -181,27 +185,30 @@
   edit-sql-query-code-edit-tool
   "Edit an existing SQL query and update the code editor buffer."
   [{:keys [query_id edits checklist]} :- edit-sql-schema]
-  (let [buffer-id (first-code-editor-buffer-id)]
-    (if (nil? buffer-id)
-      {:output "No active code editor buffer found for SQL editing."}
-      (let [{:keys [validation-result action-result]}
-            (edit-sql-query-tools/edit-sql-query
-             {:query-id query_id
-              :edits edits
-              :checklist checklist
-              :queries-state (shared/current-queries-state)})
-            {:keys [valid? dialect error-message]} validation-result
-            {:keys [query-id query-content]} action-result]
-        (if valid?
-          (let [structured (assoc action-result :result-type :query)
-                instr      (instructions/edit-sql-query-instructions-for query-id)]
-            {:output (format-query-output structured instr)
-             :structured-output structured
-             :instructions instr
-             :data-parts [(code-edit-part buffer-id query-content)]})
-          (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-            {:output (format-validation-error-output instr)
-             :instructions instr}))))))
+  (try
+    (let [buffer-id (first-code-editor-buffer-id)]
+      (if (nil? buffer-id)
+        {:output "No active code editor buffer found for SQL editing."}
+        (let [{:keys [validation-result action-result]}
+              (edit-sql-query-tools/edit-sql-query
+               {:query-id query_id
+                :edits edits
+                :checklist checklist
+                :queries-state (shared/current-queries-state)})
+              {:keys [valid? dialect error-message]} validation-result
+              {:keys [query-id query-content]} action-result]
+          (if valid?
+            (let [structured (assoc action-result :result-type :query)
+                  instr      (instructions/edit-sql-query-instructions-for query-id)]
+              {:output (format-query-output structured instr)
+               :structured-output structured
+               :instructions instr
+               :data-parts [(code-edit-part buffer-id query-content)]})
+            (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
+              {:output (format-validation-error-output instr)
+               :instructions instr})))))
+    (catch Exception e
+      (metabot.tools.u/handle-agent-error e))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Replace SQL query
@@ -241,7 +248,7 @@
     (catch Exception e
       (log/error e "Error replacing SQL query")
       (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
+        (metabot.tools.u/handle-agent-error e)
         {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name    "replace_sql_query"
@@ -249,24 +256,27 @@
   replace-sql-query-code-edit-tool
   "Replace an SQL query and update the code editor buffer."
   [{:keys [query_id new_query checklist]} :- replace-sql-schema]
-  (let [buffer-id (first-code-editor-buffer-id)]
-    (if (nil? buffer-id)
-      {:output "No active code editor buffer found for SQL editing."}
-      (let [{:keys [validation-result action-result]}
-            (replace-sql-query-tools/replace-sql-query
-             {:query-id query_id
-              :sql new_query
-              :checklist checklist
-              :queries-state (shared/current-queries-state)})
-            {:keys [valid? dialect error-message]} validation-result
-            {:keys [query-id query-content]} action-result]
-        (if valid?
-          (let [structured (assoc action-result :result-type :query)
-                instr      (instructions/replace-sql-query-instructions-for query-id)]
-            {:output (format-query-output structured instr)
-             :structured-output structured
-             :instructions instr
-             :data-parts [(code-edit-part buffer-id query-content)]})
-          (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-            {:output (format-validation-error-output instr)
-             :instructions instr}))))))
+  (try
+    (let [buffer-id (first-code-editor-buffer-id)]
+      (if (nil? buffer-id)
+        {:output "No active code editor buffer found for SQL editing."}
+        (let [{:keys [validation-result action-result]}
+              (replace-sql-query-tools/replace-sql-query
+               {:query-id query_id
+                :sql new_query
+                :checklist checklist
+                :queries-state (shared/current-queries-state)})
+              {:keys [valid? dialect error-message]} validation-result
+              {:keys [query-id query-content]} action-result]
+          (if valid?
+            (let [structured (assoc action-result :result-type :query)
+                  instr      (instructions/replace-sql-query-instructions-for query-id)]
+              {:output (format-query-output structured instr)
+               :structured-output structured
+               :instructions instr
+               :data-parts [(code-edit-part buffer-id query-content)]})
+            (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
+              {:output (format-validation-error-output instr)
+               :instructions instr})))))
+    (catch Exception e
+      (metabot.tools.u/handle-agent-error e))))

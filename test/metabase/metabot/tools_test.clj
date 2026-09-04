@@ -69,14 +69,20 @@
     (is (contains? tools "create_chart"))))
 
 (deftest ^:parallel get-tools-for-document-generate-content-profile-test
-  (let [tools (tools-for-profile :document-generate-content)]
+  (let [tools     (tools-for-profile :document-generate-content)
+        sql-tools (profiles/get-tools-for-profile :document-generate-content
+                                                  #{:permission-write-sql-queries})]
     (is (map? tools))
-    (is (contains? tools "document_schema_collect"))
     (is (contains? tools "list_available_data_sources"))
     (is (contains? tools "list_available_fields"))
     (is (contains? tools "get_field_values"))
     (is (contains? tools "document_construct_model_chart"))
-    (is (contains? tools "document_construct_sql_chart"))))
+    (testing "both SQL tools need the SQL capability, like the tools they delegate to"
+      (is (not (contains? tools "document_construct_sql_chart")))
+      (is (contains? sql-tools "document_construct_sql_chart")))
+    (testing "document_schema_collect is gated too -- it only feeds document_construct_sql_chart"
+      (is (not (contains? tools "document_schema_collect")))
+      (is (contains? sql-tools "document_schema_collect")))))
 
 (deftest ^:parallel get-tools-for-slackbot-profile-test
   (let [tools (tools-for-profile :slackbot)]
