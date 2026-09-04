@@ -66,6 +66,8 @@ export const SecretKeyModal = ({
       opened
       onClose={onClose}
       title={title}
+      // No escape hatches: the key is unrecoverable once this closes. A hung
+      // request keeps the modal up until fetch gives up and the catch closes it.
       withCloseButton={false}
       closeOnClickOutside={false}
       closeOnEscape={false}
@@ -79,7 +81,6 @@ export const SecretKeyModal = ({
           aria-label={t`New secret key`}
           value={secretKey}
           classNames={{ input: S.secretKeyInput }}
-          tabIndex={-1}
           {...copyFieldProps}
           rightSection={
             !secretKey ? <Loader size="xs" /> : copyFieldProps.rightSection
