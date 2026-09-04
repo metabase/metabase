@@ -50,11 +50,11 @@ const baseConfig = {
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
     // The real catalogues are a build artifact, so tests resolve a small fixture
-    // per locale instead. `frontend/src/metabase/api/localization.ts` imports
+    // per locale instead. `frontend/src/metabase/utils/load-locale-catalog.ts` imports
     // these rather than fetching them.
     "^locales/(.*)\\.json$": "<rootDir>/frontend/test/__mocks__/locales/$1.json",
     // Tests exercise the app's loader; the SDK's is aliased in its own config.
-    "^locale-catalog$": "<rootDir>/frontend/src/metabase/api/load-locale-catalog",
+    "^locale-catalog$": "<rootDir>/frontend/src/metabase/utils/load-locale-catalog",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.tsx",
     "csv-parse/browser/esm/sync":

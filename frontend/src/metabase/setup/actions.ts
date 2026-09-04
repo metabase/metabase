@@ -2,7 +2,7 @@ import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import { setupApi, userApi } from "metabase/api";
-import { loadLocalization } from "metabase/api/localization";
+import { loadLocalization } from "metabase/utils/localization";
 import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { trackUserInvited } from "metabase/common/analytics";
