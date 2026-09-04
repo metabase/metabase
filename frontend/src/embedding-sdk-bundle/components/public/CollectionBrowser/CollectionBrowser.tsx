@@ -285,6 +285,7 @@ export const CollectionBrowserInner = ({
       : []),
   ];
 
+  // api keys don't have a personal collection, so the root could be empty
   const isAllModeRootEmpty = isAtAllModeRoot && allCollections.length === 0;
 
   const visibleAllModeRootItems = allCollections.slice(
