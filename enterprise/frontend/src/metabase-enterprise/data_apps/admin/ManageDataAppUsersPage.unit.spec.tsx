@@ -87,18 +87,6 @@ const setup = ({
                 },
               ],
             },
-            {
-              user_id: 2,
-              missing_tables: [
-                {
-                  id: 8,
-                  name: "Orders",
-                  schema: "PUBLIC",
-                  database_id: 2,
-                  database_name: "Sample Database",
-                },
-              ],
-            },
           ],
         },
   );
@@ -210,9 +198,18 @@ describe("ManageDataAppUsersPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows a warning for a pending user and still submits the membership", async () => {
+  it("adds selected users without checking data access before save", async () => {
     fetchMock.post("path:/api/permissions/membership", 204);
     setup();
+
+    expect(
+      await screen.findByRole("button", { name: "Missing data access" }),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(
+        "path:/api/apps/sales/user-permission-warnings",
+      ),
+    ).toHaveLength(1);
 
     await userEvent.click(
       await screen.findByRole("button", { name: "Add users" }),
@@ -236,30 +233,17 @@ describe("ManageDataAppUsersPage", () => {
     await userEvent.type(searchInput, "Another");
     await userEvent.click(await screen.findByText("Another User"));
 
-    const missingAccessUsers = screen.getByTestId("missing-data-access-users");
     const currentUsersTable = screen.getByTestId("admin-content-table");
     const usersCard = screen.getByTestId("data-app-users-card");
 
     expect(usersCard).toContainElement(searchInput);
     expect(usersCard).toContainElement(currentUsersTable);
-    expect(currentUsersTable).not.toContainElement(missingAccessUsers);
     expect(screen.queryByRole("columnheader")).not.toBeInTheDocument();
-
     expect(
-      within(missingAccessUsers).getByText("Users missing data access"),
-    ).toBeInTheDocument();
-
-    expect(
-      within(missingAccessUsers).getByText("Pending User"),
-    ).toBeInTheDocument();
-
-    expect(
-      within(missingAccessUsers).queryByText("Another User"),
-    ).not.toBeInTheDocument();
-
-    expect(
-      await within(missingAccessUsers).findByText("Missing data access"),
-    ).toBeInTheDocument();
+      fetchMock.callHistory.calls(
+        "path:/api/apps/sales/user-permission-warnings",
+      ),
+    ).toHaveLength(1);
 
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
@@ -317,7 +301,7 @@ describe("ManageDataAppUsersPage", () => {
     expect(screen.queryByText("Tenant User")).not.toBeInTheDocument();
   });
 
-  it("keeps adding enabled when warning checks fail", async () => {
+  it("keeps adding enabled when the existing-user warning check fails", async () => {
     fetchMock.post("path:/api/permissions/membership", 204);
     setup({ warningRequestFails: true });
 
@@ -330,12 +314,6 @@ describe("ManageDataAppUsersPage", () => {
     expect(
       (await screen.findAllByText(/couldn't check data access/i)).length,
     ).toBeGreaterThan(0);
-
-    expect(
-      screen.queryByLabelText(
-        "Has view or sandboxed access to every table used by this app.",
-      ),
-    ).not.toBeInTheDocument();
 
     expect(screen.getByRole("button", { name: "Add" })).toBeEnabled();
   });

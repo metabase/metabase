@@ -183,7 +183,6 @@ const DataAppUsers = ({
     [selectedUsers],
   );
   const memberWarnings = useWarnings(appName, visibleMemberIds);
-  const selectedWarnings = useWarnings(appName, selectedUserIds);
 
   const handleAddUsers = async () => {
     try {
@@ -272,8 +271,6 @@ const DataAppUsers = ({
                   hasCurrentUsers={members.length > 0}
                   members={members}
                   selectedUsers={selectedUsers}
-                  warnings={selectedWarnings.byUserId}
-                  warningsFailed={selectedWarnings.isError}
                   onSelectedUsersChange={setSelectedUsers}
                   onCancel={() => {
                     setSelectedUsers(new Map());
@@ -329,7 +326,6 @@ const useWarnings = (appName: string, userIds: number[]) => {
   return {
     byUserId,
     isError: request.isError,
-    isSuccess: request.isSuccess,
   };
 };
 
@@ -386,8 +382,6 @@ const AddUsersSection = ({
   hasCurrentUsers,
   members,
   selectedUsers,
-  warnings,
-  warningsFailed,
   onSelectedUsersChange,
   onCancel,
   onDone,
@@ -395,8 +389,6 @@ const AddUsersSection = ({
   hasCurrentUsers: boolean;
   members: Member[];
   selectedUsers: Map<number, User>;
-  warnings: Map<number, DataAppUserPermissionWarning>;
-  warningsFailed: boolean;
   onSelectedUsersChange: (users: Map<number, User>) => void;
   onCancel: () => void;
   onDone: () => void;
@@ -477,136 +469,68 @@ const AddUsersSection = ({
     nextUsers.delete(user.id);
     onSelectedUsersChange(nextUsers);
   };
-  const usersMissingDataAccess = Array.from(selectedUsers.values()).flatMap(
-    (user) => {
-      const warning = warnings.get(user.id);
-      return warning ? [{ user, warning }] : [];
-    },
-  );
 
   return (
-    <Stack gap="sm">
-      <Popover
-        opened={
-          isPickerOpen && !isLoading && !error && suggestedUsers.length > 0
-        }
-        onChange={setIsPickerOpen}
-        position="bottom-start"
-        shadow="md"
-      >
-        <Popover.Target>
-          <Box
-            mx={hasCurrentUsers ? "-1px" : 0}
-            mt={hasCurrentUsers ? "-1px" : 0}
-          >
-            <DataAppAddRow
-              value={text}
-              isValid={selectedUsers.size > 0}
-              hasCurrentUsers={hasCurrentUsers}
-              placeholder={t`Pick someone from the list, or paste a list of email addresses separated by commas`}
-              ariaLabel={t`Search for a user to add`}
-              onChange={(event) => {
-                setText(event.target.value);
-                setIsPickerOpen(true);
-              }}
-              onPaste={handlePaste}
-              onDone={onDone}
-              onCancel={onCancel}
-            >
-              {Array.from(selectedUsers.values()).map((user, index) => (
-                <Pill
-                  key={user.id}
-                  size="md"
-                  ms={index > 0 ? "sm" : ""}
-                  withRemoveButton
-                  onRemove={() => removeUser(user)}
-                >
-                  {user.common_name}
-                </Pill>
-              ))}
-            </DataAppAddRow>
-          </Box>
-        </Popover.Target>
-
-        <Popover.Dropdown>
-          <Stack gap={0} miw="15rem">
-            {suggestedUsers.map((user) => (
-              <Flex
-                key={user.id}
-                component={UnstyledButton}
-                align="center"
-                gap="md"
-                p="0.5rem 1rem"
-                onClick={() => addUser(user)}
-              >
-                <UserAvatar bg={userToColor(user)} user={user} />
-                <Text fw="bold" size="lg">
-                  {user.common_name}
-                </Text>
-              </Flex>
-            ))}
-          </Stack>
-        </Popover.Dropdown>
-      </Popover>
-
-      {warningsFailed && <WarningRequestError />}
-
-      {usersMissingDataAccess.length > 0 && (
+    <Popover
+      opened={isPickerOpen && !isLoading && !error && suggestedUsers.length > 0}
+      onChange={setIsPickerOpen}
+      position="bottom-start"
+      shadow="md"
+    >
+      <Popover.Target>
         <Box
-          data-testid="missing-data-access-users"
-          bg="background-secondary"
-          bd="1px solid var(--mb-color-border)"
-          bdrs="md"
-          p="md"
+          mx={hasCurrentUsers ? "-1px" : 0}
+          mt={hasCurrentUsers ? "-1px" : 0}
         >
-          <Flex align="center" justify="space-between" gap="md" mb="sm">
-            <Flex align="baseline" gap="xs">
-              <Text fw={700}>{t`Users missing data access`}</Text>
-              <Text c="text-secondary" size="sm">
-                {usersMissingDataAccess.length}
+          <DataAppAddRow
+            value={text}
+            isValid={selectedUsers.size > 0}
+            hasCurrentUsers={hasCurrentUsers}
+            placeholder={t`Pick someone from the list, or paste a list of email addresses separated by commas`}
+            ariaLabel={t`Search for a user to add`}
+            onChange={(event) => {
+              setText(event.target.value);
+              setIsPickerOpen(true);
+            }}
+            onPaste={handlePaste}
+            onDone={onDone}
+            onCancel={onCancel}
+          >
+            {Array.from(selectedUsers.values()).map((user, index) => (
+              <Pill
+                key={user.id}
+                size="md"
+                ms={index > 0 ? "sm" : ""}
+                withRemoveButton
+                onRemove={() => removeUser(user)}
+              >
+                {user.common_name}
+              </Pill>
+            ))}
+          </DataAppAddRow>
+        </Box>
+      </Popover.Target>
+
+      <Popover.Dropdown>
+        <Stack gap={0} miw="15rem">
+          {suggestedUsers.map((user) => (
+            <Flex
+              key={user.id}
+              component={UnstyledButton}
+              align="center"
+              gap="md"
+              p="0.5rem 1rem"
+              onClick={() => addUser(user)}
+            >
+              <UserAvatar bg={userToColor(user)} user={user} />
+              <Text fw="bold" size="lg">
+                {user.common_name}
               </Text>
             </Flex>
-            <Text c="text-secondary" size="sm">
-              {t`These users might not see all data in this app.`}
-            </Text>
-          </Flex>
-
-          <Stack gap="xs">
-            {usersMissingDataAccess.map(({ user, warning }) => (
-              <Flex
-                key={user.id}
-                align="center"
-                justify="space-between"
-                gap="lg"
-                bg="background-primary"
-                bdrs="sm"
-                px="md"
-                py="sm"
-              >
-                <Flex align="center" gap="sm" miw={0}>
-                  <UserAvatar bg={userToColor(user)} user={user} />
-
-                  <Stack gap={0} miw={0}>
-                    <Text fw={700} truncate>
-                      {user.common_name}
-                    </Text>
-
-                    <Text c="text-secondary" size="sm" truncate>
-                      {user.email}
-                    </Text>
-                  </Stack>
-                </Flex>
-
-                <DataAccessWarning
-                  warning={warning}
-                  userName={user.first_name || user.common_name}
-                />
-              </Flex>
-            ))}
-          </Stack>
-        </Box>
-      )}
-    </Stack>
+          ))}
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
   );
 };
 
