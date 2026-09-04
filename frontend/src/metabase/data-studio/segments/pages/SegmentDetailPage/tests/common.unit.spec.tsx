@@ -6,12 +6,17 @@ import { createMockSegment } from "metabase-types/api/mocks";
 
 import { TEST_SEGMENT, setup } from "./setup";
 
+async function getDescriptionInput() {
+  await userEvent.click(screen.getByLabelText("Give it a description"));
+  return screen.getByPlaceholderText("Only if it really needs it");
+}
+
 describe("SegmentDetailPage", () => {
   it("renders page with segment data, tabs, and actions menu", async () => {
     await setup();
 
     expect(screen.getByDisplayValue("High Value Orders")).toBeInTheDocument();
-    expect(screen.getByLabelText("Give it a description")).toHaveValue(
+    expect(screen.getByLabelText("Give it a description")).toHaveTextContent(
       "Orders with total > 100",
     );
     expect(screen.getByText("Definition")).toBeInTheDocument();
@@ -33,7 +38,7 @@ describe("SegmentDetailPage", () => {
   it("shows Save/Cancel buttons when description is modified", async () => {
     await setup();
 
-    const descriptionInput = screen.getByLabelText("Give it a description");
+    const descriptionInput = await getDescriptionInput();
     await userEvent.clear(descriptionInput);
     await userEvent.type(descriptionInput, "New description");
 
@@ -44,14 +49,16 @@ describe("SegmentDetailPage", () => {
   it("resets form when Cancel is clicked after modifying description", async () => {
     await setup();
 
-    const descriptionInput = screen.getByLabelText("Give it a description");
+    const descriptionInput = await getDescriptionInput();
     await userEvent.clear(descriptionInput);
     await userEvent.type(descriptionInput, "Modified description");
     expect(descriptionInput).toHaveValue("Modified description");
 
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-    expect(descriptionInput).toHaveValue("Orders with total > 100");
+    expect(screen.getByLabelText("Give it a description")).toHaveTextContent(
+      "Orders with total > 100",
+    );
     expect(
       screen.queryByRole("button", { name: "Save" }),
     ).not.toBeInTheDocument();
@@ -67,7 +74,7 @@ describe("SegmentDetailPage", () => {
 
     await setup();
 
-    const descriptionInput = screen.getByLabelText("Give it a description");
+    const descriptionInput = await getDescriptionInput();
     await userEvent.clear(descriptionInput);
     await userEvent.type(descriptionInput, "Updated description");
 
@@ -83,7 +90,9 @@ describe("SegmentDetailPage", () => {
       expect(calls.length).toBeGreaterThan(0);
     });
 
-    expect(descriptionInput).toHaveValue("Updated description");
+    expect(screen.getByLabelText("Give it a description")).toHaveTextContent(
+      "Updated description",
+    );
     await waitFor(() => {
       expect(screen.getByText(/Total is greater than/)).toBeInTheDocument();
     });

@@ -91,7 +91,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
     ? null
     : match(currentView)
         .with({ type: "new-question" }, () => (
-          <Box px="xl" h="100%">
+          <Box px="xxl" h="100%">
             <InteractiveQuestion
               key={newQuestionKey}
               questionId="new"
@@ -159,7 +159,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
         .with(
           { type: P.union("question", "metric", "model"), id: P.nonNullable },
           ({ id }) => (
-            <Box px="xl" h="100%">
+            <Box px="xxl" h="100%">
               <InteractiveQuestion
                 questionId={id}
                 height="100%"
@@ -171,7 +171,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
           ),
         )
         .with({ type: "collection" }, (view) => (
-          <Box px="xl" pt="lg" style={{ overflowY: "auto" }}>
+          <Box px="xxl" pt="xl" style={{ overflowY: "auto" }}>
             <CollectionBrowser
               collectionId={view.id}
               visibleColumns={settings.collectionVisibleColumns}
@@ -235,8 +235,8 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
           align="flex-start"
           gap="sm"
           h={BREADCRUMB_HEIGHT}
-          px="xl"
-          py="lg"
+          px="xxl"
+          py="xl"
           w="100%"
         >
           <Group>

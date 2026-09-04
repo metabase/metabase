@@ -95,7 +95,7 @@ export function JoinCondition({
 
   return (
     <Flex className={S.JoinConditionRoot}>
-      <Flex align="center" gap="xs" mih="47px" p="xs">
+      <Flex align="center" gap="xxs" mih="47px" p="xxs">
         <JoinConditionColumnPicker
           query={query}
           stageIndex={stageIndex}

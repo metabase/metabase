@@ -5,7 +5,7 @@ import { Checkbox, Select, Stack, Text } from "metabase/ui";
 import type {
   AggregationFunction,
   ChartSettingMaxCategoriesProps,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 
 import { ChartSettingInputNumeric } from "./ChartSettingInputNumeric";
 
@@ -36,7 +36,7 @@ export const ChartSettingMaxCategories = ({
   );
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Checkbox
         checked={isEnabled}
         label={t`Enforce maximum number of series`}

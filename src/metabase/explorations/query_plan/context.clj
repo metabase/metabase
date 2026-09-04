@@ -14,13 +14,13 @@
   (:require
    [clojure.string :as str]
    [metabase.explorations.blocks :as explorations.blocks]
+   [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -91,14 +91,14 @@
   (let [base-query           (try (lib/query mp (:dataset_query card)) (catch Exception _ nil))
         appl                 (applicability dim-by-id tm base-query)
         default-temp         (when base-query
-                               (qp.mbql/default-temporal-breakout-col base-query))]
+                               (qp.mbql/default-time-dimension-col base-query card))]
     {:metric-id                         (:card_id tm)
      :card                              card
      :mp                                mp
      :applicability                     appl
      :default-temporal-breakout-summary (when-let [[_col unit display-name] default-temp]
                                           {:column display-name
-                                           :unit   (some-> unit name)})
+                                           :unit   (name unit)})
      :segments                          (segment-blurbs base-query)
      :name                              (:name card)
      :description                       (some-> (:description card) str/trim not-empty)
@@ -187,15 +187,12 @@
               ...]}
 
   The underlying Card is hydrated with the columns the variant builders need
-  (`:id :name :description :database_id :dataset_query :card_schema`), once per Card even
-  when it appears in several blocks."
+  (`:id :name :description :database_id :dataset_query :card_schema :dimensions
+  :dimension_mappings`), once per Card even when it appears in several blocks."
   [blocks]
   (let [card-ids (distinct (mapcat #(map :card_id (:metrics %)) blocks))
         cards    (when (seq card-ids)
-                   (t2/select-pk->fn identity
-                                     [:model/Card :id :name :description :database_id
-                                      :dataset_query :card_schema]
-                                     :id [:in card-ids]))
+                   (explorations.db/metric-cards-by-id card-ids))
         mp-by-db (memoize (fn [db-id] (lib-be/application-database-metadata-provider db-id)))]
     {:blocks (mapv #(block-context % cards mp-by-db) blocks)}))
 
@@ -351,12 +348,9 @@
   `ExplorationBlock`, reached via the row's `ExplorationPage`, not from
   per-thread metric/dimension tables. The runner calls this per claimed row."
   [{:keys [card_id dimension_id segment_id params page_id]}]
-  (let [card       (t2/select-one :model/Card :id card_id)
+  (let [card       (explorations.db/card card_id)
         block      (when page_id
-                     (t2/select-one :model/ExplorationBlock
-                                    {:join  [[:exploration_page :p]
-                                             [:= :p.exploration_block_id :exploration_block.id]]
-                                     :where [:= :p.id page_id]}))
+                     (explorations.db/block-for-page page_id))
         metric     (some #(when (= card_id (:card_id %)) %) (:metrics block))
         dim-by-id  (u/index-by :dimension-id (:dimensions block))
         thread-dim (get dim-by-id dimension_id)]

@@ -6,12 +6,12 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.search.config :as search.config]
+   [metabase.search.db :as search.db]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2])
+   [metabase.util.i18n :refer [tru]])
   (:import
    (java.time LocalDate)))
 
@@ -132,9 +132,7 @@
     "only-mine"
     [:or
      [:= :collection.personal_owner_id current-user-id]
-     [:like :collection.location (format "/%d/%%" (t2/select-one-pk :model/Collection
-                                                                    :personal_owner_id [:= current-user-id]
-                                                                    :location          "/"))]]
+     [:like :collection.location (format "/%d/%%" (search.db/personal-collection-root-id current-user-id))]]
 
     "exclude-others"
     (let [with-filter #(personal-collections-where-clause
@@ -204,11 +202,15 @@
               ;; NOTE: we limit id-based search to only a subset of the models
               ;; TODO this should just become part of the model spec e.g. :search-by-id?
               [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]]])
-    [[:dashboard-questions [:or
-                            ;; leverage the fact that only card-related models populate this attribute
-                            [:= nil :search_index.dashboard_id]
-                            (when (:include-dashboard-questions? search-context)
-                              [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])]]]
+    [[:dashboard-questions [:and
+                            [:or
+                             ;; leverage the fact that only card-related models populate this attribute
+                             [:= nil :search_index.dashboard_id]
+                             (when (:include-dashboard-questions? search-context)
+                               [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])]
+                            ;; documents with an exploration id are similar to a Dashboard Question - they aren't
+                            ;; searchable outside of their owning Exploration.
+                            [:= nil :search_index.exploration_id]]]]
     (for [{t :type :keys [context-key required-feature supported-value? field]}
           (vals (dissoc search.config/filters :id :native-query))
           :let [v (get search-context context-key)]]

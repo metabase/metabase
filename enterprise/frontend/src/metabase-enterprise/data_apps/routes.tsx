@@ -2,20 +2,22 @@ import { Outlet, Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 const dataAppLayout = () =>
-  import("./components/DataAppLayout/DataAppLayout").then(
-    ({ DataAppLayout }) => ({
-      Component: function DataAppLayoutRoute() {
-        return (
-          <DataAppLayout>
-            <Outlet />
-          </DataAppLayout>
-        );
-      },
-    }),
-  );
+  import(
+    /* webpackChunkName: "data-apps" */ "./components/DataAppLayout/DataAppLayout"
+  ).then(({ DataAppLayout }) => ({
+    Component: function DataAppLayoutRoute() {
+      return (
+        <DataAppLayout>
+          <Outlet />
+        </DataAppLayout>
+      );
+    },
+  }));
 
 const dataAppView = () =>
-  import("./components/DataAppView/DataAppView").then(({ DataAppView }) => ({
+  import(
+    /* webpackChunkName: "data-apps" */ "./components/DataAppView/DataAppView"
+  ).then(({ DataAppView }) => ({
     Component: DataAppView,
   }));
 

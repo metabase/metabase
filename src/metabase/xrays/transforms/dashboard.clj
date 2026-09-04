@@ -6,9 +6,9 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.populate :as populate]
+   [metabase.xrays.db :as xrays.db]
    [metabase.xrays.transforms.materialize :as tf.materialize]
    [metabase.xrays.transforms.specs :refer [*transform-specs*]]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (def ^:private ^:const ^Long width 12)
@@ -53,7 +53,7 @@
                             (map (comp :source-table :query :dataset_query))
                             (filter number?)
                             not-empty)]
-    (let [table-id->table (t2/select-pk->fn t2.realize/realize :model/Table :id [:in (set table-ids)])]
+    (let [table-id->table (into {} (map (juxt :id t2.realize/realize)) (xrays.db/tables (set table-ids)))]
       (mapv (fn [table-id]
               (let [table (get table-id->table table-id)]
                 (card-for-source-table table)))
@@ -67,7 +67,7 @@
                                                         {:status-code 404})))
         {steps false provides true} (->> transform-name
                                          tf.materialize/get-collection
-                                         (t2/select :model/Card :collection_id)
+                                         xrays.db/cards-in-collection
                                          (group-by (comp some?
                                                          (-> transform-spec :provides set)
                                                          :name)))

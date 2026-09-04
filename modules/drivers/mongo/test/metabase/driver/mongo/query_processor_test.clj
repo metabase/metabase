@@ -13,6 +13,7 @@
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.query-processor.alternative-date-test :as qp.alternative-date-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.date-time-zone-functions-test :as qp.datetime-test]
@@ -278,7 +279,25 @@
                   compiled (mongo.qp/mbql->native query)
                   let-lhs (-> compiled (get-in [:query 0 "$lookup" :let]) keys first)]
               (is (and (not (str/includes? let-lhs "."))
-                       (str/includes? let-lhs "source_categories"))))))))))
+                       (str/includes? let-lhs "source_categories")))))
+          (testing "Nested fields projected from a joined collection return their real values (#81546)"
+            (let [query (lib/query
+                         (mt/metadata-provider)
+                         (mt/mbql-query tips
+                           {:fields   [$_id
+                                       $tips.venue.categories
+                                       &Tips.$tips.venue.categories]
+                            :joins    [{:alias        "Tips"
+                                        :source-table $$tips
+                                        :condition    [:= $_id &Tips.$_id]
+                                        :fields       :none}]
+                            :order-by [[:asc $_id]]
+                            :limit    3}))
+                  rows  (mt/rows (qp/process-query query))]
+              (is (= [[1 ["Gluten-Free" "Café"]       ["Gluten-Free" "Café"]]
+                      [2 ["Homestyle" "Eatery"]       ["Homestyle" "Eatery"]]
+                      [3 ["Cage-Free" "Coffee House"] ["Cage-Free" "Coffee House"]]]
+                     rows)))))))))
 
 (deftest ^:parallel multiple-distinct-count-test
   (mt/test-driver :mongo
@@ -871,3 +890,36 @@
             ;; match the entire `BsonXxx` wrapper-class family, not just a hand-picked subset.
             (is (not (re-find #"Bson[A-Z]\w*"
                               (pr-str (:query compiled)))))))))))
+
+(deftest ^:parallel multi-column-aggregation-on-join-models-test
+  (mt/test-driver :mongo
+    (testing "Aggregating with multiple columns after joining two models works correctly (#70459)"
+      (let [mp (mt/metadata-provider)
+            venues-query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+            categories-query (lib/query mp (lib.metadata/table mp (mt/id :categories)))]
+        (mt/with-temp [:model/Card venues-model {:name          "Venues Model"
+                                                 :type          :model
+                                                 :dataset_query venues-query}
+                       :model/Card categories-model {:name          "Categories Model"
+                                                     :type          :model
+                                                     :dataset_query categories-query}]
+          (let [venues-card (lib.metadata/card mp (:id venues-model))
+                categories-card (lib.metadata/card mp (:id categories-model))
+                query (as-> (lib/query mp venues-card) q
+                        (lib/join q (lib/join-clause
+                                     categories-card
+                                     [(lib/= (lib.tu.notebook/find-col-with-spec
+                                              q (lib/join-condition-lhs-columns q categories-card nil nil)
+                                              {:is-main-group true} "Category ID")
+                                             (lib.tu.notebook/find-col-with-spec
+                                              q (lib/join-condition-rhs-columns q categories-card nil nil)
+                                              "Categories Model" "ID"))]))
+                        (lib.tu.notebook/add-breakout q "Categories Model" "Categories Model - Category → Name")
+                        (lib.tu.notebook/add-breakout q "Venues Model" "Price")
+                        (lib/aggregate q (lib/count))
+                        (lib.tu.notebook/add-order-by q "Categories Model" "Categories Model - Category → Name")
+                        (lib/limit q 3))]
+            (is (= [["American" 2 4]
+                    ["American" 3 4]
+                    ["Artisan" 2 2]]
+                   (mt/rows (qp/process-query query))))))))))

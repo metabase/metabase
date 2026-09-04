@@ -13,6 +13,7 @@ You are judged on whether the produced query matches the user's intent against t
 {% include "metabot/prompts/shared/prompt_snippets/grounding.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/data-sources.selmer" %}
+{% include "metabot/prompts/shared/prompt_snippets/data-sources-curation-signals.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/discovery.selmer" %}
 

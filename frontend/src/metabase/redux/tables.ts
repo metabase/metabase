@@ -1,9 +1,10 @@
 import { fieldApi, tableApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { updateMetadata } from "metabase/redux/metadata";
+import {
+  getMetadataUnfiltered,
+  tableForeignKeysFetched,
+} from "metabase/metadata-store";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { TableSchema } from "metabase/schema";
-import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import type { FieldId, TableId } from "metabase-types/api";
 
 type FetchOptions = {
@@ -25,11 +26,9 @@ type ForeignKeyHost =
 
 /**
  * Loads `query_metadata` for a single table, so `getMetadata` can read it.
- * Replaces the `Tables.actions.fetchMetadata` entity action.
  *
- * Normalization into `state.entities` happens in the endpoint's own
- * `onQueryStarted` (it dispatches `updateMetadata(data, TableSchema)`), so this
- * thunk just initiates the request and returns the unwrapped result.
+ * `metadataHydrationMiddleware` mirrors the response into `state.entities`, so
+ * this thunk only starts the request and returns the unwrapped result.
  */
 export const fetchTableMetadata =
   (
@@ -46,14 +45,13 @@ export const fetchTableMetadata =
 
 /**
  * Loads a table's foreign keys and normalizes them onto the table in
- * `state.entities`. Replaces the `Tables.actions.fetchForeignKeys` entity
- * action.
+ * `state.entities`.
  */
 export const fetchTableForeignKeys =
   ({ id }: { id: TableId }) =>
   async (dispatch: Dispatch, getState: GetState) => {
-    // Already loaded — skip, so callers that fire this from an effect don't
-    // churn the store on every re-render (mirrors the cached entity action).
+    // Already loaded, so callers that fire this from an effect do not churn
+    // the store on every re-render.
     const table = getMetadataUnfiltered(getState()).table(id) as ForeignKeyHost;
     if (table?.fks != null) {
       return { id, fks: table.fks };
@@ -64,14 +62,13 @@ export const fetchTableForeignKeys =
       tableApi.endpoints.listTableForeignKeys,
       { forceRefetch: false },
     );
-    dispatch(updateMetadata({ id, fks }, TableSchema));
+    dispatch(tableForeignKeysFetched(id, fks));
     return { id, fks };
   };
 
 /**
- * Loads a table's metadata along with the metadata of any tables/fields it
- * links to via foreign key. Replaces the
- * `Tables.actions.fetchMetadataAndForeignTables` entity action.
+ * Loads a table's metadata along with the metadata of any tables or fields it
+ * links to via foreign key.
  */
 export const fetchTableMetadataAndForeignKeys =
   ({ id }: { id: TableId }, options: FetchOptions = {}) =>

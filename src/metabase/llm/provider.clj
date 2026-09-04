@@ -21,7 +21,8 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -171,11 +172,17 @@
     :default-model "google/gemini-3.5-flash"
     ;; The Gemini Enterprise Agent Platform has no listing endpoint we can trust — the one it exposes reports models
     ;; that are not really available and omits ones that are — so the models Metabot is known to work with are fixed
-    ;; here, and connecting validates the credentials against the model chosen in the connection form with a free
-    ;; `countTokens` probe. Which of them a project can actually reach depends on its location.
-    :models        [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
-                    {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
-                    {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}]
+    ;; here, and connecting validates the credentials against the model chosen in the connection form with a probe.
+    ;; Which of them a project can actually reach depends on its location.
+    :models        [{:id "google/gemini-3.5-flash"             :display_name "Gemini 3.5 Flash"}
+                    {:id "google/gemini-3.6-flash"             :display_name "Gemini 3.6 Flash"}
+                    {:id "google/gemini-3.7-flash"             :display_name "Gemini 3.7 Flash"}
+                    {:id "anthropic/claude-fable-5"            :display_name "Claude Fable 5"}
+                    {:id "anthropic/claude-opus-5"             :display_name "Claude Opus 5"}
+                    {:id "anthropic/claude-opus-4-6"           :display_name "Claude Opus 4.6"}
+                    {:id "anthropic/claude-sonnet-5"           :display_name "Claude Sonnet 5"}
+                    {:id "anthropic/claude-sonnet-4-6"         :display_name "Claude Sonnet 4.6"}
+                    {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
     ;; A service account key authenticates on its own (it can carry the project); an OAuth token needs the project
     ;; named beside it.
     :required-any  [[:service-account-key] [:oauth-access-token :project-id]]
@@ -535,6 +542,21 @@
                  :settings {:base-url {:setting :llm-vllm-api-base-url :credential? true}
                             :api-key  {:setting :llm-vllm-api-key}}}})
 
+(defn connection-env-vars
+  "The environment variables that configure a connection of `type-name`, as `{config-field \"MB_LLM_...\"}`.
+
+  Returns nil for a type no per-provider variable configures — the managed provider, which holds no credentials of
+  its own, is the only one today. Setting these is the supported way to configure a single connection without writing
+  JSON into [[metabase.llm.settings/llm-providers]]."
+  [type-name]
+  (when-let [{:keys [settings]} (get single-provider-settings type-name)]
+    (not-empty
+     (into {}
+           (keep (fn [{field-key :key}]
+                   (when-let [setting-kw (get-in settings [field-key :setting])]
+                     [field-key (setting/env-var-name setting-kw)])))
+           (:fields (provider-type type-name))))))
+
 (defn- env-supplied-fields
   "The `:config` fields the environment supplies for one [[single-provider-settings]] group:
   `{:config {field value} :vars {field \"MB_...\"} :credential-set? bool}`."
@@ -789,18 +811,23 @@
         stored           (stored-connections)
         idx              (first (keep-indexed (fn [i conn] (when (= conn-key (:key conn)) i)) stored))]
     ;; a client echoing back the mask [[metabase.settings.core/obfuscate-value]] handed it is not entering a new
-    ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings
-    (when-not (setting/obfuscated-value? value)
-      (when value
-        (validate-config-field! group-type field {field value}))
-      (cond
-        idx   (set-connections! (update-in stored [idx :config]
-                                           (fn [config]
-                                             (if value (assoc config field value) (dissoc config field)))))
-        value (set-connections! (conj stored {:key    conn-key
-                                              :type   group-type
-                                              :name   (str (:label (provider-type group-type)))
-                                              :config {field value}}))))))
+    ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings. Both forms are checked: the
+    ;; mask of a newline-terminated secret (a JSON key file) matches only untrimmed, while a mask that picked up
+    ;; padding in transit matches only trimmed
+    (if (or (setting/obfuscated-value? new-value)
+            (setting/obfuscated-value? value))
+      (log/infof "Attempted to set %s to an obfuscated value. Ignoring change." (name setting-kw))
+      (do
+        (when value
+          (validate-config-field! group-type field {field value}))
+        (cond
+          idx   (set-connections! (update-in stored [idx :config]
+                                             (fn [config]
+                                               (if value (assoc config field value) (dissoc config field)))))
+          value (set-connections! (conj stored {:key    conn-key
+                                                :type   group-type
+                                                :name   (str (:label (provider-type group-type)))
+                                                :config {field value}})))))))
 
 ;;; -------------------------------------------------- Redaction ----------------------------------------------------
 
