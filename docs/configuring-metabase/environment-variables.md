@@ -439,6 +439,19 @@ Should custom visualizations be enabled for this instance?
 
 Whether dashboards should default to a user's last used parameters on load.
 
+### `MB_DATA_SENSITIVITY_SCAN_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+When true, the analyze phase of sync labels every unlabeled field with a data_sensitivity category inferred from
+  its name, types, and fingerprint, writing PUBLIC when nothing matches. Metadata only: the label does not mask or
+  restrict anything. Labels set by a user are never overwritten.
+
+Scans run with the scheduled analyze pass and with Sync database schema now on a database's admin
+  page. Fields that already carry a label, including PUBLIC, are not rescanned.
+
 ### `MB_DB_CONNECTION_TIMEOUT_MS`
 
 - Type: integer
