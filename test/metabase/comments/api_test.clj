@@ -345,6 +345,23 @@
                                       :target_type "document"
                                       :target_id doc-id)))))))
 
+(deftest long-emoji-reaction-test
+  (testing "POST /api/comment/:comment-id/reaction accepts compound emoji longer than 10 UTF-16 code units"
+    ;; The England flag is a tag sequence (U+1F3F4 + tag characters) that is 14 UTF-16 code units long,
+    ;; so it was rejected by the old `:max 10` schema bound. The emoji column was widened to varchar(32)
+    ;; in the same change because H2 (used by the test suite) counts UTF-16 code units, not characters,
+    ;; and would overflow a varchar(10) column with this flag -- see #80470.
+    (mt/with-temp [:model/Document {doc-id :id}     {}
+                   :model/Comment  {comment-id :id} {:target_id doc-id}]
+      (mt/with-model-cleanup [:model/CommentReaction]
+        (mt/user-http-request :rasta :post 200 (str "comment/" comment-id "/reaction")
+                              {:emoji "🏴󠁧󠁢󠁥󠁮󠁧󠁿"})
+        (let [{:keys [comments]} (mt/user-http-request :rasta :get 200 "comment/"
+                                                       :target_type "document" :target_id doc-id)
+              reactions          (->> comments (filter #(= comment-id (:id %))) first :reactions
+                                      (map #(select-keys % [:emoji :count])) set)]
+          (is (= #{{:emoji "🏴󠁧󠁢󠁥󠁮󠁧󠁿" :count 1}} reactions)))))))
+
 (deftest multiple-emoji-reactions-test
   ;; Relies on comment_reaction.emoji using an exact (not linguistic) collation on MySQL/MariaDB -- see
   ;; migration v63.2026-07-06T00:00:00. Under the table's original utf8mb4_unicode_ci collation, distinct

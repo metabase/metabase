@@ -1,0 +1,49 @@
+## Widen comment_reaction.emoji so compound emoji (e.g. subdivision flags) fit.
+##
+## The England flag (U+1F3F4 + six tag characters) is 14 UTF-16 code units long. The API schema limit
+## was raised from 10 to 32 to accept it (see #80470), and the column needs the same headroom:
+## H2 -- the database used by the test suite -- sizes varchar(n) in UTF-16 code units, so a
+## varchar(10) column rejects the flag even though it is only 7 Unicode characters. Postgres and
+## MySQL size varchar(n) in characters, but 32 keeps the column aligned with the API bound everywhere.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v64.2026-09-05T00:00:00
+      author: alorentiar
+      comment: Widen comment_reaction.emoji to varchar(32) so compound emoji such as subdivision flags fit.
+      changes:
+        - modifyDataType:
+            tableName: comment_reaction
+            columnName: emoji
+            newDataType: varchar(32)
+      rollback:
+        - modifyDataType:
+            tableName: comment_reaction
+            columnName: emoji
+            newDataType: varchar(10)
+
+  ## On MySQL/MariaDB the emoji column was switched to utf8mb4_bin in
+  ## v63.2026-07-06T00:00:00 so distinct supplementary-plane emoji are compared exactly; without an
+  ## explicit character set Liquibase's modifyDataType can leave the column on the table default
+  ## (utf8mb4_unicode_ci), which would silently collapse distinct emoji again. Re-assert it after the
+  ## widen.
+  - changeSet:
+      id: v64.2026-09-05T00:00:01
+      author: alorentiar
+      dbms: mysql,mariadb
+      comment: Re-assert utf8mb4_bin collation on comment_reaction.emoji after widening it.
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE comment_reaction MODIFY
+              emoji VARCHAR(32)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_bin;
+      rollback:
+        - sql:
+            sql: >-
+              ALTER TABLE comment_reaction MODIFY
+              emoji VARCHAR(32)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_bin;
