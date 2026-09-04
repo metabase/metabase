@@ -194,9 +194,8 @@
   "IDs of the permission groups holding a stored read (or read-write) grant on the collection of a shareable item (a
   `dashboard` or a `question`). The \"invite someone to view\" group picker lists all groups and uses these ids to mark
   the ones whose members can already see the item; the Administrators group has implicit access to everything and is
-  never included. The Data Analysts group is omitted unless `advanced-permissions` is enabled, matching the gate on
-  adding members to it. The ids are otherwise unfiltered, and clients intersect them with the groups they display.
-  Superuser-only, like the invite action itself."
+  never included. The Data Analysts group is omitted unless `advanced-permissions` is enabled. The ids are otherwise
+  unfiltered. Superuser-only, like the invite action itself."
   [_route-params
    {:keys [id] item-type :type} :- [:map
                                     [:type [:enum "dashboard" "question"]]

@@ -79,37 +79,64 @@
 (defn- data-analyst-group-id []
   (u/the-id (perms-group/data-analyst)))
 
-(defn- add-to-data-analyst-group! [user-id]
+(defn- add-to-data-analyst-group-with-feature!
+  "Add `user-id` to the Data Analysts group, temporarily enabling `advanced-permissions` to get past the addition gate."
+  [user-id]
   (mt/with-premium-features #{:advanced-permissions}
     (perms/add-user-to-group! user-id (data-analyst-group-id))))
 
-(deftest data-analyst-group-list-visibility-test
-  (testing "GET /api/permissions/group"
-    (testing "with advanced-permissions, the Data Analysts group is listed even when empty"
-      (mt/with-premium-features #{:advanced-permissions}
-        (is (contains? (set (map :id (fetch-groups))) (data-analyst-group-id)))))
-    (testing "without advanced-permissions, an empty Data Analysts group is not listed"
+(defn- data-analyst-group-listed? []
+  (contains? (set (map :id (fetch-groups))) (data-analyst-group-id)))
+
+(deftest data-analyst-group-listed-with-feature-test
+  (testing "GET /api/permissions/group lists the Data Analysts group with advanced-permissions, even when empty"
+    (mt/with-premium-features #{:advanced-permissions}
+      (is (data-analyst-group-listed?)))))
+
+(deftest data-analyst-group-hidden-without-feature-when-empty-test
+  (testing "GET /api/permissions/group omits an empty Data Analysts group without advanced-permissions"
+    (mt/with-premium-features #{}
+      (is (not (data-analyst-group-listed?))))))
+
+(deftest data-analyst-group-listed-without-feature-when-populated-test
+  (testing "GET /api/permissions/group lists a populated Data Analysts group without advanced-permissions"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (add-to-data-analyst-group-with-feature! user-id)
       (mt/with-premium-features #{}
-        (is (not (contains? (set (map :id (fetch-groups))) (data-analyst-group-id))))))
-    (testing "without advanced-permissions, a populated Data Analysts group is listed with its member count"
-      (mt/with-temp [:model/User {user-id :id} {}]
-        (add-to-data-analyst-group! user-id)
-        (mt/with-premium-features #{}
-          (let [group (m/find-first #(= (data-analyst-group-id) (:id %)) (fetch-groups))]
-            (is (some? group))
-            (is (= 1 (:member_count group)))))))
-    (testing "without advanced-permissions, the group disappears again once the last member is removed"
-      (mt/with-temp [:model/User {user-id :id} {}]
-        (add-to-data-analyst-group! user-id)
-        (mt/with-premium-features #{}
-          (perms/remove-user-from-group! user-id (data-analyst-group-id))
-          (is (not (contains? (set (map :id (fetch-groups))) (data-analyst-group-id)))))))))
+        (let [group (m/find-first #(= (data-analyst-group-id) (:id %)) (fetch-groups))]
+          (is (some? group))
+          (testing "with its member count"
+            (is (= 1 (:member_count group)))))))))
+
+(deftest data-analyst-group-hidden-without-feature-after-last-member-removed-test
+  (testing "GET /api/permissions/group omits the Data Analysts group once its last member is removed"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (add-to-data-analyst-group-with-feature! user-id)
+      (mt/with-premium-features #{}
+        (is (data-analyst-group-listed?))
+        (perms/remove-user-from-group! user-id (data-analyst-group-id))
+        (is (not (data-analyst-group-listed?)))))))
+
+(deftest data-analyst-group-visibility-counts-active-members-only-test
+  (testing "GET /api/permissions/group counts only active members when deciding to list the Data Analysts group"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (add-to-data-analyst-group-with-feature! user-id)
+      (mt/with-premium-features #{}
+        (is (data-analyst-group-listed?))
+        (testing "deactivating the only member hides the group"
+          (t2/update! :model/User user-id {:is_active false})
+          (is (not (data-analyst-group-listed?))))
+        (testing "reactivating them brings it back, the membership having survived"
+          (t2/update! :model/User user-id {:is_active true})
+          (is (data-analyst-group-listed?))
+          (is (t2/exists? :model/PermissionsGroupMembership
+                          :user_id user-id :group_id (data-analyst-group-id))))))))
 
 (deftest data-analyst-group-membership-listing-test
   (testing "GET /api/permissions/membership"
     (testing "without advanced-permissions, memberships of a populated Data Analysts group are listed"
       (mt/with-temp [:model/User {user-id :id} {}]
-        (add-to-data-analyst-group! user-id)
+        (add-to-data-analyst-group-with-feature! user-id)
         (mt/with-premium-features #{}
           (let [memberships (mt/user-http-request :crowberto :get 200 "permissions/membership")]
             (is (contains? (set (keep (fn [{:keys [user_id group_id]}]
@@ -128,7 +155,7 @@
                                               (format "permissions/group/%d" (data-analyst-group-id))))))))
         (testing "populated group"
           (mt/with-temp [:model/User {user-id :id} {}]
-            (add-to-data-analyst-group! user-id)
+            (add-to-data-analyst-group-with-feature! user-id)
             (mt/with-premium-features features
               (let [group (mt/user-http-request :crowberto :get 200
                                                 (format "permissions/group/%d" (data-analyst-group-id)))]
@@ -259,7 +286,7 @@
               (is (contains? ids (u/the-id readers))))))
         (testing "without advanced-permissions the Data Analysts group is dropped even when populated"
           (mt/with-temp [:model/User {user-id :id} {}]
-            (add-to-data-analyst-group! user-id)
+            (add-to-data-analyst-group-with-feature! user-id)
             (mt/with-premium-features #{}
               (is (not (contains? (fetch-ids) (u/the-id (perms-group/data-analyst))))))))))
     (testing "works for questions, resolving the card's collection"

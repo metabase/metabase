@@ -14,24 +14,33 @@
                                                     [:= :user_id manager-user-id]
                                                     [:= :is_group_manager true]]}]))
 
+(defn- data-analyst-visibility-clause
+  "Clause over a `permissions_group` query keeping every group except the data-analyst magic group, plus that group
+  when it has at least one active member."
+  []
+  [:or
+   [:= nil :magic_group_type]
+   [:not= "data-analyst" :magic_group_type]
+   [:exists ^:allow-subquery {:select [1]
+                              :from   [[:permissions_group_membership :pgm]]
+                              :join   [[:core_user :member] [:= :member.id :pgm.user_id]]
+                              :where  [:and
+                                       [:= :pgm.group_id :permissions_group.id]
+                                       [:= :member.is_active true]]}]])
+
 (defn permissions-groups
   "Up to `limit` PermissionsGroups starting at `offset` (both optional), ordered by lower-cased name.
 
   `tenancy` (\"external\"/\"internal\"/nil) narrows to tenant/non-tenant groups (nil returns both); when
   `tenancy` is \"external\" and `tenants-enabled?` is false, no groups are returned. `manager-user-id`, when given,
   restricts to the groups that User manages. `advanced-permissions-enabled?` false excludes the data-analyst magic
-  group unless it has at least one membership row. `tenants-enabled?` false also excludes tenant groups outright,
+  group unless it has at least one active member. `tenants-enabled?` false also excludes tenant groups outright,
   independent of `tenancy`."
   [limit offset {:keys [tenancy manager-user-id tenants-enabled? advanced-permissions-enabled?]}]
   (let [base-where [:and
                     (managed-groups-clause :id manager-user-id)
                     (when-not tenants-enabled? [:not :is_tenant_group])
-                    (when-not advanced-permissions-enabled?
-                      [:or
-                       [:= nil :magic_group_type]
-                       [:not= "data-analyst" :magic_group_type]
-                       [:in :id ^:allow-subquery {:select [:group_id]
-                                                  :from   [:permissions_group_membership]}]])]
+                    (when-not advanced-permissions-enabled? (data-analyst-visibility-clause))]
         where (case tenancy
                 "external" (if tenants-enabled?
                              [:and base-where [:= :is_tenant_group true]]
