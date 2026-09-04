@@ -129,7 +129,7 @@ Separate multiple hash parameters with an ampersand (`&`). Query parameters for 
 
 \*\* Disabling downloads is available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
-The same hash parameters work on [static embeds](./static-embedding.md). For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+The same hash parameters work on legacy [static embeds](./introduction.md#static-embedding-is-deprecated). For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 
 ### Set the language for a public or static embed
 

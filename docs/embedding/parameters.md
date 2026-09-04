@@ -54,7 +54,7 @@ const payload = {
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-Then pass the token to the component, as the `token` attribute on `<metabase-dashboard>` or the `token` prop on `StaticDashboard` in the SDK, or have the embed fetch it from your server. On a [static embed](./static-embedding.md#adding-the-embedding-url-to-your-website), the token goes in the iframe URL instead. The dashboard shows only customer 13's rows, with no **Customer ID** widget. For fetching and refreshing the token, check out [Guest embeds](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server).
+Then pass the token to the component, as the `token` attribute on `<metabase-dashboard>` or the `token` prop on `StaticDashboard` in the SDK, or have the embed fetch it from your server. On a legacy [static embed](./introduction.md#static-embedding-is-deprecated), the token goes in the iframe URL instead. The dashboard shows only customer 13's rows, with no **Customer ID** widget. For fetching and refreshing the token, check out [Guest embeds](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server).
 
 Some notes on locked parameters:
 
@@ -291,7 +291,7 @@ Hold the token in state and pass it to the `token` prop on `StaticDashboard`. Gu
 Everything above applies to [modular embeds](./modular-embedding.md). The iframe-based embeds set parameters through the URL instead:
 
 - **[Public links and public embeds](./public-links.md#public-embed-parameters)**: add `?slug=value` to set a filter, and `#hide_parameters=slug` to hide its widget. Anyone can edit the URL, so these don't restrict data.
-- **[Static embeds](./static-embedding.md)**: same token and rules as guest embeds. Set a parameter to **Locked** and pass its value in `params`. Editable parameters get a widget in the iframe, and take starting values from the URL with the same syntax as public embeds.
+- **[Static embeds](./introduction.md#static-embedding-is-deprecated)** (deprecated): same token and rules as guest embeds. Set a parameter to **Locked** and pass its value in `params`. Editable parameters get a widget in the iframe, and take starting values from the URL with the same syntax as public embeds.
 - **[Full app embedding](./full-app-embedding.md)**: filter values go in the Metabase URL you load in the iframe, the same way as in Metabase itself.
 
 ## Further reading

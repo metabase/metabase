@@ -89,7 +89,7 @@ If you want an easier way to embed different views of data for different custome
 
 This diagram illustrates how an embed gets secured by a signed JWT:
 
-1. **Visitor arrives**: your frontend gets a request to display a Metabase [embedding URL](./static-embedding.md#adding-the-embedding-url-to-your-website).
+1. **Visitor arrives**: your frontend gets a request to display a Metabase [embed](./guest-embedding.md#creating-a-guest-embed).
 2. **Signed request**: your backend generates a Metabase embedding URL with a [signed JWT](./guest-embedding.md#how-guest-embedding-works). The signed JWT should encode any [locked parameters](./parameters.md#restrict-data-with-locked-parameters) you're using to filter your data.
 3. **Response**: your Metabase backend returns data based on the query parameters encoded in the signed JWT.
 4. **Success**: your frontend displays the embedded Metabase page with the correct data.
@@ -149,7 +149,7 @@ Let's say that we want to expose the Accounts table to our customers, so that cu
 
 If we want to avoid creating a Metabase login for each of our customers, we'll need:
 
-- An [embeddable dashboard](./static-embedding.md#making-a-question-or-dashboard-embeddable) with the Accounts data.
+- An [embeddable dashboard](./guest-embedding.md#creating-a-guest-embed) with the Accounts data.
 - A [locked parameter](./parameters.md#restrict-data-with-locked-parameters) for the Account ID filter.
 - A login flow in our embedding application (the web app where we want to embed Metabase).
 

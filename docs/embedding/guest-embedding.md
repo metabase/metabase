@@ -1,11 +1,16 @@
 ---
 title: Guest embeds
 summary: Embed questions, dashboards, and documents without requiring SSO.
+redirect_from:
+  - /docs/latest/embedding/static-embedding
+  - /docs/latest/embedding/signed-embedding
 ---
 
 # Guest embeds
 
 Guest embeds are a way to embed basic Metabase components in your app without requiring you to create a Metabase account for each person viewing the charts and dashboards. But not logging people in to your Metabase has some major tradeoffs: see [limitations](#guest-embed-limitations).
+
+> Looking for static embedding? It's deprecated in favor of guest embeds. Check out [Static embedding is deprecated](./introduction.md#static-embedding-is-deprecated).
 
 "Guest" refers to the authentication approach: Metabase doesn't create a session for each person. Authentication has nothing to do with data freshness. Dashboards and charts in guest embeds always show live data from your database.
 
@@ -95,7 +100,7 @@ const payload = {
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-Replace `YOUR_METABASE_SECRET_KEY` with your [embedding secret key](#regenerating-the-embedding-secret-key). These examples use sequential IDs — the number in the item's URL. On Pro and Enterprise plans, you can use [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead; they stay the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another, like from staging to production.
+Replace `YOUR_METABASE_SECRET_KEY` with your [embedding secret key](#regenerating-the-embedding-secret-key). These examples use sequential IDs — the number in the item's URL. On Pro and Enterprise plans, you can use [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead; they stay the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another, like from staging to production. To use an entity ID, replace the sequential ID in the `resource` map with the item's entity ID, like `resource: { dashboard: "YOUR_ENTITY_ID" }`. If you don't serialize your Metabase, either ID works.
 
 ### Component attributes
 
@@ -275,6 +280,14 @@ function paramsFor(user, customContext) {
   }
 }
 ```
+
+## Editing a published embed
+
+If you change an embed's settings in the wizard, like a parameter's visibility or its appearance:
+
+1. Click **Publish** again.
+2. Copy the code Metabase regenerates.
+3. Update your server and page code to match. If you locked a parameter, every token you sign now has to include a value for it.
 
 ## Disabling embedding for a question or dashboard
 

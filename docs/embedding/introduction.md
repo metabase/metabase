@@ -102,6 +102,18 @@ If you'd like to share your data with the good people of the internet, admins ca
 
 **When to use public links and embeds**: one-off charts and dashboards. Admins can use public links when you just need to show someone a chart or dashboard without giving people access to your Metabase. And you don't care who sees the data; you want to make the item available to everyone.
 
+## Static embedding is deprecated
+
+Static embeds (also called signed embeds) put a signed JWT in an iframe URL, like `/embed/dashboard/YOUR_JWT_TOKEN`. Static embedding is deprecated in favor of [guest embeds](./guest-embedding.md), which use the same secret key and the same signed token, but render a web component instead of an iframe.
+
+Existing static embeds keep working. For items published with static embedding, the embed modal still offers **Use static embedding instead**. Their hash parameters are the same as the ones for public embeds, so check out [Appearance parameters](./public-links.md#appearance-parameters) if you need to tweak one.
+
+To migrate a static embed to a guest embed:
+
+- Keep your server-side signing code. The token payload (`resource`, `params`, and `exp`) is the same.
+- Replace the iframe with a `<metabase-dashboard>` or `<metabase-question>` element, and pass the token in its `token` attribute. Check out [Creating a guest embed](./guest-embedding.md#creating-a-guest-embed).
+- If you use an AI coding agent, give it the [Static → guest embeds skill](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-static-embedding-to-guest-embedding-upgrade-skill-md), which walks through the migration. Check out [AI agent resources](./ai-agent-resources.md).
+
 ## Resources for AI agents
 
 If you're using an AI agent to help you embed Metabase in your app, check out [AI agent resources](./ai-agent-resources.md).
