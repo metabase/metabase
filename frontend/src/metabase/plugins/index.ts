@@ -202,5 +202,6 @@ import { resetPluginSlots } from "./slot";
 export function reinitialize() {
   resetPluginSlots();
   // metabase/api sits below metabase/plugins, so its reset is called by hand here.
+  // That lasts until the product slots leave this module and it can drop below api.
   reinitializeRequestHandlers();
 }

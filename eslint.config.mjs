@@ -1289,6 +1289,7 @@ const configs = [
     ],
     ignores: [
       // metabase/api sits below metabase/plugins, so PLUGIN_API is declared and reset by hand there.
+      // That lasts until the product slots leave metabase/plugins and it can drop below api.
       "frontend/src/metabase/api/client/request-handlers.ts",
       // TODO(no-plugin-slot-outside-plugins-files): reinitialize() leaves these two alone until their modules adopt definePluginSlot.
       "frontend/src/metabase/embedding/embedding-iframe-sdk/plugin.ts",
