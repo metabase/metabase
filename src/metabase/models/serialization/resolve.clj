@@ -47,6 +47,25 @@
   nil)
 
 ;;; ============================================================
+;;; Agent surface
+;;; ============================================================
+
+(def ^:dynamic *numeric-ids-allowed?*
+  "Whether bare numeric table/field/card ids are accepted alongside portable references inside
+  a query body being resolved.
+
+  False — the default and today's only live value: this PR lands the flag ahead of its readers,
+  so current behavior is unchanged. The agent-lib dialect rework (a later PR in this stack)
+  adds the schema predicate that consults it, and the v2 MCP query pipeline is the first binder
+  (it binds true for the duration of a resolve). False stays the safe direction: a numeric id
+  is rejected with a teaching error rather than resolved against whatever row happens to carry
+  that id.
+
+  It is ambient rather than a parameter because its eventual reader is a registered Malli
+  schema predicate, which has no call site to thread a value through."
+  false)
+
+;;; ============================================================
 ;;; Pure predicates
 ;;; ============================================================
 

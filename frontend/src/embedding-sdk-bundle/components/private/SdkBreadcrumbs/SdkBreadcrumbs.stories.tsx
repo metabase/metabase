@@ -63,8 +63,8 @@ const SdkBreadcrumbStory = () => {
     .exhaustive();
 
   return (
-    <Stack p="md">
-      <Stack mb="xs">
+    <Stack p="lg">
+      <Stack mb="xxs">
         <SdkBreadcrumbs />
       </Stack>
 

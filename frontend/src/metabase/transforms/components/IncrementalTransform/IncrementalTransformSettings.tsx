@@ -142,11 +142,11 @@ export const IncrementalTransformSettings = ({
   if (variant === "standalone") {
     return (
       <TitleSection label={label} description={renderDescription()}>
-        <Group p="lg">{renderIncrementalSwitch()}</Group>
+        <Group p="xl">{renderIncrementalSwitch()}</Group>
         {incremental && (
           <>
             <Divider />
-            <Group p="lg">
+            <Group p="xl">
               <SourceStrategyFields
                 source={source}
                 query={libQuery}
@@ -157,7 +157,7 @@ export const IncrementalTransformSettings = ({
             {extraActions && (
               <>
                 <Divider />
-                <Group p="lg">{extraActions}</Group>
+                <Group p="xl">{extraActions}</Group>
               </>
             )}
             <TargetStrategyFields
@@ -172,7 +172,7 @@ export const IncrementalTransformSettings = ({
   }
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Box>
         <Text fw="bold">{label}</Text>
         <Text size="sm" lh="1rem" mb="sm">
@@ -222,7 +222,7 @@ function TargetStrategyFields({
   return (
     <>
       <Divider />
-      <Group p="lg">{content}</Group>
+      <Group p="xl">{content}</Group>
     </>
   );
 }

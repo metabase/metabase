@@ -24,8 +24,8 @@ export function MetabotChatInput() {
 
   return (
     <Flex
-      gap="xs"
-      px="md"
+      gap="xxs"
+      px="lg"
       align="center"
       justify="center"
       style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
@@ -72,7 +72,7 @@ export function MetabotChatInput() {
         }}
       />
 
-      <Flex align="center" justify="center" gap="xs">
+      <Flex align="center" justify="center" gap="xxs">
         {metabot.isDoingScience && (
           <UnstyledButton
             onClick={metabot.cancelRequest}
