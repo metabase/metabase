@@ -1,2 +1,4 @@
+export * from "./AppearanceUpsellPage";
 export * from "./AuthenticationUpsellPage";
 export * from "./BaseUpsellPage";
+export * from "./TenancyUpsellPage";

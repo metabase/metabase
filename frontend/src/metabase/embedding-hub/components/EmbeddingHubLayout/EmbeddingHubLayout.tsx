@@ -23,7 +23,8 @@ type EmbeddingHubTab = {
   to: string;
   isGated?: boolean;
   /** The design caps most hub pages at 800px; only a few need the whole
-   * area. See `EmbeddingHubContent`. */
+   * area. See `EmbeddingHubContent`. A gated tab is also full width: its
+   * upsell page owns the whole tab, header included, same as Permissions. */
   fullWidth?: boolean;
 };
 
@@ -40,6 +41,7 @@ export function EmbeddingHubLayout() {
 
   const { pathname } = useLocation();
   const hasSsoJwt = useHasTokenFeature("sso_jwt");
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
   const hasTenants = useHasTokenFeature("tenants");
 
   useEnsureDefaultEmbeddingThemes();
@@ -70,9 +72,20 @@ export function EmbeddingHubLayout() {
       to: Urls.embeddingHubTenancy(),
       isGated: !hasTenants,
     },
+    {
+      label: t`Appearance`,
+      icon: "palette",
+      to: Urls.embeddingHubAppearance(),
+      isGated: !hasSimpleEmbedding,
+    },
   ];
 
   const currentTab = tabs.find((tab) => isTabSelected(tab, pathname));
+  // The theme editor needs the whole area for its side-by-side editor/preview
+  // panels, unlike the rest of the Appearance tab, which caps at 800px.
+  const isThemeEditor = pathname.startsWith(
+    `${Urls.embeddingHubAppearance()}/theme/`,
+  );
 
   const upperNav = (
     <Stack component="nav" gap="0.75rem" aria-label={t`Embedding hub`}>
@@ -112,7 +125,13 @@ export function EmbeddingHubLayout() {
       upperNav={upperNav}
       lowerNav={<NewEmbedNavButton showLabel={isNavbarOpened} />}
     >
-      <EmbeddingHubContent fullWidth={currentTab?.fullWidth ?? false}>
+      <EmbeddingHubContent
+        fullWidth={
+          (currentTab?.fullWidth ?? false) ||
+          isThemeEditor ||
+          (currentTab?.isGated ?? false)
+        }
+      >
         <Outlet />
       </EmbeddingHubContent>
     </AreaLayout>

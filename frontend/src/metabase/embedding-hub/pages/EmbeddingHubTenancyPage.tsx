@@ -6,7 +6,6 @@ import {
   resetPermissionsBasePath,
   setPermissionsBasePath,
 } from "metabase/admin/permissions/utils/base-path";
-import { UpsellTenants } from "metabase/admin/upsells";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import {
@@ -14,6 +13,7 @@ import {
   setTenantsBasePath,
 } from "metabase/common/tenants";
 import { isUnder } from "metabase/embedding-hub/components/EmbeddingHubLayout";
+import { TenancyUpsellPage } from "metabase/embedding-hub/upsells";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Outlet, useLocation, useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -61,15 +61,15 @@ export function EmbeddingHubTenancyPage() {
     };
   }, []);
 
+  if (!hasTenants) {
+    return <TenancyUpsellPage />;
+  }
+
   return (
     <SettingsPageWrapper title={t`Tenancy`}>
-      {!hasTenants && (
-        <UpsellTenants align="flex-start" source="embedding-hub-tenancy" />
-      )}
+      {!isUsingTenants && <EnableTenancyCard />}
 
-      {hasTenants && !isUsingTenants && <EnableTenancyCard />}
-
-      {hasTenants && isUsingTenants && (
+      {isUsingTenants && (
         <>
           <TenancyTabs />
 

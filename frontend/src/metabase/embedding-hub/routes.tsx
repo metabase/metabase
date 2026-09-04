@@ -39,6 +39,16 @@ const embeddingHubTenancyPage = () =>
     Component: EmbeddingHubTenancyPage,
   }));
 
+const embeddingHubAppearancePage = () =>
+  import("./pages").then(({ EmbeddingHubAppearancePage }) => ({
+    Component: EmbeddingHubAppearancePage,
+  }));
+
+const embeddingHubThemeEditorPage = () =>
+  import("./pages").then(({ EmbeddingHubThemeEditorPage }) => ({
+    Component: EmbeddingHubThemeEditorPage,
+  }));
+
 const setupPermissionsAndTenantsPage = () =>
   import("metabase/embedding/setup-guide").then(
     ({ SetupPermissionsAndTenantsPage }) => ({
@@ -89,6 +99,16 @@ export function getEmbeddingHubRoutes() {
             routes the page still renders its own upsell. */}
         <Route path="tenancy" lazy={embeddingHubTenancyPage}>
           {PLUGIN_TENANTS.tenantsRoutes}
+        </Route>
+        <Route path="appearance">
+          <Route index lazy={embeddingHubAppearancePage} />
+          <Route path="theme">
+            <Route
+              index
+              element={<Navigate to={Urls.embeddingHubAppearance()} replace />}
+            />
+            <Route path=":themeId" lazy={embeddingHubThemeEditorPage} />
+          </Route>
         </Route>
       </Route>
     </Route>

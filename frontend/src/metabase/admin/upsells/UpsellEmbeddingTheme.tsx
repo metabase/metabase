@@ -23,8 +23,9 @@ export const UpsellEmbeddingTheme = ({ source }: { source: string }) => {
   }
 
   return (
-    <DottedBackground px="3.5rem" pb="2rem">
-      <Stack align="center" p={40}>
+    <DottedBackground px={0} py="2rem">
+      {/* Left-aligned, no extra horizontal padding: lines up with the page heading. */}
+      <Stack align="flex-start">
         <LineDecorator>
           <UpsellCardContent
             campaign={campaign}

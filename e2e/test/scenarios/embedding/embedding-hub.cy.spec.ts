@@ -1,6 +1,8 @@
 import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
+import { createThemeViaApi } from "./embedding-theme-editor/helpers";
+
 const { H } = cy;
 
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
@@ -521,6 +523,108 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
       // the upsell renders in place of the real tenants surfaces.
       cy.findByTestId("embedding-hub-main")
         .findByText("Use a multi-tenant user strategy")
+        .should("be.visible");
+    });
+  });
+});
+
+describe("scenarios > embedding > embedding hub > appearance", () => {
+  describe("pro", { tags: "@EE" }, () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+    });
+
+    it("carries the theme listing and the branding settings on one tab", () => {
+      cy.visit("/embedding");
+
+      cy.findByTestId("embedding-hub-nav")
+        .findByRole("link", { name: "Appearance" })
+        .click();
+
+      cy.url().should("include", "/embedding/appearance");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        cy.findByRole("heading", { name: "Appearance" }).should("be.visible");
+        cy.findByRole("heading", { name: "Themes" }).should("be.visible");
+        cy.findByRole("heading", { name: "Branding elements" }).should(
+          "be.visible",
+        );
+        cy.findByText("Loading message").should("be.visible");
+        cy.findByText("When calculations return no results").should(
+          "be.visible",
+        );
+        cy.findByText("When no objects can be found").should("be.visible");
+      });
+    });
+
+    it("opens the theme editor inside the hub", () => {
+      cy.visit("/embedding/appearance");
+
+      cy.findByTestId("embedding-hub-main")
+        .findByRole("button", { name: /New theme/ })
+        .click();
+
+      cy.url().should("include", "/embedding/appearance/theme/new");
+      cy.url().should("not.include", "/admin/embedding/themes");
+    });
+
+    it("opens an existing theme inside the hub", () => {
+      createThemeViaApi("Existing theme");
+      cy.visit("/embedding/appearance");
+
+      cy.findByTestId("embedding-hub-main")
+        .findByText("Existing theme")
+        .click();
+
+      // The listing is the admin one, mounted with the hub's basePath: card
+      // clicks have to land here rather than on the admin route.
+      cy.url().should("match", /\/embedding\/appearance\/theme\/\d+/);
+      cy.url().should("not.include", "/admin/embedding/themes");
+    });
+
+    it("creates a theme from the hub and shows it in the listing", () => {
+      cy.visit("/embedding/appearance");
+
+      cy.findByTestId("embedding-hub-main")
+        .findByRole("button", { name: /New theme/ })
+        .click();
+
+      cy.findByLabelText("Theme name").clear().type("Hub theme");
+      cy.findByRole("button", { name: /Save theme/ }).click();
+
+      H.undoToastList().contains("Theme saved").should("be.visible");
+
+      cy.url().should("eq", Cypress.config().baseUrl + "/embedding/appearance");
+      cy.findByTestId("embedding-hub-main")
+        .findByText("Hub theme")
+        .should("be.visible");
+    });
+  });
+
+  describe("unlicensed", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("upsells rather than hiding the tab", () => {
+      cy.visit("/embedding/appearance");
+
+      cy.findByTestId("embedding-hub-main")
+        .findByText("Create custom themes")
+        .should("be.visible");
+    });
+
+    it("sends a theme editor deep link back to the upsell", () => {
+      // A themeId, not the bare `theme` path -- that one redirects from the
+      // route table whatever the plan, so it would pass without the guard.
+      cy.visit("/embedding/appearance/theme/new");
+
+      cy.url().should("eq", Cypress.config().baseUrl + "/embedding/appearance");
+      cy.findByTestId("embedding-hub-main")
+        .findByText("Create custom themes")
         .should("be.visible");
     });
   });
