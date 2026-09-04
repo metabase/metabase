@@ -5,10 +5,9 @@ import {
   useGetAdhocPivotQueryQuery,
   useGetAdhocQueryQuery,
 } from "metabase/api/dataset";
-import { getMetadata } from "metabase/metadata-store";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import type { UseCardDataResult } from "metabase/rich_text_editing/tiptap/EditorHost";
-import Question from "metabase-lib/v1/Question";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot-options";
 import type {
   Card,
@@ -105,7 +104,7 @@ export function useCardData({
 
   const cardToUse = cardWithDraft ?? card;
 
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
 
   const isPivotTable = cardToUse?.display === "pivot";
 
@@ -117,20 +116,20 @@ export function useCardData({
   const canQueryDraftCard =
     shouldUseDraftQuery && cardToUse?.dataset_query && !skip;
   const shouldQueryDraftNonPivot = canQueryDraftCard && !isPivotTable;
-  const shouldQueryDraftPivot = canQueryDraftCard && isPivotTable && metadata;
+  const shouldQueryDraftPivot = canQueryDraftCard && isPivotTable;
 
   const pivotOptions = useMemo(() => {
-    if (!shouldUseDraftQuery || !isPivotTable || !cardToUse || !metadata) {
+    if (!shouldUseDraftQuery || !isPivotTable || !cardToUse) {
       return null;
     }
 
     try {
-      const question = new Question(cardToUse, metadata);
+      const question = buildQuestion(cardToUse);
       return getPivotOptions(question);
     } catch (error) {
       return null;
     }
-  }, [shouldUseDraftQuery, isPivotTable, cardToUse, metadata]);
+  }, [shouldUseDraftQuery, isPivotTable, cardToUse, buildQuestion]);
 
   const { data: regularDataset, isLoading: isLoadingRegularDataset } =
     useGetCardQueryQuery(
@@ -182,8 +181,8 @@ export function useCardData({
     : null;
 
   const question = useMemo(
-    () => (cardToUse ? new Question(cardToUse, metadata) : undefined),
-    [cardToUse, metadata],
+    () => (cardToUse ? buildQuestion(cardToUse) : undefined),
+    [cardToUse, buildQuestion],
   );
 
   const hasTriedToLoad =
