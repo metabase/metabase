@@ -4,6 +4,9 @@
    [malli.error :as me]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -166,3 +169,33 @@
            (is (false? (.isClosed prepared-stmt)))
            (.close prepared-stmt)
            (is (true? (.isClosed prepared-stmt)))))))))
+
+(defn- venues-rows
+  "Run an unaggregated venues query limited to `n` rows."
+  [n]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/limit n)
+        qp/process-query
+        mt/rows)))
+
+(deftest cancel-statement-only-when-rows-remain-test
+  (testing "the statement is canceled only when reduction stopped before the ResultSet ran out of rows"
+    (mt/test-drivers (mt/normal-driver-select
+                      {:+parent :sql-jdbc
+                       :-fns    [#'sql-jdbc.execute/drivers-exempt-from-cancelation]})
+      ;; take the dataset creation and sync queries before anything is counted
+      (venues-rows 1)
+      (let [cancels (atom 0)]
+        ;; the stub reports that no cancelation was issued, so nothing downstream acts on one
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/cancel-statement! (fn [_driver _stmt]
+                                                                         (swap! cancels inc)
+                                                                         false)]
+          (testing "rows ran out, so there is nothing left to cancel"
+            (reset! cancels 0)
+            (is (= 100 (count (venues-rows 1000))))
+            (is (zero? @cancels)))
+          (testing "reduction stopped at the row limit while the statement was still producing (#39018)"
+            (reset! cancels 0)
+            (is (= 4 (count (venues-rows 4))))
+            (is (pos? @cancels))))))))

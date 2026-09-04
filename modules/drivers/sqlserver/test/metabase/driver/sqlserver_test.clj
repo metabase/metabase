@@ -15,6 +15,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
@@ -942,3 +943,18 @@
       (is (= ["DATEADD(day, 1, some_col)"]
              (sql/format-expr (sql.qp/add-interval-honeysql-form :sqlserver :some_col 1 :day)
                               {:nested true}))))))
+
+(deftest cancelation-poisons-connection-test
+  (testing "discarding the Connection a query canceled on leaves the pool able to serve later queries (#39018)"
+    (mt/test-driver :sqlserver
+      (is (true? (sql-jdbc.execute/cancelation-poisons-connection? :sqlserver))
+          "SQL Server does not recover from a cancelation on its own, so the Connection must not be recycled")
+      (letfn [(rows [table n]
+                (let [mp (mt/metadata-provider)]
+                  (cond-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                    n    (lib/limit n)
+                    true (-> qp/process-query mt/rows))))]
+        ;; stopping at the limit leaves the statement producing, which is what triggers the cancel-and-discard
+        (is (= 4 (count (rows :venues 4))))
+        (testing "and a later query reading every row still succeeds"
+          (is (= 1000 (count (rows :checkins nil)))))))))
