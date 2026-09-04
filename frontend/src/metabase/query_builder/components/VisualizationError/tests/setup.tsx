@@ -4,7 +4,13 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-import type { Card, Database, TokenFeatures } from "metabase-types/api";
+import type {
+  Card,
+  Database,
+  DatasetError,
+  DatasetErrorType,
+  TokenFeatures,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
@@ -17,17 +23,23 @@ import { VisualizationError } from "../VisualizationError";
 export interface SetupOpts {
   database?: Database;
   card?: Card;
+  error?: DatasetError;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  errorType?: DatasetErrorType;
+  duration?: number;
 }
 
 export const setup = ({
   database = createMockDatabase(),
   card = createMockCard(),
+  error = "An error occurred",
   showMetabaseLinks = true,
   tokenFeatures = {},
   enterprisePlugins = [],
+  errorType,
+  duration = 0,
 }: SetupOpts) => {
   const state = createMockState({
     entities: createMockEntitiesState({
@@ -53,8 +65,9 @@ export const setup = ({
   renderWithProviders(
     <VisualizationError
       question={question}
-      duration={0}
-      error="An error occurred"
+      duration={duration}
+      error={error}
+      errorType={errorType}
       via={[]}
     />,
     { storeInitialState: state },
