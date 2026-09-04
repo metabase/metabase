@@ -1,6 +1,10 @@
 (ns metabase.mcp.db
   "Application database queries for the MCP module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`).
+
+  The one thing that does belong alongside a query is a guard on a value the query splices rather than binds
+  — see [[user-id->tenant-id]]. It lives here because here is the only place that knows the value reaches
+  HoneySQL."
   (:require
    [toucan2.core :as t2]))
 
@@ -66,3 +70,36 @@
                                                                     :where  [:and
                                                                              [:= :key_hashed key-hashed]
                                                                              [:= :user_id user-id]]}]]]}))
+
+(defn hydrate-notification
+  "`notification` with its payload, subscriptions, and handler channels and recipients hydrated.
+
+  Spelled out here rather than delegated to `metabase.notification.models/hydrate-notification`, whose
+  output schema rejects `payload_type: notification/dashboard` rows — readable on the MCP read path by
+  design."
+  [notification]
+  (t2/hydrate notification
+              :payload
+              :subscriptions
+              [:handlers :channel [:recipients :recipients-detail]]))
+
+(defn user-id->tenant-id
+  "Map of user id to `tenant_id` for `user-ids`, in one query. An empty collection asks nothing of the
+  database and answers `{}` — `[:in ()]` is not valid SQL.
+
+  Throws unless `user-ids` is a collection of integers. HoneySQL binds a number in an `[:in …]` clause as
+  a parameter, but renders a string, a raw form, or a nested map as SQL — so a non-integer element
+  arriving here is an injection vector, not merely a type error, and is refused before any SQL is built.
+  The offending values ride `ex-data` rather than the message, so nothing caller-controlled lands in a
+  log line.
+
+  `int?` rather than `Long` on purpose: `core_user.id` comes back from JDBC as an `Integer`, so a
+  Long-only check would pass its tests and refuse every real call."
+  [user-ids]
+  (when-not (coll? user-ids)
+    (throw (ex-info "MCP: user ids must be a collection of integers" {:user-ids user-ids})))
+  (when-let [invalid (seq (remove int? user-ids))]
+    (throw (ex-info "MCP: user ids must be a collection of integers" {:invalid (vec invalid)})))
+  (if (seq user-ids)
+    (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids])
+    {}))
