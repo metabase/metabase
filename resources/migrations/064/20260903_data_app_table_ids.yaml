@@ -12,10 +12,7 @@ databaseChangeLog:
               - column:
                   name: table_ids
                   type: ${text.type}
-                  defaultValue: "[]"
                   remarks: JSON array of table ids used by the last successful resource sync
-                  constraints:
-                    nullable: false
       rollback:
         - dropColumn:
             tableName: data_app
