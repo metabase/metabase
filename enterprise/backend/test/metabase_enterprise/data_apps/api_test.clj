@@ -259,6 +259,16 @@
                                         :database_id (mt/id)}]}]
                     (mt/user-http-request :crowberto :post 200 "apps/demo/user-permission-warnings"
                                           {:user_ids [user-id (mt/user->id :crowberto)]}))))
+          (testing "unrestricted access from another group is adequate"
+            (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+              (perms/add-user-to-group! user-id group-id)
+              (perms/set-table-permission! group-id
+                                           missing-table-id
+                                           :perms/view-data
+                                           :unrestricted)
+              (is (= []
+                     (mt/user-http-request :crowberto :post 200 "apps/demo/user-permission-warnings"
+                                           {:user_ids [user-id]})))))
           (testing "sandboxed access is adequate"
             (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                            :model/Sandbox _ {:group_id group-id :table_id missing-table-id}]

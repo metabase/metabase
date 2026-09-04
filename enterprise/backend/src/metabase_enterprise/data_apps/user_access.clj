@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -44,7 +45,7 @@
                              [:in :pgm.user_id user-ids]
                              [:in :t.id table-ids]
                              [:not :pg.is_data_app_group]
-                             [:= :dp.perm_type "view-data"]
+                             [:= :dp.perm_type (u/qualified-name :perms/view-data)]
                              [:= :dp.perm_value "unrestricted"]]}))
     #{}))
 
