@@ -13,10 +13,12 @@ import Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import Table from "metabase-lib/v1/metadata/Table";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { ParameterField } from "metabase-lib/v1/parameters/types";
 import {
   getFieldValues,
   getRemappings,
 } from "metabase-lib/v1/queries/utils/field";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Table as ApiTable,
   Card,
@@ -475,5 +477,44 @@ export function getFieldRemappings(
   state: State,
   fieldId: FieldId,
 ): FieldValue[] {
-  return state.entities.fields[fieldId]?.remappings ?? [];
+  return state.entities.fields[fieldId]?.remappings ?? NO_REMAPPINGS;
+}
+
+// a shared empty array, so a field with no remappings keeps its identity
+// between calls and a `useSelector` on it does not re-render
+const NO_REMAPPINGS: FieldValue[] = [];
+
+/**
+ * The label a field carries for `value`.
+ *
+ * It merges the values a values endpoint fetched with the remappings the
+ * client accumulated as other widgets fetched values. The store holds both, so
+ * a field a caller holds cannot answer this on its own.
+ */
+export function getRemappedFieldValue(
+  state: State,
+  field: ParameterField,
+  value: unknown,
+): string | undefined {
+  const fieldId = typeof field.id === "number" ? field.id : null;
+  const storeField =
+    fieldId == null ? undefined : state.entities.fields[fieldId];
+  const remappings =
+    fieldId == null ? NO_REMAPPINGS : getFieldRemappings(state, fieldId);
+
+  // parameter values arrive from the URL as strings
+  const key =
+    isNumeric(field) && typeof value !== "number"
+      ? parseFloat(String(value))
+      : value;
+
+  // a later entry wins, so the accumulated remappings override the field's
+  // own values
+  const labels = new Map<unknown, string | undefined>(
+    // the store's copy carries the values a values endpoint fetched, which the
+    // field a caller holds does not
+    getRemappings({ ...field, values: storeField?.values, remappings }),
+  );
+
+  return labels.get(key);
 }

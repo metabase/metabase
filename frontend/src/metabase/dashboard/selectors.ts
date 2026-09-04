@@ -433,7 +433,6 @@ export const getParameters = createSelector(
           dashboard.dashcards,
           dashboard.parameters,
           dashboard.param_fields,
-          metadata,
         );
   },
 );

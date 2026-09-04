@@ -39,30 +39,25 @@ describe("parameters/utils/cards", () => {
     });
 
     describe("saved cards", () => {
-      it("should get parameter fields from param_fields via metadata", () => {
-        const metadata = createMockMetadata({
-          fields: [createMockField({ id: 1 }), createMockField({ id: 2 })],
-        });
+      it("should get parameter fields from param_fields, without duplicates", () => {
+        const firstField = createMockField({ id: 1 });
+        const secondField = createMockField({ id: 2 });
         const card = createMockCard({
           id: 1,
           parameters: [dateParameter, variableParameter],
           param_fields: {
-            [dateParameter.id]: [
-              createMockField({ id: 1 }),
-              createMockField({ id: 2 }),
-              createMockField({ id: 1 }),
-            ],
+            [dateParameter.id]: [firstField, secondField, firstField],
           },
         });
 
         const [dateUiParameter, variableUiParameter] = getCardUiParameters(
           card,
-          metadata,
+          createMockMetadata({}),
         );
 
         expect(dateUiParameter).toMatchObject({
           id: dateParameter.id,
-          fields: [metadata.field(1), metadata.field(2)],
+          fields: [firstField, secondField],
           hasVariableTemplateTagTarget: false,
         });
         expect(variableUiParameter).toMatchObject({
@@ -72,23 +67,26 @@ describe("parameters/utils/cards", () => {
         expect(variableUiParameter).not.toHaveProperty("fields");
       });
 
-      it("should ignore fields missing from metadata", () => {
-        const metadata = createMockMetadata({ fields: [] });
+      it("should use a param_fields field the metadata store never loaded", () => {
+        // the backend hydrates param_fields for this card, so a field is
+        // there to be used whether or not another request put it in the store
+        const field = createMockField({ id: 1 });
         const card = createMockCard({
           id: 1,
           parameters: [dateParameter],
-          param_fields: {
-            [dateParameter.id]: [createMockField({ id: 1 })],
-          },
+          param_fields: { [dateParameter.id]: [field] },
         });
 
-        const [dateUiParameter] = getCardUiParameters(card, metadata);
+        const [dateUiParameter] = getCardUiParameters(
+          card,
+          createMockMetadata({ fields: [] }),
+        );
 
         expect(dateUiParameter).toMatchObject({
           id: dateParameter.id,
+          fields: [field],
           hasVariableTemplateTagTarget: false,
         });
-        expect(dateUiParameter).not.toHaveProperty("fields");
       });
 
       it("should not resolve parameter fields from the query", () => {

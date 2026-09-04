@@ -1,16 +1,16 @@
 import { Component, type ComponentType } from "react";
 
-import { fetchRemapping, getMetadata } from "metabase/metadata-store";
+import { fetchRemapping, getRemappedFieldValue } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { getRemappedField } from "metabase-lib/v1/metadata/utils/remapping";
+import type { ParameterField } from "metabase-lib/v1/parameters/types";
 
 type Remapping = [value: unknown, label: unknown];
 
 interface RemappedOwnProps {
   value?: unknown;
-  column?: Field;
+  column?: ParameterField;
   parameter?: { id?: unknown };
   cardId?: unknown;
   dashboardId?: unknown;
@@ -19,7 +19,8 @@ interface RemappedOwnProps {
 }
 
 interface RemappedStateProps {
-  metadata: Metadata;
+  // the label the store already holds for this value, if any
+  remappedValue: string | undefined;
 }
 
 interface RemappedDispatchProps {
@@ -27,7 +28,7 @@ interface RemappedDispatchProps {
   fetchRemapping: (args: {
     parameter?: { id?: unknown };
     value?: unknown;
-    field?: Field;
+    field?: ParameterField;
     cardId?: unknown;
     dashboardId?: unknown;
     uuid?: unknown;
@@ -39,8 +40,12 @@ type RemappedClassProps = RemappedOwnProps &
   RemappedStateProps &
   RemappedDispatchProps;
 
-const mapStateToProps = (state: State): RemappedStateProps => ({
-  metadata: getMetadata(state),
+const mapStateToProps = (
+  state: State,
+  { column, value }: RemappedOwnProps,
+): RemappedStateProps => ({
+  remappedValue:
+    column == null ? undefined : getRemappedFieldValue(state, column, value),
 });
 
 const mapDispatchToProps = {
@@ -99,10 +104,9 @@ export default (ComposedComponent: ComponentType<any>) => {
       }
     }
 
-    getDisplayValue(field: Field | null | undefined, value: unknown) {
-      const fieldDisplayValue = field && field.remappedValue(value);
-      if (fieldDisplayValue != null) {
-        return fieldDisplayValue;
+    getDisplayValue() {
+      if (this.props.remappedValue != null) {
+        return this.props.remappedValue;
       }
 
       const [, remappedLabel] = this.state.remapping ?? [];
@@ -114,16 +118,17 @@ export default (ComposedComponent: ComponentType<any>) => {
     }
 
     render() {
-      const { metadata, fetchRemapping, ...props } = this.props;
-      // Read the field from metadata so we pick up remappings stored
-      // asynchronously by fetchRemapping (e.g. card/question label columns);
-      // the column passed in props can be a stale instance.
-      const field =
-        (props.column?.id != null && metadata?.field(props.column.id)) ||
-        props.column;
-      const displayValue = this.getDisplayValue(field, props.value);
+      const {
+        remappedValue: _remappedValue,
+        fetchRemapping,
+        ...props
+      } = this.props;
+      const displayValue = this.getDisplayValue();
       const displayColumn =
-        (displayValue != null && field && field.remappedField()) || null;
+        (displayValue != null &&
+          props.column != null &&
+          getRemappedField(props.column)) ||
+        null;
 
       return (
         <ComposedComponent
