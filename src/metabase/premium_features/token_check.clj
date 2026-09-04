@@ -198,19 +198,38 @@
   [decoded]
   (assoc decoded :canonical? true))
 
+(defn- parse-status-body
+  "Decode a token-status response body, returning the status map, or nil when the body is missing,
+  unparseable (e.g. a proxy's HTML error page), or not a JSON object."
+  [body]
+  (let [decoded (try
+                  (some-> body json/decode+kw)
+                  (catch Exception _e nil))]
+    (when (map? decoded)
+      decoded)))
+
 (defn- fetch-token-and-parse-body
   [token base-url site-uuid]
   (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
-    (cond
-      (http/success? resp) (do (analytics/inc! :metabase-token-check/attempt {:status :success})
-                               (some-> body json/decode+kw authoritative))
-      (<= 400 status 499) (or (some-> body json/decode+kw authoritative)
-                              (throw (ex-info "Token validation provided no response." {:status status})))
+    (if (or (http/success? resp) (<= 400 status 499))
+      ;; 2xx and 4xx normally carry the store's verdict in the body; a response we can't decode is
+      ;; not a verdict and must throw so it is treated as transient rather than cached
+      (do (when (http/success? resp)
+            (analytics/inc! :metabase-token-check/attempt {:status :success}))
+          (or (some-> (parse-status-body body) authoritative)
+              ;; the store may reject a token with a bare 403/404 — no body at all — so honor that as
+              ;; a definitive verdict. A 403 with an undecodable body (e.g. a WAF's HTML error page)
+              ;; is deliberately NOT honored: only the store sends bodyless rejections.
+              (when (and (#{403 404} status) (str/blank? body))
+                (authoritative {:valid         false
+                                :status        "Token is not valid."
+                                :error-details (format "Token check returned %d with no details." status)}))
+              (throw (ex-info "Token validation provided no response." {:status status}))))
       ;; exceptions are not cached.
-      :else (do (analytics/inc! :metabase-token-check/attempt {:status :failure})
-                (throw (ex-info "An unknown error occurred when validating token." {:status status
-                                                                                    :body body}))))))
+      (do (analytics/inc! :metabase-token-check/attempt {:status :failure})
+          (throw (ex-info "An unknown error occurred when validating token." {:status status
+                                                                              :body body}))))))
 
 (defn- metering-url
   [token base-url]
@@ -428,17 +447,23 @@
   (let [local-cache          (or local-cache (atom {}))
         refresh-in-progress? (atom false)]
     (letfn [(do-refresh! [token token-hash]
-              ;; anything the inner checker returns is an authoritative answer we may hold on to —
-              ;; transient failures (network errors, 5xx, bodyless 4xx) throw before reaching here
-              (let [result      (-check-token token-checker token)
-                    result-hash (hash-token-status result)
-                    now         (t/instant)]
-                (write-cache-to-db! token-hash result-hash)
-                (update-locked-meters! result)
-                (swap! local-cache assoc token-hash {:result      result
-                                                     :result-hash result-hash
-                                                     :updated-at  now})
-                result))]
+              ;; only authoritative answers may be held on to — transient failures (network errors,
+              ;; 5xx, undecodable bodies) throw inside the inner checker, and this guard backstops
+              ;; any path that returns a fallback value instead
+              (let [result (-check-token token-checker token)]
+                (when-not (:canonical? result)
+                  ;; an inner checker returning a non-authoritative value is an internal bug: every
+                  ;; legitimate path returns a canonical map or throws
+                  (throw (ex-info "Refusing to cache a non-authoritative token status"
+                                  {:status (:status result)})))
+                (let [result-hash (hash-token-status result)
+                      now         (t/instant)]
+                  (write-cache-to-db! token-hash result-hash)
+                  (update-locked-meters! result)
+                  (swap! local-cache assoc token-hash {:result      result
+                                                       :result-hash result-hash
+                                                       :updated-at  now})
+                  result)))]
       (reify TokenChecker
         (-check-token [_ token]
           (if-not (app-db/db-is-set-up?)
@@ -582,6 +607,9 @@
                     (mr/validate [:re AirgapToken] new-value))
         (throw (ex-info (tru "Token format is invalid.")
                         {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
+      ;; the admin is telling us the token state changed (a new token, or a renewed subscription on
+      ;; the same token) — bust the cache so we validate against the store, not a stale verdict
+      (clear-cache!)
       (let [decoded (check-token new-value)]
         (when-not (:valid decoded)
           (throw (ex-info (:status decoded)
