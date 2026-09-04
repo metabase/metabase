@@ -407,8 +407,7 @@
 
   auth-identity
   {:team "UX West"
-   :api  #{metabase.auth-identity.core
-           metabase.auth-identity.init}
+   :api  #{metabase.auth-identity.core metabase.auth-identity.db metabase.auth-identity.init}
    :uses #{channel
            events
            login-history
@@ -1499,7 +1498,8 @@
 
   models
   {:team "DevEx"
-   :api  #{metabase.models.humanization
+   :api  #{metabase.models.db
+           metabase.models.humanization
            metabase.models.init
            metabase.models.interface
            metabase.models.resolution

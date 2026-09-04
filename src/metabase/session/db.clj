@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -37,14 +38,15 @@
       (t2/query-one hsql))))
 
 (defn auth-identity-for-provider
-  "The AuthIdentity of the User with `user-id` at `provider`, or nil."
+  "The AuthIdentity of the User with `user-id` at `provider`, or nil. See `metabase.auth-identity.db/auth-identity`,
+  which owns the AuthIdentity table."
   [user-id provider]
-  (t2/select-one :model/AuthIdentity :user_id user-id :provider provider))
+  (auth-identity.db/auth-identity user-id provider))
 
 (defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity at `provider`."
   [user-id provider]
-  (t2/exists? :model/AuthIdentity :user_id user-id :provider provider))
+  (auth-identity.db/auth-identity-exists? user-id provider))
 
 (defn set-auth-identity-credentials!
   "Set the `credentials` of the AuthIdentity with `auth-identity-id`."

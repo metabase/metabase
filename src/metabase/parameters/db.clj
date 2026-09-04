@@ -115,6 +115,11 @@
   [id]
   (t2/delete! :model/FieldValues :id id))
 
+(defn advanced-field-values
+  "The advanced FieldValues of the Field with `field-id` and `hash-key`, or nil."
+  [field-id hash-key]
+  (t2/select-one :model/FieldValues :field_id field-id, :type :advanced, :hash_key hash-key))
+
 (defn find-or-insert-advanced-field-values!
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, inserting one built by calling
   `insert-fn` if none exists yet."

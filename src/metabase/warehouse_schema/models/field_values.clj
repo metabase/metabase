@@ -506,20 +506,154 @@
   "Create or update the full FieldValues object for `field`. If the FieldValues object already
   exists, then update values for it; otherwise create a new FieldValues object with the newly
   fetched values. Returns whether the field values were created / updated / deleted as a result
-  of this call.
+  of this call, or `::fv-fetch-failed` if the warehouse scan failed and nothing was changed.
 
   Note that if the full FieldValues are create / updated / deleted, it'll delete all the
   Advanced FieldValues of the same `field`."
   [field & {:keys [field-values]}]
   (if (field-should-have-field-values? field)
-    (let [existing-fv (or field-values (get-latest-full-field-values (u/the-id field)))
-          {rows :values} (distinct-values field)
-          ;; rows are 1-tuples — unwrap for storage.
-          raw-values  (seq (map first rows))]
-      (persist-field-values! field existing-fv raw-values))
+    (let [existing-fv (or field-values (get-latest-full-field-values (u/the-id field)))]
+      ;; `distinct-values` returns nil when the warehouse scan failed, which is not the same as a
+      ;; field that genuinely has no values: persisting it would read as "empty" and delete the
+      ;; values we already have. Leave whatever is cached in place instead.
+      (if-let [{rows :values} (distinct-values field)]
+        ;; rows are 1-tuples — unwrap for storage.
+        (persist-field-values! field existing-fv (seq (map first rows)))
+        ::fv-fetch-failed))
     (do
       (clear-field-values-for-field! field)
       ::fv-deleted)))
+
+(def ^:private in-flight-fetches
+  "`cache-key` -> `{:promise :future-ref :timer}` for the fetch currently running for that key.
+  See [[detached-fetch!]]."
+  (atom {}))
+
+(def ^:dynamic *fetch-max-age-ms*
+  "How long a detached fetch may run before it is canceled, and how long a caller will wait on one.
+
+  Only a fetch wedged outside the query processor can reach this: the warehouse query itself is
+  already capped by `*query-timeout-ms*` (`MB_DB_QUERY_TIMEOUT_MINUTES`, 20 minutes in prod), so
+  this is a backstop for work blocked somewhere the QP cannot cancel — acquiring a connection, or a
+  driver that ignores cancellation.
+
+  It bounds the wait as well as the work because [[sweep-stalled-fetches!]] only runs when a request
+  arrives, and the case this guards against is precisely the one where none can: callers parked on a
+  wedged fetch are request threads, so enough of them stop the server from serving anything at all.
+
+  Deliberately a backstop rather than a request-latency bound. A value nearer a sensible HTTP
+  timeout would hand the thread back far sooner, but returning before the values are ready changes
+  what this endpoint promises its callers, and that is a decision of its own."
+  (* 60 60 1000))
+
+(def ^:dynamic *max-in-flight-fetches*
+  "Ceiling on the registry, independent of whatever else happens to bound it.
+
+  Callers park on their fetch, so the number in flight is today limited by the request thread pool
+  — but that is an accident of how these endpoints are served, not a guarantee this namespace can
+  make. Past this many, [[detached-fetch!]] refuses the fetch with a 503 rather than letting the
+  registry grow: reaching this means something is wrong, and failing loudly beats absorbing it.
+
+  Sized well clear of the request thread pool (50 by default), so an instance has to have raised
+  `MB_JETTY_MAXTHREADS` well past its default before this can be reached at all."
+  200)
+
+(defn- complete-fetch!
+  "Drop `entry` from the registry and hand `result` to everyone waiting on it.
+
+  Dropping the entry before delivering means a caller that wakes up and immediately asks again
+  starts a fresh fetch rather than re-attaching to this finished one. The entry is removed only if
+  it is still the registered one, so a fetch that was already swept can't evict its replacement."
+  [cache-key entry result]
+  (swap! in-flight-fetches (fn [m]
+                             (cond-> m
+                               (identical? entry (get m cache-key)) (dissoc cache-key))))
+  (deliver (:promise entry) result))
+
+(defn- sweep-stalled-fetches!
+  "Cancel every fetch that has outlived [[*fetch-max-age-ms*]] and fail whoever is waiting on it.
+
+  A fetch clears its own registry entry, so this fires only when that failed or when the work is
+  genuinely wedged. It completes the entries rather than merely forgetting them: callers park on the
+  promise, so an entry dropped without delivery leaves them blocked forever, each holding a request
+  thread. Deliberately logs no cache keys — printing one is a way this could throw, and a backstop
+  that throws is not a backstop."
+  []
+  (let [swept (atom 0)]
+    (doseq [[cache-key {:keys [timer future-ref] :as entry}] @in-flight-fetches
+            :when (> (u/since-ms timer) *fetch-max-age-ms*)]
+      (some-> @future-ref future-cancel)
+      (complete-fetch! cache-key entry
+                       {:error (ex-info (tru "Timed out fetching field values.") {:cache-key cache-key})})
+      (swap! swept inc))
+    (when (pos? @swept)
+      (log/warnf "Canceled %d FieldValues fetch(es) still running after %d ms" @swept *fetch-max-age-ms*))))
+
+(defn- claim-fetch!
+  "Register `entry` for `cache-key` and return whichever entry is registered once we are done, or
+  nil when the registry is already full.
+
+  The `contains?` check comes first deliberately: joining a fetch already in flight adds no entry,
+  so a full registry must not turn those callers away. Only a new key can be refused. Checking
+  capacity inside the swap keeps the ceiling exact under concurrent claims."
+  [cache-key entry]
+  (-> (swap! in-flight-fetches (fn [m]
+                                 (if (or (contains? m cache-key)
+                                         (>= (count m) *max-in-flight-fetches*))
+                                   m
+                                   (assoc m cache-key entry))))
+      (get cache-key)))
+
+(defn detached-fetch!
+  "Run `thunk` on a background thread and return its result, rethrowing anything it throws.
+
+  Calls sharing a `cache-key` while a fetch is in flight all wait on that one run instead of
+  starting their own. Because the work is detached from the calling thread, it runs to completion
+  — and persists whatever it fetched — even when the caller stops waiting, e.g. when the HTTP
+  request that asked for the values is canceled."
+  [cache-key thunk]
+  ;; sweep here rather than on a timer: the registry only grows when something is inserted, so this
+  ;; runs exactly when it needs to. Guarded because a failure to sweep must not fail this caller.
+  (try
+    (sweep-stalled-fetches!)
+    (catch Throwable e
+      (log/warn e "Error sweeping stalled FieldValues fetches")))
+  (let [entry {:promise (promise), :future-ref (atom nil), :timer (u/start-timer)}
+        this  (or (claim-fetch! cache-key entry)
+                  (throw (ex-info (tru "Too many field values fetches are already running. Please try again shortly.")
+                                  {:status-code   503
+                                   :max-in-flight *max-in-flight-fetches*})))]
+    (when (identical? this entry)
+      ;; Every path from here must reach `complete-fetch!`. An entry left in the registry with its
+      ;; promise undelivered is worse than a leak: every later caller for that key parks on it
+      ;; forever, holding a request thread each.
+      (try
+        (reset! (:future-ref entry)
+                (future
+                  (try
+                    (complete-fetch! cache-key entry {:value (thunk)})
+                    (catch Throwable e
+                      (complete-fetch! cache-key entry {:error e})
+                      ;; log only once everyone waiting has been served: an appender that throws here
+                      ;; would otherwise strand them. Log at all because when every caller has walked
+                      ;; away there is nobody left to deref the promise, so this is the only record.
+                      (log/warnf e "Error fetching FieldValues for %s" (pr-str cache-key))))))
+        ;; submitting can fail on its own — `future`'s pool rejects new work once the JVM starts
+        ;; shutting down, and the registry entry is already in place by then
+        (catch Throwable e
+          (complete-fetch! cache-key entry {:error e}))))
+    (let [{:keys [value error] :as result} (deref (:promise this) *fetch-max-age-ms* ::timed-out)]
+      (cond
+        (= result ::timed-out)
+        (throw (ex-info (tru "Timed out waiting for field values.")
+                        {:status-code 503
+                         :timeout-ms  *fetch-max-age-ms*}))
+
+        error
+        (throw error)
+
+        :else
+        value))))
 
 (defn get-or-create-full-field-values!
   "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
@@ -529,17 +663,20 @@
   (when (field-should-have-field-values? field)
     (let [existing (or (not-empty field-values) (get-latest-full-field-values field-id))]
       (if (or (not existing) (inactive? existing))
-        (case (create-or-update-full-field-values! field)
-          ::fv-deleted
-          nil
+        (detached-fetch!
+         [:full field-id]
+         (fn []
+           (case (create-or-update-full-field-values! field)
+             ::fv-deleted
+             nil
 
-          ::fv-created
-          (get-latest-full-field-values field-id)
+             ::fv-created
+             (get-latest-full-field-values field-id)
 
-          (do
-            (when existing
-              (warehouse-schema.db/touch-field-values! (:id existing)))
-            (get-latest-full-field-values field-id)))
+             (do
+               (when existing
+                 (warehouse-schema.db/touch-field-values! (:id existing)))
+               (get-latest-full-field-values field-id)))))
         (do
           (warehouse-schema.db/touch-field-values! (:id existing))
           existing)))))

@@ -4,6 +4,7 @@
   methods, and transactions."
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.models.db :as models.db]
    [toucan2.core :as t2]))
 
 (def field-order-rule
@@ -17,22 +18,11 @@
   [field-id]
   (t2/select-one :model/Field :id field-id))
 
-(defn- field-in-path-query
-  [table-id [field & rest]]
-  (when field
-    ^:allow-subquery {:from   [:metabase_field]
-                      :select [:id]
-                      :where  [:and
-                               [:= :table_id table-id]
-                               [:= :name field]
-                               [:= :parent_id (field-in-path-query table-id rest)]]}))
-
 (defn field-in-path
   "The Field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
-  `table-id`, or nil."
+  `table-id`, or nil. See `metabase.models.db/field-in-path`, which owns the shared query."
   [table-id field-names]
-  (when (seq field-names)
-    (t2/select-one :model/Field (field-in-path-query table-id field-names))))
+  (models.db/field-in-path table-id field-names))
 
 (defn fields
   "The Fields with `field-ids`."
