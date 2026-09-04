@@ -1324,8 +1324,7 @@
     (testing "is refused without the :advanced-permissions feature"
       (mt/with-temp [:model/User {user-id :id} {:email "no-advanced-perms-analyst@metabase.com"}]
         (mt/with-premium-features #{}
-          (is (= (str "Adding people to the 'Data Analysts' group requires the Advanced Permissions feature, "
-                      "which is not enabled on this instance.")
+          (is (= (str perms/fail-to-add-data-analyst-msg)
                  (mt/user-http-request :crowberto :put 402 (str "user/" user-id)
                                        {:is_data_analyst true})))
           (testing "and neither the membership nor the flag is left behind"
@@ -1347,8 +1346,7 @@
           group-id (:id (perms-group/data-analyst))]
       (try
         (mt/with-premium-features #{}
-          (is (= (str "Adding people to the 'Data Analysts' group requires the Advanced Permissions feature, "
-                      "which is not enabled on this instance.")
+          (is (= (str perms/fail-to-add-data-analyst-msg)
                  (mt/user-http-request :crowberto :post 402 "user"
                                        {:first_name             "Invited"
                                         :last_name              "Analyst"

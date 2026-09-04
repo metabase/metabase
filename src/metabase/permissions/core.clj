@@ -115,6 +115,7 @@
   allow-changing-all-users-group-members
   allow-changing-all-external-users-group-members
   fail-to-remove-last-admin-msg
+  fail-to-add-data-analyst-msg
   remove-user-from-group!
   remove-user-from-groups!
   remove-all-users-from-group!

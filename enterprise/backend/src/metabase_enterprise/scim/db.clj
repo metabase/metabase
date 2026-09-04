@@ -135,6 +135,11 @@
   [group-id]
   (t2/delete! :model/PermissionsGroup group-id))
 
+(defn group-member-user-ids
+  "The user IDs of the members of the PermissionsGroup with `group-id`."
+  [group-id]
+  (t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id group-id))
+
 (defn group-members
   "Rows of group ID, member email, and member entity ID for the memberships of the PermissionsGroups with
   `group-ids`."

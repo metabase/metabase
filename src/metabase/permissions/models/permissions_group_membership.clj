@@ -23,7 +23,8 @@
 (def fail-to-add-data-analyst-msg
   "Exception message when trying to add a member to the Data Analysts group without the `:advanced-permissions`
   premium feature."
-  (deferred-tru "Adding people to the ''Data Analysts'' group requires the Advanced Permissions feature, which is not enabled on this instance."))
+  (deferred-tru (str "Adding people to the ''Data Analysts'' group requires the Advanced Permissions feature, "
+                     "which is not enabled on this instance.")))
 
 (def ^:dynamic *allow-changing-all-users-group-members*
   "Should we allow people to be added to or removed from the All Users permissions group? By default, this is `false`,
@@ -66,23 +67,8 @@
                       {:status-code 400})))))
 
 (defn- check-can-add-to-data-analyst-group
-  "Throw an Exception if we're trying to *add* a user to the Data Analysts group on an instance without the
-  `:advanced-permissions` premium feature, so that the premium capability isn't quietly available for free.
-
-  Additions only. A downgraded instance keeps its existing Data Analysts and their powers -- downgrade is a bounded
-  grace period, not a clawback -- but the group can only shrink from there: grandfathered members keep curating until
-  an admin removes them, on the admin's own schedule, and once the group is empty it goes away until a token returns.
-  Gating removals would strand admins in the grace period, so removals are never gated.
-
-  Monotonic shrinking is also what upholds the group's visibility invariant. The group is shown whenever the feature
-  is enabled *or* the group has members, so a populated group on a downgraded instance stays visible in the groups and
-  people pages -- nothing is affecting permissions behind the admin's back. The addition gate is what keeps the other
-  side of that predicate true: an invisible group is empty, and therefore affects nobody. Invisibility is a
-  consequence of this check, not its reason.
-
-  Lives on [[add-users-to-groups!]] rather than on the before-insert hook, because that function inserts via raw
-  HoneySQL and so never fires Toucan's hooks. Since direct `t2/insert!` is refused outright, that makes this the one
-  check every production caller passes through."
+  "Throw a 402 if we're trying to *add* a user to the Data Analysts group without the `:advanced-permissions` premium
+  feature. Removals are never gated."
   [group-id]
   (when (and (= group-id (:id (perms-group/data-analyst)))
              (not (premium-features/enable-advanced-permissions?)))
@@ -195,6 +181,10 @@
                                                :group-id group-id
                                                :user-is-tenant? (user-id->tenant? user-id)
                                                :group-is-tenant? (group-id->tenant? group-id)}))))
+          ;; the Data Analysts gate lives here rather than in the before-insert hook because the insert below
+          ;; ([[permissions.db/insert-group-memberships-from-mapping!]]) is raw SQL, so Toucan's hooks never fire for
+          ;; it. Direct `t2/insert!` is refused outright, which makes this the one check every production caller
+          ;; passes through.
           _ (doseq [group-id group-ids]
               (check-not-all-users-group group-id)
               (check-not-all-external-users-group group-id)

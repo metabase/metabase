@@ -802,8 +802,7 @@
       (mt/with-temp [:model/User {user-id :id} {}]
         (testing "is refused without the :advanced-permissions feature"
           (mt/with-premium-features #{}
-            (is (= (str "Adding people to the 'Data Analysts' group requires the Advanced Permissions feature, "
-                        "which is not enabled on this instance.")
+            (is (= (str perms/fail-to-add-data-analyst-msg)
                    (mt/user-http-request :crowberto :post 402 "permissions/membership"
                                          {:group_id group-id, :user_id user-id})))
             (is (not (member? user-id)))
