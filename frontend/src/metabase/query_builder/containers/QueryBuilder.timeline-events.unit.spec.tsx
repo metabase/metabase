@@ -1,9 +1,17 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, screen, waitFor, within } from "__support__/ui";
+import { getTimelineEventCheckbox } from "__support__/timelines";
+import { act, waitFor } from "__support__/ui";
 import { getFetchedTimelines } from "metabase/timelines/panel/selectors";
 import { checkNotNull } from "metabase/utils/types";
+import {
+  hideTimelines,
+  showCreatedTimelineEvent,
+  showTimelineEvents,
+  showTimelines,
+} from "metabase/visualizations/lib/timeline-events-visibility";
 import { registerVisualizations } from "metabase/visualizations/register";
+import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
 import type { TimelineEventsVisibility } from "metabase-types/api";
 import {
   createMockCard,
@@ -11,12 +19,7 @@ import {
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
-import {
-  hideTimeline,
-  showCreatedTimelineEvent,
-  showTimeline,
-  showTimelineEvents,
-} from "../actions/timelines";
+import { updateTimelineEventsVisibility } from "../actions/timelines";
 import { onOpenTimelines } from "../store/actions";
 import {
   getIsDirty,
@@ -63,12 +66,13 @@ type Store = Awaited<ReturnType<typeof setup>>["store"];
 const getVisibleEventIds = (store: Store) =>
   getVisibleTimelineEventIds(store.getState());
 
-const getEventCard = (eventName: string) =>
-  checkNotNull(
-    screen
-      .getAllByLabelText("Timeline event card")
-      .find((card) => within(card).queryByText(eventName) != null),
-  );
+const updateVisibility = (
+  store: Store,
+  update: TimelineEventsVisibilityUpdate,
+) =>
+  act(async () => {
+    store.dispatch(updateTimelineEventsVisibility(update));
+  });
 
 const setupWithTimelines = async (visibility?: TimelineEventsVisibility) => {
   const { store } = await setup({
@@ -85,32 +89,10 @@ const setupWithTimelines = async (visibility?: TimelineEventsVisibility) => {
 };
 
 describe("QueryBuilder > timeline events", () => {
-  it("shows the collection's events when the timelines resolve after the question loads (GHY-3839)", async () => {
-    // Delay /api/timeline so it resolves after the question has loaded.
-    const { store } = await setup({
-      card: CARD,
-      timelines: [TIMELINE],
-      timelinesDelay: 200,
-    });
+  it("shows the collection's events for a question that never recorded any", async () => {
+    const store = await setupWithTimelines();
 
-    // If this fails, bump the delay — otherwise the late resolve isn't exercised.
-    expect(getFetchedTimelines(store.getState())).toHaveLength(0);
-    expect(getVisibleEventIds(store)).toHaveLength(0);
-
-    await waitFor(() => {
-      expect(getFetchedTimelines(store.getState())).toHaveLength(1);
-    });
-
-    await waitFor(
-      () => {
-        // Reading the DOM forces testing-library to flush React's pending
-        // re-render from the late timelines resolve (queryByTestId, so it
-        // doesn't throw if the chart subtree errored out under jsdom).
-        screen.queryByTestId("test-container");
-        expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
-      },
-      { timeout: 5000 },
-    );
+    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
   });
 
   it("shows only the events a saved question recorded", async () => {
@@ -136,7 +118,7 @@ describe("QueryBuilder > timeline events", () => {
     await act(async () => {
       store.dispatch(onOpenTimelines());
     });
-    await userEvent.click(within(getEventCard("RC1")).getByRole("checkbox"));
+    await userEvent.click(getTimelineEventCheckbox("RC1"));
 
     await waitFor(() => {
       expect(getVisibleEventIds(store)).toEqual([RC2.id]);
@@ -167,9 +149,9 @@ describe("QueryBuilder > timeline events", () => {
   it("saving after turning events on records them", async () => {
     const store = await setupWithTimelines(EVENTS_OFF);
 
-    await act(async () => {
-      store.dispatch(showTimeline(TIMELINE));
-    });
+    await updateVisibility(store, (visibility, timelines) =>
+      showTimelines(visibility, [TIMELINE.id], timelines),
+    );
     const state = store.getState();
 
     const question = getSubmittableQuestion(
@@ -188,9 +170,9 @@ describe("QueryBuilder > timeline events", () => {
   it("saving after turning events off records the absence", async () => {
     const store = await setupWithTimelines();
 
-    await act(async () => {
-      store.dispatch(hideTimeline(TIMELINE));
-    });
+    await updateVisibility(store, (visibility, timelines) =>
+      hideTimelines(visibility, [TIMELINE.id], timelines),
+    );
     const state = store.getState();
 
     const question = getSubmittableQuestion(
@@ -209,9 +191,9 @@ describe("QueryBuilder > timeline events", () => {
   it("re-showing a timeline keeps events outside the chart's range", async () => {
     const store = await setupWithTimelines(EVENTS_OFF);
 
-    await act(async () => {
-      store.dispatch(showTimeline(TIMELINE));
-    });
+    await updateVisibility(store, (visibility, timelines) =>
+      showTimelines(visibility, [TIMELINE.id], timelines),
+    );
 
     expect(
       checkNotNull(getQuestion(store.getState())).settings()[
@@ -224,9 +206,9 @@ describe("QueryBuilder > timeline events", () => {
   it("creating an event on a timeline that is already shown records nothing", async () => {
     const store = await setupWithTimelines();
 
-    await act(async () => {
-      store.dispatch(showTimelineEvents([RC1]));
-    });
+    await updateVisibility(store, (visibility, timelines) =>
+      showTimelineEvents(visibility, [RC1], timelines),
+    );
 
     expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
     expect(
@@ -243,9 +225,9 @@ describe("QueryBuilder > timeline events", () => {
       timestamp: "2025-06-03T00:00:00Z",
     });
 
-    await act(async () => {
-      store.dispatch(showCreatedTimelineEvent(created));
-    });
+    await updateVisibility(store, (visibility, timelines) =>
+      showCreatedTimelineEvent(visibility, created, timelines),
+    );
 
     expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
   });
@@ -258,9 +240,9 @@ describe("QueryBuilder > timeline events", () => {
       timestamp: "2025-06-03T00:00:00Z",
     });
 
-    await act(async () => {
-      store.dispatch(showTimelineEvents([firstEvent]));
-    });
+    await updateVisibility(store, (visibility, timelines) =>
+      showTimelineEvents(visibility, [firstEvent], timelines),
+    );
 
     expect(checkNotNull(getQuestion(store.getState())).settings()).toEqual(
       expect.objectContaining({

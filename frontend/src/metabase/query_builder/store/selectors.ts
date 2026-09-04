@@ -22,10 +22,10 @@ import {
   resolveVisibleTimelineEvents,
 } from "metabase/visualizations/lib/timeline-events-visibility";
 import {
+  getTimeseriesXAxis as computeTimeseriesXAxis,
   createRawSeries,
   extractRemappings,
   getComputedSettingsForSeries,
-  getTimeseriesXAxis,
   getVisualizationTransformed,
   isTimeseries,
 } from "metabase/viz-core";
@@ -128,6 +128,8 @@ export const getMetadataDiff = (state: QueryBuilderStoreState) =>
 
 export const getSelectedTimelineEventIds = (state: QueryBuilderStoreState) =>
   state.qb.selectedTimelineEventIds;
+export const getFocusedTimelineEventIds = (state: QueryBuilderStoreState) =>
+  getUiControls(state).focusedTimelineEventIds;
 
 const getRawQueryResults = (state: QueryBuilderStoreState) =>
   state.qb.queryResults;
@@ -800,24 +802,14 @@ export const getIsTimeseries = createSelector(
   (settings) => settings && isTimeseries(settings),
 );
 
-const getTimeseriesXAxisInfo = createSelector(
+export const getTimeseriesXAxis = createSelector(
   [getTransformedSeries, getVisualizationSettings],
   (series, settings) =>
-    series && settings ? getTimeseriesXAxis(series, settings) : null,
+    series && settings ? computeTimeseriesXAxis(series, settings) : null,
 );
 
-export const getTimeseriesDataInterval = createSelector(
-  [getTimeseriesXAxisInfo],
-  (xAxis) => xAxis?.interval ?? null,
-);
-
-export const getTimeseriesXDomain = createSelector(
-  [getTimeseriesXAxisInfo],
-  (xAxis) => xAxis?.domain ?? null,
-);
-
-export const getFilteredTimelines = createSelector(
-  [getTransformedTimelines, getTimeseriesXAxisInfo],
+const getFilteredTimelines = createSelector(
+  [getTransformedTimelines, getTimeseriesXAxis],
   filterTimelinesByXAxis,
 );
 
