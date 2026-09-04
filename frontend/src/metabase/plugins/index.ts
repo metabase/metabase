@@ -1,4 +1,3 @@
-// Re-export all plugins from OSS modules (excluding reinitialize functions to avoid conflicts)
 export {
   PLUGIN_AUDIT,
   type InsightsLinkProps,
@@ -193,90 +192,15 @@ export type {
 
 import { reinitializeRequestHandlers } from "metabase/api/client";
 
-import { reinitialize as reinitializeAiControls } from "./oss/ai-controls";
-import { reinitialize as reinitializeAudit } from "./oss/audit";
-import { reinitialize as reinitializeAuth } from "./oss/auth";
-import { reinitialize as reinitializeCaching } from "./oss/caching";
-import { reinitialize as reinitializeCollections } from "./oss/collections";
-import { reinitialize as reinitializeContentTranslation } from "./oss/content-translation";
-import { reinitialize as reinitializeContentVerification } from "./oss/content-verification";
-import { reinitialize as reinitializeCore } from "./oss/core";
-import { reinitialize as reinitializeCustomViz } from "./oss/custom-viz";
-import { reinitialize as reinitializeDataApps } from "./oss/data-apps";
-import { reinitialize as reinitializeDatabase } from "./oss/database";
-import { reinitialize as reinitializeDependencies } from "./oss/dependencies";
-import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
-import { reinitialize as reinitializeEmbeddingIframeSdk } from "./oss/embedding-iframe-sdk";
-import { reinitialize as reinitializeEmbeddingIframeSdkSetup } from "./oss/embedding-iframe-sdk-setup";
-import { reinitialize as reinitializeEmbeddingSdk } from "./oss/embedding-sdk";
-import { reinitialize as reinitializeLibrary } from "./oss/library";
-import { reinitialize as reinitializeMetabot } from "./oss/metabot";
-import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
-import { reinitialize as reinitializeModeration } from "./oss/moderation";
-import { reinitialize as reinitializeMonitor } from "./oss/monitor";
-import { reinitialize as reinitializeMultiFactorAuth } from "./oss/multi-factor-auth";
-import { reinitialize as reinitializeNotificationsSdk } from "./oss/notifications-sdk";
-import { reinitialize as reinitializePermissions } from "./oss/permissions";
-import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
-import { reinitialize as reinitializeReplacement } from "./oss/replacement";
-import { reinitialize as reinitializeResourceDownloads } from "./oss/resource-downloads";
-import { reinitialize as reinitializeSchemaViewer } from "./oss/schema-viewer";
-import { reinitialize as reinitializeSecurityCenter } from "./oss/security-center";
-import { reinitialize as reinitializeSemanticSearch } from "./oss/semantic-search";
-import { reinitialize as reinitializeSettings } from "./oss/settings";
-import { reinitialize as reinitializeSmtpOverride } from "./oss/smtp-override";
-import { reinitialize as reinitializeSnippets } from "./oss/snippets";
-import { reinitialize as reinitializeSupport } from "./oss/support";
-import { reinitialize as reinitializeTenants } from "./oss/tenants";
-import { reinitialize as reinitializeTransforms } from "./oss/transforms";
-import { reinitialize as reinitializeUploadManagement } from "./oss/upload-management";
-import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
-import { reinitialize as reinitializeWritableConnection } from "./oss/writable-connection";
+import { resetPluginSlots } from "./slot";
+
 /**
  * Mostly for test purposes, reinitialize all plugins.
  * You don't reinitialize plugins individually because some plugins depend on others,
  * so reinitializing them all ensures that dependencies are correctly set up.
  */
 export function reinitialize() {
-  reinitializeNotificationsSdk();
-
-  reinitializeAiControls();
+  resetPluginSlots();
+  // metabase/api can't import from metabase/plugins, so PLUGIN_API resets itself by hand.
   reinitializeRequestHandlers();
-  reinitializeAudit();
-  reinitializeAuth();
-  reinitializeCaching();
-  reinitializeCollections();
-  reinitializeContentTranslation();
-  reinitializeContentVerification();
-  reinitializeCore();
-  reinitializeCustomViz();
-  reinitializeDataApps();
-  reinitializeDatabase();
-  reinitializeEmbedding();
-  reinitializeEmbeddingIframeSdk();
-  reinitializeEmbeddingIframeSdkSetup();
-  reinitializeEmbeddingSdk();
-  reinitializeLibrary();
-  reinitializeMetabot();
-  reinitializeModelPersistence();
-  reinitializeModeration();
-  reinitializeMonitor();
-  reinitializeMultiFactorAuth();
-  reinitializePermissions();
-  reinitializeRemoteSync();
-  reinitializeReplacement();
-  reinitializeResourceDownloads();
-  reinitializeSchemaViewer();
-  reinitializeSecurityCenter();
-  reinitializeSemanticSearch();
-  reinitializeSettings();
-  reinitializeSmtpOverride();
-  reinitializeSnippets();
-  reinitializeSupport();
-  reinitializeTenants();
-  reinitializeDependencies();
-  reinitializeTransforms();
-  reinitializeUploadManagement();
-  reinitializeWhitelabel();
-  reinitializeWritableConnection();
 }

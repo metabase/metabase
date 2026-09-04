@@ -26,6 +26,8 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
+
 export type CreateLibraryModalProps = {
   title?: string;
   explanatorySentence?: string;
@@ -178,11 +180,4 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   ): _type is "library-data" => false,
 });
 
-export const PLUGIN_LIBRARY = getDefaultPluginLibrary();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_LIBRARY, getDefaultPluginLibrary());
-}
+export const PLUGIN_LIBRARY = definePluginSlot(getDefaultPluginLibrary);

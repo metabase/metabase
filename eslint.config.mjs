@@ -330,7 +330,6 @@ const configs = [
       "metabase/no-color-literals": "error",
       "metabase/valid-theme-tokens": "error",
       "metabase/no-literal-metabase-strings": "error",
-      "metabase/no-oss-reinitialize-import": "error",
       "metabase/no-analytics-import-outside-analytics-files": "error",
 
       "depend/ban-dependencies": [
