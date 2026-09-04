@@ -45,7 +45,7 @@ Three things need to happen: you publish the embed in Metabase, you paste the ch
 4. For authentication, choose **Guest**, so your app won't need to log anyone in to your Metabase. An admin needs to [turn on guest embedding](./guest-embedding.md#turning-on-guest-embedding-in-metabase) first.
 5. Click the **Publish** button. Publishing only applies to guest embeds.
 6. Under behavior, Metabase gives you several options for customizing how the embed works. See [web component attributes](./question-reference.md#web-component-metabase-question-attributes) for what each one does. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
-7. If you're embedding a SQL question with a variable, set the parameter to **Editable** or **Locked**. Parameters are **Disabled** by default, which hides them and prevents your server from setting them. See [Choose parameter visibility in the embed wizard](./parameters.md#choose-parameter-visibility-in-the-embed-wizard).
+7. If you're embedding a SQL question with a variable, set the parameter to **Editable** or **Locked**. Parameters are **Disabled** by default, which hides them and prevents your server from setting them. See [Parameters differ based on whether you use guest or SSO authentication](./parameters.md#parameters-differ-based-on-whether-you-use-guest-or-sso-authentication).
 8. Customize the [appearance](./appearance.md).
 9. Click the **Get code** button. You'll get both the frontend and backend code based on the selections you made in the wizard.
 10. Copy the client code and paste it in your app.

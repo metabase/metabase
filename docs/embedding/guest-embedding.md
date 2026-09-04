@@ -127,7 +127,7 @@ Appearance settings available for guest embeds depend on your Metabase plan. If 
 
 ## Configuring parameters
 
-Parameters on a guest embed start out **Disabled**: the widget is hidden, and nobody can set the value. When you publish the embed, you can make each one **Editable** (people see the widget and can change the value, and your page can set a starting value) or **Locked** (your server sets the value in the JWT, and nobody sees the widget). Check out [Choose parameter visibility in the embed wizard](./parameters.md#choose-parameter-visibility-in-the-embed-wizard).
+Parameters on a guest embed start out **Disabled**: the widget is hidden, and nobody can set the value. When you publish the embed, you can make each one **Editable** (people see the widget and can change the value, and your page can set a starting value) or **Locked** (your server sets the value in the JWT, and nobody sees the widget). Check out [Parameters differ based on whether you use guest or SSO authentication](./parameters.md#parameters-differ-based-on-whether-you-use-guest-or-sso-authentication).
 
 ### Locked parameters
 
