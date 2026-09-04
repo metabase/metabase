@@ -1,5 +1,4 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { createCachedSelector } from "re-reselect";
 import _ from "underscore";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
@@ -490,9 +489,13 @@ export const getMissingRequiredParameters = createSelector(
 );
 
 /**
- * It's a memoized version, it uses LRU cache per card identified by id
+ * Holds one Question per card, so that connected components keep the same
+ * reference between renders. reselect keys weakly on the card and the metadata,
+ * so an entry is released once its card leaves the store or the metadata is
+ * replaced. Keying on the card id instead would hold every Question, and the
+ * metadata snapshot each one carries, for the life of the tab.
  */
-export const getQuestionByCard = createCachedSelector(
+export const getQuestionByCard = createSelector(
   [
     (_state: State, props: { card: Card | VirtualCard }) => props.card,
     getMetadata,
@@ -500,12 +503,9 @@ export const getQuestionByCard = createCachedSelector(
   (card, metadata) => {
     return isQuestionCard(card) ? new Question(card, metadata) : undefined;
   },
-)((_state, props) => {
-  // Virtual cards don't have an ID and should not return a question so we use "virtual" as a cache key for all of them
-  return props.card.id == null ? "virtual" : props.card.id;
-});
+);
 
-export const getDashcardParameterMappingOptions = createCachedSelector(
+export const getDashcardParameterMappingOptions = createSelector(
   [getQuestionByCard, getEditingParameter, getCard, getDashCard, getDashcards],
   (question, parameter, card, dashcard, dashcards) => {
     const parameterDashcard =
@@ -520,9 +520,7 @@ export const getDashcardParameterMappingOptions = createCachedSelector(
       parameterDashcard,
     );
   },
-)((state, props) => {
-  return props.card.id ?? props.dashcard.id;
-});
+);
 
 // Embeddings might be published without passing embedding_params to the server,
 // in which case it's an empty object. We should treat such situations with
