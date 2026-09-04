@@ -71,11 +71,15 @@ export const TimelineSidebar = ({
     [timelines, xAxis, focusedEventIds],
   );
 
-  const title = getTimelineSidebarTitle({
-    focusedTimelines: displayedTimelines,
-    isFocused,
-    xAxis,
-  });
+  const title = useMemo(
+    () =>
+      getTimelineSidebarTitle({
+        focusedTimelines: displayedTimelines,
+        isFocused,
+        xAxis,
+      }),
+    [displayedTimelines, isFocused, xAxis],
+  );
 
   const handleShowTimelineEvents = useCallback(
     (events: TimelineEvent[]) =>
