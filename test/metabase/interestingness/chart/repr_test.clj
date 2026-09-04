@@ -67,7 +67,7 @@
           series-stats (#'histogram/compute-series-stats xs ys)
           stats        {:chart-type   :histogram
                         :series-count 1
-                        :series       {"Test Series" series-stats}}
+                        :series       [(assoc series-stats :name "Test Series")]}
           rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Test Series"))
       (is (str/includes? rep "Distribution Shape")))))
@@ -79,7 +79,7 @@
           series-stats (#'histogram/compute-series-stats xs ys)
           stats        {:chart-type   :histogram
                         :series-count 1
-                        :series       {"Values" series-stats}}
+                        :series       [(assoc series-stats :name "Values")]}
           rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Estimated Percentiles"))
       (is (str/includes? rep "P50≈"))
@@ -90,7 +90,7 @@
     (let [series-stats (#'histogram/compute-series-stats [0 10 20 30 40] [5 10 20 10 5])
           stats        {:chart-type   :histogram
                         :series-count 1
-                        :series       {"Bins" series-stats}}
+                        :series       [(assoc series-stats :name "Bins")]}
           rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Structure"))
       (is (str/includes? rep "mode bin"))
@@ -103,7 +103,7 @@
     (let [series-stats (#'scatter/compute-series-stats [1 2 3 4 5] [10 20 30 40 50])
           stats        {:chart-type   :scatter
                         :series-count 1
-                        :series       {"Test Series" series-stats}}
+                        :series       [(assoc series-stats :name "Test Series")]}
           rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Test Series"))
       (is (str/includes? rep "Relationship"))
@@ -114,7 +114,7 @@
     (let [series-stats (#'scatter/compute-series-stats [1 2 3 4 5] [12 14 16 18 20])
           stats        {:chart-type   :scatter
                         :series-count 1
-                        :series       {"Linear" series-stats}}
+                        :series       [(assoc series-stats :name "Linear")]}
           rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Trend Line"))
       (is (str/includes? rep "y =")))))
@@ -126,7 +126,7 @@
     (let [series-stats (#'categorical/compute-series-stats ["A" "B" "C"] [100 200 150])
           stats        {:chart-type   :categorical
                         :series-count 1
-                        :series       {"Test Series" series-stats}}
+                        :series       [(assoc series-stats :name "Test Series")]}
           rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Test Series"))
       (is (str/includes? rep "Categories"))
@@ -139,7 +139,7 @@
           series-stats (#'categorical/compute-series-stats xs ys)
           stats        {:chart-type   :categorical
                         :series-count 1
-                        :series       {"Many" series-stats}}
+                        :series       [(assoc series-stats :name "Many")]}
           rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Top Categories"))
       (is (str/includes? rep "Bottom Categories"))
@@ -155,7 +155,7 @@
           series-stats (#'categorical/compute-series-stats xs ys)
           stats        {:chart-type   :categorical
                         :series-count 1
-                        :series       {"Few" series-stats}}
+                        :series       [(assoc series-stats :name "Few")]}
           rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Top Categories"))
       (is (not (str/includes? rep "Bottom Categories"))))))
@@ -165,7 +165,7 @@
     (let [series-stats (#'categorical/compute-series-stats ["A" "B" "C"] [100 200 150])
           stats        {:chart-type   :categorical
                         :series-count 1
-                        :series       {"Few" series-stats}}
+                        :series       [(assoc series-stats :name "Few")]}
           rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "limited data points")))))
 
@@ -183,7 +183,7 @@
       (is (some #(str/includes? result %) ["Q1" "Q2" "Q3" "Q4"])))))
 
 (deftest ^:parallel render-trend-no-clear-trend-is-honest-test
-  (testing "A :no-clear-trend direction renders honestly — no asserted direction, no confident % headline"
+  (testing "A no-clear-trend direction renders honestly — no asserted direction, no confident % headline"
     (let [out (#'repr/render-trend {:direction :no-clear-trend
                                     :overall-change-pct -97.9
                                     :start-value 1727 :end-value 36})]
@@ -199,7 +199,7 @@
           series-stats (#'time-series/compute-series-stats values dates {})
           stats {:chart-type   :time-series
                  :series-count 1
-                 :series       {"Revenue" series-stats}}
+                 :series       [(assoc series-stats :name "Revenue")]}
           rep (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Revenue"))
       (is (str/includes? rep "Trend"))
@@ -207,14 +207,14 @@
 
 (deftest ^:parallel repr-time-series-multi-series-test
   (testing "representation with multiple series includes all series names"
-    (let [make-stats (fn [values dates]
-                       (#'time-series/compute-series-stats values dates {}))
+    (let [make-stats (fn [name values dates]
+                       (assoc (#'time-series/compute-series-stats values dates {}) :name name))
           stats {:chart-type   :time-series
                  :series-count 2
-                 :series       {"Sales"   (make-stats [10.0 20.0 30.0 40.0 50.0]
-                                                      ["d1" "d2" "d3" "d4" "d5"])
-                                "Revenue" (make-stats [20.0 40.0 60.0 80.0 100.0]
-                                                      ["d1" "d2" "d3" "d4" "d5"])}}
+                 :series       [(make-stats "Sales"   [10.0 20.0 30.0 40.0 50.0]
+                                            ["d1" "d2" "d3" "d4" "d5"])
+                                (make-stats "Revenue" [20.0 40.0 60.0 80.0 100.0]
+                                            ["d1" "d2" "d3" "d4" "d5"])]}
           rep (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Sales"))
       (is (str/includes? rep "Revenue")))))
@@ -226,7 +226,7 @@
           series-stats (#'time-series/compute-series-stats values dates {:deep? true})
           stats  {:chart-type   :time-series
                   :series-count 1
-                  :series       {"Metric" series-stats}}
+                  :series       [(assoc series-stats :name "Metric")]}
           rep    (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Volatility"))
       (is (str/includes? rep "Significant Changes"))
@@ -237,9 +237,10 @@
 (deftest ^:parallel generate-representation-dispatches-to-correct-renderer-test
   (testing "dispatches to the correct renderer for known chart type"
     (let [ts-stats {:chart-type :time-series :series-count 1
-                    :series {"S" (#'time-series/compute-series-stats
-                                  [1.0 2.0 3.0 4.0 5.0]
-                                  ["d1" "d2" "d3" "d4" "d5"] {})}}]
+                    :series [(assoc (#'time-series/compute-series-stats
+                                     [1.0 2.0 3.0 4.0 5.0]
+                                     ["d1" "d2" "d3" "d4" "d5"] {})
+                                    :name "S")]}]
       (is (str/includes? (repr/generate-representation {:stats ts-stats}) "Time Series")))))
 
 (deftest ^:parallel generate-representation-unknown-chart-type-fallback-test

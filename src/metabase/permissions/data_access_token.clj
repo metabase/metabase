@@ -22,7 +22,7 @@
   unavailable — fail closed, never leak.
 
   Each contributor's raw value is replaced by a [[digest]] of it before it leaves this namespace.
-  A token is persisted verbatim (`stored_result.data_access_token`, plaintext EDN) and the raw
+  A token is persisted verbatim (`stored_result.data_access_token`, plaintext JSON) and the raw
   values can contain sensitive information for sandbox contributors and others.
   Nothing here needs to read those values back so a one-way digest keeps the
   gate's semantics exactly while keeping the values out of a table whose rows outlive the attributes
@@ -34,9 +34,12 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
-   [clojure.edn :as edn]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.log :as log]))
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -119,24 +122,33 @@
   [creator-token viewer-token]
   (= creator-token viewer-token))
 
+(mr/def ::token
+  "A persisted [[data-access-token]]. Declared so the transform can put the integer target ids back
+  after a JSON round trip: [[data-access-compatible?]] is bare `=`, and `{:10 …}` does not equal
+  `{10 …}`."
+  [:map
+   [:sandbox       {:optional true} [:map-of :int :string]]
+   [:impersonation {:optional true} [:map-of :int :string]]
+   [:routing       {:optional true} [:map-of :int :string]]])
+
+(def ^:private json-transformer
+  (mtx/json-transformer))
+
 (defn- token-in
-  "Serialize a token as EDN. JSON can't be used: the token is keyed by integer table-id /
-  database-id, and JSON mangles non-string map keys. `nil` is stored as SQL NULL rather than the
-  string \"nil\"."
+  "Serialize a token as JSON. `nil` is stored as SQL NULL rather than the string \"null\"."
   [v]
   (when (some? v)
-    (pr-str v)))
+    (json/encode (mc/encode ::token v json-transformer))))
 
 (defn- token-out
-  "Read a token back. Reader tags are refused rather than dispatched — this parses a column, and
-  nothing legitimately writes a tagged literal into one. An unreadable blob decodes to `nil`, which
-  every gate built on [[data-access-compatible?]] denies to non-superusers: fail closed, never widen
-  access on a parse error. Logged at ERROR because a write path that persisted an unreadable token
-  is a bug, and the denial it causes is otherwise hard to trace."
+  "Read a token back. An unreadable blob decodes to `nil`, which every gate built on
+  [[data-access-compatible?]] denies to non-superusers: fail closed, never widen access on a parse
+  error. Logged at ERROR because a write path that persisted an unreadable token is a bug, and the
+  denial it causes is otherwise hard to trace."
   [s]
   (when (string? s)
     (try
-      (edn/read-string {:readers {} :default (fn [_tag v] v)} s)
+      (mc/decode ::token (json/decode+kw s) json-transformer)
       (catch Throwable e
         (log/error e "Failed to parse a stored data_access_token; the read gate will deny non-admins")
         nil))))

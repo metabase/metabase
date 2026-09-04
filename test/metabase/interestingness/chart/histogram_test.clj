@@ -61,25 +61,25 @@
   (testing "all six percentiles (25,50,75,90,95,99) are computed"
     (let [result (#'histogram/compute-series-stats [0 10 20 30 40] [5 10 20 10 5])
           pcts   (get-in result [:distribution :estimated-percentiles])]
-      (is (contains? pcts 25))
-      (is (contains? pcts 50))
-      (is (contains? pcts 75))
-      (is (contains? pcts 90))
-      (is (contains? pcts 95))
-      (is (contains? pcts 99)))))
+      (is (contains? pcts :p25))
+      (is (contains? pcts :p50))
+      (is (contains? pcts :p75))
+      (is (contains? pcts :p90))
+      (is (contains? pcts :p95))
+      (is (contains? pcts :p99)))))
 
 (deftest ^:parallel estimated-percentiles-ascending-test
   (testing "percentile values are in ascending order"
     (let [pcts (get-in (#'histogram/compute-series-stats [0 10 20 30 40] [5 10 20 10 5])
                        [:distribution :estimated-percentiles])]
-      (is (<= (get pcts 25) (get pcts 50)))
-      (is (<= (get pcts 50) (get pcts 75)))
-      (is (<= (get pcts 75) (get pcts 90))))))
+      (is (<= (:p25 pcts) (:p50 pcts)))
+      (is (<= (:p50 pcts) (:p75 pcts)))
+      (is (<= (:p75 pcts) (:p90 pcts))))))
 
 (deftest ^:parallel estimated-percentiles-symmetric-test
   (testing "P50 is close to weighted mean for symmetric distribution"
     (let [result (#'histogram/compute-series-stats [0 10 20 30 40] [5 10 20 10 5])
-          p50    (get-in result [:distribution :estimated-percentiles 50])
+          p50    (get-in result [:distribution :estimated-percentiles :p50])
           wmean  (get-in result [:estimated-summary :weighted-mean])]
       ;; For symmetric binned data, P50 should be reasonably close to the mean
       (is (< (Math/abs (double (- p50 wmean))) 10.0)))))
@@ -179,15 +179,16 @@
                                :display_name "Bins"}}]
       (is (=? {:chart-type   :histogram
                :series-count 1
-               :series       {"Bins" {:data-points       5
-                                      :total-count       50
-                                      :estimated-summary {:weighted-mean (=?/approx [20.0 0.001])}
-                                      :distribution      {:estimated-quartiles {:q1 number?
-                                                                                :q3 number?
-                                                                                :iqr number?}}
-                                      :structure         {:mode-bin [20.0 20.0]
-                                                          :peak-count 1
-                                                          :bin-count 5}}}}
+               :series       [{:name              "Bins"
+                               :data-points       5
+                               :total-count       50
+                               :estimated-summary {:weighted-mean (=?/approx [20.0 0.001])}
+                               :distribution      {:estimated-quartiles {:q1  number?
+                                                                         :q3  number?
+                                                                         :iqr number?}}
+                               :structure         {:mode-bin   [20.0 20.0]
+                                                   :peak-count 1
+                                                   :bin-count  5}}]}
               (histogram/compute-histogram-stats series-data {}))))))
 
 (deftest ^:parallel single-arity-uses-indices-test

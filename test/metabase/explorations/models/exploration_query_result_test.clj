@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.util.encryption-test :as encryption-test]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -22,11 +23,45 @@
 
 (def ^:private stats-with-warehouse-values
   "The shape `compute-chart-stats` produces for a categorical chart: each top category's `:name`
-  comes straight from the result rows, so this column holds verbatim warehouse values."
+  comes straight from the result rows, so this column holds verbatim warehouse values. Every value
+  in it is a plain JSON value except the `:chart-type` tag, which the schema-driven codec restores."
   {:chart-type :categorical
-   :series     {"Count" {:top-categories [{:name "ACME Corp" :value 41}
-                                          {:name "Initech"   :value 12}]
-                         :category-count 2}}})
+   :series     [{:name           "Count"
+                 :top-categories [{:name "ACME Corp" :value 41}
+                                  {:name "Initech"   :value 12}]
+                 :category-count 2}]})
+
+(def ^:private time-series-stats
+  "Every keyword-valued field a time-series result carries. JSON has no keywords, so these are what
+  the `mc/encode`/`mc/decode` pair over `::chart-stats` exists to preserve — the storage format does
+  not get to decide that the data model uses strings. The series name holds a `/`, which rides
+  through as a value rather than as a map key."
+  {:chart-type   :time-series
+   :series-count 1
+   :series       [{:name        "Revenue / Cost"
+                   :summary     {:min 1.0 :max 9.0 :mean 5.0 :median 5.0 :std-dev 2.5 :range 8.0}
+                   :trend       {:direction :strongly-increasing :overall-change-pct 12.5}
+                   :volatility  {:level :moderate :coefficient-of-variation 0.3}
+                   :patterns    [{:type :spike :description "a spike in March"}]
+                   :data-points 7}]
+   :correlations [{:series-a "Revenue / Cost" :series-b "Units"
+                   :coefficient 0.91 :strength :strong :direction :positive}]})
+
+(def ^:private histogram-stats
+  "A histogram's estimated percentiles, under the named fields the producer computes."
+  {:chart-type   :histogram
+   :series-count 1
+   :series       [{:name         "Total"
+                   :total-count  120
+                   :distribution {:estimated-percentiles {:p25 1.5 :p50 2.5 :p90 9.0}
+                                  :estimated-quartiles   {:q1 1.5 :median 2.5 :q3 9.0 :iqr 7.5}}}]})
+
+(def ^:private single-point-stats
+  "A single-point series has no standard deviation. `util/nan->nil` drops the `##NaN` at the source,
+  so nothing non-finite — which JSON cannot represent — ever reaches the column."
+  {:chart-type :categorical
+   :series     [{:name    "Count"
+                 :summary {:min 5.0 :max 5.0 :mean 5.0 :median 5.0 :std-dev nil :range 0.0}}]})
 
 (defn- query-result-row!
   "Insert one `exploration_query_result` carrying `stats`, returning its id."
@@ -59,11 +94,33 @@
                               :chart_stats          stats
                               :metric_description   "a description"})))
 
+(defn- raw-chart-stats
+  [id]
+  (:chart_stats (t2/query-one {:select [:chart_stats]
+                               :from   [:exploration_query_result]
+                               :where  [:= :id id]})))
+
+(deftest chart-stats-is-stored-as-json-test
+  (testing "chart_stats is plain JSON at rest — the keywords the stats carry in memory are written
+            out as strings, and nothing keyword-shaped survives into the stored bytes"
+    (encryption-test/with-secret-key nil
+      (let [id (query-result-row! stats-with-warehouse-values)]
+        (is (= {"chart-type" "categorical"
+                "series"     [{"name"           "Count"
+                               "top-categories" [{"name" "ACME Corp" "value" 41}
+                                                 {"name" "Initech"   "value" 12}]
+                               "category-count" 2}]}
+               (json/decode (raw-chart-stats id))))))))
+
 (deftest chart-stats-round-trip-test
-  (testing "chart_stats survives the EDN transform with its keyword and string-keyed shape intact"
-    (let [id (query-result-row! stats-with-warehouse-values)]
-      (is (= stats-with-warehouse-values
-             (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))))))
+  (testing "chart_stats survives the round trip with its keywords intact. The stored bytes hold
+            strings (see above); the schema-driven codec is what puts `:chart-type`, a trend's
+            `:direction`, a volatility `:level`, a pattern's `:type` and a correlation's
+            `:strength`/`:direction` back on the way out"
+    (doseq [stats [stats-with-warehouse-values time-series-stats histogram-stats single-point-stats]]
+      (let [id (query-result-row! stats)]
+        (is (= stats (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))
+            (pr-str (:chart-type stats)))))))
 
 (deftest chart-stats-is-encrypted-at-rest-test
   ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
@@ -74,9 +131,7 @@
             It must not sit in the clear next to them."
       (encryption-test/with-secret-key "chart-stats-encryption-test-key"
         (let [id  (query-result-row! stats-with-warehouse-values)
-              raw (:chart_stats (t2/query-one {:select [:chart_stats]
-                                               :from   [:exploration_query_result]
-                                               :where  [:= :id id]}))]
+              raw (raw-chart-stats id)]
           (testing "the stored bytes do not contain the warehouse value"
             (is (string? raw))
             (is (not (str/includes? raw "ACME Corp"))
@@ -95,7 +150,7 @@
           (is (= stats-with-warehouse-values
                  (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id)))
           (t2/query-one {:update :exploration_query_result
-                         :set    {:chart_stats (pr-str stats-with-warehouse-values)}
+                         :set    {:chart_stats (json/encode stats-with-warehouse-values)}
                          :where  [:= :id id]})
           (is (thrown? clojure.lang.ExceptionInfo
                        (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))))))))
@@ -108,7 +163,19 @@
       (encryption-test/with-secret-key nil
         (let [id (query-result-row! nil)]
           (t2/query-one {:update :exploration_query_result
-                         :set    {:chart_stats (pr-str stats-with-warehouse-values)}
+                         :set    {:chart_stats (json/encode stats-with-warehouse-values)}
                          :where  [:= :id id]})
           (is (= stats-with-warehouse-values
                  (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))))))))
+
+(deftest chart-stats-unparseable-reads-as-nil-test
+  ;; isolated app DB: writes a deliberately malformed value, so nothing here may touch the shared test DB
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (testing "an unparseable blob is logged and read as nil rather than breaking the whole select"
+      (encryption-test/with-secret-key nil
+        (let [id (query-result-row! nil)]
+          (t2/query-one {:update :exploration_query_result
+                         :set    {:chart_stats "{not json ]["}
+                         :where  [:= :id id]})
+          (is (nil? (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))))))))

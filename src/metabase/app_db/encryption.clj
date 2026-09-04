@@ -28,7 +28,7 @@
   (cond-> v
     (instance? Blob v) blob->bytes))
 
-;; All columns whose whole value is encrypted at rest (via `mi/transform-encrypted-json`, or the encrypted-text/EDN
+;; All columns whose whole value is encrypted at rest (via `mi/transform-encrypted-json`, or the encrypted-text/JSON
 ;; transforms in explorations). The on-disk format is `encrypt(string)`, so rotating the key only requires decrypting
 ;; the raw value with the current key and re-encrypting the resulting string. We list raw table names (not models) so
 ;; this also works for enterprise models that aren't loaded in every edition.

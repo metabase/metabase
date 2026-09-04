@@ -27,8 +27,8 @@
 ;;; ------------------------------------------- Trend-direction schema regression ----------------------------------
 
 (deftest ^:parallel deep-stats-accepts-no-clear-trend-test
-  (testing "compute-chart-stats (deep) validates a :no-clear-trend series without throwing"
-    ;; reconcile-direction emits :no-clear-trend on a pathologically noisy series (CV ≥ 1);
+  (testing "compute-chart-stats (deep) validates a no-clear-trend series without throwing"
+    ;; reconcile-direction emits "no-clear-trend" on a pathologically noisy series (CV ≥ 1);
     ;; the ::trend-direction output schema must allow it or deep-stats throws on real data.
     (let [config {:display_type "line"
                   :title        "Noisy"
@@ -38,7 +38,7 @@
                                           :x_values ["2020-01-01" "2020-01-02" "2020-01-03" "2020-01-04" "2020-01-05"]
                                           :y_values [10.0 1000.0 5.0 900.0 8.0]}}}
           stats  (stats.core/compute-chart-stats config {:deep? true})]
-      (is (= :no-clear-trend (get-in stats [:series "Noisy" :trend :direction]))))))
+      (is (= :no-clear-trend (get-in stats [:series 0 :trend :direction]))))))
 
 ;;; ------------------------------------------- Downsampling Tests -------------------------------------------------
 
@@ -51,7 +51,7 @@
 (deftest ^:parallel data-points-within-limit-are-not-downsampled-test
   (testing "Series within the limit are not modified"
     (is (=? {:limits (symbol "nil #_\"key is not present.\"")
-             :series {"series_0" {:data-points 100}}}
+             :series [{:name "series_0" :data-points 100}]}
             (stats.core/compute-chart-stats (make-chart-config 1 100) {:deep? false})))))
 
 (deftest ^:parallel data-points-exceeding-limit-are-downsampled-test
@@ -59,8 +59,8 @@
     (let [n      (+ @#'stats.core/max-data-points-per-series 5000)
           config (make-chart-config 1 n)
           stats  (stats.core/compute-chart-stats config {:deep? false})
-          sampled (get-in stats [:series "series_0" :data-points])]
-      (is (=? {:limits {:downsampled-series {"series_0" {:original-count n}}}}
+          sampled (get-in stats [:series 0 :data-points])]
+      (is (=? {:limits {:downsampled-series [{:name "series_0" :original-count n}]}}
               stats))
       (is (approx=max-data-points-per-series? sampled)
           (str "sampled " sampled " should be roughly <= " @#'stats.core/max-data-points-per-series)))))
@@ -70,8 +70,9 @@
     (let [n       (+ @#'stats.core/max-data-points-per-series 1000)
           config  (make-chart-config 1 n)
           orig-ys (get-in config [:series "series_0" :y_values])]
-      (is (=? {:series {"series_0" {:trend {:start-value (double (first orig-ys))
-                                            :end-value   (double (last orig-ys))}}}}
+      (is (=? {:series [{:name  "series_0"
+                         :trend {:start-value (double (first orig-ys))
+                                 :end-value   (double (last orig-ys))}}]}
               (stats.core/compute-chart-stats config {:deep? false}))))))
 
 (deftest ^:parallel multiple-series-downsampled-independently-test
@@ -83,11 +84,10 @@
                    :series {"small" (make-series small-n)
                             "large" (make-series large-n)}}
           stats   (stats.core/compute-chart-stats config {:deep? false})]
-      (is (=? {:limits {:downsampled-series
-                        {"small" (symbol "nil #_\"key is not present.\"")
-                         "large" {:original-count large-n}}}
-               :series {"small" {:data-points small-n}
-                        "large" {:data-points approx=max-data-points-per-series?}}}
+      (is (=? {;; only the oversized series is recorded as downsampled
+               :limits {:downsampled-series [{:name "large" :original-count large-n}]}
+               :series [{:name "small" :data-points small-n}
+                        {:name "large" :data-points approx=max-data-points-per-series?}]}
               stats)))))
 
 ;;; ---------------------------------------- Correlation Cap Tests -------------------------------------------------

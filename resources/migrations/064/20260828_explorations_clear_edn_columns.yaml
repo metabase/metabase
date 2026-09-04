@@ -1,0 +1,70 @@
+## Clear the explorations columns that held Clojure data as EDN, now that they hold JSON
+##
+## The rollback is deliberately empty: explorations is unreleased, so no build that reads these
+## columns as EDN is in anyone's hands, and the values are gone either way.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.expljsona
+      author: nvoxland
+      comment: Clear exploration_thread.query_plan_transcript, now that it holds JSON
+      changes:
+        - update:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: query_plan_transcript
+                  value: "NULL"
+      rollback: # the EDN this held is gone; there is nothing to restore
+
+  - changeSet:
+      id: v64.expljsonb
+      author: nvoxland
+      comment: Clear exploration_thread.data_access_token, now that it holds JSON
+      changes:
+        - update:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: data_access_token
+                  value: "NULL"
+      rollback: # the EDN this held is gone; there is nothing to restore
+
+  - changeSet:
+      id: v64.expljsonc
+      author: nvoxland
+      comment: Clear exploration_query.data_access_token, now that it holds JSON
+      changes:
+        - update:
+            tableName: exploration_query
+            columns:
+              - column:
+                  name: data_access_token
+                  value: "NULL"
+      rollback: # the EDN this held is gone; there is nothing to restore
+
+  - changeSet:
+      id: v64.expljsond
+      author: nvoxland
+      comment: Clear stored_result.data_access_token, now that it holds JSON
+      changes:
+        - update:
+            tableName: stored_result
+            columns:
+              - column:
+                  name: data_access_token
+                  value: "NULL"
+      rollback: # the EDN this held is gone; there is nothing to restore
+
+  - changeSet:
+      id: v64.expljsone
+      author: nvoxland
+      comment: Clear exploration_query_result.chart_stats, now that it holds JSON
+      changes:
+        - update:
+            tableName: exploration_query_result
+            columns:
+              - column:
+                  name: chart_stats
+                  value: "NULL"
+      rollback: # the EDN this held is gone; there is nothing to restore

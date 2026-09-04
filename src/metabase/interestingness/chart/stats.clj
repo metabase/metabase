@@ -1,6 +1,8 @@
 (ns metabase.interestingness.chart.stats
   "Chart type detection and statistics routing."
   (:require
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.interestingness.chart.categorical :as categorical]
    [metabase.interestingness.chart.histogram :as histogram]
    [metabase.interestingness.chart.scatter :as scatter]
@@ -48,10 +50,10 @@
                                    [name (count y_values)]))
         limited-series  (into {} (for [[name config] series-data]
                                    [name (downsample-series config max-data-points-per-series)]))
-        downsampled     (into {} (for [[name orig-count] original-counts
-                                       :let [new-count (count (get-in limited-series [name :y_values]))]
-                                       :when (< new-count orig-count)]
-                                   [name {:original-count orig-count :sampled-count new-count}]))]
+        downsampled     (vec (for [[name orig-count] original-counts
+                                   :let [new-count (count (get-in limited-series [name :y_values]))]
+                                   :when (< new-count orig-count)]
+                               {:name name :original-count orig-count :sampled-count new-count}))]
     [limited-series
      (when (seq downsampled)
        {:downsampled-series downsampled})]))
@@ -168,3 +170,19 @@
                                                            " charts not yet implemented")})]
     (cond-> stats
       limits-info (assoc :limits limits-info))))
+
+;;; --------------------------------------------- Serialization ------------------------------------------------------
+
+(def ^:private json-transformer
+  (mtx/json-transformer))
+
+(defn chart-stats->json-safe
+  "Rewrite a [[compute-chart-stats]] result into a value JSON can carry, without flattening the shape
+  callers rely on."
+  [stats]
+  (mc/encode ::stats.types/chart-stats stats json-transformer))
+
+(defn json-safe->chart-stats
+  "Inverse of [[chart-stats->json-safe]]: put the keywords back, given the JSON-decoded value."
+  [decoded]
+  (mc/decode ::stats.types/chart-stats decoded json-transformer))
