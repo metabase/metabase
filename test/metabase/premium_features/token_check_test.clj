@@ -48,12 +48,11 @@
   (let [call-count (atom 0)
         token      (tu/random-token)
         response   (atom :error)
-        ;; i've removed the circuit breaker from the stack. that sometimes shuts down the tests in a way we don't want
-        ;; to exercise here
+        ;; no circuit breaker (carries state between blocks) and no local-ttl (it negative-caches
+        ;; failures) — this pins that the DURABLE tiers never store them
         checker    (binding [token-check/*customize-checker* true]
-                     (token-check/make-checker {:local-ttl (t/seconds 5)
-                                                :soft-ttl  (t/minutes 1)
-                                                :hard-ttl  (t/minutes 2)}))]
+                     (token-check/make-checker {:soft-ttl (t/minutes 1)
+                                                :hard-ttl (t/minutes 2)}))]
     (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
                                                          (swap! call-count inc)
                                                          (case @response
@@ -172,6 +171,62 @@
         (finally
           (token-check/-clear-cache! checker))))))
 
+(deftest transient-failures-are-negative-cached-test
+  ;; timing rule: asserting behavior WITHIN a TTL window needs a TTL generous enough that test
+  ;; overhead can't overrun it (10s); sleeping PAST a tight TTL is deterministic (sleep ≥ duration)
+  (testing "a transient failure is memoized for local-ttl — an outage costs one attempt per TTL, not one per feature check"
+    (let [token      (tu/random-token)
+          call-count (atom 0)
+          checker    (binding [token-check/*customize-checker* true]
+                       (token-check/make-checker {:local-ttl (t/seconds 10)
+                                                  :soft-ttl  (t/minutes 1)
+                                                  :hard-ttl  (t/minutes 2)}))]
+      (try
+        (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
+                                                             (swap! call-count inc)
+                                                             (throw (ex-info "network failure!" {})))]
+          (dotimes [_ 5] (token-check/check-token checker token))
+          (is (= 1 @call-count) "failures within the TTL are served from the negative cache")
+          (is (=? {:valid false :canonical? false :error-details "network failure!"}
+                  (token-check/check-token checker token))))
+        (finally
+          (token-check/-clear-cache! checker)))))
+  (testing "the negative cache expires with the TTL — failures are retried"
+    (let [token      (tu/random-token)
+          call-count (atom 0)
+          checker    (binding [token-check/*customize-checker* true]
+                       (token-check/make-checker {:local-ttl (t/millis 50)
+                                                  :soft-ttl  (t/minutes 1)
+                                                  :hard-ttl  (t/minutes 2)}))]
+      (try
+        (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
+                                                             (swap! call-count inc)
+                                                             (throw (ex-info "network failure!" {})))]
+          (token-check/check-token checker token)
+          (is (= 1 @call-count))
+          (Thread/sleep 100)
+          (token-check/check-token checker token)
+          (is (= 2 @call-count)))
+        (finally
+          (token-check/-clear-cache! checker)))))
+  (testing "concurrent misses share a single attempt (core.memoize single-flights values, and failures are values here)"
+    (let [token      (tu/random-token)
+          call-count (atom 0)
+          checker    (binding [token-check/*customize-checker* true]
+                       (token-check/make-checker {:local-ttl (t/seconds 10)
+                                                  :soft-ttl  (t/minutes 1)
+                                                  :hard-ttl  (t/minutes 2)}))]
+      (try
+        (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
+                                                             (swap! call-count inc)
+                                                             (Thread/sleep 100)
+                                                             (throw (ex-info "network failure!" {})))]
+          (let [checks (mapv (fn [_] (future (token-check/check-token checker token))) (range 8))]
+            (is (every? #(false? (:valid %)) (mapv deref checks)))
+            (is (= 1 @call-count) "8 concurrent callers, one network attempt")))
+        (finally
+          (token-check/-clear-cache! checker))))))
+
 (deftest bare-rejection-is-authoritative-test
   (doseq [http-status [403 404]]
     (testing (format "the store may reject a token with a bare %d (no body); that is a definitive verdict: cached, not transient"
@@ -279,7 +334,7 @@
       (is (< @call-count 50)))
     (testing "When connectivity is restored we get successful token checks"
       (reset! behavior :success)
-      (Thread/sleep 100) ;; wait for circuit breaker to open back up
+      (Thread/sleep 100) ;; wait for circuit breaker to open back up (also outlasts the 50ms negative cache)
       (is (= good-response (token-check/-check-token checker token)))))
   (testing "App db not setup yet does not invoke the circuit breaker (#65294)"
     (let [token          (tu/random-token)
@@ -314,6 +369,7 @@
                 :error-details "Metabase DB is not yet set up"}
                (token-check/-check-token checker token))))
       (testing "When the db-is-set-up? we are not blocked by the circuit breaker"
+        (Thread/sleep 60) ;; outlast the 50ms local-ttl — the not-set-up failure map is negative-cached
         (mt/with-dynamic-fn-redefs [mdb/db-is-set-up? (constantly true)]
           (is (= good-response (token-check/-check-token checker token))))))))
 
@@ -677,8 +733,7 @@
         ;; Second call: stale → returns old cached value, kicks off async refresh
         (binding [token-check/*testing-only-call-after-refresh* #(deliver refresh-done true)]
           (is (= good-response (token-check/-check-token checker token)))
-          ;; Wait (bounded — an unbounded deref hangs the whole run if the refresh never fires) for
-          ;; the async refresh to complete
+          ;; bounded deref — unbounded hangs the whole run if the refresh never fires
           (is (true? (deref refresh-done 5000 :timeout))))
         ;; Expire local cache
         (Thread/sleep 10)

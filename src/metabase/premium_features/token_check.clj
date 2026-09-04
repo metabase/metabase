@@ -213,14 +213,11 @@
   (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
     (if (or (http/success? resp) (<= 400 status 499))
-      ;; 2xx and 4xx normally carry the store's verdict in the body; a response we can't decode is
-      ;; not a verdict and must throw so it is treated as transient rather than cached
       (do (when (http/success? resp)
             (analytics/inc! :metabase-token-check/attempt {:status :success}))
           (or (some-> (parse-status-body body) authoritative)
-              ;; the store may reject a token with a bare 403/404 — no body at all — so honor that as
-              ;; a definitive verdict. A 403 with an undecodable body (e.g. a WAF's HTML error page)
-              ;; is deliberately NOT honored: only the store sends bodyless rejections.
+              ;; a bare (bodyless) 403/404 is the store rejecting the token — a verdict. An
+              ;; undecodable body (a WAF's HTML page) is not: only the store sends bodyless rejections
               (when (and (#{403 404} status) (str/blank? body))
                 (authoritative {:valid         false
                                 :status        "Token is not valid."
@@ -447,13 +444,10 @@
   (let [local-cache          (or local-cache (atom {}))
         refresh-in-progress? (atom false)]
     (letfn [(do-refresh! [token token-hash]
-              ;; only authoritative answers may be held on to — transient failures (network errors,
-              ;; 5xx, undecodable bodies) throw inside the inner checker, and this guard backstops
-              ;; any path that returns a fallback value instead
               (let [result (-check-token token-checker token)]
+                ;; a non-authoritative return here is an internal bug: every legitimate inner path
+                ;; returns a canonical map or throws
                 (when-not (:canonical? result)
-                  ;; an inner checker returning a non-authoritative value is an internal bug: every
-                  ;; legitimate path returns a canonical map or throws
                   (throw (ex-info "Refusing to cache a non-authoritative token status"
                                   {:status (:status result)})))
                 (let [result-hash (hash-token-status result)
@@ -562,16 +556,21 @@
                                   :hard-ttl     hard-ttl
                                   :local-cache  db-hash-local-cache})
 
-    local-ttl
-    (local-cached-token-checker {:local-ttl local-ttl})
-
+    ;; inside the memoize so failure maps are memoized for local-ttl (negative cache; core.memoize
+    ;; single-flights values but not thrown exceptions), outside db-hash so they never reach the
+    ;; durable cache
     :always
-    (error-catching-token-checker)))
+    (error-catching-token-checker)
+
+    local-ttl
+    (local-cached-token-checker {:local-ttl local-ttl})))
 
 (def token-checker
   "The token checker. Combines http/airgapping validation, circuit breaking, DB-hash-aware caching, and error handling."
   (make-checker {:base            store-and-airgap-token-checker
-                 :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 60)]
+                 ;; the window must fit 10 worst-case failures (10s timeout + 5s negative cache
+                 ;; each ≈ 135s) or slow failures can never open the breaker
+                 :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 180)]
                                    :delay-ms          (u/seconds->ms 30)
                                    :success-threshold 1
                                    :on-open           (fn [_] (log/info "Engaging circuit breaker in token check"))
@@ -607,8 +606,8 @@
                     (mr/validate [:re AirgapToken] new-value))
         (throw (ex-info (tru "Token format is invalid.")
                         {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
-      ;; the admin is telling us the token state changed (a new token, or a renewed subscription on
-      ;; the same token) — bust the cache so we validate against the store, not a stale verdict
+      ;; validate against the store, not a cached verdict — the token may be the same string with a
+      ;; renewed subscription behind it
       (clear-cache!)
       (let [decoded (check-token new-value)]
         (when-not (:valid decoded)
