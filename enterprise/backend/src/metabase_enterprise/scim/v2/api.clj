@@ -440,12 +440,7 @@
         mb-group->scim)))
 
 (defn- update-group-membership
-  "Updates the membership of `group-id` to be the set of users in the collection `user-entity-ids`.
-
-  Applies the difference rather than clearing and re-adding every member. Membership guards gate *additions* only --
-  the Data Analysts group needs `:advanced-permissions` to gain a member, but never to lose one -- so re-adding
-  members who are already there would turn a removal-only push, or an idempotent resync, into an error on a
-  downgraded instance."
+  "Updates the membership of `group-id` to be the set of users in the collection `user-entity-ids`."
   [group-id user-entity-ids]
   (let [desired-ids (set (scim.db/user-ids-by-entity-ids user-entity-ids))
         current-ids (set (scim.db/group-member-user-ids group-id))]

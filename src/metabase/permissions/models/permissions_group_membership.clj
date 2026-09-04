@@ -72,8 +72,6 @@
   [group-id]
   (when (and (= group-id (:id (perms-group/data-analyst)))
              (not (premium-features/enable-advanced-permissions?)))
-    ;; `:status-code` on its own (no other ex-data) makes the API middleware return the message as the response body,
-    ;; which is what we want here -- the message is the whole point of this error.
     (throw (ex-info (str fail-to-add-data-analyst-msg)
                     {:status-code 402}))))
 
@@ -176,10 +174,6 @@
                                                :group-id group-id
                                                :user-is-tenant? (user-id->tenant? user-id)
                                                :group-is-tenant? (group-id->tenant? group-id)}))))
-          ;; the Data Analysts gate lives here rather than in the before-insert hook because the insert below
-          ;; ([[permissions.db/insert-group-memberships-from-mapping!]]) is raw SQL, so Toucan's hooks never fire for
-          ;; it. Direct `t2/insert!` is refused outright, which makes this the one check every production caller
-          ;; passes through.
           _ (doseq [group-id group-ids]
               (check-not-all-users-group group-id)
               (check-not-all-external-users-group group-id)
