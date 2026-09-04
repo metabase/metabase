@@ -85,6 +85,9 @@
   io.github.eerohele/pp                     {#_#_:git/tag "2024-11-13.77"       ; super fast pretty-printing library
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
+  io.github.escherize/gleam-runtime         {:git/url "https://github.com/escherize/gleam-clj" ; Gleam-compiled metabase.lib.parse (see PR description)
+                                             :git/sha "3cc63a17302765695cf84b11b31d6605ca571025"
+                                             :deps/root "libs/gleam-runtime"}
   io.github.metabase/macaw                  {:mvn/version "0.2.36"}             ; Parse native SQL queries
   io.opentelemetry/opentelemetry-api        {:mvn/version "1.62.0"}             ; pinned: clj-otel-api 0.2.10 pulls 1.54.1 (W3CBaggagePropagator DoS vuln)
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector

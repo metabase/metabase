@@ -55,7 +55,7 @@
                   :deprecated-namespace                    7
                   :deprecated-var                          16
                   :discouraged-namespace                   14
-                  :discouraged-var                         14
+                  :discouraged-var                         15
                   :inline-def                              1
                   :main-without-gen-class                  1
                   :metabase/defsetting-must-specify-export 1
