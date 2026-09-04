@@ -89,7 +89,6 @@ export async function setup(
 
   setupEmbedDashboardEndpoints(MOCK_TOKEN, dashboard, dashcards);
 
-
   const pathname = `/embed/dashboard/${MOCK_TOKEN}`;
   const hashString = _.isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`;
   const href = `${pathname}${queryString}${hashString}`;
