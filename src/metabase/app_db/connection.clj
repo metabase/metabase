@@ -147,30 +147,29 @@
   ^javax.sql.DataSource []
   (.data-source *application-db*))
 
-(defn- lock-respecting-data-source
-  "Wrap `data-source` so that acquiring a connection takes `lock`'s read lock, the way connections acquired through
-  the [[ApplicationDB]] itself do. That lets the testing API block new connections while restoring the app DB."
-  ^javax.sql.DataSource [^ReentrantReadWriteLock lock ^javax.sql.DataSource data-source]
-  (reify javax.sql.DataSource
-    (getConnection [_]
-      (try
-        (.. lock readLock lock)
-        (.getConnection data-source)
-        (finally
-          (.. lock readLock unlock))))
-    (getConnection [_ user password]
-      (try
-        (.. lock readLock lock)
-        (.getConnection data-source user password)
-        (finally
-          (.. lock readLock unlock))))))
-
 (defn quartz-data-source
   "Get a [[javax.sql.DataSource]] for the Quartz JDBC job store, backed by the current [[*application-db*]]'s
-  dedicated Quartz connection pool (or its regular data source if it was created without pooling)."
+  dedicated Quartz connection pool (or its regular data source if it was created without pooling).
+
+  Like connections acquired through the [[ApplicationDB]] itself, acquiring a connection through this takes the
+  application DB's read lock, so the testing API can block new connections while restoring the app DB."
   ^javax.sql.DataSource []
-  (let [^ApplicationDB app-db *application-db*]
-    (lock-respecting-data-source (.lock app-db) (.quartz-data-source app-db))))
+  (let [^ApplicationDB app-db            *application-db*
+        ^ReentrantReadWriteLock lock     (.lock app-db)
+        ^javax.sql.DataSource data-source (.quartz-data-source app-db)]
+    (reify javax.sql.DataSource
+      (getConnection [_]
+        (try
+          (.. lock readLock lock)
+          (.getConnection data-source)
+          (finally
+            (.. lock readLock unlock))))
+      (getConnection [_ user password]
+        (try
+          (.. lock readLock lock)
+          (.getConnection data-source user password)
+          (finally
+            (.. lock readLock unlock)))))))
 
 (defn audit-read-data-source
   "Get a [[javax.sql.DataSource]] for the Audit DB path -- the internal-analytics queries that run against the
@@ -180,10 +179,12 @@
   This is the only place the Audit DB path should obtain a connection from: everything reaching the app DB under an
   audit query is expected to come through here, so `grep` finds the whole surface. Whether it is a *restricted*
   identity depends on whether the operator configured `MB_DB_AUDIT_READ_USER` -- see
-  [[metabase.app-db.env/audit-read-data-source]]."
+  [[metabase.app-db.env/audit-read-data-source]].
+
+  Returns the pool itself, the way [[data-source]] does, rather than a fresh lock-taking wrapper per call: this sits
+  on the query path for every audit query, and callers compare the connection spec it ends up in for equality."
   ^javax.sql.DataSource []
-  (let [^ApplicationDB app-db *application-db*]
-    (lock-respecting-data-source (.lock app-db) (.audit-read-data-source app-db))))
+  (.audit-read-data-source *application-db*))
 
 ;; I didn't call this `id` so there's no confusing this with a data warehouse [[metabase.warehouses.models.database]] instance --
 ;; it's a number that I don't want getting mistaken for an `Database` `id`. Also the fact that it's an Integer is not
