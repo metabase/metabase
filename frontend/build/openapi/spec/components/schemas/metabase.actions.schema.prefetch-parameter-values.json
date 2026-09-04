@@ -1,5 +1,0 @@
-{
-  "additionalProperties": {},
-  "description": "value must be a JSON object mapping parameter ids to scalar values.",
-  "type": "object"
-}

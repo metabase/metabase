@@ -1,5 +1,0 @@
-{
-  "description": "Valid Document ID",
-  "minimum": 1,
-  "type": "integer"
-}

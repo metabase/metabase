@@ -1,3 +1,0 @@
-{
-  "description": "Fields using names rather than integer IDs are required to specify `:base-type`."
-}

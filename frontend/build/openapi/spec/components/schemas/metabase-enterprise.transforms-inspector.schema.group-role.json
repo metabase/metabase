@@ -1,8 +1,0 @@
-{
-  "description": "Role of a card within a comparison group.",
-  "enum": [
-    "input",
-    "output"
-  ],
-  "type": "string"
-}

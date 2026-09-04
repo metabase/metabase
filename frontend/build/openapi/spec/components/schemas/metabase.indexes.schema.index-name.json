@@ -1,6 +1,0 @@
-{
-  "description": "Free-form user input, inlined (quoted and escaped) into DDL. 63 is the Postgres identifier limit, the tightest\n  engine we support.",
-  "maxLength": 63,
-  "minLength": 1,
-  "type": "string"
-}

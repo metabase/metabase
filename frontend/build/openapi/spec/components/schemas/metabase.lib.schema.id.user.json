@@ -1,5 +1,0 @@
-{
-  "description": "Valid User ID",
-  "minimum": 1,
-  "type": "integer"
-}

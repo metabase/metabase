@@ -1,3 +1,0 @@
-{
-  "description": "If an MBQL query stage specifies `:page`, it should not also specify `:limit`"
-}

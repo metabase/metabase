@@ -1,8 +1,0 @@
-{
-  "anyOf": [
-    {},
-    {
-      "$ref": "./metabase.lib.schema.literal..string.date.json"
-    }
-  ]
-}

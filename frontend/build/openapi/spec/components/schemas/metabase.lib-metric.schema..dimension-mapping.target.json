@@ -1,8 +1,0 @@
-{
-  "allOf": [
-    {
-      "$ref": "./mbql.clause.field.json"
-    }
-  ],
-  "description": "Target field reference for a dimension mapping, e.g. [:field {:source-field 1} 2]."
-}

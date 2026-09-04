@@ -1,8 +1,0 @@
-{
-  "enum": [
-    "final",
-    "internal",
-    "hidden"
-  ],
-  "type": "string"
-}

@@ -1,9 +1,0 @@
-{
-  "enum": [
-    "date",
-    "number",
-    "boolean",
-    "text"
-  ],
-  "type": "string"
-}

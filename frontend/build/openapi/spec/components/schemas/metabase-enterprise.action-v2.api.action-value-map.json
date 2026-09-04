@@ -1,5 +1,0 @@
-{
-  "additionalProperties": {},
-  "description": "A map from parameter name / column name to a value. Keys are keywords: the request decoder keywordizes map keys and\n  the handler reads them via `(keyword ...)`, so the FE never sends anything else.\n\n  Same shape as [[metabase.actions.schema/execute-parameter-values]]. Decoding sees a permissive\n  `[:map-of :keyword :any]` and the values are validated against, rather than decoded through,\n  [[strict-action-value-map]].",
-  "type": "object"
-}

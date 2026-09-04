@@ -1,8 +1,0 @@
-{
-  "allOf": [
-    {
-      "$ref": "./metabase.lib.schema.parameter.widget-type.json"
-    }
-  ],
-  "description": "Schema for valid values of `:widget-type` for a `:metabase.lib.schema.template-tag/field-filter` template tag."
-}

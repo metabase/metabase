@@ -1,8 +1,0 @@
-{
-  "description": "Status of the inspector result.",
-  "enum": [
-    "not-run",
-    "ready"
-  ],
-  "type": "string"
-}

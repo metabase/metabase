@@ -1,7 +1,0 @@
-{
-  "items": {
-    "$ref": "./metabase.lib.schema.expression.boolean.json"
-  },
-  "minItems": 1,
-  "type": "array"
-}

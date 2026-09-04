@@ -1,8 +1,0 @@
-{
-  "allOf": [
-    {
-      "$ref": "./metabase.legacy-mbql.schema.field.json"
-    }
-  ],
-  "description": "Form-encoded JSON-encoded legacy MBQL :field ref."
-}

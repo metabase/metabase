@@ -1,6 +1,0 @@
-{
-  "items": {
-    "$ref": "./metabase-enterprise.security-center.schema.download-jar-url.json"
-  },
-  "type": "array"
-}

@@ -1,7 +1,0 @@
-{
-  "allOf": [
-    {
-      "$ref": "./metabase.parameters.schema.parameter-values.json"
-    }
-  ]
-}

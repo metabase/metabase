@@ -1,8 +1,0 @@
-{
-  "allOf": [
-    {
-      "$ref": "./metabase.metrics.dimension.dimension.json"
-    }
-  ],
-  "description": "A metric dimension in its internal kebab-case shape, annotated with the rules that convert it to\n   and from the snake_case wire shape. See [[metabase.metrics.dimension/dimension]]."
-}

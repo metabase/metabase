@@ -1,7 +1,0 @@
-{
-  "description": "A sequence of typed projections.",
-  "items": {
-    "$ref": "./metabase.lib-metric.schema.typed-projection.json"
-  },
-  "type": "array"
-}

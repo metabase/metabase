@@ -1,8 +1,0 @@
-{
-  "allOf": [
-    {
-      "$ref": "./metabase.lib-be.schema.maybe-legacy-query.json"
-    }
-  ],
-  "description": "value must be a valid MBQL query with a source table."
-}

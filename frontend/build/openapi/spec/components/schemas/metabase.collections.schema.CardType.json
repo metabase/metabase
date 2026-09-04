@@ -1,8 +1,0 @@
-{
-  "enum": [
-    "model",
-    "question",
-    "metric"
-  ],
-  "type": "string"
-}

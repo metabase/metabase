@@ -1,8 +1,0 @@
-{
-  "description": "Status of a dimension indicating whether it's active or has issues.\n   - :status/active   - Column exists, dimension is usable\n   - :status/orphaned - Column was removed from schema, dimension preserved for reference",
-  "enum": [
-    "status/active",
-    "status/orphaned"
-  ],
-  "type": "string"
-}

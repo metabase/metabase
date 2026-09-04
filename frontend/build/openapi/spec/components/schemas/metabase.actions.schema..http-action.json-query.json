@@ -1,4 +1,0 @@
-{
-  "description": "must be a valid json-query, something like '.item.title'",
-  "type": "string"
-}

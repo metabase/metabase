@@ -1,7 +1,0 @@
-{
-  "oneOf": [
-    {
-      "$ref": "./metabase.transforms.schema.checkpoint-strategy.json"
-    }
-  ]
-}

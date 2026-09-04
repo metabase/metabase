@@ -1,8 +1,0 @@
-{
-  "allOf": [
-    {
-      "$ref": "./metabase.lib.schema.query.json"
-    }
-  ],
-  "description": "value must be a valid MBQL query."
-}

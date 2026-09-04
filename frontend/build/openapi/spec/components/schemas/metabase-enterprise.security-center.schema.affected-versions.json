@@ -1,6 +1,0 @@
-{
-  "items": {
-    "$ref": "./metabase-enterprise.security-center.schema.version-range.json"
-  },
-  "type": "array"
-}

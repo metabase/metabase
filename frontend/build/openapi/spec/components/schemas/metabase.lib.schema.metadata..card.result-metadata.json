@@ -1,7 +1,0 @@
-{
-  "description": "Schema for the `:result-metadata` for a Card (Saved Question, Model, or v2 Metric).",
-  "items": {
-    "$ref": "./metabase.lib.schema.metadata.lib-or-legacy-column.json"
-  },
-  "type": "array"
-}

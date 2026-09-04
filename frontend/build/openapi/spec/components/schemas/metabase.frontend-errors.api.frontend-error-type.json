@@ -1,7 +1,0 @@
-{
-  "enum": [
-    "component-crash",
-    "chart-render-error"
-  ],
-  "type": "string"
-}

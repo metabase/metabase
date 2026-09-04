@@ -1,7 +1,0 @@
-{
-  "description": "A sequence of per-instance filters.",
-  "items": {
-    "$ref": "./metabase.lib-metric.schema.instance-filter.json"
-  },
-  "type": "array"
-}

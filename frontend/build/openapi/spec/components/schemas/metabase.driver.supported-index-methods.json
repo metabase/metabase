@@ -1,7 +1,0 @@
-{
-  "additionalProperties": {
-    "$ref": "./metabase.driver.index-method.json"
-  },
-  "description": "Return shape of [[supported-index-methods]]: index-kind -> metadata.",
-  "type": "object"
-}

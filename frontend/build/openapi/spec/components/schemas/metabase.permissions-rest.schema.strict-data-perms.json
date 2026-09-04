@@ -1,8 +1,0 @@
-{
-  "allOf": [
-    {
-      "$ref": "./metabase.permissions-rest.schema.data-perms.json"
-    }
-  ],
-  "description": "Data perms that care about how view-data and make-queries are related to one another.\n  If you have write access for native queries, you must have data access to all schemas."
-}

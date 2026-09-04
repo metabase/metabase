@@ -1,7 +1,0 @@
-{
-  "enum": [
-    "none",
-    "global-schedule"
-  ],
-  "type": "string"
-}

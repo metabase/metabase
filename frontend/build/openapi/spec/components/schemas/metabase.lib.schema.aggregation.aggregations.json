@@ -1,7 +1,0 @@
-{
-  "items": {
-    "$ref": "./metabase.lib.schema.aggregation.aggregation.json"
-  },
-  "minItems": 1,
-  "type": "array"
-}

@@ -1,9 +1,0 @@
-{
-  "enum": [
-    "default",
-    "write-data",
-    "admin",
-    "transform"
-  ],
-  "type": "string"
-}

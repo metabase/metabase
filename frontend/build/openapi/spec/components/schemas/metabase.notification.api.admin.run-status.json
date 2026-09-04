@@ -1,7 +1,0 @@
-{
-  "enum": [
-    "failing",
-    "successful"
-  ],
-  "type": "string"
-}

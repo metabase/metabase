@@ -1,5 +1,0 @@
-{
-  "description": "Valid Table ID",
-  "minimum": 1,
-  "type": "integer"
-}

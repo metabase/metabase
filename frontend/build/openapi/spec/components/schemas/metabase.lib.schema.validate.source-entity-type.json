@@ -1,9 +1,0 @@
-{
-  "description": "The type of the source entity causing an error.",
-  "enum": [
-    "table",
-    "card",
-    "transform"
-  ],
-  "type": "string"
-}

@@ -1,5 +1,0 @@
-{
-  "description": "Valid Database ID",
-  "minimum": 1,
-  "type": "integer"
-}

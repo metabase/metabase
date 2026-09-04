@@ -1,9 +1,0 @@
-{
-  "enum": [
-    "column-type-mismatch",
-    "missing-primary-key",
-    "missing-foreign-key",
-    "foreign-key-mismatch"
-  ],
-  "type": "string"
-}

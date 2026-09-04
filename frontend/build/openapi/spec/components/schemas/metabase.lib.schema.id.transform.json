@@ -1,5 +1,0 @@
-{
-  "description": "Valid Transform ID",
-  "minimum": 1,
-  "type": "integer"
-}
