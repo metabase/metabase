@@ -149,10 +149,7 @@ describe("ManageDataAppUsersPage", () => {
     expect(
       within(missingTables).getByTestId("missing-table-icon"),
     ).toBeVisible();
-    expect(reviewLink).toHaveAttribute(
-      "href",
-      "/admin/permissions/data/group/9",
-    );
+    expect(reviewLink).toHaveAttribute("href", "/admin/permissions/data/group");
     expect(reviewLink).toHaveAttribute("data-variant", "outline");
     expect(reviewLink).toHaveAttribute("data-size", "compact-sm");
     expect(reviewLink).toHaveStyle({ width: "fit-content" });

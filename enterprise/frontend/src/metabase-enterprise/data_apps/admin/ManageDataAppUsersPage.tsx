@@ -169,7 +169,6 @@ const DataAppUsers = ({
 
             {isAdding && (
               <AddUsersSection
-                permissionGroupId={group.id}
                 members={members}
                 selectedUsers={selectedUsers}
                 warnings={selectedWarnings.byUserId}
@@ -199,7 +198,6 @@ const DataAppUsers = ({
                   {visibleMembers.map((member) => (
                     <MemberRow
                       key={member.membership_id}
-                      permissionGroupId={group.id}
                       member={member}
                       isAccessChecked={memberWarnings.isSuccess}
                       warning={memberWarnings.byUserId.get(member.user_id)}
@@ -245,13 +243,11 @@ const useWarnings = (appName: string, userIds: number[]) => {
 };
 
 const MemberRow = ({
-  permissionGroupId,
   member,
   isAccessChecked,
   warning,
   onRemove,
 }: {
-  permissionGroupId: number;
   member: Member;
   isAccessChecked: boolean;
   warning?: DataAppUserPermissionWarning;
@@ -268,10 +264,7 @@ const MemberRow = ({
       <td>{member.email}</td>
       <td>
         {warning ? (
-          <DataAccessWarning
-            permissionGroupId={permissionGroupId}
-            warning={warning}
-          />
+          <DataAccessWarning warning={warning} />
         ) : (
           isAccessChecked && (
             <Tooltip label={adequateAccessLabel}>
@@ -297,7 +290,6 @@ const MemberRow = ({
 };
 
 const AddUsersSection = ({
-  permissionGroupId,
   members,
   selectedUsers,
   warnings,
@@ -306,7 +298,6 @@ const AddUsersSection = ({
   onCancel,
   onDone,
 }: {
-  permissionGroupId: number;
   members: Member[];
   selectedUsers: Map<number, User>;
   warnings: Map<number, DataAppUserPermissionWarning>;
@@ -465,10 +456,7 @@ const AddUsersSection = ({
                   </Stack>
                 </Flex>
 
-                <DataAccessWarning
-                  permissionGroupId={permissionGroupId}
-                  warning={warning}
-                />
+                <DataAccessWarning warning={warning} />
               </Flex>
             ))}
           </Stack>
@@ -479,10 +467,8 @@ const AddUsersSection = ({
 };
 
 const DataAccessWarning = ({
-  permissionGroupId,
   warning,
 }: {
-  permissionGroupId: number;
   warning: DataAppUserPermissionWarning;
 }) => {
   const label = ngettext(
@@ -562,7 +548,7 @@ const DataAccessWarning = ({
 
           <Button
             component={Link}
-            to={`/admin/permissions/data/group/${permissionGroupId}`}
+            to="/admin/permissions/data/group"
             variant="outline"
             size="compact-sm"
             w="fit-content"
