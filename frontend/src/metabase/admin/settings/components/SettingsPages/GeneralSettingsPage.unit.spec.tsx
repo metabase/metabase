@@ -35,7 +35,9 @@ const generalSettings = {
   "redirect-all-requests-to-https": false,
   "humanization-strategy": "simple",
   "enable-xrays": false,
+  "csp-img-enabled": true,
   "search-engine": "appdb",
+  "custom-viz-enabled": false,
 } as const;
 
 const setup = async ({
