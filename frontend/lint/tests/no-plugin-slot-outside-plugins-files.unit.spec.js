@@ -154,9 +154,5 @@ const INVALID_CASES = [
 
 ruleTester.run("no-plugin-slot-outside-plugins-files", rule, {
   valid: VALID_CASES,
-  invalid: INVALID_CASES.map(({ code, filename, errors }) => ({
-    code,
-    filename,
-    errors,
-  })),
+  invalid: INVALID_CASES,
 });

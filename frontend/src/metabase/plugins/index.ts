@@ -201,6 +201,6 @@ import { resetPluginSlots } from "./slot";
  */
 export function reinitialize() {
   resetPluginSlots();
-  // metabase/api can't import from metabase/plugins, so PLUGIN_API resets itself by hand.
+  // metabase/api sits below metabase/plugins, so its reset is called by hand here.
   reinitializeRequestHandlers();
 }

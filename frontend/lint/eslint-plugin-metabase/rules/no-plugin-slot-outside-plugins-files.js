@@ -1,6 +1,3 @@
-// Reports a plugin slot declared outside a plugins file.
-// A slot is an exported `PLUGIN_*` binding or a use of `definePluginSlot`, and it lives in `metabase/plugins/` or in a module's `plugins.ts` or `plugins/` directory.
-
 const SLOT_NAME = /^PLUGIN_[A-Z0-9_]+$/;
 const SLOT_FACTORY = "definePluginSlot";
 const PLUGINS_FILE = /^plugins\.(ts|tsx|js|jsx)$/;
@@ -22,7 +19,7 @@ module.exports = {
   },
   create(context) {
     const segments = context.filename.split("/");
-    const baseFilename = segments[segments.length - 1] || "";
+    const baseFilename = segments[segments.length - 1];
     const isPluginsFile = PLUGINS_FILE.test(baseFilename);
     const isInPluginsDir = segments.slice(0, -1).includes("plugins");
 

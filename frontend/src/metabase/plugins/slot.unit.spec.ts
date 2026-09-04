@@ -21,7 +21,7 @@ describe("definePluginSlot", () => {
     expect(Object.keys(slot)).toEqual(["enabled", "label"]);
   });
 
-  it("should reset a slot defined after another one", () => {
+  it("should reset every slot", () => {
     const first = definePluginSlot(() => ({ value: 1 }));
     const second = definePluginSlot(() => ({ value: 2 }));
 
@@ -35,16 +35,14 @@ describe("definePluginSlot", () => {
 
   it("should reset an array slot in place", () => {
     const slot = definePluginSlot((): string[] => []);
-    const reference = slot;
 
     slot.push("a", "b");
     reinitialize();
 
     expect(slot).toEqual([]);
-    expect(reference).toBe(slot);
   });
 
-  it("should call getDefaults again on each reset", () => {
+  it("should reset a nested value that was mutated", () => {
     const slot = definePluginSlot((): { items: string[] } => ({ items: [] }));
 
     slot.items.push("mutated");

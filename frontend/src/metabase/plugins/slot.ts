@@ -1,6 +1,6 @@
 const resets: (() => void)[] = [];
 
-// metabase/plugins can't import the modules above it, so a slot declared there registers its reset here for reinitialize() to call.
+// The registry is what lets reinitialize() reset a slot declared in a module above metabase/plugins.
 export function definePluginSlot<T extends object>(getDefaults: () => T): T {
   const slot = getDefaults();
   resets.push(() => resetPluginSlot(slot, getDefaults()));
