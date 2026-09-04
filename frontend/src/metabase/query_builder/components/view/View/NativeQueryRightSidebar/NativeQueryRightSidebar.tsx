@@ -14,8 +14,6 @@ import type {
   RowValue,
   TemplateTag,
   TemplateTagId,
-  Timeline,
-  TimelineEvent,
 } from "metabase-types/api";
 
 import { setTemplateTagConfig } from "../../../../actions";
@@ -26,8 +24,6 @@ import { TimelineSidebar } from "../../sidebars/TimelineSidebar";
 
 interface NativeQueryRightSidebarProps {
   question: Question;
-  timelineEvents: TimelineEvent[];
-  timelines: Timeline[];
   toggleTemplateTagsEditor: () => void;
   toggleDataReference: () => void;
   toggleSnippetSidebar: () => void;
@@ -36,11 +32,6 @@ interface NativeQueryRightSidebarProps {
   insertSnippet: (snippet: NativeQuerySnippet) => void;
   snippetCollectionId: CollectionId | null;
   setSnippetCollectionId?: (id: CollectionId | null) => void;
-  showTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
-  hideTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
-  selectTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
-  deselectTimelineEvents: () => void;
-  onCloseTimelines: () => void;
   onSave: (question: Question) => Promise<void>;
   isShowingTemplateTagsEditor: boolean;
   isShowingDataReference: boolean;
@@ -48,8 +39,6 @@ interface NativeQueryRightSidebarProps {
   isShowingTimelineSidebar: boolean;
   isShowingQuestionInfoSidebar: boolean;
   isShowingQuestionSettingsSidebar: boolean;
-  visibleTimelineEventIds: number[];
-  selectedTimelineEventIds: number[];
   setDatasetQuery: (query: NativeDatasetQuery) => void;
   setTemplateTag: (tag: TemplateTag) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
@@ -70,11 +59,6 @@ export const NativeQueryRightSidebar = (
     toggleTemplateTagsEditor,
     toggleDataReference,
     toggleSnippetSidebar,
-    showTimelineEvents,
-    hideTimelineEvents,
-    selectTimelineEvents,
-    deselectTimelineEvents,
-    onCloseTimelines,
     onSave,
     isShowingTemplateTagsEditor,
     isShowingDataReference,
@@ -119,17 +103,7 @@ export const NativeQueryRightSidebar = (
     .with({ isShowingSnippetSidebar: true }, () => (
       <SnippetSidebar {...props} onClose={toggleSnippetSidebar} />
     ))
-    .with({ isShowingTimelineSidebar: true }, () => (
-      <TimelineSidebar
-        {...props}
-        collectionId={question.collectionId()}
-        onShowTimelineEvents={showTimelineEvents}
-        onHideTimelineEvents={hideTimelineEvents}
-        onSelectTimelineEvents={selectTimelineEvents}
-        onDeselectTimelineEvents={deselectTimelineEvents}
-        onClose={onCloseTimelines}
-      />
-    ))
+    .with({ isShowingTimelineSidebar: true }, () => <TimelineSidebar />)
     .with({ isShowingQuestionInfoSidebar: true }, () => (
       <QuestionInfoSidebar question={question} onSave={onSave} />
     ))
