@@ -62,6 +62,7 @@
    :content-translation        (deferred-tru "Content translation")
    :custom-viz                 (deferred-tru "Custom Visualizations")
    :data-apps-preview          (deferred-tru "Data Apps")
+   :data-sensitivity           (deferred-tru "Data sensitivity")
    :library                    (deferred-tru "Library")
    :dependencies               (deferred-tru "Dependency Tracking")
    :schema-viewer              (deferred-tru "Schema Viewer")
