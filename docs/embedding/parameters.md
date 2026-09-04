@@ -242,7 +242,9 @@ If you'd rather keep Metabase's SQL widgets, the SDK's `InteractiveQuestion.SqlP
 
 ### Locked parameters on guest embeds: re-sign the token
 
-On a guest embed, lock the parameter and let your widget own it. When someone changes the value, ask your server for a new token signed with the updated `params`, and hand it to the component. The embed re-queries with the new locked value.
+You may want to resign tokens one viewer is allowed more than one value, but not every value. Say an account manager covers three customers. The **Customer ID** parameter has to stay locked so the manager can't query a fourth customer, but they still need to switch between their three. A widget on your page picks the customer, your server signs a new token with that value in `params`, and you hand the token to the component. The embed re-queries with the new locked value.
+
+Because the parameter is locked, your server should check that the viewer is allowed the value before it signs the new token. If the endpoint signs whatever value it's sent, anyone can request a token for any value, and the parameter is basically an editable parameter that you've [hidden](#hide-parameter-widgets).
 
 #### Web component re-signed token
 
@@ -254,7 +256,8 @@ On a guest embed, lock the parameter and let your widget own it. When someone ch
 
 <script>
   async function onRegionChange(region) {
-    // Your endpoint signs a token with params: { region: [region] }
+    // Your endpoint checks that this user may see `region`,
+    // then signs a token with params: { region: [region] }
     const response = await fetch(`/api/metabase-token?region=${region}`);
     const { jwt } = await response.json();
     document.getElementById("my-dashboard").setAttribute("token", jwt);

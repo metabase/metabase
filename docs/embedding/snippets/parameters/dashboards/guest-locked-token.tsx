@@ -10,7 +10,8 @@ const Example = () => {
   const [token, setToken] = useState(INITIAL_SIGNED_TOKEN);
 
   async function onRegionChange(region: string) {
-    // Your endpoint signs a token with params: { region: [region] }
+    // Your endpoint checks that this user may see `region`,
+    // then signs a token with params: { region: [region] }
     const response = await fetch(`/api/metabase-token?region=${region}`);
     const { jwt } = await response.json();
     setToken(jwt);
