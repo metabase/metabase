@@ -28,7 +28,7 @@
          session-id (string/random-string 12)
          session (t2/with-transaction [_]
                    (u/prog1 (auth-identity.db/insert-session! session-id user-id auth-identity-id session-key
-                                                              (:expires_at auth-identity))
+                                                              (:expires_at auth-identity) mfa-auth-identity-id)
                      (when provider-str
                        (log/debugf "Updating last_used_at for user %s with provider %s" user-id provider-str)
                        (auth-identity.db/touch-auth-identity! auth-identity-id))

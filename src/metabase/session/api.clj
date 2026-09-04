@@ -553,15 +553,15 @@
                               (do
                                 (events/publish-event! :event/mfa-verification-failed
                                                        {:object (session.db/user user-id)})
-                                (throw (ex-info (tru "Invalid authentication code.") {:status-code 401}))))))]
-    (let [user (session.db/user-login-status user-id)]
-      ;; the account can be deactivated (or deleted) between the password step and here; a
-      ;; challenge token must not outlive the account. Same 401 as a bad token — no oracle.
-      (when-not (:is_active user)
-        (throw (ex-info (tru "Authentication session expired. Please log in again.")
-                        {:status-code 401})))
-      (session-response (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor (:id mfa-auth-identity))
-                        request))))
+                                (throw (ex-info (tru "Invalid authentication code.") {:status-code 401}))))))
+        user (session.db/user-login-status user-id)]
+    ;; the account can be deactivated (or deleted) between the password step and here; a
+    ;; challenge token must not outlive the account. Same 401 as a bad token — no oracle.
+    (when-not (:is_active user)
+      (throw (ex-info (tru "Authentication session expired. Please log in again.")
+                      {:status-code 401})))
+    (session-response (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor (:id mfa-auth-identity))
+                      request)))
 
 ;; No response schema: the success path returns a full ring response (session cookies must be set),
 ;; which the response-schema machinery would validate as the body. Same constraint as
@@ -610,9 +610,9 @@
                                           (or
                                            (confirm-enrollment! user-id code jti)
                                            (do (events/publish-event! :event/mfa-required-enrollment-failed
-                                                                      {:object (t2/select-one :model/User :id user-id)})
+                                                                      {:object (session.db/user user-id)})
                                                (throw (ex-info (tru "Invalid authentication code.") {:status-code 401}))))))
-        user           (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id)]
+        user           (session.db/user-login-status user-id)]
     ;; the account can be deactivated (or deleted) between the password step and here; an
     ;; enrollment token must not outlive the account. Same 401 as a bad token — no oracle.
     (when-not (:is_active user)
