@@ -88,6 +88,9 @@ export const AuthenticationCard = () => {
                       key={currentStep}
                       isEnabled={isGuestEmbedsEnabled}
                       termsAccepted={isGuestEmbedsTermsAccepted}
+                      isSimpleEmbedFeatureAvailable={
+                        isSimpleEmbedFeatureAvailable
+                      }
                     />
                   )}
                 </>
