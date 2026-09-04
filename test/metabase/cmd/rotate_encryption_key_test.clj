@@ -1,4 +1,4 @@
-(ns metabase.cmd.rotate-encryption-key-test
+(ns ^:mb/app-db-migration-test metabase.cmd.rotate-encryption-key-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]

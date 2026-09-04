@@ -1,4 +1,4 @@
-(ns metabase.app-db.fix-mysql-utf8-test
+(ns ^:mb/app-db-migration-test metabase.app-db.fix-mysql-utf8-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]

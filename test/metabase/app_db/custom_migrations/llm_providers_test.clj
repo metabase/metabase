@@ -1,4 +1,4 @@
-(ns metabase.app-db.custom-migrations.llm-providers-test
+(ns ^:mb/app-db-migration-test metabase.app-db.custom-migrations.llm-providers-test
   "Tests for the v64.7qmx3p migration that moves the per-provider LLM credential settings onto the `llm-providers`
   connection list. The migration itself is [[metabase.app-db.custom-migrations.llm-providers]], reached through the
   `MigrateLlmProviderSettings` custom change."
