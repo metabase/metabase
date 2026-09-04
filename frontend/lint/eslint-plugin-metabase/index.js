@@ -25,5 +25,6 @@ module.exports = {
     "no-analytics-import-outside-analytics-files": require("./rules/no-analytics-import-outside-analytics-files"),
     "no-unjustified-type-casts": require("./rules/no-unjustified-type-casts"),
     "valid-theme-tokens": require("./rules/valid-theme-tokens"),
+    "no-module-level-memoize": require("./rules/no-module-level-memoize"),
   },
 };

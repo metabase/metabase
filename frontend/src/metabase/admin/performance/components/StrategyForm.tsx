@@ -408,7 +408,12 @@ const ScheduleStrategyFormFields = ({
 }) => {
   const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
   const { schedule: scheduleInCronFormat } = values;
-  const initialSchedule = cronToBuilderValue(scheduleInCronFormat);
+  // Schedule takes `value` as a useMemo dependency, so this has to keep its
+  // identity between renders for the same cron string.
+  const initialSchedule = useMemo(
+    () => cronToBuilderValue(scheduleInCronFormat),
+    [scheduleInCronFormat],
+  );
   const timezone = useSelector((state) =>
     getSetting(state, "report-timezone-short"),
   );

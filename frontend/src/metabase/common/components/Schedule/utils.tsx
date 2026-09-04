@@ -49,6 +49,9 @@ export const getLongestSelectLabel = (
  *    measureTextWidthSafely("string", 50, {family: fontFamily});
  * ```
  * */
+// The cache is keyed on a schedule option label and a font style. Both come
+// from a fixed set, so it cannot grow with anything the user does.
+// eslint-disable-next-line metabase/no-module-level-memoize
 export const measureTextWidthSafely = _.memoize(
   (text: string, defaultWidth: number, style?: Partial<FontStyle>) => {
     try {
