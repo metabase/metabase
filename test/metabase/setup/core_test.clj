@@ -119,8 +119,7 @@
           (mdb/setup-db! :create-sample-content? true)
           (let [cache-backend (i/cache-backend :db)]
             (i/save-results! cache-backend (codecs/to-bytes "cache-key") (codecs/to-bytes "cache-value"))
-            ;; the v53 migration's legacy plaintext marker; new code never writes it and reads it as "no sentinel"
-            (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
+            (is (nil? (t2/select-one-fn :value "setting" :key "encryption-check")))
             (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
             (is (= 1 (t2/count :model/QueryCache)))
 
@@ -129,7 +128,7 @@
                 (reset! (:status mdb.connection/*application-db*) ::setup-finished)
                 (is (thrown-with-msg? Exception #"already contains data.*run `enable-encryption`"
                                       (mdb/setup-db! :create-sample-content? false)))
-                (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
+                (is (nil? (t2/select-one-fn :value "setting" :key "encryption-check")))
                 (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
                 (is (= 1 (t2/count :model/QueryCache)))
                 (testing "after `enable-encryption` the database is encrypted and starts"
@@ -144,6 +143,7 @@
       (mt/with-temp-empty-app-db [_conn driver/*driver*]
         (encryption-test/with-secret-key "key2"
           (mdb/setup-db! :create-sample-content? true)
+          (mdb/encrypt-plaintext-columns!)
           (is (encryption/decryptable-string? (t2/select-one-fn :value "setting" :key "encryption-check")))
           (is (encryption/decryptable-string? (t2/select-one-fn :details "metabase_database")))
           (testing "Re-running server works"
@@ -214,7 +214,14 @@
   (testing "a database created with MB_ENCRYPTION_SECRET_KEY set stores every encrypted-at-rest value encrypted"
     (mt/with-temp-empty-app-db [_conn :h2]
       (encryption-test/with-secret-key "fresh-install-test-key-1234"
-        (mdb/setup-db! :create-sample-content? true)
+        (testing "and sets up without a warning: nothing on a fresh install is legacy data"
+          (is (= [] (mt/with-log-messages-for-level [messages [metabase.app-db :warn]]
+                      (mdb/setup-db! :create-sample-content? true)
+                      (messages)))))
+        (testing "the sample content's example-dashboard-id setting is stored whole and encrypted"
+          (let [{:keys [value value_with_aad]} (t2/select-one :setting :key "example-dashboard-id")]
+            (is (= "1" (encryption/maybe-decrypt value)))
+            (is (= "1" (encryption/maybe-decrypt value_with_aad {:aad (mdb.setting/setting-aad "example-dashboard-id")})))))
         (testing "encrypted-at-rest columns (read raw, so no model transform can hide a plaintext value)"
           (doseq [[table column] @#'mdb.encryption/encrypted-string-columns
                   {:keys [id value]} (t2/select [table :id [column :value]] {:where [:!= column nil]})]
@@ -234,4 +241,8 @@
         (testing "every setting's value_with_aad, under its own setting's AAD"
           (doseq [{k :key v :value_with_aad} (t2/select :setting {:where [:!= :value_with_aad nil]})]
             (testing k
-              (is (encryption/decryptable-string? v {:aad (mdb.setting/setting-aad k)})))))))))
+              (is (encryption/decryptable-string? v {:aad (mdb.setting/setting-aad k)})))))
+        (testing "and the startup sweep then has nothing left to encrypt"
+          (is (= [] (mt/with-log-messages-for-level [messages [metabase.app-db :warn]]
+                      (mdb/encrypt-plaintext-columns!)
+                      (messages)))))))))

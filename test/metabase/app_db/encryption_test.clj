@@ -35,7 +35,11 @@
             enc-before (raw-settings enc-id)]
         (is (not (encryption/decryptable-string? (raw-settings plain-id)))
             "plaintext at rest, as an old build leaves it")
-        (mdb/encrypt-plaintext-columns!)
+        (mt/with-log-messages-for-level [messages :warn]
+          (mdb/encrypt-plaintext-columns!)
+          (is (=? [{:level :warn, :message "Encrypting legacy values in metabase_database.settings that a previous version of Metabase stored unencrypted."}]
+                  (filter #(re-find #"metabase_database\.settings" (:message %)) (messages)))
+              "the heal warns about the column it had to encrypt"))
         (testing "a plaintext value is encrypted at rest and decrypts back"
           (is (encryption/decryptable-string? (raw-settings plain-id)))
           (is (= "{\"a\":1}" (encryption/decrypt (raw-settings plain-id)))))
