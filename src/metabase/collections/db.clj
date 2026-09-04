@@ -68,6 +68,11 @@
   [collection-id]
   (t2/select-one-fn :location :model/Collection :id collection-id))
 
+(defn collection-location-columns
+  "The location, id, and type of the Collection with `collection-id`, or nil."
+  [collection-id]
+  (t2/select-one [:model/Collection :location :id :type] :id collection-id))
+
 (defn root-collection-type-by-id
   "The type of the top-level Collection with `collection-id`, or nil if it is not top-level."
   [collection-id]
@@ -342,6 +347,11 @@
   [collection-id skip-archived?]
   (t2/select-pks-set :model/Dashboard
                      {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
+
+(defn cards-in-collection
+  "The Cards in the Collection with `collection-id`."
+  [collection-id]
+  (t2/select :model/Card :collection_id collection-id))
 
 (defn card-ids-in-collection
   "The IDs of the Cards in the Collection with `collection-id`, excluding archived ones when `skip-archived?` and
