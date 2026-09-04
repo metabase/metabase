@@ -130,7 +130,6 @@
     "prosemirror-state": "^1.4.4",
     "prosemirror-view": "^1.40.1",
     "querystring-es3": "^0.2.1",
-    "re-reselect": "^4.0.1",
     "react": "^18.2.0",
     "react-ansi-style": "^1.0.0",
     "react-color": "^2.14.1",
