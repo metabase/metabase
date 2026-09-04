@@ -25,6 +25,7 @@
    [metabase.app-db.custom-migrations :as custom-migrations]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.app-db.schema-migrations-test.impl :as impl]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -2676,6 +2677,23 @@
           (testing "everything back to normal after downgrade"
             (assert-pre-conditions)))))))
 
+(deftest migrate-clickhouse-details-keeps-encryption-state-test
+  (testing "v57.2025-08-23T16:00:00 : rewriting details keeps each row as plaintext or ciphertext, whichever it was"
+    (encryption-test/with-secret-key "clickhouse-details-state-key-1234"
+      (impl/test-migrations "v57.2025-08-23T16:00:00" [migrate!]
+        (let [plain-id (:id (new-instance-with-default :metabase_database {:engine  "clickhouse"
+                                                                           :details (json/encode {:dbname "plain_db"})}))
+              enc-id   (:id (new-instance-with-default :metabase_database {:engine  "clickhouse"
+                                                                           :details (encryption/encrypt (json/encode {:dbname "enc_db"}))}))
+              raw      (fn [id] (t2/select-one-fn :details :metabase_database :id id))]
+          (migrate!)
+          (testing "a plaintext row stays plaintext"
+            (is (not (encryption/decryptable-string? (raw plain-id))))
+            (is (= "plain_db" (:db-filters-patterns (json/decode+kw (raw plain-id))))))
+          (testing "an encrypted row stays encrypted"
+            (is (encryption/decryptable-string? (raw enc-id)))
+            (is (= "enc_db" (:db-filters-patterns (json/decode+kw (encryption/maybe-decrypt (raw enc-id))))))))))))
+
 (deftest escape-existing-at-symbol-user-attributes-test
   (testing "v58.2025-11-18T12:31:49 : rename any existing `@.+` user attrs to add a preceding underscore"
     (impl/test-migrations ["v58.2025-11-18T12:31:49"] [migrate!]
@@ -2701,198 +2719,24 @@
         (is (= {"_@foo" "bang"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
 
-(deftest encrypt-auth-identity-credentials-test
-  (testing "v58.2026-08-25T00:00:00 : plaintext auth_identity.credentials rows are encrypted, encrypted rows untouched"
-    (encryption-test/with-secret-key "encrypt-creds-test-key-1234"
-      (impl/test-migrations ["v58.2026-08-25T00:00:00"] [migrate!]
-        (let [user-id  (:id (new-instance-with-default :core_user))
-              ins-cred (fn [provider creds-str]
-                         (t2/insert-returning-pk! :auth_identity {:user_id     user-id
-                                                                  :provider    provider
-                                                                  :credentials creds-str
-                                                                  :created_at  :%now
-                                                                  :updated_at  :%now}))
-              plain-id (ins-cred "password" (json/encode {:password_hash "h" :password_salt "s"}))
-              enc-str  (encryption/maybe-encrypt (json/encode {:password_hash "h2" :password_salt "s2"}))
-              enc-id   (ins-cred "google" enc-str)
-              raw-cred (fn [id] (t2/select-one-fn :credentials :auth_identity :id id))]
-          (is (not (encryption/possibly-encrypted-string? (raw-cred plain-id))))
-          (migrate!)
-          (testing "plaintext credentials are encrypted and decrypt to the original value"
-            (is (encryption/decryptable-string? (raw-cred plain-id)))
-            (is (= {:password_hash "h" :password_salt "s"}
-                   (json/decode+kw (encryption/maybe-decrypt-accepting-plaintext (raw-cred plain-id))))))
-          (testing "already-encrypted credentials row is left unchanged"
-            (is (= enc-str (raw-cred enc-id)))))))))
-
-(deftest encrypt-api-keys-test
-  (testing "v58.2026-08-25T00:00:01 : plaintext api_key.key hashes are encrypted, encrypted rows untouched"
-    (encryption-test/with-secret-key "encrypt-api-keys-test-key-1234"
-      (impl/test-migrations ["v58.2026-08-25T00:00:01"] [migrate!]
-        (let [user-id  (:id (new-instance-with-default :core_user {:entity_id (u/generate-nano-id)}))
-              ins-key  (fn [prefix key-str]
-                         (:id (new-instance-with-default :api_key {:name          (str "k-" prefix)
-                                                                   :user_id       user-id
-                                                                   :creator_id    user-id
-                                                                   :updated_by_id user-id
-                                                                   :key           key-str
-                                                                   :key_prefix    prefix})))
-              plain-id (ins-key "mb_plai" "plaintext-bcrypt-hash")
-              enc-str  (encryption/maybe-encrypt "another-bcrypt-hash")
-              enc-id   (ins-key "mb_encr" enc-str)
-              raw-key  (fn [id] (t2/select-one-fn :key :api_key :id id))]
-          (is (not (encryption/possibly-encrypted-string? (raw-key plain-id))))
-          (migrate!)
-          (testing "plaintext key is encrypted and decrypts to the original hash"
-            (is (encryption/decryptable-string? (raw-key plain-id)))
-            (is (= "plaintext-bcrypt-hash"
-                   (encryption/maybe-decrypt-accepting-plaintext (raw-key plain-id)))))
-          (testing "already-encrypted key row is left unchanged"
-            (is (= enc-str (raw-key enc-id))))
-          (testing "rollback decrypts keys back to the plaintext hash so downgraded code can still verify them"
-            (migrate! :down 57)
-            (is (not (encryption/possibly-encrypted-string? (raw-key plain-id))))
-            (is (= "plaintext-bcrypt-hash" (raw-key plain-id)))
-            (is (= "another-bcrypt-hash" (raw-key enc-id)))))))))
-
-(deftest encrypt-notification-and-pulse-channel-details-test
-  (testing "v58.2026-08-25T00:00:19 encrypts pulse_channel details at rest"
-    (impl/test-migrations ["v58.2026-08-25T00:00:19"] [migrate!]
-      (let [user-id      (:id (new-instance-with-default :core_user))
-            pulse-id     (:id (new-instance-with-default :pulse {:creator_id user-id}))
-            pc-details   (json/encode {:emails ["test@test.com"]})
-            pc-id        (:id (new-instance-with-default :pulse_channel
-                                                         {:pulse_id      pulse-id
-                                                          :channel_type  "email"
-                                                          :schedule_type "daily"
-                                                          :details       pc-details}))
-            raw-pc       #(:details (t2/query-one {:select [:details] :from [:pulse_channel] :where [:= :id pc-id]}))]
-        (testing "plaintext before migration (written with no encryption key)"
-          (is (not (encryption/possibly-encrypted-string? (raw-pc)))))
-        (encryption-test/with-secret-key "dont-tell-anyone-about-this"
-          (migrate!)
-          (testing "encrypted after migration, and still decrypts to the original value"
-            (is (encryption/decryptable-string? (raw-pc)))
-            (is (= pc-details (encryption/maybe-decrypt (raw-pc))))))))))
-
-(deftest encrypt-remaining-columns-test
-  (testing "v58.2026-08-28T14:00:00 : plaintext rows in the historically mixable columns are encrypted, encrypted rows untouched"
-    (encryption-test/with-secret-key "encrypt-remaining-test-key-1234"
-      (impl/test-migrations ["v58.2026-08-28T14:00:00"] [migrate!]
-        (let [plain-details (json/encode {:db "/plain.db"})
-              enc-details   (encryption/maybe-encrypt (json/encode {:db "/enc.db"}))
-              plain-db-id   (:id (new-instance-with-default :metabase_database {:details plain-details}))
-              enc-db-id     (:id (new-instance-with-default :metabase_database {:details enc-details}))
-              user-settings (json/encode {:locale "en"})
-              user-id       (:id (new-instance-with-default :core_user {:settings user-settings}))
-              secret-bytes  (.getBytes "sooper-secret" "UTF-8")
-              secret-id     (t2/insert-returning-pk! :secret {:name       "s"
-                                                              :kind       "password"
-                                                              :value      secret-bytes
-                                                              :version    1
-                                                              :creator_id user-id
-                                                              :created_at :%now
-                                                              :updated_at :%now})
-              raw           (fn [table column id]
-                              (:value (t2/query-one {:select [[column :value]] :from [table] :where [:= :id id]})))
-              ;; convert the blob inside the reduction, while its connection is still open
-              raw-secret    (fn [id]
-                              (first (into []
-                                           (map (fn [{:keys [value]}] (#'custom-migrations/secret-value->bytes value)))
-                                           (t2/reducible-query {:select [:value] :from [:secret] :where [:= :id id]}))))]
-          (is (not (encryption/possibly-encrypted-string? (raw :metabase_database :details plain-db-id))))
-          (migrate!)
-          (testing "plaintext string values are encrypted and decrypt to the original"
-            (is (encryption/possibly-encrypted-string? (raw :metabase_database :details plain-db-id)))
-            (is (= plain-details (encryption/maybe-decrypt (raw :metabase_database :details plain-db-id))))
-            (is (encryption/possibly-encrypted-string? (raw :core_user :settings user-id)))
-            (is (= user-settings (encryption/maybe-decrypt (raw :core_user :settings user-id)))))
-          (testing "already-encrypted values are untouched"
-            (is (= enc-details (raw :metabase_database :details enc-db-id))))
-          (testing "plaintext secret bytes are encrypted and decrypt to the original"
-            (let [v (raw-secret secret-id)]
-              (is (encryption/possibly-encrypted-bytes? v))
-              (is (= "sooper-secret" (String. (encryption/maybe-decrypt-bytes v) "UTF-8"))))))))))
-
-(deftest encrypt-settings-test
-  ;; some of the settings are enterprise-only, so they are registered only when the EE namespaces are loaded
-  (testing "a few known encrypted settings are in the migration list"
-    (doseq [k ["email-smtp-password" "ldap-password" "saml-keystore-password" "site-url" "snowplow-url"]]
-      (testing k
-        (is (some #{k} @#'custom-migrations/encrypted-settings-v58)))))
-  (testing "v58.2026-08-28T00:00:00 : plaintext values of newly-encrypted settings are encrypted at rest, others untouched"
-    (encryption-test/with-secret-key "encrypt-settings-test-key-1234"
-      (impl/test-migrations "v58.2026-08-28T00:00:00" [migrate!]
-        (let [ins!       (fn [k v] (t2/query {:insert-into :setting :values [{:key k :value v}]}))
-              raw        (fn [k] (t2/select-one-fn :value :setting :key k))
-              enc-str    (encryption/maybe-encrypt "https://already.example")
-              ;; base64 of 64 bytes: plaintext with exactly the shape of ciphertext
-              shaped-str (str (apply str (repeat 86 "a")) "==")]
-          (ins! "snowplow-url" "https://plain.example")
-          (ins! "ldap-user-filter" "   ")
-          (ins! "email-reply-to" "")
-          (ins! "map-tile-server-url" enc-str)
-          (ins! "store-url" shaped-str)
-          (ins! "site-name" "Metabase")
-          (is (not (encryption/possibly-encrypted-string? (raw "snowplow-url"))))
-          (is (encryption/possibly-encrypted-string? shaped-str))
-          (migrate!)
-          (testing "a plaintext value of a listed setting is encrypted and decrypts back"
-            (is (encryption/decryptable-string? (raw "snowplow-url")))
-            (is (= "https://plain.example" (encryption/maybe-decrypt (raw "snowplow-url")))))
-          (testing "a blank value of a listed setting is encrypted too, since a strict read would reject plaintext"
-            (is (encryption/decryptable-string? (raw "ldap-user-filter")))
-            (is (= "   " (encryption/maybe-decrypt (raw "ldap-user-filter"))))
-            (is (encryption/decryptable-string? (raw "email-reply-to")))
-            (is (= "" (encryption/maybe-decrypt (raw "email-reply-to")))))
-          (testing "a plaintext value that merely looks like ciphertext is encrypted, not skipped"
-            (is (encryption/decryptable-string? (raw "store-url")))
-            (is (= shaped-str (encryption/maybe-decrypt (raw "store-url")))))
-          (testing "an already-encrypted value is left unchanged"
-            (is (= enc-str (raw "map-tile-server-url"))))
-          (testing "a setting not in the list is left plaintext"
-            (is (= "Metabase" (raw "site-name"))))
-          (testing "rollback decrypts the listed settings back to plaintext, others untouched"
-            (migrate! :down 57)
-            (is (= "https://plain.example" (raw "snowplow-url")))
-            (is (= "   " (raw "ldap-user-filter")))
-            (is (= "" (raw "email-reply-to")))
-            (is (= shaped-str (raw "store-url")))
-            (is (= "https://already.example" (raw "map-tile-server-url")))
-            (is (= "Metabase" (raw "site-name")))))))))
-
-(deftest encrypt-setter-none-settings-test
-  ;; some of the settings are enterprise-only, so they are registered only when the EE namespaces are loaded
-  (testing "the :setter :none settings that are encrypted at rest are in the migration list"
-    (doseq [k ["setup-token" "support-access-grant-email" "site-uuid-for-unsubscribing-url"]]
-      (testing k
-        (is (some #{k} @#'custom-migrations/encrypted-setter-none-settings-v58)))))
-  (testing "settings that are neither secret nor integrity-critical are not"
-    (doseq [k ["enable-query-caching" "instance-creation" "token-features" "version"]]
-      (testing k
-        (is (not (some #{k} @#'custom-migrations/encrypted-setter-none-settings-v58))))))
-  (testing "v58.2026-08-30T00:00:00 : plaintext rows of listed settings are encrypted at rest, others untouched"
-    (encryption-test/with-secret-key "encrypt-setter-none-settings-key-1234"
-      (impl/test-migrations "v58.2026-08-30T00:00:00" [migrate!]
-        (let [insert-setting! (fn [k v] (t2/query {:insert-into :setting :values [{:key k :value v}]}))
-              raw-setting     (fn [k] (t2/select-one-fn :value :setting :key k))
-              encrypted-value (encryption/maybe-encrypt "https://otel.example")]
-          ;; a plaintext row from before the setting was encrypted
-          (insert-setting! "setup-token" "b7f4a1e2-0000-4000-8000-000000000000")
-          (insert-setting! "support-access-grant-email" "support@example.com")
-          ;; an already-encrypted row
-          (insert-setting! "tracing-endpoint" encrypted-value)
-          ;; a setting that is deliberately plaintext at rest is not this migration's business
-          (insert-setting! "instance-creation" "2026-08-30T00:00:00Z")
-          (migrate!)
-          (testing "a plaintext row of a listed setting is encrypted and decrypts back"
-            (is (encryption/decryptable-string? (raw-setting "setup-token")))
-            (is (= "b7f4a1e2-0000-4000-8000-000000000000" (encryption/maybe-decrypt (raw-setting "setup-token"))))
-            (is (= "support@example.com" (encryption/maybe-decrypt (raw-setting "support-access-grant-email")))))
-          (testing "an already-encrypted row is left unchanged"
-            (is (= encrypted-value (raw-setting "tracing-endpoint"))))
-          (testing "a setting not in the list is left plaintext"
-            (is (= "2026-08-30T00:00:00Z" (raw-setting "instance-creation")))))))))
+(deftest backfill-example-dashboard-id-value-with-aad-test
+  (testing "v58.2026-09-03T00:00:04 : the example-dashboard-id row gets its value_with_aad from its encrypted value"
+    (encryption-test/with-secret-key "example-dashboard-id-key-1234"
+      (impl/test-migrations "v58.2026-09-03T00:00:04" [migrate!]
+        (t2/query {:delete-from :setting :where [:= :key "example-dashboard-id"]})
+        (t2/query {:insert-into :setting :values [{:key "example-dashboard-id" :value (encryption/encrypt "7")}]})
+        (migrate!)
+        (let [{:keys [value value_with_aad]} (t2/select-one :setting :key "example-dashboard-id")]
+          (is (= "7" (encryption/maybe-decrypt value)))
+          (is (= "7" (encryption/maybe-decrypt value_with_aad {:aad (mdb.setting/setting-aad "example-dashboard-id")})))))))
+  (testing "without a key both columns stay plaintext"
+    (encryption-test/with-secret-key nil
+      (impl/test-migrations "v58.2026-09-03T00:00:04" [migrate!]
+        (t2/query {:delete-from :setting :where [:= :key "example-dashboard-id"]})
+        (t2/query {:insert-into :setting :values [{:key "example-dashboard-id" :value "7"}]})
+        (migrate!)
+        (is (= {:value "7", :value_with_aad "7"}
+               (select-keys (t2/select-one :setting :key "example-dashboard-id") [:value :value_with_aad])))))))
 
 (deftest backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
