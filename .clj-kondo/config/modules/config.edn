@@ -3260,9 +3260,11 @@
   {:team "Graphy"
    :api  #{}
    :uses #{config
+           database-routing
            driver
            lib
            metabot
+           request
            util
            warehouse-schema}
    :model-imports #{:model/Database
