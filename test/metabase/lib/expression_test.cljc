@@ -13,6 +13,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]))
@@ -771,3 +772,48 @@
 (deftest ^:parallel absolute-datetime-raw-temporal-bucket-test
   (is (= :day
          (lib/raw-temporal-bucket [:absolute-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} "2025-09-08" :day]))))
+
+(deftest ^:parallel resolve-field-ref-by-id-to-simple-expression-in-previous-stage-test
+  (testing "Propagate Field ID information in expression metadata when expression is just a plain field ref (#70233)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/expression "my_expression" (lib/ref (meta/field-metadata :venues :name)))
+                    (as-> $query (lib/with-fields $query [(lib/expression-ref $query "my_expression")]))
+                    lib/append-stage
+                    (as-> $query (lib/with-fields $query [(lib.tu.notebook/find-col-with-spec $query
+                                                                                              (lib/visible-columns $query)
+                                                                                              {}
+                                                                                              {:display-name "my_expression"})]))
+                    lib/append-stage)]
+      (is (=? {:stages [{:expressions [[:field {:lib/expression-name "my_expression"} (meta/id :venues :name)]]
+                         :fields      [[:expression {} "my_expression"]]}
+                        {:fields [[:field {} "my_expression"]]}
+                        {}]}
+              query))
+      (testing (str ":expression ref metadata should include Field ID and its Table ID if original expression definition"
+                    " in a previous stage was just a plain :field; should propagate correct :lib/original-name")
+        (is (=? {:base-type               :type/Text
+                 :display-name            "my_expression"
+                 :effective-type          :type/Text
+                 :id                      (meta/id :venues :name)
+                 :name                    "my_expression"
+                 :table-id                (meta/id :venues)
+                 :lib/expression-name     "my_expression"
+                 :lib/source              :source/expressions
+                 :lib/source-column-alias "my_expression"
+                 :lib/type                :metadata/column}
+                (lib/metadata query 0 (lib/expression-ref query -2 "my_expression")))))
+      (testing (str ":field ID refs in subsequent stages should be able resolve correctly using ID info from expressions"
+                    " in previous stages")
+        (is (=? {:base-type                                        :type/Text,
+                 :display-name                                     "my_expression"
+                 :effective-type                                   :type/Text
+                 :id                                               (meta/id :venues :name)
+                 :name                                             "my_expression"
+                 :table-id                                         (meta/id :venues)
+                 :lib/deduplicated-name                            "my_expression"
+                 :lib/original-expression-name                     "my_expression"
+                 :lib/source                                       :source/previous-stage
+                 :lib/source-column-alias                          "my_expression"
+                 :lib/type                                         :metadata/column
+                 :metabase.lib.field.resolution/fallback-metadata? (symbol "nil #_\"key is not present.\"")}
+                (lib/metadata query -1 (lib/ref (meta/field-metadata :venues :name)))))))))
