@@ -929,6 +929,21 @@
            (let [resp (mt/derecordize (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id))))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
 
+(deftest fetch-database-metadata-primes-table-perms-cache-test
+  (testing "GET /api/database/:id/metadata primes the table-perms cache before its per-table read checks"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t1"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t2"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t3"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t4"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t5"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t6"}]
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :query-builder)
+      (let [tables (:tables (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" db-id)))]
+        (is (= #{"t1" "t2" "t3" "t4" "t5" "t6"} (set (map :name tables)))
+            "every table is returned to a non-admin user with table-granular perms, without tripping the backstop")))))
+
 (deftest ^:parallel fetch-database-fields-test
   (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]
     (testing "GET /api/database/:id/fields"
@@ -1732,6 +1747,28 @@
                 "Sync-now must complete the sync even when disable-auto-sync is on")
             (is (pos? (t2/count :model/Table :db_id db-id))
                 "Sync-now must populate tables even when disable-auto-sync is on")))))))
+
+(deftest sync-schema-labels-data-sensitivity-test
+  (testing "POST /api/database/:id/sync_schema runs the data sensitivity step when the setting is on"
+    ;; Same shape as the test above: create the Database under disable-auto-sync so only the explicit request syncs
+    ;; it, and run the quick task synchronously so the labels can be asserted after the request returns.
+    (let [details (:details (mt/db))]
+      (mt/with-temporary-setting-values [disable-auto-sync             true
+                                         data-sensitivity-scan-enabled true]
+        (mt/with-temp [:model/Database {db-id :id} {:engine              "h2"
+                                                    :details             details
+                                                    :initial_sync_status "incomplete"}]
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [f]
+                                                                (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                  (f)))]
+            (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
+          (let [label (fn [table-name field-name]
+                        (t2/select-one-fn :data_sensitivity :model/Field
+                                          :table_id (t2/select-one-pk :model/Table :db_id db-id :name table-name)
+                                          :name field-name))]
+            (is (= :PII (label "PEOPLE" "EMAIL")))
+            (is (= :SEC_KEY (label "PEOPLE" "PASSWORD")))
+            (is (= :PUBLIC (label "ORDERS" "TOTAL")))))))))
 
 (deftest sync-schema-executes-when-executor-busy-test
   (testing "POST /api/database/:id/sync_schema should execute sync even when quick-task executor is busy (GHY-3254)"

@@ -276,10 +276,35 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
 
-  fix-kondo-ratchets
-  {:doc "Lower the per-linter ignore budgets in .clj-kondo/ratchets.edn to match the source tree."
-   :examples [["./bin/mage fix-kondo-ratchets" "Ratchet budgets down (never raises one; over-budget linters are only warned about)"]
-              ["./bin/mage fix-kondo-ratchets --seed :some-linter" "Also set :some-linter's budget to its actual count, for landing a new linter"]]
+  project-tests
+  {:doc "Run project-level checks."
+   :examples [["./bin/mage project-tests" "Run every suite"]
+              ["./bin/mage project-tests backend" "Run backend checks"]
+              ["./bin/mage project-tests migrations" "Run migration checks"]
+              ["./bin/mage project-tests modules" "Run module checks"]
+              ["./bin/mage project-tests ratchets" "Check the repository's kondo suppression ratchets"]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:enum {:name "suite"}
+                         "backend"
+                         "migrations"
+                         "modules"
+                         "ratchets"]]]
+   :requires [[mage.project-tests :as project-tests]]
+   :task (task! (if-let [suite (first (:arguments parsed))]
+                  (project-tests/run! suite)
+                  (project-tests/run!)))}
+
+  kondo-ratchets
+  {:doc "Validate .clj-kondo/ratchets.edn and the source tree's kondo suppressions (Babashka; seconds, not a test run)."
+   :examples [["./bin/mage kondo-ratchets" "Fail on an invalid ratchets file, an over-budget suppression, or a missing justification comment"]]
+   :requires [[dev.kondo-ratchet]]
+   :task (task! (dev.kondo-ratchet/check))}
+
+  kondo-ratchets-shrink
+  {:doc "Lower the budgets in .clj-kondo/ratchets.edn to match the source tree. This is the only Mage task that writes the file."
+   :examples [["./bin/mage kondo-ratchets-shrink" "Lower budgets to current counts without raising over-budget entries"]
+              ["./bin/mage kondo-ratchets-shrink --seed :some-linter" "Set :some-linter's budget to its current count when introducing the linter"]]
    :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it)"]]
    :requires [[dev.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
@@ -389,6 +414,45 @@
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
   ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
+
+  -kondo-ratchets-merge
+  {:doc "Internal three-way merge for conflicting .clj-kondo/ratchets.edn files. Called by bin/merge-kondo-ratchets."
+   :examples [["./bin/mage -kondo-ratchets-merge BASE OURS THEIRS OUTPUT"
+               "Merge three ratchet-file stages into OUTPUT"]]
+   :arg-schema [:tuple
+                [:string {:name "base" :description "Ratchets file from the merge base"}]
+                [:string {:name "ours" :description "Git stage 2: ratchets file from the branch receiving the changes"}]
+                [:string {:name "theirs" :description "Git stage 3: ratchets file from the commits being applied"}]
+                [:string {:name "output" :description "Path to write the merged ratchets file"}]]
+   :requires [[dev.kondo-ratchet]]
+   :task (task!
+          (let [[base-path ours-path theirs-path output-path] (:arguments parsed)
+                ;; Every stage goes through the reader that validates the checked-in file.
+                read-stage         (fn [path]
+                                     (binding [dev.kondo-ratchet/*ratchets-file* path]
+                                       (dev.kondo-ratchet/read-ratchets)))
+                [base ours theirs] (map read-stage [base-path ours-path theirs-path])
+                merged             (dev.kondo-ratchet/merge-ratchets base ours theirs)]
+            (spit output-path (if (dev.kondo-ratchet/disabled? merged)
+                                (slurp ours-path)
+                                (dev.kondo-ratchet/render merged)))
+            (println (str "merged ratchets into " output-path))))}
+
+  -kondo-ratchets-pr-body
+  {:doc "Render the body for an automated ratchet-shrink PR."
+   :arg-schema [:tuple
+                [:string {:name "before" :description "Ratchets file before shrinking"}]
+                [:string {:name "after" :description "Ratchets file after shrinking"}]
+                [:string {:name "workflow-url" :description "URL of the workflow run"}]]
+   :requires [[dev.kondo-ratchet]]
+   :task (task!
+          (let [[before-path after-path workflow-url] (:arguments parsed)
+                read-ratchets (fn [path]
+                                (binding [dev.kondo-ratchet/*ratchets-file* path]
+                                  (dev.kondo-ratchet/read-ratchets)))]
+            (print (dev.kondo-ratchet/shrink-pr-body (read-ratchets before-path)
+                                                     (read-ratchets after-path)
+                                                     workflow-url))))}
 
   -driver-decisions
   {:doc "Determine which driver tests should run based on PR context. Outputs decisions for all drivers."

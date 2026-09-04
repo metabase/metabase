@@ -2,8 +2,10 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.indexed-entities.db :as indexed-entities.db]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; model-index pk/value refs are stored as legacy field refs; validated against the legacy schema
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -79,9 +81,10 @@
 
 (mu/defn ^:private fetch-values
   [model-index :- ::model-index]
-  (let [model     (t2/select-one :model/Card :id (:model_id model-index))
+  (let [model     (indexed-entities.db/card (:model_id model-index))
         fix       (mu/fn [field-ref :- some?
                           base-type :- ::lib.schema.common/base-type]
+                    ;; stored value/pk refs are legacy MBQL; normalize as legacy before use
                     (-> field-ref #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))
         ;; :type/Text and :type/Integer are ensured at creation time on the api.
         value-ref (-> model-index :value_ref (fix :type/Text))
@@ -122,12 +125,9 @@
   (let [[error-message values-to-index] (fetch-values model-index)
         current-index-values            (into #{}
                                               (map (juxt :model_pk :name))
-                                              (t2/select :model/ModelIndexValue
-                                                         :model_index_id (:id model-index)))]
+                                              (indexed-entities.db/model-index-values (:id model-index)))]
     (if-not (str/blank? error-message)
-      (t2/update! :model/ModelIndex (:id model-index) {:state      "error"
-                                                       :error      error-message
-                                                       :indexed_at :%now})
+      (indexed-entities.db/mark-model-index-error! (:id model-index) error-message)
       (try
         (t2/with-transaction [_conn]
           (let [{:keys [additions deletions]} (find-changes {:current-index current-index-values
@@ -137,32 +137,25 @@
                       :let [search-model-ids (map (fn [[pk]]
                                                     (str (:id model-index) ":" pk))
                                                   deletions-part)]]
-                (t2/delete! :model/ModelIndexValue
-                            :model_index_id (:id model-index)
-                            :model_pk [:in (->> deletions-part (map first))])
+                (indexed-entities.db/delete-model-index-values! (:id model-index) (->> deletions-part (map first)))
                 (search/delete! :model/ModelIndexValue search-model-ids)))
             (when (seq additions)
               (doseq [additions-part (partition-all 10000 additions)]
-                (t2/insert! :model/ModelIndexValue
-                            (map (fn [[id v]]
-                                   {:name           v
-                                    :model_pk       id
-                                    :model_index_id (:id model-index)})
-                                 additions-part)))))
-          (t2/update! :model/ModelIndex (:id model-index)
-                      {:indexed_at :%now
-                       :error      nil
-                       :state      (if (> (count values-to-index) max-indexed-values)
-                                     "overflow"
-                                     "indexed")}))
-        (run! search/update! (t2/reducible-select :model/ModelIndexValue :model_index_id (:id model-index)))
+                (indexed-entities.db/insert-model-index-values!
+                 (map (fn [[id v]]
+                        {:name           v
+                         :model_pk       id
+                         :model_index_id (:id model-index)})
+                      additions-part)))))
+          (indexed-entities.db/mark-model-index-indexed! (:id model-index)
+                                                         (if (> (count values-to-index) max-indexed-values)
+                                                           "overflow"
+                                                           "indexed")))
+        (run! search/update! (indexed-entities.db/model-index-values-reducible (:id model-index)))
         (catch Exception e
           (log/errorf "Error saving model-index values for model-index: %d, model: %d: %s"
                       (:id model-index) (:model_id model-index) (ex-message e))
-          (t2/update! :model/ModelIndex (:id model-index)
-                      {:state      "error"
-                       :error      (ex-message e)
-                       :indexed_at :%now}))))))
+          (indexed-entities.db/mark-model-index-error! (:id model-index) (ex-message e)))))))
 
 ;;;; creation
 
@@ -174,14 +167,13 @@
 (defn create
   "Create a model index"
   [{:keys [model-id pk-ref value-ref creator-id]}]
-  (t2/insert-returning-instance! :model/ModelIndex
-                                 [{:model_id   model-id
-                                   ;; todo: sanitize these?
-                                   :pk_ref     pk-ref
-                                   :value_ref  value-ref
-                                   :schedule   (default-schedule)
-                                   :state      "initial"
-                                   :creator_id creator-id}]))
+  (indexed-entities.db/insert-model-index! {:model_id   model-id
+                                            ;; todo: sanitize these?
+                                            :pk_ref     pk-ref
+                                            :value_ref  value-ref
+                                            :schedule   (default-schedule)
+                                            :state      "initial"
+                                            :creator_id creator-id}))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

@@ -11,6 +11,7 @@
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -163,26 +164,68 @@
   "The one `finishReason` that means the model said all it had to say."
   "STOP")
 
-(def ^:private finish-reason-details
-  "Explanations for the `finishReason` values whose names do not carry their meaning.
-  https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/v1/GenerateContentResponse#FinishReason"
-  {"MAX_TOKENS"              "the output token limit was reached"
-   "MALFORMED_FUNCTION_CALL" "the model emitted a tool call it could not parse"
-   "SAFETY"                  "the response was blocked by Google's safety filters"
-   "RECITATION"              "the response was blocked as recitation of copyrighted material"
-   "BLOCKLIST"               "the response was blocked by a term blocklist"
-   "PROHIBITED_CONTENT"      "the response was blocked as prohibited content"
-   "SPII"                    "the response was blocked as sensitive personally identifiable information"
-   "IMAGE_SAFETY"            "the generated image was blocked by Google's safety filters"
-   "UNEXPECTED_TOOL_CALL"    "the model called a tool that the request did not declare"})
+(def ^:private finish-reason-truncated
+  "The `finishReason` for a turn the model cut off at its output-token limit."
+  "MAX_TOKENS")
+
+(def ^:private stop-reasons
+  "Gemini `finishReason` → AI SDK v5 `FinishReason`.
+  Covers both Gemini surfaces: every reason Vertex documents, plus four exclusive to the Gemini Developer API.  We
+  only ever call Vertex today, so those four are here in case we ever add Gemini API support or in case these ever
+  wind up making their way into Vertex.
+  https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/v1/GenerateContentResponse#FinishReason
+  https://ai.google.dev/api/generate-content#FinishReason"
+  {finish-reason-completed     "stop"
+   finish-reason-truncated     "length"
+   "BLOCKLIST"                 "content-filter"
+   "ESCALATION"                "content-filter" ; Gemini API only
+   "IMAGE_PROHIBITED_CONTENT"  "content-filter"
+   "IMAGE_RECITATION"          "content-filter"
+   "IMAGE_SAFETY"              "content-filter"
+   "LANGUAGE"                  "content-filter"
+   "MODEL_ARMOR"               "content-filter"
+   "PROHIBITED_CONTENT"        "content-filter"
+   "RECITATION"                "content-filter"
+   "SAFETY"                    "content-filter"
+   "SPII"                      "content-filter"
+   "IMAGE_OTHER"               "other"
+   "NO_IMAGE"                  "other"
+   "OTHER"                     "other"
+   "FINISH_REASON_UNSPECIFIED" "other"
+   "MALFORMED_FUNCTION_CALL"   "error"
+   "MALFORMED_RESPONSE"        "error"          ; Gemini API only
+   "MISSING_THOUGHT_SIGNATURE" "error"          ; Gemini API only
+   "TOO_MANY_TOOL_CALLS"       "error"          ; Gemini API only
+   "UNEXPECTED_TOOL_CALL"      "error"})
+
+(def ^:private early-stops-without-error
+  "The `finishReason` values that end the turn early but emit no :error chunk.
+  The client already renders a message of its own for the AI SDK finish reason they translate to: \"length\" offers to
+  continue the truncated answer, and \"content-filter\" says the response was filtered and suggests rephrasing. Every
+  other early stop still needs an :error chunk, because nothing downstream would otherwise say what went wrong."
+  (into #{}
+        (keep (fn [[reason finish-reason]]
+                (when (#{"length" "content-filter"} finish-reason)
+                  reason)))
+        stop-reasons))
+
+(def ^:private finish-reasons-without-error
+  "The `finishReason` values that emit no :error chunk: the early stops that speak for themselves, plus STOP, the one
+  reason that is not a failure at all."
+  (conj early-stops-without-error finish-reason-completed))
 
 (defn- finish-reason-error
-  "Returns the error text for a `finishReason` that ended the turn early, or nil for a complete answer."
+  "Returns the error text for a `finishReason` that needs one, or nil for the reasons that do not."
   [reason]
-  (when-not (= reason finish-reason-completed)
-    (str "Gemini stopped early (" reason ")"
-         (when-let [detail (finish-reason-details reason)]
-           (str ": " detail)))))
+  (when-not (finish-reasons-without-error reason)
+    (str "Gemini stopped early (" reason ")")))
+
+(defn reasoning-model?
+  "Whether `model-id` streams its reasoning back to us.
+  No Gemini model does today: thinking arrives as parts marked `:thought`, which [[->aisdk-chunks-xf]] drops. Should
+  the adapter start forwarding them, this is where the models that send them get named."
+  [_model-id]
+  false)
 
 (defn ->aisdk-chunks-xf
   "Translates `streamGenerateContent` SSE events into AI SDK v5 protocol chunks.
@@ -202,21 +245,25 @@
   Unlike Claude, there are no content-block start and stop events. Text streams as consecutive parts, and one open
   text block holds them all. Each functionCall part arrives with complete args, thus its start, delta, and available
   chunks go out together. Parts with `:thought true` (thinking summaries) are ignored, as in the other adapters. A
-  `finishReason` closes the open text block, and any reason but STOP also emits an :error chunk (see
-  [[finish-reason-error]]). Usage is buffered, the last value wins, and it goes out once at the end of the stream,
-  because an event in the middle can have partial usageMetadata."
+  `finishReason` closes the open text block and is added to the :usage chunk as :finish-reason and :raw-finish-reason;
+  the reasons that need one also emit an :error chunk (see [[finish-reason-error]]). Usage is buffered, the last value
+  wins, and it goes out once at the end of the stream, because an event in the middle can have partial usageMetadata."
   []
   (fn [rf]
     (let [message-id  (volatile! nil)
           model-name  (volatile! nil)
           text-id     (volatile! nil) ; Non-nil while a text block is open.
           usage-acc   (volatile! nil)
+          stop-reason (volatile! nil)
           close-text! (fn [result]
                         (if-let [id @text-id]
                           (do (vreset! text-id nil)
                               (rf result {:type :text-end :id id}))
                           result))
           finish!     (fn [result reason]
+                        (vreset! stop-reason reason)
+                        (when-not (= reason finish-reason-completed)
+                          (log/info "Gemini stopped early" {:finishReason reason}))
                         (let [result (close-text! result)]
                           (if-let [error-text (finish-reason-error reason)]
                             (rf result {:type :error :errorText error-text})
@@ -260,13 +307,23 @@
                           result))]
       (fn
         ([result]
-         (-> result
-             (close-text!)
-             (cond-> @usage-acc (rf {:type  :usage
-                                     :usage @usage-acc
-                                     :id    @message-id
-                                     :model @model-name}))
-             (rf)))
+         ;; An early stop that emits no :error chunk still needs a :usage chunk when the stream carried no
+         ;; usageMetadata, so a truncated or filtered turn is never misinterpreted as a complete answer. The
+         ;; reasons that do emit an :error chunk already say what went wrong, so they get no synthetic usage.
+         (let [reason @stop-reason
+               usage  (or @usage-acc
+                          (when (early-stops-without-error reason)
+                            (usage->aisdk-usage nil)))]
+           (-> result
+               (close-text!)
+               (cond-> usage
+                 (rf (cond-> {:type  :usage
+                              :usage usage
+                              :id    @message-id
+                              :model @model-name}
+                       reason (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons reason)
+                                     :raw-finish-reason reason))))
+               (rf))))
         ([result {:keys [candidates usageMetadata responseId modelVersion promptFeedback error] :as _event}]
          (when (some? usageMetadata)
            (vreset! usage-acc (usage->aisdk-usage usageMetadata)))

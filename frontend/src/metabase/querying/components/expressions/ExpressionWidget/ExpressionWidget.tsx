@@ -210,7 +210,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
       />
 
       <LayoutFooter>
-        <Flex gap="xs" align="center" justify="end" p="0" pr="sm">
+        <Flex gap="xxs" align="center" justify="end" p="0" pr="sm">
           {withName && (
             <NameInput
               value={name}

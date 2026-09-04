@@ -282,10 +282,12 @@
     ;; directly.
     (reify DataSource
       (getConnection [_this]
+        ;; inside do-with-connection-with-options' own default impl; a raw jdbc spec has no DataSource
         #_{:clj-kondo/ignore [:discouraged-var]}
         (jdbc/get-connection db-or-id-or-spec)))
     ;; otherwise this is either a Database or Database ID.
     (if-let [old-method-impl (get-method
+                              ;; honor drivers still implementing the old connection-with-timezone
                               #_{:clj-kondo/ignore [:deprecated-var]} sql-jdbc.execute.old/connection-with-timezone
                               driver)]
       ;; use the deprecated impl for `connection-with-timezone` if one exists.
@@ -527,9 +529,12 @@
   "Set parameters for the prepared statement by calling `set-parameter` for each parameter."
   {:added "0.35.0"}
   [driver stmt params]
-  (when (< (try (.. ^PreparedStatement stmt getParameterMetaData getParameterCount)
-                (catch Throwable _ (count params)))
-           (count params))
+  ;; `getParameterMetaData` costs a server round trip on some drivers -- Snowflake describes the statement -- so only
+  ;; ask when there are parameters that could outnumber the placeholders.
+  (when (and (seq params)
+             (< (try (.. ^PreparedStatement stmt getParameterMetaData getParameterCount)
+                     (catch Throwable _ (count params)))
+                (count params)))
     (throw (ex-info (tru "It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers.")
                     {:driver driver
                      :type   driver-api/qp.error-type.driver
@@ -968,6 +973,7 @@
 ;;; |                                       Convenience Imports from Old Impl                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; re-exports the old-impl vars so drivers referencing them via this ns keep compiling
 #_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
  [sql-jdbc.execute.old

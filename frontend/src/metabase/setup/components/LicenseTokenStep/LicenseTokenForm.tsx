@@ -52,7 +52,7 @@ export const LicenseTokenForm = ({
     >
       {({ errors, setValues }) => (
         <Form>
-          <Box mb="md">
+          <Box mb="lg">
             <FormTextInput
               aria-label={t`Token`}
               placeholder={t`Paste your token here`}
@@ -77,7 +77,7 @@ export const LicenseTokenForm = ({
                       />
                     </HoverCard.Target>
                     <HoverCard.Dropdown>
-                      <Stack gap="md" p="md" w={CARD_WIDTH}>
+                      <Stack gap="lg" p="lg" w={CARD_WIDTH}>
                         <Text lh="lg">{t`Find your license token in the subscription confirmation email from Metabase`}</Text>
                         <Text lh="lg">{c(
                           "When users have no token, they can visit the link ${0} pointing to the store, where they can purchase a license for Metabase.",
@@ -100,7 +100,7 @@ export const LicenseTokenForm = ({
               variant="filled"
             />
           </Flex>
-          <Divider mx={{ base: "-2rem", sm: "-4rem" }} mt="xl" mb="md" />
+          <Divider mx={{ base: "-2rem", sm: "-4rem" }} mt="xxl" mb="lg" />
           <Box>
             <Button
               onClick={onSkip}

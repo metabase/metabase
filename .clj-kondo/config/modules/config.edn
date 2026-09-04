@@ -104,6 +104,7 @@
            model-persistence
            models
            parameters
+           public-sharing
            queries
            query-processor
            search
@@ -141,7 +142,7 @@
            metabase.activity-feed.core
            metabase.activity-feed.init}
    :uses #{api
-           app-db
+           batch-processing
            collections
            config
            events
@@ -347,6 +348,7 @@
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
            metabase.app-db.core
            metabase.app-db.init
+           metabase.app-db.setting
            metabase.app-db.setup
            metabase.app-db.transient-error}
    :uses #{auth-provider
@@ -355,10 +357,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Field
-                    :model/QueryCache
-                    :model/Secret
-                    :model/Setting}}
+   :model-imports #{:model/Field}}
 
   appearance
   {:team "UX West"
@@ -408,8 +407,7 @@
 
   auth-identity
   {:team "UX West"
-   :api  #{metabase.auth-identity.core
-           metabase.auth-identity.init}
+   :api  #{metabase.auth-identity.core metabase.auth-identity.db metabase.auth-identity.init}
    :uses #{channel
            events
            login-history
@@ -440,6 +438,7 @@
    :uses #{api
            app-db
            collections
+           permissions
            queries
            util}
    :model-exports #{:model/CardBookmark :model/CollectionBookmark :model/DashboardBookmark}
@@ -579,6 +578,8 @@
            auth-identity
            classloader
            config
+           llm
+           metabot
            models
            query-processor
            search
@@ -590,6 +591,7 @@
   {:team "UX West"
    :api  #{metabase.collections.core
            metabase.collections.curation
+           metabase.collections.init
            metabase.collections.models.collection
            metabase.collections.models.collection.root
            metabase.collections.schema}
@@ -628,6 +630,7 @@
    :uses #{api
            app-db
            collections
+           documents
            eid-translation
            events
            lib-be
@@ -656,6 +659,7 @@
   comments
   {:team "UX West"
    :api  #{metabase.comments.api
+           metabase.comments.core
            metabase.comments.init}
    :uses #{analytics
            api
@@ -696,7 +700,7 @@
            models
            util}
    :model-exports #{:model/ModerationReview}
-   :model-imports #{:model/Card :model/Dashboard}}
+   :model-imports #{:model/Card :model/Dashboard :model/User}}
 
   contextual-interestingness
   {:team "UX West"
@@ -1032,7 +1036,9 @@
            api
            app-db
            collections
+           comments
            contextual-interestingness
+           documents
            events
            interestingness
            lib
@@ -1057,6 +1063,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Comment
+                    :model/Document
                     :model/Segment
                     :model/StoredResult
                     :model/StoredResultUse
@@ -1368,6 +1375,7 @@
               metabase.metabot.config
               metabase.metabot.core
               metabase.metabot.init
+              metabase.metabot.metadata-perms
               metabase.metabot.self
               metabase.metabot.settings
               metabase.metabot.tools.entity-details}
@@ -1448,6 +1456,7 @@
    :api  #{metabase.metrics.api
            metabase.metrics.core}
    :uses #{api
+           app-db
            events
            lib
            lib-be
@@ -1489,7 +1498,8 @@
 
   models
   {:team "DevEx"
-   :api  #{metabase.models.humanization
+   :api  #{metabase.models.db
+           metabase.models.humanization
            metabase.models.init
            metabase.models.interface
            metabase.models.resolution
@@ -1510,6 +1520,7 @@
                     :model/Dashboard
                     :model/DashboardTab
                     :model/Database
+                    :model/Document
                     :model/Field
                     :model/Measure
                     :model/NativeQuerySnippet
@@ -1600,6 +1611,7 @@
    :uses #{api
            api-scope
            appearance
+           events
            mcp
            models
            request
@@ -1607,7 +1619,8 @@
            system
            task
            tracing
-           util}}
+           util}
+   :model-imports #{:model/User}}
 
   osi
   {:team "Metabot"
@@ -1765,7 +1778,11 @@
            metabase.public-sharing.validation}
    :uses #{api
            settings
-           util}}
+           util}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Dashboard
+                    :model/Document}}
 
   public-sharing-rest
   {:team "UX West"
@@ -1786,7 +1803,8 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Document}}
@@ -1920,6 +1938,8 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Database
+                    :model/StoredResult
+                    :model/StoredResultUse
                     :model/Table}}
 
   query-permissions
@@ -1961,6 +1981,7 @@
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
               metabase.query-processor.preprocess
+              metabase.query-processor.result-serialization
               metabase.query-processor.schema
               metabase.query-processor.setup
               metabase.query-processor.store
@@ -2140,8 +2161,7 @@
   secrets
   {:team "Graphy"
    :api  #{metabase.secrets.core}
-   :uses #{api driver models premium-features util}
-   :model-exports #{:model/Secret}}
+   :uses #{api driver models premium-features util}}
 
   segments
   {:team "Graphy"
@@ -2187,7 +2207,6 @@
            request
            session
            settings
-           setup
            sso
            system
            tracing
@@ -2222,8 +2241,7 @@
 
   settings
   {:team "DevEx"
-   :api  #{metabase.settings.core
-           metabase.settings.init}
+   :api  #{metabase.settings.core metabase.settings.init}
    :uses #{api
            app-db
            config
@@ -2232,7 +2250,8 @@
            premium-features
            util
            enterprise/advanced-permissions}
-   :model-exports #{:model/Setting}}
+   :model-exports #{:model/Setting}
+   :model-imports #{:model/User}}
 
   settings-rest
   {:team "DevEx"
@@ -2408,6 +2427,7 @@
            metabase.task.core}
    :uses #{app-db
            classloader
+           config
            tracing
            util}}
 
@@ -2473,6 +2493,7 @@
            lib
            lib-be
            parameters
+           premium-features
            query-processor
            settings
            util}
@@ -2717,6 +2738,7 @@
    :model-imports #{:model/Dashboard
                     :model/Database
                     :model/PermissionsGroupMembership
+                    :model/PulseChannelRecipient
                     :model/Tenant}}
 
   users-rest
@@ -2776,7 +2798,10 @@
            query-permissions
            util}
    :model-exports #{:model/ViewLog}
-   :model-imports #{:model/Card :model/Dashboard :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Document
+                    :model/Table}}
 
   warehouse-schema
   {:team "UX West"
@@ -3161,7 +3186,8 @@
    :uses #{api
            content-verification
            util
-           enterprise/api}}
+           enterprise/api}
+   :model-imports #{:model/Card :model/Dashboard}}
 
   enterprise/core
   {:team "DevEx"
@@ -3803,12 +3829,14 @@
    :api  #{metabase-enterprise.support-access-grants.api
            metabase-enterprise.support-access-grants.init}
    :uses #{api
+           app-db
            auth-identity
            events
            models
            request
            settings
            system
+           task
            util}
    :model-imports #{:model/AuthIdentity :model/Session :model/User}}
 

@@ -136,5 +136,7 @@ jobs:
           context: bin/docker/
           platforms: linux/amd64
           network: host
+          build-args: |
+            GIT_COMMIT_SHA=${{ steps.meta.outputs.tag }}
           tags: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/metabase-enterprise:${{ steps.meta.outputs.tag }}
           push: true

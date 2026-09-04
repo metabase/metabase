@@ -3,8 +3,8 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.llm.settings :as llm.settings]
-   [metabase.metabot.settings :as metabot.settings]
-   [toucan2.core :as t2]))
+   [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.settings :as metabot.settings]))
 
 (def internal-metabot-id
   "The ID of the internal Metabot instance."
@@ -59,7 +59,7 @@
   Returns nil if no entry can be found.
   The provided ID can be a UUID from [[metabot-config]] or an entity_id of a Metabot instance."
   [metabot-id]
-  (t2/select-one-pk :model/Metabot :entity_id (get-in metabot-config [metabot-id :entity-id] metabot-id)))
+  (metabot.db/metabot-id-by-entity-id (get-in metabot-config [metabot-id :entity-id] metabot-id)))
 
 (defn resolve-dynamic-metabot-id
   "Resolve dynamic metabot ID with logical fall backs

@@ -7,7 +7,7 @@ import CS from "metabase/css/core/index.css";
 import { Box, Button, Icon, NumberInput, Text } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
-import type { ChartSettingSegmentsEditorProps } from "metabase/visualizations/types";
+import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
 import type { ScalarSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";

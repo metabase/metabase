@@ -12,7 +12,7 @@ import {
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import DashboardS from "metabase/css/dashboard.module.css";
-import type { HoveredObject } from "metabase/visualizations/types";
+import type { HoveredObject } from "metabase/viz-core";
 
 import styles from "./ChartWithLegend.module.css";
 import { LegendHorizontal } from "./LegendHorizontal";
