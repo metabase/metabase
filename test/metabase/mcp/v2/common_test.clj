@@ -249,6 +249,14 @@
       (let [text (-> (common/list-content [] nil {:offset 0 :limit 20 :empty-hint browse-empty-hint})
                      :content first :text)]
         (is (not (str/includes? text browse-empty-hint)))))
+    (testing "a zero total reached at a nonzero offset keeps the hint out — the gate is the offset
+              as well as the total. `empty-page-line` declines at total 0 for every offset, so a
+              total-only gate would answer \"why is this empty\" for a caller who instead paged past
+              the end of an empty list"
+      (let [text (-> (common/list-content [] 0 {:offset 50 :limit 20 :empty-hint browse-empty-hint})
+                     :content first :text)]
+        (is (not (str/includes? text browse-empty-hint)))
+        (is (re-find #"\"total\":0" text) "the envelope still reports the zero total")))
     (testing "a non-empty page ignores the hint entirely — a truncated page still gets its
               truncation line"
       (let [text (-> (common/list-content [{:id 1} {:id 2}] 5 {:offset 0 :limit 2 :empty-hint browse-empty-hint})

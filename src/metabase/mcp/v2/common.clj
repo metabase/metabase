@@ -308,14 +308,18 @@
    `:offset`/`:limit`, an optional `:param` naming what narrows this list, and an optional
    `:empty-hint` — the domain reason a genuinely empty result set (`total` 0) is empty, never an
    override of a computed line. Text-only — list data never rides `structuredContent` by reflex."
-  [data total {:keys [empty-hint] :as opts}]
+  [data total {:keys [empty-hint offset] :as opts}]
   (let [envelope (list-envelope data total)
         opts     (assoc opts :total total :returned (count data))
         ;; The two empty-page sentences answer different questions, so `:empty-hint` is gated on a
         ;; zero total rather than merely losing a race with [[empty-page-line]]: telling someone who
-        ;; paged past the end "nothing is visible to you" would be factually false.
+        ;; paged past the end "nothing is visible to you" would be factually false. The offset is
+        ;; part of that gate, not just the total: [[empty-page-line]] declines at `total` 0 for any
+        ;; offset, so without it a caller who paged past the end of an empty list still reads the
+        ;; hint as the reason.
         line     (if (empty? data)
-                   (or (empty-page-line opts) (when (= 0 total) empty-hint))
+                   (or (empty-page-line opts)
+                       (when (and (= 0 total) (not (pos? (or offset 0)))) empty-hint))
                    (truncation-line opts))]
     (success-content (cond-> (json/encode envelope)
                        line (str "\n" line)))))
