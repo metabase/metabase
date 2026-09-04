@@ -59,14 +59,15 @@
     data))
 
 (defn- referenced-query
-  [query id max-rows]
+  [query entity-type id max-rows]
   (assoc query
          ;; one over the limit, so an entity returning too much can be rejected instead of silently truncated. a
          ;; query with its own `:limit` under this still comes back short, which is how you ask for "the first N".
          :constraints {:max-results (inc max-rows), :max-results-bare-rows (inc max-rows)}
          ;; no :executed-by; it'd require a :query-hash for the query remark
-         :info {:context :question
-                :card-id id}))
+         :info (cond-> {:context :question}
+                 ;; :card-id ends up in the warehouse query remark, so a measure must not borrow the key
+                 (= entity-type "card") (assoc :card-id id))))
 
 (defn- runnable-query
   "The query to run for `entity`. A metric's breakouts group it for display; a reference wants its value, so
@@ -100,7 +101,7 @@
             ;; not write to the outer stream
             result (binding [qp.pipeline/*result*        qp.pipeline/default-result-handler
                              qp.pipeline/*canceled-chan* (child-canceled-chan qp.pipeline/*canceled-chan*)]
-                     (qp/process-query (referenced-query (runnable-query entity query-key) id max-rows)))
+                     (qp/process-query (referenced-query (runnable-query entity query-key) entity-type id max-rows)))
             data   (:data result)]
         (if (> (count (:rows data)) max-rows)
           (do

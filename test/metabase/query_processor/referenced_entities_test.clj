@@ -172,6 +172,13 @@
       (is (= "completed" (:status response)))
       (is (nil? (get-in response [:data :referenced_entities]))))))
 
+(deftest ^:parallel referenced-query-info-test
+  (let [info #(:info (#'referenced-entities/referenced-query {} %1 %2 1))]
+    (testing "a referenced card stamps its id, which is what the warehouse query remark reports"
+      (is (= {:context :question, :card-id 7} (info "card" 7))))
+    (testing "a measure has no card id to stamp, so it must not borrow the key"
+      (is (= {:context :question} (info "measure" 7))))))
+
 (deftest viz-settings->goal-specs-test
   (testing "GoalSource references are extracted from the 3 dynamic-goal viz settings and grouped by entity"
     (testing "a :graph.goal_value GoalSource"
