@@ -299,7 +299,11 @@
   "Toggle a reaction on a comment"
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params
-   {:keys [emoji]} :- [:map [:emoji [:string {:min 1 :max 10}]]]]
+   ;; Compound emoji can exceed 10 UTF-16 code units: subdivision flags such as the England flag are
+   ;; tag sequences 14 code units long (longer still for some ZWJ families). This mirrors the widened
+   ;; varchar(32) `emoji` column -- see v64.2026-09-05T00:00:00 -- and leaves room for any emoji a
+   ;; picker can produce.
+   {:keys [emoji]} :- [:map [:emoji [:string {:min 1 :max 32}]]]]
   (let [comment (api/check-404 (comments.db/comment-by-id comment-id))]
     (api/check-400 (not (:deleted_at comment))
                    "Cannot react to deleted comments")
