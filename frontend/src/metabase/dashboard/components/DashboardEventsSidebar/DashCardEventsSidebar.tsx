@@ -9,6 +9,7 @@ import {
   getDashCardTimeseriesXAxis,
   getDashCardVisibleTimelineEventIds,
 } from "metabase/dashboard/timeline-events";
+import { isDashCardOnTab } from "metabase/dashboard/utils";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import type { DashCardId, TimelineEventId } from "metabase-types/api";
@@ -39,7 +40,7 @@ export function DashCardEventsSidebar({
   const isOnAnotherTab =
     dashcard == null ||
     dashcard.isRemoved ||
-    (selectedTabId != null && dashcard.dashboard_tab_id !== selectedTabId);
+    !isDashCardOnTab(dashcard, selectedTabId);
   useEffect(() => {
     if (isOnAnotherTab) {
       closeSidebar();

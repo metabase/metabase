@@ -1,8 +1,6 @@
 import { useEffect, useMemo } from "react";
-import _ from "underscore";
 
 import { skipToken, useListTimelinesQuery } from "metabase/api";
-import { dayjs } from "metabase/dayjs";
 import {
   isPublicEmbedding,
   isStaticEmbedding,
@@ -11,6 +9,7 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   getRecordedTimelineEventsVisibility,
   resolveVisibleTimelineEvents,
+  sortByTimestamp,
 } from "metabase/visualizations/lib/timeline-events-visibility";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { getTimeseriesXAxis, isTimelineEventInRange } from "metabase/viz-core";
@@ -40,9 +39,6 @@ const canLoadTimelineEvents = () =>
 const hasSeriesData = (series: VisualizationProps["series"]) =>
   series.length > 0 && series.every((single) => single.data != null);
 
-const sortByTimestamp = (events: TimelineEvent[]) =>
-  _.sortBy(events, (event) => dayjs(event.timestamp).valueOf());
-
 export function useTimelineEvents({
   timelineEvents: explicitEvents,
   timelineEventsVisibility,
@@ -69,26 +65,35 @@ export function useTimelineEvents({
     isError,
   } = useListTimelinesQuery(shouldFetch ? { include: "events" } : skipToken);
 
-  const xAxis = useMemo(
-    () => (hasSeriesData(series) ? getTimeseriesXAxis(series, settings) : null),
-    [series, settings],
-  );
-
   const timelineEvents = useMemo(() => {
-    const domain = xAxis?.domain;
-    if (!isEnabled || xAxis == null || domain == null) {
+    const candidates = !isEnabled
+      ? EMPTY_EVENTS
+      : explicitEvents
+        ? sortByTimestamp(explicitEvents.filter((event) => !event.archived))
+        : shouldFetch
+          ? resolveVisibleTimelineEvents({ timelines, visibility })
+          : EMPTY_EVENTS;
+    if (candidates.length === 0 || !hasSeriesData(series)) {
       return EMPTY_EVENTS;
     }
-    const candidates = explicitEvents
-      ? sortByTimestamp(explicitEvents.filter((event) => !event.archived))
-      : shouldFetch
-        ? resolveVisibleTimelineEvents({ timelines, visibility })
-        : EMPTY_EVENTS;
+    const xAxis = getTimeseriesXAxis(series, settings);
+    const domain = xAxis?.domain;
+    if (xAxis == null || domain == null) {
+      return EMPTY_EVENTS;
+    }
     const events = candidates.filter((event) =>
       isTimelineEventInRange(event, domain, xAxis.interval),
     );
     return events.length > 0 ? events : EMPTY_EVENTS;
-  }, [isEnabled, explicitEvents, shouldFetch, timelines, visibility, xAxis]);
+  }, [
+    isEnabled,
+    explicitEvents,
+    shouldFetch,
+    timelines,
+    visibility,
+    series,
+    settings,
+  ]);
 
   useEffect(() => {
     if (timelineEvents.length > 0) {
