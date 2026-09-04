@@ -6,32 +6,18 @@
    [metabase.api.macros :as api.macros]
    [metabase.geojson.settings :as geojson.settings]
    [metabase.permissions.core :as perms]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [ring.util.response :as response])
   (:import
    (java.io BufferedReader)
-   (java.net InetAddress)
-   (org.apache.commons.io.input ReaderInputStream)
-   (org.apache.http.conn DnsResolver)
-   (org.apache.http.impl.conn SystemDefaultDnsResolver)))
+   (org.apache.commons.io.input ReaderInputStream)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private connection-timeout-ms 8000)
-
-(def ^DnsResolver ^:private ^:dynamic  *system-dns-resolver* (SystemDefaultDnsResolver.))
-
-(def ^:private non-link-local-dns-resolver
-  (reify
-    DnsResolver
-    (^"[Ljava.net.InetAddress;" resolve [_ ^String host]
-      (let [addresses (.resolve *system-dns-resolver* host)]
-        (if (some #(.isLinkLocalAddress ^InetAddress %) addresses)
-          (throw (ex-info (geojson.settings/invalid-location-msg) {:status-code 400
-                                                                   :link-local true}))
-          addresses)))))
 
 (defn- url->geojson
   [url]
@@ -40,10 +26,10 @@
                                  :socket-timeout     connection-timeout-ms
                                  :connection-timeout connection-timeout-ms
                                  :throw-exceptions   false
-                                 :dns-resolver       non-link-local-dns-resolver})
+                                 :dns-resolver       (u.http/network-policy-dns-resolver :external-only)})
                   (catch Throwable e
-                    (if (:link-local (ex-data e))
-                      (throw (ex-info (ex-message e) (dissoc (ex-data e) :link-local) e))
+                    (if (:ssrf (ex-data e))
+                      (throw (ex-info (geojson.settings/invalid-location-msg) {:status-code 400} e))
                       (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400})))))
         success? (<= 200 (:status resp) 399)
         allowed-content-types #{"application/geo+json"
