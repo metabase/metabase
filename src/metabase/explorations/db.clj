@@ -741,7 +741,7 @@
 ;;; the response stays small and JSON encoding is fast.
 (def ^:private exploration-card-columns
   [:id :name :description :collection_id :database_id :table_id :type :entity_id
-   :card_schema :dataset_query :dimensions :dimension_mappings])
+   :card_schema :dataset_query :result_metadata :dimensions :dimension_mappings])
 
 (defn metric-cards-for-explorations
   "The exploration-relevant columns of the metric Cards with `card-ids`."

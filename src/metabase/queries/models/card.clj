@@ -663,9 +663,15 @@
   Metadata-provider fetches must be skipped: nothing consumes `:query_description` on lib metadata, and computing it
   resolves the metric's own `:metric` refs through the metadata provider, whose card fetches re-enter this
   after-select — with a cycle in the metric reference graph the recursion is unbounded and overflows the stack
-  (#74954)."
+  (#74954).
+
+  Column-restricted SELECTs are skipped too. `:query_description` is derived, not a column, so a caller that named
+  its columns cannot have been asking for it — and building the Lib query to compute it is expensive. This matters
+  because [[schema-upgrade-triggers]] forces `:type` into every projection that reads a schema-governed column,
+  which would otherwise opt all of them in to a field none of them read."
   [card]
   (if-not (and (map? card)
+               (empty? (:columns t2.pipeline/*parsed-args*))
                (= :metric (:type card))
                (not (metadata-provider-fetch? card))
                (-> card :dataset_query not-empty)
