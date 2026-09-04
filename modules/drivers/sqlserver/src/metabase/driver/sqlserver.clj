@@ -514,8 +514,13 @@
   [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr            (sql.qp/->honeysql driver arg)
         datetimeoffset? (or (sql.qp.u/field-with-tz? arg)
-                            (h2x/is-of-type? expr "datetimeoffset"))]
-    (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
+                            (h2x/is-of-type? expr "datetimeoffset"))
+        _               (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
+        ;; `AT TIME ZONE` rejects a `date` argument (error 8116), so cast dates to `datetime2` first (#27186).
+        expr            (if (or (instance? LocalDate expr)
+                                (h2x/is-of-type? expr "date"))
+                          (h2x/cast "datetime2" expr)
+                          expr)]
     (-> (if datetimeoffset?
           expr
           (h2x/at-time-zone expr (zone-id->windows-zone source-timezone)))
