@@ -153,7 +153,7 @@ function ScalarComponent(
             label={tooltipContent}
             position="bottom"
             px="0.375rem"
-            py="xs"
+            py="xxs"
             disabled={!tooltipContent}
           >
             <Stack onClick={handleClick} ref={scalarRef} align="center" gap={0}>
@@ -165,12 +165,12 @@ function ScalarComponent(
                 value={displayValue as string}
               />
               {label && (
-                <Text fz={14} lh="1rem" c="text-primary" mt="md" ta="center">
+                <Text fz={14} lh="1rem" c="text-primary" mt="lg" ta="center">
                   {label}
                 </Text>
               )}
               {sublabel && (
-                <Text fz={12} lh="1rem" c="text-secondary" mt="xs" ta="center">
+                <Text fz={12} lh="1rem" c="text-secondary" mt="xxs" ta="center">
                   {sublabel}
                 </Text>
               )}

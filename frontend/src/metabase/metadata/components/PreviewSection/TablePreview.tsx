@@ -47,7 +47,7 @@ const TablePreviewBase = (props: Props) => {
 
   if (isFetching) {
     return (
-      <Stack data-testid="loading-indicator" gap="sm" p="xs">
+      <Stack data-testid="loading-indicator" gap="sm" p="xxs">
         <Skeleton h="2rem" w="6rem" />
 
         <Repeat times={5}>
@@ -63,7 +63,7 @@ const TablePreviewBase = (props: Props) => {
 
   if (!data || data.length === 0) {
     return (
-      <Stack h="100%" justify="center" p="md">
+      <Stack h="100%" justify="center" p="lg">
         <EmptyState title={t`No data to show`} />
       </Stack>
     );

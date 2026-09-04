@@ -73,7 +73,7 @@ export const NotificationDetailSidebar = ({
         bg="background_page-primary"
         data-testid="notification-detail-sidebar"
       >
-        <Stack h="100%" p="lg" gap="lg" style={{ overflowY: "auto" }}>
+        <Stack h="100%" p="xl" gap="xl" style={{ overflowY: "auto" }}>
           <SidebarHeader
             isBulkLoading={isBulkLoading}
             notificationId={notificationId}

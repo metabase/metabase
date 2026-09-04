@@ -72,7 +72,7 @@ export const VisualizationCard = memo(
       : undefined;
 
     return (
-      <Card p="md" shadow="none" withBorder>
+      <Card p="lg" shadow="none" withBorder>
         <Stack gap="sm">
           {isLoading || !rawSeries ? (
             <Stack gap="sm" align="center" justify="center" h={height}>

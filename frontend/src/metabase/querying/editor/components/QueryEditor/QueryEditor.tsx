@@ -1,5 +1,5 @@
 import { useElementSize } from "@mantine/hooks";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -9,7 +9,11 @@ import type * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
 
 import { useQueryEditor } from "../../hooks/use-query-editor";
-import type { QueryEditorUiOptions, QueryEditorUiState } from "../../types";
+import type {
+  QueryEditorUiOptions,
+  QueryEditorUiState,
+  TemplateTagsSidebarProps,
+} from "../../types";
 
 import {
   NativeQueryPreviewSidebar,
@@ -34,6 +38,8 @@ export type QueryEditorProps = {
   height?: string | number;
   extraEditorButton?: ReactNode;
   parametersAreUserVisible?: boolean;
+  parametersList: ReactNode;
+  templateTagsSidebar: ComponentType<TemplateTagsSidebarProps>;
 };
 
 export function QueryEditor({
@@ -51,6 +57,8 @@ export function QueryEditor({
   height = "100%",
   extraEditorButton,
   parametersAreUserVisible = true,
+  parametersList,
+  templateTagsSidebar,
 }: QueryEditorProps) {
   const {
     question,
@@ -106,6 +114,7 @@ export function QueryEditor({
         <Flex flex="2 1 0" miw={0} direction="column" pos="relative">
           <QueryEditorBody
             availableHeight={availableHeight}
+            parametersList={parametersList}
             question={question}
             proposedQuestion={proposedQuestion}
             modalSnippet={uiState.modalSnippet}
@@ -187,6 +196,7 @@ export function QueryEditor({
             onChangeQuery={onChangeQuery}
             parametersAreUserVisible={parametersAreUserVisible}
             canUseSampleDatabase={uiOptions?.canUseSampleDatabase}
+            templateTagsSidebar={templateTagsSidebar}
           />
         )}
         {!isNative && uiState.sidebarType === "native-query" && (

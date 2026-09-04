@@ -60,7 +60,7 @@ const ObjectDetailPreviewBase = ({
 
   if (isFetching) {
     return (
-      <Stack data-testid="loading-indicator" gap="sm" p="lg">
+      <Stack data-testid="loading-indicator" gap="sm" p="xl">
         <Repeat times={5}>
           <Skeleton h="2.5rem" />
         </Repeat>
@@ -74,16 +74,16 @@ const ObjectDetailPreviewBase = ({
 
   if (!data || !row || columns.length === 0) {
     return (
-      <Stack h="100%" justify="center" p="md">
+      <Stack h="100%" justify="center" p="lg">
         <EmptyState title={t`No data to show`} />
       </Stack>
     );
   }
 
   return (
-    <Stack gap={0} p="lg">
+    <Stack gap={0} p="xl">
       {headerColumns.length > 0 && (
-        <Box pb="md" pt="xs">
+        <Box pb="lg" pt="xxs">
           <Box ml={rem(-8)}>
             <Header columns={columns} icon={icon} row={row} />
           </Box>
@@ -91,7 +91,7 @@ const ObjectDetailPreviewBase = ({
       )}
 
       {columns.length > 0 && (
-        <Box pt="xl">
+        <Box pt="xxl">
           <DetailsGroup
             columns={columns}
             row={row}
