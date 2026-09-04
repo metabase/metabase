@@ -127,11 +127,6 @@
 
 (t2/define-before-insert :model/PermissionsGroupMembership
   [membership]
-  ;; NOTE: the sigil branch deliberately skips [[check-can-add-to-data-analyst-group]]. It is a test-fixture escape
-  ;; hatch, not a production path -- every real insertion goes through `add-users-to-groups!`, which is gated -- and
-  ;; tests need it ungated to set up the grandfathered case: an existing Data Analyst on an instance that no longer
-  ;; has the feature.
-  ;;
   ;; this should generally only be set by the `with-temp` defaults for `:model/PermissionsGroupMembership`. Ideally we'll move to only
   (if-not (:__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships membership)
     (throw (ex-info "Do not use `t2/insert!` with PermissionsGroupMembership directly. Use `add-users-to-groups` or related instead"
