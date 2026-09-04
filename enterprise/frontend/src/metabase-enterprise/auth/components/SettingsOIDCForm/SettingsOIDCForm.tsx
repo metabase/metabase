@@ -33,7 +33,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/settings-components/SettingsSection";
-import { Button, Flex, Stack, Text } from "metabase/ui";
+import { Button, Flex, Stack } from "metabase/ui";
 import {
   type CustomOidcConfig,
   type OidcCheckRequest,

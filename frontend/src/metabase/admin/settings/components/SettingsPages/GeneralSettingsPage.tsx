@@ -3,17 +3,15 @@ import { t } from "ttag";
 import { CollectUserDataInput } from "metabase/admin/settings/components/widgets/UsageTracking/CollectUserDataInput";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { Link } from "metabase/common/components/Link";
-import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_EMBEDDING_SDK, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
-import { useAdminSetting, useSetting } from "metabase/settings";
+import { useSetting } from "metabase/settings";
 import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
 import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/settings-components/SettingsSection";
 import { Group, Icon, Text } from "metabase/ui";
-import * as Urls from "metabase/urls";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
 import { HomepageSetting } from "../widgets/HomepageSetting";
@@ -25,8 +23,6 @@ export function GeneralSettingsPage() {
   const hasHostingFeature = useHasTokenFeature("hosting");
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
   const enableAnonymousTracking = !hasHostingFeature;
-  const { value: cspImgEnabled } = useAdminSetting("csp-img-enabled");
-  const { value: customVizEnabled } = useAdminSetting("custom-viz-enabled");
   const isReactSdkFeatureAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
   const isHosted = useSetting("is-hosted?");
 

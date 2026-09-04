@@ -26,7 +26,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/settings-components/SettingsSection";
-import { Box, Divider, Flex, Group, Radio, Stack } from "metabase/ui";
+import { Box, Flex, Group, Radio, Stack } from "metabase/ui";
 import type { EnterpriseSettings, Settings } from "metabase-types/api";
 
 import { useUpdateLdapMutation } from "../api/ldap";
