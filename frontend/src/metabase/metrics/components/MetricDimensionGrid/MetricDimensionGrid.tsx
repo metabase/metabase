@@ -7,6 +7,7 @@ import {
   DEFAULT_DISPLAY_TYPE_BY_DIMENSION,
   type DefaultDimensionDisplayType,
 } from "metabase/common/metrics/utils/dimension-types";
+import { exploreMetricDimensionUrl } from "metabase/common/metrics-viewer";
 import { trackMetricPageShowMoreClicked } from "metabase/metrics/analytics";
 import { useMetricDimensionQuery } from "metabase/metrics/common/hooks";
 import { useNavigate } from "metabase/router";
@@ -19,7 +20,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import type { MetricDefinition } from "metabase-lib/metric";
@@ -100,8 +100,8 @@ export function MetricDimensionGrid({
   }
 
   return (
-    <Flex direction="column" gap="lg" flex={1}>
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+    <Flex direction="column" gap="xl" flex={1}>
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
         {cards.map((card) => (
           <MetricDimensionCard
             key={card.dimensionId}
@@ -158,7 +158,7 @@ function MetricDimensionCard({
 
   const handleClick = useCallback(() => {
     navigate(
-      Urls.exploreMetricDimension({
+      exploreMetricDimensionUrl({
         metricId,
         dimensionId: dimension.dimensionId,
         dimensionType: dimension.dimensionType,
@@ -171,7 +171,7 @@ function MetricDimensionCard({
   return (
     <Paper withBorder shadow="none" className={S.card} onClick={handleClick}>
       <Stack h="100%">
-        <Text fw="bold" size="md" truncate="end" px="md" pt="sm">
+        <Text fw="bold" size="md" truncate="end" px="lg" pt="sm">
           {t`By ${dimension.label}`}
         </Text>
         <div className={S.chartArea}>
@@ -218,7 +218,7 @@ function buildSingleSeries(
 
 function DimensionGridSkeleton({ count }: { count: number }) {
   return (
-    <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+    <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
       {Array.from({ length: count }, (_, index) => (
         <Paper key={index} withBorder shadow="none" className={S.skeletonCard}>
           <ChartSkeleton display="bar" />

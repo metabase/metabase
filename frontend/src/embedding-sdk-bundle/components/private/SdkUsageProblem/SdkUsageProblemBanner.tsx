@@ -74,8 +74,8 @@ export const SdkUsageProblemBanner = ({
 
       <Popover.Dropdown className={S.PopoverDropdown}>
         <Card
-          p="lg"
-          radius="md"
+          p="xl"
+          radius="sm"
           maw="22rem"
           data-testid="sdk-usage-problem-card"
         >
@@ -100,7 +100,7 @@ export const SdkUsageProblemBanner = ({
                 ff={fontFamily}
                 fs="normal"
                 size="md"
-                radius="md"
+                radius="sm"
                 variant="subtle"
                 color="text-brand"
                 onClick={() => {
@@ -118,7 +118,7 @@ export const SdkUsageProblemBanner = ({
                   ff={fontFamily}
                   className={S.DocsButton}
                   size="md"
-                  radius="md"
+                  radius="sm"
                 >
                   Documentation
                 </Button>

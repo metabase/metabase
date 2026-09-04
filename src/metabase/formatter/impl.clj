@@ -323,13 +323,23 @@
    (fn [column]
      (create-formatter timezone column settings format-rows?))))
 
+(defn- pivot-inline-currency-col
+  "Pivot exports render the currency symbol in the cell (matching the in-app pivot table), since pivot measures have no
+  column header to carry it. Express that by forcing `currency-in-header` off for currency columns -- the
+  override goes on the column's `:settings`, which wins [[number-formatter]]'s settings merge. Scoped to currency
+  columns so non-currency columns are untouched."
+  [col settings]
+  (cond-> col
+    (streaming.common/currency-settings? (streaming.common/viz-settings-for-col col settings))
+    (assoc-in [:settings :currency-in-header] false)))
+
 (defn- create-formatters
   "Value formatters for the columns at `indexes`; each formats a raw value via
   [[metabase.query-processor.streaming.common/format-value]] then the column's formatter."
   [columns indexes timezone settings format-rows?]
   (let [formatter-fn (get-formatter timezone settings format-rows?)]
     (mapv (fn [idx]
-            (let [formatter (formatter-fn (nth columns idx))]
+            (let [formatter (formatter-fn (pivot-inline-currency-col (nth columns idx) settings))]
               (fn [value]
                 (formatter (streaming.common/format-value value)))))
           indexes)))

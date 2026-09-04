@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 
 import { useMetadataProviderFactory } from "metabase/metadata-store";
-import {
-  QueryEditor,
-  type QueryEditorUiOptions,
-  type QueryEditorUiState,
+import { QueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
+import type {
+  QueryEditorUiOptions,
+  QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import * as Lib from "metabase-lib";
 import type {
@@ -84,7 +84,7 @@ export function TransformEditor({
   };
 
   return (
-    <QueryEditor
+    <QueryEditorWithParameters
       query={query}
       uiState={uiState}
       uiOptions={mergedUiOptions}

@@ -35,7 +35,7 @@ const setup = async (
     </>,
   );
 
-  await screen.findByText("Set up SAML-based SSO");
+  await screen.findByText("Configure your identity provider (IdP)");
   await waitFor(async () => {
     const gets = await findRequests("GET");
     expect(gets).toHaveLength(3);

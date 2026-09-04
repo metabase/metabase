@@ -1,4 +1,4 @@
-import { forwardRef, useState } from "react";
+import { type ReactNode, forwardRef, useState } from "react";
 
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
@@ -20,6 +20,7 @@ type MetricEditorProps = {
   isDirty: boolean;
   isResultDirty: boolean;
   isRunning: boolean;
+  noResultsAction?: ReactNode;
   onChange: (question: Question) => Promise<void>;
   onCreate: (question: Question) => Promise<Question>;
   onSave: (question: Question) => Promise<void>;
@@ -38,6 +39,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
       isDirty,
       isRunning,
       isResultDirty,
+      noResultsAction,
       onChange,
       onCreate,
       onSave,
@@ -104,6 +106,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
           isRunnable={isRunnable}
           isRunning={isRunning}
           isResultDirty={isResultDirty}
+          noResultsAction={noResultsAction}
           onRunQuery={onRunQuery}
           onCancelQuery={onCancelQuery}
         />

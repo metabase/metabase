@@ -26,10 +26,16 @@ const setup = async ({
   jwtEnabled,
   useTenants,
   configured,
+  attributesConfigured,
+  attributesEnvConfigured,
+  tenantAttributeConfigured,
 }: {
   jwtEnabled?: boolean;
   useTenants?: boolean;
   configured?: boolean;
+  attributesConfigured?: boolean;
+  attributesEnvConfigured?: boolean;
+  tenantAttributeConfigured?: boolean;
 } = {}) => {
   setupSettingsEndpoints([
     { key: "use-tenants", value: useTenants ?? false },
@@ -39,6 +45,21 @@ const setup = async ({
           { key: "jwt-identity-provider-uri", value: "http://example.com" },
           { key: "jwt-shared-secret", value: "590ab155f412d477b8ab9c8b0e7b" },
         ] as const)
+      : []),
+    ...(attributesConfigured
+      ? ([{ key: "jwt-attribute-email", value: "email-key" }] as const)
+      : []),
+    ...(attributesEnvConfigured
+      ? ([
+          {
+            key: "jwt-attribute-email",
+            is_env_setting: true,
+            env_name: "MB_JWT_ATTRIBUTE_EMAIL",
+          },
+        ] as const)
+      : []),
+    ...(tenantAttributeConfigured
+      ? ([{ key: "jwt-attribute-tenant", value: "tenant-key" }] as const)
       : []),
   ]);
   setupPropertiesEndpoints(
@@ -55,7 +76,13 @@ const setup = async ({
 
   renderWithProviders(<SettingsJWTForm />, { withUndos: true });
 
-  await screen.findByText("Server Settings");
+  await screen.findByText("Server settings");
+};
+
+const expandUserAttributeSection = async () => {
+  await userEvent.click(
+    await screen.findByRole("button", { name: /User attribute configuration/ }),
+  );
 };
 
 describe("SettingsJWTForm", () => {
@@ -87,6 +114,7 @@ describe("SettingsJWTForm", () => {
       ATTRS["jwt-shared-secret"],
     );
     await userEvent.click(await screen.findByRole("button", { name: /Done/ }));
+    await expandUserAttributeSection();
     await userEvent.type(
       await screen.findByRole("textbox", { name: /Email attribute/ }),
       ATTRS["jwt-attribute-email"],
@@ -151,6 +179,49 @@ describe("SettingsJWTForm", () => {
     expect(await screen.findByText("Changes saved")).toBeInTheDocument();
   });
 
+  it("collapses the user attribute section when no attribute is set", async () => {
+    await setup();
+
+    expect(
+      await screen.findByRole("button", {
+        name: /User attribute configuration/,
+      }),
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("expands the user attribute section when an attribute is set", async () => {
+    await setup({ attributesConfigured: true });
+
+    expect(
+      await screen.findByRole("button", {
+        name: /User attribute configuration/,
+      }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByRole("textbox", { name: /Email attribute/ }),
+    ).toBeVisible();
+  });
+
+  it("expands the user attribute section when attributes are set via env vars", async () => {
+    await setup({ attributesEnvConfigured: true });
+
+    expect(
+      await screen.findByRole("button", {
+        name: /User attribute configuration/,
+      }),
+    ).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("ignores a tenant attribute for the default-open check when tenants are off", async () => {
+    await setup({ tenantAttributeConfigured: true });
+
+    expect(
+      await screen.findByRole("button", {
+        name: /User attribute configuration/,
+      }),
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("should not show tenant attribute unless tenanting is on", async () => {
     await setup();
 
@@ -167,6 +238,7 @@ describe("SettingsJWTForm", () => {
       ATTRS["jwt-identity-provider-uri"],
     );
 
+    await expandUserAttributeSection();
     await userEvent.type(
       await screen.findByRole("textbox", {
         name: /Tenant assignment attribute/,

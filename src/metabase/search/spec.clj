@@ -9,6 +9,7 @@
    [malli.error :as me]
    [metabase.config.core :as config]
    [metabase.search.config :as search.config]
+   [metabase.search.db :as search.db]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
@@ -477,7 +478,7 @@
   (doseq [d (keys (model-hooks))]
     (derive d :hook/search-index))
 
-  (search-models-to-update (t2/select-one :model/Card))
+  (search-models-to-update (search.db/any-card))
   (methods spec)
   (model-hooks)
 

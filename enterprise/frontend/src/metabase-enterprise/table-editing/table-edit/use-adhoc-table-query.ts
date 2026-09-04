@@ -4,8 +4,8 @@ import {
   useMetadataProvider,
   useQuestionFromOpts,
 } from "metabase/metadata-store";
-import { loadMetadataForTable } from "metabase/questions/actions";
 import { useDispatch } from "metabase/redux";
+import { fetchTableMetadata } from "metabase/redux/tables";
 import type { Location } from "metabase/router";
 import { useNavigate } from "metabase/router";
 import { b64url_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
@@ -40,7 +40,7 @@ export const useAdHocTableQuery = ({
   );
 
   useEffect(() => {
-    dispatch(loadMetadataForTable(tableId));
+    dispatch(fetchTableMetadata({ id: tableId }));
   }, [dispatch, tableId]);
 
   const tableQuestion = useMemo(() => {
