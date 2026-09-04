@@ -852,6 +852,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/Database
                     :model/Table
                     :model/User}}
 
