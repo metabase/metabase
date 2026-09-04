@@ -3,8 +3,8 @@ import { Pie } from "@visx/shape";
 import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
 
 import type { ColorGetter } from "metabase/ui/colors/types";
-import type { ResolvedGoalSegment } from "metabase/visualizations/lib/dynamic-goals";
 import type { GaugeRange } from "metabase/visualizations/visualizations/Gauge/types";
+import type { ResolvedGoalSegment } from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
 

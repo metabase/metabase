@@ -6,7 +6,7 @@ import { color as colorHex } from "metabase/ui/colors";
 import {
   hasFailedGoalReferences,
   resolveGoalSegments,
-} from "metabase/visualizations/lib/dynamic-goals";
+} from "metabase/viz-core";
 import {
   type VisualizationDefinition,
   columnSettings,

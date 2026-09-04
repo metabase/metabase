@@ -12,8 +12,8 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import type { ResolvedGoalValue } from "metabase/visualizations/lib/dynamic-goals";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/value-formatting";
+import type { ResolvedGoalValue } from "metabase/viz-core";
 
 import { ICON_BUTTON_SIZE } from "../../constants";
 

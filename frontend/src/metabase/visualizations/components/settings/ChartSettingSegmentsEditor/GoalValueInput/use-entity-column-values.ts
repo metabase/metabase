@@ -1,8 +1,5 @@
 import { useReferencedEntitiesQuery } from "metabase/visualizations/hooks/use-referenced-entities-query";
-import {
-  resolveGoalValue,
-  toReferencedEntity,
-} from "metabase/visualizations/lib/dynamic-goals";
+import { resolveGoalValue, toReferencedEntity } from "metabase/viz-core";
 import type {
   DatasetData,
   DatasetQuery,
