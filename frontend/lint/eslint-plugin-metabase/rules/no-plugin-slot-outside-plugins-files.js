@@ -1,3 +1,5 @@
+const path = require("path");
+
 const SLOT_NAME = /^PLUGIN_[A-Z0-9_]+$/;
 const SLOT_FACTORY = "definePluginSlot";
 const PLUGINS_FILE = /^plugins\.(ts|tsx|js|jsx)$/;
@@ -7,64 +9,78 @@ module.exports = {
     type: "problem",
     docs: {
       description:
-        "Restrict plugin slot declarations to metabase/plugins/ and to a module's plugins.ts file or plugins/ directory",
+        "Restrict plugin slot declarations, an exported `PLUGIN_*` binding or a use of `definePluginSlot`, to metabase/plugins/ and to a module's plugins.ts file or plugins/ directory",
       category: "Best Practices",
       recommended: true,
     },
     schema: [],
     messages: {
-      slotOutsidePluginsFile:
+      slotDeclaration:
         '`{{name}}` declares a plugin slot, which is only allowed in "metabase/plugins/" or in a module\'s "plugins.ts" file or "plugins/" directory. Declare the slot there and export it through the module\'s index.',
+      slotFactory:
+        '`definePluginSlot` may only be called in "metabase/plugins/" or in a module\'s "plugins.ts" file or "plugins/" directory. Declare the slot there and export it through the module\'s index.',
     },
   },
   create(context) {
-    const segments = context.filename.split("/");
-    const baseFilename = segments[segments.length - 1];
-    const isPluginsFile = PLUGINS_FILE.test(baseFilename);
-    const isInPluginsDir = segments.slice(0, -1).includes("plugins");
-
-    if (isPluginsFile || isInPluginsDir) {
+    const filename = context.filename.replaceAll("\\", "/");
+    if (isPluginsFile(filename) || isUnderPluginsDirectory(filename)) {
       return {};
     }
 
-    function report(node, name) {
-      context.report({
-        node,
-        messageId: "slotOutsidePluginsFile",
-        data: { name },
-      });
-    }
-
     return {
-      ImportDeclaration(node) {
-        for (const specifier of node.specifiers) {
-          if (
-            specifier.type === "ImportSpecifier" &&
-            importedNameOf(specifier) === SLOT_FACTORY
-          ) {
-            report(specifier, SLOT_FACTORY);
-          }
+      VariableDeclarator(node) {
+        if (isSlotDeclaration(node)) {
+          context.report({
+            node: node.id,
+            messageId: "slotDeclaration",
+            data: { name: node.id.name },
+          });
         }
       },
-      ExportNamedDeclaration(node) {
-        if (node.declaration?.type !== "VariableDeclaration") {
-          return;
+      ImportSpecifier(node) {
+        if (isSlotFactoryImport(node)) {
+          context.report({ node, messageId: "slotFactory" });
         }
-        for (const declarator of node.declaration.declarations) {
-          if (
-            declarator.id.type === "Identifier" &&
-            SLOT_NAME.test(declarator.id.name)
-          ) {
-            report(declarator.id, declarator.id.name);
-          }
+      },
+      MemberExpression(node) {
+        if (isSlotFactoryAccess(node)) {
+          context.report({ node, messageId: "slotFactory" });
         }
       },
     };
   },
 };
 
-function importedNameOf(specifier) {
-  return specifier.imported.type === "Identifier"
-    ? specifier.imported.name
-    : String(specifier.imported.value);
+function isPluginsFile(filename) {
+  return PLUGINS_FILE.test(path.posix.basename(filename));
+}
+
+// Covers metabase/plugins/ itself as well as a module's plugins/ directory.
+function isUnderPluginsDirectory(filename) {
+  return path.posix.dirname(filename).split("/").includes("plugins");
+}
+
+// `export const PLUGIN_X = ...`, whatever the value is.
+function isSlotDeclaration(declarator) {
+  return (
+    declarator.id.type === "Identifier" &&
+    SLOT_NAME.test(declarator.id.name) &&
+    declarator.parent.parent.type === "ExportNamedDeclaration"
+  );
+}
+
+// `import { definePluginSlot }`, under any alias.
+function isSlotFactoryImport(specifier) {
+  const { imported } = specifier;
+  const name = imported.type === "Identifier" ? imported.name : imported.value;
+  return name === SLOT_FACTORY;
+}
+
+// `plugins.definePluginSlot(...)`, which is how a namespace import reaches the factory.
+function isSlotFactoryAccess(member) {
+  return (
+    !member.computed &&
+    member.property.type === "Identifier" &&
+    member.property.name === SLOT_FACTORY
+  );
 }

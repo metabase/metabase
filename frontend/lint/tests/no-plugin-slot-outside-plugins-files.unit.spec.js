@@ -10,145 +10,175 @@ const ruleTester = new RuleTester({
   },
 });
 
-const error = { messageId: "slotOutsidePluginsFile" };
+const MODULE_FILE = "/repo/frontend/src/metabase/search/slots.ts";
+const MODULE_INDEX = "/repo/frontend/src/metabase/search/index.ts";
+const MODULE_PLUGINS_FILE = "/repo/frontend/src/metabase/search/plugins.ts";
+
+const SLOT_EXPORT = `export const PLUGIN_SEARCH = { isEnabled: () => false };`;
+const SLOT_FROM_FACTORY = `
+  import { definePluginSlot } from "metabase/plugins";
+  export const PLUGIN_SEARCH = definePluginSlot(() => ({}));
+`;
+
+const slotDeclaration = { messageId: "slotDeclaration" };
+const slotFactory = { messageId: "slotFactory" };
 
 const VALID_CASES = [
-  // Slots may be declared anywhere under metabase/plugins/.
+  // Where a slot may be declared.
   {
+    name: "slot under metabase/plugins/",
+    filename: "/repo/frontend/src/metabase/plugins/oss/search.ts",
     code: `
       import { definePluginSlot } from "../slot";
-      export const PLUGIN_AUDIT = definePluginSlot(() => ({}));
-    `,
-    filename: "frontend/src/metabase/plugins/oss/audit.ts",
-  },
-  {
-    code: `export const PLUGIN_WHITELABEL = getDefaultPluginWhitelabel();`,
-    filename: "frontend/src/metabase/plugins/index.ts",
-  },
-  // A module declares its slots in plugins.ts or under plugins/.
-  {
-    code: `
-      import { definePluginSlot } from "metabase/plugins";
       export const PLUGIN_SEARCH = definePluginSlot(() => ({}));
     `,
-    filename: "frontend/src/metabase/search/plugins.ts",
   },
   {
-    code: `export const PLUGIN_SEARCH = definePluginSlot(() => ({}));`,
-    filename: "frontend/src/metabase/search/plugins.tsx",
+    name: "slot in a module's plugins.ts",
+    filename: MODULE_PLUGINS_FILE,
+    code: SLOT_FROM_FACTORY,
   },
   {
-    code: `export const PLUGIN_QUERYING = definePluginSlot(() => ({}));`,
-    filename: "frontend/src/metabase/querying/plugins/slots.ts",
+    name: "slot in a module's plugins.tsx",
+    filename: "/repo/frontend/src/metabase/search/plugins.tsx",
+    code: SLOT_EXPORT,
   },
   {
-    code: `export const PLUGIN_QUERYING = definePluginSlot(() => ({}));`,
-    filename: "frontend/src/metabase/querying/plugins/nested/slots.ts",
+    name: "slot under a module's plugins/ directory",
+    filename: "/repo/frontend/src/metabase/querying/plugins/slots.ts",
+    code: SLOT_EXPORT,
   },
   {
-    code: `export const PLUGIN_SANDBOXES = definePluginSlot(() => ({}));`,
+    name: "slot nested under a module's plugins/ directory",
+    filename: "/repo/frontend/src/metabase/querying/plugins/nested/slots.ts",
+    code: SLOT_EXPORT,
+  },
+  {
+    name: "slot in a plugins.ts under a Windows path",
+    filename: "C:\\repo\\frontend\\src\\metabase\\search\\plugins.ts",
+    code: SLOT_FROM_FACTORY,
+  },
+  // What is not a slot declaration.
+  {
+    name: "filling a slot",
     filename:
-      "enterprise/frontend/src/metabase-enterprise/sandboxes/plugins.ts",
-  },
-  // Filling a slot is not declaring one.
-  {
+      "/repo/enterprise/frontend/src/metabase-enterprise/audit_app/index.ts",
     code: `
       import { PLUGIN_AUDIT } from "metabase/plugins";
       Object.assign(PLUGIN_AUDIT, { isAiAuditingEnabled: true });
       PLUGIN_AUDIT.getAiAuditingRoutes = () => null;
     `,
-    filename: "enterprise/frontend/src/metabase-enterprise/audit_app/index.ts",
   },
-  // A barrel re-exporting a slot is not declaring one.
   {
+    name: "re-exporting a slot from a barrel",
+    filename: MODULE_INDEX,
     code: `export { PLUGIN_SEARCH } from "./plugins";`,
-    filename: "frontend/src/metabase/search/index.ts",
   },
   {
-    code: `
-      import { PLUGIN_SEARCH } from "./plugins";
-      export { PLUGIN_SEARCH };
-    `,
-    filename: "frontend/src/metabase/search/index.ts",
+    name: "a PLUGIN_* type",
+    filename: MODULE_FILE,
+    code: `export type PLUGIN_SEARCH = { isEnabled: () => boolean };`,
   },
-  // Other exports and imports are unaffected.
   {
+    name: "a PLUGIN_* const that is not exported",
+    filename: MODULE_FILE,
+    code: `const PLUGIN_LOCAL = {};`,
+  },
+  {
+    name: "exports whose name is not PLUGIN_*",
+    filename: MODULE_FILE,
     code: `
-      import { reinitialize } from "metabase/plugins";
       export const PLUGINS_LOADED = true;
       export const pluginConfig = {};
     `,
-    filename: "frontend/src/metabase/search/config.ts",
   },
   {
-    code: `const PLUGIN_LOCAL = {};`,
-    filename: "frontend/src/metabase/search/config.ts",
+    name: "other imports from metabase/plugins",
+    filename: MODULE_FILE,
+    code: `
+      import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
+      import type { PluginAudit } from "metabase/plugins";
+    `,
   },
 ];
 
 const INVALID_CASES = [
+  // A slot exported outside a plugins file.
   {
-    name: "PLUGIN_* export in a module file",
-    code: `export const PLUGIN_SEARCH = { isEnabled: () => false };`,
-    filename: "frontend/src/metabase/search/slots.ts",
-    errors: [error],
+    name: "slot exported from a module file",
+    filename: MODULE_FILE,
+    code: SLOT_EXPORT,
+    errors: [slotDeclaration],
   },
   {
-    name: "PLUGIN_* export in a module index",
-    code: `export const PLUGIN_SEARCH = { isEnabled: () => false };`,
-    filename: "frontend/src/metabase/search/index.ts",
-    errors: [error],
+    name: "slot exported from a module index",
+    filename: MODULE_INDEX,
+    code: SLOT_EXPORT,
+    errors: [slotDeclaration],
   },
   {
-    name: "PLUGIN_* export in an enterprise file",
-    code: `export const PLUGIN_SANDBOXES = {};`,
-    filename: "enterprise/frontend/src/metabase-enterprise/sandboxes/index.ts",
-    errors: [error],
-  },
-  {
-    name: "PLUGIN_* let export",
+    name: "slot exported with let",
+    filename: MODULE_FILE,
     code: `export let PLUGIN_SEARCH = {};`,
-    filename: "frontend/src/metabase/search/slots.ts",
-    errors: [error],
+    errors: [slotDeclaration],
   },
   {
-    name: "PLUGIN_* export with a type annotation",
+    name: "slot exported with a type annotation",
+    filename: MODULE_FILE,
     code: `export const PLUGIN_SEARCH: { isEnabled: () => boolean } = { isEnabled: () => false };`,
-    filename: "frontend/src/metabase/search/slots.ts",
-    errors: [error],
-  },
-  {
-    name: "definePluginSlot import in a module file",
-    code: `import { definePluginSlot } from "metabase/plugins";`,
-    filename: "frontend/src/metabase/search/slots.ts",
-    errors: [error],
-  },
-  {
-    name: "definePluginSlot import under an alias",
-    code: `import { definePluginSlot as defineSlot } from "metabase/plugins";`,
-    filename: "frontend/src/metabase/search/slots.ts",
-    errors: [error],
-  },
-  {
-    name: "import and export flagged individually",
-    code: `
-      import { definePluginSlot } from "metabase/plugins";
-      export const PLUGIN_SEARCH = definePluginSlot(() => ({}));
-    `,
-    filename: "frontend/src/metabase/search/slots.ts",
-    errors: [error, error],
+    errors: [slotDeclaration],
   },
   {
     name: "a plugin.ts file is not a plugins file",
-    code: `export const PLUGIN_EMBED_JS_EE = {};`,
-    filename: "frontend/src/metabase/embedding/plugin.ts",
-    errors: [error],
+    filename: "/repo/frontend/src/metabase/embedding/plugin.ts",
+    code: SLOT_EXPORT,
+    errors: [slotDeclaration],
   },
   {
-    name: "a plugins segment in the file name is not a plugins file",
-    code: `export const PLUGIN_SDK = {};`,
-    filename: "frontend/src/metabase/embedding/sdk-plugins.ts",
-    errors: [error],
+    name: "a file name that only contains plugins is not a plugins file",
+    filename: "/repo/frontend/src/metabase/embedding/sdk-plugins.ts",
+    code: SLOT_EXPORT,
+    errors: [slotDeclaration],
+  },
+  {
+    name: "a directory name that only starts with plugins is not a plugins directory",
+    filename: "/repo/frontend/src/metabase/embedding/pluginsx/slots.ts",
+    code: SLOT_EXPORT,
+    errors: [slotDeclaration],
+  },
+  // The slot factory reached outside a plugins file.
+  {
+    name: "definePluginSlot imported",
+    filename: MODULE_FILE,
+    code: `import { definePluginSlot } from "metabase/plugins";`,
+    errors: [slotFactory],
+  },
+  {
+    name: "definePluginSlot imported under an alias",
+    filename: MODULE_FILE,
+    code: `import { definePluginSlot as defineSlot } from "metabase/plugins";`,
+    errors: [slotFactory],
+  },
+  {
+    name: "definePluginSlot imported by string name",
+    filename: MODULE_FILE,
+    code: `import { "definePluginSlot" as defineSlot } from "metabase/plugins";`,
+    errors: [slotFactory],
+  },
+  {
+    name: "definePluginSlot reached through a namespace import",
+    filename: MODULE_FILE,
+    code: `
+      import * as plugins from "metabase/plugins";
+      const slot = plugins.definePluginSlot(() => ({}));
+    `,
+    errors: [slotFactory],
+  },
+  {
+    name: "import and export reported separately",
+    filename: MODULE_FILE,
+    code: SLOT_FROM_FACTORY,
+    errors: [slotFactory, slotDeclaration],
   },
 ];
 
