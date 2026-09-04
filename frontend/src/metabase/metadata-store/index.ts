@@ -3,6 +3,7 @@ export {
   getMetadata,
   getMetadataUnfiltered,
   getMetadataWithHiddenTables,
+  getRemappedFieldValue,
   getShallowDatabases,
   getShallowFields,
   getShallowSegments,

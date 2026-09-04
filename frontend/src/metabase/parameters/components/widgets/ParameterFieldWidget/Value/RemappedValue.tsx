@@ -3,13 +3,11 @@ import type { ReactNode } from "react";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
 import AutoLoadRemapped from "metabase/hoc/Remapped";
-import { getFieldRemappings } from "metabase/metadata-store";
+import { getRemappedFieldValue } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { formatValue } from "metabase/value-formatting";
 import type { ParameterField } from "metabase-lib/v1/parameters/types";
-import { getRemappings } from "metabase-lib/v1/queries/utils/field";
-import { isID, isNumeric } from "metabase-lib/v1/types/utils/isa";
-import type { FieldValue } from "metabase-types/api";
+import { isID } from "metabase-lib/v1/types/utils/isa";
 
 type RenderNormal = (opts: {
   value?: unknown;
@@ -114,36 +112,11 @@ export const FieldRemappedValue = (props: RemappedValueProps) => {
   );
 };
 
-/**
- * The label a field carries for `value`. It merges the field's own values with
- * the remappings the client accumulated as other widgets fetched values.
- */
 function useRemappedValue(column: ParameterField | undefined, value: unknown) {
-  const fieldId = typeof column?.id === "number" ? column.id : null;
-  const accumulatedRemappings = useSelector((state) =>
-    fieldId == null ? NO_REMAPPINGS : getFieldRemappings(state, fieldId),
+  return useSelector((state) =>
+    column == null ? undefined : getRemappedFieldValue(state, column, value),
   );
-
-  if (column == null) {
-    return undefined;
-  }
-
-  // parameter values arrive from the URL as strings
-  const key =
-    isNumeric(column) && typeof value !== "number"
-      ? parseFloat(String(value))
-      : value;
-
-  // a later entry wins, so the accumulated remappings override the field's
-  // own values
-  const labels = new Map<unknown, string | undefined>(
-    getRemappings({ ...column, remappings: accumulatedRemappings }),
-  );
-
-  return labels.get(key);
 }
-
-const NO_REMAPPINGS: FieldValue[] = [];
 
 const RemappedValue = ({ autoLoad = true, ...props }: RemappedValueProps) =>
   autoLoad && !props.displayValue ? (
