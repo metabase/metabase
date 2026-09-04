@@ -37,7 +37,7 @@ import {
   Popover,
   Tooltip,
 } from "metabase/ui";
-import { getTimelineEventSettings } from "metabase/viz-core";
+import { showTimelines } from "metabase/visualizations/lib/timeline-events-visibility";
 import type {
   DocumentContent,
   ExplorationId,
@@ -178,13 +178,7 @@ export function ActionToolbar({
     async (chart: ExplorationChartForDocumentEmbed) => {
       const timelineSettings =
         selectedTimelineId != null
-          ? getTimelineEventSettings(
-              availableTimelines,
-              (
-                availableTimelines.find((t) => t.id === selectedTimelineId)
-                  ?.events ?? []
-              ).map((event) => event.id),
-            )
+          ? showTimelines({}, [selectedTimelineId], availableTimelines)
           : {};
       const { data: document, error } = await appendChartToSummary({
         explorationId,
