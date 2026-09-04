@@ -78,7 +78,9 @@
         ;; any resource that is named as a cache-busting hex string (e.g. images)
         (re-matches #"^/app/dist/[a-f0-9]+.*$" uri)
         ;; font files are static and should be cached
-        (re-matches #"^/app/fonts/.+\.(woff2?|ttf|otf|eot)$" uri))))
+        (re-matches #"^/app/fonts/.+\.(woff2?|ttf|otf|eot)$" uri)
+        ;; locale catalogues carry a content hash in their name, the same as the files above
+        (re-matches #"^/app/locales/.+\.[a-f0-9]+\.json$" uri))))
 
 (def https-state
   "Whether the original request reached us over HTTPS: `:https`, `:http`, or `:unknown`. Require `:https` to skip a

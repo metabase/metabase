@@ -3,6 +3,7 @@ import {
   type LocaleDataWithLanguage,
   setLocalization,
 } from "metabase/utils/i18n";
+import { localeCatalogUrl } from "metabase/utils/locale-catalog";
 
 // note this won't refresh strings that are evaluated at load time
 export async function loadLocalization(
@@ -17,8 +18,8 @@ export async function loadLocalization(
         // which will make the browser do the pre-flight request on the SDK.
         // The backend doesn't seem to support pre-flight request on the static assets, but even
         // if it supported them it's more performant to skip the pre-flight request
-        await fetch(`${getBasename()}/app/locales/${locale}.json`).then(
-          (response) => response.json(),
+        await fetch(localeCatalogUrl(getBasename(), locale)).then((response) =>
+          response.json(),
         )
       : // We don't serve en.json. Instead, use this object to fall back to the literals.
         {

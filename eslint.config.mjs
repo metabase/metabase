@@ -1189,6 +1189,7 @@ const configs = [
       "*.config.mjs",
       "rspack.*.js",
       "bin/**/*.js",
+      "bin/**/*.mjs",
       ".github/scripts/**/*.js",
       ".github/scripts/**/*.mjs",
     ],

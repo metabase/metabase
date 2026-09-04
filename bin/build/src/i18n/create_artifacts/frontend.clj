@@ -8,8 +8,9 @@
    [i18n.common :as i18n]
    [metabuild-common.core :as u])
   (:import
-   (java.io FileOutputStream OutputStreamWriter)
-   (java.nio.charset StandardCharsets)))
+   (java.io ByteArrayOutputStream OutputStreamWriter)
+   (java.nio.charset StandardCharsets)
+   (java.security MessageDigest)))
 
 (set! *warn-on-reflection* true)
 
@@ -64,8 +65,22 @@
   "Target directory for frontend i18n resources."
   (u/filename u/project-root-directory "resources" "frontend_client" "app" "locales"))
 
-(defn- target-filename [locale]
-  (u/filename target-directory (format "%s.json" (str/replace locale #"-" "_"))))
+(defn locale-key
+  "The name a locale is filed under, with dashes normalised the way the server normalises them."
+  [locale]
+  (str/replace locale #"-" "_"))
+
+(defn- content-hash
+  "First 10 hex characters of the SHA-256 of `bytes`. Long enough that a collision is not a
+  practical concern, short enough to keep the filename readable."
+  ^String [^bytes bytes]
+  (->> (.digest (MessageDigest/getInstance "SHA-256") bytes)
+       (take 5)
+       (map #(format "%02x" %))
+       (apply str)))
+
+(defn- target-filename [locale content]
+  (u/filename target-directory (format "%s.%s.json" (locale-key locale) (content-hash content))))
 
 (defn create-artifact-for-locale!
   "Create an artifact with translated strings for `locale` for frontend (JS) usage.
@@ -75,14 +90,24 @@
 
   `po-contents` is the parsed + autofixed `.po` content from
   `(i18n.autofix/autofix-po-contents (i18n.common/po-contents locale))`. Passed by the caller
-  rather than re-parsed here so scanner and writer stay in sync."
+  rather than re-parsed here so scanner and writer stay in sync.
+
+  Returns the artifact's file name, for the manifest that maps a locale to it.
+
+  The name carries a hash of the contents so the file can be served with far-future cache
+  headers. The server resolves a locale through the manifest rather than by building the name,
+  since it cannot know the hash."
   [locale drop-msgids po-contents]
-  (let [target-file (target-filename locale)]
+  (let [content     (with-open [os (ByteArrayOutputStream.)
+                                w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
+                      (json/generate-stream (->i18n-map po-contents drop-msgids) w)
+                      (.flush w)
+                      (.toByteArray os))
+        target-file (target-filename locale content)]
     (u/step (format "Create frontend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
       (u/create-directory-unless-exists! target-directory)
       (u/delete-file-if-exists! target-file)
       (u/step "Write JSON"
-        (with-open [os (FileOutputStream. (io/file target-file))
-                    w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
-          (json/generate-stream (->i18n-map po-contents drop-msgids) w)))
-      (u/assert-file-exists target-file))))
+        (io/copy content (io/file target-file)))
+      (u/assert-file-exists target-file))
+    (.getName (io/file target-file))))

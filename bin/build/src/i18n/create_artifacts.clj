@@ -1,5 +1,8 @@
 (ns i18n.create-artifacts
   (:require
+   ;; build tooling never loads app namespaces, so the metabase.util.json facade isn't usable here
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [cheshire.core :as json]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
@@ -42,18 +45,21 @@
 (defn- create-artifacts-for-locale!
   "Generate frontend + backend artifacts for one `locale`. Parses the `.po` once, runs the autofix
   pass, then threads the cleaned contents through the scanner and both builders. Returns the
-  violations the scanner flagged (post-autofix) for the aggregate report."
+  violations the scanner flagged (post-autofix) for the aggregate report, along with the
+  frontend artifact's name for the manifest."
   [locale]
   (u/step (format "Create artifacts for locale %s" (pr-str locale))
     (let [po-contents (i18n.autofix/autofix-po-contents (i18n/po-contents locale))
           violations  (i18n.validation/invalid-messages-in-po locale po-contents)
           drop-msgids (msgids-to-drop violations)]
-      (frontend/create-artifact-for-locale! locale drop-msgids po-contents)
-      (backend/create-artifact-for-locale! locale drop-msgids po-contents)
-      (when (seq drop-msgids)
-        (u/announce "Filtered %d invalid translations from %s" (count drop-msgids) locale))
-      (u/announce "Artifacts for locale %s created successfully." (pr-str locale))
-      violations)))
+      (let [filename (frontend/create-artifact-for-locale! locale drop-msgids po-contents)]
+        (backend/create-artifact-for-locale! locale drop-msgids po-contents)
+        (when (seq drop-msgids)
+          (u/announce "Filtered %d invalid translations from %s" (count drop-msgids) locale))
+        (u/announce "Artifacts for locale %s created successfully." (pr-str locale))
+        {:violations violations
+         :locale-key (frontend/locale-key locale)
+         :filename   filename}))))
 
 (def ^:private violations-report-directory
   (u/filename u/project-root-directory "target"))
@@ -93,14 +99,40 @@
         (doseq [t [:invalid-message-format :skipped-arg-index :arg-count-mismatch]]
           (u/announce "  %s: %d" (name t) (get by-type t 0)))))))
 
+(def ^:private frontend-manifest-filename
+  (u/filename frontend/target-directory "manifest.json"))
+
+(defn- write-frontend-manifest!
+  "Record which file holds each locale's catalogue.
+
+  The names carry a content hash, so the server cannot build one. It reads this instead."
+  [locale->filename]
+  (u/step (format "Write %s" frontend-manifest-filename)
+    (spit frontend-manifest-filename (json/generate-string (into (sorted-map) locale->filename)))
+    (u/assert-file-exists frontend-manifest-filename)))
+
+(defn- compress-frontend-artifacts!
+  "Write `.gz` and `.br` siblings, the same as every asset rspack emits.
+
+  `precompressed-resources` serves those in preference to the raw file, so a catalogue only
+  compresses once per build rather than once per request."
+  [filenames]
+  (u/step "Compress frontend i18n artifacts"
+    (apply u/sh {:dir u/project-root-directory}
+           "node" "bin/compress-assets.mjs"
+           (map #(u/filename frontend/target-directory %) filenames))))
+
 (defn- create-artifacts-for-all-locales! []
   ;; Empty directory in case some locales were removed
   (u/delete-file-if-exists! backend/target-directory)
   (u/delete-file-if-exists! frontend/target-directory)
-  (let [per-locale-violations (doall (pmap create-artifacts-for-locale! (i18n/locales)))
-        all-violations        (->> per-locale-violations
+  (let [results               (doall (pmap create-artifacts-for-locale! (i18n/locales)))
+        all-violations        (->> (map :violations results)
                                    (apply concat)
-                                   (sort-by (juxt :locale (comp str :types) :msgid :plural-index)))]
+                                   (sort-by (juxt :locale (comp str :types) :msgid :plural-index)))
+        locale->filename      (into {} (map (juxt :locale-key :filename)) results)]
+    (write-frontend-manifest! locale->filename)
+    (compress-frontend-artifacts! (cons "manifest.json" (vals locale->filename)))
     (write-violations-report! all-violations)))
 
 (defn create-all-artifacts!

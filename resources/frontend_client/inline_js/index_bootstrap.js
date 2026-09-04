@@ -4,6 +4,7 @@
   window.MetabaseSiteLocalization = JSON.parse(document.getElementById("_metabaseSiteLocalization").textContent);
   window.MetabaseUserColorScheme = JSON.parse(document.getElementById("_metabaseUserColorScheme").textContent);
   window.MetabaseNonce            = JSON.parse(document.getElementById("_metabaseNonce").textContent);
+  window.MetabaseLocaleManifest   = JSON.parse(document.getElementById("_metabaseLocaleManifest").textContent);
 
   var configuredRoot = document.head.querySelector("meta[name='base-href']").content;
   var actualRoot = "/";

@@ -11,6 +11,7 @@ interface MetabaseLocalization {
 
 interface Window {
   MetabaseBootstrap: any;
+  MetabaseLocaleManifest?: Record<string, string>;
   MetabaseRoot?: string;
   /**
    * @deprecated - use getCspNonce() from metabase/utils/csp instead

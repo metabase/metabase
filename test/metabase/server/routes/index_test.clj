@@ -6,11 +6,41 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]))
 
-(deftest ^:parallel localization-json-file-name-test
-  (is (= "frontend_client/app/locales/es.json"
-         (#'index/localization-json-file-name "es")))
-  (is (= "frontend_client/app/locales/es_MX.json"
-         (#'index/localization-json-file-name "es-MX"))))
+(defn- with-manifest
+  "Runs `f` with the locales manifest replaced. `locales-manifest` is private, so this redefines
+  the var rather than the symbol.
+
+  Both cases are pinned explicitly, because whether a manifest exists on the classpath depends on
+  whether the translations build step has run in this tree."
+  [manifest f]
+  (with-redefs-fn {#'index/locales-manifest (constantly manifest)} f))
+
+;; not ^:parallel: redefines a var
+(deftest localization-json-file-name-test
+  (testing "with no manifest, a locale resolves to its plain name"
+    (with-manifest nil
+      (fn []
+        (is (= "frontend_client/app/locales/es.json"
+               (#'index/localization-json-file-name "es")))
+        (is (= "frontend_client/app/locales/es_MX.json"
+               (#'index/localization-json-file-name "es-MX")))))))
+
+;; not ^:parallel: redefines a var
+(deftest localization-json-file-name-manifest-test
+  (testing "a built tree resolves through the manifest, since the name carries a content hash"
+    (with-manifest {"es"    "es.0123456789.json"
+                    "es_MX" "es_MX.abcdef0123.json"}
+      (fn []
+        (is (= "frontend_client/app/locales/es.0123456789.json"
+               (#'index/localization-json-file-name "es")))
+        (is (= "frontend_client/app/locales/es_MX.abcdef0123.json"
+               (#'index/localization-json-file-name "es-MX"))))))
+
+  (testing "a locale the manifest does not list falls back to the plain name"
+    (with-manifest {"es" "es.0123456789.json"}
+      (fn []
+        (is (= "frontend_client/app/locales/de.json"
+               (#'index/localization-json-file-name "de")))))))
 
 (deftest ^:parallel load-localization-test
   (testing "make sure `load-localization` is correctly loading i18n files (#9938)"

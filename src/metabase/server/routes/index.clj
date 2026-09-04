@@ -43,8 +43,26 @@
     {"" {"Metabase" {"msgid"  "Metabase"
                      "msgstr" ["Metabase"]}}}}))
 
+(defn- read-locales-manifest []
+  (some-> (io/resource "frontend_client/app/locales/manifest.json")
+          slurp
+          json/decode))
+
+(def ^:private ^{:arglists '([])} locales-manifest
+  "Maps a locale to the file holding its catalogue.
+
+  The build writes a content hash into each name so the file can be served with far-future cache
+  headers, which means the name cannot be derived from the locale. Reading it per request in dev
+  keeps a rebuild visible without a restart."
+  (cond-> read-locales-manifest
+    (not config/is-dev?) memoize/memo))
+
 (defn- localization-json-file-name [locale-string]
-  (format "frontend_client/app/locales/%s.json" (str/replace locale-string \- \_)))
+  (let [locale-key (str/replace locale-string \- \_)]
+    ;; A tree built before the manifest existed, or a dev tree with no built locales, still
+    ;; resolves by the plain name.
+    (when-let [filename (get (locales-manifest) locale-key (str locale-key ".json"))]
+      (str "frontend_client/app/locales/" filename))))
 
 (defn- load-localization* [locale-string]
   (or
@@ -89,6 +107,7 @@
      :assetOnErrorJS         (load-inline-js "asset_loading_error")
      :userLocalizationJSON   (escape-script (load-localization (when should-load-locale-params? (:locale params))))
      :siteLocalizationJSON   (escape-script (load-localization (system/site-locale)))
+     :localeManifestJSON     (escape-script (json/encode (locales-manifest)))
      :nonceJSON              (escape-script (json/encode nonce))
      :language               (hiccup.util/escape-html (or (i18n/user-locale-string) (system/site-locale)))
      :userColorScheme        (escape-script (json/encode (users-settings/color-scheme)))
