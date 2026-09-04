@@ -30,9 +30,10 @@
   "Lightweight non-archived `(id, name)` rows for one entity type, for name clustering. card/dashboard/document
   (`::collection-item`) filter on their `archived` column, keep only rows in eligible containers
   (`common/eligible-container-clause`), and add any `common/candidate-cols` (card carries `:card_schema`,
-  required by its after-select hook); transform has no `archived` column (hard-deleted), so every row
-  counts; collection narrows to the shared collection-subject set. Scan-time and instance-wide -
-  deliberately un-permissioned, unlike the serve layer's `read-entity-rows`."
+  required by its after-select hook); cards also drop the ones a document owns; transform has no
+  `archived` column (hard-deleted), so every row counts; collection narrows to the shared
+  collection-subject set. Scan-time and instance-wide - deliberately un-permissioned, unlike the serve
+  layer's `read-entity-rows`."
   {:arglists '([entity-type])}
   identity
   :hierarchy #'common/hierarchy)
@@ -43,6 +44,10 @@
   (t2/select (into [(common/entity-type->model entity-type) :id :name] (common/candidate-cols entity-type))
              {:where [:and
                       [:= :archived false]
+                      ;; peers come from this row set, so a document-owned card has to go before
+                      ;; clustering, not just from the emitted findings
+                      ;; (`common/remove-document-internal-card-findings`)
+                      (when (= entity-type :card) [:= :document_id nil])
                       (common/eligible-container-clause :collection_id)]}))
 
 (defmethod candidate-rows :transform

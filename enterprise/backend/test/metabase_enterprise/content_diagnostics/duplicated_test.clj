@@ -188,6 +188,35 @@
                   (is (= [trio-b] (get-in f [:details :duplicate_entity_ids])))
                   (is (nil? (by-entity [:card trio-archived]))))))))))))
 
+(deftest duplicated-checker-excludes-document-internal-cards-test
+  (testing "a card a document owns neither clusters nor leaves a peer behind on the card it copies"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (let [prefix (scope-prefix)]
+          (mt/with-temp
+            [:model/Collection {coll-id :id} {}
+             :model/Document {doc-id :id} {:collection_id coll-id :name (str prefix " Notes")}
+             ;; embedding clones the card under the same name - the pair must not be a cluster
+             :model/Card {pair-live :id} {:collection_id coll-id :name (str prefix " Pair")}
+             :model/Card {pair-owned :id} {:collection_id coll-id :name (str prefix " Pair")
+                                           :document_id   doc-id}
+             ;; a genuine twin still clusters - and the copy stays out of its peer set
+             :model/Card {trio-a :id}     {:collection_id coll-id :name (str prefix " Trio")}
+             :model/Card {trio-b :id}     {:collection_id coll-id :name (str prefix " Trio")}
+             :model/Card {trio-owned :id} {:collection_id coll-id :name (str prefix " Trio")
+                                           :document_id   doc-id}]
+            (let [by-entity (duplicated-findings-by-entity!)]
+              (testing "the copy is never flagged itself"
+                (is (nil? (by-entity [:card pair-owned])))
+                (is (nil? (by-entity [:card trio-owned]))))
+              (testing "a card whose only name-twin is a document's copy is not flagged"
+                (is (nil? (by-entity [:card pair-live]))))
+              (testing "the copy drops out of a surviving cluster's peer set"
+                (let [f (by-entity [:card trio-a])]
+                  (is (some? f))
+                  (is (= 1 (:duplicate_count f)))
+                  (is (= [trio-b] (get-in f [:details :duplicate_entity_ids]))))))))))))
+
 (deftest duplicated-checker-skips-blank-names-test
   (testing "whitespace-only names - including Unicode whitespace and zero-width invisibles - never cluster; unknown is not duplicate"
     (mt/with-premium-features #{:content-diagnostics}

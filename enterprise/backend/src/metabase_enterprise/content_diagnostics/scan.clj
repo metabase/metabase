@@ -47,11 +47,13 @@
 (defn detect
   "Run every checker instance-wide and return a de-duplicated vector of finding maps. De-dupes on
   (entity-type, entity-id, finding-type): a checker or the stale query's one-to-many joins can emit
-  the same finding twice, and no intra-scan duplicate may reach the DB."
+  the same finding twice, and no intra-scan duplicate may reach the DB. Also drops findings on
+  document-owned cards, so every checker gets that rule for free."
   []
-  (into []
-        (m/distinct-by (juxt :entity-type :entity-id :finding-type))
-        (mapcat (fn [checker] ((:run checker))) checkers)))
+  (common/remove-document-internal-card-findings
+   (into []
+         (m/distinct-by (juxt :entity-type :entity-id :finding-type))
+         (mapcat (fn [checker] ((:run checker))) checkers))))
 
 ;;; ----------------------------------------------- scan ------------------------------------------------
 

@@ -146,6 +146,27 @@
     :transform  collection/transforms-ns
     nil))
 
+(defn remove-document-internal-card-findings
+  "Drop findings whose subject is a card a document owns (`report_card.document_id` non-NULL): the copy an
+  embed makes, a card authored inside the document, a card an exploration Summary materializes. The
+  platform already keeps these out of collection items and out of card search; findings follow suit.
+
+  Only the subject is dropped, never `details` - a document's `slow` finding names these same cards in
+  `slow_entity_ids`, so a wider filter would empty every document roll-up.
+
+  `duplicated` excludes them from its candidate rows too: peers come from that row set, so a copy dropped
+  only here leaves the card it copies flagged against a peer no one can see."
+  [findings]
+  (let [card-ids       (into #{} (keep #(when (= (:entity-type %) :card) (:entity-id %))) findings)
+        ;; projected to :id - a bare `:model/Card` select would fetch every column and run the card
+        ;; after-select (schema upgrade, metric query descriptions) over rows we only want ids from
+        document-owned (if (seq card-ids)
+                         (t2/select-pks-set [:model/Card :id] {:where [:and
+                                                                       [:in :id card-ids]
+                                                                       [:not= :document_id nil]]})
+                         #{})]
+    (into [] (remove #(and (= (:entity-type %) :card) (contains? document-owned (:entity-id %)))) findings)))
+
 (defn attach-entity-attrs
   "Stamp each finding with the denormalized display/sort/filter columns - `:entity-name`,
   `:entity-created-at`, `:entity-creator-id`, `:entity-creator-name`, `:entity-kind`,
