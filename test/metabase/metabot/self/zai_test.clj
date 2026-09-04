@@ -88,8 +88,19 @@
            (:thinking (zai/zai-request-body {:input       [{:role :user :content "hi"}]
                                              :tools       [(metabot.tu/get-time-tool)]
                                              :tool_choice "required"})))))
-  (testing "non-whitelisted models get no directive; the server default rules"
-    (is (not (contains? (zai/zai-request-body {:model "glm-4.7"
+  (testing "non-whitelisted models get an explicit disable — glm-4.7 thinks compulsorily by default,
+           and the xf forwards reasoning unconditionally (disable accepted, probed 2026-09-03)"
+    (are [opts] (= {:type "disabled"}
+                   (:thinking (zai/zai-request-body
+                               (assoc opts :model "glm-4.7" :input [{:role :user :content "hi"}]))))
+      {}
+      {:schema {:type "object"}}))
+  (testing "pre-4.5 models tolerate the disable (probed 2026-09-03) and do not think anyway"
+    (is (= {:type "disabled"}
+           (:thinking (zai/zai-request-body {:model "glm-4-32b-0414-128k"
+                                             :input [{:role :user :content "hi"}]})))))
+  (testing "thinking-only models reject the disable (error 1210) and get no directive at all"
+    (is (not (contains? (zai/zai-request-body {:model "glm-5.3"
                                                :input [{:role :user :content "hi"}]})
                         :thinking)))))
 
@@ -107,11 +118,11 @@
         (is (= {:type "enabled"}
                (:thinking (zai/zai-request-body {:model model
                                                  :input [{:role :user :content "hi"}]})))))))
-  (testing "a non-whitelisted model gates false and gets no thinking directive"
+  (testing "a non-whitelisted model gates false and its thinking is explicitly disabled"
     (is (false? (zai/reasoning-model? "glm-4.7")))
-    (is (not (contains? (zai/zai-request-body {:model "glm-4.7"
-                                               :input [{:role :user :content "hi"}]})
-                        :thinking)))))
+    (is (= {:type "disabled"}
+           (:thinking (zai/zai-request-body {:model "glm-4.7"
+                                             :input [{:role :user :content "hi"}]}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests

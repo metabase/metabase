@@ -236,6 +236,20 @@
              :temperature 0.3}
             (body-for {:model "z-ai/glm-5.2" :temperature 0.3})))))
 
+(deftest ^:parallel mandatory-reasoning-forced-tool-call-floor-test
+  (testing "a forced tool call on a mandatory-reasoning model gets its max_tokens cap floored"
+    ;; safety net — its reasoning cannot be disabled and bills against the same budget as the
+    ;; tool call; theory vs practice in openrouter/forced-tool-call-token-floor
+    (are [expected opts] (= expected (:max_tokens (body-for (assoc opts :model "qwen/qwen3.8-max"))))
+      2048 {:schema {:type "object"} :max-tokens 512}
+      4096 {:schema {:type "object"} :max-tokens 4096}
+      nil  {:schema {:type "object"}}
+      512  {:max-tokens 512}))
+  (testing "a non-mandatory model keeps its cap — it got the disable instead"
+    (let [body (body-for {:model "anthropic/claude-sonnet-4.6" :schema {:type "object"} :max-tokens 512})]
+      (is (= 512 (:max_tokens body)))
+      (is (= {:enabled false} (:reasoning body))))))
+
 (deftest ^:parallel reasoning-class-partition-test
   (testing "every whitelisted model is deliberately classified, and the class drives the body"
     (let [renderable         #{"anthropic/claude-fable-5" "anthropic/claude-opus-5" "anthropic/claude-opus-4.8"

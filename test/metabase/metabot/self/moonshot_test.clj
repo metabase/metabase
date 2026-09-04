@@ -112,17 +112,22 @@
       nil   {:model "kimi-k2.6" :input [{:role :user :content "hi"}]
              :schema {:type "object" :properties {:title {:type "string"}}}})))
 
-(deftest ^:parallel request-body-schema-floors-max-tokens-test
-  (testing "a structured call on a thinking-only model gets its max_tokens cap floored"
+(deftest ^:parallel request-body-forced-tool-call-floors-max-tokens-test
+  (testing "a forced tool call on a thinking-only model gets its max_tokens cap floored"
     ;; k3 bills thinking and the forced tool call against one budget — a small cap risks a `length`
-    ;; finish before the tool call is emitted (the conversation-title path sends 512).
+    ;; finish before the tool call is emitted (the conversation-title path sends 512). Both forcing
+    ;; shapes count: a schema and a plain tool_choice "required".
     (let [schema {:type "object" :properties {:title {:type "string"}}}]
       (are [expected opts] (= expected (:max_tokens (moonshot/moonshot-request-body opts)))
         2048 {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema :max-tokens 512}
+        2048 {:model "kimi-k3" :input [{:role :user :content "hi"}] :max-tokens 512
+              :tools [(metabot.tu/get-time-tool)] :tool_choice "required"}
         4096 {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema :max-tokens 4096}
         nil  {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema}
         512  {:model "kimi-k3" :input [{:role :user :content "hi"}] :max-tokens 512}
-        512  {:model "kimi-k2.6" :input [{:role :user :content "hi"}] :schema schema :max-tokens 512}))))
+        512  {:model "kimi-k2.6" :input [{:role :user :content "hi"}] :schema schema :max-tokens 512}
+        512  {:model "kimi-k2.6" :input [{:role :user :content "hi"}] :max-tokens 512
+              :tools [(metabot.tu/get-time-tool)] :tool_choice "required"}))))
 
 (deftest ^:parallel request-body-replays-reasoning-test
   (let [reasoning-round [{:role :user :content "q"}

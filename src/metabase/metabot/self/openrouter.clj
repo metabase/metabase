@@ -115,9 +115,10 @@
   (contains? #{:renderable :renderable-default} (reasoning-class model)))
 
 (defn- reasoning-mandatory?
-  "Whether OpenRouter rejects `reasoning {:enabled false}` for `model` with a 400
-  (probed live; the catalog's `mandatory` flag documents the same restriction:
-  https://openrouter.ai/docs/use-cases/reasoning-tokens)."
+  "Whether OpenRouter rejects `reasoning {:enabled false}` for `model` with a 400.
+
+  Probed live; the catalog's `mandatory` flag documents the same restriction:
+  https://openrouter.ai/docs/use-cases/reasoning-tokens."
   [model]
   (boolean (get-in supported-models [(str model) :reasoning-mandatory?])))
 
@@ -174,7 +175,9 @@
   OpenRouter streams the generic Chat Completions dialect; see
   [[chat-completions/chat-completions->aisdk-chunks-xf]]. Reasoning arrives as a flat
   `delta.reasoning` string (verified identical to the concatenation of the structured
-  `reasoning_details` text blocks) and is forwarded as reasoning chunks. Display-only: the
+  `reasoning_details` text blocks) and is forwarded as reasoning chunks. A delta carrying both
+  `reasoning` and non-empty `content` would drop its reasoning — the shared xf classifies
+  content first; accepted, unprobed risk, no such chunk observed. Display-only: the
   structured `reasoning_details` (signatures included) are not captured, so tool rounds
   re-derive their reasoning rather than continuing it — extending that would touch both this
   xf and the dialect-level replay; see the \"Preserving Reasoning\" section of
@@ -226,6 +229,18 @@
   (cond-> req
     (= "required" (:tool_choice req)) (assoc :tool_choice "auto")))
 
+(def ^:private forced-tool-call-token-floor
+  "Smallest `max_tokens` a forced tool call on a mandatory-reasoning model may be capped at.
+
+  A safety net: in theory the un-disableable reasoning bills against the same `max_tokens` budget as the tool call
+  (\"max_tokens must be strictly higher than the reasoning budget\" —
+  https://openrouter.ai/docs/use-cases/reasoning-tokens), so a small caller cap (the conversation-title path sends
+  512) could hit `length` before the mandatory tool call is emitted. In practice this has not been observed: probed
+  2026-09-03, qwen3.8-max reasons only ~150 tokens on title-shaped structured calls and fits the 512 cap, and
+  claude-fable-5 emits zero reasoning under a forced tool choice. The floor guards against a model update or a
+  longer-thinking mandatory model changing that. Matches vLLM's probe-proven floor."
+  2048)
+
 (defn- with-reasoning-directive
   "Add OpenRouter's unified `reasoning` directive to a built request `body`.
 
@@ -233,7 +248,8 @@
   output and forced tool calls — probed live: forced tool choice yields zero reasoning tokens on
   Anthropic upstreams even when enabled, so the disable mirrors what actually happens
   (https://openrouter.ai/docs/use-cases/reasoning-tokens). Mandatory-reasoning models reject the
-  disable with a 400 and get no directive instead. `:renderable-default` models (the gpt-5.5/5.6
+  disable with a 400 and get no directive instead — their forced tool calls get a `max_tokens`
+  floor (see [[forced-tool-call-token-floor]]). `:renderable-default` models (the gpt-5.5/5.6
   family) never get one either way — they stream summaries under the server default, and an
   explicit enable verifiably suppresses gpt-5.6's reasoning entirely. Other models never get
   one: the server default rules, and the gate answers false. Reads the body's own `:tool_choice`
@@ -249,7 +265,13 @@
                                        ;; and opus-4.6 keep :temperature past
                                        ;; [[model-supports-temperature?]], so drop it here
                                        (anthropic-model? model) (dissoc :temperature))
-        (reasoning-mandatory? model) body
+        ;; Safety net: the mandatory tool call must survive the un-disableable thinking spend
+        ;; (theory vs practice in [[forced-tool-call-token-floor]]); only an existing cap is
+        ;; raised, and only where a tool call is actually forced.
+        (reasoning-mandatory? model) (cond-> body
+                                       (and (or (some? schema) (= "required" (:tool_choice body)))
+                                            (:max_tokens body))
+                                       (update :max_tokens max forced-tool-call-token-floor))
         :else                        (assoc body :reasoning {:enabled false})))))
 
 (mu/defn openrouter-request-body

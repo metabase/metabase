@@ -204,10 +204,14 @@
   (are [model expected] (= expected (azure/reasoning-model? model))
     "anthropic/claude-opus-5"     true
     "anthropic/claude-opus-4-8"   true
+    ;; dotted display-name spelling parses the same — deployment names are admin free text
+    "anthropic/claude-opus-4.8"   true
+    "anthropic/claude-sonnet-4.6" true
     "anthropic/claude-opus-4-6"   true
     "anthropic/claude-sonnet-4-6" true
     "anthropic/claude-fable-5"    true
     "anthropic/claude-opus-4-5"   false
+    "anthropic/claude-opus-4.5"   false
     "anthropic/claude-haiku-4-5"  false
     "anthropic/claude-sonnet-4-5" false
     "anthropic/Claude-Opus-5"     true

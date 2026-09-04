@@ -347,6 +347,32 @@
                    {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}
                    {:choices [] :usage {:prompt_tokens 138 :completion_tokens 36}}])))))
 
+(deftest ^:parallel chunks-xf-combined-reasoning-and-tool-call-delta-test
+  (testing "a delta carrying both reasoning and a tool call keeps the tool call"
+    ;; The tool call's opening chunk is the only one carrying its id and name — classifying the
+    ;; delta as :reasoning would lose the call entirely and break the tool loop. The delta's
+    ;; reasoning fragment is dropped instead: display text, recoverable.
+    (is (= [{:type :start :messageId "chatcmpl-9"}
+            {:type :tool-input-start :toolCallId "call-1" :toolName "get_weather"}
+            {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{\"city\""}
+            {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta ": \"Berlin\"}"}
+            {:type :tool-input-available :toolCallId "call-1" :toolName "get_weather"}]
+           (into [] (chat-completions/chat-completions->aisdk-chunks-xf
+                     chat-completions/stop-reasons
+                     {:forward-reasoning? true})
+                 [{:id      "chatcmpl-9"
+                   :model   "m"
+                   :choices [{:index 0
+                              :delta {:reasoning_content "planning"
+                                      :tool_calls        [{:index    0
+                                                           :id       "call-1"
+                                                           :type     "function"
+                                                           :function {:name      "get_weather"
+                                                                      :arguments "{\"city\""}}]}}]}
+                  {:choices [{:index 0 :delta {:tool_calls [{:index    0
+                                                             :function {:arguments ": \"Berlin\"}"}}]}}]}
+                  {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}])))))
+
 (deftest ^:parallel chunks-xf-reasoning-deltas-open-no-text-block-test
   (testing "reasoning_content deltas and empty-string content produce no chunks"
     ;; Without `:forward-reasoning?` reasoning deltas are dropped rather than surfaced as text.

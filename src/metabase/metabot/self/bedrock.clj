@@ -241,6 +241,7 @@
 
 (defn reasoning-model?
   "Whether `model` streams renderable reasoning back to us.
+
   False (rather than [[model->family]]'s throw) outside the supported families:
   the settings capability gate asks about whatever model is selected."
   [model]

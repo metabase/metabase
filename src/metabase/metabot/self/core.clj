@@ -296,6 +296,27 @@
   []
   (aisdk-xf {:stream-text? true}))
 
+(defn merge-reasoning-parts
+  "Joins consecutive same-id :reasoning parts into one, carrying the block's provider metadata.
+
+  A reasoning block streams as many small parts plus a possible empty-text metadata carrier;
+  every replay channel needs the block back as ONE part — replaying one fragment apiece costs
+  wrapper tokens (~3 prompt tokens each, measured on Mistral 2026-09-01) and would split a
+  signed Anthropic thinking block from its signature. Non-reasoning parts pass through
+  untouched, in order."
+  [parts]
+  (into []
+        (comp (partition-by (fn [p] (if (= :reasoning (:type p)) [:reasoning (:id p)] :other)))
+              (mapcat (fn [group]
+                        (if (= :reasoning (:type (first group)))
+                          (let [metadata (some :provider-metadata group)]
+                            [(cond-> {:type :reasoning
+                                      :id   (:id (first group))
+                                      :text (apply str (map :text group))}
+                               metadata (assoc :provider-metadata metadata))])
+                          group))))
+        parts))
+
 (defn stamp-tool-titles-xf
   "Stamp a client-facing `:title` onto `:tool-input` parts via each tool's
   optional `:title-fn`. Stringified JSON is coerced and the tool's `:decode` is
