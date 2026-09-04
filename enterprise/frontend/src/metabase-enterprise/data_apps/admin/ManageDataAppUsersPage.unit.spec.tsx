@@ -35,24 +35,28 @@ const setup = ({
     ...createMockGroup({ id: 9, name: "Data App: sales" }),
     members,
   };
+
   const candidate = createMockUser({
     id: 2,
     first_name: "Pending",
     last_name: "User",
     email: "pending@example.com",
   });
+
   const deactivatedCandidate = createMockUser({
     id: 3,
     first_name: "Deactivated",
     last_name: "User",
     is_active: false,
   });
+
   const anotherCandidate = createMockUser({
     id: 5,
     first_name: "Another",
     last_name: "User",
     email: "another.user@example.com",
   });
+
   const tenantCandidate = createMockUser({
     id: 4,
     first_name: "Tenant",
@@ -129,6 +133,7 @@ describe("ManageDataAppUsersPage", () => {
     expect(
       within(emptyState).getByText("No one has access yet"),
     ).toBeInTheDocument();
+
     expect(
       within(emptyState).getByTestId("data-app-users-empty-state-icon"),
     ).toBeVisible();
@@ -140,7 +145,9 @@ describe("ManageDataAppUsersPage", () => {
     expect(
       await screen.findByText("Manage access to this app"),
     ).toBeInTheDocument();
+
     const rowActions = await screen.findByTestId("data-app-user-actions");
+
     const warningButton = await within(rowActions).findByRole("button", {
       name: "Missing data access",
     });
@@ -160,21 +167,38 @@ describe("ManageDataAppUsersPage", () => {
     ).toBeInTheDocument();
     const missingTables = screen.getByTestId("missing-tables-list");
 
-    expect(
-      within(missingTables).getByRole("link", { name: "Sample Database" }),
-    ).toHaveAttribute("href", "/admin/permissions/data/database/2");
-    expect(
-      within(missingTables).getByRole("link", { name: "PUBLIC" }),
-    ).toHaveAttribute(
+    const databaseLink = within(missingTables).getByRole("link", {
+      name: "Sample Database",
+    });
+
+    const schemaLink = within(missingTables).getByRole("link", {
+      name: "PUBLIC",
+    });
+
+    const tableLink = within(missingTables).getByRole("link", {
+      name: "Orders",
+    });
+
+    expect(databaseLink).toHaveAttribute(
+      "href",
+      "/admin/permissions/data/database/2",
+    );
+
+    expect(schemaLink).toHaveAttribute(
       "href",
       "/admin/permissions/data/database/2/schema/PUBLIC",
     );
-    expect(
-      within(missingTables).getByRole("link", { name: "Orders" }),
-    ).toHaveAttribute(
+
+    expect(tableLink).toHaveAttribute(
       "href",
       "/admin/permissions/data/database/2/schema/PUBLIC/table/8",
     );
+
+    for (const link of [databaseLink, schemaLink, tableLink]) {
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    }
+
     expect(
       screen.queryByRole("link", { name: "Review data permissions" }),
     ).not.toBeInTheDocument();
@@ -193,6 +217,7 @@ describe("ManageDataAppUsersPage", () => {
     });
 
     expect(await screen.findByText("Covered User")).toBeInTheDocument();
+
     expect(
       screen.queryByRole("button", { name: "Missing data access" }),
     ).not.toBeInTheDocument();
@@ -205,6 +230,7 @@ describe("ManageDataAppUsersPage", () => {
     expect(
       await screen.findByRole("button", { name: "Missing data access" }),
     ).toBeInTheDocument();
+
     expect(
       fetchMock.callHistory.calls(
         "path:/api/apps/sales/user-permission-warnings",
