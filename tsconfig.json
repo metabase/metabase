@@ -16,7 +16,7 @@
       "echarts/types/src/*": ["./node_modules/echarts/types/src/*"],
       "zrender/lib/core/types": ["./node_modules/zrender/lib/core/types"],
       "ee-plugins": ["./frontend/src/metabase/plugins/noop"],
-      "locale-catalog": ["./frontend/src/metabase/api/load-locale-catalog"],
+      "locale-catalog": ["./frontend/src/metabase/utils/load-locale-catalog"],
       "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
       "sdk-iframe-embedding-ee-plugins": [
         "./frontend/src/metabase/plugins/noop"
