@@ -133,8 +133,7 @@
          :error  (or (ex-message e) (tru "Failed to run referenced query"))}))))
 
 (defn- referenced-entities-result
-  "Run each spec and return `{type-string {id-string result}}`, nil when there are none. Must run before the main
-  query's QP store is bound."
+  "Run each spec and return `{type-string {id-string result}}`, nil when there are none."
   [specs max-rows]
   (when (seq specs)
     (perf/not-empty
