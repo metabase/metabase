@@ -119,7 +119,7 @@
   (map (comp keyword u/lower-case-en :table_name)
        (search.db/orphan-index-table-names)))
 
-(defn- delete-obsolete-tables! []
+(defn- delete-obsolete-tables!* []
   ;; Delete metadata around indexes that are no longer needed.
   (search-index-metadata/delete-obsolete! (search.spec/index-version-hash))
   ;; Drop any indexes that are no longer referenced.
@@ -132,6 +132,13 @@
         (catch Exception e
           (log/warnf "Failed to drop stale index %s: %s" table (ex-message e)))))
     (log/infof "Dropped %d stale indexes: %s" (count @dropped) @dropped)))
+
+(defn delete-obsolete-tables!
+  "Drop index tables that are no longer needed. No-op while mocking tables, since the tracking atoms are then the
+  only source of truth."
+  []
+  (when-not *mocking-tables*
+    (delete-obsolete-tables!*)))
 
 (defn- ->db-type [t]
   (get {:pk :int, :timestamp :timestamp-with-time-zone} t t))

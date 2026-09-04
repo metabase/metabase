@@ -620,6 +620,26 @@
           (t2/delete! :model/SearchIndexMetadata :version "pending-timeout-test")
           (#'search.index/delete-obsolete-tables!))))))
 
+(deftest failed-reindex-drops-orphaned-tables-test
+  (when (search/supports-index?)
+    (binding [search.spec/*testing-only-index-version-hash* "orphan-cleanup-test"]
+      (try
+        (reset! @#'search.index/next-sync-at nil)
+        (search.index/reset-index!)
+        (let [orphan (search.index/gen-table-name)]
+          (search.index/create-table! orphan)
+          (with-redefs [search.ingestion/searchable-documents #(throw (ex-info "Simulated connection loss" {}))]
+            (is (thrown-with-msg? Exception #"Simulated connection loss"
+                                  (search.engine/reindex! :search.engine/appdb {}))))
+          (testing "the orphan is dropped even though the reindex never reached activation"
+            (is (not (search.index/exists? orphan))))
+          (testing "the active table and the pending table left behind by the failed run are kept"
+            (is (search.index/exists? (search.index/active-table)))
+            (is (search.index/exists? (#'search.index/pending-table)))))
+        (finally
+          (t2/delete! :model/SearchIndexMetadata :version "orphan-cleanup-test")
+          (#'search.index/delete-obsolete-tables!))))))
+
 (deftest strip-junk-chars-test
   (let [strip @#'search.index/strip-junk-chars]
     (testing "non-string values pass through unchanged"
