@@ -101,7 +101,7 @@
 
 (defn- run-referenced-entity
   "Never throws: any failure becomes `{:status \"failed\" :error ...}`."
-  [{entity-type :type, :keys [id columns max_rows]} default-max-rows]
+  [{entity-type :type, :keys [id columns max_rows]} default-max-rows canceled-chan]
   (let [max-rows (or max_rows default-max-rows)
         {:keys [model query-key]} (entity-types entity-type)]
     (try
@@ -110,7 +110,7 @@
             ;; not write to the outer stream
             result (qp.store/with-fresh-store
                      (binding [qp.pipeline/*result*        qp.pipeline/default-result-handler
-                               qp.pipeline/*canceled-chan* (child-canceled-chan qp.pipeline/*canceled-chan*)
+                               qp.pipeline/*canceled-chan* canceled-chan
                                ;; a referenced card is a saved question, so reading it is enough. unbound, the
                                ;; perms check takes the ad-hoc branch and demands create-queries on its tables.
                                ;; measures have no equivalent yet, so they stay on the ad-hoc branch.
@@ -136,13 +136,16 @@
   "Run each spec and return `{type-string {id-string result}}`, nil when there are none."
   [specs max-rows]
   (when (seq specs)
-    (perf/not-empty
-     (reduce (fn [acc {entity-type :type, :keys [id] :as spec}]
-               ;; string keys so the map serializes to JSON as `{"card": {"1": {...}}}`
-               (assoc-in acc [entity-type (str id)] (run-referenced-entity spec max-rows)))
-             {}
-             ;; don't start the next one if the client already hung up
-             (take-while (fn [_] (not (qp.pipeline/canceled?))) specs)))))
+    ;; one child chan for the whole batch. the runs are sequential, so a chan each would only park a go block
+    ;; per goal for the life of the request.
+    (let [canceled-chan (child-canceled-chan qp.pipeline/*canceled-chan*)]
+      (perf/not-empty
+       (reduce (fn [acc {entity-type :type, :keys [id] :as spec}]
+                 ;; string keys so the map serializes to JSON as `{"card": {"1": {...}}}`
+                 (assoc-in acc [entity-type (str id)] (run-referenced-entity spec max-rows canceled-chan)))
+               {}
+               ;; don't start the next one if the client already hung up
+               (take-while (fn [_] (not (qp.pipeline/canceled?))) specs))))))
 
 (defn- inject-referenced-entities
   [rff result]
