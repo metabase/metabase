@@ -127,6 +127,8 @@ describe("retryDroppedRefetches", () => {
     expect(metadataCalls()).toBe(3);
   });
 
+  // Asserts the RTK bug itself (https://github.com/reduxjs/redux-toolkit/issues/5405).
+  // If an RTK upgrade makes this fail, the middleware and this spec can be deleted.
   it("without the middleware the stale in-flight response wins permanently", async () => {
     const { cachedFieldName, metadataCalls } =
       await runDroppedRefetchScenario(false);

@@ -38,6 +38,7 @@ function getQueryThunkArg(action: unknown): QueryThunkArg | undefined {
  * cache entry is in flight, so the older response wins and the cache keeps data
  * the server has already replaced. Nothing re-queues it, so hold on to the
  * request that displaced it and refetch once it settles.
+ * Works around https://github.com/reduxjs/redux-toolkit/issues/5405.
  */
 export const retryDroppedRefetches: Middleware<
   object,
