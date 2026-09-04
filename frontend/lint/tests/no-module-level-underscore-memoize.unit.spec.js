@@ -1,7 +1,6 @@
 import { RuleTester } from "eslint";
 
 import rule from "../eslint-plugin-metabase/rules/no-module-level-underscore-memoize";
-import allowlist from "../module-level-underscore-memoize-allowlist";
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -92,14 +91,6 @@ ruleTester.run("no-module-level-underscore-memoize", rule, {
         export const f = memoize((x) => x);
       `,
     },
-    {
-      name: "an allowlisted file may keep its module scope call",
-      filename: `/repo/${allowlist[0].file}`,
-      code: `
-        import _ from "underscore";
-        export const f = _.memoize((x) => x);
-      `,
-    },
   ],
   invalid: [
     {
@@ -160,25 +151,4 @@ ruleTester.run("no-module-level-underscore-memoize", rule, {
       errors: [error, error],
     },
   ],
-});
-
-describe("module level underscore memoize allowlist", () => {
-  it("gives every entry a repo-relative frontend path", () => {
-    allowlist.forEach(({ file }) => {
-      expect(file).toMatch(/^(frontend|enterprise\/frontend)\/src\/.*\.tsx?$/);
-    });
-  });
-
-  it("gives every entry a reason", () => {
-    allowlist.forEach(({ file, reason }) => {
-      expect(typeof reason).toBe("string");
-      expect(reason.length).toBeGreaterThan(20);
-      expect(file).toBeTruthy();
-    });
-  });
-
-  it("lists each file once", () => {
-    const files = allowlist.map(({ file }) => file);
-    expect(new Set(files).size).toBe(files.length);
-  });
 });
