@@ -41,7 +41,7 @@ interface RemoteSyncDependencyModalProps {
 export const RemoteSyncDependencyModal = ({
   required,
 }: RemoteSyncDependencyModalProps) => {
-  const { values, setFieldValue } =
+  const { values, setFieldValue, submitForm, isSubmitting } =
     useFormikContext<RemoteSyncSettingsFormState>();
   // RTK returns a new error object per request, so identity separates fresh from dismissed.
   const [dismissedRequired, setDismissedRequired] =
@@ -53,6 +53,9 @@ export const RemoteSyncDependencyModal = ({
 
   const listedRequiredSyncs = getListedRequiredSyncs(required);
   const syncedCollections = values[COLLECTIONS_KEY] ?? {};
+  // `every`, not `some`: one entry we can't switch on makes this a partial fix, refused again. Read
+  // off `required` rather than the listed entries so a Library that doesn't exist still counts.
+  const canSave = required.every(({ syncable }) => syncable);
 
   const handleDismiss = () => setDismissedRequired(required);
 
@@ -96,9 +99,17 @@ export const RemoteSyncDependencyModal = ({
         )}
 
         <Group justify="end" gap="sm">
-          <Button variant="filled" onClick={handleDismiss}>
-            {t`Close`}
-          </Button>
+          {/* Dismissing keeps whatever was switched on here, so the page's own Save still carries it. */}
+          <Button onClick={handleDismiss}>{t`Back`}</Button>
+          {canSave && (
+            <Button
+              variant="filled"
+              loading={isSubmitting}
+              onClick={submitForm}
+            >
+              {t`Save changes`}
+            </Button>
+          )}
         </Group>
       </Stack>
     </Modal>

@@ -131,7 +131,7 @@ const save = () =>
   userEvent.click(screen.getByTestId("remote-sync-submit-button"));
 
 const dismiss = (modal: HTMLElement) =>
-  userEvent.click(within(modal).getByRole("button", { name: "Close" }));
+  userEvent.click(within(modal).getByRole("button", { name: "Back" }));
 
 const expectClosed = () =>
   waitFor(() => {
@@ -309,6 +309,65 @@ describe("RemoteSyncDependencyModal", () => {
       [BLOCKED_COLLECTION.id]: true,
       [LIBRARY_COLLECTION.id]: true,
     });
+  });
+
+  it("saves from the modal, without a second trip to the settings page", async () => {
+    await setupRefusedSave();
+
+    const modal = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(modal).getByLabelText(`Sync ${REQUIRED_COLLECTION.name}`),
+    );
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Save changes" }),
+    );
+
+    await waitFor(async () => {
+      expect(await getSettingsPuts()).toHaveLength(2);
+    });
+
+    const [, retry] = await getSettingsPuts();
+    expect(retry.body).toHaveProperty("collections", {
+      [BLOCKED_COLLECTION.id]: true,
+      [REQUIRED_COLLECTION.id]: true,
+    });
+    // The save succeeded, so there is no fresh refusal to reopen it.
+    await expectClosed();
+  });
+
+  // Switching Finance on alone would leave the other blocker behind, so the save is refused again.
+  it.each([
+    ["nothing in the list can be switched on", [ROOT_REQUIRED]],
+    ["one entry beside it can't be", [SYNCABLE_REQUIRED, ROOT_REQUIRED]],
+    // Not listed at all, but it still blocks the save.
+    [
+      "a Library that doesn't exist blocks it",
+      [SYNCABLE_REQUIRED, LIBRARY_MISSING_REQUIRED],
+    ],
+  ])("offers no save when %s", async (_label, entries) => {
+    await setupRefusedSave({ body: createRefusal(...entries) });
+
+    const modal = await screen.findByRole("dialog");
+    expect(
+      within(modal).queryByRole("button", { name: "Save changes" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(modal).getByRole("button", { name: "Back" }),
+    ).toBeInTheDocument();
+  });
+
+  it("lists what can't be synced above what can", async () => {
+    await setupRefusedSave({
+      body: createRefusal(SYNCABLE_REQUIRED, ROOT_REQUIRED),
+    });
+
+    const modal = await screen.findByRole("dialog");
+    const rows = within(modal)
+      .getAllByRole("button", { expanded: false })
+      .map((row) => row.textContent);
+
+    expect(rows[0]).toMatch(/Our analytics/);
+    expect(rows[1]).toMatch(new RegExp(REQUIRED_COLLECTION.name));
   });
 
   it.each([
