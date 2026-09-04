@@ -38,9 +38,9 @@ import type {
 } from "metabase-types/api";
 
 import {
-  canDashCardDisplayTimelineEvents,
   computeDashCardTimeseriesXAxis,
   isDashCardDataLoaded,
+  shouldDashCardDisplayTimelineEvents,
 } from "./utils";
 
 const NO_EVENTS: TimelineEvent[] = [];
@@ -87,7 +87,7 @@ export const getIsTimelineEventsDashCard = createCachedSelector(
   [getDashCardById, getDashCardTimeseriesXAxis],
   (dashcard, xAxis) =>
     dashcard != null &&
-    canDashCardDisplayTimelineEvents(dashcard) &&
+    shouldDashCardDisplayTimelineEvents(dashcard) &&
     xAxis != null,
 )((_state, dashcardId) => dashcardId);
 
@@ -121,7 +121,7 @@ const getTimelineEventsDashCards = createShallowEqualResultSelector(
   (dashcards, dashcardDataMap, state) =>
     dashcards.filter(
       (dashcard) =>
-        canDashCardDisplayTimelineEvents(dashcard) &&
+        shouldDashCardDisplayTimelineEvents(dashcard) &&
         (!isDashCardDataLoaded(dashcard, dashcardDataMap[dashcard.id]) ||
           getIsTimelineEventsDashCard(state, dashcard.id)),
     ),

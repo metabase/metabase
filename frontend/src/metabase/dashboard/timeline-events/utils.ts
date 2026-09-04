@@ -21,7 +21,7 @@ const hasTimelineEventsEnabled = (dashcard: QuestionDashboardCard) => {
   return isEnabled !== false;
 };
 
-export const canDashCardDisplayTimelineEvents = (
+export const shouldDashCardDisplayTimelineEvents = (
   dashcard: DashboardCard,
 ): dashcard is QuestionDashboardCard =>
   isQuestionDashCard(dashcard) &&
@@ -38,7 +38,7 @@ export const computeDashCardTimeseriesXAxis = (
   dashcard: DashboardCard,
   dashcardData: DashCardDataMap[number] | undefined,
 ): TimeseriesXAxis | null => {
-  if (!canDashCardDisplayTimelineEvents(dashcard)) {
+  if (!shouldDashCardDisplayTimelineEvents(dashcard)) {
     return null;
   }
   const cards = [
