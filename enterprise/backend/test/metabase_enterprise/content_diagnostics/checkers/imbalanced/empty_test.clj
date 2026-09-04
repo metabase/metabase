@@ -1,7 +1,7 @@
 (ns metabase-enterprise.content-diagnostics.checkers.imbalanced.empty-test
   "The `empty` imbalanced checker: content with nothing in it, across collection (0 direct items),
-  card (last clean-run signal), dashboard (0 dashcards), document (no content, fail-closed), and
-  transform (0-row synced estimate). Asserts only `:empty` findings; the cross-type co-occurrence that
+  card (last clean-run signal), dashboard (0 dashcards), and document (no content, fail-closed).
+  Transforms are never `empty`. Asserts only `:empty` findings; the cross-type co-occurrence that
   independent checkers now allow is covered in the imbalanced integration suite."
   (:require
    [clojure.test :refer :all]
@@ -281,54 +281,32 @@
           [;; a folder whose only transform has never run (nil estimate) - one item, not empty
            :model/Collection {live-folder :id} {:namespace "transforms"}
            :model/Transform _ {:collection_id live-folder}
-           ;; a folder holding only an estimate-0 transform - still one direct item, so not empty
+           ;; a folder holding only a 0-row transform - still one direct item, so not empty
            :model/Collection {dead-folder :id} {:namespace "transforms"}
            :model/Table {zero-table :id} {:estimated_row_count 0}
-           :model/Transform {dead-transform :id} {:collection_id dead-folder
-                                                  :target_table_id zero-table}
+           :model/Transform _ {:collection_id dead-folder
+                               :target_table_id zero-table}
            ;; a transforms folder with nothing in it at all - empty
-           :model/Collection {bare-folder :id} {:namespace "transforms"}
-           ;; an ARCHIVED folder holding an estimate-0 transform - the folder is no subject, but the
-           ;; transform still executes regardless of its folder's state, so its own finding survives
-           :model/Collection {archived-folder :id} {:namespace "transforms" :archived true}
-           :model/Table {zero-table-2 :id} {:estimated_row_count 0}
-           :model/Transform {shelved-transform :id} {:collection_id archived-folder
-                                                     :target_table_id zero-table-2}]
+           :model/Collection {bare-folder :id} {:namespace "transforms"}]
           (let [by-entity (empty-by-entity!)]
             (testing "a folder holding a never-run transform is not empty"
               (is (nil? (by-entity [:collection live-folder]))))
-            (testing "a folder of only empty transforms is not empty - the transform carries the finding"
-              (is (nil? (by-entity [:collection dead-folder])))
-              (is (some? (by-entity [:transform dead-transform]))))
+            (testing "a folder holding a 0-row transform is not empty - the transform is still an item"
+              (is (nil? (by-entity [:collection dead-folder]))))
             (testing "an item-less transforms folder is empty"
-              (is (some? (by-entity [:collection bare-folder]))))
-            (testing "an archived folder is no subject, but its transform's own finding survives"
-              (is (nil? (by-entity [:collection archived-folder])))
-              (is (some? (by-entity [:transform shelved-transform]))))))))))
+              (is (some? (by-entity [:collection bare-folder]))))))))))
 
-(deftest empty-transform-test
-  (testing "transform empty rides the target table's synced estimate: 0 flags, nil (unknown) and missing/inactive targets skip"
+(deftest transforms-are-never-empty-test
+  (testing "a transform is never an `empty` subject, whatever its target table's row estimate says"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp
-          [:model/Table {zero-table :id} {:estimated_row_count 0}
-           :model/Transform {flagged :id} {:target_table_id zero-table}
-           :model/Table {nil-table :id} {}
-           :model/Transform {unknown :id} {:target_table_id nil-table}
-           :model/Table {inactive-table :id} {:estimated_row_count 0 :active false}
-           :model/Transform {dropped :id} {:target_table_id inactive-table}
+          [;; a target table synced with a row estimate of 0 - the one signal a row-count check would read
+           :model/Table {zero-table :id} {:estimated_row_count 0}
+           :model/Transform {zero-rows :id} {:target_table_id zero-table}
            :model/Transform {never :id} {}]
           (let [by-entity (empty-by-entity!)]
-            (testing "estimate literally 0 on an active target → empty, as_of = the table's sync freshness"
-              (let [f (by-entity [:transform flagged])]
-                (is (some? f))
-                (is (= 0 (:content_count f)))
-                (is (= 0 (get-in f [:details :threshold])))
-                (is (= "rows" (get-in f [:details :unit])))
-                (is (some? (get-in f [:details :as_of])))))
-            (testing "nil estimate is unknown, not empty"
-              (is (nil? (by-entity [:transform unknown]))))
-            (testing "an inactive (dropped) target table is skipped"
-              (is (nil? (by-entity [:transform dropped]))))
-            (testing "no target table (never run/synced) is skipped"
-              (is (nil? (by-entity [:transform never]))))))))))
+            (is (nil? (by-entity [:transform zero-rows])))
+            (is (nil? (by-entity [:transform never])))
+            (testing "no transform reaches the empty findings at all"
+              (is (empty? (filter (comp #{:transform} first) (keys by-entity)))))))))))

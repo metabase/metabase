@@ -224,9 +224,10 @@
   #{:empty :sparse :crowded})
 
 (def ^:private imbalanced-entity-types
-  "Entity types the imbalanced findings can emit. Its own enum rather than the shared
-  `covered-entity-types`: `collection` sits outside the shared stale/slow set, and `card` only ever
-  emits `empty`."
+  "Entity types the `/imbalanced` filter accepts. Its own enum rather than the shared
+  `covered-entity-types`: `collection` sits outside the shared stale/slow set, `card` emits only
+  `empty`, and `transform` emits nothing - the filter vocabulary is shared across
+  `empty`/`sparse`/`crowded`, so it stays a superset of what they emit."
   #{:card :collection :dashboard :document :transform})
 
 (def ^:private duplicated-sort-column->field
