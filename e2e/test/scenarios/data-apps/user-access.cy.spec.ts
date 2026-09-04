@@ -85,7 +85,7 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
     });
   });
 
-  it("shows warnings only for users missing effective data access", () => {
+  it("shows warnings only for users missing access to used tables", () => {
     // The no-data snapshot user belongs to both of these groups.
     // Block the products table in both groups.
     cy.updatePermissionsGraph({
