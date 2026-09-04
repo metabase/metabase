@@ -1,34 +1,45 @@
 /**
- * @fileoverview Rule to prevent new uses of underscore's memoize, whose cache
- * is unbounded and never released.
+ * @fileoverview Rule to prevent underscore's memoize at module scope, where its
+ * cache lives for the life of the tab.
  */
 
-const ALLOWLIST = require("../../underscore-memoize-allowlist");
+const ALLOWLIST = require("../../module-level-underscore-memoize-allowlist");
 
 const ERROR_MESSAGE = [
   "underscore's memoize never evicts and never releases: its cache is a plain",
-  "object on the returned function, so every distinct key is retained for the",
-  "life of the tab. It also hashes only the first argument by default.",
-  "Use a cache scoped to the work instead: a WeakMap keyed on a long-lived",
-  "object, a Map created per call, or memoize from metabase/utils/memoize.",
+  "object on the returned function. At module scope that cache lives for the",
+  "life of the tab, and the key strings are retained with it.",
+  "Give the cache a lifetime that matches the work: a Map created per call, a",
+  "WeakMap keyed on a long-lived object, or a cache built inside the component",
+  "or instance that uses it.",
 ].join(" ");
 
 function isAllowlisted(filename) {
   const normalized = filename.split("\\").join("/");
-  return ALLOWLIST.some((allowed) => normalized.endsWith(allowed));
+  return ALLOWLIST.some((entry) => normalized.endsWith(entry.file));
+}
+
+/**
+ * True when the call runs once, as the module is evaluated. A call inside a
+ * function, a component render, a class field or a constructor builds a fresh
+ * cache per call, which is released with whatever owns it.
+ */
+function runsAtModuleScope(scope) {
+  const { type } = scope.variableScope;
+  return type === "module" || type === "global";
 }
 
 module.exports = {
   meta: {
     type: "problem",
     docs: {
-      description: "Disallow underscore's unbounded memoize",
+      description: "Disallow underscore's unbounded memoize at module scope",
       category: "Best Practices",
       recommended: true,
     },
     schema: [],
     messages: {
-      noUnderscoreMemoize: ERROR_MESSAGE,
+      noModuleLevelUnderscoreMemoize: ERROR_MESSAGE,
     },
   },
   create(context) {
@@ -41,8 +52,10 @@ module.exports = {
     // Names bound to the underscore namespace, usually `_`.
     const namespaceImports = new Set();
 
-    function report(node) {
-      context.report({ node, messageId: "noUnderscoreMemoize" });
+    function reportIfModuleLevel(node) {
+      if (runsAtModuleScope(context.sourceCode.getScope(node))) {
+        context.report({ node, messageId: "noModuleLevelUnderscoreMemoize" });
+      }
     }
 
     return {
@@ -68,7 +81,7 @@ module.exports = {
 
       "CallExpression > Identifier.callee"(node) {
         if (namedImports.has(node.name)) {
-          report(node);
+          reportIfModuleLevel(node);
         }
       },
 
@@ -79,7 +92,7 @@ module.exports = {
           node.property.type === "Identifier" &&
           node.property.name === "memoize"
         ) {
-          report(node);
+          reportIfModuleLevel(node);
         }
       },
     };
