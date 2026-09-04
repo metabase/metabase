@@ -1,6 +1,6 @@
 (ns metabase.bookmarks.db
-  "Application database queries for the bookmarks module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  "Application database queries for the bookmarks module, plus a thin (model, id, user-id) dispatch tier over them,
+  so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
@@ -107,11 +107,12 @@
    "exploration" [:model/ExplorationBookmark :exploration_id]})
 
 (defn insert-bookmark!
-  "Give `user-id` a bookmark on (`model`, `id`) and return it - the existing one when there already is one, so
-  concurrent callers both get the state they asked for rather than one of them losing to the (user_id, item)
-  unique constraint. Does not read-check the item; callers do."
+  "Give `user-id` a bookmark on (`model`, `id`) and return it - the existing one when there already is one.
+  Does not read-check the item; callers do."
   [model id user-id]
   (let [[bookmark-model item-key] (model->bookmark-model+item-key model)]
+    ;; select-or-insert! rather than insert!: concurrent callers both get the state they asked for instead of
+    ;; one losing to the (user_id, item) unique constraint.
     (mdb/select-or-insert! bookmark-model {item-key id :user_id user-id} (constantly {}))))
 
 (defn delete-bookmark!
