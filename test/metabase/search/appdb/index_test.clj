@@ -586,7 +586,7 @@
             (is (= active-after (active-table-after period)))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "auto-refresh-test")
-          (#'search.index/delete-obsolete-tables!))))))
+          (search.index/delete-obsolete-tables!))))))
 
 (deftest pending-table-expiry-test
   (when (search/supports-index?)
@@ -618,7 +618,7 @@
             (is (= pending-new (#'search.index/pending-table)))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "pending-timeout-test")
-          (#'search.index/delete-obsolete-tables!))))))
+          (search.index/delete-obsolete-tables!))))))
 
 (deftest failed-reindex-drops-orphaned-tables-test
   (when (search/supports-index?)
@@ -629,8 +629,9 @@
         (let [orphan (search.index/gen-table-name)]
           (search.index/create-table! orphan)
           (mt/with-dynamic-fn-redefs [search.ingestion/searchable-documents #(throw (ex-info "Simulated connection loss" {}))]
-            (is (thrown-with-msg? Exception #"Simulated connection loss"
-                                  (search.engine/reindex! :search.engine/appdb {}))))
+            (mt/with-log-level [metabase.search.appdb.core :fatal]
+              (is (thrown-with-msg? Exception #"Simulated connection loss"
+                                    (search.engine/reindex! :search.engine/appdb {})))))
           (testing "the orphan is dropped even though the reindex never reached activation"
             (is (not (search.index/exists? orphan))))
           (testing "the active table and the pending table left behind by the failed run are kept"
@@ -807,7 +808,7 @@
               (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "index-age-test")
-          (#'search.index/delete-obsolete-tables!))))))
+          (search.index/delete-obsolete-tables!))))))
 
 (deftest missing-index-table-does-not-abort-enclosing-transaction-test
   (when (search/supports-index?)
