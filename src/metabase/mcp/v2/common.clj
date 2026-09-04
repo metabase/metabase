@@ -11,9 +11,12 @@
   (:require
    [clojure.string :as str]
    [metabase.channel.urls :as channel.urls]
+   [metabase.mcp.v2.projections :as projections]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   (org.apache.commons.text.similarity LevenshteinDistance)))
 
 (set! *warn-on-reflection* true)
 
@@ -73,21 +76,62 @@
 (defn truncation-line
   "The steering sentence appended to a truncated list response: names the narrowing `param` when
    one narrows this list, and always the next offset. Returns nil when the page isn't truncated
-   (or `total` is unknown). `:total-floor?` marks `total` as a lower bound rather than an exact
-   count — e.g. a search total capped at the ranking limit — so the sentence reads \"at least N\"."
+   (or `total` is unknown). `:returned` is the actual page size — the caller's ground truth, e.g.
+   `(count data)` — not derived arithmetically, since a post-fetch drop (a stale index hit, an
+   unreadable row) can leave a page shorter than `limit`/`total`/`offset` alone would predict.
+   `:total-floor?` marks `total` as a lower bound rather than an exact count — e.g. a search total
+   capped at the ranking limit — so the sentence reads \"at least N\"."
   ;; A list with nothing to narrow by still has to say more exists — without a line the caller
   ;; reads a truncated page as the whole set.
-  [{:keys [param offset limit total total-floor?]}]
+  [{:keys [param offset limit total total-floor? returned]}]
   (let [offset (or offset 0)]
     (when (and total limit (< (+ offset limit) total))
-      (let [returned  (min limit (- total offset))
-            total-str (str (when total-floor? "at least ") total)
+      (let [total-str (str (when total-floor? "at least ") total)
             next      (+ offset limit)]
         (if param
           (format "Returned %d of %s — narrow with `%s`, or continue with `offset: %d`."
                   returned total-str (name param) next)
           (format "Returned %d of %s — continue with `offset: %d`."
                   returned total-str next))))))
+
+(defn list-envelope
+  "The literal list-response envelope `{:data … :returned … :total?}`. `total` is included
+   when known (offset pagination over the app db usually can count)."
+  ([data] (list-envelope data nil))
+  ([data total]
+   (cond-> {:data data :returned (count data)}
+     (some? total) (assoc :total total))))
+
+(defn- empty-page-line
+  "The steering sentence for a page that returned nothing while `total` says matches exist.
+   [[truncation-line]] only fires on arithmetic truncation, so an offset at or past the end — or a
+   page whose every row was dropped after the count — otherwise carries no line at all, and an
+   empty `data` reads as \"nothing matches\" rather than \"nothing *here*\". Nil when `total` is
+   unknown or genuinely zero: that envelope already says it."
+  [{:keys [offset total total-floor?]}]
+  (when (and total (pos? total))
+    (let [total-str (str (when total-floor? "at least ") total)]
+      (if (pos? (or offset 0))
+        (format "No results at offset %d — %s available; page back with a smaller `offset`."
+                offset total-str)
+        ;; offset 0 with a positive total: the matches were counted, then dropped downstream
+        ;; (a stale index hit, a row gone unreadable). Paging cannot help, so don't suggest it.
+        (format "Returned 0 of %s — the matches found are no longer readable or have been removed."
+                total-str)))))
+
+(defn list-content
+  "Build the MCP success content for a list response: the envelope (compact JSON) in the text
+   block, with a steering line appended. `data` is already the page; `opts` carries
+   `:offset`/`:limit` and an optional `:param` naming what narrows this list. Text-only —
+   list data never rides `structuredContent` by reflex."
+  [data total opts]
+  (let [envelope (list-envelope data total)
+        opts     (assoc opts :total total :returned (count data))
+        line     (if (empty? data)
+                   (empty-page-line opts)
+                   (truncation-line opts))]
+    (success-content (cond-> (json/encode envelope)
+                       line (str "\n" line)))))
 
 ;;; ------------------------------------------------ Teaching errors -----------------------------------------------
 
@@ -204,6 +248,87 @@
     (if (str/blank? base)
       path
       (str base path))))
+
+;;; ------------------------------------------------ Response format -----------------------------------------------
+
+(defn response-format
+  "Read `:response_format` from tool arguments: `:concise` (default) or `:detailed`; anything
+   else is a teaching error."
+  [args]
+  (case (get args :response_format)
+    (nil "concise") :concise
+    "detailed"      :detailed
+    (throw-teaching-error (format "Invalid response_format %s — use \"concise\" or \"detailed\"."
+                                  (pr-str (get args :response_format))))))
+
+;;; ------------------------------------------------ fields resolver -----------------------------------------------
+
+(def ^:private ^LevenshteinDistance levenshtein
+  (LevenshteinDistance/getDefaultInstance))
+
+(defn- nearest-paths
+  [^String path catalog]
+  (->> catalog
+       (sort-by #(.apply levenshtein path ^String %))
+       (take 3)))
+
+(defn- valid-path?
+  "A requested path is valid when it is a catalog entry or a segment-aligned prefix of one
+   (selecting a whole subtree)."
+  [path catalog]
+  (boolean (some #(or (= % path) (str/starts-with? % (str path "."))) catalog)))
+
+(defn- add-path
+  "Merge one path (a vector of segments) into the selection tree. `::all` marks a
+   whole-subtree selection; it absorbs any narrower path at the same node, in either
+   insertion order, so `[\"parameters\" \"parameters.name\"]` selects all of `parameters`."
+  [tree segs]
+  (cond
+    (= ::all tree) ::all
+    (empty? segs)  ::all
+    :else          (update tree (first segs) #(add-path (or % {}) (rest segs)))))
+
+(defn- paths->tree
+  [paths]
+  (reduce (fn [tree path] (add-path tree (str/split path #"\.")))
+          {}
+          paths))
+
+(defn- select-tree
+  [node tree]
+  (cond
+    (= ::all tree)     node
+    ;; Arrays are item-relative: apply the selection to every item.
+    (sequential? node) (mapv #(select-tree % tree) node)
+    (map? node)        (into {}
+                             (keep (fn [[seg subtree]]
+                                     (let [k (keyword seg)]
+                                       (when (contains? node k)
+                                         [k (select-tree (get node k) subtree)]))))
+                             tree)
+    :else              node))
+
+(defn select-fields
+  "Narrow `response-map` (the permission-filtered built response for one item of `type`,
+   never a raw model row) to the requested `fields` dot-paths. Paths are validated against
+   `type`'s catalog; an unknown path is a teaching error naming the nearest valid paths.
+   `fields` is mutually exclusive with `response_format` and `include` — the caller passes
+   what was present and combining them is a teaching error."
+  ([type response-map fields]
+   (select-fields type response-map fields nil))
+  ([type response-map fields {:keys [response-format include]}]
+   (when (or response-format include)
+     (throw-teaching-error "Use `fields` OR `response_format`/`include`, not both."))
+   (when (empty? fields)
+     (throw-teaching-error "`fields` must name at least one path."))
+   (let [catalog (or (projections/catalog type)
+                     (throw-teaching-error (format "`fields` is not supported for type %s." (name type))))]
+     (doseq [path fields]
+       (when-not (valid-path? path catalog)
+         (throw-teaching-error (format "Unknown field path %s for type %s. Nearest valid paths: %s."
+                                       (pr-str path) (name type)
+                                       (str/join ", " (nearest-paths path catalog))))))
+     (select-tree response-map (paths->tree fields)))))
 
 ;;; ------------------------------------------------ Shared schemas ------------------------------------------------
 

@@ -207,17 +207,18 @@
                                          (contains? readable-ids (:id result))))))))
 
 (defn- validate-and-enrich-documents
-  "Remove stale or unreadable document hits and attach live write permission.
+  "Remove stale or unreadable document hits and attach live write permission. `archived?` is the
+  archived state the search asked for: a hit is stale unless the live Document is in that set.
 
   Search indexes are updated asynchronously, so a deleted document can briefly remain
   searchable. Destination discovery must validate hits against the live model before the
   agent attempts to save into them."
-  [results]
+  [archived? results]
   (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
         id->document (when (seq document-ids)
                        (->> (t2/select :model/Document
                                        :id [:in document-ids]
-                                       :archived false)
+                                       :archived (boolean archived?))
                             (filter mi/can-read?)
                             (map (juxt :id identity))
                             (into {})))]
@@ -286,9 +287,20 @@
 
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
-  Abstracted from the API endpoint logic."
+  Abstracted from the API endpoint logic.
+
+  Optional filter keys threaded straight into the search context: `created-by` (set of user ids),
+  `archived`, `collection-id` (numeric, scopes to the collection subtree; overrides the metabot's
+  own confined collection), `offset`. `filters-only?` makes a call with no queries run a single
+  nil-query search — a pure listing over the active filters — instead of returning nothing.
+
+  Each query fetches its full ranked pool (`ranked-results`), the pools are fused by rank, and the
+  fused ranking is paginated (`offset`/`limit`) exactly once (`search-results`) — so paging a
+  multi-query search is coherent. The result carries the size of the fused, deduped match set as
+  `:total` metadata."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot-id profile-id search-native-query weights]}]
+           entity-types limit metabot-id profile-id search-native-query weights
+           created-by archived collection-id offset filters-only?]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-query-count     (count term-queries)
               :semantic-query-count (count semantic-queries)
@@ -298,7 +310,12 @@
               :metabot-id           metabot-id
               :profile-id           profile-id
               :search-native-query  search-native-query
-              :weights              weights})
+              :weights              weights
+              :created-by           created-by
+              :archived             archived
+              :collection-id        collection-id
+              :offset               offset
+              :filters-only?        filters-only?})
   (let [search-models   (if (seq entity-types)
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
@@ -308,10 +325,15 @@
                           (:use_verified_content metabot)
                           false)
         embedded-metabot?  (= metabot-id metabot.config/embedded-metabot-id)
-        collection-id   (when (or embedded-metabot? (= profile-id "nlq"))
+        ;; A confined metabot (embedded, or the nlq profile) may only search inside its own
+        ;; collection. That is a containment boundary, not a default, so a caller-supplied
+        ;; collection-id — which the v2 search tool fills from a request filter — can never
+        ;; replace it. Unconfined, the caller's collection-id applies.
+        confined-id     (when (or embedded-metabot? (= profile-id "nlq"))
                           (:collection_id metabot))
+        collection-id   (or confined-id collection-id)
         limit           (or limit 50)
-        search-fn       (fn [search-string search-engine]
+        ranked-fn       (fn [search-string search-engine]
                           (let [search-context (search/search-context
                                                 (cond-> {:search-string                       search-string
                                                          :models                              search-models
@@ -325,9 +347,7 @@
                                                          :current-user-perms                  @api/*current-user-permissions-set*
                                                          :filter-items-in-personal-collection "exclude-others"
                                                          :context                             :metabot
-                                                         :archived                            false
-                                                         :limit                               limit
-                                                         :offset                              0}
+                                                         :archived                            (boolean archived)}
                                                   ;; Don't include search-native-query key if nil so that we don't
                                                   ;; inadvertently filter out search models that don't support it
                                                   search-native-query
@@ -338,40 +358,69 @@
                                                   (assoc :weights weights)
                                                   search-engine
                                                   (assoc :search-engine (name search-engine))
+                                                  (seq created-by)
+                                                  (assoc :created-by (set created-by))
                                                   collection-id
                                                   (assoc :collection collection-id)))
                                 _              (log/infof "[METABOT-SEARCH] Search context models: %s"
                                                           (:models search-context))
-                                search-results (search/search search-context)
-                                data           (:data search-results)
-                                result-models  (frequencies (map :model data))]
-                            (log/infof "[METABOT-SEARCH] Query returned entity types: %s" result-models)
-                            data))
-        search-fn*      (fn [search-engine queries]
+                                ;; No :limit/:offset in the per-query context — ranked-results returns the
+                                ;; full ranked pool; the fused ranking is paginated once, below. Applying
+                                ;; offset per query before fusion would page the offset-N tail of each
+                                ;; ranking, which is not the tail of the fused ranking.
+                                ranked         (search/ranked-results search-context)]
+                            (log/infof "[METABOT-SEARCH] Query returned entity types: %s"
+                                       (frequencies (map :model ranked)))
+                            ranked))
+        ranked-fn*      (fn [search-engine queries]
                           (let [queries (search.engine/disjunction search-engine queries)]
-                            (join-results-by-rrf search-fn search-engine queries)))
+                            (join-results-by-rrf ranked-fn search-engine queries)))
         ;; NOTE: if we add more semantic engines, e.g. 3rd party vector dbs, we'll need to make this more maintainable
         semantic?       #{:search.engine/semantic}
         semantic-engine (u/seek semantic? (search.engine/active-engines))
         fallback-engine (when semantic-engine
                           (search.engine/fallback-engine semantic-engine))
-        fused-results   (if semantic-engine
+        fused-ranked    (cond
+                          ;; A pure listing over the filters: one search with no search string.
+                          (and filters-only?
+                               (empty? term-queries)
+                               (empty? semantic-queries))
+                          (ranked-fn nil nil)
+
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
+                          semantic-engine
                           (reciprocal-rank-fusion
-                           (map (fn [[engine queries]] (when (seq queries) (search-fn* engine queries)))
+                           (map (fn [[engine queries]] (when (seq queries) (ranked-fn* engine queries)))
                                 {semantic-engine semantic-queries
                                  fallback-engine term-queries}))
+
                           ;; Search for all the terms on equal footing, using the default engine.
-                          (search-fn* nil (distinct (concat term-queries semantic-queries))))]
-    (->> fused-results
-         (take limit)
-         (map postprocess-search-result)
-         enrich-with-collection-descriptions
-         enrich-with-database-engines
-         enrich-with-portable-entity-ids
-         enrich-with-metric-base-tables
-         validate-and-enrich-documents
-         remove-unreadable-transforms)))
+                          :else
+                          (ranked-fn* nil (distinct (concat term-queries semantic-queries))))
+        ;; Paginate and hydrate the fused ranking exactly once. `search-results` slices to
+        ;; [offset, offset+limit) and reports `:total` as the size of the full fused set — so the
+        ;; total is knowable even under multi-query fusion, and only the returned page is hydrated.
+        {:keys [data total]} (search/search-results
+                              (search/search-context {:search-string      nil
+                                                      :models             search-models
+                                                      :current-user-id    api/*current-user-id*
+                                                      :current-user-perms @api/*current-user-permissions-set*
+                                                      :is-superuser?      api/*is-superuser?*
+                                                      :offset             (or offset 0)
+                                                      :limit              limit})
+                              search/model-set
+                              (vec fused-ranked))]
+    ;; validate-and-enrich-documents drops stale/unreadable document hits and attaches live write
+    ;; permission. Transforms need no such post-filter: they are :visibility :superuser in search, so
+    ;; a non-superuser never has one in results to begin with.
+    (-> (->> data
+             (map postprocess-search-result)
+             enrich-with-collection-descriptions
+             enrich-with-database-engines
+             enrich-with-portable-entity-ids
+             enrich-with-metric-base-tables
+             (validate-and-enrich-documents (boolean archived)))
+        (vary-meta assoc :total total))))
 
 (defn- table-refs->results
   [ids]

@@ -12,6 +12,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.core :as search-core]
+   [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -156,6 +157,32 @@
           result (#'search/reciprocal-rank-fusion lists)]
       ;; Item 99 appears in all 5 lists at position 2, so should rank very high
       (is (= 99 (:id (first result)))))))
+
+(deftest multi-query-total-is-deduped-not-summed-test
+  (testing "under multi-query fusion, :total is the size of the deduped fused set, not the sum of
+            per-query counts — the real reciprocal-rank-fusion feeds search-results, so an item
+            appearing in both queries is counted once"
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)
+                    ;; default engine only, so both queries run through the same ranked-fn* branch
+                    search.engine/active-engines (constantly [:search.engine/appdb])
+                    search.engine/disjunction (fn [_ terms] terms)
+                    ;; two queries, overlapping on item 1 (in both) — union is {1 2 3}, sum is 4
+                    search-core/ranked-results (fn [context]
+                                                 (if (= (:search-string context) "a")
+                                                   [{:id 1 :model "card" :name "Shared"}
+                                                    {:id 2 :model "card" :name "OnlyA"}]
+                                                   [{:id 1 :model "card" :name "Shared"}
+                                                    {:id 3 :model "card" :name "OnlyB"}]))
+                    ;; the real search-results is app-db-bound; stand in with a faithful passthrough
+                    ;; that reports total over the (already fused + deduped) ranking it is handed.
+                    search-core/search-results (fn [_ctx _model-set ranked]
+                                                 {:data (vec ranked) :total (count ranked)})]
+        (let [results (search/search {:term-queries ["a" "b"] :entity-types ["question"] :limit 10})]
+          ;; three distinct items survive fusion; total counts them once, not 2+2=4
+          (is (= 3 (:total (meta results))))
+          (is (= #{1 2 3} (set (map :id results)))))))))
 
 (deftest ^:parallel postprocess-search-result-test
   (testing "table result postprocessing"
@@ -370,16 +397,16 @@
                   perms/sandboxed-user? (fn [] false)
                   api/*current-user-id* 1]
       (testing ":search-native-query is included in context when true"
-        (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                         (is (true? (:search-native-query context)))
-                                                         {:data []})]
+        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                 (is (true? (:search-native-query context)))
+                                                                 [])]
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query true})))
       (testing ":search-native-query is not included in context when nil or false"
-        (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                         (is (not (contains? context :search-native-query)))
-                                                         {:data []})]
+        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                 (is (not (contains? context :search-native-query)))
+                                                                 [])]
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query false})
@@ -395,9 +422,9 @@
                     api/*current-user-id* 1]
         (testing "nlq-search-tool with no entity_types searches only table/model/metric/question"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/nlq-search-tool {:keyword_queries ["x"]}))
             (is (= #{"table" "dataset" "metric" "card"} @captured))
             (is (not (contains? @captured "dashboard")))
@@ -405,30 +432,30 @@
             (is (not (contains? @captured "database")))))
         (testing "sql-search-tool with no entity_types searches only table/model"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/sql-search-tool {:keyword_queries ["x"] :database_id 1}))
             (is (= #{"table" "dataset"} @captured))))
         (testing "general search includes documents in its default entity types"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/search-tool {:keyword_queries ["x"]}))
             (is (contains? @captured "document"))))
         (testing "agent-supplied entity_types narrow the default allowed set"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/nlq-search-tool {:keyword_queries ["x"] :entity_types ["metric"]}))
             (is (= #{"metric"} @captured))))
         (testing "NLQ search accepts document and dashboard destination types"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/nlq-search-tool {:keyword_queries ["plan"]
                                        :entity_types    ["document" "dashboard"]}))
             (is (= #{"document" "dashboard"} @captured))))))))
@@ -441,16 +468,20 @@
                     api/*current-user-id* 1]
         (testing "default limit is 10 when not provided"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:limit-int context))
-                                                             {:data []})]
+            ;; limit/offset moved out of the per-query ranked-results context into the single
+            ;; paginate step, so the limit assertion now reads the search-results context.
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] [])
+                                        search-core/search-results (fn [context _ _]
+                                                                     (reset! captured (:limit-int context))
+                                                                     {:data [] :total 0})]
               (search/search-tool {:keyword_queries ["x"]}))
             (is (= 10 @captured))))
         (testing "explicit limit is honored"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:limit-int context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] [])
+                                        search-core/search-results (fn [context _ _]
+                                                                     (reset! captured (:limit-int context))
+                                                                     {:data [] :total 0})]
               (search/search-tool {:keyword_queries ["x"] :limit 25}))
             (is (= 25 @captured))))
         (testing "limit above 50 is rejected by schema validation"
@@ -523,7 +554,35 @@
                        {:id 1 :type "dashboard" :name "Unrelated dashboard"}]]
           (is (= [{:id document-id :type "document" :name "Existing document" :can_write true}
                   {:id 1 :type "dashboard" :name "Unrelated dashboard"}]
-                 (#'search/validate-and-enrich-documents results))))))))
+                 (#'search/validate-and-enrich-documents false results))))))))
+
+(deftest archived-document-hits-survive-an-archived-search-test
+  (testing "GHY-4137: the staleness check must validate document hits against the archived set the
+            search actually asked for. With a hardcoded `:archived false`, every archived document
+            was dropped from the page while `:total` still counted it — an empty page no offset
+            could ever reach."
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Document {archived-id :id} {:name "Archived doc" :archived true}
+                     :model/Document {active-id :id} {:name "Active doc" :archived false}]
+        (testing "an archived hit survives an archived search"
+          (is (= [archived-id]
+                 (map :id (#'search/validate-and-enrich-documents
+                           true
+                           [{:id archived-id :type "document" :name "Archived doc"}])))))
+        (testing "an active hit is stale for an archived search"
+          (is (= []
+                 (#'search/validate-and-enrich-documents
+                  true
+                  [{:id active-id :type "document" :name "Active doc"}]))))
+        (testing "the active search is unchanged: active survives, archived is stale"
+          (is (= [active-id]
+                 (map :id (#'search/validate-and-enrich-documents
+                           false
+                           [{:id active-id :type "document" :name "Active doc"}]))))
+          (is (= []
+                 (#'search/validate-and-enrich-documents
+                  false
+                  [{:id archived-id :type "document" :name "Archived doc"}]))))))))
 
 (deftest enrich-with-collection-descriptions-test
   (mt/with-premium-features #{:content-verification}
@@ -706,6 +765,82 @@
                              :base_table_schema
                              :base_table_portable_fk])))))))))
 
+(deftest confined-collection-is-not-overridable-test
+  (testing "an embedded metabot (and the nlq profile) is confined to its own collection — that is a
+            containment boundary, not a default. An explicit collection-id, which the v2 search tool
+            passes from a caller-supplied filter, must not widen or relocate the search outside that
+            collection."
+    (mt/with-test-user :crowberto
+      (mt/with-temp [:model/Collection {confined-id :id}  {:name "Bot's collection"}
+                     :model/Collection {elsewhere-id :id} {:name "Somewhere else"}
+                     :model/Metabot {metabot-eid :entity_id} {:name          "confined bot"
+                                                              :collection_id confined-id}]
+        (let [collection-for (fn [search-args]
+                               (let [captured (atom ::unset)]
+                                 (mt/with-dynamic-fn-redefs [search-core/ranked-results
+                                                             (fn [context]
+                                                               (reset! captured (:collection context))
+                                                               [])]
+                                   (search/search (merge {:term-queries ["anything"]
+                                                          :entity-types ["dashboard"]
+                                                          :profile-id   "nlq"
+                                                          :metabot-id   metabot-eid}
+                                                         search-args)))
+                                 @captured))]
+          (testing "with no collection-id, the metabot's own collection scopes the search"
+            (is (= confined-id (collection-for {}))))
+          (testing "an explicit collection-id elsewhere cannot escape the confinement"
+            (is (= confined-id (collection-for {:collection-id elsewhere-id}))))
+          (testing "an unconfined metabot still honours an explicit collection-id"
+            (mt/with-temp [:model/Metabot {open-eid :entity_id} {:name "open bot" :collection_id nil}]
+              (is (= elsewhere-id (collection-for {:metabot-id    open-eid
+                                                   :collection-id elsewhere-id}))))))))))
+
+(deftest transform-visibility-is-superuser-only-test
+  (testing "this pipeline dropped remove-unreadable-transforms and relies instead on the transform
+            search spec's `:visibility :superuser`. Pin the narrowing: the engine is asked for
+            transforms when the caller is a superuser, and never when they are not. If this goes red,
+            the removed post-filter is load-bearing again.
+            The visibility rule itself is covered by metabase.search.filter-test."
+    ;; Two environment inputs are pinned rather than inherited, because leaving either to the ambient
+    ;; environment is what made this test pass on H2 while failing on the MySQL/MariaDB EE shards —
+    ;; there the positive control failed, so every assertion here was proving nothing.
+    ;;
+    ;; 1. `transforms-enabled`: its getter falls back to a cloud-token check when unset. The in-place
+    ;;    engine drops transform for EVERYONE when `enabled-transform-source-types` is empty
+    ;;    ((empty? enabled-types) (disj "transform") in search/in_place/filter.clj) — a gate the appdb
+    ;;    path has no equivalent of.
+    ;; 2. The engine: appdb and in-place gate transforms by different code, and MySQL/MariaDB fall
+    ;;    back to in-place because the app DB cannot hold the search index. Running both here means
+    ;;    the shard's engine choice can no longer decide whether this test means anything.
+    (mt/with-temporary-setting-values [transforms-enabled true]
+      (mt/with-premium-features #{:transforms-basic}
+        (search.tu/with-appdb-search-and-legacy-search
+          ;; `api/*is-superuser?*` is bound explicitly rather than inferred from the test user, which
+          ;; resolves it through a SELECT on the shared user row. Both engines read exactly this var
+          ;; to gate transforms, and pinning it is what the assertion is about: that this pipeline
+          ;; propagates the caller's superuser status, not where that status came from.
+          (let [models-for (fn [superuser?]
+                             (let [captured (atom nil)]
+                               (mt/with-test-user :crowberto
+                                 (binding [api/*is-superuser?* superuser?]
+                                   (mt/with-dynamic-fn-redefs [search-core/ranked-results
+                                                               (fn [context]
+                                                                 (reset! captured (:models context))
+                                                                 [])]
+                                     (search/search {:term-queries ["anything"]
+                                                     :entity-types ["transform" "dashboard"]}))))
+                               @captured))]
+            (testing "a superuser's search reaches the engine with transforms in scope"
+              (let [models (models-for true)]
+                (is (contains? models "transform"))
+                (is (contains? models "dashboard")
+                    "sanity: the positive control really did reach the engine")))
+            (testing "a non-superuser's search never asks the engine for transforms"
+              (let [models (models-for false)]
+                (is (not (contains? models "transform")))
+                (is (contains? models "dashboard")
+                    "sanity: the other requested type is unaffected, so this isn't an empty-set pass")))))))))
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"
     (mt/with-premium-features #{:transforms-basic}
