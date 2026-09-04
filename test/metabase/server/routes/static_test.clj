@@ -118,3 +118,33 @@
                     (request-with-encoding "gzip, br")
                     "static_test/app.js")]
       (is (= "Accept-Encoding" (get-in response [:headers "Vary"]))))))
+
+(def ^:private static-handler
+  (static/precompressed-resources "/" {:root "frontend_client"}))
+
+(defn- get-static
+  ([path] (get-static path nil))
+  ([path if-modified-since]
+   (static-handler {:request-method :get
+                    :uri            path
+                    :route-params   {:* (subs path 1)}
+                    :headers        (cond-> {}
+                                      if-modified-since (assoc "if-modified-since" if-modified-since))})))
+
+(deftest ^:parallel static-resource-reports-its-own-last-modified-test
+  (testing "a static resource carries the time it was modified, not the time it was served"
+    (let [response (get-static "/index_template.html")]
+      (is (= 200 (:status response)))
+      (is (some? (get-in response [:headers "Last-Modified"]))))))
+
+(deftest ^:parallel static-resource-answers-conditional-request-test
+  (testing "a client that already holds the resource is answered without the body"
+    (let [modified (get-in (get-static "/index_template.html") [:headers "Last-Modified"])
+          response (get-static "/index_template.html" modified)]
+      (is (= 304 (:status response)))
+      (is (nil? (:body response)))))
+
+  (testing "a client holding an older copy is sent the resource"
+    (let [response (get-static "/index_template.html" "Tue, 03 Jul 2001 06:00:00 GMT")]
+      (is (= 200 (:status response)))
+      (is (some? (:body response))))))
