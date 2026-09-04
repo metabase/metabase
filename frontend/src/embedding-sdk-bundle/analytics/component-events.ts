@@ -6,6 +6,7 @@ import { useSetting } from "metabase/common/hooks";
 import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
 
 import {
+  getHostReactVersion,
   getSdkAuthMethod,
   getSdkLocaleUsed,
   trackSdkSimpleEvent,
@@ -185,6 +186,7 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
           auth_method: getSdkAuthMethod(),
           sdk_version: sdkVersion,
           locale_used: getSdkLocaleUsed(),
+          react_version: getHostReactVersion(),
         },
       }),
     });
