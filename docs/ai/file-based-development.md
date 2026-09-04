@@ -46,7 +46,7 @@ Once you have these set up, you can step through the example workflow.
 
 1. Set up a Metabase instance to check your work before pushing changes to production. This Metabase should connect to the same data warehouse(s) your production Metabase connects to. A [config file](../configuring-metabase/config-file.md) will come in handy here.
 
-2. Create an [API key](../people-and-groups/api-keys.md#create-an-api-key) in this development Metabase and assign it to the Admin group, so the agent can create content and work with Remote Sync.
+2. Make sure the agent can log in as an admin, so it can create content and work with Remote Sync. The CLI can sign in through your browser with an admin account. If you'll run the CLI from a script, create an [API key](../people-and-groups/api-keys.md#create-an-api-key) in this development Metabase and assign it to the Admin group.
 
 3. We also recommend turning off the sample content and usage analytics, so they don't pollute the data model. If you're using a [docker compose file](../installation-and-operation/running-metabase-on-docker.md), add these [environment variables](../configuring-metabase/environment-variables.md):
 
@@ -73,11 +73,17 @@ Then authenticate it against your development Metabase:
 mb auth login --url your-metabase-url-here
 ```
 
-Authenticate with the API key you created in your Metabase instance.
+The CLI offers to open your Metabase in a browser so you can sign in and approve the CLI. On older versions, or if you pick **With an API key** at the prompt, paste the API key you created in your development Metabase. Check out [Authenticate the CLI](../installation-and-operation/metabase-cli.md#authenticate-the-cli) for details.
 
 ### Add the agent skill
 
-Add the [`/metabase-cli` skill](https://github.com/metabase/agent-skills/tree/main/skills/metabase-cli) to your agent so it knows how to use the CLI to create content directly in your Metabase.
+Add the [`/metabase-cli` skill](https://github.com/metabase/agent-skills/tree/main/skills/metabase-cli) to your agent so it knows how to use the CLI to create content directly in your Metabase:
+
+```
+npx skills add metabase/agent-skills --skill metabase-cli -a claude-code
+```
+
+For other ways to install the skill, check out [The metabase-cli skill](../installation-and-operation/metabase-cli.md#the-metabase-cli-skill).
 
 ## Example prompts
 
