@@ -23,6 +23,8 @@ import {
 } from "metabase/ui";
 import type { Member, User } from "metabase-types/api";
 
+import S from "./AddDataAppUsers.module.css";
+
 const MAX_SELECTED_USERS = 100;
 
 type Props = {
@@ -217,12 +219,12 @@ const AddUsersRow = ({
   children,
 }: AddUsersRowProps) => (
   <Flex
+    className={S.row}
+    data-has-current-users={hasCurrentUsers}
     p="0.5rem"
     align="center"
-    bd="1px solid var(--mb-color-core-brand)"
     style={{
       borderRadius: hasCurrentUsers ? "0.5rem 0.5rem 0 0" : "0.5rem",
-      borderBottomWidth: hasCurrentUsers ? 0 : undefined,
     }}
   >
     {children}
