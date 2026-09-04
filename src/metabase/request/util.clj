@@ -68,9 +68,21 @@
   [{:keys [uri]}]
   (re-matches #"^/embed/sdk/v\d+$" uri))
 
+(defn- versioned-locale-catalogue?
+  "A locale catalogue whose caller named the build it wants.
+
+  A catalogue is immutable for a given build but its name carries no hash, so the
+  cache key comes from the caller instead. The SDK, which the instance serves and
+  so shares a build with, sends its own build token. Without one the request is
+  not cacheable, so a caller that omits it cannot pin a stale catalogue."
+  [uri query-string]
+  (boolean (and (re-matches #"^/app/locales/.+\.json$" uri)
+                query-string
+                (re-find #"(?:^|&)v=[^&]+" query-string))))
+
 (defn cacheable?
   "Can the ring request be permanently cached?"
-  [{:keys [request-method uri], :as _request}]
+  [{:keys [request-method uri query-string], :as _request}]
   (and (= request-method :get)
        (or
         ;; match requests that are js/css and have a cache-busting hex string
@@ -78,7 +90,8 @@
         ;; any resource that is named as a cache-busting hex string (e.g. images)
         (re-matches #"^/app/dist/[a-f0-9]+.*$" uri)
         ;; font files are static and should be cached
-        (re-matches #"^/app/fonts/.+\.(woff2?|ttf|otf|eot)$" uri))))
+        (re-matches #"^/app/fonts/.+\.(woff2?|ttf|otf|eot)$" uri)
+        (versioned-locale-catalogue? uri query-string))))
 
 (def https-state
   "Whether the original request reached us over HTTPS: `:https`, `:http`, or `:unknown`. Require `:https` to skip a
