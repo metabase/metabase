@@ -105,7 +105,6 @@ describe("getLocaleToUse", () => {
 
 describe("LocaleProvider", () => {
   it("should make Mantine components use correct locale", async () => {
-
     renderWithProviders(
       <LocaleProvider locale="de">
         <DatePicker defaultDate={new Date(2020, 0, 1)} onChange={() => {}} />
@@ -138,4 +137,3 @@ describe("LocaleProvider", () => {
     });
   });
 });
-
