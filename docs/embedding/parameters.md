@@ -10,21 +10,25 @@ redirect_from:
 
 This page covers how to pass parameter values to embedded dashboards and SQL questions.
 
-## Parameters differ based on whether you use guest or SSO authentication
+## Parameters differ between guest and SSO embeds
 
 When you embed a dashboard or SQL question, the embedding wizard will offer different parameter options depending on which authentication method you pick.
 
-With **SSO** authentication, you can set a default value and choose whether to hide a parameters widget. On an SSO embed, you don't need locked parameters. With SSO, your Metabase knows who's viewing, so [data permissions](../permissions/embedding.md) and [row and column security](../permissions/row-and-column-security.md) filter the rows for you.
+### SSO embed parameters
+
+With **SSO** authentication, you can set a default value and choose whether to hide a parameters widget. Your Metabase knows who's viewing, so [data permissions](../permissions/embedding.md) and [row and column security](../permissions/row-and-column-security.md) filter the rows for you.
+
+### Guest embed parameters
 
 With **guest** authentication, however, every parameter starts out **Disabled**, and for each parameter you can pick from:
 
 - **Disabled**: no widget, and nobody can set a value.
 - **Editable**: the widget shows, people can change the value, and your page can set a [starting value](#set-starting-values).
-- **Locked**: no widget. Your server sets the value in the signed token. Check out [Restrict data with locked parameters](#restrict-data-with-locked-parameters).
+- **Locked**: no widget. Your server sets the value in the signed token. Check out [Restrict data on guest embeds](#restrict-data-on-guest-embeds).
 
 You can't disable a filter that [always requires a value](../dashboards/filters.md#make-a-filter-or-parameter-required).
 
-## Restrict data with locked parameters
+## Restrict data on guest embeds
 
 ![Locked parameters](./images/locked-parameters.png)
 
@@ -102,7 +106,7 @@ SQL questions take `initialSqlParameters`:
 
 When your app needs to be the source of truth for filter values, use the controlled props. They work like a controlled `<input>` in React: you hold the values, the embed applies whatever you hand it, and it calls you back whenever someone changes the value in the filter widget. Use controlled values when you want to [build your own filter widgets](#build-your-own-filter-ui).
 
-Controlled values work with either authentication method. On a [guest embed](./guest-embedding.md), they apply to parameters you've set to **Editable** in the embed wizard. To restrict data rather than just set a value, [lock the parameter](#restrict-data-with-locked-parameters) instead.
+Controlled values work with either authentication method. On a [guest embed](./guest-embedding.md), they apply to parameters you've set to **Editable** in the embed wizard. To restrict data rather than just set a value, [lock the parameter](#restrict-data-on-guest-embeds) instead.
 
 - [Web component](#web-component-controlled-values)
 - [React SDK](#react-sdk-controlled-values)
@@ -188,7 +192,7 @@ The same prop works on `StaticQuestion` and `InteractiveQuestion`.
 
 On a [guest embed](./guest-embedding.md), only **Editable** parameters get a widget in the first place, so the embed wizard won't generate `hidden-parameters` for you. To remove a widget in a guest embed, set the parameter to **Disabled** or **Locked** in the wizard. You can still add `hidden-parameters` by hand to hide a widget for a parameter you've made editable.
 
-Hiding a widget doesn't restrict anything: the value is still set from the browser, which means that anyone can open the console to change the value. To restrict what people can query, [lock the parameter](#restrict-data-with-locked-parameters) on a guest embed, or use [permissions](../permissions/embedding.md) on an SSO embed.
+Hiding a widget doesn't restrict anything: the value is still set from the browser, which means that anyone can open the console to change the value. To restrict what people can query, [lock the parameter](#restrict-data-on-guest-embeds) on a guest embed, or use [permissions](../permissions/embedding.md) on an SSO embed.
 
 ## Build your own filter UI
 

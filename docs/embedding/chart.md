@@ -45,7 +45,7 @@ Three things need to happen: you publish the embed in Metabase, you paste the ch
 4. For authentication, choose **Guest**, so your app won't need to log anyone in to your Metabase. An admin needs to [turn on guest embedding](./guest-embedding.md#turning-on-guest-embedding-in-metabase) first.
 5. Click the **Publish** button. Publishing only applies to guest embeds.
 6. Under behavior, Metabase gives you several options for customizing how the embed works. See [web component attributes](./question-reference.md#web-component-metabase-question-attributes) for what each one does. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
-7. If you're embedding a SQL question with a variable, set the parameter to **Editable** or **Locked**. Parameters are **Disabled** by default, which hides them and prevents your server from setting them. See [Parameters differ based on whether you use guest or SSO authentication](./parameters.md#parameters-differ-based-on-whether-you-use-guest-or-sso-authentication).
+7. If you're embedding a SQL question with a variable, set the parameter to **Editable** or **Locked**. Parameters are **Disabled** by default, which hides them and prevents your server from setting them. See [Parameters differ between guest and SSO embeds](./parameters.md#parameters-differ-between-guest-and-sso-embeds).
 8. Customize the [appearance](./appearance.md).
 9. Click the **Get code** button. You'll get both the frontend and backend code based on the selections you made in the wizard.
 10. Copy the client code and paste it in your app.
@@ -127,7 +127,7 @@ const payload = {
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-To get this code from the in-app wizard, set the `customer_id` parameter to **Locked** and publish the question. See [Locked parameters](./parameters.md#restrict-data-with-locked-parameters).
+To get this code from the in-app wizard, set the `customer_id` parameter to **Locked** and publish the question. See [Locked parameters](./parameters.md#restrict-data-on-guest-embeds).
 
 For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
 
@@ -247,7 +247,7 @@ Say you want to show each customer only their own orders. How you restrict the r
 
 ### Lock a parameter on a guest embed
 
-Embeds with **Guest** authentication can [lock a parameter](./parameters.md#restrict-data-with-locked-parameters). Your app sets the parameter's value in the signed token on your server, so the filter is controlled by your app rather than by whoever's clicking around the page. They can't see the value, and they can't change it. An embed on a customer's account page returns that account's rows, whether or not Metabase has any idea who's looking at it.
+Embeds with **Guest** authentication can [lock a parameter](./parameters.md#restrict-data-on-guest-embeds). Your app sets the parameter's value in the signed token on your server, so the filter is controlled by your app rather than by whoever's clicking around the page. They can't see the value, and they can't change it. An embed on a customer's account page returns that account's rows, whether or not Metabase has any idea who's looking at it.
 
 Locked parameters need a question written in SQL, with a [field filter or variable](../questions/native-editor/sql-parameters.md) to lock onto. Query builder questions have no parameters to lock, so segregate their data with permissions instead.
 

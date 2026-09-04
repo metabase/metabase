@@ -127,11 +127,11 @@ Appearance settings available for guest embeds depend on your Metabase plan. If 
 
 ## Configuring parameters
 
-Parameters on a guest embed start out **Disabled**: the widget is hidden, and nobody can set the value. When you publish the embed, you can make each one **Editable** (people see the widget and can change the value, and your page can set a starting value) or **Locked** (your server sets the value in the JWT, and nobody sees the widget). Check out [Parameters differ based on whether you use guest or SSO authentication](./parameters.md#parameters-differ-based-on-whether-you-use-guest-or-sso-authentication).
+Parameters on a guest embed start out **Disabled**: the widget is hidden, and nobody can set the value. When you publish the embed, you can make each one **Editable** (people see the widget and can change the value, and your page can set a starting value) or **Locked** (your server sets the value in the JWT, and nobody sees the widget). Check out [Parameters differ between guest and SSO embeds](./parameters.md#parameters-differ-between-guest-and-sso-embeds).
 
 ### Locked parameters
 
-Locked parameters are how you restrict data in a guest embed. Your server puts the value in the `params` object of the token it signs, and Metabase applies the filter before anything reaches the browser. Every token you sign for that item has to include a value for every locked parameter, and `[]` turns a locked filter off for one token. For the walkthrough, check out [Restrict data with locked parameters](./parameters.md#restrict-data-with-locked-parameters); for the rules Metabase applies to `params`, check out [Params in a signed token](./parameters-reference.md#params-in-a-signed-token); and to drive a locked parameter from a widget you build yourself, check out [Change a locked value from your page](./parameters.md#change-a-locked-value-from-your-page).
+Locked parameters are how you restrict data in a guest embed. Your server puts the value in the `params` object of the token it signs, and Metabase applies the filter before anything reaches the browser. Every token you sign for that item has to include a value for every locked parameter, and `[]` turns a locked filter off for one token. For the walkthrough, check out [Restrict data on guest embeds](./parameters.md#restrict-data-on-guest-embeds); for the rules Metabase applies to `params`, check out [Params in a signed token](./parameters-reference.md#params-in-a-signed-token); and to drive a locked parameter from a widget you build yourself, check out [Change a locked value from your page](./parameters.md#change-a-locked-value-from-your-page).
 
 ## Refreshing or initializing the JWT from your server
 

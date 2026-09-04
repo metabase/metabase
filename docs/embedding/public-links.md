@@ -213,7 +213,7 @@ Note that the name of the filter in the URL should be specified in lower case, a
 
 Values are case-sensitive and have to match your data. Replace spaces in values with underscores. For the date formats a date filter accepts, check out the [Parameters reference](./parameters-reference.md#date-formats).
 
-For filter values that people can't remove from the URL, check out [locked parameters](./parameters.md#restrict-data-with-locked-parameters) on a guest or static embed.
+For filter values that people can't remove from the URL, check out [locked parameters](./parameters.md#restrict-data-on-guest-embeds) on a guest or static embed.
 
 ### Maximum URL length
 

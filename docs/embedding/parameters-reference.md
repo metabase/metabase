@@ -101,7 +101,7 @@ Other rules:
 - A blank string, `""`, counts as no value at all. On a locked parameter that's the same as leaving it out, so the token is rejected.
 - Metabase substitutes token values into text cards on the server, so a [text card variable that's connected to the filter](../dashboards/filters.md#wiring-up-dashboard-filters-to-text-cards) shows the value even though the browser never receives it.
 
-For a walkthrough, check out [Restrict data with locked parameters](./parameters.md#restrict-data-with-locked-parameters). For how to sign and refresh the token, check out [Guest embeds](./guest-embedding.md).
+For a walkthrough, check out [Restrict data on guest embeds](./parameters.md#restrict-data-on-guest-embeds). For how to sign and refresh the token, check out [Guest embeds](./guest-embedding.md).
 
 ## Further reading
 

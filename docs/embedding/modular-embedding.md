@@ -170,7 +170,7 @@ When you're creating a new embed using **Admin > Embedding > Setup guide > Embed
 
 - **Allow people to save new questions**. If you embed the query builder (visual or SQL) but disable this option, people can still do their own explorations, they just won't be able to save them.
 
-- **Parameters**: for dashboard filters, SQL variables, and time grouping parameters, you can add default values. Default values set here override the default values set at the dashboard or question level. For dashboard filters and parameters, you can choose whether to hide the parameter. Check out [Embedding parameters](./parameters.md#parameters-differ-based-on-whether-you-use-guest-or-sso-authentication).
+- **Parameters**: for dashboard filters, SQL variables, and time grouping parameters, you can add default values. Default values set here override the default values set at the dashboard or question level. For dashboard filters and parameters, you can choose whether to hide the parameter. Check out [Embedding parameters](./parameters.md#parameters-differ-between-guest-and-sso-embeds).
 
 - **Show title**: what it says on the tin.
 

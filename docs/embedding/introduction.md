@@ -55,7 +55,7 @@ All SSO options require a Pro or Enterprise plan.
 | [Custom visualizations](./custom-visualizations.md)                                       | ✅  | ❌    |
 | [Usage analytics](../usage-and-performance-tools/usage-analytics.md)                      | ✅  | ❌    |
 | Customize layouts and behavior with [plugins](./sdk/plugins.md)                           | ✅  | ❌    |
-| [Locked filters](./parameters.md#restrict-data-with-locked-parameters)\*\*\*              | ❌  | ✅    |
+| [Locked filters](./parameters.md#restrict-data-on-guest-embeds)\*\*\*              | ❌  | ✅    |
 
 \* Each authentication method allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing/) plans can disable data downloads.
 
@@ -81,7 +81,7 @@ With [guest authentication](./guest-embedding.md), Metabase doesn't create a ses
 
 Guest doesn't mean unsecured. Metabase only loads the component if the request carries a JWT signed with a secret shared between your app and your Metabase. What Metabase doesn't have is an identity: with no account to check permissions against, Metabase can't tell whether a new query is one that person should be allowed to run. That's why components with guest authentication are view-only.
 
-**When to use guest**: embedding charts and dashboards where you don't want to offer ad-hoc querying or chart drill-through. To filter data down to what's relevant to the person viewing, use [locked parameters](./parameters.md#restrict-data-with-locked-parameters), where your app sets the filter value in the signed token.
+**When to use guest**: embedding charts and dashboards where you don't want to offer ad-hoc querying or chart drill-through. To filter data down to what's relevant to the person viewing, use [locked parameters](./parameters.md#restrict-data-on-guest-embeds), where your app sets the filter value in the signed token.
 
 ## Set up modular embeds with web components or React
 
