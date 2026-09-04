@@ -12,6 +12,15 @@
   :export?    true
   :doc        false)
 
+(defsetting content-diagnostics-finding-retention-days
+  (deferred-tru "Invalidated Content Diagnostics findings are deleted once they are this many days old.")
+  :encryption :no
+  :visibility :admin
+  :default    30
+  :type       :positive-integer
+  :export?    true
+  :doc        false)
+
 (defsetting content-diagnostics-slow-card-threshold-seconds
   (deferred-tru "Cards whose average query time exceeds this are flagged slow by Content Diagnostics.")
   :encryption :no

@@ -3168,6 +3168,7 @@
            metabase-enterprise.content-diagnostics.init}
    :uses #{analytics-interface
            api
+           app-db
            collections
            documents
            events
