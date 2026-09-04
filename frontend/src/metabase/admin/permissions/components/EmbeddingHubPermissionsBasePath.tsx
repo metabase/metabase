@@ -1,9 +1,4 @@
-import { useEffect } from "react";
-
-import {
-  resetPermissionsBasePath,
-  setPermissionsBasePath,
-} from "metabase/admin/permissions/utils/base-path";
+import { usePermissionsBasePath } from "metabase/admin/permissions/utils/base-path";
 import { Outlet } from "metabase/router";
 import * as Urls from "metabase/urls";
 
@@ -22,11 +17,13 @@ import * as Urls from "metabase/urls";
  * not admin permissions — `ConversationHeader` links a group to the
  * permissions editor from Monitor, and would otherwise send the user into the
  * hub.
+ *
+ * The Tenancy tab claims the same path for its own tenant-scoped permissions
+ * routes, so `usePermissionsBasePath` tracks which host claimed last and only
+ * lets that one reset.
  */
 export function EmbeddingHubPermissionsBasePath() {
-  setPermissionsBasePath(Urls.embeddingHubPermissions());
-
-  useEffect(() => resetPermissionsBasePath, []);
+  usePermissionsBasePath(Urls.embeddingHubPermissions());
 
   return <Outlet />;
 }
