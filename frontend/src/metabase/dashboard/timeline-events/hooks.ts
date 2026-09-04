@@ -9,7 +9,6 @@ import type {
   DashboardCard,
   TimelineEvent,
   TimelineEventId,
-  TimelineEventsVisibility,
 } from "metabase-types/api";
 
 import {
@@ -25,8 +24,6 @@ import {
   getIsTimelineEventsDashCard,
   getTimelineEventsDashCardIds,
 } from "./selectors";
-
-const NO_VISIBILITY: TimelineEventsVisibility = {};
 
 // keeps the timelines loaded for the events sidebar; charts load their own
 export const useDashboardTimelines = () => {
@@ -51,9 +48,18 @@ type DashCardTimelineEventsProps = Pick<
   | "onTimelineEventsShown"
 >;
 
+type DashCardTimelineEvents = {
+  isEnabled: boolean;
+} & DashCardTimelineEventsProps;
+
+const DISABLED: DashCardTimelineEvents = {
+  isEnabled: false,
+  timelineEventsVisibility: null,
+};
+
 export const useDashCardTimelineEvents = (
   dashcard: DashboardCard,
-): { isEnabled: boolean } & DashCardTimelineEventsProps => {
+): DashCardTimelineEvents => {
   const dispatch = useDispatch();
   const { withTimelineEvents = false } = useDashboardContext();
   const dashcardId: DashCardId = dashcard.id;
@@ -63,10 +69,7 @@ export const useDashCardTimelineEvents = (
   );
 
   const timelineEventsVisibility = useSelector((state) =>
-    isEnabled
-      ? (getDashCardTimelineEventsVisibility(state, dashcardId) ??
-        NO_VISIBILITY)
-      : null,
+    isEnabled ? getDashCardTimelineEventsVisibility(state, dashcardId) : null,
   );
   const selectedTimelineEventIds = useSelector((state) =>
     isEnabled
@@ -98,13 +101,16 @@ export const useDashCardTimelineEvents = (
     [dispatch],
   );
 
+  if (!isEnabled) {
+    return DISABLED;
+  }
   return {
     isEnabled,
     timelineEventsVisibility,
     selectedTimelineEventIds,
-    onOpenTimelines: isEnabled ? onOpenTimelines : undefined,
-    onSelectTimelineEvents: isEnabled ? onSelectTimelineEvents : undefined,
-    onDeselectTimelineEvents: isEnabled ? onDeselectTimelineEvents : undefined,
-    onTimelineEventsShown: isEnabled ? onTimelineEventsShown : undefined,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+    onTimelineEventsShown,
   };
 };

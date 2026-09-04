@@ -6,17 +6,15 @@ import {
 import { createCachedSelector } from "re-reselect";
 import { shallowEqual } from "react-redux";
 
-import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   getCurrentDashcards,
   getDashCardById,
-  getDashboard,
   getDashcardData,
   getDashcardDataMap,
   getDashcards,
   getSelectedTabId,
-  getSidebar,
 } from "metabase/dashboard/selectors";
+import { isDashCardOnTab, isDashcardLoading } from "metabase/dashboard/utils";
 import type {
   DashboardState,
   DashboardTimelineEventsState,
@@ -29,9 +27,9 @@ import {
   resolveVisibleTimelineEvents,
 } from "metabase/visualizations/lib/timeline-events-visibility";
 import type {
+  DashCardDataMap,
   DashCardId,
   DashboardCard,
-  DashboardTabId,
   TimelineEventId,
   TimelineEventsVisibility,
 } from "metabase-types/api";
@@ -39,7 +37,6 @@ import type {
 import {
   canDashCardDisplayTimelineEvents,
   computeDashCardTimeseriesXAxis,
-  isDashCardDataLoaded,
 } from "./utils";
 
 const NO_EVENT_IDS: TimelineEventId[] = [];
@@ -48,9 +45,6 @@ const createShallowEqualResultSelector = createSelectorCreator({
   memoize: lruMemoize,
   memoizeOptions: { resultEqualityCheck: shallowEqual },
 });
-
-export const getDashboardCollectionId = (state: State) =>
-  getDashboard(state)?.collection_id ?? null;
 
 const getTimelineEventsOverrides = (state: State) =>
   state.dashboard.timelineEvents.overrides;
@@ -75,19 +69,35 @@ export const getDashCardTimelineEventsVisibility = (
     dashcardId,
   );
 
-export const getDashCardTimeseriesXAxis = createCachedSelector(
-  [getDashCardById, getDashcardData],
-  (dashcard, dashcardData) =>
-    dashcard ? computeDashCardTimeseriesXAxis(dashcard, dashcardData) : null,
-)((_state, dashcardId) => dashcardId);
+// memoized per dashcard on the dashcard and its data, independent of the rest of the state
+const computeCachedDashCardTimeseriesXAxis = createCachedSelector(
+  [
+    (dashcard: DashboardCard) => dashcard,
+    (
+      _dashcard: DashboardCard,
+      dashcardData: DashCardDataMap[number] | undefined,
+    ) => dashcardData,
+  ],
+  computeDashCardTimeseriesXAxis,
+)((dashcard) => dashcard.id);
 
-export const getIsTimelineEventsDashCard = createCachedSelector(
-  [getDashCardById, getDashCardTimeseriesXAxis],
-  (dashcard, xAxis) =>
-    dashcard != null &&
-    canDashCardDisplayTimelineEvents(dashcard) &&
-    xAxis != null,
-)((_state, dashcardId) => dashcardId);
+export const getDashCardTimeseriesXAxis = (
+  state: State,
+  dashcardId: DashCardId,
+) => {
+  const dashcard = getDashCardById(state, dashcardId);
+  return dashcard
+    ? computeCachedDashCardTimeseriesXAxis(
+        dashcard,
+        getDashcardData(state, dashcardId),
+      )
+    : null;
+};
+
+export const getIsTimelineEventsDashCard = (
+  state: State,
+  dashcardId: DashCardId,
+) => getDashCardTimeseriesXAxis(state, dashcardId) != null;
 
 export const getDashCardVisibleTimelineEventIds = createCachedSelector(
   [getTransformedTimelines, getDashCardTimelineEventsVisibility],
@@ -106,9 +116,6 @@ export const getDashCardSelectedTimelineEventIds = (
   state: State,
   dashcardId?: DashCardId,
 ): TimelineEventId[] => {
-  if (getSidebar(state).name !== SIDEBAR_NAME.events) {
-    return NO_EVENT_IDS;
-  }
   const selection = state.dashboard.timelineEvents.selection;
   return selection &&
     (selection.dashcardId == null || selection.dashcardId === dashcardId)
@@ -116,30 +123,20 @@ export const getDashCardSelectedTimelineEventIds = (
     : NO_EVENT_IDS;
 };
 
-const isDashCardOnSelectedTab = (
-  dashcard: DashboardCard,
-  selectedTabId: DashboardTabId | null,
-) =>
-  !selectedTabId ||
-  dashcard.dashboard_tab_id === selectedTabId ||
-  dashcard.dashboard_tab_id === null;
-
 export const getTimelineEventsDashCardIds = createShallowEqualResultSelector(
-  [
-    getCurrentDashcards,
-    getSelectedTabId,
-    getDashcardDataMap,
-    (state: State) => state,
-  ],
-  (dashcards, selectedTabId, dashcardDataMap, state) =>
+  [getCurrentDashcards, getSelectedTabId, getDashcardDataMap],
+  (dashcards, selectedTabId, dashcardDataMap) =>
     dashcards
-      .filter(
-        (dashcard) =>
-          isDashCardOnSelectedTab(dashcard, selectedTabId) &&
+      .filter((dashcard) => {
+        const dashcardData = dashcardDataMap[dashcard.id];
+        return (
+          isDashCardOnTab(dashcard, selectedTabId) &&
           canDashCardDisplayTimelineEvents(dashcard) &&
-          (!isDashCardDataLoaded(dashcard, dashcardDataMap[dashcard.id]) ||
-            getIsTimelineEventsDashCard(state, dashcard.id)),
-      )
+          (isDashcardLoading(dashcard, dashcardData) ||
+            computeCachedDashCardTimeseriesXAxis(dashcard, dashcardData) !=
+              null)
+        );
+      })
       .map((dashcard) => dashcard.id),
 );
 
