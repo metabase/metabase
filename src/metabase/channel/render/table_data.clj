@@ -37,17 +37,24 @@
   against the column the user configured, while the name to show and the type to align by are
   still reachable through the attached target.
 
+  Each column also carries `:source-idx`, the position in an unfiltered result row that its value
+  comes from: the target's for a remapped column, its own otherwise. Same idea as the `:source-idx`
+  [[prepare-table-data]] computes.
+
   A column whose remap target is missing keeps its own identity rather than throwing, as the
   frontend does."
   [cols]
   (let [remapping-lookup (create-remapping-lookup cols)]
     (into []
-          (comp (filter show-in-table?)
-                (remove :remapped_from)
-                (map (fn [col]
+          (comp (map-indexed vector)
+                (filter (fn [[_idx col]] (show-in-table? col)))
+                (remove (fn [[_idx col]] (:remapped_from col)))
+                (map (fn [[idx col]]
                        (if-let [target-idx (get remapping-lookup (:name col))]
-                         (assoc col :remapped_to_column (nth cols target-idx))
-                         col))))
+                         (assoc col
+                                :remapped_to_column (nth cols target-idx)
+                                :source-idx         target-idx)
+                         (assoc col :source-idx idx)))))
           cols)))
 
 (defn remapped-display-name

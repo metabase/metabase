@@ -112,10 +112,11 @@
               (:name col)))))
 
 (defn- query-results->header-row
-  "Returns a row structure with header info from `cols`. These values are strings that are ready to be rendered as HTML"
-  [card cols]
+  "Returns a row structure with header info from `visible-cols`. These values are strings that are ready to be
+  rendered as HTML"
+  [card visible-cols]
   {:row
-   (for [col      (table-data/visible-columns cols)
+   (for [col      visible-cols
          ;; The type comes from the column whose value is rendered in this slot, which for a
          ;; remapped FK is the target. Mirrors `isColumnRightAligned`
          ;; (`frontend/src/metabase/viz-core/lib/table.ts`); it is the only thing this row
@@ -128,18 +129,15 @@
 
 (mu/defn- query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
-  [timezone-id :- [:maybe :string] remapping-lookup cols rows viz-settings]
-  (let [formatters (into [] (map #(formatter/create-formatter timezone-id % viz-settings)) cols)]
+  [timezone-id :- [:maybe :string] visible-cols rows viz-settings]
+  ;; A remapped column is formatted by the column the user configured, not by the target its
+  ;; value came from -- [[include-only-remapped-column-name]] pins that.
+  (let [formatters (mapv #(formatter/create-formatter timezone-id % viz-settings) visible-cols)]
     (for [row rows]
-      {:row (for [[maybe-remapped-col maybe-remapped-row-cell fmt-fn] (map vector cols row formatters)
-                  :when (and (not (:remapped_from maybe-remapped-col))
-                             (table-data/show-in-table? maybe-remapped-col))
-                  :let [[_formatter row-cell] (if (:remapped_to maybe-remapped-col)
-                                                (let [remapped-index (get remapping-lookup (:name maybe-remapped-col))]
-                                                  [(nth formatters remapped-index)
-                                                   (nth row remapped-index)])
-                                                [fmt-fn maybe-remapped-row-cell])]]
-              (fmt-fn row-cell))})))
+      {:row (mapv (fn [col fmt-fn]
+                    (fmt-fn (nth row (:source-idx col) nil)))
+                  visible-cols
+                  formatters)})))
 
 (mu/defn- prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
@@ -147,11 +145,13 @@
   ([timezone-id :- [:maybe :string]
     card
     {:keys [cols rows viz-settings], :as _data}]
-   (let [remapping-lookup (table-data/create-remapping-lookup cols)
-         row-limit        (min (channel.settings/attachment-table-row-limit) 100)]
+   ;; The header row and the data rows are derived from one list, so they cannot disagree in
+   ;; length or order (#71069).
+   (let [visible-cols (table-data/visible-columns cols)
+         row-limit    (min (channel.settings/attachment-table-row-limit) 100)]
      (cons
-      (query-results->header-row card cols)
-      (query-results->row-seq timezone-id remapping-lookup cols (take row-limit rows) viz-settings)))))
+      (query-results->header-row card visible-cols)
+      (query-results->row-seq timezone-id visible-cols (take row-limit rows) viz-settings)))))
 
 (defn- strong-limit-text [number]
   [:strong {:style (style/style {:color style/color-gray-3})} (h (formatter/format-scalar-number number))])
