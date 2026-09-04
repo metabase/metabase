@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import {
   skipToken,
   useListPermissionsGroupsQuery,
@@ -233,12 +232,12 @@ function UserGroupsMenu({
         </Anchor>
       </Menu.Target>
       <Menu.Dropdown miw="14rem">
-        <Menu.Label>{t`View a group's permissions`}</Menu.Label>
+        <Menu.Label>{t`View a group's usage`}</Menu.Label>
         {userGroups.map((group) => (
           <Menu.Item
             key={group.id}
             component={ForwardRefLink}
-            to={getGroupFocusPermissionsUrl(group.id)}
+            to={`${Urls.monitorAiAuditingUsage()}?group=${group.id}`}
             leftSection={<Icon name="group" size={14} />}
           >
             {group.name}
