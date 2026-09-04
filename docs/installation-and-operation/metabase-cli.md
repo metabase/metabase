@@ -45,13 +45,21 @@ On older versions of Metabase, the CLI skips the browser and asks for an [API ke
 
 ### Log in without a prompt
 
-To log in from a script or CI, give the CLI an API key. Pipe the key on stdin or set the `MB_API_KEY` environment variable:
+To log in from a script or CI, give the CLI an API key without putting the key on the command line, so it stays out of your shell history. Either set the `MB_API_KEY` environment variable (for example, from your CI provider's secret store) and run:
 
 ```
-echo "$MB_API_KEY" | mb auth login --url https://metabase.example.com
+mb auth login --url https://metabase.example.com
 ```
 
-You can set `MB_URL` instead of passing `--url`. There's also an `--api-key` flag, but the key ends up in your shell history, so prefer stdin or the environment variable.
+Or pipe the key on stdin from a file or a secrets manager:
+
+```
+mb auth login --url https://metabase.example.com < api-key.txt
+```
+
+The key must be a Metabase [API key](../people-and-groups/api-keys.md#create-an-api-key). If the CLI gets an empty key, it stops with "interactive login requires a TTY" rather than prompting.
+
+You can set `MB_URL` instead of passing `--url`. There's also an `--api-key` flag, but the key ends up in your shell history, so prefer the environment variable or stdin.
 
 ### Check or clear your login
 
