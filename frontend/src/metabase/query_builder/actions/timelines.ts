@@ -1,28 +1,29 @@
 import { createAction } from "redux-actions";
 
 import type { Dispatch, GetState } from "metabase/redux/store";
-import type { CollectionId, Timeline } from "metabase-types/api";
+import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
+import { isSameTimelineEventsVisibility } from "metabase/visualizations/lib/timeline-events-visibility";
+import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
 
 import {
   DESELECT_TIMELINE_EVENTS,
-  HIDE_TIMELINE_EVENTS,
   SELECT_TIMELINE_EVENTS,
-  SHOW_TIMELINE_EVENTS,
 } from "../store/actions";
-import { getFetchedTimelines } from "../store/selectors";
+import { getTimelineEventsVisibility } from "../store/selectors";
+
+import { onUpdateVisualizationSettings } from "./visualization-settings";
 
 export const selectTimelineEvents = createAction(SELECT_TIMELINE_EVENTS);
 export const deselectTimelineEvents = createAction(DESELECT_TIMELINE_EVENTS);
-export const hideTimelineEvents = createAction(HIDE_TIMELINE_EVENTS);
-export const showTimelineEvents = createAction(SHOW_TIMELINE_EVENTS);
 
-export const showTimelinesForCollection =
-  (collectionId?: CollectionId | null) =>
+export const updateTimelineEventsVisibility =
+  (update: TimelineEventsVisibilityUpdate) =>
   (dispatch: Dispatch, getState: GetState) => {
-    const fetchedTimelines: Timeline[] = getFetchedTimelines(getState());
-    const collectionTimelines = collectionId
-      ? fetchedTimelines.filter((t) => t.collection_id === collectionId)
-      : fetchedTimelines.filter((t) => t.collection_id == null);
+    const state = getState();
+    const visibility = getTimelineEventsVisibility(state);
+    const nextVisibility = update(visibility, getTransformedTimelines(state));
 
-    dispatch(showTimelineEvents(collectionTimelines.flatMap((t) => t.events)));
+    if (!isSameTimelineEventsVisibility(visibility, nextVisibility)) {
+      dispatch(onUpdateVisualizationSettings(nextVisibility));
+    }
   };

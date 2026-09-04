@@ -1,4 +1,4 @@
-import type { CardId } from "./card";
+import type { CardId, VisualizationSettings } from "./card";
 import type {
   Collection,
   CollectionId,
@@ -58,6 +58,11 @@ export interface TimelineEventData {
   source?: TimelineEventSource;
   question_id?: CardId;
 }
+
+export type TimelineEventsVisibility = Pick<
+  VisualizationSettings,
+  "timeline.selected_timeline_ids" | "timeline.excluded_timeline_event_ids"
+>;
 
 export type ListTimelinesRequest = {
   include?: "events";

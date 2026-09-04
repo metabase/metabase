@@ -4,8 +4,10 @@ import { t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getIsHeaderVisible } from "metabase/dashboard/selectors";
+import { useDashboardTimelines } from "metabase/dashboard/timeline-events";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/redux";
@@ -32,10 +34,19 @@ import { Grid, ParametersList } from "./components";
 import { useDashboardChartPaste } from "./use-dashboard-chart-paste";
 
 const DashboardDefaultView = ({ className }: { className?: string }) => {
-  const { dashboard, isEditing, isFullscreen, isSharing, selectedTabId } =
-    useDashboardContext();
+  const {
+    dashboard,
+    isEditing,
+    isFullscreen,
+    isSharing,
+    selectedTabId,
+    sidebar,
+  } = useDashboardContext();
+
+  const hasDockedSidebar = isSharing || sidebar.name === SIDEBAR_NAME.events;
 
   useDashboardChartPaste();
+  useDashboardTimelines();
 
   const isHeaderVisible = useSelector(getIsHeaderVisible);
 
@@ -62,7 +73,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
   const hasTabs = dashboard.tabs && dashboard.tabs.length > 1;
 
   // Embedding SDK has parent containers that requires dashboard to be full height to avoid double scrollbars.
-  const isFullHeight = isEditing || isSharing || isEmbeddingSdk();
+  const isFullHeight = isEditing || hasDockedSidebar || isEmbeddingSdk();
 
   return (
     <Flex
@@ -105,14 +116,14 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
         miw={0}
         mih={0}
         className={cx(S.DashboardBody, {
-          [S.isEditingOrSharing]: isEditing || isSharing,
+          [S.isHeightConstrained]: isEditing || hasDockedSidebar,
           [S.isEmbeddingSdk]: isEmbeddingSdk(),
         })}
       >
         <Box
           className={cx(S.ParametersAndCardsContainer, {
             [S.shouldMakeDashboardHeaderStickyAfterScrolling]:
-              !isFullscreen && (isEditing || isSharing),
+              !isFullscreen && (isEditing || hasDockedSidebar),
             [S.notEmpty]: !isEmpty,
           })}
           id={DASHBOARD_PDF_EXPORT_ROOT_ID}
