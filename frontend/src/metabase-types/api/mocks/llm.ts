@@ -1,4 +1,6 @@
 import type {
+  LlmActiveModel,
+  LlmActiveModels,
   LlmConnectionModels,
   LlmModel,
   LlmProviderConnection,
@@ -40,9 +42,37 @@ export const createMockLlmProviderConnection = (
   name: "Anthropic",
   source: "db",
   usable: true,
+  reorderable: true,
+  error: null,
   env_vars: [],
   env_fields: [],
   config: {},
+  ...opts,
+});
+
+export const createMockLlmActiveModel = (
+  opts?: Partial<LlmActiveModel>,
+): LlmActiveModel => ({
+  model_ref: "anthropic/claude-sonnet-4-6",
+  model: "claude-sonnet-4-6",
+  model_name: "Claude Sonnet 4.6",
+  connection_key: "anthropic",
+  connection_name: "Anthropic",
+  selected_model_ref: "anthropic/claude-sonnet-4-6",
+  is_fallback: false,
+  ...opts,
+});
+
+export const createMockLlmActiveModels = (
+  opts?: Partial<LlmActiveModels>,
+): LlmActiveModels => ({
+  default: createMockLlmActiveModel(),
+  mini: createMockLlmActiveModel({
+    model_ref: "anthropic/claude-haiku-4-5",
+    model: "claude-haiku-4-5",
+    model_name: "Claude Haiku 4.5",
+    selected_model_ref: "anthropic/claude-haiku-4-5",
+  }),
   ...opts,
 });
 

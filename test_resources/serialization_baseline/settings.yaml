@@ -44,6 +44,7 @@ humanization-strategy: null
 landing-page: null
 landing-page-illustration: null
 landing-page-illustration-custom: null
+llm-provider-fallback-enabled?: null
 loading-message: null
 login-page-illustration: null
 login-page-illustration-custom: null

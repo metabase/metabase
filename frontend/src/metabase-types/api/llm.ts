@@ -85,15 +85,37 @@ export type LlmProviderConfig = Record<string, string | null>;
 
 export type LlmProviderSource = "db" | "env";
 
+export interface LlmProviderFailure {
+  message: string;
+  fatal: boolean;
+}
+
 export interface LlmProviderConnection {
   key: string;
   type: LlmProviderTypeName;
   name: string;
   source: LlmProviderSource;
   usable: boolean;
+  reorderable: boolean;
+  error: LlmProviderFailure | null;
   env_vars: string[];
   env_fields: string[];
   config: LlmProviderConfig;
+}
+
+export interface LlmActiveModel {
+  model_ref: string | null;
+  model: string | null;
+  model_name: string | null;
+  connection_key: string | null;
+  connection_name: string | null;
+  selected_model_ref: string | null;
+  is_fallback: boolean;
+}
+
+export interface LlmActiveModels {
+  default: LlmActiveModel;
+  mini: LlmActiveModel;
 }
 
 export interface LlmModel {
@@ -122,4 +144,8 @@ export interface UpdateLlmProviderRequest {
   name?: string;
   config?: LlmProviderConfig;
   model?: string;
+}
+
+export interface ReorderLlmProvidersRequest {
+  order: string[];
 }

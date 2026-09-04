@@ -516,8 +516,18 @@
   [message]
   {:type :text, :id (str (random-uuid)), :text message})
 
-(defn- error-part [^Exception e]
-  {:type :error, :error {:message (.getMessage e), :type (str (type e)), :data (ex-data e)}})
+(defn- error-part
+  "The `:error` part a turn ends on when `e` escaped the LLM call.
+
+  An exception the provider adapters tagged `:api-error` carries a message written for a person
+  (see `rethrow-api-error!`) and gets an `:error-code` so the client can tell \"the provider turned
+  us down\" — worth showing, and worth retrying now that the failure is recorded and a retry would
+  resolve to the fallback — from an internal failure it can only report generically."
+  [^Exception e]
+  (let [data (ex-data e)]
+    {:type  :error
+     :error (cond-> {:message (.getMessage e), :type (str (type e)), :data data}
+              (:api-error data) (assoc :error-code "provider_error"))}))
 
 (defn- accumulate-usage-xf
   "Transducer that merges each `:usage` part into the cumulative usage atom
@@ -541,6 +551,19 @@
                                (get model)))
              part)))))
 
+(defn- model-fallback-part
+  "The part that tells the user this turn is not running on the model the instance is configured for, because that
+  provider is failing. Emitted once per turn, before the first request, so the switch is visible in the
+  conversation rather than something they have to notice in the admin settings."
+  [fallback]
+  {:type :data, :data-type "model_fallback", :version 1, :data fallback})
+
+(defn- announce-model-fallback
+  [{:keys [profile]} rf result iteration]
+  (if-let [fallback (and (= iteration 1) (:model-fallback profile))]
+    (rf result (model-fallback-part fallback))
+    result))
+
 (defn- loop-step
   "Execute one iteration of the agent loop. Returns next loop state.
 
@@ -549,7 +572,8 @@
   [{:keys [agent rf result iteration usage-atom] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
-    (let [{:keys [profile tools context memory-atom tracking-opts]} agent
+    (let [result             (announce-model-fallback agent rf result iteration)
+          {:keys [profile tools context memory-atom tracking-opts]} agent
           max-iter           (:max-iterations profile 15)
           terminal-tools     (set (:terminal-tools profile))
           tracking-opts      (assoc tracking-opts :iteration iteration)

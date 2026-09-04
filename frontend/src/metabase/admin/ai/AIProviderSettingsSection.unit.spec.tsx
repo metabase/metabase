@@ -9,9 +9,11 @@ import {
 import {
   setupCreateLlmProviderEndpoint,
   setupDeleteLlmProviderEndpoint,
+  setupLlmActiveModelEndpoint,
   setupLlmModelsEndpoint,
   setupLlmProviderTypesEndpoint,
   setupLlmProvidersEndpoint,
+  setupReorderLlmProvidersEndpoint,
   setupUpdateLlmProviderEndpoint,
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
@@ -20,11 +22,13 @@ import { UndoListing } from "metabase/common/components/UndoListing";
 import { AIProviderSetup } from "metabase/metabot";
 import { reinitialize } from "metabase/plugins";
 import type {
+  LlmActiveModels,
   LlmConnectionModels,
   LlmProviderConnection,
   LlmProviderType,
 } from "metabase-types/api";
 import {
+  createMockLlmActiveModels,
   createMockLlmConnectionModels,
   createMockLlmModel,
   createMockLlmProviderConnection,
@@ -180,6 +184,7 @@ type SetupOpts = {
   providerTypesFail?: boolean;
   createdConnection?: LlmProviderConnection;
   updatedConnection?: LlmProviderConnection;
+  activeModels?: LlmActiveModels;
 };
 
 async function setup({
@@ -191,6 +196,7 @@ async function setup({
   providerTypesFail = false,
   createdConnection = ANTHROPIC_CONNECTION,
   updatedConnection = ANTHROPIC_CONNECTION,
+  activeModels = createMockLlmActiveModels(),
 }: SetupOpts = {}) {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
@@ -219,6 +225,8 @@ async function setup({
   }
   setupLlmProvidersEndpoint(connections);
   setupLlmModelsEndpoint(models);
+  setupLlmActiveModelEndpoint(activeModels);
+  setupReorderLlmProvidersEndpoint(connections);
   setupCreateLlmProviderEndpoint(createdConnection);
   setupUpdateLlmProviderEndpoint(updatedConnection);
   setupDeleteLlmProviderEndpoint();
@@ -671,6 +679,7 @@ describe("AIProviderSetup (ad-hoc connect modal)", () => {
     setupLlmProviderTypesEndpoint([ANTHROPIC_TYPE]);
     setupLlmProvidersEndpoint([]);
     setupLlmModelsEndpoint(CONNECTION_MODELS);
+    setupLlmActiveModelEndpoint();
     setupCreateLlmProviderEndpoint(ANTHROPIC_CONNECTION);
 
     const onDone = jest.fn();

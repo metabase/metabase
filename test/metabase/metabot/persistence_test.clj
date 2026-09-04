@@ -1050,15 +1050,18 @@
                                               {:type      :error
                                                :errorText "The model provider failed to complete the response"}])
             error-data                 (:error (u/seek #(= :error (:type %)) parts))]
-        (is (= {:message "The model provider failed to complete the response"} error-data)
+        (is (= {:message    "The model provider failed to complete the response"
+                :error-code "provider_error"}
+               error-data)
             "the error part carries an :error map (not a passed-through :errorText), so api.clj's extraction is non-nil")
         (metabot-persistence/finalize-assistant-turn!
          assistant-msg-id parts
          :error error-data)
         (let [row (t2/select-one :model/MetabotMessage assistant-msg-id)]
-          (is (= {:message "The model provider failed to complete the response"}
+          (is (= {:message    "The model provider failed to complete the response"
+                  :error-code "provider_error"}
                  (json/decode+kw (:error row)))
-              "the streamed errorText is persisted into the error column as a {:message ...} map")
+              "the streamed errorText is persisted into the error column as a {:message ...} map, tagged provider_error")
           (is (true? (:finished row))
               "an errored turn still finalizes as finished"))))))
 

@@ -1,18 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
-import {
-  setupLlmModelsEndpoint,
-  setupLlmProviderTypesEndpoint,
-  setupLlmProvidersEndpoint,
-} from "__support__/server-mocks/metabot";
+import { setupPropertiesEndpoints } from "__support__/server-mocks";
+import { setupLlmProviderEndpoints } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import type { LlmConnectionModels } from "metabase-types/api";
+import type {
+  LlmConnectionModels,
+  LlmProviderConnection,
+} from "metabase-types/api";
 import {
   createMockLlmConnectionModels,
   createMockLlmProviderConnection,
@@ -23,31 +19,35 @@ import {
 
 import { AIProviderList } from "./AIProviderList";
 
-const setup = ({
-  usable = true,
-  models = [],
-}: { usable?: boolean; models?: LlmConnectionModels[] } = {}) => {
+type SetupOpts = {
+  usable?: boolean;
+  models?: LlmConnectionModels[];
+  connections?: LlmProviderConnection[];
+};
+
+const setup = ({ usable = true, models = [], connections }: SetupOpts = {}) => {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
 
   const sessionProperties = createMockSettings();
   setupPropertiesEndpoints(sessionProperties);
-  setupSettingsEndpoints([]);
-  setupLlmProviderTypesEndpoint([createMockLlmProviderType()]);
-  setupLlmProvidersEndpoint([
-    createMockLlmProviderConnection({
-      key: "anthropic",
-      type: "anthropic",
-      name: "Anthropic",
-      usable,
-    }),
-    createMockLlmProviderConnection({
-      key: "openai",
-      type: "openai",
-      name: "OpenAI",
-    }),
-  ]);
-  setupLlmModelsEndpoint(models);
+  setupLlmProviderEndpoints({
+    types: [createMockLlmProviderType()],
+    connections: connections ?? [
+      createMockLlmProviderConnection({
+        key: "anthropic",
+        type: "anthropic",
+        name: "Anthropic",
+        usable,
+      }),
+      createMockLlmProviderConnection({
+        key: "openai",
+        type: "openai",
+        name: "OpenAI",
+      }),
+    ],
+    models,
+  });
 
   renderWithProviders(<AIProviderList />, {
     storeInitialState: {
@@ -148,6 +148,88 @@ describe("AIProviderList", () => {
       ).toBeInTheDocument();
     },
   );
+
+  it("shows the stored failure the backend reports for a provider", async () => {
+    setup({
+      connections: [
+        createMockLlmProviderConnection({
+          key: "anthropic",
+          type: "anthropic",
+          name: "Anthropic",
+          error: { message: "invalid x-api-key", fatal: true },
+        }),
+        createMockLlmProviderConnection({
+          key: "openai",
+          type: "openai",
+          name: "OpenAI",
+        }),
+      ],
+    });
+
+    expect(
+      await within(await screen.findByTestId("provider-anthropic")).findByText(
+        "invalid x-api-key",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("provider-openai")).queryByText(
+        "invalid x-api-key",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers a drag handle for every connection whose position can be saved", async () => {
+    setup({
+      connections: [
+        createMockLlmProviderConnection({
+          key: "anthropic",
+          name: "Anthropic",
+        }),
+        createMockLlmProviderConnection({
+          key: "openai",
+          type: "openai",
+          name: "OpenAI",
+        }),
+        createMockLlmProviderConnection({
+          key: "mistral",
+          type: "mistral",
+          name: "Mistral",
+          source: "env",
+          reorderable: false,
+        }),
+      ],
+    });
+
+    expect(await screen.findByTestId("provider-anthropic")).toBeInTheDocument();
+    expect(screen.getByLabelText("Reorder Anthropic")).toBeInTheDocument();
+    expect(screen.getByLabelText("Reorder OpenAI")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Reorder Mistral")).not.toBeInTheDocument();
+  });
+
+  it("does not offer reordering for a single connection", async () => {
+    setup({
+      connections: [
+        createMockLlmProviderConnection({
+          key: "anthropic",
+          name: "Anthropic",
+        }),
+      ],
+    });
+
+    expect(await screen.findByTestId("provider-anthropic")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("provider-drag-handle"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers no fallback section without the enterprise plugin", async () => {
+    setup();
+
+    expect(await screen.findByTestId("provider-anthropic")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("provider-fallback-settings"),
+    ).not.toBeInTheDocument();
+  });
 
   it("shows the skeleton until the connections have loaded", async () => {
     setup();

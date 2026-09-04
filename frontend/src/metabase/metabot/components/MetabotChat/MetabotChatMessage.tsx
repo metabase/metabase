@@ -2,7 +2,7 @@ import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { Fragment, forwardRef, useCallback, useMemo, useState } from "react";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
@@ -12,13 +12,13 @@ import {
   type MetabotAgentDataPartMessage,
   type MetabotAgentId,
   type MetabotAgentTextChatMessage,
-  type MetabotAgentTurnError,
   type MetabotAgentTurnErroredMessage,
   type MetabotAgentTurnIncompleteMessage,
   type MetabotChatMessage,
   type MetabotDataPart,
   type MetabotDebugToolCallMessage,
   type MetabotUserChatMessage,
+  UNRETRIABLE_METABOT_TURN_ERROR_CODES,
   forkConversation,
   isChainOfThoughtMessage,
 } from "metabase/metabot/state";
@@ -26,14 +26,11 @@ import { useDispatch } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
-  Box,
   Button,
-  Card,
   Flex,
   type FlexProps,
   Icon,
   Loader,
-  Text,
   Tooltip,
 } from "metabase/ui";
 import type { IconName, MetabotFeedback } from "metabase-types/api";
@@ -41,6 +38,7 @@ import type { IconName, MetabotFeedback } from "metabase-types/api";
 import { useSubmitMetabotFeedbackMutation } from "../../api";
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
+import { AgentTurnAlert } from "./AgentTurnAlert";
 import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";
 import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
 import {
@@ -58,6 +56,7 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "data-code_edit" }, () => true)
     .with({ type: "data-generated_entity" }, () => true)
     .with({ type: "data-entity_saved" }, () => true)
+    .with({ type: "data-model_fallback" }, () => true)
     .with({ type: "data-adhoc_viz" }, () => false)
     .with({ type: "data-static_viz" }, () => false)
     .exhaustive();
@@ -284,6 +283,7 @@ export const AgentMessage = ({
           <AgentErroredTurnAlert
             message={m}
             debug={debug}
+            onRetry={onRetry}
             onRefreshConversation={onRefreshConversation}
           />
         ))
@@ -366,88 +366,63 @@ export const AgentMessage = ({
   );
 };
 
-const AgentTurnAlert = ({
-  variant,
-  message,
-  cta,
-  footer,
-  debugDetails,
-}: {
-  variant: "error" | "info";
-  message: string;
-  cta?: ReactNode;
-  footer?: ReactNode;
-  debugDetails?: MetabotAgentTurnError;
-}) => (
-  <Flex
-    direction="column"
-    gap="xxs"
-    p="sm"
-    bd="1px solid var(--mb-color-border-neutral)"
-    bdrs="xs"
-    data-testid="metabot-chat-message-turn-alert"
-    bg="background_page-primary"
-  >
-    <Flex align="center" gap="sm">
-      <Icon
-        name={variant === "error" ? "warning" : "info"}
-        c={variant === "error" ? "feedback-negative" : "text-secondary"}
-        size="1rem"
-        flex="0 0 auto"
-      />
-      <Text c="text-secondary" size="sm" flex="1">
-        {message}
-      </Text>
-      {cta}
-    </Flex>
-    {debugDetails && (
-      <Card
-        bdrs="xxs"
-        ml="xl"
-        p="sm"
-        withBorder
-        shadow="none"
-        c="text-secondary"
-        fz="xs"
-        ff="monospace"
-        style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
-        data-testid="metabot-chat-message-turn-alert-debug"
-      >
-        {JSON.stringify(debugDetails, null, 2)}
-      </Card>
-    )}
-    {footer && <Box ml="xl">{footer}</Box>}
-  </Flex>
+const UNRETRIABLE_ERROR_TYPES = new Set<string | undefined>(
+  UNRETRIABLE_METABOT_TURN_ERROR_CODES,
 );
 
 const AgentErroredTurnAlert = ({
   message,
   debug,
+  onRetry,
   onRefreshConversation,
 }: {
   message: MetabotAgentTurnErroredMessage;
   debug: boolean;
+  onRetry?: (messageId: string) => void;
   onRefreshConversation?: () => void;
 }) => {
-  const isOutOfSync = message.error.type === "conversation_out_of_sync";
+  const cta = match({ error: message.error, onRefreshConversation, onRetry })
+    .with(
+      {
+        error: { type: "conversation_out_of_sync" },
+        onRefreshConversation: P.nonNullable,
+      },
+      ({ onRefreshConversation }) => (
+        <Button
+          variant="default"
+          size="compact-xs"
+          fz="xs"
+          onClick={onRefreshConversation}
+          data-testid="metabot-chat-message-refresh"
+        >
+          {t`Refresh`}
+        </Button>
+      ),
+    )
+    .with(
+      {
+        error: { type: P.when((type) => !UNRETRIABLE_ERROR_TYPES.has(type)) },
+        onRetry: P.nonNullable,
+      },
+      ({ onRetry }) => (
+        <Button
+          variant="default"
+          size="compact-xs"
+          fz="xs"
+          onClick={() => onRetry(message.id)}
+          data-testid="metabot-chat-message-retry"
+        >
+          {t`Retry`}
+        </Button>
+      ),
+    )
+    .otherwise(() => undefined);
 
   return (
     <AgentTurnAlert
       variant="error"
       message={message.display?.message ?? t`Something went wrong`}
-      cta={
-        isOutOfSync && onRefreshConversation ? (
-          <Button
-            variant="default"
-            size="compact-xs"
-            fz="xs"
-            onClick={onRefreshConversation}
-            data-testid="metabot-chat-message-refresh"
-          >
-            {t`Refresh`}
-          </Button>
-        ) : undefined
-      }
+      cta={cta}
       footer={
         message.error.type === "metabase_ai_managed_locked" && (
           <MetabotManagedProviderLimitActions inline />
