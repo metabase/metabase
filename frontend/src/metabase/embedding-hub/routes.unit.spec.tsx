@@ -38,14 +38,15 @@ describe("embedding hub routes", () => {
       "embedding/appearance",
       "embedding/appearance/theme",
       "embedding/appearance/theme/:themeId",
+      "embedding/localization",
     ]);
   });
 
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getEmbeddingHubRoutes());
 
-    // 21: includes the appearance/theme route, which is lazy too.
-    expect(loaders).toHaveLength(21);
+    // 22: includes the appearance/theme route, which is lazy too.
+    expect(loaders).toHaveLength(22);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();

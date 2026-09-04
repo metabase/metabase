@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import {
-  resetPermissionsBasePath,
-  setPermissionsBasePath,
-} from "metabase/admin/permissions/utils/base-path";
+import { usePermissionsBasePath } from "metabase/admin/permissions/utils/base-path";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import {
@@ -52,14 +49,9 @@ export function EmbeddingHubTenancyPage() {
   // Declares the hub as both the tenant and the permissions editor's URL
   // builders' host, the same way EmbeddingHubPermissionsBasePath does when the
   // Permissions tab itself is mounted.
+  usePermissionsBasePath(Urls.embeddingHubPermissions());
   setTenantsBasePath(Urls.embeddingHubTenancy());
-  setPermissionsBasePath(Urls.embeddingHubPermissions());
-  useEffect(() => {
-    return () => {
-      resetTenantsBasePath();
-      resetPermissionsBasePath();
-    };
-  }, []);
+  useEffect(() => resetTenantsBasePath, []);
 
   if (!hasTenants) {
     return <TenancyUpsellPage />;

@@ -630,6 +630,42 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
   });
 });
 
+describe("scenarios > embedding > embedding hub > localization", () => {
+  describe("pro", { tags: "@EE" }, () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+    });
+
+    it("mounts the dictionary configuration", () => {
+      cy.visit("/embedding/localization");
+
+      cy.findByTestId("embedding-hub-main")
+        .findByTestId("content-translation-configuration")
+        .findByText("Translate embedded dashboards and questions")
+        .should("be.visible");
+    });
+  });
+
+  describe("unlicensed", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("upsells rather than hiding the tab", () => {
+      cy.visit("/embedding/localization");
+
+      // Card copy is unit-tested next to the component; this just confirms
+      // the upsell renders in place of the real dictionary configuration.
+      cy.findByTestId("embedding-hub-main")
+        .findByText("Translate your embedded content")
+        .should("be.visible");
+    });
+  });
+});
+
 function configureSaml() {
   cy.readFile("test_resources/sso/auth0-public-idp.cert", "utf8").then(
     (certificate) => {

@@ -1,3 +1,5 @@
+import { useEffect, useId } from "react";
+
 /**
  * Where the permissions editor is currently mounted.
  *
@@ -13,15 +15,40 @@
 export const ADMIN_PERMISSIONS_BASE_PATH = "/admin/permissions";
 
 let basePath = ADMIN_PERMISSIONS_BASE_PATH;
+let ownerId: string | null = null;
 
-export function setPermissionsBasePath(nextBasePath: string) {
+export function setPermissionsBasePath(
+  nextBasePath: string,
+  nextOwnerId: string,
+) {
   basePath = nextBasePath;
+  ownerId = nextOwnerId;
+}
+
+/**
+ * Only the current owner may reset. React renders the incoming tree before
+ * cleaning up the outgoing one, so a host unmounting during a tab switch runs
+ * this after its replacement has already claimed the path — and both hosts
+ * claim the same string, so comparing values cannot tell them apart.
+ */
+export function resetPermissionsBasePath(callerId: string) {
+  if (ownerId !== callerId) {
+    return;
+  }
+
+  basePath = ADMIN_PERMISSIONS_BASE_PATH;
+  ownerId = null;
 }
 
 export function getPermissionsBasePath() {
   return basePath;
 }
 
-export function resetPermissionsBasePath() {
-  basePath = ADMIN_PERMISSIONS_BASE_PATH;
+/** Claims the permissions base path for as long as the caller is mounted. */
+export function usePermissionsBasePath(nextBasePath: string) {
+  const ownerId = useId();
+
+  setPermissionsBasePath(nextBasePath, ownerId);
+
+  useEffect(() => () => resetPermissionsBasePath(ownerId), [ownerId]);
 }

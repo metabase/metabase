@@ -30,6 +30,7 @@ const TAB_LABELS = [
   "Permissions",
   "Tenancy",
   "Appearance",
+  "Localization",
 ];
 
 type SetupOptions = {
@@ -92,6 +93,31 @@ describe("EmbeddingHubLayout", () => {
     expect(
       await within(nav).findByRole("link", { name: "Get started" }),
     ).toHaveAttribute("href", "/embedding/get-started");
+  });
+
+  it("shows a gem on the paid tabs, none on Permissions", async () => {
+    setup();
+
+    const nav = await findNav();
+
+    for (const label of [
+      "Authentication",
+      "Tenancy",
+      "Appearance",
+      "Localization",
+    ]) {
+      expect(
+        within(
+          await within(nav).findByRole("link", { name: label }),
+        ).getByTestId("upsell-gem"),
+      ).toBeInTheDocument();
+    }
+
+    expect(
+      within(
+        await within(nav).findByRole("link", { name: "Permissions" }),
+      ).queryByTestId("upsell-gem"),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps Get started current on the setup wizard sub-pages", async () => {
