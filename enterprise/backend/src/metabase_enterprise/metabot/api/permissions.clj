@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot.api.permissions
   "`/api/ee/ai-controls/permissions` routes for managing metabot permissions per group."
   (:require
+   [metabase-enterprise.metabot.db :as metabot.db]
    [metabase-enterprise.metabot.models.metabot-permissions :as metabot-perms]
    [metabase-enterprise.metabot.settings :as metabot-settings]
    [metabase.api.common :as api]
@@ -77,11 +78,11 @@
     (doseq [{:keys [group_id perm_type perm_value]} permissions]
       (let [perm-type-kw  (keyword perm_type)
             perm-value-kw (keyword perm_value)]
-        (if (t2/exists? :model/MetabotPermissions :group_id group_id :perm_type perm-type-kw)
-          (t2/update! :model/MetabotPermissions {:group_id group_id :perm_type perm-type-kw} {:perm_value perm-value-kw})
-          (t2/insert! :model/MetabotPermissions {:group_id   group_id
-                                                 :perm_type  perm-type-kw
-                                                 :perm_value perm-value-kw})))))
+        (if (metabot.db/permission-exists? group_id perm-type-kw)
+          (metabot.db/update-permission-value! group_id perm-type-kw perm-value-kw)
+          (metabot.db/insert-permission! {:group_id   group_id
+                                          :perm_type  perm-type-kw
+                                          :perm_value perm-value-kw})))))
   (permissions-response))
 
 (defn- switch-mode!
@@ -92,7 +93,7 @@
   [advanced?]
   (try
     (t2/with-transaction [_conn]
-      (t2/delete! :model/MetabotPermissions {:where (metabot-perms/hidden-groups-clause advanced?)})
+      (metabot.db/delete-hidden-group-permissions! advanced?)
       (metabot-settings/metabot-advanced-permissions! advanced?))
     (catch Throwable e
       (setting/restore-cache!)

@@ -160,7 +160,16 @@
            (mt/id :venues :name)  (mt/malli=? [:sequential {:min 1} :any])}
           (-> (t2/select-one :model/Table (mt/id :venues))
               (t2/hydrate :field_values)
-              :field_values))))
+              :field_values)))
+  (testing "batched hydration of several tables"
+    (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name)))
+    (is (=? {(mt/id :venues)     {(mt/id :venues :price)    (mt/malli=? [:sequential {:min 1} :any])
+                                  (mt/id :venues :name)     (mt/malli=? [:sequential {:min 1} :any])}
+             (mt/id :categories) {(mt/id :categories :name) (mt/malli=? [:sequential {:min 1} :any])}}
+            (->> (t2/select :model/Table :id [:in [(mt/id :venues) (mt/id :categories)]])
+                 (#(t2/hydrate % :field_values))
+                 (map (juxt :id :field_values))
+                 (into {}))))))
 
 (deftest pk-field-hydration-test
   (is (= (mt/id :venues :id)

@@ -1,15 +1,15 @@
 (ns metabase-enterprise.database-routing.common
   (:require
+   [metabase-enterprise.database-routing.db :as database-routing.db]
    [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [tru]]))
 
 (defn- user-attribute
   "Which user attribute should we use for this RouterDB?"
   [db-or-id]
-  (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id (u/the-id db-or-id)))
+  (database-routing.db/router-user-attribute (u/the-id db-or-id)))
 
 (def ^:dynamic ^:private *database-routing-on* :unset)
 
@@ -26,7 +26,7 @@
         (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.") {:status-code 400
                                                                                                 :database-routing-enabled true
                                                                                                 :database-or-id db-or-id
-                                                                                                :database-name (t2/select-one-fn :name :model/Database (u/the-id db-or-id))}))
+                                                                                                :database-name (database-routing.db/database-name (u/the-id db-or-id))}))
 
         (= database-name "__METABASE_ROUTER__")
         nil
@@ -44,9 +44,7 @@
                          :status-code 400}))
 
         :else
-        (or (t2/select-one-pk :model/Database
-                              :router_database_id (u/the-id db-or-id)
-                              :name database-name)
+        (or (database-routing.db/destination-database-id (u/the-id db-or-id) database-name)
             (throw (ex-info (tru "Database Routing error: No Destination Database with slug `{0}` found."
                                  database-name)
                             {:database-name database-name
@@ -114,7 +112,7 @@
 
 (defn- is-disallowed-destination-db-access?
   [db-or-id]
-  (and (t2/exists? :model/Database :id db-or-id :router_database_id [:not= nil])
+  (and (database-routing.db/destination-database? db-or-id)
        (not= *database-routing-on* :on)))
 
 (defn assert-not-direct-destination-access!

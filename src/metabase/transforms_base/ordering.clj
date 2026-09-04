@@ -11,12 +11,12 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.transforms-base.db :as transforms-base.db]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -74,13 +74,13 @@
      ;; load :source on demand on a cache miss, so callers can omit the heavy blob from their select
      (cond-> transform
        (and (not (:source transform)) (:id transform))
-       (assoc :source (t2/select-one-fn :source [:model/Transform :id :source] (:id transform)))))))
+       (assoc :source (transforms-base.db/transform-source (:id transform)))))))
 
 (defn references-card-or-snippet?
   "True if `transform`'s source query reads through a saved card or native snippet."
   [transform]
   (let [query (:query (or (:source transform)
-                          (t2/select-one-fn :source [:model/Transform :id :source] (:id transform))))]
+                          (transforms-base.db/transform-source (:id transform))))]
     (boolean
      (when query
        (try
@@ -254,8 +254,7 @@
                                 (if (= id transform-id)
                                   to-check
                                   transform))
-                              (t2/select [:model/Transform :id :name :target :target_table_id
-                                          :source_database_id :table_dependencies]))
+                              (transforms-base.db/transforms-for-ordering))
         transforms-by-id (into {}
                                (map (juxt :id identity))
                                transforms)
