@@ -12,6 +12,7 @@
    [metabase-enterprise.content-diagnostics.task.scan :as task.scan]
    [metabase-enterprise.content-diagnostics.test-util :as cd.tu]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.test :as mt]
@@ -140,6 +141,59 @@
             (is (not (contains? stale-key? [:card sample-card])))
             (is (contains? stale-key? [:card root-card]))
             (is (contains? stale-key? [:transform shelved-transform]))))))))
+
+(deftest scan-excludes-document-internal-card-findings-test
+  (testing "a card a document owns is never a card finding - whatever the checker - while its document is"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds 10]
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (let [now       (t/offset-date-time)
+                card-name (str (scope-prefix) " Revenue")]
+            (mt/with-temp
+              [:model/Collection {coll-id :id} {}
+               ;; the standalone original: stale, slow (30s > 10s), and 0-row - it stays flagged
+               :model/Card {original :id} {:collection_id coll-id :name card-name
+                                           :last_used_at  (stale-instant)}
+               :model/QueryExecution _ {:card_id original :started_at now :cache_hit false
+                                        :parameterized false :running_time 30000 :result_rows 0}
+               :model/Document {doc-id :id} {:collection_id  coll-id
+                                             :creator_id     (mt/user->id :rasta)
+                                             :content_type   prose-mirror/prose-mirror-content-type
+                                             :last_viewed_at (stale-instant)}
+               ;; the document's own copy - same name, same signals, but owned by the document
+               :model/Card {doc-card :id} {:collection_id coll-id :name card-name
+                                           :document_id   doc-id
+                                           :last_used_at  (stale-instant)}
+               :model/QueryExecution _ {:card_id doc-card :started_at now :cache_hit false
+                                        :parameterized false :running_time 30000 :result_rows 0}]
+              ;; the body can only be written once the copy has an id, and `collection_id` rides along
+              ;; because the document's after-update syncs it onto every card the document owns
+              (t2/update! :model/Document doc-id
+                          {:collection_id coll-id
+                           :document      {:type    "doc"
+                                           :content [{:type "cardEmbed" :attrs {:id doc-card}}]}})
+              (let [scan-id (:scan_id (scan/scan!))
+                    rows    (t2/select :model/ContentDiagnosticsFinding :scan_id scan-id)
+                    key?    (into #{} (map (juxt :entity_type :entity_id :finding_type)) rows)]
+                (testing "no checker flags the document's copy"
+                  (is (= #{} (into #{} (comp (filter #(and (= :card (:entity_type %))
+                                                           (= doc-card (:entity_id %))))
+                                             (map :finding_type))
+                                   rows))))
+                (testing "the original still is - ownership is the exclusion, not the signals"
+                  (doseq [finding-type [:stale :slow :empty]]
+                    (is (contains? key? [:card original finding-type])
+                        (str "original missing its " finding-type " finding"))))
+                (testing "neither card is duplicated - the copy leaves no dangling peer on the original"
+                  (is (not (contains? key? [:card original :duplicated]))))
+                (testing "the document roll-up survives, still naming the copy as its culprit"
+                  (is (= [doc-card]
+                         (->> rows
+                              (m/find-first #(and (= :document (:entity_type %))
+                                                  (= doc-id (:entity_id %))
+                                                  (= :slow (:finding_type %))))
+                              :details
+                              :slow_entity_ids))))))))))))
 
 (deftest scan-denormalizes-card-type-test
   (testing "scan! stamps each card finding's card_type column from report_card.type; non-card rows stay NULL"
