@@ -656,6 +656,88 @@
             (is (= {:measure #{} :segment #{segment-id} :table #{orders-id}}
                    (calculation/calculate-deps :measure measure)))))))))
 
+(deftest ^:parallel upstream-deps-card-with-dynamic-goal-test
+  (let [mp (mt/metadata-provider)
+        products-id (mt/id :products)
+        products (lib.metadata/table mp products-id)]
+    (mt/with-temp [:model/Card {goal-card-id :id} {:dataset_query (-> (lib/query mp products)
+                                                                      (lib/aggregate (lib/count)))
+                                                   :display :scalar}
+                   :model/Card goal-holder {:dataset_query (lib/query mp products)
+                                            :visualization_settings
+                                            {:graph.goal_value {:id     goal-card-id
+                                                                :type   "card"
+                                                                :column "count"}}}]
+      (testing "a card whose goal reads another card depends on it"
+        (is (= {:card #{goal-card-id}
+                :measure #{}
+                :segment #{}
+                :table #{products-id}}
+               (calculation/calculate-deps :card goal-holder)))))))
+
+(deftest ^:parallel upstream-deps-card-with-dynamic-goal-segments-test
+  (let [mp (mt/metadata-provider)
+        products-id (mt/id :products)
+        products (lib.metadata/table mp products-id)]
+    (mt/with-temp [:model/Card {goal-card-id :id} {:dataset_query (lib/query mp products)}
+                   :model/Card goal-holder {:dataset_query (lib/query mp products)
+                                            :visualization_settings
+                                            {:gauge.segments [{:min 0
+                                                               :max {:id goal-card-id :type "card" :column "count"}}]
+                                             :scalar.segments [{:min {:id     goal-card-id
+                                                                      :type   "card"
+                                                                      :column "count"}
+                                                                :max "self-col"}]}}]
+      (testing "goals in segment bounds count, and literals and self-columns do not"
+        (is (= {:card #{goal-card-id}
+                :measure #{}
+                :segment #{}
+                :table #{products-id}}
+               (calculation/calculate-deps :card goal-holder)))))))
+
+(deftest ^:parallel upstream-deps-dashboard-with-dynamic-goal-test
+  (let [mp (mt/metadata-provider)
+        products-id (mt/id :products)
+        products (lib.metadata/table mp products-id)]
+    (mt/with-temp [:model/Card {shown-card-id :id} {:dataset_query (-> (lib/query mp products)
+                                                                       (lib/aggregate (lib/count)))
+                                                    :display :scalar}
+                   :model/Card {goal-card-id :id} {:dataset_query (lib/query mp products)}
+                   :model/Dashboard {dashboard-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id
+                                           :card_id      shown-card-id
+                                           :visualization_settings
+                                           {:progress.goal {:id     goal-card-id
+                                                            :type   "card"
+                                                            :column "count"}}}]
+      (let [dashboard {:id dashboard-id
+                       :dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id)}]
+        (testing "a dashcard's goal reference is a dashboard dependency"
+          (is (= {:card #{shown-card-id goal-card-id}
+                  :dashboard #{}}
+                 (calculation/calculate-deps :dashboard dashboard))))))))
+
+(deftest upstream-deps-card-with-measure-dynamic-goal-test
+  (let [mp (mt/metadata-provider)
+        orders-id (mt/id :orders)
+        orders (lib.metadata/table mp orders-id)
+        quantity (lib.metadata/field mp (mt/id :orders :quantity))]
+    (mt/with-temp [:model/Measure {measure-id :id} {:name "Total Quantity"
+                                                    :table_id orders-id
+                                                    :definition (-> (lib/query mp orders)
+                                                                    (lib/aggregate (lib/sum quantity)))}
+                   :model/Card goal-holder {:dataset_query (lib/query mp orders)
+                                            :visualization_settings
+                                            {:progress.goal {:id     measure-id
+                                                             :type   "measure"
+                                                             :column "sum"}}}]
+      (testing "a goal reading a measure is a measure dependency, not a card one"
+        (is (= {:card #{}
+                :measure #{measure-id}
+                :segment #{}
+                :table #{orders-id}}
+               (calculation/calculate-deps :card goal-holder)))))))
+
 (deftest ^:parallel non-integer-ids-are-discarded-during-extraction-test
   (testing "a document smartLink whose entityId is a map is dropped rather than forwarded"
     (is (empty? (#'calculation/document-deps
@@ -676,4 +758,12 @@
                 :dashboard
                 {:dashcards [{:visualization_settings
                               {:click_behavior {:linkType "question" :targetId 7777}}}]})]
+      (is (= #{7777} (:card deps)))))
+  (testing "a dynamic goal whose id is not a positive integer is dropped"
+    (let [deps (calculation/calculate-deps*
+                :dashboard
+                {:dashcards [{:visualization_settings
+                              {:progress.goal {:id "x" :type "card" :column "count"}}}
+                             {:visualization_settings
+                              {:graph.goal_value {:id 7777 :type "card" :column "count"}}}]})]
       (is (= #{7777} (:card deps))))))
