@@ -195,7 +195,7 @@ Hiding a widget doesn't restrict anything: the value is still set from the brows
 If Metabase's widgets don't fit your app, you can hide them and make your own. How you push values to the charts depends on what the parameter is for. If your widget just sets a value that anyone could set, control the value from the page. That works on SSO embeds and on guest embeds where the parameter is **Editable**.
 
 - [Editable parameters](#editable-parameters-control-the-values-and-hide-the-widgets)
-- [Locked parameters on guest embeds](#locked-parameters-on-guest-embeds-re-sign-the-token)
+- [Change a locked value from your page](#change-a-locked-value-from-your-page)
 
 ### Editable parameters: control the values and hide the widgets
 
@@ -240,7 +240,7 @@ Pass your widget's value in `parameters`, and hide Metabase's widget with `hidde
 
 If you'd rather keep Metabase's SQL widgets, the SDK's `InteractiveQuestion.SqlParametersList` renders them wherever you put them in a [custom layout](./question-reference.md#customize-the-layout-of-an-interactive-chart).
 
-### Locked parameters on guest embeds: re-sign the token
+### Change a locked value from your page
 
 You may want to resign tokens one viewer is allowed more than one value, but not every value. Say an account manager covers three customers. The **Customer ID** parameter has to stay locked so the manager can't query a fourth customer, but they still need to switch between their three. A widget on your page picks the customer, your server signs a new token with that value in `params`, and you hand the token to the component. The embed re-queries with the new locked value.
 

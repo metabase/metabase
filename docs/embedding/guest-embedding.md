@@ -131,7 +131,7 @@ Parameters on a guest embed start out **Disabled**: the widget is hidden, and no
 
 ### Locked parameters
 
-Locked parameters are how you restrict data in a guest embed. Your server puts the value in the `params` object of the token it signs, and Metabase applies the filter before anything reaches the browser. Every token you sign for that item has to include a value for every locked parameter, and `[]` turns a locked filter off for one token. For the walkthrough, check out [Restrict data with locked parameters](./parameters.md#restrict-data-with-locked-parameters); for the rules Metabase applies to `params`, check out [Params in a signed token](./parameters-reference.md#params-in-a-signed-token); and to drive a locked parameter from a widget you build yourself, check out [Build your own filter UI](./parameters.md#locked-parameters-on-guest-embeds-re-sign-the-token).
+Locked parameters are how you restrict data in a guest embed. Your server puts the value in the `params` object of the token it signs, and Metabase applies the filter before anything reaches the browser. Every token you sign for that item has to include a value for every locked parameter, and `[]` turns a locked filter off for one token. For the walkthrough, check out [Restrict data with locked parameters](./parameters.md#restrict-data-with-locked-parameters); for the rules Metabase applies to `params`, check out [Params in a signed token](./parameters-reference.md#params-in-a-signed-token); and to drive a locked parameter from a widget you build yourself, check out [Change a locked value from your page](./parameters.md#change-a-locked-value-from-your-page).
 
 ## Refreshing or initializing the JWT from your server
 
