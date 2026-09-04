@@ -3,10 +3,6 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-/**
- * Creates a line question saved with one timeline event and a dashboard that
- * contains it, aliased as `@questionId` and `@dashboardId`.
- */
 export function createQuestionAndDashboardWithEvents() {
   cy.intercept("GET", "/api/timeline?include=events").as("getTimelines");
 
