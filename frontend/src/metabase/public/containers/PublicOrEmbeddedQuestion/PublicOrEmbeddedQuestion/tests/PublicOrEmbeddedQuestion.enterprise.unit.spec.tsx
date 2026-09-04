@@ -8,8 +8,8 @@ import { type SetupOpts, setup } from "./setup";
 // The catalogue is imported rather than fetched, so the load is observed through
 // `loadLocalization` instead of through a request.
 const loadLocalizationSpy = jest.fn();
-jest.mock("metabase/api/localization", () => {
-  const actual = jest.requireActual("metabase/api/localization");
+jest.mock("metabase/utils/localization", () => {
+  const actual = jest.requireActual("metabase/utils/localization");
   return {
     ...actual,
     loadLocalization: (locale: string) => {

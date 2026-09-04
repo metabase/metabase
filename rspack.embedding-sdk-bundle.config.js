@@ -436,7 +436,7 @@ config.resolve.alias = {
   // The SDK renders against whichever instance it is pointed at, so it takes
   // catalogues from there rather than from its own bundle. This also keeps the
   // locales context module, and so all 36 catalogues, out of the SDK.
-  "locale-catalog": METABASE_SRC_PATH + "/api/load-locale-catalog-from-instance",
+  "locale-catalog": METABASE_SRC_PATH + "/utils/load-locale-catalog-from-instance",
 };
 
 if (config.cache) {
