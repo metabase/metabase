@@ -29,7 +29,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/settings-components/SettingsSection";
-import { Flex, Stack } from "metabase/ui";
+import { Box, Flex, Stack } from "metabase/ui";
 import { provisioningOptions } from "metabase-enterprise/auth/utils";
 import type {
   EnterpriseSettings,
