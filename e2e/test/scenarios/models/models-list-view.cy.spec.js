@@ -4,6 +4,19 @@ import { colors } from "metabase/ui/colors";
 
 const { H } = cy;
 
+function removeRightColumn(columnName) {
+  cy.findByTestId("list-view-right-columns")
+    .findByText(columnName)
+    .parent()
+    .find("button")
+    .click();
+}
+
+function addRightColumn(searchText, columnName) {
+  cy.findByTestId("list-view-right-columns").find("input").type(searchText);
+  H.popover().findByText(columnName).click();
+}
+
 describe("scenarios > models list view", () => {
   describe("basic scenarios", () => {
     beforeEach(() => {
@@ -408,6 +421,62 @@ describe("scenarios > models list view", () => {
       cy.wait("@dataset");
 
       cy.findByTestId("mini-bar-container").should("not.exist");
+    });
+
+    it("should keep the customized list layout of a new model after saving it (metabase#76998)", () => {
+      H.restore();
+      cy.signInAsAdmin();
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.intercept("POST", "/api/card").as("createModel");
+
+      H.startNewModel();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
+        cy.findByText("Orders").click();
+      });
+      cy.findByTestId("run-button").click();
+      cy.wait("@dataset");
+
+      cy.log("Switch to the list view and keep only Quantity on the right");
+      cy.findByTestId("dataset-edit-bar").findByText("Settings").click();
+      cy.findByTestId("sidebar-right").findByText("List").click();
+      cy.findByRole("button", { name: "Customize the List layout" }).click();
+      ["User ID", "Product ID", "Subtotal", "Tax"].forEach(removeRightColumn);
+      addRightColumn("Quantity", "Quantity");
+
+      cy.log("Join Accounts and run the query again");
+      cy.findByTestId("dataset-edit-bar").findByText("Query").click();
+      H.join();
+      H.joinTable("Accounts", "User ID", "ID");
+      cy.findByTestId("run-button").click();
+      cy.wait("@dataset");
+
+      cy.log("Add the joined email column to the list layout");
+      cy.findByTestId("dataset-edit-bar").findByText("Settings").click();
+      cy.findByRole("button", { name: "Customize the List layout" }).click();
+      addRightColumn("Email", "Accounts - User → Email");
+
+      cy.log("Save the model");
+      cy.findByTestId("dataset-edit-bar").button("Save").click();
+      H.modal().button("Save").click();
+      cy.wait("@createModel").then(({ response }) => {
+        const listColumns =
+          response.body.visualization_settings["list.columns"];
+        expect(listColumns.left).to.deep.equal(["ID"]);
+        expect(listColumns.right).to.have.length(2);
+        expect(listColumns.right).to.include("QUANTITY");
+      });
+      cy.wait("@dataset");
+
+      cy.log("Display the saved model with the customized list layout");
+      cy.findByTestId("list-view").within(() => {
+        cy.findByText("Quantity").should("be.visible");
+        cy.findByText("Accounts - User → Email").should("be.visible");
+        cy.findByText("User ID").should("not.exist");
+        cy.findByText("Product ID").should("not.exist");
+        cy.findByText("Subtotal").should("not.exist");
+        cy.findByText("Tax").should("not.exist");
+      });
     });
   });
 });
