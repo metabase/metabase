@@ -6,6 +6,17 @@ export function timelineEventVisibility(eventName) {
   return timelineEventCard(eventName).findByRole("checkbox");
 }
 
+export function toggleTimelineEventVisibility(eventName) {
+  return timelineEventVisibility(eventName).click();
+}
+
+export function timelineVisibility(timelineName) {
+  return cy
+    .findByText(timelineName)
+    .closest("[aria-label='Timeline card header']")
+    .findByRole("checkbox");
+}
+
 export function waitForTimelinesAfterCreatingAnEvent(eventName) {
   return timelineEventCard(eventName)
     .findByText(/^Bobby Tables added this on/)

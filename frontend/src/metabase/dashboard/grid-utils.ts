@@ -8,6 +8,7 @@ import type {
 } from "metabase-types/api/dashboard";
 
 import { generateMobileLayout } from "./components/grid/utils";
+import { isDashCardOnTab } from "./utils";
 
 export function getLayoutForDashCard(
   dashcard: BaseDashboardCard,
@@ -55,12 +56,7 @@ export function getVisibleCards(
   isEditing: boolean,
   selectedTabId: DashboardTabId | null,
 ) {
-  const tabCards = cards.filter(
-    (card) =>
-      !selectedTabId ||
-      card.dashboard_tab_id === selectedTabId ||
-      card.dashboard_tab_id === null,
-  );
+  const tabCards = cards.filter((card) => isDashCardOnTab(card, selectedTabId));
 
   return isEditing
     ? tabCards

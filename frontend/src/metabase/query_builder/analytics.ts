@@ -1,5 +1,8 @@
 import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
-import { getRecordedTimelineEventsVisibility } from "metabase/visualizations/lib/timeline-events-visibility";
+import {
+  getRecordedTimelineEventsVisibility,
+  isSameTimelineEventsVisibility,
+} from "metabase/visualizations/lib/timeline-events-visibility";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, VisualizationDisplay } from "metabase-types/api";
 
@@ -66,8 +69,20 @@ export const trackQuestionEventsPanelOpened = (
   });
 };
 
-export const trackQuestionTimelineEventsSaved = (question: Question) => {
-  if (getRecordedTimelineEventsVisibility(question.settings())) {
+export const trackQuestionTimelineEventsSaved = (
+  question: Question,
+  originalQuestion?: Question,
+) => {
+  const visibility = getRecordedTimelineEventsVisibility(question.settings());
+  const originalVisibility = getRecordedTimelineEventsVisibility(
+    originalQuestion?.settings(),
+  );
+  const isVisibilityChanged =
+    visibility != null &&
+    (originalVisibility == null ||
+      !isSameTimelineEventsVisibility(visibility, originalVisibility));
+
+  if (isVisibilityChanged) {
     trackSimpleEvent({
       event: "question_timeline_events_saved",
       target_id: question.id(),

@@ -1,4 +1,9 @@
-import { act, renderWithProviders, waitFor } from "__support__/ui";
+import { useEffect } from "react";
+
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { renderWithProviders, screen } from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { DashboardWideEventsSidebar } from "metabase/dashboard/components/DashboardEventsSidebar/DashboardWideEventsSidebar";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import {
   createMockApiState,
@@ -7,14 +12,15 @@ import {
   createMockStoreDashboard,
   seedApiQueryCache,
 } from "metabase/redux/store/mocks";
-import {
-  hideTimelineEvents,
-  showTimelineEvents,
-} from "metabase/visualizations/lib/timeline-events-visibility";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { VisualizationSettings } from "metabase-types/api";
+import type {
+  DashboardCard,
+  DashboardTabId,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockCard,
+  createMockCollection,
   createMockDashboardCard,
   createMockDataset,
   createMockDatasetData,
@@ -24,9 +30,7 @@ import {
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
-import { updateDashCardsTimelineEventsVisibility } from "../actions/timeline-events";
-
-import { useDashboardTimelines } from "./hooks";
+import { useDashCardTimelineEvents } from "./hooks";
 
 registerVisualizations();
 
@@ -37,20 +41,11 @@ const DASHCARD_ID = 2;
 
 const EVENT = createMockTimelineEvent({
   id: 100,
+  name: "Launch",
   timeline_id: 10,
   timestamp: "2024-02-15T00:00:00Z",
 });
 const TIMELINE = createMockTimeline({ id: 10, events: [EVENT] });
-const OUT_OF_RANGE_TIMELINE = createMockTimeline({
-  id: TIMELINE.id,
-  events: [
-    createMockTimelineEvent({
-      id: 101,
-      timeline_id: TIMELINE.id,
-      timestamp: "2030-02-15T00:00:00Z",
-    }),
-  ],
-});
 
 const EVENTS_RECORDED: VisualizationSettings = {
   "timeline.selected_timeline_ids": [TIMELINE.id],
@@ -70,18 +65,33 @@ const DATASET = createMockDataset({
   }),
 });
 
-const DashboardTimelines = () => {
-  useDashboardTimelines();
+// plays the chart: a chart reports the events it drew
+const DashCardChart = ({ dashcard }: { dashcard: DashboardCard }) => {
+  const { onTimelineEventsShown } = useDashCardTimelineEvents(dashcard);
+  useEffect(() => {
+    onTimelineEventsShown?.([EVENT]);
+  }, [onTimelineEventsShown]);
   return null;
 };
 
 function setup({
   savedVisibility,
-  timeline = TIMELINE,
+  withTimelineEvents = true,
+  selectedTabId = null,
+  dashcardTabId = null,
+  withSidebar = false,
 }: {
   savedVisibility?: VisualizationSettings;
-  timeline?: typeof TIMELINE;
+  withTimelineEvents?: boolean;
+  selectedTabId?: DashboardTabId | null;
+  dashcardTabId?: DashboardTabId | null;
+  withSidebar?: boolean;
 } = {}) {
+  setupCollectionByIdEndpoint({
+    collections: [
+      createMockCollection({ ...ROOT_COLLECTION, can_write: true }),
+    ],
+  });
   const card = createMockCard({
     display: "line",
     visualization_settings: { ...savedVisibility },
@@ -89,17 +99,24 @@ function setup({
   const dashcard = createMockDashboardCard({
     id: DASHCARD_ID,
     dashboard_id: DASHBOARD_ID,
+    dashboard_tab_id: dashcardTabId,
     card,
   });
 
-  const { store } = renderWithProviders(
-    <MockDashboardContext dashboardId={DASHBOARD_ID} withTimelineEvents>
-      <DashboardTimelines />
+  renderWithProviders(
+    <MockDashboardContext
+      dashboardId={DASHBOARD_ID}
+      withTimelineEvents={withTimelineEvents}
+    >
+      <DashCardChart dashcard={dashcard} />
+      <DashCardChart dashcard={dashcard} />
+      {withSidebar && <DashboardWideEventsSidebar />}
     </MockDashboardContext>,
     {
       storeInitialState: createMockState({
         dashboard: createMockDashboardState({
           dashboardId: DASHBOARD_ID,
+          selectedTabId,
           dashboards: {
             [DASHBOARD_ID]: createMockStoreDashboard({
               id: DASHBOARD_ID,
@@ -113,64 +130,68 @@ function setup({
           {
             endpointName: "listTimelines",
             arg: { include: "events" },
-            value: [timeline],
+            value: [TIMELINE],
           },
         ]),
       }),
     },
   );
-
-  return store;
 }
 
-type Store = ReturnType<typeof setup>;
-
-const updateEventVisibility = (
-  store: Store,
-  update: typeof hideTimelineEvents,
-) =>
-  act(() => {
-    store.dispatch(
-      updateDashCardsTimelineEventsVisibility(
-        [DASHCARD_ID],
-        (visibility, timelines) => update(visibility, [EVENT], timelines),
-      ),
-    );
-  });
-
-describe("useDashboardTimelines", () => {
+describe("dashboard timeline events", () => {
   beforeEach(() => {
     trackSimpleEvent.mockClear();
   });
 
-  it("tracks a dashboard that shows events once per load", async () => {
-    const store = setup({ savedVisibility: EVENTS_RECORDED });
-
-    await waitFor(() => {
-      expect(trackSimpleEvent).toHaveBeenCalledWith({
-        event: "dashboard_events_shown",
-        target_id: DASHBOARD_ID,
-      });
-    });
-
-    updateEventVisibility(store, hideTimelineEvents);
-    updateEventVisibility(store, showTimelineEvents);
+  it("tracks a dashboard once when its charts show events", () => {
+    setup({ savedVisibility: EVENTS_RECORDED });
 
     expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "dashboard_events_shown",
+      target_id: DASHBOARD_ID,
+    });
   });
 
-  it("does not track a dashboard whose questions never recorded events", () => {
-    setup();
+  it("does not track a dashboard without events support", () => {
+    setup({ savedVisibility: EVENTS_RECORDED, withTimelineEvents: false });
 
     expect(trackSimpleEvent).not.toHaveBeenCalled();
   });
 
-  it("does not track events outside the chart's date range", () => {
+  it("does not track a dashcard whose timeline events are disabled", () => {
     setup({
-      savedVisibility: EVENTS_RECORDED,
-      timeline: OUT_OF_RANGE_TIMELINE,
+      savedVisibility: {
+        ...EVENTS_RECORDED,
+        "timeline_events.enabled": false,
+      },
     });
 
     expect(trackSimpleEvent).not.toHaveBeenCalled();
+  });
+
+  it("lists the events of the charts on the selected tab", async () => {
+    setup({
+      savedVisibility: EVENTS_RECORDED,
+      selectedTabId: 5,
+      dashcardTabId: 5,
+      withSidebar: true,
+    });
+
+    expect(await screen.findByText(EVENT.name)).toBeInTheDocument();
+  });
+
+  it("shows the empty state when the charts are on another tab", async () => {
+    setup({
+      savedVisibility: EVENTS_RECORDED,
+      selectedTabId: 5,
+      dashcardTabId: 6,
+      withSidebar: true,
+    });
+
+    expect(
+      await screen.findByTestId("dashboard-events-empty-state"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(EVENT.name)).not.toBeInTheDocument();
   });
 });

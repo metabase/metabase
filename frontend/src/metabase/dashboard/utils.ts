@@ -218,6 +218,17 @@ export function getCurrentTabDashboardCards(
   );
 }
 
+export function isDashCardOnTab(
+  dashcard: BaseDashboardCard,
+  selectedTabId: SelectedTabId,
+) {
+  return (
+    !selectedTabId ||
+    dashcard.dashboard_tab_id === selectedTabId ||
+    dashcard.dashboard_tab_id === null
+  );
+}
+
 export function isDashboardOrTabEmpty(
   dashboard: Dashboard,
   selectedTabId: SelectedTabId,
