@@ -15,6 +15,13 @@
   [text]
   {:type "paragraph" :attrs {:_id (str (random-uuid))} :content [{:type "text" :text text}]})
 
+(defn- collect-type
+  "Every node of `type` anywhere in `ast`."
+  [ast type]
+  (let [found (atom [])]
+    (walk/postwalk (fn [n] (when (and (map? n) (= type (:type n))) (swap! found conj n)) n) ast)
+    @found))
+
 (defn- text+marks
   [node]
   ((juxt :text :marks) node))
@@ -1075,3 +1082,40 @@
           out (md/splice ast {:markdown m} s (+ s 4) "BETA")]
       (is (identical? (nth (:content ast) 0) (nth (:content out) 0)))
       (is (= "BETA" (get-in out [:content 1 :content 0 :text]))))))
+
+(deftest ^:parallel code-fence-behind-list-marker-is-opaque-test
+  (testing "a fence opening on a list item's marker line still makes its content code, so token
+           syntax inside it stays text instead of being read as structure"
+    (doseq [src ["- ```\n  {% card id=99 %}\n  ```\n"
+                 "1. ```\n   {% card id=99 %}\n   ```\n"
+                 "* ```\n  {% card id=99 %}\n  ```\n"]]
+      (testing (pr-str src)
+        (is (empty? (collect-type (md/parse src) "cardEmbed"))))))
+  (testing "a card token outside any fence is still a real embed"
+    (is (= 1 (count (collect-type (md/parse "{% card id=99 %}\n")
+                                  "cardEmbed"))))))
+
+(deftest ^:parallel splice-keeps-untokenized-card-attrs-test
+  (testing "re-parsing a card embed keeps the attrs its token does not carry -- child_target_id
+           anchors comments and the rest is user-visible visualization state"
+    (let [card {:type "cardEmbed"
+                :attrs {:id 7 :name "Chart" :_id "c1" :stored_result_id 42 :sort "asc"
+                        :chart_href "/q/7" :child_target_id "anchor-9" :host_data {:k "v"}}}
+          ast  {:type "doc" :content [(para "intro") card]}
+          ser  (md/serialize ast)
+          s    (str/index-of (:markdown ser) "\n\n")
+          out  (md/splice ast ser s (+ s 2) "\n\n\n")
+          out-card (first (collect-type out "cardEmbed"))]
+      (is (= (:attrs card) (:attrs out-card)))))
+  (testing "a freshly parsed value still wins over the carried one, so retargeting a card works"
+    (let [card {:type "cardEmbed"
+                :attrs {:id 7 :name "Chart" :_id "c1" :stored_result_id 42 :child_target_id "anchor-9"}}
+          ast  {:type "doc" :content [(para "intro") card]}
+          ser  (md/serialize ast)
+          m    (:markdown ser)
+          s    (str/index-of m "{%")
+          out  (md/splice ast ser s (count m) "{% card id=1234 name=\"Other\" %}")
+          out-card (first (collect-type out "cardEmbed"))]
+      (is (= 1234 (get-in out-card [:attrs :id])))
+      (is (= "Other" (get-in out-card [:attrs :name])))
+      (is (= "anchor-9" (get-in out-card [:attrs :child_target_id]))))))

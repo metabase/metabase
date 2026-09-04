@@ -223,7 +223,11 @@
         body))))
 
 (def ^:private code-fence-re
-  #"[ \t]{0,3}(`{3,}|~{3,})(.*)")
+  ;; A fence may open on a list item's marker line (`- ```clj`). Without the marker branch the
+  ;; scanner never enters the code state for such a block, and the item's content lines -- which
+  ;; sit at 2-3 columns, inside this regex's indent budget -- get read as structure, manufacturing
+  ;; a card embed or closing a container early out of what CommonMark calls code.
+  #"[ \t]{0,3}(?:(?:[-+*]|\d{1,9}[.)])[ \t]{1,4})?(`{3,}|~{3,})(.*)")
 
 (defn- code-fence-open
   "The fence descriptor `{:ch :len}` a line opens, or nil. A backtick fence's info string
@@ -233,10 +237,16 @@
     (when-not (and (str/starts-with? fence "`") (str/includes? info "`"))
       {:ch (first fence) :len (count fence)})))
 
+(def ^:private code-fence-close-re
+  ;; A fence opened behind a list marker closes at the item's content indent, which sits past the
+  ;; 3 columns a top-level fence is limited to. Allowing more leading space here only ever ends a
+  ;; block the opener already began, so it cannot make non-code text look like structure.
+  #"[ \t]{0,13}(`{3,}|~{3,})[ \t]*")
+
 (defn- code-fence-close?
   [^String line {:keys [ch len]}]
   (boolean
-   (when-let [[_ fence] (re-matches #"[ \t]{0,3}(`{3,}|~{3,})[ \t]*" line)]
+   (when-let [[_ fence] (re-matches code-fence-close-re line)]
      (and (= ch (first fence)) (>= (count fence) (long len))))))
 
 (defn- scan-segments
@@ -1217,6 +1227,22 @@
     (cond-> new-node
       (and id (contains? (:attrs new-node) :_id)) (assoc-in [:attrs :_id] id))))
 
+(defn- carry-attrs
+  "Carry the old node's attrs onto its re-parsed counterpart, with freshly parsed values winning.
+
+  A node's serialized text does not round-trip every attr it holds: a card token writes `id` and
+  `name`, so re-parsing one drops `stored_result_id`, `sort`, `chart_href`, `child_target_id`, and
+  `host_data`. `child_target_id` anchors comments and the rest is user-visible visualization state,
+  so a splice that re-parses a sibling it did not semantically change must not shed them.
+
+  Only same-type pairs merge. [[same-block?]] also pairs convertible types (a paragraph with a
+  bulletList), where the old attrs describe a different node shape -- a heading's `level` has no
+  meaning on the paragraph it became -- so those keep the id-only carry."
+  [new-node old-node]
+  (if (= (:type new-node) (:type old-node))
+    (update new-node :attrs #(merge (:attrs old-node) %))
+    (carry-id new-node old-node)))
+
 (defn- reconcile-ids
   "Give freshly parsed `new-nodes` the `:_id`s of the `old-nodes` they replace, so a block whose
   text an edit rewrote keeps the identity its comments anchor to — the same guarantee the editor
@@ -1232,7 +1258,7 @@
                 (if-not (same-block? o n)
                   acc
                   (assoc acc ni
-                         (cond-> (carry-id n o)
+                         (cond-> (carry-attrs n o)
                            ;; Both sides must hold block content. `convertible-block-types` lets a
                            ;; paragraph pair with a bulletList or blockquote, but a paragraph's
                            ;; `:content` is inline — recursing on the new node's type alone hands

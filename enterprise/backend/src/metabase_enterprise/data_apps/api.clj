@@ -8,14 +8,13 @@
    `metabase.server.routes/static-files-handler`)."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.data-apps.models.data-app :as data-app]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.json :as json]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.io ByteArrayInputStream)))
 
@@ -137,10 +136,7 @@
    to return only enabled apps without sync errors."
   [_route-params
    {:keys [available]} :- [:map [:available {:optional true} [:maybe :boolean]]]]
-  (->> (data-app/select-non-blob (cond-> {:order-by [[:display_name :asc]]}
-                                   available (assoc :where [:and
-                                                            [:= :enabled true]
-                                                            [:= :sync_error nil]])))
+  (->> (data-apps.db/non-blob-data-apps available)
        (map api/read-check)
        (mapv data-app-response)))
 
@@ -153,9 +149,9 @@
    _query-params
    {:keys [enabled]} :- [:map [:enabled :boolean]]]
   (api/check-superuser)
-  (let [app (api/check-404 (data-app/select-one-non-blob :name slug))]
-    (t2/update! :model/DataApp :id (:id app) {:enabled enabled})
-    (data-app/select-one-non-blob :id (:id app))))
+  (let [app (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))]
+    (data-apps.db/update-data-app! (:id app) {:enabled enabled})
+    (data-apps.db/non-blob-data-app (:id app))))
 
 (api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
   "Remove a single data app (its row and cached bundle). Intended for clearing out
@@ -165,7 +161,7 @@
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
   (api/check-superuser)
   ;; `t2/delete!` returns the row count; a 0 means the slug wasn't there → 404.
-  (api/check-404 (pos? (t2/delete! :model/DataApp :name slug)))
+  (api/check-404 (pos? (data-apps.db/delete-data-app-by-slug! slug)))
   ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
@@ -173,7 +169,7 @@
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single enabled data app by its slug."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
-  (data-app-response (api/read-check (data-app/select-one-non-blob :name slug :enabled true))))
+  (data-app-response (api/read-check (data-apps.db/enabled-non-blob-data-app-by-slug slug))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
   "Serve the cached JS bundle for a single enabled data app by slug. Honors
@@ -185,7 +181,7 @@
    respond
    raise]
   (try
-    (let [row  (api/read-check (data-app/select-one-non-blob :name slug :enabled true))
+    (let [row  (api/read-check (data-apps.db/enabled-non-blob-data-app-by-slug slug))
           hash (:bundle_hash row)
           etag (some->> hash (format "\"%s\""))]
       (cond
@@ -195,7 +191,7 @@
         (respond {:status 304, :headers {"Cache-Control" "no-cache", "ETag" etag}})
 
         :else
-        (let [^bytes bundle (t2/select-one-fn :bundle :model/DataApp :id (:id row))]
+        (let [^bytes bundle (data-apps.db/data-app-bundle (:id row))]
           (if (and bundle (pos? (alength bundle)))
             (respond {:status  200
                       :headers (-> bundle-response-headers
