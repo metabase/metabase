@@ -1,5 +1,6 @@
 (ns metabase.mcp.v2.common-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.urls :as channel.urls]
    [metabase.mcp.v2.common :as common]
@@ -214,6 +215,47 @@
       (let [text (-> (common/list-content [{:id 1} {:id 2}] 5 {:offset 0 :limit 2}) :content first :text)]
         (is (re-find #"Returned 2 of 5" text))
         (is (not (re-find #"No results" text)))))))
+
+(def ^:private browse-empty-hint
+  "The `:empty-hint` `list_databases` passes — quoted verbatim so this test moves in lockstep with
+   the real call site."
+  "No databases are visible to you. Browsing data needs query-builder or table-metadata permission on at least one database.")
+
+(deftest list-content-empty-hint-test
+  (testing "`:empty-hint` supplies the domain reason a result set is genuinely empty — the envelope
+            says zero, the hint says why. Dropping the option is silent: `list-content` ignores
+            unknown keys, so the sentence would just vanish from `list_databases`."
+    (testing "guards the restack of the `:empty-hint` call site in tools/browse.clj `list_databases`:
+              if a merge resolves `list-content` back to a version without `:empty-hint`, this fails"
+      (let [text (-> (common/list-content [] 0 {:offset 0 :limit 20 :empty-hint browse-empty-hint})
+                     :content first :text)]
+        (is (re-find #"\"total\":0" text))
+        (is (str/includes? text browse-empty-hint))))
+    (testing "guards the restack of the `:empty-hint` call site in tools/browse.clj: the hint must
+              stay gated on a zero total, never collapse into a bare `or`. At a positive total the
+              caller paged past the end, and printing a static \"nothing is visible to you\" would
+              state something false about data they do have"
+      (let [text (-> (common/list-content [] 37 {:offset 100 :limit 20 :empty-hint browse-empty-hint})
+                     :content first :text)]
+        (is (re-find #"No results at offset 100" text))
+        (is (not (str/includes? text browse-empty-hint)))))
+    (testing "an empty first page with a positive total keeps the dropped-rows line too — that total
+              is also not a genuinely empty result set"
+      (let [text (-> (common/list-content [] 3 {:offset 0 :limit 20 :empty-hint browse-empty-hint})
+                     :content first :text)]
+        (is (re-find #"Returned 0 of 3" text))
+        (is (not (str/includes? text browse-empty-hint)))))
+    (testing "an unknown total is not a known-zero one, so the hint stays out"
+      (let [text (-> (common/list-content [] nil {:offset 0 :limit 20 :empty-hint browse-empty-hint})
+                     :content first :text)]
+        (is (not (str/includes? text browse-empty-hint)))))
+    (testing "a non-empty page ignores the hint entirely — a truncated page still gets its
+              truncation line"
+      (let [text (-> (common/list-content [{:id 1} {:id 2}] 5 {:offset 0 :limit 2 :empty-hint browse-empty-hint})
+                     :content first :text)]
+        (is (re-find #"Returned 2 of 5" text))
+        (is (re-find #"offset: 2" text))
+        (is (not (str/includes? text browse-empty-hint)))))))
 
 (deftest list-content-test
   (testing "a full page (returned == total) appends no steering line"

@@ -305,13 +305,17 @@
 (defn list-content
   "Build the MCP success content for a list response: the envelope (compact JSON) in the text
    block, with a steering line appended. `data` is already the page; `opts` carries
-   `:offset`/`:limit` and an optional `:param` naming what narrows this list. Text-only —
-   list data never rides `structuredContent` by reflex."
-  [data total opts]
+   `:offset`/`:limit`, an optional `:param` naming what narrows this list, and an optional
+   `:empty-hint` — the domain reason a genuinely empty result set (`total` 0) is empty, never an
+   override of a computed line. Text-only — list data never rides `structuredContent` by reflex."
+  [data total {:keys [empty-hint] :as opts}]
   (let [envelope (list-envelope data total)
         opts     (assoc opts :total total :returned (count data))
+        ;; The two empty-page sentences answer different questions, so `:empty-hint` is gated on a
+        ;; zero total rather than merely losing a race with [[empty-page-line]]: telling someone who
+        ;; paged past the end "nothing is visible to you" would be factually false.
         line     (if (empty? data)
-                   (empty-page-line opts)
+                   (or (empty-page-line opts) (when (= 0 total) empty-hint))
                    (truncation-line opts))]
     (success-content (cond-> (json/encode envelope)
                        line (str "\n" line)))))
