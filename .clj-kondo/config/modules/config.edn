@@ -158,7 +158,10 @@
 
   agent-api
   {:team    "Metabot"
-   :api     #{metabase.agent-api.api metabase.agent-api.init metabase.agent-api.usage}
+   :api     #{metabase.agent-api.api
+              metabase.agent-api.init
+              metabase.agent-api.query-guards
+              metabase.agent-api.usage}
    :uses    #{ai-tracing
               api
               auth-identity
@@ -434,7 +437,8 @@
 
   bookmarks
   {:team "UX West"
-   :api  #{metabase.bookmarks.api}
+   :api  #{metabase.bookmarks.api
+           metabase.bookmarks.db}
    :uses #{api
            app-db
            collections
@@ -1334,24 +1338,38 @@
            metabase.mcp.callback-api
            metabase.mcp.core
            metabase.mcp.init
-           metabase.mcp.usage}
+           metabase.mcp.usage
+           metabase.mcp.v2.api}
    :model-exports #{:model/McpSessionLog
                     :model/McpToolCallLog}
    :uses #{agent-api
            ai-tracing
            api
            app-db
+           bookmarks
+           channel
            config
+           dashboards
+           eid-translation
            llm
            metabot
+           models
+           notification
            oauth-server
+           permissions
            premium-features
+           pulse
            request
            server
            session
            settings
            system
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/User}}
 
   measures
   {:team "Graphy"
@@ -1376,6 +1394,7 @@
               metabase.metabot.core
               metabase.metabot.init
               metabase.metabot.metadata-perms
+              metabase.metabot.scope
               metabase.metabot.self
               metabase.metabot.settings
               metabase.metabot.tools.entity-details}

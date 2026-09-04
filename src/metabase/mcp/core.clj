@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
+   [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]))
@@ -41,9 +42,17 @@
 
 (defn all-scopes
   "All supported OAuth scopes: those declared on agent-api endpoints via
-   defendpoint metadata, plus scopes from MCP UI resources (e.g. visualize_query)."
+   defendpoint metadata, plus scopes from MCP UI resources (e.g. visualize_query),
+   plus everything the v2 MCP surface accepts.
+
+   DCR snapshots this set into a client's registered scopes when the client registers without naming any, and
+   the OAuth server's `validate-scope` then checks a requested scope against that per-client snapshot. So a
+   scope the v2 401 challenge asks for must be here, or a freshly registered client that follows the challenge
+   is answered \"Invalid scope\" instead of having its grant narrowed. A client registered before a scope was
+   added keeps its older snapshot until it re-registers. [[metabase.mcp.paths/v2-surface-scopes]] is the shared
+   set both read."
   []
-  (into (mcp.resources/resource-scopes)
+  (into (into (mcp.resources/resource-scopes) mcp.paths/v2-surface-scopes)
         (comp (keep #(get-in % [:form :metadata :scope]))
               (filter string?))
         (vals (api.macros/ns-routes 'metabase.agent-api.api))))

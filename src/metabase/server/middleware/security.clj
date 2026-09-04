@@ -552,7 +552,7 @@
   [request]
   (second (re-matches data-app-slug-regex (:uri request))))
 
-(defn- site-origin
+(defn site-origin
   "This Metabase instance's origin as `{:protocol :domain :port}` (parsed from
    `site-url`), or nil. Matches the shape [[parse-url]] returns so origins compare
    with `=`."

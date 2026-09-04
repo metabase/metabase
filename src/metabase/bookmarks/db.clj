@@ -1,6 +1,6 @@
 (ns metabase.bookmarks.db
-  "Application database queries for the bookmarks module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  "Application database queries for the bookmarks module, plus a thin (model, id, user-id) dispatch tier over them,
+  so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
@@ -32,35 +32,6 @@
   [exploration-id user-id]
   (t2/exists? :model/ExplorationBookmark :exploration_id exploration-id :user_id user-id))
 
-(defn insert-card-bookmark!
-  "Insert a CardBookmark for the Card with `card-id` and the User with `user-id`, returning the inserted instance."
-  [card-id user-id]
-  (t2/insert-returning-instance! :model/CardBookmark {:card_id card-id :user_id user-id}))
-
-(defn insert-dashboard-bookmark!
-  "Insert a DashboardBookmark for the Dashboard with `dashboard-id` and the User with `user-id`, returning the
-  inserted instance."
-  [dashboard-id user-id]
-  (t2/insert-returning-instance! :model/DashboardBookmark {:dashboard_id dashboard-id :user_id user-id}))
-
-(defn insert-collection-bookmark!
-  "Insert a CollectionBookmark for the Collection with `collection-id` and the User with `user-id`, returning the
-  inserted instance."
-  [collection-id user-id]
-  (t2/insert-returning-instance! :model/CollectionBookmark {:collection_id collection-id :user_id user-id}))
-
-(defn insert-document-bookmark!
-  "Insert a DocumentBookmark for the Document with `document-id` and the User with `user-id`, returning the inserted
-  instance."
-  [document-id user-id]
-  (t2/insert-returning-instance! :model/DocumentBookmark {:document_id document-id :user_id user-id}))
-
-(defn insert-exploration-bookmark!
-  "Insert an ExplorationBookmark for the Exploration with `exploration-id` and the User with `user-id`, returning the
-  inserted instance."
-  [exploration-id user-id]
-  (t2/insert-returning-instance! :model/ExplorationBookmark {:exploration_id exploration-id :user_id user-id}))
-
 (defn delete-card-bookmark!
   "Delete the CardBookmark of the User with `user-id` for the Card with `card-id`."
   [card-id user-id]
@@ -85,6 +56,53 @@
   "Delete the ExplorationBookmark of the User with `user-id` for the Exploration with `exploration-id`."
   [exploration-id user-id]
   (t2/delete! :model/ExplorationBookmark :exploration_id exploration-id :user_id user-id))
+
+;;; Generic (model, id, user-id) tier. The REST API and the MCP `bookmark_content` tool both take the
+;;; model as a runtime string, so they dispatch here rather than naming a per-model fn at the call site.
+
+(defn- unknown-bookmark-model!
+  "Throws a consistent error for a `model` string none of the generic (model, id, user-id) fns recognize."
+  [model]
+  (throw (ex-info (str "Unknown bookmarkable model: " (pr-str model)) {:model model})))
+
+(defn bookmark-exists?
+  "Whether the User with `user-id` has a bookmark on (`model`, `id`). `model` is a bookmarkable model string.
+  Throws for an unrecognized `model`."
+  [model id user-id]
+  (case model
+    "card"        (card-bookmark-exists? id user-id)
+    "dashboard"   (dashboard-bookmark-exists? id user-id)
+    "collection"  (collection-bookmark-exists? id user-id)
+    "document"    (document-bookmark-exists? id user-id)
+    "exploration" (exploration-bookmark-exists? id user-id)
+    (unknown-bookmark-model! model)))
+
+(def ^:private model->bookmark-model+item-key
+  {"card"        [:model/CardBookmark        :card_id]
+   "dashboard"   [:model/DashboardBookmark   :dashboard_id]
+   "collection"  [:model/CollectionBookmark  :collection_id]
+   "document"    [:model/DocumentBookmark    :document_id]
+   "exploration" [:model/ExplorationBookmark :exploration_id]})
+
+(defn insert-bookmark!
+  "Give `user-id` a bookmark on (`model`, `id`) and return it - the existing one when there already is one.
+  Does not read-check the item; callers do. Throws for an unrecognized `model`."
+  [model id user-id]
+  (let [[bookmark-model item-key] (or (model->bookmark-model+item-key model) (unknown-bookmark-model! model))]
+    ;; select-or-insert! rather than insert!: concurrent callers both get the state they asked for instead of
+    ;; one losing to the (user_id, item) unique constraint.
+    (mdb/select-or-insert! bookmark-model {item-key id :user_id user-id} (constantly {}))))
+
+(defn delete-bookmark!
+  "Delete `user-id`'s bookmark on (`model`, `id`). No-op when there is none. Throws for an unrecognized `model`."
+  [model id user-id]
+  (case model
+    "card"        (delete-card-bookmark! id user-id)
+    "dashboard"   (delete-dashboard-bookmark! id user-id)
+    "collection"  (delete-collection-bookmark! id user-id)
+    "document"    (delete-document-bookmark! id user-id)
+    "exploration" (delete-exploration-bookmark! id user-id)
+    (unknown-bookmark-model! model)))
 
 (defn delete-bookmark-orderings-for-user!
   "Delete the BookmarkOrderings of the User with `user-id`."

@@ -8,7 +8,8 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [metabase.agent-api.query-guards :as query-guards]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -105,8 +106,8 @@
 (deftest ^:parallel native-query?-is-case-and-separator-insensitive-test
   (testing "the QP normalizer canonicalizes keys case-insensitively and treats `_` and `-` alike, so a payload
             spelled `:SOURCE_QUERY` still reaches the query processor as a native stage. Matching edge names and
-            markers case-exactly let a caller walk straight past the guard by changing the spelling — and once
-            `check-mcp-ui-native-query!` is wired onto /api/dataset (the next slice), this scan is the only gate
+            markers case-exactly let a caller walk straight past the guard by changing the spelling — and with
+            `check-mcp-ui-native-query!` wired onto /api/dataset by this slice, this scan is the only gate
             standing between an unrestricted-stamped MCP UI credential and raw SQL."
     (testing "nested-query edges, however spelled"
       (are [q] (true? (query-guards/native-query? q))
@@ -133,6 +134,36 @@
         ;; caller-named sub-maps are never scanned: an expression or tag called `native` is not a marker
         {:stages [{:lib/type "mbql.stage/mbql" :expressions {:NATIVE [:+ 1 1]}}]}
         {:query {:source-table 1 :template-tags {:Source_Query {:name "x"}}}}))))
+
+(deftest ^:parallel native-query?-sees-a-json-encoded-query-test
+  (testing "`POST /api/dataset/:export-format` accepts `query` as a JSON STRING for `<form>`-submit
+            back-compat, decoding it in Malli (`:decode/api`). `+refuse-unscoped-native-sql` runs ahead of that
+            decoding, so the guard is handed the raw string — and a string edge fell through to `deep-scan`,
+            which finds no marker inside text. The guard therefore could not see native SQL in that shape.
+
+            Unreachable today only because that route is absent from the MCP UI credential's allowlist, which
+            is exactly the coupling the middleware's docstring promises does NOT matter: \"a route later added
+            to the allowlist is covered the day it is added\"."
+    (testing "a JSON-encoded query is decoded and scanned, not skipped"
+      (are [q] (true? (query-guards/native-query? q))
+        {:query (json/encode {:type "native" :native {:query "select 1"}})}
+        {:query (json/encode {:query {:source_query {:native "select 1"}}})}
+        {:query (json/encode {:lib/type "mbql/query"
+                              :stages [{:lib/type "mbql.stage/native" :native "select 1"}]})}))
+    (testing "an encoded MBQL query is still not native"
+      (is (false? (query-guards/native-query? {:query (json/encode {:type "query"
+                                                                    :query {:source-table 1}})}))))
+    (testing "sequence edges decode symmetrically, so a JSON-string `stages` cannot become the one shape the
+              scan is blind to"
+      (is (true? (query-guards/native-query?
+                  {:stages (json/encode [{:lib/type "mbql.stage/native" :native "select 1"}])})))
+      (is (false? (query-guards/native-query?
+                   {:stages (json/encode [{:lib/type "mbql.stage/mbql" :source-table 1}])}))))
+    (testing "a string that is not JSON at all is left to the existing fallback rather than throwing"
+      (are [q] (false? (query-guards/native-query? q))
+        {:query "not json at all"}
+        {:query ""}
+        {:query "[1,2,3]"}))))
 
 (deftest reject-native-query!-test
   (testing "native queries throw a 400 with a steering message"
@@ -229,6 +260,15 @@
   (testing "a credential carrying no scopes claim fails closed — a rolling deploy can mint one"
     (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
                                 {:mcp-ui-credential {:uid 1 :sid "session"}} legacy-native)))))
+  (testing "GHY-4318: a credential explicitly marked `:legacy` skips the gate. Only v1's frozen surface mints
+            those (`mcp.session/issue-ui-credential`'s 2-arity), and v1's iframe visualizes execute_sql handles
+            that legitimately hold raw SQL — wiring this guard must not change v1's behavior. The marker is
+            explicit precisely so the unmarked case above keeps failing closed.
+
+            TRIPWIRE: delete this branch, and this assertion, when v1 retires — together with the 2-arity."
+    (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query!
+                                       {:mcp-ui-credential {:uid 1 :sid "session" :legacy true}}
+                                       legacy-native)))))
   (testing "the kill switch outranks the grant"
     (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
       (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!

@@ -11,19 +11,20 @@
    copy: native detection raw-scans the payload instead of normalize-then-inspect, so a payload
    too malformed to normalize now fails closed instead of falling through to shape validation.
 
-   [[check-mcp-ui-native-query!]] is the odd one out: it is written to guard the ordinary QP endpoints,
-   which the MCP Apps iframe reaches with a credential that the endpoint scope middleware cannot narrow.
-   It shares the native detection but refuses raw SQL on scope rather than banning it outright. It is
-   NOT yet wired into any endpoint — the `:mcp-ui-credential` it keys on, and the scopes claim it spends,
-   only exist once the v2 core's session rework lands (the next PR in this stack). It is extracted and
-   unit-tested here so that slice can wire it in without also authoring it; until then it is dormant."
+   [[check-mcp-ui-native-query!]] is the odd one out: it guards the ordinary QP endpoints, which the
+   MCP Apps iframe reaches with a credential that the endpoint scope middleware cannot narrow. It
+   shares the native detection but refuses raw SQL on scope rather than banning it outright. It is
+   mounted on the whole `/api/dataset` route tree via [[+refuse-unscoped-native-sql]], keyed on the
+   `:mcp-ui-credential` the session middleware attaches and the scopes claim the v2 session rework
+   put on it."
   (:require
    [clojure.string :as str]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.metabot.scope :as metabot.scope]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -79,6 +80,16 @@
    payload still reaches the query processor as a native stage and must trip the guard."
   #{"query" "source-query"})
 
+(defn- try-decode-json
+  "`s` parsed as JSON, or nil when it does not parse.
+
+   Only used to look INSIDE a structural edge that arrived as a string; a parse failure is not an error here,
+   it just means the value is not a query fragment and the caller falls back to its usual scan."
+  [s]
+  (try
+    (json/decode s true)
+    (catch Exception _ nil)))
+
 (defn native-query?
   "True if `query-map` (a decoded, client-reachable query) contains native SQL along its
    query-nesting structure — legacy top-level `:type :native`, a legacy nested `:source-query`'s
@@ -117,14 +128,33 @@
             (cond
               (nil? node)        false
               (sequential? node) (boolean (some scan-map node))
+              ;; Decoded for the same reason as the map edge below, and kept symmetric with it deliberately:
+              ;; no edge accepts a JSON string here today, so if one ever does its contents must not become
+              ;; the one shape the scan cannot see.
+              (string? node)     (let [decoded (try-decode-json node)]
+                                   (if (sequential? decoded)
+                                     (boolean (some scan-map decoded))
+                                     (deep-scan node)))
               :else              (deep-scan node)))
-          ;; `:query`/`:source-query`: normally a nested stage/query map. A malformed non-map value
-          ;; is deep-scanned.
+          ;; `:query`/`:source-query`: normally a nested stage/query map. A JSON STRING is decoded first —
+          ;; `POST /api/dataset/:export-format` accepts `query` that way for `<form>`-submit back-compat and
+          ;; decodes it in Malli, which runs AFTER this guard, so the guard is handed the raw string. Without
+          ;; decoding, a string edge falls to `deep-scan`, which finds no marker inside text. Anything that is
+          ;; not a map and not JSON-decodable to one is deep-scanned as before.
+          ;;
+          ;; This reaches a JSON body. A genuinely `<form>`-encoded submit — the shape that back-compat is
+          ;; actually about — leaves `(:body request)` a stream, not a map, so nothing structural is visible
+          ;; and the scan passes. That route is off the credential's allowlist, so it is unreachable today;
+          ;; adding it would mean reading `[:params :query]` alongside the body.
           (scan-map-edge [node]
             (cond
-              (nil? node) false
-              (map? node) (scan-map node)
-              :else       (deep-scan node)))
+              (nil? node)    false
+              (map? node)    (scan-map node)
+              (string? node) (let [decoded (try-decode-json node)]
+                               (if (map? decoded)
+                                 (scan-map decoded)
+                                 (deep-scan node)))
+              :else          (deep-scan node)))
           ;; Fail-closed fallback for a malformed sub-tree: match a marker anywhere within it.
           (deep-scan [node]
             (boolean (some native-marker? (tree-seq coll? seq node))))]
@@ -167,12 +197,7 @@
 (defn check-mcp-ui-native-query!
   "Throw a 403 if `request` is authenticated by an MCP Apps UI credential that may not run `query` as raw SQL.
 
-  NOT yet wired into any endpoint. The `:mcp-ui-credential` request key it dispatches on is attached by
-  the v2 core's session rework (the next PR in this stack); until that lands no request carries it, so this
-  guard is a no-op wherever it might be called. It is authored and unit-tested here so the session-rework
-  slice can drop it into the QP endpoint path without also having to write it. When wiring it in, add it to
-  the QP-endpoint request flow for the routes on the MCP-UI credential's allowlist (the `/api/dataset*`
-  surface), and delete this paragraph.
+  Mounted on the `/api/dataset` route tree by [[+refuse-unscoped-native-sql]].
 
   The iframe's credential is stamped `::scope/unrestricted` on purpose — none of the routes on its allowlist declare
   a `:scope`, so a narrower stamp would 403 the iframe at bootstrap. That makes the endpoint scope middleware unable
@@ -180,9 +205,9 @@
   session's real scopes are meant to ride along on the credential and be spent here: raw SQL needs an SQL-execution
   scope (`agent:sql:run`, or v1's concrete `agent:sql:execute`) and the `mcp-execute-sql-enabled` kill switch.
 
-  Sequencing: credentials only start carrying a scopes claim with the v2 core's session rework (the
-  next PR in this stack). Until then — and for any credential minted before that deploy — the claim
-  is absent and a native query over a UI credential fails closed, which the test suite codifies.
+  A credential whose claim is simply absent fails closed: a rolling deploy can hand this node one minted before
+  the claim existed. v1's frozen surface, which mints claimless credentials by design and whose iframe visualizes
+  raw-SQL handles today, marks them `:legacy` and is skipped — see [[metabase.mcp.session/issue-ui-credential]].
 
   Native is refused rather than banned because `execute_sql` handles legitimately hold raw SQL and are visualizable
   by design. Non-native queries, and requests authenticated any other way, pass straight through."
@@ -190,7 +215,11 @@
   ;; Keyed on the credential, not on its scopes claim, so a credential carrying no claim is refused rather than
   ;; waved through — a rolling deploy can hand this node one minted before the claim existed.
   (when-let [claims (:mcp-ui-credential request)]
-    (when (native-query? query)
+    ;; v1-compat: v1 mints claimless credentials through `issue-ui-credential`'s 2-arity, which stamps `:legacy`.
+    ;; Wiring this guard must not change v1's behavior, and v1's iframe visualizes execute_sql handles. Delete
+    ;; this branch with v1's retirement, together with that arity.
+    (when (and (native-query? query)
+               (not (:legacy claims)))
       ;; Scope check first, kill switch second: a client that lacks the SQL-execution scope is refused
       ;; the same way whether or not the instance has raw SQL enabled. Testing the kill switch first
       ;; would leak that config bit — an unauthorized caller could tell `mcp-execute-sql-enabled`'s
@@ -206,6 +235,30 @@
         (throw (ex-info (str "Running raw SQL is disabled on this instance — an admin can re-enable it "
                              "with the mcp-execute-sql-enabled setting.")
                         {:status-code 403}))))))
+
+(defn +refuse-unscoped-native-sql
+  "Ring middleware applying [[check-mcp-ui-native-query!]] to a route tree, reading the query from the request
+  body.
+
+  It rides the route rather than the endpoints because the endpoints cannot reach it: `agent-api` already
+  `:uses` `query-processor`, so a call from inside `metabase.query-processor.api` would close a module cycle.
+  `api-routes` is `:uses :any` and is where the two modules legitimately meet.
+
+  Applying it to the whole `/api/dataset` tree rather than to the two executing routes is deliberate: the
+  guard is keyed on `:mcp-ui-credential`, which the session middleware attaches only for the routes on the
+  credential's own allowlist, so every other route short-circuits before the body is read. That also means a
+  `/api/dataset` route later added to the allowlist is covered the day it is added — a route added ELSEWHERE
+  is not, because this middleware wraps only that tree — which is why the scan decodes a
+  JSON-string `query` edge rather than assuming the already-decoded shape: `/api/dataset/:export-format`
+  takes one, this middleware runs ahead of Malli's `:decode/api`, and that route is off the allowlist only
+  for now."
+  [handler]
+  (fn [request respond raise]
+    (try
+      (check-mcp-ui-native-query! request (:body request))
+      (handler request respond raise)
+      (catch Throwable e
+        (raise e)))))
 
 (defn check-token-query-permissions!
   "Re-validate the current user's permissions on a stored or client-supplied query.

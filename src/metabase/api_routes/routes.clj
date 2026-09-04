@@ -4,6 +4,7 @@
    [metabase.actions-rest.api]
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
+   [metabase.agent-api.query-guards :as agent-api.query-guards]
    [metabase.ai-tracing.api]
    [metabase.analytics.api]
    [metabase.analytics.api.proxy]
@@ -39,6 +40,7 @@
    [metabase.login-history.api]
    [metabase.mcp.api]
    [metabase.mcp.callback-api]
+   [metabase.mcp.v2.api]
    [metabase.measures.api]
    [metabase.metabot.api]
    [metabase.metrics.api]
@@ -107,6 +109,7 @@
          metabase.login-history.api/keep-me
          metabase.mcp.api/keep-me
          metabase.mcp.callback-api/keep-me
+         metabase.mcp.v2.api/keep-me
          metabase.oauth-server.api.admin/keep-me
          metabase.osi.ai-context.api/keep-me
          metabase.measures.api/keep-me
@@ -189,7 +192,14 @@
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
-   "/dataset"              (+auth 'metabase.query-processor.api)
+   ;; The MCP Apps iframe credential is accepted for `/dataset` and is stamped unrestricted, so the endpoint
+   ;; scope middleware cannot hold the `agent:sql:run` line here — the guard is what stops a credential lifted
+   ;; out of the resource HTML from POSTing raw SQL. The spec-generation wrapper keeps the guard transparent
+   ;; to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here fails openapi.json generation
+   ;; for the whole /api tree.
+   "/dataset"              (+auth ((routes.common/wrap-middleware-for-open-api-spec-generation
+                                    agent-api.query-guards/+refuse-unscoped-native-sql)
+                                   (api.macros/ns-handler 'metabase.query-processor.api)))
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
@@ -214,7 +224,12 @@
    ;; existing clients. See [[metabase.mcp.api/endpoint-paths]].
    "/mcp"                  (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
    "/measure"              (+auth 'metabase.measures.api)
-   "/metabase-mcp"         (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
+   ;; Route-map dispatch matches one path segment at a time, so `/metabase-mcp/v2` needs its own
+   ;; sub-entry; anything else under `/metabase-mcp` falls through to the v1 handler.
+   "/metabase-mcp"         (handlers/routes
+                            (handlers/route-map-handler
+                             {"/v2" (metabase.mcp.v2.api/+mcp-enabled metabase.mcp.v2.api/handler)})
+                            (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler))
    "/metabot"              metabase.metabot.api/routes
    "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
