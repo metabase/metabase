@@ -11,11 +11,6 @@ import {
 } from "metabase/dashboard/timeline-events";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
-import {
-  filterTimelinesByXAxis,
-  getFocusedTimelines,
-  getTimelineSidebarTitle,
-} from "metabase/timelines/panel/utils";
 import type { DashCardId, TimelineEventId } from "metabase-types/api";
 
 import { EventsPanel } from "./EventsPanel";
@@ -37,6 +32,9 @@ export function DashCardEventsSidebar({
   const selectedEventIds = useSelector((state) =>
     getDashCardSelectedTimelineEventIds(state, dashcardId),
   );
+  const xAxis = useSelector((state) =>
+    getDashCardTimeseriesXAxis(state, dashcardId),
+  );
 
   const isOnAnotherTab =
     dashcard == null ||
@@ -48,24 +46,12 @@ export function DashCardEventsSidebar({
     }
   }, [isOnAnotherTab, closeSidebar]);
 
-  const xAxis = useSelector((state) =>
-    getDashCardTimeseriesXAxis(state, dashcardId),
-  );
-  const displayedTimelines = useMemo(
-    () =>
-      getFocusedTimelines(
-        filterTimelinesByXAxis(timelines, xAxis),
-        focusedEventIds ?? null,
-      ),
-    [timelines, xAxis, focusedEventIds],
-  );
   const visibleEventIds = useMemo(
     () => visibleEvents.map((event) => event.id),
     [visibleEvents],
   );
   const dashcardIds = useMemo(() => [dashcardId], [dashcardId]);
 
-  const isFocused = focusedEventIds != null;
   const handleShowAllEvents = useCallback(() => {
     dispatch(openEventsSidebar({ dashcardId }));
   }, [dispatch, dashcardId]);
@@ -77,17 +63,14 @@ export function DashCardEventsSidebar({
   return (
     <Sidebar data-testid="dashboard-events-sidebar">
       <EventsPanel
-        title={getTimelineSidebarTitle({
-          focusedTimelines: displayedTimelines,
-          isFocused,
-          xAxis,
-        })}
-        onShowAllEvents={isFocused ? handleShowAllEvents : undefined}
         dashcardIds={dashcardIds}
         selectionDashcardId={dashcardId}
-        timelines={displayedTimelines}
+        timelines={timelines}
         visibleEventIds={visibleEventIds}
         selectedEventIds={selectedEventIds}
+        focusedEventIds={focusedEventIds}
+        xAxis={xAxis}
+        onShowAllEvents={handleShowAllEvents}
       />
     </Sidebar>
   );

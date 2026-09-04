@@ -8,9 +8,6 @@ export const MODAL_TYPES = {
   SAVE_QUESTION_BEFORE_EMBED: "save-question-before-embed",
   TURN_INTO_DATASET: "turn-into-dataset",
   CAN_NOT_CREATE_MODEL: "can-not-create-model",
-  NEW_EVENT: "new-event",
-  EDIT_EVENT: "edit-event",
-  MOVE_EVENT: "move-event",
   PREVIEW_QUERY: "preview-query",
   QUESTION_EMBED: "question-embed",
 } as const;

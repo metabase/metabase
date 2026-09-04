@@ -78,7 +78,6 @@ type ViewProps = Omit<
   onDismissToast: () => void;
   onConfirmToast: () => void;
   modal: QueryModalType;
-  modalContext: number;
   card: Card;
   originalQuestion: Question;
   reportTimezone: string;
@@ -158,7 +157,6 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
       onSave,
       onChangeLocation,
       modal,
-      modalContext,
       card,
       onCloseModal,
       onOpenModal,
@@ -229,7 +227,6 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
             onSave={onSave}
             onCreate={onCreate}
             modal={modal}
-            modalContext={modalContext}
             card={card}
             question={question}
             onCloseModal={onCloseModal}
@@ -325,7 +322,6 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
           onSave={onSave}
           onCreate={onCreate}
           modal={modal}
-          modalContext={modalContext}
           card={card}
           question={question}
           onCloseModal={onCloseModal}

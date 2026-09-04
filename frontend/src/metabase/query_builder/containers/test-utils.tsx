@@ -229,9 +229,6 @@ interface SetupOpts {
   dataset?: Dataset;
   initialRoute?: string;
   timelines?: Timeline[];
-  // Delay (ms) for the /api/timeline response, used to control its resolution
-  // order relative to the question/bookmarks load.
-  timelinesDelay?: number;
 }
 
 export const setup = async ({
@@ -245,7 +242,6 @@ export const setup = async ({
         : `#${serializeCardForUrl(card)}`
   }`,
   timelines = [],
-  timelinesDelay,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([TEST_DB]);
@@ -254,7 +250,7 @@ export const setup = async ({
   setupPropertiesEndpoints(createMockSettings());
   setupCollectionsEndpoints({ collections: [] });
   setupBookmarksEndpoints([]);
-  setupTimelinesEndpoints(timelines, timelinesDelay);
+  setupTimelinesEndpoints(timelines);
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
   setupFieldValuesEndpoint(
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
