@@ -1,4 +1,4 @@
-import { loadLocaleCatalog } from "locale-catalog";
+import { loadLocaleCatalog } from "./load-locale-catalog";
 import {
   type LocaleDataWithLanguage,
   setLocalization,
