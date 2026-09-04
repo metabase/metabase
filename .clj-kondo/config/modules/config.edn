@@ -142,7 +142,7 @@
            metabase.activity-feed.core
            metabase.activity-feed.init}
    :uses #{api
-           app-db
+           batch-processing
            collections
            config
            events
@@ -351,6 +351,7 @@
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
            metabase.app-db.core
            metabase.app-db.init
+           metabase.app-db.setting
            metabase.app-db.setup
            metabase.app-db.transient-error}
    :uses #{auth-provider
@@ -359,7 +360,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Field :model/QueryCache}}
+   :model-imports #{:model/Field}}
 
   appearance
   {:team "UX West"
@@ -437,7 +438,8 @@
 
   bookmarks
   {:team "UX West"
-   :api  #{metabase.bookmarks.api}
+   :api  #{metabase.bookmarks.api
+           metabase.bookmarks.db}
    :uses #{api
            app-db
            collections
@@ -594,6 +596,7 @@
   {:team "UX West"
    :api  #{metabase.collections.core
            metabase.collections.curation
+           metabase.collections.init
            metabase.collections.models.collection
            metabase.collections.models.collection.root
            metabase.collections.schema}
@@ -702,7 +705,7 @@
            models
            util}
    :model-exports #{:model/ModerationReview}
-   :model-imports #{:model/Card :model/Dashboard}}
+   :model-imports #{:model/Card :model/Dashboard :model/User}}
 
   contextual-interestingness
   {:team "UX West"
@@ -1537,6 +1540,7 @@
                     :model/Dashboard
                     :model/DashboardTab
                     :model/Database
+                    :model/Document
                     :model/Field
                     :model/Measure
                     :model/NativeQuerySnippet
@@ -1795,7 +1799,11 @@
            metabase.public-sharing.validation}
    :uses #{api
            settings
-           util}}
+           util}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Dashboard
+                    :model/Document}}
 
   public-sharing-rest
   {:team "UX West"
@@ -2220,7 +2228,6 @@
            request
            session
            settings
-           setup
            sso
            system
            tracing
@@ -2255,8 +2262,7 @@
 
   settings
   {:team "DevEx"
-   :api  #{metabase.settings.core
-           metabase.settings.init}
+   :api  #{metabase.settings.core metabase.settings.init}
    :uses #{api
            app-db
            config
@@ -2265,7 +2271,8 @@
            premium-features
            util
            enterprise/advanced-permissions}
-   :model-exports #{:model/Setting}}
+   :model-exports #{:model/Setting}
+   :model-imports #{:model/User}}
 
   settings-rest
   {:team "DevEx"
@@ -2441,6 +2448,7 @@
            metabase.task.core}
    :uses #{app-db
            classloader
+           config
            tracing
            util}}
 
@@ -2506,6 +2514,7 @@
            lib
            lib-be
            parameters
+           premium-features
            query-processor
            settings
            util}
@@ -2750,6 +2759,7 @@
    :model-imports #{:model/Dashboard
                     :model/Database
                     :model/PermissionsGroupMembership
+                    :model/PulseChannelRecipient
                     :model/Tenant}}
 
   users-rest
@@ -2809,7 +2819,10 @@
            query-permissions
            util}
    :model-exports #{:model/ViewLog}
-   :model-imports #{:model/Card :model/Dashboard :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Document
+                    :model/Table}}
 
   warehouse-schema
   {:team "UX West"
@@ -3194,7 +3207,8 @@
    :uses #{api
            content-verification
            util
-           enterprise/api}}
+           enterprise/api}
+   :model-imports #{:model/Card :model/Dashboard}}
 
   enterprise/core
   {:team "DevEx"

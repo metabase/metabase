@@ -243,20 +243,18 @@
       ;; calling a tool that never existed.
       (or (nil? tool)
           (contains? (disabled-tool-names) tool-name))
-      (common/error-content (str "Unknown tool: " tool-name) common/error-code-method-not-found)
+      {:error {:code common/error-code-method-not-found :message (str "Unknown tool: " tool-name)}}
 
       (not (map? (or arguments {})))
-      (common/error-content "Invalid arguments: expected a JSON object." common/error-code-invalid-params)
+      {:error {:code common/error-code-invalid-params :message "Invalid arguments: expected a JSON object."}}
 
       (not (mcp.scope/matches? token-scopes (:scope tool)))
-      (common/error-content (str "Insufficient scope to call tool: " tool-name)
-                            common/error-code-invalid-request)
+      {:error {:code common/error-code-invalid-request :message (str "Insufficient scope to call tool: " tool-name)}}
 
       ;; A UI tool the client can't render is a caller error, not a hidden tool: unlike the
       ;; scope/disabled cases it stays listed for capable clients, so name what's missing.
       (seq missing)
-      (common/error-content (mcp.ui-resource/missing-extensions-error tool-name missing)
-                            common/error-code-invalid-params)
+      {:error {:code common/error-code-invalid-params :message (mcp.ui-resource/missing-extensions-error tool-name missing)}}
 
       :else
       ;; Strict MCP clients (ChatGPT) send every declared property with `null` for the ones they
@@ -264,24 +262,23 @@
       ;; null identically. Nested values are left alone.
       (let [arguments (u/remove-nils (or arguments {}))]
         (if-let [message (validation-error-message (:args tool) arguments)]
-          (common/error-content message common/error-code-invalid-params)
+          {:error {:code common/error-code-invalid-params :message message}}
           (try
-            ((:handler tool) arguments {:session-id      session-id
-                                        :token-scopes    token-scopes
-                                        :client-info     (:client-info options)
-                                        :request-context (:request-context options)})
+            {:result ((:handler tool)
+                      arguments
+                      {:session-id      session-id
+                       :token-scopes    token-scopes
+                       :client-info     (:client-info options)
+                       :request-context (:request-context options)})}
             ;; Every failure is sanitized in one place: only deliberately caller-facing errors
             ;; surface their message; internal ones are logged and returned generically.
             (catch Exception e
-              (common/->mcp-error-content e))))))))
+              {:result (common/->mcp-error-content e)})))))))
 
 (defn call-tool
-  "Dispatch a v2 MCP `tools/call`. Returns MCP content on success, or error content on failure.
+  "Dispatch a v2 MCP `tools/call`. Returns `{:error {:code ... :message ...}}` when the registry rejects the request before dispatch, or `{:result mcp-content}` after handler execution. Only an executed handler can produce an MCP result carrying `:isError`.
 
-   Every call — including scope-denied, unknown-tool, and error outcomes — is recorded to
-   `mcp_tool_call_log` (EE-only, best-effort) with its timing, success/error status, and on
-   error the JSON-RPC `error_code` + `error_message` (the latter gated/truncated by the
-   writer)."
+   Every call is recorded to `mcp_tool_call_log` (EE-only, best-effort) with its timing, success/error status, and on error the JSON-RPC `error_code` + `error_message` (the latter gated/truncated by the writer)."
   ([token-scopes session-id tool-name arguments]
    (call-tool token-scopes session-id tool-name arguments {}))
   ([token-scopes session-id tool-name arguments options]
@@ -301,18 +298,25 @@
                        :user-agent    (get-in options [:request-context :user-agent])
                        :ip-address    (get-in options [:request-context :ip-address])}))]
        (try
-         (let [result (dispatch-tool-call token-scopes session-id tool-name arguments options)]
-           (if (:isError result)
-             (record! "error"
-                      (or (::common/error-code result) common/error-code-internal)
-                      (some-> result :content first :text))
-             (record! "success" nil nil))
+         (let [{:keys [error result] :as outcome}
+               (dispatch-tool-call token-scopes session-id tool-name arguments options)
+               result-error-code
+               (::common/error-code result)]
+           (if error
+             (record! "error" (:code error) (:message error))
+             (if (:isError result)
+               (record! "error"
+                        (or result-error-code common/error-code-internal)
+                        (some-> result :content first :text))
+               (record! "success" nil nil)))
            ;; `::common/error-code` is an internal classification marker — never expose it to the client.
-           (let [result (dissoc result ::common/error-code)]
-             ;; Trace the result WITHOUT the private MCP Apps block: it can carry a live UI credential, and a
-             ;; trace outlives the credential's five-minute window. The client still gets the full result.
-             (ait/record! {:ai/tool-output (common/redact-mcp-apps-meta result)})
-             result))
+           (if (contains? outcome :result)
+             (let [result (dissoc result ::common/error-code)]
+               ;; Trace the result WITHOUT the private MCP Apps block: it can carry a live UI credential, and a
+               ;; trace outlives the credential's five-minute window. The client still gets the full result.
+               (ait/record! {:ai/tool-output (common/redact-mcp-apps-meta result)})
+               (assoc outcome :result result))
+             outcome))
          (catch Throwable e
            ;; A handler that throws something the dispatch try doesn't convert would otherwise skip instrumentation
            ;; and under-report errors. Record the failure, then rethrow so the transport layer still surfaces it to

@@ -302,24 +302,31 @@
   (let [body            (walk/keywordize-keys (:body request))
         session-id      (get-in request [:headers "mcp-session-id"])
         eval-session-id (eval-session-override request)
-        batch?          (sequential? body)]
+        batch?          (sequential? body)
+        valid-message?  (fn [message]
+                          (and (map? message)
+                               (= "2.0" (:jsonrpc message))
+                               (string? (:method message))))]
     (cond
       (nil? body)
       (json-response 400 (jsonrpc-error nil -32700 "Parse error: empty body"))
 
-      (and (not (map? body)) (not batch?))
-      (json-response 400 (jsonrpc-error nil -32600 "Invalid request: expected object or array"))
+      (and (not batch?)
+           (or (not (valid-message? body))
+               (and (= "initialize" (:method body))
+                    (not (contains? body :id)))))
+      (json-response 400 (jsonrpc-error nil -32600 "Invalid request"))
 
       ;; JSON-RPC 2.0: empty batch is invalid
       (and batch? (empty? body))
       (json-response 400 (jsonrpc-error nil -32600 "Invalid request: empty batch"))
 
       ;; MCP spec: "The initialize request MUST NOT be part of a JSON-RPC batch"
-      (and batch? (some #(= "initialize" (:method %)) body))
+      (and batch? (some #(and (valid-message? %) (= "initialize" (:method %))) body))
       (json-response 400 (jsonrpc-error nil -32600 "initialize must not be batched"))
 
       ;; Initialize: create session and return response with session header
-      (and (not batch?) (= "initialize" (:method body)))
+      (and (not batch?) (valid-message? body) (= "initialize" (:method body)))
       (let [params           (:params body)
             supports-mcp-ui? (mcp-app-ui-capability? params)
             session-id       (mcp.session/create! user-id {:supports-mcp-ui?
@@ -348,21 +355,29 @@
                 ;; (gated PII) alongside client identity — the view no longer joins the session.
                 request-context {:user-agent (get-in request [:headers "user-agent"])
                                  :ip-address (request/ip-address request)}
-                ;; Each element of a batch is a request in its own right (JSON-RPC 2.0 §6), so classify each one on
-                ;; its own shape rather than trusting the container: a JSON object with a string `method` dispatches;
-                ;; anything else — a non-object element, or an object with a missing/non-string `method` — is an
-                ;; Invalid Request. Without this, a non-object element destructures to `method` nil and dispatches to
-                ;; nil, which `keep` silently drops (a malformed message vanishing rather than being answered), and
-                ;; an object missing `method` reaches dispatch as method-not-found. The `-32600` carries a null id:
-                ;; §5 requires it when the request can't be parsed, even if a malformed object happens to carry one.
-                ;; A `notifications/initialized` notification and an unknown method with no id dispatch to nil and
-                ;; stay out of the response array; a known method with no id still executes and — contra JSON-RPC
-                ;; §4.1, which says a notification gets no reply — answers with `"id": null`.
+                ;; Validate each batch element independently (JSON-RPC 2.0 §6). A request must be an object with
+                ;; `jsonrpc: "2.0"` and a string `method`; anything else is Invalid Request. Without this check,
+                ;; non-object elements dispatch to a nil method and disappear through `keep`, while objects missing
+                ;; `method` become method-not-found responses. Invalid Request uses a null id because §5 reserves
+                ;; that value for requests whose ids cannot be established.
+                ;; A message carrying no `id` is a NOTIFICATION (§4.1) and gets no reply, whatever it
+                ;; dispatches to. It still executes — a notification is a request the client is not waiting on,
+                ;; not one to ignore — but its result is dropped rather than answered. Distinct from the
+                ;; malformed case above, which does reply with a null id: §5 reserves that for a message that
+                ;; could not be parsed, and using it for a well-formed notification invents a response to
+                ;; something nobody is listening for.
+                notification?   (fn [msg] (and (map? msg) (not (contains? msg :id))))
                 handle-msg      (fn [msg]
-                                  (if (and (map? msg) (string? (:method msg)))
-                                    (dispatch-request dispatch-method-fn msg session-id (:token-scopes request)
-                                                      request-context eval-session-id)
-                                    (jsonrpc-error nil -32600 "Invalid request")))
+                                  (cond
+                                    (not (valid-message? msg))
+                                    (jsonrpc-error nil -32600 "Invalid request")
+
+                                    :else
+                                    (let [response (dispatch-request dispatch-method-fn msg session-id
+                                                                     (:token-scopes request) request-context
+                                                                     eval-session-id)]
+                                      (when-not (notification? msg)
+                                        response))))
                 responses       (into [] (keep handle-msg) messages)]
             (cond
               (empty? responses)
@@ -525,15 +540,12 @@
         (compojure.response/send* resp request respond raise)))))
 
 (defn- handle-delete
-  "Handle a DELETE request to tear down a session."
+  "Handle a DELETE request by validating the session, then reporting that client-initiated termination is unsupported."
   [user-id request]
   (let [session-id-header (get-in request [:headers "mcp-session-id"])
-        {:keys [session-id error]} (require-valid-session user-id session-id-header)]
+        {:keys [error]} (require-valid-session user-id session-id-header)]
     (or error
-        (do (mcp.session/delete! session-id user-id)
-            ;; Stamp ended_at on the session row (EE-only, best-effort).
-            (mcp.usage/record-mcp-session-end! session-id)
-            {:status 200 :headers {"Content-Type" "application/json"} :body ""}))))
+        {:status 405 :headers {"Allow" "GET, POST"} :body ""})))
 
 ;;; -------------------------------------------------- Throttling --------------------------------------------------
 

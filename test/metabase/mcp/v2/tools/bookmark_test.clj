@@ -23,17 +23,20 @@
      (registry/call-tool scopes nil "bookmark_content" args))))
 
 (defn- tool-result
-  [response]
-  (when (:isError response)
-    (throw (ex-info (str "tool call failed: " (-> response :content first :text))
-                    {:response response})))
-  (-> response :content first :text json/decode+kw))
+  [{:keys [result error]}]
+  (when error
+    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
+  (when (:isError result)
+    (throw (ex-info (str "tool call failed: " (-> result :content first :text))
+                    {:result result})))
+  (-> result :content first :text json/decode+kw))
 
 (defn- tool-error
-  [response]
-  (when-not (:isError response)
-    (throw (ex-info "expected a tool error, got success" {:response response})))
-  (-> response :content first :text))
+  [{:keys [result error]}]
+  (cond
+    error                (:message error)
+    (:isError result)    (-> result :content first :text)
+    :else                (throw (ex-info "expected a tool error, got success" {:result result}))))
 
 (deftest bookmark-and-unbookmark-test
   (testing "GHY-4152: bookmarked true/false creates and removes the calling user's bookmark row"

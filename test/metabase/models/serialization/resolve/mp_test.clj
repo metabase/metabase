@@ -147,7 +147,7 @@
     ;;
     ;; The fix in [[resolve.mp/find-table]] bypasses the metadata provider for app-DB-backed
     ;; lookups and queries `metabase_table` directly with schema in the WHERE clause, the
-    ;; same shape `metabase.models.serialization.resolve.db/import-table-fk` has always
+    ;; same shape `metabase.models.serialization.resolve.default/import-table-fk` has always
     ;; used.
     (mt/with-temp [:model/Database db {:name (str "DW " (random-uuid)) :engine :h2}
                    :model/Table    raw-orders   {:name "ORDERS" :schema "RAW"   :db_id (:id db)}

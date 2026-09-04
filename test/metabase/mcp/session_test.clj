@@ -29,11 +29,16 @@
   (first (str/split session-id #"\.")))
 
 (defn- extended-session-id
+  "A session id carrying an arbitrary capability `payload`, SIGNED as the server would sign it.
+
+  Signed deliberately: the tests using this exercise payload shape and version handling, and an unsigned id
+  would fail them for the unrelated reason that its claim is not believed at all. Forging an UNSIGNED payload
+  is what `mcp-ui-capability-claim-must-be-signed-test` covers."
   [payload]
-  (str (random-uuid)
-       "."
-       (->> (.getBytes (json/encode payload) StandardCharsets/UTF_8)
-            (.encodeToString (.withoutPadding (Base64/getUrlEncoder))))))
+  (let [uuid    (str (random-uuid))
+        encoded (->> (.getBytes (json/encode payload) StandardCharsets/UTF_8)
+                     (.encodeToString (.withoutPadding (Base64/getUrlEncoder))))]
+    (str uuid "." encoded "." (@#'mcp.session/session-payload-signature uuid encoded))))
 
 (deftest create-returns-uuid-string-test
   (testing "create! returns a session id with a UUID correlator without writing to the database"
@@ -44,11 +49,11 @@
           "No core_session should exist yet"))))
 
 (deftest session-ui-capability-is-stateless-test
-  (testing "create! encodes MCP Apps UI support in an unsigned client capability hint"
+  (testing "create! encodes MCP Apps UI support in a signed client capability hint"
     (let [ui-session-id    (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true})
           plain-session-id (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? false})]
-      (is (= 2 (count (str/split ui-session-id #"\.")))
-          "New MCP session ids should include a UUID correlator and a base64url JSON capability hint")
+      (is (= 3 (count (str/split ui-session-id #"\.")))
+          "New MCP session ids are <uuid>.<base64url JSON capability hint>.<signature over both>")
       (is (some? (parse-uuid (session-correlator ui-session-id))))
       (is (true? (mcp.session/supports-mcp-ui? ui-session-id)))
       (is (false? (mcp.session/supports-mcp-ui? plain-session-id)))
@@ -76,9 +81,42 @@
                             (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true}))
           "minting must fail loudly at creation rather than defer the failure to the read path"))))
 
+(deftest mcp-ui-capability-claim-must-be-signed-test
+  (testing "GHY-4318: `supports-mcp-ui?` is what `:required-extensions` gates on, and it reads a payload the
+            CLIENT echoes back in its own session id. Unsigned, that is a self-assertion: any caller can mint
+            `<uuid>.{\"v\":1,\"ui\":true}` and claim the capability without ever having advertised it at
+            `initialize`, which is what lets a narrow token reach `refresh_ui_credential`.
+
+            The id stays a stateless correlator — a well-formed one is still ACCEPTED for its presenter, which
+            `well-formed-but-never-issued-session-id-is-accepted-for-its-presenter-test` pins. Only the claim
+            inside it has to be proven, so an unsigned or tampered payload reads as no capability rather than
+            as an invalid session."
+    (let [minted (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true})]
+      (testing "a server-minted id carries the capability"
+        (is (true? (mcp.session/valid-id? minted)))
+        (is (true? (mcp.session/supports-mcp-ui? minted))))
+      (testing "a client-forged payload claiming `ui` is still a usable session, but claims nothing"
+        (let [forged (str (random-uuid) "." (@#'mcp.session/encode-session-payload {:v 1 :ui true}))]
+          (is (true? (mcp.session/valid-id? forged))
+              "still a valid correlator — statelessness is deliberate")
+          (is (false? (mcp.session/supports-mcp-ui? forged))
+              "but an unsigned capability claim must not be believed")))
+      (testing "tampering with a signed payload invalidates the claim"
+        (let [[uuid _payload sig] (str/split minted #"\\.")
+              swapped (str uuid "." (@#'mcp.session/encode-session-payload {:v 1 :ui true}) "." sig)]
+          (is (false? (mcp.session/supports-mcp-ui? swapped)))))
+      (testing "a signature from a different session id does not transfer"
+        (let [other (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true})
+              [uuid payload _] (str/split minted #"\\.")
+              [_ _ other-sig]  (str/split other #"\\.")]
+          (is (false? (mcp.session/supports-mcp-ui? (str uuid "." payload "." other-sig)))))))))
+
 (deftest legacy-session-ui-capability-test
-  (testing "plain UUID sessions minted before capability hints keep the old tools/list behavior"
-    (is (true? (mcp.session/supports-mcp-ui? (str (java.util.UUID/randomUUID)))))))
+  (testing "a plain UUID session claims no capability. It used to claim MCP Apps support, which made signing
+            the payload pointless: a caller could simply omit the payload and be believed anyway. Such ids
+            predate capability hints entirely, so the honest reading of one is `unknown`, and the gate this
+            feeds fails closed."
+    (is (false? (mcp.session/supports-mcp-ui? (str (java.util.UUID/randomUUID)))))))
 
 (deftest malformed-session-payload-test
   (testing "two-part session ids must include a decodable capability hint"

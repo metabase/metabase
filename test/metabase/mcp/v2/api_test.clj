@@ -13,6 +13,7 @@
    [metabase.mcp.v2.resources :as v2.resources]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.oauth-server.test-util :as oauth-server.tu]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -111,7 +112,8 @@
     (let [narrow #{"agent:query:run"}]
       (testing "a token on another surface scope neither sees nor can call it"
         (is (not (some #(= "ping_v2" (:name %)) (registry/list-tools narrow))))
-        (is (:isError (registry/call-tool narrow nil "ping_v2" {}))))
+        (is (= "Insufficient scope to call tool: ping_v2"
+               (get-in (registry/call-tool narrow nil "ping_v2" {}) [:error :message]))))
       (testing "the published description names the required scope and the unscoped fallback"
         (let [description (->> (registry/list-tools nil)
                                (filter #(= "ping_v2" (:name %)))
@@ -138,18 +140,19 @@
         (is (= 200 (:status response)))
         (is (not (:isError result)))
         (is (= {:ok true :message "pong"} (:structuredContent result)))))
-    (testing "argument validation failures are teaching errors, not schema dumps"
-      (let [response (mcp-request (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {:message 42}})
-                                  {"mcp-session-id" session-id})
-            result   (get-in response [:body :result])]
-        (is (:isError result))
-        (is (str/starts-with? (-> result :content first :text) "Invalid arguments"))))
-    (testing "an unknown tool is a method-not-found style error"
+    (testing "argument validation failures are JSON-RPC invalid-params errors, not MCP tool results"
+      (let [response (mcp-request (jsonrpc-request "tools/call"
+                                                   {:name "ping_v2" :arguments {:message 42}})
+                                  {"mcp-session-id" session-id})]
+        (is (= -32602 (get-in response [:body :error :code])))
+        (is (str/starts-with? (get-in response [:body :error :message]) "Invalid arguments"))
+        (is (not (contains? (:body response) :result)))))
+    (testing "an unknown tool is a JSON-RPC method-not-found error"
       (let [response (mcp-request (jsonrpc-request "tools/call" {:name "nope" :arguments {}})
-                                  {"mcp-session-id" session-id})
-            result   (get-in response [:body :result])]
-        (is (:isError result))
-        (is (= "Unknown tool: nope" (-> result :content first :text)))))))
+                                  {"mcp-session-id" session-id})]
+        (is (= -32601 (get-in response [:body :error :code])))
+        (is (= "Unknown tool: nope" (get-in response [:body :error :message])))
+        (is (not (contains? (:body response) :result)))))))
 
 (deftest disabled-tools-kill-switch-test
   (let [[session-id _] (initialize!)]
@@ -161,10 +164,10 @@
                          (get-in response [:body :result :tools]))))))
       (testing "a disabled tool is rejected by tools/call as if it never existed"
         (let [response (mcp-request (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {}})
-                                    {"mcp-session-id" session-id})
-              result   (get-in response [:body :result])]
-          (is (:isError result))
-          (is (= "Unknown tool: ping_v2" (-> result :content first :text))))))))
+                                    {"mcp-session-id" session-id})]
+          (is (= -32601 (get-in response [:body :error :code])))
+          (is (= "Unknown tool: ping_v2" (get-in response [:body :error :message])))
+          (is (not (contains? (:body response) :result))))))))
 
 (deftest method-dispatch-fallthrough-test
   (let [[session-id _] (initialize!)]
@@ -339,12 +342,11 @@
                 handed a live /api/dataset authenticator by calling the tool by name"
         (let [plain-session (-> (mcp-request (jsonrpc-request "initialize" {:capabilities {}}))
                                 (get-in [:headers "Mcp-Session-Id"]))
-              result        (-> (mcp-request (jsonrpc-request "tools/call"
-                                                              {:name "refresh_ui_credential" :arguments {}})
-                                             {"mcp-session-id" plain-session})
-                                (get-in [:body :result]))]
-          (is (true? (:isError result)))
-          (is (nil? (get-in result [:_meta :com.metabase/mcp-apps]))))))))
+              response      (mcp-request (jsonrpc-request "tools/call"
+                                                          {:name "refresh_ui_credential" :arguments {}})
+                                         {"mcp-session-id" plain-session})]
+          (is (= -32602 (get-in response [:body :error :code])))
+          (is (not (contains? (:body response) :result))))))))
 
 (deftest refresh-ui-credential-is-redacted-from-the-transport-trace-test
   (testing "the transport records the whole JSON-RPC response one frame above the registry's tool-output
@@ -367,16 +369,48 @@
             (`mcp.resources/redact-ui-credential`); the transport's HTML scrub does not reach tool results."
     (let [recorded (atom [])]
       (mt/with-dynamic-fn-redefs [ait/record! (fn [m] (swap! recorded conj m))]
-        (let [result (mt/with-current-user (mt/user->id :crowberto)
-                       (registry/call-tool #{"agent:query:run"}
-                                           (mcp.session/create! (mt/user->id :crowberto) nil)
-                                           "refresh_ui_credential" {} {:supports-mcp-ui? true}))]
+        (let [{:keys [result]}
+              (mt/with-current-user (mt/user->id :crowberto)
+                (registry/call-tool #{"agent:query:run"}
+                                    (mcp.session/create! (mt/user->id :crowberto) nil)
+                                    "refresh_ui_credential"
+                                    {}
+                                    {:supports-mcp-ui? true}))]
           (testing "the caller still gets the credential"
             (is (some? (get-in result [:_meta :com.metabase/mcp-apps :credential]))))
           (testing "but the trace does not"
             (let [traced (keep :ai/tool-output @recorded)]
               (is (seq traced) "the tool output must actually be recorded, or this proves nothing")
               (is (not-any? #(get-in % [:_meta :com.metabase/mcp-apps]) traced)))))))))
+
+(deftest ui-credential-is-not-a-general-session-test
+  (testing "GHY-4400: the UI credential used to be stamped `::scope/unrestricted`, so the route allowlist was
+            the only thing standing between it and full session privilege — and that allowlist is an inventory
+            of what the embedded app happens to call, not a decision about what the credential should reach.
+            It now carries `::scope/mcp-ui`, which satisfies no endpoint's declared scope and is refused by
+            `ensure-scopes-checked` where none is declared, so a credential that reaches anything off the list
+            fails closed instead of arriving as the user."
+    (mcp.ui-resource/with-fallback-template
+      (let [session-id (initialize-ui-client!)
+            credential (-> (mcp-request (jsonrpc-request "tools/call"
+                                                         {:name "refresh_ui_credential" :arguments {}})
+                                        {"mcp-session-id" session-id})
+                           (get-in [:body :result :_meta :com.metabase/mcp-apps :credential]))
+            headers    {"x-metabase-mcp-ui-auth" credential}]
+        (is (some? credential) "the tool must hand back a credential, or this proves nothing")
+        (testing "an allowlisted route still serves it — the iframe has to boot"
+          (is (= 200 (:status (client/client-full-response :get 200 "user/current"
+                                                           {:request-options {:headers headers}})))))
+        (testing "a route off the allowlist is refused, as before"
+          (is (= 401 (:status (client/client-full-response :get 401 "collection"
+                                                           {:request-options {:headers headers}})))))
+        (testing "and the request it authenticates is not stamped unrestricted"
+          (is (= #{:metabase.api.macros.scope/mcp-ui}
+                 (:token-scopes (#'mw.session/current-user-info-for-mcp-ui-credential
+                                 {:request-method :get
+                                  :uri            "/api/user/current"
+                                  :headers        {"x-metabase-mcp-ui-auth" credential}})))
+              "a credential must not carry the unrestricted sentinel"))))))
 
 (deftest unauthenticated-discovery-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]

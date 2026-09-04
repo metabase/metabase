@@ -252,7 +252,7 @@ export function getViewDataPermissionsTooRestrictiveWarningModal(
     return {
       title: t`This will also set the View Data permission to “Can View” to allow this group to create queries. Okay?`,
       message: (
-        <Flex direction="column" gap="lg">
+        <Flex direction="column" gap="xl">
           <Text>{coreMessage}</Text>
           <Alert size="compact" color="warning" icon={<Icon name="warning" />}>
             {resetGranularSettingsWarnging}

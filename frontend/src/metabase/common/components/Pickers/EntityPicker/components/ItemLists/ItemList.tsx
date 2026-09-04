@@ -49,7 +49,7 @@ export function ItemList({
   isLoading = false,
   error,
   navLinkProps,
-  containerProps = { pb: "xs" },
+  containerProps = { pb: "xxs" },
 }: ItemListProps) {
   const tc = useTranslateContent();
   const {

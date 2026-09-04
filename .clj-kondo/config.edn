@@ -841,10 +841,21 @@
   {:pattern "^metabase(?:((?:-enterprise\\.sandbox)?\\.query-processor)|(?:\\.driver\\.sql(?!server)(?!ite))).*-test$"
    :name    general-qp-and-driver-test-namespaces}
   {:pattern "(?:^mage.*)"
-   :name    mage-namespaces}]
+   :name    mage-namespaces}
+
+  ;; MCP namespaces that must route app-db access through metabase.mcp.db. Model definitions
+  ;; (metabase.mcp.models.*) are excluded: they define the models metabase.mcp.db sits on top of.
+  {:pattern "(?:^metabase\\.mcp\\.(?!models\\.|db$).*)"
+   :name    mcp-non-db-namespaces}]
 
  :config-in-ns
- {test-namespaces
+ {mcp-non-db-namespaces
+  {:linters
+   {:discouraged-namespace
+    {toucan2.core {:message "Route app-db access through metabase.mcp.db rather than calling Toucan directly. Ids arriving from an agent should be parsed at that boundary, not passed straight into a query."
+                   :level   :warning}}}}
+
+  test-namespaces
   {:linters
    {:inline-def                                          {:level :off}
     :missing-docstring                                   {:level :off}

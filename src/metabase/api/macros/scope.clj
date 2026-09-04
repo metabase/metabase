@@ -12,7 +12,15 @@
 
   The `::unrestricted` keyword is used as a sentinel in `:token-scopes` to indicate an unrestricted token
   (session auth or unscoped JWT). Unlike `\"*\"` which is a valid wildcard scope that could appear in a
-  JWT claim, this keyword can never be confused with an externally-supplied scope string."
+  JWT claim, this keyword can never be confused with an externally-supplied scope string.
+
+  `::mcp-ui` is a second such sentinel, for the MCP Apps iframe credential. It is deliberately NOT
+  `::unrestricted`: the credential authenticates a narrow, purpose-limited surface, and stamping it
+  unrestricted meant that anything which reached an endpoint outside that surface arrived with full
+  privilege. Carrying `::mcp-ui` instead makes the default failure closed — it satisfies no endpoint's
+  declared `:scope`, and `ensure-scopes-checked` refuses it on endpoints that declare none — so such a
+  request is rejected rather than served. Being a keyword, it can never be requested, granted, or named on
+  a consent screen."
   (:require
    [metabase.api-scope.core :as api-scope]
    [metabase.config.core :as config]

@@ -7,10 +7,9 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as app-db]
+   [metabase.bookmarks.db :as bookmarks.db]
    [metabase.bookmarks.models.bookmark :as bookmark]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def Models
   "Schema enumerating bookmarkable models."
@@ -23,33 +22,13 @@
                 [:type Models]
                 [:item_id ms/PositiveInt]]])
 
-(def ^:private lookup
-  "Lookup map from model as a string to [model bookmark-model item-id-key]."
-  {"card"        [:model/Card        :model/CardBookmark        :card_id]
-   "dashboard"   [:model/Dashboard   :model/DashboardBookmark   :dashboard_id]
-   "collection"  [:model/Collection  :model/CollectionBookmark  :collection_id]
-   "document"    [:model/Document    :model/DocumentBookmark    :document_id]
-   "exploration" [:model/Exploration :model/ExplorationBookmark :exploration_id]})
-
-(defn- bookmarked?
-  "Does `user-id` have a bookmark on (`model`, `id`)? `model` is one of [[Models]]."
-  [model id user-id]
-  (let [[_ bookmark-model item-key] (lookup model)]
-    (t2/exists? bookmark-model item-key id :user_id user-id)))
-
-(defn bookmark!
-  "Give `user-id` a bookmark on (`model`, `id`) and return it — the existing one when there already
-  is one, so concurrent callers both get the state they asked for rather than one of them losing to
-  the (user_id, item) unique constraint. Does not read-check the item — callers do."
-  [model id user-id]
-  (let [[_ bookmark-model item-key] (lookup model)]
-    (app-db/select-or-insert! bookmark-model {item-key id :user_id user-id} (constantly {}))))
-
-(defn un-bookmark!
-  "Delete `user-id`'s bookmark on (`model`, `id`). No-op when there is none."
-  [model id user-id]
-  (let [[_ bookmark-model item-key] (lookup model)]
-    (t2/delete! bookmark-model :user_id user-id item-key id)))
+(def ^:private item-model
+  "Lookup map from model as a string to the underlying item model, for read-checks."
+  {"card"        :model/Card
+   "dashboard"   :model/Dashboard
+   "collection"  :model/Collection
+   "document"    :model/Document
+   "exploration" :model/Exploration})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -71,11 +50,10 @@
   [{:keys [model id]} :- [:map
                           [:model Models]
                           [:id    ms/PositiveInt]]]
-  (let [[item-model] (lookup model)]
-    (api/read-check item-model id)
-    (api/check (not (bookmarked? model id api/*current-user-id*))
-               [400 "Bookmark already exists"])
-    (bookmark! model id api/*current-user-id*)))
+  (api/read-check (item-model model) id)
+  (api/check (not (bookmarks.db/bookmark-exists? model id api/*current-user-id*))
+             [400 "Bookmark already exists"])
+  (bookmarks.db/insert-bookmark! model id api/*current-user-id*))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -87,7 +65,7 @@
                           [:model Models]
                           [:id    ms/PositiveInt]]]
   ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
-  (un-bookmark! model id api/*current-user-id*)
+  (bookmarks.db/delete-bookmark! model id api/*current-user-id*)
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

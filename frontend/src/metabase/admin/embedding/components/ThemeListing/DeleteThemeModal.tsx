@@ -18,7 +18,7 @@ export function DeleteThemeModal({
       <Stack>
         <Text>{t`Are you sure you want to delete this theme? This action cannot be undone.`}</Text>
 
-        <Flex justify="flex-end" gap="md">
+        <Flex justify="flex-end" gap="lg">
           <Button variant="subtle" onClick={onCancel}>
             {t`Cancel`}
           </Button>

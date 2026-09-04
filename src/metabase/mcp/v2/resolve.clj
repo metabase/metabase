@@ -1,14 +1,12 @@
 (ns metabase.mcp.v2.resolve
   "Id resolution for v2 MCP tools: numeric-or-entity_id translation and the read-check pairing
-   that collapses \"doesn't exist\" and \"exists but not readable\" into one not-found error.
-   Landed with its first consumers: the entity-id machinery with `bookmark_content`, collection
-   resolution with `collection_write`."
+   that collapses \"doesn't exist\" and \"exists but not readable\" into one not-found error."
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.core :as eid-translation]
-   [metabase.mcp.v2.common :as common]
-   [toucan2.core :as t2]))
+   [metabase.mcp.db :as mcp.db]
+   [metabase.mcp.v2.common :as common]))
 
 (set! *warn-on-reflection* true)
 
@@ -70,7 +68,7 @@
    nearly every read needs, with the same not-found collapse as [[resolve-and-read-with]]."
   [model id-or-eid]
   (resolve-and-read-with model id-or-eid
-                         (fn [id] (api/read-check (t2/select-one model :id id)))))
+                         (fn [id] (api/read-check (mcp.db/select-one-by-id model id)))))
 
 (defn resolve-collection-id
   "Resolve a `collection_id`/`parent_id` argument. `nil` and `\"root\"` mean the root
@@ -94,7 +92,7 @@
 
      :else
      (let [id (resolve-id-or-404 :model/Collection id-or-sentinel)]
-       (when-not (t2/exists? :model/Collection :id id)
+       (when-not (mcp.db/select-one-by-id :model/Collection id)
          (common/throw-not-found :model/Collection id-or-sentinel))
        id))))
 

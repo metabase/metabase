@@ -34,33 +34,35 @@
 
 (deftest ^:parallel call-tool-scope-check-test
   (testing "tools/call re-checks scope even for a tool that exists"
-    (let [result (registry/call-tool #{"agent:metadata:read"} nil "ping_v2" {})]
-      (is (:isError result))
-      (is (= "Insufficient scope to call tool: ping_v2" (-> result :content first :text))))))
+    (let [{:keys [error]} (registry/call-tool #{"agent:metadata:read"} nil "ping_v2" {})]
+      (is (= {:code common/error-code-invalid-request
+              :message "Insufficient scope to call tool: ping_v2"}
+             error)))))
 
 (deftest ^:parallel call-tool-success-test
   (testing "a valid call dispatches to the handler; top-level nils are stripped first"
-    (let [result (registry/call-tool #{"agent:content:read"} nil "ping_v2" {:message nil})]
+    (let [{:keys [result]} (registry/call-tool #{"agent:content:read"} nil "ping_v2" {:message nil})]
       (is (not (:isError result)))
       (is (= {:ok true :message "pong"} (:structuredContent result)))
       (testing "the internal error-code marker never reaches the client"
         (is (not (contains? result ::common/error-code)))))))
 
 (deftest ^:parallel call-tool-validation-test
-  (testing "malli validation failures surface as teaching errors"
-    (let [result (registry/call-tool nil nil "ping_v2" {:message 42})]
-      (is (:isError result))
-      (is (str/starts-with? (-> result :content first :text) "Invalid arguments"))))
+  (testing "malli validation failures surface as JSON-RPC invalid-params errors"
+    (let [{:keys [error]} (registry/call-tool nil nil "ping_v2" {:message 42})]
+      (is (= common/error-code-invalid-params (:code error)))
+      (is (str/starts-with? (:message error) "Invalid arguments"))))
   (testing "non-object arguments are invalid params, not an internal error"
-    (let [result (registry/call-tool nil nil "ping_v2" [1 2 3])]
-      (is (:isError result))
-      (is (= "Invalid arguments: expected a JSON object." (-> result :content first :text))))))
+    (let [{:keys [error]} (registry/call-tool nil nil "ping_v2" [1 2 3])]
+      (is (= {:code common/error-code-invalid-params
+              :message "Invalid arguments: expected a JSON object."}
+             error)))))
 
 (deftest ^:parallel call-tool-teaching-error-test
   (testing "a handler's teaching error surfaces its message, not a stack trace"
     (mt/with-dynamic-fn-redefs [v2.api/ping-v2 (fn [_ _]
                                                  (common/throw-teaching-error "Use `fields` OR `response_format`, not both."))]
-      (let [result (registry/call-tool nil nil "ping_v2" {})]
+      (let [{:keys [result]} (registry/call-tool nil nil "ping_v2" {})]
         (is (:isError result))
         (is (= "Use `fields` OR `response_format`, not both." (-> result :content first :text)))))))
 
@@ -73,7 +75,7 @@
                             ["ex-info with no status" (ex-info "SELECT ssn FROM secret_accounts" {:query {}})]]]
       (testing label
         (mt/with-dynamic-fn-redefs [v2.api/ping-v2 (fn [_ _] (throw thrown))]
-          (let [result (registry/call-tool #{"agent:content:read"} nil "ping_v2" {})]
+          (let [{:keys [result]} (registry/call-tool #{"agent:content:read"} nil "ping_v2" {})]
             (is (:isError result))
             (is (= "Internal error" (-> result :content first :text))
                 "the raw exception message must not reach the client")))))))
@@ -83,9 +85,10 @@
     (testing "a disabled tool is hidden from tools/list"
       (is (not (some #(= "ping_v2" (:name %)) (registry/list-tools nil)))))
     (testing "and rejected by tools/call as unknown"
-      (let [result (registry/call-tool nil nil "ping_v2" {})]
-        (is (:isError result))
-        (is (= "Unknown tool: ping_v2" (-> result :content first :text)))))))
+      (let [{:keys [error]} (registry/call-tool nil nil "ping_v2" {})]
+        (is (= {:code common/error-code-method-not-found
+                :message "Unknown tool: ping_v2"}
+               error))))))
 
 (deftest ^:parallel registered-scopes-test
   (testing "registered-scopes reports the scopes of the landed tools. (It does not feed the DCR grant: that reads
@@ -350,7 +353,7 @@
           (testing tool-name
             ;; `{}` suffices: the registry checks scope before it validates arguments, so a refusal
             ;; here can't be an argument error wearing a scope error's clothes.
-            (let [result (registry/call-tool #{"agent:content:read"} nil tool-name {})]
-              (is (:isError result))
-              (is (= (str "Insufficient scope to call tool: " tool-name)
-                     (-> result :content first :text))))))))))
+            (let [{:keys [error]} (registry/call-tool #{"agent:content:read"} nil tool-name {})]
+              (is (= {:code common/error-code-invalid-request
+                      :message (str "Insufficient scope to call tool: " tool-name)}
+                     error)))))))))

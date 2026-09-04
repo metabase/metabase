@@ -1,11 +1,10 @@
 (ns metabase.bookmarks.models.bookmark
   (:require
    [clojure.string :as str]
-   [metabase.app-db.core :as mdb]
+   [metabase.bookmarks.db :as bookmarks.db]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -70,61 +69,6 @@
                       :authority_level :is_remote_synced])
         (assoc :id id-str))))
 
-(defn- bookmarks-union-query
-  [user-id]
-  (let [as-null (when (= (mdb/db-type) :postgres) (h2x/->integer nil))
-        base-queries [^:allow-subquery {:select [:card_id
-                                                 [as-null :dashboard_id]
-                                                 [as-null :collection_id]
-                                                 [as-null :document_id]
-                                                 [as-null :exploration_id]
-                                                 [:card_id :item_id]
-                                                 [(h2x/literal "card") :type]
-                                                 :created_at]
-                                        :from   [:card_bookmark]
-                                        :where  [:= :user_id user-id]}
-                      ^:allow-subquery {:select [[as-null :card_id]
-                                                 :dashboard_id
-                                                 [as-null :collection_id]
-                                                 [as-null :document_id]
-                                                 [as-null :exploration_id]
-                                                 [:dashboard_id :item_id]
-                                                 [(h2x/literal "dashboard") :type]
-                                                 :created_at]
-                                        :from   [:dashboard_bookmark]
-                                        :where  [:= :user_id user-id]}
-                      ^:allow-subquery {:select [[as-null :card_id]
-                                                 [as-null :dashboard_id]
-                                                 :collection_id
-                                                 [as-null :document_id]
-                                                 [as-null :exploration_id]
-                                                 [:collection_id :item_id]
-                                                 [(h2x/literal "collection") :type]
-                                                 :created_at]
-                                        :from   [:collection_bookmark]
-                                        :where [:= :user_id user-id]}
-                      ^:allow-subquery {:select [[as-null :card_id]
-                                                 [as-null :dashboard_id]
-                                                 [as-null :collection_id]
-                                                 :document_id
-                                                 [as-null :exploration_id]
-                                                 [:document_id :item_id]
-                                                 [(h2x/literal "document") :type]
-                                                 :created_at]
-                                        :from [:document_bookmark]
-                                        :where [:= :user_id user-id]}]]
-    {:union-all (conj base-queries
-                      ^:allow-subquery {:select [[as-null :card_id]
-                                                 [as-null :dashboard_id]
-                                                 [as-null :collection_id]
-                                                 [as-null :document_id]
-                                                 :exploration_id
-                                                 [:exploration_id :item_id]
-                                                 [(h2x/literal "exploration") :type]
-                                                 :created_at]
-                                        :from [:exploration_bookmark]
-                                        :where [:= :user_id user-id]})}))
-
 (mu/defn bookmarks-for-user :- [:sequential BookmarkResult]
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and
   item_id, name, and description from the underlying bookmarked item.
@@ -132,80 +76,18 @@
   Bookmarks whose target `user-id` can no longer read are filtered out."
   [user-id]
   (let [user-scope {:current-user-id user-id
-                    :is-superuser?   (perms/is-superuser? user-id)}
-        select-fields [[:bookmark.created_at :created_at]
-                       [:bookmark.type              :type]
-                       [:bookmark.item_id           :item_id]
-                       [:card.name                  (mdb/qualify :model/Card :name)]
-                       [:card.type                  (mdb/qualify :model/Card :card_type)]
-                       [:card.display               (mdb/qualify :model/Card :display)]
-                       [:card.description           (mdb/qualify :model/Card :description)]
-                       [:card.archived              (mdb/qualify :model/Card :archived)]
-                       [:dashboard.name             (mdb/qualify :model/Dashboard :name)]
-                       [:dashboard.description      (mdb/qualify :model/Dashboard :description)]
-                       [:dashboard.archived         (mdb/qualify :model/Dashboard :archived)]
-                       [:collection.name              (mdb/qualify :model/Collection  :name)]
-                       [:collection.authority_level   (mdb/qualify :model/Collection :authority_level)]
-                       [:collection.is_remote_synced  (mdb/qualify :model/Collection :is_remote_synced)]
-                       [:collection.description       (mdb/qualify :model/Collection :description)]
-                       [:collection.archived          (mdb/qualify :model/Collection :archived)]
-                       [:document.name (mdb/qualify :model/Document :name)]
-                       [:document.archived (mdb/qualify :model/Document :archived)]
-                       [:exploration.name        (mdb/qualify :model/Exploration :name)]
-                       [:exploration.description (mdb/qualify :model/Exploration :description)]
-                       [:exploration.archived    (mdb/qualify :model/Exploration :archived)]]
-        left-joins [[:report_card :card] [:= :bookmark.card_id :card.id]
-                    [:report_dashboard :dashboard]          [:= :bookmark.dashboard_id :dashboard.id]
-                    ;; use of [[h2x/identifier]] here is a workaround for https://github.com/seancorfield/honeysql/issues/450
-                    [:collection :collection]               [:in :collection.id [(h2x/identifier :field :bookmark :collection_id)
-                                                                                 (h2x/identifier :field :dashboard :collection_id)]]
-                    [:bookmark_ordering :bookmark_ordering] [:and
-                                                             [:= :bookmark_ordering.user_id user-id]
-                                                             [:= :bookmark_ordering.type :bookmark.type]
-                                                             [:= :bookmark_ordering.item_id :bookmark.item_id]]
-                    [:document :document] [:= :bookmark.document_id :document.id]
-                    [:exploration :exploration] [:= :bookmark.exploration_id :exploration.id]]
-        where-conditions (into [:and]
-                               (for [table [:card :dashboard :collection :document :exploration]
-                                     :let  [field (keyword (str (name table) "." "archived"))]]
-                                 [:or [:= field false] [:= field nil]]))
-        ;; Re-check read permission at read time (SEC-669). The `:visible_collection_ids` CTE governs *permissions*
-        ;; only (`:include-archived-items :all`); the `where-conditions` above keep governing archived filtering.
-        visible? (fn [collection-id-field]
-                   (collection/visible-collection-filter-clause collection-id-field
-                                                                {:cte-name :visible_collection_ids}
-                                                                user-scope))
-        readable-conditions [:or
-                             [:and [:= :bookmark.type (h2x/literal "card")]       (visible? :card.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "dashboard")]  (visible? :dashboard.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "collection")] (visible? :collection.id)]
-                             [:and [:= :bookmark.type (h2x/literal "document")]   (visible? :document.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "exploration")] (visible? :exploration.collection_id)]]]
-    (->> (mdb/query
-          {:with [[:visible_collection_ids (collection/visible-collection-query
-                                            {:include-archived-items :all
-                                             :permission-level        :read}
-                                            user-scope)]]
-           :select select-fields
-           :from [[(bookmarks-union-query user-id) :bookmark]]
-           :left-join left-joins
-           :where [:and where-conditions readable-conditions]
-           :order-by  [[:bookmark_ordering.ordering (case (mdb/db-type)
-                                                      ;; NULLS LAST is not supported by MySQL, but this is default
-                                                      ;; behavior for MySQL anyway
-                                                      (:postgres :h2) :asc-nulls-last
-                                                      :mysql          :asc)]
-                       [:created_at :desc]]})
+                    :is-superuser?   (perms/is-superuser? user-id)}]
+    (->> (bookmarks.db/bookmark-rows-for-user user-id user-scope)
          (map normalize-bookmark-result))))
 
 (defn save-ordering!
   "Saves a bookmark ordering of shape `[{:type, :item_id}]`
    Deletes all existing orderings for user so should be given a total ordering."
   [user-id orderings]
-  (t2/delete! :model/BookmarkOrdering :user_id user-id)
-  (t2/insert! :model/BookmarkOrdering (->> orderings
-                                           (map #(select-keys % [:type :item_id]))
-                                           (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
+  (bookmarks.db/delete-bookmark-orderings-for-user! user-id)
+  (bookmarks.db/insert-bookmark-orderings! (->> orderings
+                                                (map #(select-keys % [:type :item_id]))
+                                                (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
 
 (t2/define-before-insert :model/CollectionBookmark [bookmark]
   (collection/check-allowed-content :model/CollectionBookmark (:collection_id bookmark))

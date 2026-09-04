@@ -13,6 +13,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
+   [metabase.collections-rest.db :as collections-rest.db]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
@@ -44,22 +45,9 @@
 
 (declare root-collection)
 
-(defn- location-from-collection-id-clause
-  "Clause to restrict which collections are being selected based off collection-id. If collection-id is nil,
-   then restrict to the children and the grandchildren of the root collection. If collection-id is an an integer,
-   then restrict to that collection's parents and children."
-  [collection-id]
-  (if collection-id
-    [:and
-     [:like :location (str "%/" collection-id "/%")]
-     [:not [:like :location (str "%/" collection-id "/%/%/%")]]]
-    [:not [:like :location "/%/%/"]]))
-
 (defn- remove-other-users-personal-subcollections
   [user-id collections]
-  (let [personal-ids         (set (t2/select-fn-set :id :model/Collection
-                                                    {:where
-                                                     [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]}))
+  (let [personal-ids         (set (collections-rest.db/other-users-personal-collection-ids user-id))
         personal-descendant? (fn [collection]
                                (let [first-parent-collection-id (-> collection
                                                                     :location
@@ -82,49 +70,8 @@
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
   By default, library-type collections are excluded. "
-  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
-  (cond->>
-   (t2/select :model/Collection
-              {:where [:and
-                       (case archived
-                         nil nil
-                         false [:and
-                                [:not= :id (collection/trash-collection-id)]
-                                [:not :archived]]
-                         true [:or
-                               [:= :id (collection/trash-collection-id)]
-                               :archived])
-                       (when shallow
-                         (location-from-collection-id-clause collection-id))
-                       (when personal-only
-                         [:!= :personal_owner_id nil])
-                       (when exclude-other-user-collections
-                         [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
-                       (when-not include-library?
-                         [:or [:= nil :type]
-                          [:not-in :type [collection/library-collection-type
-                                          collection/library-data-collection-type
-                                          collection/library-metrics-collection-type]]])
-                       [:or
-                        (when (contains? namespaces nil)
-                          [:= :namespace nil])
-                        (when (seq namespaces)
-                          [:in :namespace namespaces])]
-                       (collection/visible-collection-filter-clause
-                        :id
-                        {:include-archived-items    (if archived
-                                                      :only
-                                                      :exclude)
-                         :include-trash-collection? true
-                         :permission-level          :read
-                         :archive-operation-id      nil})]
-               ;; Order NULL collection types first so that audit collections are last
-               :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
-                          [[[:case
-                             [:= :type nil] 0
-                             [:= :type collection/trash-collection-type] 1
-                             :else 2]] :asc]
-                          [:%lower.name :asc]]})
+  [{:keys [exclude-other-user-collections] :as options}]
+  (cond->> (collections-rest.db/collections-for-listing options api/*current-user-id*)
     exclude-other-user-collections
     (remove-other-users-personal-subcollections api/*current-user-id*)))
 
@@ -278,16 +225,10 @@
                                                {:dataset #{}
                                                 :metric  #{}
                                                 :card    #{}}
-                                               (t2/reducible-query {:select-distinct [:collection_id :type]
-                                                                    :from            [:report_card]
-                                                                    :where           [:= :archived false]}))
+                                               (collections-rest.db/unarchived-card-collection-types-reducible))
                                        ;; Tables in collections are an EE feature (library)
                                        (when (premium-features/has-feature? :library)
-                                         {:table (->> (t2/query {:select-distinct [:collection_id]
-                                                                 :from :metabase_table
-                                                                 :where [:and
-                                                                         [:= :is_published true]
-                                                                         [:= :archived_at nil]]})
+                                         {:table (->> (collections-rest.db/published-table-collection-ids)
                                                       (map :collection_id)
                                                       (into #{}))}))
             collections-with-details (map prep-collection-for-export collections)]
@@ -434,8 +375,7 @@
                                                 "/"))
                            (dissoc :namespace)
                            (update :archived api/bit->boolean)
-                           (update :archived_directly api/bit->boolean)))
-                     :can_write :can_restore :can_delete :is_remote_synced :collection_namespace))))
+                           (update :archived_directly api/bit->boolean))) :can_write :can_restore :can_delete :is_remote_synced :collection_namespace))))
 
 (defmethod collection-children-query :document
   [_ collection {:keys [archived? pinned-state show-exploration-documents?]}]
@@ -481,8 +421,7 @@
                                            (collection/children-location collection))
                                          "/"))
                     (update :archived api/bit->boolean)
-                    (update :archived_directly api/bit->boolean)))
-              :can_write :can_restore :can_delete))
+                    (update :archived_directly api/bit->boolean))) :can_write :can_restore :can_delete))
 
 (def ^:private exploration-recent-edits-subquery
   ;; Per-exploration latest edit, unioning the Exploration's own metadata revisions with
@@ -914,24 +853,15 @@
                  :metric  #{}
                  :card    #{}}
                 (when (seq descendant-collection-ids)
-                  (t2/reducible-query {:select-distinct [:collection_id :type]
-                                       :from            [:report_card]
-                                       :where           [:and
-                                                         (when-not show-dashboard-questions?
-                                                           [:= :dashboard_id nil])
-                                                         [:= :archived false]
-                                                         [:in :collection_id descendant-collection-ids]]})))
+                  (collections-rest.db/unarchived-card-collection-types-in-reducible
+                   descendant-collection-ids
+                   (not show-dashboard-questions?))))
 
         ;; Tables in collections are an EE feature (library)
         collections-containing-tables
         (if (premium-features/has-feature? :library)
           (->> (when (seq descendant-collection-ids)
-                 (t2/query {:select-distinct [:collection_id]
-                            :from :metabase_table
-                            :where [:and
-                                    [:= :is_published true]
-                                    [:= :archived_at nil]
-                                    [:in :collection_id descendant-collection-ids]]}))
+                 (collections-rest.db/published-table-collection-ids-in descendant-collection-ids))
                (map :collection_id)
                (into #{}))
           #{})
@@ -939,22 +869,14 @@
         collections-containing-transforms
         (if (seq (transforms.gating/enabled-source-types))
           (->> (when (seq descendant-collection-ids)
-                 (t2/query {:select-distinct [:collection_id]
-                            :from :transform
-                            :where [:and
-                                    [:in :collection_id descendant-collection-ids]
-                                    [:in :source_type (transforms.gating/enabled-source-types)]]}))
+                 (collections-rest.db/transform-collection-ids-in descendant-collection-ids (transforms.gating/enabled-source-types)))
                (map :collection_id)
                (into #{}))
           #{})
 
         collections-containing-dashboards
         (->> (when (seq descendant-collection-ids)
-               (t2/query {:select-distinct [:collection_id]
-                          :from :report_dashboard
-                          :where [:and
-                                  [:= :archived false]
-                                  [:in :collection_id descendant-collection-ids]]}))
+               (collections-rest.db/unarchived-dashboard-collection-ids-in descendant-collection-ids))
              (map :collection_id)
              (into #{}))
 
@@ -1313,13 +1235,7 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       prep-collection-for-export
-      (t2/hydrate :parent_id
-                  :effective_location
-                  [:effective_ancestors :can_write]
-                  :can_write
-                  :is_personal
-                  :can_restore
-                  :can_delete)))
+      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :is_personal :can_restore :can_delete)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1350,11 +1266,7 @@
   "Implementation for the `dashboard-question-candidates` endpoints."
   [collection-id]
   (api/check-403 api/*is-superuser?*)
-  (let [all-cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:and
-                                                                            [:= :collection_id collection-id]
-                                                                            [:= :dashboard_id nil]]
-                                                                    :order-by [[:id :desc]]})
-                                            :in_dashboards)]
+  (let [all-cards-in-collection (t2/hydrate (collections-rest.db/top-level-cards-in-collection collection-id) :in_dashboards)]
     (filter
      (fn [card]
        (and
@@ -1701,7 +1613,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-403 api/*is-superuser?*)
-  (let [collection (t2/select-one :model/Collection id)
+  (let [collection (collections-rest.db/collection id)
         old-children-location (collection/children-location collection)
         new-children-location (:location collection)]
     (api/check-400 (:archived collection)
@@ -1713,12 +1625,10 @@
                    "Personal collections cannot be deleted.")
     (t2/with-transaction [_tx]
       ;; First, move all children (along with their children) that were archived directly OUT of this collection
-      (doseq [child (t2/select :model/Collection
-                               :location [:like (str old-children-location "%")]
-                               :archived_directly true)]
+      (doseq [child (collections-rest.db/directly-archived-descendant-collections old-children-location)]
         (collection/move-collection! child new-children-location))
       ;; Now we can safely delete this collection and anything left under it.
-      (t2/delete! :model/Collection :id id))))
+      (collections-rest.db/delete-collection! id))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API

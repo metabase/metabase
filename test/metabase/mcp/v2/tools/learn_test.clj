@@ -14,7 +14,7 @@
 
 (defn- call
   [args]
-  (registry/call-tool nil (str (random-uuid)) "learn" args))
+  (:result (registry/call-tool nil (str (random-uuid)) "learn" args)))
 
 (defn- text-of
   [result]

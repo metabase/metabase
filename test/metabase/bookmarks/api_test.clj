@@ -2,7 +2,7 @@
   "Tests for /api/bookmark endpoints."
   (:require
    [clojure.test :refer :all]
-   [metabase.bookmarks.api :as bookmarks.api]
+   [metabase.bookmarks.db :as bookmarks.db]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -60,14 +60,14 @@
       (is (some #(= (u/the-id card) (:item_id %))
                 (mt/user-http-request :rasta :get 200 "bookmark"))))))
 
-(deftest bookmark!-idempotent-test
-  (testing "GHY-4152: bookmark! returns the existing row rather than tripping the (user_id, item)
+(deftest insert-bookmark!-idempotent-test
+  (testing "GHY-4152: insert-bookmark! returns the existing row rather than tripping the (user_id, item)
             unique constraint, so a caller racing itself gets the state it asked for"
     (mt/with-temp [:model/Card card {}]
       (let [user-id (mt/user->id :rasta)
             card-id (u/the-id card)
-            first!  (bookmarks.api/bookmark! "card" card-id user-id)]
-        (is (= (:id first!) (:id (bookmarks.api/bookmark! "card" card-id user-id))))
+            first!  (bookmarks.db/insert-bookmark! "card" card-id user-id)]
+        (is (= (:id first!) (:id (bookmarks.db/insert-bookmark! "card" card-id user-id))))
         (is (= 1 (t2/count :model/CardBookmark :card_id card-id :user_id user-id)))))))
 
 (deftest bookmark-requires-only-read-perms-test

@@ -124,7 +124,7 @@ export function DiscussionActionPanel({
               </Tooltip>
             </Popover.Target>
 
-            <Popover.Dropdown p="xs">
+            <Popover.Dropdown p="xxs">
               <Menu>
                 {onCopyLink && (
                   <Menu.Item
