@@ -313,10 +313,28 @@ describe("remote_sync utils", () => {
 
     describe("getListedRequiredSyncs", () => {
       it("lists every entry that names a collection", () => {
-        expect(getListedRequiredSyncs([SYNCABLE, PERSONAL, ROOT])).toEqual([
-          SYNCABLE,
+        expect(getListedRequiredSyncs([SYNCABLE, PERSONAL])).toEqual([
           PERSONAL,
-          ROOT,
+          SYNCABLE,
+        ]);
+      });
+
+      // They need content moved, so they outrank anything the admin could just switch on.
+      it("brings what can't be synced to the top", () => {
+        expect(
+          getListedRequiredSyncs([
+            SYNCABLE,
+            ROOT,
+            LIBRARY_COLLECTION,
+            PERSONAL,
+          ]),
+        ).toEqual([ROOT, PERSONAL, SYNCABLE, LIBRARY_COLLECTION]);
+      });
+
+      it("keeps the backend's order within each group", () => {
+        expect(getListedRequiredSyncs([LIBRARY_COLLECTION, SYNCABLE])).toEqual([
+          LIBRARY_COLLECTION,
+          SYNCABLE,
         ]);
       });
 

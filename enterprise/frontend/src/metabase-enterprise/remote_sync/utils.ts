@@ -230,10 +230,18 @@ export const getRequiredSyncRow = ({
   };
 };
 
+/**
+ * The entries the modal lists, in the order it lists them. A missing Library has no row to offer —
+ * the message covers it — so it is described rather than listed. What can't be synced sorts first:
+ * it needs content moved, and nothing switched on below it helps until that is done.
+ */
 export const getListedRequiredSyncs = (
   required: RemoteSyncRequiredSync[],
 ): RemoteSyncRequiredSync[] =>
-  required.filter(({ remedy }) => remedy.type !== "library");
+  required
+    .filter(({ remedy }) => remedy.type !== "library")
+    // Stable, so entries keep the order the backend found them in within each group.
+    .sort((a, b) => Number(a.syncable) - Number(b.syncable));
 
 export type BlockedReason =
   | "personal-content"

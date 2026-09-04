@@ -658,7 +658,7 @@ describe("Remote Sync", () => {
             cy.findByLabelText(`Sync ${SOURCE_COLLECTION_NAME}`)
               .should("be.enabled")
               .click({ force: true });
-            cy.button("Close").click();
+            cy.button("Back").click();
           });
 
           cy.findByTestId("remote-sync-submit-button")
@@ -729,7 +729,7 @@ describe("Remote Sync", () => {
             cy.findByText(/sync with the Library/).should("be.visible");
             cy.findByRole("switch").should("not.exist");
 
-            cy.button("Close").click();
+            cy.button("Back").click();
           });
 
           H.modal().should("not.exist");
