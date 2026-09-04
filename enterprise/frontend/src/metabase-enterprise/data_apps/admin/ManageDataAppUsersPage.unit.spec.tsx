@@ -26,12 +26,14 @@ const createMockMember = (opts?: Partial<Member>): Member => ({
 
 const setup = ({
   warningRequestFails = false,
+  members = [createMockMember()],
 }: {
   warningRequestFails?: boolean;
+  members?: Member[];
 } = {}) => {
   const group: Group = {
     ...createMockGroup({ id: 9, name: "Data App: sales" }),
-    members: [createMockMember()],
+    members,
   };
 
   const candidate = createMockUser({
@@ -143,6 +145,21 @@ describe("ManageDataAppUsersPage", () => {
         "path:/api/apps/sales/user-permission-warnings",
       ),
     ).toHaveLength(1);
+  });
+
+  it("keeps the empty state visible while adding the first user", async () => {
+    setup({ members: [] });
+
+    expect(
+      await screen.findByText("No one has access yet"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Add users" }));
+
+    expect(
+      screen.getByRole("textbox", { name: "Search for a user to add" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("No one has access yet")).toBeInTheDocument();
   });
 
   it("adds users pasted as comma-separated email addresses", async () => {
