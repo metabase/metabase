@@ -149,8 +149,15 @@
              (common/select-fields :fields-test row ["parameters" "parameters.name"])))
       (is (= {:parameters [{:name "cat" :type "category" :extra "drop-me"}]}
              (common/select-fields :fields-test row ["parameters.name" "parameters"]))))
-    (testing "an unknown path is a teaching error naming the nearest valid paths"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown field path.*Nearest"
+    (testing "several paths in one call merge into one selection tree"
+      ;; the ordinary `fields: ["name","parameters.type"]` shape: distinct top-level keys must
+      ;; both survive the merge, not just two paths down one branch
+      (is (= {:name "Q1" :parameters [{:type "category"}]}
+             (common/select-fields :fields-test row ["name" "parameters.type"]))))
+    (testing "an unknown path is a teaching error naming the nearest valid paths, ranked by edit
+              distance — the suggestion is only useful if the closest catalog entry leads"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Unknown field path \"nmae\".*Nearest valid paths: name, collection"
                             (common/select-fields :fields-test row ["nmae"]))))
     (testing "empty fields is a teaching error"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at least one path"
@@ -163,6 +170,19 @@
     (testing "fields on a type with no catalog is a teaching error"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for type"
                             (common/select-fields :no-such-type row ["name"]))))))
+
+(deftest ^:parallel truncation-line-test
+  (testing "a narrowing param is named alongside the next offset — a list the caller can filter
+            should steer to the filter first, since paging a broad list is the expensive path"
+    (is (= "Returned 2 of 5 — narrow with `query`, or continue with `offset: 2`."
+           (common/truncation-line {:param :query :offset 0 :limit 2 :total 5 :returned 2}))))
+  (testing "a floored total reads as a lower bound — a search total capped at the ranking limit is
+            not an exact count, and reporting it as one would have the caller stop paging early"
+    (is (= "Returned 2 of at least 9 — continue with `offset: 2`."
+           (common/truncation-line {:offset 0 :limit 2 :total 9 :total-floor? true :returned 2}))))
+  (testing "an untruncated page, or one whose total is unknown, has no line"
+    (is (nil? (common/truncation-line {:offset 0 :limit 10 :total 5 :returned 5})))
+    (is (nil? (common/truncation-line {:offset 0 :limit 10 :total nil :returned 5})))))
 
 (deftest list-content-empty-page-test
   (testing "GHY-4137/P6: a page that returns nothing must say why. `truncation-line` only fires when
