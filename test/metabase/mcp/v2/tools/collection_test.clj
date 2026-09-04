@@ -228,6 +228,22 @@
         (is (= (str "/" (:id parent) "/")
                (t2/select-one-fn :location :model/Collection :id (:id coll))))))))
 
+(deftest update-rejects-moving-a-trashed-collection-test
+  (testing "GHY-4148: parent_id on a trashed collection without archived: false is a teaching error, not a
+            silent wrong result — archive-collection! never rewrites :location, so the trash guards all read
+            false and the move goes through, leaving the collection in the trash while the echo reports the
+            new location"
+    (mt/with-temp [:model/Collection parent {:name "New home"}
+                   :model/Collection coll   {:name "Trashed mover"}]
+      (tool-result (call-tool! :crowberto {:method "update" :id (:id coll) :archived true}))
+      (let [location (t2/select-one-fn :location :model/Collection :id (:id coll))]
+        (is (re-find #"Pass `archived: false` alongside `parent_id`"
+                     (tool-error (call-tool! :crowberto {:method "update" :id (:id coll)
+                                                         :parent_id (:id parent)}))))
+        (testing "and the collection did not move"
+          (is (= location (t2/select-one-fn :location :model/Collection :id (:id coll))))
+          (is (true? (t2/select-one-fn :archived :model/Collection :id (:id coll)))))))))
+
 (deftest update-archives-and-restores-test
   (mt/with-temp [:model/Collection coll {:name "Trashable"}]
     (testing "archived: true trashes"
