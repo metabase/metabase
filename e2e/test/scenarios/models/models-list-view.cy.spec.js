@@ -453,16 +453,16 @@ describe("scenarios > models list view", () => {
       ["User ID", "Product ID", "Subtotal", "Tax"].forEach(removeRightColumn);
       addRightColumn("Quantity", "Quantity");
 
-      cy.log("Join Accounts and run the query again");
+      cy.log("Join People and run the query again");
       cy.findByTestId("dataset-edit-bar").findByText("Query").click();
       H.join();
-      H.joinTable("Accounts", "User ID", "ID");
+      H.joinTable("People");
       runQuery();
 
       cy.log("Add the joined email column to the list layout");
       cy.findByTestId("dataset-edit-bar").findByText("Settings").click();
       cy.findByRole("button", { name: "Customize the List layout" }).click();
-      addRightColumn("Email", "Accounts - User → Email");
+      addRightColumn("Email", "People - User → Email");
 
       cy.log("Save the model");
       cy.findByTestId("dataset-edit-bar").button("Save").click();
@@ -479,7 +479,7 @@ describe("scenarios > models list view", () => {
       cy.log("Display the saved model with the customized list layout");
       cy.findByTestId("list-view").within(() => {
         cy.findByText("Quantity").should("be.visible");
-        cy.findByText("Accounts - User → Email").should("be.visible");
+        cy.findByText("People - User → Email").should("be.visible");
         cy.findByText("User ID").should("not.exist");
         cy.findByText("Product ID").should("not.exist");
         cy.findByText("Subtotal").should("not.exist");
