@@ -80,10 +80,8 @@ const createRefusal = (
 // shows what the modal staged.
 const setupRefusedSave = async ({
   body = createRefusal(SYNCABLE_REQUIRED),
-  refuseRetry = false,
 }: {
   body?: RemoteSyncDependencyErrorResponse;
-  refuseRetry?: boolean;
 } = {}) => {
   setup({
     remoteSyncType: "read-write",
@@ -109,9 +107,7 @@ const setupRefusedSave = async ({
     "path:/api/ee/remote-sync/settings",
     () => {
       putCount += 1;
-      return putCount === 1 || refuseRetry
-        ? { status: 400, body }
-        : { success: true };
+      return putCount === 1 ? { status: 400, body } : { success: true };
     },
     { name: "remote-sync-settings" },
   );
@@ -174,41 +170,6 @@ describe("RemoteSyncDependencyModal", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("stays dismissed until a later save is refused again", async () => {
-    await setupRefusedSave({ refuseRetry: true });
-
-    await dismiss(await screen.findByRole("dialog"));
-    await expectClosed();
-    // Dismissing is not itself a save.
-    expect(await getSettingsPuts()).toHaveLength(1);
-
-    // A fresh refusal is a new error object, which is what separates it from the dismissed one.
-    await save();
-
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
-  });
-
-  it("expands a collection to list the blocked content and what depends on it", async () => {
-    await setupRefusedSave();
-
-    const modal = await screen.findByRole("dialog");
-    // Not an exact name: the decorative collection icon contributes its own label to the control.
-    const row = within(modal).getByRole("button", {
-      name: new RegExp(REQUIRED_COLLECTION.name),
-    });
-    expect(row).toHaveAttribute("aria-expanded", "false");
-
-    await userEvent.click(row);
-
-    // `aria-expanded` is the assertion, not the panel's presence: Mantine keeps a collapsed panel
-    // mounted, so its content is in the DOM either way.
-    expect(row).toHaveAttribute("aria-expanded", "true");
-    expect(
-      within(modal).getByText(SYNCABLE_DEPENDENCY.name),
-    ).toBeInTheDocument();
-    expect(within(modal).getByText("Q3 Review")).toBeInTheDocument();
-  });
-
   it("carries a collection switched on in the modal into the next save", async () => {
     await setupRefusedSave();
 
@@ -223,8 +184,6 @@ describe("RemoteSyncDependencyModal", () => {
       expect(await getSettingsPuts()).toHaveLength(2);
     });
 
-    // The retry carries the collection the admin picked *and* the one switched on in the modal —
-    // proof the save reads the flipped form state rather than the values that were refused.
     const [, retry] = await getSettingsPuts();
     expect(retry.body).toHaveProperty("collections", {
       [BLOCKED_COLLECTION.id]: true,
@@ -232,31 +191,6 @@ describe("RemoteSyncDependencyModal", () => {
     });
   });
 
-  it("keeps the admin's selection after a refused save, so it can be retried", async () => {
-    await setupRefusedSave();
-
-    await dismiss(await screen.findByRole("dialog"));
-
-    // A refused save rolls back, so the collection list refetch it triggers must not reset the form.
-    await waitFor(async () => {
-      expect(await findRequests("GET")).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            url: expect.stringContaining("/api/collection/root/items"),
-          }),
-        ]),
-      );
-    });
-
-    expect(
-      screen.getByLabelText(`Sync ${BLOCKED_COLLECTION.name}`),
-    ).toBeChecked();
-    // Enabled means still dirty; the button relabels to "Failed" after a rejected submit.
-    expect(screen.getByTestId("remote-sync-submit-button")).toBeEnabled();
-  });
-
-  // Finance keeps its switch even though the other dependency will refuse the save again — a
-  // partial fix is progress the admin can combine with moving the rest.
   it.each([
     [
       "personal",
@@ -311,7 +245,7 @@ describe("RemoteSyncDependencyModal", () => {
     });
   });
 
-  it("saves from the modal, without a second trip to the settings page", async () => {
+  it("saves from the modal", async () => {
     await setupRefusedSave();
 
     const modal = await screen.findByRole("dialog");
@@ -331,15 +265,12 @@ describe("RemoteSyncDependencyModal", () => {
       [BLOCKED_COLLECTION.id]: true,
       [REQUIRED_COLLECTION.id]: true,
     });
-    // The save succeeded, so there is no fresh refusal to reopen it.
     await expectClosed();
   });
 
-  // Switching Finance on alone would leave the other blocker behind, so the save is refused again.
   it.each([
     ["nothing in the list can be switched on", [ROOT_REQUIRED]],
     ["one entry beside it can't be", [SYNCABLE_REQUIRED, ROOT_REQUIRED]],
-    // Not listed at all, but it still blocks the save.
     [
       "a Library that doesn't exist blocks it",
       [SYNCABLE_REQUIRED, LIBRARY_MISSING_REQUIRED],

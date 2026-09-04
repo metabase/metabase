@@ -291,7 +291,6 @@ describe("remote_sync utils", () => {
         );
       });
 
-      // Once a Library exists the snippet carries an ordinary collection remedy, like anything else.
       it("is linked-collections when a snippet points at an existing Library", () => {
         expect(getBlockedReason([SYNCABLE, LIBRARY_COLLECTION])).toBe(
           "linked-collections",
@@ -319,7 +318,6 @@ describe("remote_sync utils", () => {
         ]);
       });
 
-      // They need content moved, so they outrank anything the admin could just switch on.
       it("brings what can't be synced to the top", () => {
         expect(
           getListedRequiredSyncs([
@@ -338,7 +336,6 @@ describe("remote_sync utils", () => {
         ]);
       });
 
-      // The message says to create it; there is no row to draw.
       it("drops an entry for a Library that doesn't exist", () => {
         expect(getListedRequiredSyncs([SYNCABLE, LIBRARY_MISSING])).toEqual([
           SYNCABLE,
@@ -387,7 +384,6 @@ describe("remote_sync utils", () => {
         });
       });
 
-      // Reported rather than dropped, but there is nothing to name and nowhere to link.
       it("still shows a collection the backend couldn't resolve", () => {
         expect(getRequiredSyncRow(UNRESOLVED)).toMatchObject({
           key: "unresolved",
