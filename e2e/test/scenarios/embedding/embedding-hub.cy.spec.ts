@@ -1,6 +1,8 @@
 import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
+import { createThemeViaApi } from "./embedding-theme-editor/helpers";
+
 const { H } = cy;
 
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
@@ -550,6 +552,10 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
           "be.visible",
         );
         cy.findByText("Loading message").should("be.visible");
+        cy.findByText("When calculations return no results").should(
+          "be.visible",
+        );
+        cy.findByText("When no objects can be found").should("be.visible");
       });
     });
 
@@ -561,6 +567,20 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
         .click();
 
       cy.url().should("include", "/embedding/appearance/theme/new");
+      cy.url().should("not.include", "/admin/embedding/themes");
+    });
+
+    it("opens an existing theme inside the hub", () => {
+      createThemeViaApi("Existing theme");
+      cy.visit("/embedding/appearance");
+
+      cy.findByTestId("embedding-hub-main")
+        .findByText("Existing theme")
+        .click();
+
+      // The listing is the admin one, mounted with the hub's basePath: card
+      // clicks have to land here rather than on the admin route.
+      cy.url().should("match", /\/embedding\/appearance\/theme\/\d+/);
       cy.url().should("not.include", "/admin/embedding/themes");
     });
 
@@ -583,7 +603,7 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
     });
   });
 
-  describe("oss", () => {
+  describe("unlicensed", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
@@ -592,6 +612,17 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
     it("upsells rather than hiding the tab", () => {
       cy.visit("/embedding/appearance");
 
+      cy.findByTestId("embedding-hub-main")
+        .findByText("Create custom themes")
+        .should("be.visible");
+    });
+
+    it("sends a theme editor deep link back to the upsell", () => {
+      // A themeId, not the bare `theme` path -- that one redirects from the
+      // route table whatever the plan, so it would pass without the guard.
+      cy.visit("/embedding/appearance/theme/new");
+
+      cy.url().should("eq", Cypress.config().baseUrl + "/embedding/appearance");
       cy.findByTestId("embedding-hub-main")
         .findByText("Create custom themes")
         .should("be.visible");
