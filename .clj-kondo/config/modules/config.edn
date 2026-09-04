@@ -1346,8 +1346,10 @@
            ai-tracing
            api
            app-db
+           channel
            config
            dashboards
+           eid-translation
            llm
            metabot
            models
