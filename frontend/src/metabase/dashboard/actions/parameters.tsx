@@ -429,18 +429,7 @@ export const setParameterMapping = createThunkAction(
       const dashcards = Object.values(getDashcards(getState()));
       const dashcard = getDashCardById(getState(), dashcardId);
 
-      if (
-        target !== null &&
-        isQuestionDashCard(dashcard) &&
-        !isDashcardInlineParameter(parameterId, dashcards)
-      ) {
-        const selectedTabId = getSelectedTabId(getState());
-
-        dispatch(
-          showAutoWireToast(parameterId, dashcard, target, selectedTabId),
-        );
-      }
-
+      // this has to run before showAutoWireToast so auto-wire doesn't touch this card
       dispatch(
         setDashCardAttributes({
           id: dashcardId,
@@ -454,6 +443,24 @@ export const setParameterMapping = createThunkAction(
           },
         }),
       );
+
+      if (
+        target !== null &&
+        isQuestionDashCard(dashcard) &&
+        !isDashcardInlineParameter(parameterId, dashcards)
+      ) {
+        const selectedTabId = getSelectedTabId(getState());
+
+        dispatch(
+          showAutoWireToast(
+            parameterId,
+            dashcardId,
+            cardId,
+            target,
+            selectedTabId,
+          ),
+        );
+      }
 
       // QUE2-326: when an ID parameter is mapped to a field, replace the
       // placeholder "id" type with a concrete type based on the field.
