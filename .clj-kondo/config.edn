@@ -184,6 +184,8 @@
      dev.kondo-ratchet/fix!
      metabase.ai-tracing.core/record!
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
+     ;; MCP v2 tool tests: call-tool! dispatches a tool with no shared mutable state across tests
+     metabase.mcp.v2.tools.metric-test/call-tool!
      metabase.channel.core/send!
      metabase.channel.render.pdf/draw-too-large!
      metabase.channel.render.pdf/draw-no-results!

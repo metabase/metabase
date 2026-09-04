@@ -2,6 +2,7 @@
   (:require
    [metabase.queries.cached-result]
    [metabase.queries.card]
+   [metabase.queries.card-write-checks]
    [metabase.queries.metadata]
    [metabase.queries.models.card]
    [metabase.queries.models.card.metadata]
@@ -13,6 +14,7 @@
 
 (comment metabase.queries.cached-result/keep-me
          metabase.queries.card/keep-me
+         metabase.queries.card-write-checks/keep-me
          metabase.queries.metadata/keep-me
          metabase.queries.models.card/keep-me
          metabase.queries.models.card.metadata/keep-me
@@ -27,6 +29,12 @@
   card-param-remapped-value]
  [metabase.queries.models.card
   create-card!]
+ [metabase.queries.card-write-checks
+  actual-collection-id
+  check-allowed-to-create-card!
+  check-allowed-to-update-card!
+  check-card-can-be-saved!
+  check-no-save-cycle!]
  [metabase.queries.metadata
   batch-fetch-card-metadata
   ;; TODO does this belong here, or in the `dashboards` module?
