@@ -82,6 +82,13 @@
   (and (string? s)
        (entity-id? s)))
 
+(defn- numeric-source-id?
+  "True for a bare numeric content id, and only on a surface that accepts them (see
+  [[*numeric-ids-allowed?*]]). Off that surface a number in a source slot is not a reference at
+  all, so it must not match — that is what keeps the portable-only surface's behavior unchanged."
+  [x]
+  (and (pos-int? x) *numeric-ids-allowed?*))
+
 (defn serialized-query-source-table
   "Given a serialized query (with portable references), returns the portable reference of the table it is based
   on. Measures and segments use this to omit the table_id property when it is derivable from the query. This should be
@@ -165,6 +172,16 @@
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
     {:source-card (id :guard portable-id?)}
+    (-> &match
+        (assoc :source-card (import-fk resolver id 'Card))
+        (->> (mbql-fully-qualified-names->ids* resolver)))
+
+    ;; A bare numeric `source-card`, which only the numeric-id surface may author. It needs no
+    ;; translation, but it must still go through `import-fk` so the read-checked content store
+    ;; sees it: `portable-id?` matches strings only, so without this branch a numeric id would
+    ;; reach repair having never been permission-checked. Matching here rather than at the
+    ;; first stage covers every stage and every join, because this walk recurses.
+    {:source-card (id :guard numeric-source-id?)}
     (-> &match
         (assoc :source-card (import-fk resolver id 'Card))
         (->> (mbql-fully-qualified-names->ids* resolver)))

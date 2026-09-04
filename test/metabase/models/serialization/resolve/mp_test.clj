@@ -784,3 +784,45 @@
             (is (true? (:agent-error? d)))
             (is (= :cross-database-card (:error d)))
             (is (= 999 (:card-database-id d)))))))))
+
+;;; ============================================================
+;;; Numeric `source-card` — the read-check chokepoint (GHY-4410)
+;;; ============================================================
+
+(deftest ^:parallel import-fk-card-by-numeric-id-happy-path-test
+  (testing "on a numeric-id surface, a bare card id resolves to itself through the content store"
+    (binding [resolve/*numeric-ids-allowed?* true]
+      (let [store (map-content-store {"someEntityId12345678x" {:id 4242 :database_id 1}})
+            ir    (resolve.mp/import-resolver mp-simple store)]
+        (is (= 4242 (resolve/import-fk ir 4242 'Card)))))))
+
+(deftest ^:parallel import-fk-card-by-numeric-id-consults-the-store-test
+  (testing (str "GHY-4410: the numeric branch must go THROUGH the content store, because the\n"
+                "agent-facing store is `read-checked` — that lookup is the permission check. A\n"
+                "store that returns nil (what `read-checked` yields for a card the caller cannot\n"
+                "read) must surface :unknown-card-id, never fall through to the card.")
+    (binding [resolve/*numeric-ids-allowed?* true]
+      (let [;; empty store == the read-checked store's answer for a forbidden card
+            ir (resolve.mp/import-resolver mp-simple (map-content-store {}))]
+        (try
+          (resolve/import-fk ir 4242 'Card)
+          (is false "expected throw — a numeric id that the store denies must not resolve")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :unknown-card-id (:error d)))
+              (is (= 4242 (:card-id d))))))))))
+
+(deftest ^:parallel import-fk-card-by-numeric-id-cross-database-test
+  (testing "the numeric branch carries the same cross-database guard as the portable one"
+    (binding [resolve/*numeric-ids-allowed?* true]
+      (let [store (map-content-store {"someEntityId12345678y" {:id 99 :database_id 999}})
+            ir    (resolve.mp/import-resolver mp-simple store)]
+        (try
+          (resolve/import-fk ir 99 'Card)
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :cross-database-card (:error d)))
+              (is (= 999 (:card-database-id d))))))))))
