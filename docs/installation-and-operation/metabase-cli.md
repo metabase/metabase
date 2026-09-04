@@ -12,7 +12,7 @@ The Metabase CLI (`mb`) is a command-line client for Metabase. `mb` logs in to a
 ## Requirements
 
 - Node.js 20.6 or later, to install the CLI from npm.
-- A Metabase instance on version 58 or later. Some command groups need a newer Metabase. For example, transforms and measures need version 59, Remote Sync needs version 60, and browser login needs version 63. Commands that need a newer Metabase check the version the CLI recorded when you logged in, and stop with a message if your Metabase is too old.
+- A Metabase instance on version 58 or later. Some command groups need a newer Metabase. For example, transforms and measures need version 59, Remote Sync needs version 60, and browser login needs version 63. The CLI tells you when a command needs a newer Metabase.
 - A Pro or Enterprise plan for some command groups. For example, `git-sync` needs the premium [Remote Sync](./remote-sync.md) feature, and `content-translation` needs [translation dictionaries](../embedding/translations.md).
 
 ## Install the CLI
@@ -74,7 +74,7 @@ mb auth list
 
 Add `--profile <name>` (or `-p <name>`) to any command to run it against that instance. To change the default profile, set the `MB_PROFILE` environment variable.
 
-The CLI stores secrets in your operating system's keychain when it can. If no keychain is available, it stores the secret in the profiles file and warns you. Profile details like the URL and login method live in `profiles.json` in the CLI's config directory (`~/.config/metabase-cli` on macOS and Linux, `%APPDATA%\metabase-cli` on Windows).
+The CLI stores secrets in your operating system's keychain when it can. Otherwise it stores them, with a warning, in `profiles.json` in its config directory (`~/.config/metabase-cli` on macOS and Linux, `%APPDATA%\metabase-cli` on Windows).
 
 ## Use the CLI with an AI agent
 
@@ -87,7 +87,6 @@ The CLI ships with its own agent skills, so the instructions your agent reads al
 Install the skill in one of these ways:
 
 - **From the Metabase agent skills repo**: `npx skills add metabase/agent-skills --skill metabase-cli -a claude-code`
-- **From the CLI repo**: `npx skills add metabase/mb-cli`
 - **As a Claude Code plugin**: `/plugin marketplace add metabase/mb-cli`, then `/plugin install metabase-cli@metabase`
 
 Once installed, you can run:
@@ -97,8 +96,6 @@ Once installed, you can run:
 ```
 
 And your agent will go to work, creating content directly in your Metabase via the `mb` CLI.
-
-To see the skills bundled with your CLI, run `mb skills list`.
 
 ## Use the CLI for agent-driven development
 

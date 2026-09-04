@@ -73,7 +73,7 @@ Then authenticate it against your development Metabase:
 mb auth login --url your-metabase-url-here
 ```
 
-On Metabase 63 or later, the CLI opens your Metabase in a browser so you can sign in and approve the CLI. On older versions, or if you pick **With an API key** at the prompt, paste the API key you created in your development Metabase. For scripts and CI, pipe the key on stdin or set the `MB_API_KEY` environment variable. If `MB_API_KEY` is set, the CLI uses it and skips the browser. Check out [Authenticate the CLI](../installation-and-operation/metabase-cli.md#authenticate-the-cli) for details.
+On Metabase 63 or later, the CLI opens your Metabase in a browser so you can sign in and approve the CLI. On older versions, or if you pick **With an API key** at the prompt, paste the API key you created in your development Metabase. For scripts and CI, pipe the key on stdin or set the `MB_API_KEY` environment variable. Check out [Authenticate the CLI](../installation-and-operation/metabase-cli.md#authenticate-the-cli) for details.
 
 ### Add the agent skill
 
@@ -83,7 +83,7 @@ Add the [`/metabase-cli` skill](https://github.com/metabase/agent-skills/tree/ma
 npx skills add metabase/agent-skills --skill metabase-cli -a claude-code
 ```
 
-The skill is a small pointer. The detailed instructions ship inside the CLI itself, so they always match the version of `mb` your agent runs. For other ways to install the skill, check out [The metabase-cli skill](../installation-and-operation/metabase-cli.md#the-metabase-cli-skill).
+For other ways to install the skill, check out [The metabase-cli skill](../installation-and-operation/metabase-cli.md#the-metabase-cli-skill).
 
 ## Example prompts
 
