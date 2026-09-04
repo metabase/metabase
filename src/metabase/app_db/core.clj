@@ -37,6 +37,7 @@
 (p/import-vars
  [mdb.connection
   application-db
+  audit-read-data-source
   data-source
   db-type
   do-before-commit
@@ -52,6 +53,7 @@
  [mdb.data-source
   broken-out-details->DataSource]
  [mdb.env
+  audit-read-user
   db-file]
  [mdb.h2
   jdbc-sql-syntax-error-exception-classname]

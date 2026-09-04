@@ -129,10 +129,12 @@
                            {:password password}))]
                  [s nil])
          ;; these can't be i18n'ed because the app DB isn't set up yet
+         ;; the username/password may come from MB_DB_USER/MB_DB_PASS or from one of the other app-DB identities
+         ;; (MB_DB_AUDIT_READ_USER/PASS), so don't name a specific variable here.
          _     (when (and (:user m) (seq username))
-                 (log/error "Connection string contains a username, but MB_DB_USER is specified. MB_DB_USER will be used."))
+                 (log/error "Connection string contains a username, but a username is configured separately. The separately configured username will be used."))
          _     (when (and (:password m) (seq password))
-                 (log/error "Connection string contains a password, but MB_DB_PASS is specified. MB_DB_PASS will be used."))
+                 (log/error "Connection string contains a password, but a password is configured separately. The separately configured password will be used."))
          _     (when (and (seq password) (seq azure-managed-identity-client-id))
                  (log/error "Both password and MB_DB_AZURE_MANAGED_IDENTITY_CLIENT_ID are specified. The password will be used."))
          m     (cond-> m

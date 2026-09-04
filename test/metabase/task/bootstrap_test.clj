@@ -67,4 +67,5 @@
                           "the Quartz connection must come from the dedicated pool, not the saturated main pool")))))
               (finally
                 (DataSources/destroy ^javax.sql.DataSource (:data-source app-db))
-                (DataSources/destroy ^javax.sql.DataSource (:quartz-data-source app-db))))))))))
+                (DataSources/destroy ^javax.sql.DataSource (:quartz-data-source app-db))
+                (DataSources/destroy ^javax.sql.DataSource (:audit-read-data-source app-db))))))))))

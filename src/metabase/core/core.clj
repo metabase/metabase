@@ -7,6 +7,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api-routes.core :as api-routes]
    [metabase.app-db.core :as mdb]
+   [metabase.audit-app.core :as audit-app]
    [metabase.classloader.core :as classloader]
    [metabase.cloud-migration.core :as cloud-migration]
    [metabase.config.core :as config]
@@ -202,6 +203,10 @@
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
+  ;; Migrations drop and recreate the analytics views, and Postgres drops their grants with them, so the audit-read
+  ;; role's grants are re-derived from the purview here rather than left to the operator. Before
+  ;; `ensure-audit-db-installed!` below, whose sync reads those views on the audit-read connection.
+  (audit-app/reconcile-audit-read-grants! mdb/audit-read-user)
   (mdb/encrypt-plaintext-columns!)
   ;; In OSS, convert any Data Analysts group with members to a normal visible group
   (perms/sync-data-analyst-group-for-oss!)

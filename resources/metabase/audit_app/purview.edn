@@ -1,0 +1,27 @@
+;; The audit purview: the app-DB views the Audit DB is allowed to read.
+;;
+;; Read by metabase.audit-app.purview. Kept here rather than inline so the QP allowlist
+;; (metabase-enterprise.audit-app.permissions) and the audit-read role's GRANTs (metabase.audit-app.grants, which
+;; reconciles them at every boot) derive from one literal -- editing this file is all it takes to add or drop a view.
+;; metabase-enterprise.audit-app.permissions-test/audit-view-names-test asserts it equals the set of `v_*` views the
+;; migrations actually create.
+#{"v_agent_api_calls"
+  "v_ai_usage_log"
+  "v_alerts"
+  "v_audit_log"
+  "v_content"
+  "v_dashboardcard"
+  "v_databases"
+  "v_fields"
+  "v_group_members"
+  "v_mcp_tool_calls"
+  "v_metabot_conversations"
+  "v_metabot_messages"
+  "v_query_log"
+  "v_subscriptions"
+  "v_tables"
+  "v_task_runs"
+  "v_tasks"
+  "v_tenants"
+  "v_users"
+  "v_view_log"}
