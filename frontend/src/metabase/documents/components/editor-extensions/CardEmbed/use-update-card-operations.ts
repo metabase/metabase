@@ -1,14 +1,14 @@
 import type { NodeViewProps } from "@tiptap/core";
 import { useCallback } from "react";
 
-import { getMetadata } from "metabase/metadata-store";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useQuestionFromCard } from "metabase/metadata-store";
+import { useDispatch } from "metabase/redux";
 import {
   type UseCardDataResult,
   useEditorHost,
 } from "metabase/rich_text_editing/tiptap/EditorHost";
 import * as Urls from "metabase/urls";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type {
   Document,
   SeriesCard,
@@ -32,7 +32,7 @@ export const useUpdateCardOperations = ({
 }) => {
   const host = useEditorHost();
   const dispatch = useDispatch();
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
 
   const { card, draftCard, regularDataset } = regularCardData;
 
@@ -48,16 +48,11 @@ export const useUpdateCardOperations = ({
   // Handle drill-through navigation
   const handleChangeCardAndRun = useCallback(
     ({ nextCard }: { nextCard: SeriesCard }) => {
-      if (!metadata) {
-        console.warn("Metadata not available for drill-through navigation");
-        return;
-      }
-
       try {
         // For drill-through, we need to ensure the card is treated as adhoc
         // Remove the ID so getUrl creates an adhoc question URL instead of navigating to saved question
         const adhocCard = { ...nextCard, id: null };
-        const question = new Question(adhocCard, metadata);
+        const question = buildQuestion(adhocCard);
         const url = Urls.question(question);
         dispatch(host.navigateToCard(url, document));
       } catch (error) {
@@ -72,7 +67,7 @@ export const useUpdateCardOperations = ({
         }
       }
     },
-    [dispatch, host, metadata, document],
+    [dispatch, host, buildQuestion, document],
   );
 
   const handleUpdateVisualizationSettings = useCallback(
