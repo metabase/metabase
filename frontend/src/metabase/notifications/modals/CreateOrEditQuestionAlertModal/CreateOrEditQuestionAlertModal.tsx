@@ -415,7 +415,6 @@ export const CreateOrEditQuestionAlertModal = ({
               },
             }}
             labelPosition="right"
-            size="sm"
             checked={notification.payload?.send_once}
             onChange={(event) => {
               setNotification({

@@ -96,7 +96,6 @@ export const IncrementalTransformSettings = ({
       <Switch
         disabled={readOnly || (!incremental && transformHasIssues)}
         checked={incremental}
-        size="sm"
         label={getLabel()}
         wrapperProps={{
           "data-testid": "incremental-switch",

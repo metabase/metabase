@@ -36,7 +36,6 @@ export function DeleteConfirmModal({
       message={
         <Box mb="xl">
           <Switch
-            size="sm"
             checked={sendToTrash}
             label={ngettext(
               msgid`Also send all models and questions based on this table to the trash`,

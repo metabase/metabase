@@ -32,7 +32,6 @@ export const IncludeCurrentSwitch = ({
       label={t`Include ${getIncludeCurrentLabel(value.unit)}`}
       labelPosition="right"
       onChange={handleIncludeCurrentSwitch}
-      size="sm"
     />
   );
 };
