@@ -438,7 +438,8 @@
 
   bookmarks
   {:team "UX West"
-   :api  #{metabase.bookmarks.api}
+   :api  #{metabase.bookmarks.api
+           metabase.bookmarks.db}
    :uses #{api
            app-db
            collections
@@ -1346,6 +1347,7 @@
            ai-tracing
            api
            app-db
+           bookmarks
            channel
            config
            dashboards
@@ -1364,7 +1366,11 @@
            settings
            system
            util}
-   :model-imports #{:model/User}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/User}}
 
   measures
   {:team "Graphy"
