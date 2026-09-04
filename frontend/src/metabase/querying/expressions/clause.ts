@@ -62,7 +62,7 @@ export function getMBQLName(
 
 // The cache is keyed on the expression mode, of which there are four, so it
 // cannot grow with anything the user does.
-// eslint-disable-next-line metabase/no-module-level-underscore-memoize
+// eslint-disable-next-line metabase/no-module-level-memoize
 export const clausesForMode = _.memoize(
   (expressionMode: Lib.ExpressionMode) => {
     const base =
