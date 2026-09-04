@@ -1,18 +1,14 @@
-.userTable tbody tr:not(:last-child) {
-  border-bottom: 1px solid var(--mb-color-border);
-}
-
-.dataAccessWarningBadge {
+.badge {
   background-color: var(--mb-color-background_surface-warning-strong);
   transition: background-color 150ms ease;
 }
 
-.dataAccessWarningButton {
+.button {
   cursor: pointer;
 }
 
-.dataAccessWarningButton:hover .dataAccessWarningBadge,
-.dataAccessWarningButton:focus-visible .dataAccessWarningBadge {
+.button:hover .badge,
+.button:focus-visible .badge {
   background-color: color-mix(
     in srgb,
     var(--mb-color-background_surface-warning-strong) 92%,
