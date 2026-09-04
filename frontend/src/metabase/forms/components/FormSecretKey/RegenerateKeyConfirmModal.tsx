@@ -19,7 +19,6 @@ export const RegenerateKeyConfirmModal = ({
     title={t`Delete key and generate a new one?`}
     message={t`This will cause existing tokens to stop working until the identity provider is updated with a new key.`}
     confirmButtonText={t`Delete key`}
-    confirmButtonProps={{ color: "feedback-negative" }}
     closeButtonText={t`No, don't delete`}
     onConfirm={onConfirm}
     onClose={onClose}
