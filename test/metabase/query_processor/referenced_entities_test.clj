@@ -302,6 +302,48 @@
         (is (= "completed" (:status goal)))
         (is (= [[100]] (get-in goal [:data :rows])))))))
 
+(defn- goal-chart-cards
+  "A card with a `count` value and a line chart whose goal points at it."
+  []
+  {:goal  {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+   :chart (fn [goal-id]
+            {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
+             :display       :line
+             :visualization_settings {:graph.goal_value {:id goal-id :type "card" :column "count"}}})})
+
+(deftest export-formats-skip-referenced-entities-test
+  (testing "only :api renders goals, so an export must not run the referenced queries"
+    (let [{:keys [goal chart]} (goal-chart-cards)]
+      (mt/with-temp [:model/Card {goal-id :id} goal]
+        (mt/with-temp [:model/Card {chart-id :id} (chart goal-id)]
+          (let [runs (atom 0)]
+            (mt/with-dynamic-fn-redefs [referenced-entities/viz-settings->goal-specs
+                                        (fn [_viz] (swap! runs inc) nil)]
+              (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv" chart-id))
+              (is (zero? @runs) "a csv export derives no goal specs")
+              (mt/user-http-request :crowberto :post 200 (format "card/%d/query/xlsx" chart-id))
+              (is (zero? @runs) "neither does an xlsx export")
+              (mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id))
+              (is (= 1 @runs) "the api response still does"))))))))
+
+(deftest referenced-entities-run-after-parameter-validation-test
+  (testing "a rejected parameter fails the request before any referenced query runs"
+    (let [{:keys [goal chart]} (goal-chart-cards)]
+      (mt/with-temp [:model/Card {goal-id :id} goal]
+        (mt/with-temp [:model/Card {chart-id :id} (chart goal-id)]
+          (let [runs (atom 0)]
+            (mt/with-dynamic-fn-redefs [referenced-entities/run-referenced-entity
+                                        (fn [& _] (swap! runs inc) {:status "failed" :error "spy"})]
+              ;; status intentionally unasserted, as in validate-card-parameters-test-2
+              (mt/user-http-request :crowberto :post (format "card/%d/query" chart-id)
+                                    {:parameters [{:id    "_FAKE_"
+                                                   :name  "fake"
+                                                   :type  :date/single
+                                                   :value "2016-01-01"}]})
+              (is (zero? @runs) "the referenced query must not have run")
+              (mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id))
+              (is (= 1 @runs) "a valid request still runs it"))))))))
+
 (deftest referenced-card-needs-only-read-perms-test
   (testing "a referenced card resolves for a user who can read it but has no ad-hoc query perms on its table"
     (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}

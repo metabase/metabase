@@ -4,8 +4,8 @@
 
   An entity that returns more rows than its caller asked for fails that entity, never the main query.
 
-  Referenced queries must run before the main query's QP store is bound: a store holds one database, so a nested run
-  against a different one would be rejected.
+  Each referenced query runs under its own QP store ([[qp.store/with-fresh-store]]): a store holds one database, so
+  a nested run against a different one would otherwise be rejected.
 
   The runner knows nothing about what the specs are for. One row is the dynamic-goal consumer's requirement, not the
   runner's, so it's declared in the second section below along with the rest of the goal-aware code."
@@ -18,6 +18,9 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   ;; only to escape the caller's store, so a referenced entity on another database can open its own
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -100,13 +103,14 @@
       (let [entity (api/read-check model id)
             ;; a nested run inside the outer streaming response must return an in-memory map,
             ;; not write to the outer stream
-            result (binding [qp.pipeline/*result*        qp.pipeline/default-result-handler
-                             qp.pipeline/*canceled-chan* (child-canceled-chan qp.pipeline/*canceled-chan*)
-                             ;; a referenced card is a saved question, so reading it is enough. unbound, the
-                             ;; perms check takes the ad-hoc branch and demands create-queries on its tables.
-                             ;; measures have no equivalent yet, so they stay on the ad-hoc branch.
-                             qp.perms/*card-id*          (when (= entity-type "card") id)]
-                     (qp/process-query (referenced-query (runnable-query entity query-key) entity-type id max-rows)))
+            result (qp.store/with-fresh-store
+                     (binding [qp.pipeline/*result*        qp.pipeline/default-result-handler
+                               qp.pipeline/*canceled-chan* (child-canceled-chan qp.pipeline/*canceled-chan*)
+                               ;; a referenced card is a saved question, so reading it is enough. unbound, the
+                               ;; perms check takes the ad-hoc branch and demands create-queries on its tables.
+                               ;; measures have no equivalent yet, so they stay on the ad-hoc branch.
+                               qp.perms/*card-id*          (when (= entity-type "card") id)]
+                       (qp/process-query (referenced-query (runnable-query entity query-key) entity-type id max-rows))))
             data   (:data result)]
         (if (> (count (:rows data)) max-rows)
           (do
@@ -143,11 +147,14 @@
    (fn [response] (assoc-in response [:data :referenced_entities] result))))
 
 (defn- maybe-wrap-qp
-  "Wrap a qp fn `(fn [query rff])` to inject the results of `specs` under `data.referenced_entities`."
+  "Wrap a qp fn `(fn [query rff])` to inject the results of `specs` under `data.referenced_entities`. The specs run
+  when the qp is invoked, which for a card endpoint is inside the streaming body rather than on the request thread."
   [qp specs max-rows]
-  (if-let [result (referenced-entities-result specs max-rows)]
+  (if (seq specs)
     (fn [query rff]
-      (qp query (inject-referenced-entities rff result)))
+      (if-let [result (referenced-entities-result specs max-rows)]
+        (qp query (inject-referenced-entities rff result))
+        (qp query rff)))
     qp))
 
 ;;; ---------------------------------------------------------------------------------------------------------
@@ -182,6 +189,9 @@
                (group-by (juxt :type :id) sources))))
 
 (defn maybe-wrap-qp-for-goals
-  "Derive specs from a card's merged `viz` settings and wrap `qp` to inject their values."
-  [qp viz]
-  (maybe-wrap-qp qp (viz-settings->goal-specs viz) goal-max-rows))
+  "Derive specs from a card's merged `viz` settings and wrap `qp` to inject their values. Only `:api` responses
+  render goals; a CSV or XLSX export would run the referenced queries and throw the values away."
+  [qp viz export-format]
+  (if (= export-format :api)
+    (maybe-wrap-qp qp (viz-settings->goal-specs viz) goal-max-rows)
+    qp))

@@ -13,7 +13,7 @@
                   :clojure-lsp/unused-public-var                                       9
                   :consistent-alias                                                    2
                   :def-fn                                                              1
-                  :deprecated-namespace                                                95
+                  :deprecated-namespace                                                96
                   :deprecated-var                                                      86
                   :discouraged-java-method                                             4
                   :discouraged-namespace                                               71

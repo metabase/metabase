@@ -214,6 +214,19 @@
   [database-id-or-metadata-providerable & body]
   `(do-with-metadata-provider ~database-id-or-metadata-providerable (^:once fn* [] ~@body)))
 
+(defn do-with-fresh-store
+  "Implementation for [[with-fresh-store]]."
+  [thunk]
+  (binding [*store* uninitialized-store]
+    (thunk)))
+
+(defmacro with-fresh-store
+  "Execute `body` with no QP store bound, so a nested query can set up its own. A store holds one Database, so
+  without this a nested run against a different one is rejected by [[validate-existing-provider]]."
+  {:style/indent 0}
+  [& body]
+  `(do-with-fresh-store (^:once fn* [] ~@body)))
+
 ;;;;
 ;;;; DEPRECATED STUFF
 ;;;;
