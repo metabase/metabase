@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 
-import { useLocation } from "metabase/router";
+import { useLocation, useNavigationType } from "metabase/router";
 
 interface ScrollToTopProps {
   children?: ReactNode;
@@ -9,15 +9,20 @@ interface ScrollToTopProps {
 
 function ScrollToTop({ children }: ScrollToTopProps) {
   const { pathname } = useLocation();
+  const navigationType = useNavigationType();
   const previousPathname = useRef(pathname);
 
   useEffect(() => {
     // Compare pathname so query strings don't cause a scroll to the top.
     if (pathname !== previousPathname.current) {
       previousPathname.current = pathname;
-      window.scrollTo(0, 0);
+
+      // Browser back/forward navigation should preserve the native scroll position.
+      if (navigationType !== "POP") {
+        window.scrollTo(0, 0);
+      }
     }
-  }, [pathname]);
+  }, [pathname, navigationType]);
 
   return <>{children}</>;
 }
