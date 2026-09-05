@@ -16,8 +16,6 @@ const NewItemButton = ({ collectionId }: NewItemButtonProps) => {
       trigger={
         <Button
           variant="filled"
-          size="sm"
-          p="sm"
           leftSection={<Icon name="add" size={16} />}
           aria-label={t`New`}
           onClick={() => trackAppNewButtonClicked()}
