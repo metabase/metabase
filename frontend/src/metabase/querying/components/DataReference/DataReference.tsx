@@ -1,9 +1,9 @@
 import type { ComponentType } from "react";
 
-import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { DatabaseId } from "metabase-types/api";
 
 import { MainPane } from "./MainPane";
+import { PLUGIN_DATA_REFERENCE } from "./plugins";
 import {
   type DataReferenceItem,
   type DataReferencePaneProps,
@@ -30,7 +30,7 @@ export const DataReference = ({
 
     if (page.type === "library") {
       return (
-        <PLUGIN_LIBRARY.DataReferenceLibraryPane
+        <PLUGIN_DATA_REFERENCE.LibraryPane
           {...page}
           onItemClick={pushDataReferenceStack}
           onClose={onClose}
