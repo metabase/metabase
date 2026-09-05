@@ -1,10 +1,14 @@
 name: Lint
 
+permissions:
+  contents: read
+  pull-requests: read
+
 on:
   push:
     branches:
-      - 'master'
-      - 'release-**'
+      - "master"
+      - "release-**"
   pull_request:
 
 concurrency:
@@ -42,9 +46,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup frontend env
-        if: |
-          needs.files-changed.outputs.yaml == 'true' ||
-          needs.files-changed.outputs.openapi == 'true'
+        if: needs.files-changed.outputs.yaml == 'true'
         uses: ./.github/actions/prepare-frontend
 
       # Always required by whitespace linter, also used by OpenAPI spec validation
@@ -88,17 +90,54 @@ jobs:
           if: needs.files-changed.outputs.workflows == 'true'
           run: .github/scripts/check-job-timeouts.sh ${{ needs.files-changed.outputs.workflows_files }}
 
-        # Generate and Lint OpenAPI spec
-        - name: Generate OpenAPI spec
-          if: needs.files-changed.outputs.openapi == 'true'
-          run: bun run generate-openapi
+  validate-openapi:
+    needs: files-changed
+    if: needs.files-changed.outputs.openapi == 'true'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
+    steps:
+      # No credentials: this job runs package.json scripts defined by the PR.
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Generate OpenAPI artifacts from local source
+        run: bun run types:ensure --force-local
+      - name: Lint OpenAPI spec
+        run: bun run openapi:lint
+      - name: Compile CLJS for type checking
+        run: bun run build-pure:cljs
+      - name: Check frontend types
+        run: bun run type-check-pure
 
-      # Parallel steps run asynchronously, and explicitly waiting for a parallel step means "if" statements are ignored.
-      # Move OpenAPI validation outside the parallel block so that spec generation happens asynchronously without requiring
-      # an explicit "wait".
-      - name: Validate OpenAPI spec
-        if: needs.files-changed.outputs.openapi == 'true'
-        run: bun run lint-openapi
+  # Always reports, even when OpenAPI generation and validation are skipped.
+  openapi-result:
+    needs: [files-changed, validate-openapi]
+    if: always() && !cancelled()
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Check OpenAPI job status
+        env:
+          needs: ${{ toJson(needs) }}
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+            const jobs = Object.entries(needs).map(([name, { result }]) => ({ name, result }));
+
+            if (jobs.every(({ result }) => result === 'skipped' || result === 'success')) {
+              console.log('OpenAPI generation and validation succeeded or were skipped');
+              process.exit(0);
+            }
+
+            console.log('OpenAPI generation or validation failed');
+            jobs.filter(({ result }) => result !== 'success')
+                .forEach(({ name, result }) => console.log(`${name} - ${result}`));
+            process.exit(1);
 
   i18n:
     needs: files-changed

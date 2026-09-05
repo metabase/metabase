@@ -2,25 +2,18 @@ import { defineConfig } from "@hey-api/openapi-ts";
 
 // eslint-disable-next-line import/no-default-export -- this library requires a default export
 export default defineConfig({
-  input: "./resources/openapi/openapi.json",
+  input: process.env.METABASE_OPENAPI_INPUT ?? "./.tmp/openapi/openapi.json",
   output: {
-    path: "frontend/src/metabase-types/openapi",
-    clean: false,
+    entryFile: false,
+    path:
+      process.env.METABASE_OPENAPI_OUTPUT ??
+      "frontend/src/metabase-types/openapi",
+    // Declaration output is exempt from checking via `skipLibCheck`, which keeps the
+    // circular legacy-MBQL aliases from failing tsc.
+    fileName: { suffix: ".gen.d" },
+    // Clean declaration files to avoid stale types
+    clean: true,
     postProcess: ["prettier"],
   },
-  parser: {
-    filters: {
-      schemas: {
-        // MetabaseLegacyMbqlSchema has circular references that break TS type checking
-        // eslint-disable-next-line metabase/no-literal-metabase-strings -- this is not user facing text
-        exclude: ["/^MetabaseLegacyMbqlSchema/"],
-      },
-    },
-  },
-  plugins: [
-    {
-      name: "@hey-api/typescript",
-      enums: "javascript", // This generates runtime enums!
-    },
-  ],
+  plugins: ["@hey-api/typescript"],
 });

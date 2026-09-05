@@ -138,6 +138,7 @@ const configs = [
     ignores: [
       "frontend/src/cljs/**",
       "frontend/src/cljs_release/**",
+      "frontend/src/metabase-types/openapi/**",
       "**/*.d.ts",
       "e2e/support/cypress_sample_database.js",
       "e2e/support/cypress_sample_instance_data.js",
@@ -1115,6 +1116,32 @@ const configs = [
               name: "custom-viz",
               allowTypeImports: true,
               message: "Please use only type-only imports from 'custom-viz'.",
+            },
+          ],
+          patterns: [
+            {
+              regex: "^metabase-types/openapi",
+              allowTypeImports: true,
+              message:
+                "Only `import type` is allowed from metabase-types/openapi: it is generated as declaration files, so a value import resolves to nothing at runtime.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["enterprise/frontend/**/*.ts", "enterprise/frontend/**/*.tsx"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "^metabase-types/openapi",
+              allowTypeImports: true,
+              message:
+                "Only `import type` is allowed from metabase-types/openapi: it is generated as declaration files, so a value import resolves to nothing at runtime.",
             },
           ],
         },
