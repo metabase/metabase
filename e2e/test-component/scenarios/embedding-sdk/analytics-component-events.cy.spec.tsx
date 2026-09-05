@@ -3,6 +3,7 @@ import {
   CreateQuestion,
   InteractiveQuestion,
 } from "@metabase/embedding-sdk-react";
+import { version as hostReactVersion } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createQuestion, updateSetting } from "e2e/support/helpers";
@@ -122,6 +123,11 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
       expect(detail.global.sdk_version, "sdk_version in event_detail").to.be.a(
         "string",
       );
+
+      expect(
+        detail.global.react_version,
+        "react_version in event_detail",
+      ).to.eq(hostReactVersion);
     });
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
@@ -129,6 +135,12 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
         (event) => event.event === "embedding_sdk_initialized",
       );
       expect(beacon, "global init beacon").to.exist;
+
+      const beaconDetail = parseEventDetail(beacon!);
+      expect(
+        beaconDetail.global.react_version,
+        "react_version in the init beacon",
+      ).to.eq(hostReactVersion);
     });
   });
 
