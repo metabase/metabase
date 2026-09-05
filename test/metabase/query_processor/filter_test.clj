@@ -981,6 +981,22 @@
                     [int]
                     (mt/run-mbql-query airport {:aggregation [:count], :filter [:not-empty $code]}))))))))))
 
+(deftest ^:parallel not-empty-does-not-generate-redundant-clause-test
+  (testing ":not-empty shouldn't compile to SQL with a redundant, self-contradictory `OR ... IS NULL`
+            disjunct (metabase#55252)"
+    ;; `!=` gets a NULL-safety disjunct added by the SQL QP so a bare `!= ""` filter also matches nulls; that
+    ;; disjunct is redundant (and contradicts the sibling NOT NULL check) once `:not-empty` ANDs it with its
+    ;; own `!= nil` check. Asserting on the compiled SQL text here (rather than just query results, which
+    ;; the existing is-empty-not-empty-test-* cases already cover and which don't change either way) is the
+    ;; point: the bug was never about wrong *results*, just redundant, confusing generated SQL.
+    (let [query (mt/mbql-query venues {:filter [:not-empty $name]})
+          sql   (:query (qp.compile/compile-with-inline-parameters query))]
+      (testing (format "\nquery = %s" (pr-str sql))
+        ;; a clean compile is a plain AND of two checks, no OR anywhere -- the bug was a redundant, bare
+        ;; `OR ... IS NULL` disjunct tacked onto the "not empty string" half by the SQL QP's `!=`
+        ;; null-behaviour correction, contradicting the sibling NOT NULL check right next to it.
+        (is (not (re-find #"(?i)\bor\b" sql)))))))
+
 (defmethod driver/database-supports? [::driver/driver ::is-empty-not-empty-with-not-emptyable-args-test]
   [_driver _feature _database]
   true)
