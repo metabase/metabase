@@ -90,7 +90,6 @@ export const EnableModularEmbeddingSection = ({
         <Button
           variant={isAccepted ? "default" : "filled"}
           onClick={handleEnable}
-          size="xs"
           disabled={isAccepted}
           leftSection={isAccepted && <Icon name="check" />}
         >

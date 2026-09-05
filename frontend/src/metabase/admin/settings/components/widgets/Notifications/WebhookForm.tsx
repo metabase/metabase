@@ -348,7 +348,7 @@ export const WebhookForm = ({
               <Button
                 variant="subtle"
                 c="text-secondary"
-                size="compact-md"
+                size="sm"
                 pl="0"
                 leftSection={<Icon name="trash" />}
                 onClick={onDelete}

@@ -210,7 +210,7 @@ export const QuestionDownloadWidget = ({
               pl={8}
               pr={0}
               variant="subtle"
-              size="compact-md"
+              size="sm"
               style={{ flexShrink: 0 }}
             >
               <Icon

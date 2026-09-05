@@ -341,7 +341,6 @@ export function PinMap(props: PinMapProps) {
         {shouldShowDefaultViewChangeButton ? (
           <Button
             className={cx("PinMapUpdateButton", S.pinMapButton)}
-            size="sm"
             disabled={disableUpdateButton}
             onClick={updateSettings}
           >
@@ -351,7 +350,6 @@ export function PinMap(props: PinMapProps) {
         {!isDashboard && mapInstance?.supportsFilter() && (
           <Button
             className={cx("PinMapUpdateButton", S.pinMapButton)}
-            size="sm"
             onClick={() => {
               if (!mapInstance) {
                 return;

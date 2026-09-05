@@ -32,7 +32,6 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
       data-testid="swap-dataset-button"
       variant="visualizer"
       aria-pressed={selected}
-      size="xs"
       onClick={() => {
         if (selected) {
           onRemove?.(item);

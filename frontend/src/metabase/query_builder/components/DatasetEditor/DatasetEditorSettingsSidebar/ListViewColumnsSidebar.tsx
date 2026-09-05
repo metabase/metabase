@@ -75,7 +75,7 @@ export function ListViewColumnsSidebar({
     <Stack p="2.5rem">
       <Group justify="space-between" align="center" h="1.5rem">
         <Text fw="bold">{t`Customize List layout`}</Text>
-        <Button size="xs" variant="subtle" onClick={onDone}>{t`Done`}</Button>
+        <Button variant="subtle" onClick={onDone}>{t`Done`}</Button>
       </Group>
       <Stack gap="lg">
         <TextInput

@@ -91,23 +91,21 @@ export const ParametersPlayground = ({
           />
           <Group gap="xxs">
             <Button
-              size="xs"
               onClick={() => paramSlug && onSetOne(paramSlug, paramValue)}
             >
               Set
             </Button>
             <Button
-              size="xs"
               variant="default"
               onClick={() => paramSlug && onClearOne(paramSlug)}
             >
               Clear one
             </Button>
-            <Button size="xs" variant="subtle" onClick={onClearAll}>
+            <Button variant="subtle" onClick={onClearAll}>
               Clear all
             </Button>
             {onGetNow && (
-              <Button size="xs" variant="light" onClick={onGetNow}>
+              <Button variant="light" onClick={onGetNow}>
                 Get now
               </Button>
             )}

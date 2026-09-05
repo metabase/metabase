@@ -120,7 +120,6 @@ export const RemoteSyncSettingsForm = ({
                       <Button
                         c="feedback-negative"
                         variant="subtle"
-                        size="md"
                         w="12rem"
                         leftSection={<Icon name="close" />}
                         onClick={handleDisable}
@@ -143,7 +142,6 @@ export const RemoteSyncSettingsForm = ({
                     )}
                     <FormSubmitButton
                       data-testid="remote-sync-submit-button"
-                      size="md"
                       label={
                         isRemoteSyncEnabled
                           ? t`Save changes`

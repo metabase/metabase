@@ -180,12 +180,7 @@ export function GroupMappingsWidgetView({
           py="sm"
         >
           {!showAddRow && (
-            <Button
-              variant="filled"
-              size="sm"
-              type="button"
-              onClick={handleShowAddRow}
-            >
+            <Button variant="filled" type="button" onClick={handleShowAddRow}>
               {t`New mapping`}
             </Button>
           )}

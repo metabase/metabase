@@ -131,11 +131,7 @@ export function MetabotIconField() {
           multiple={false}
           onChange={handleIconUpload}
         />
-        <Button
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          flex="0 0 auto"
-        >
+        <Button onClick={() => fileInputRef.current?.click()} flex="0 0 auto">
           {t`Upload a custom icon`}
         </Button>
         {(iconFileName || !isDefaultIcon) && (

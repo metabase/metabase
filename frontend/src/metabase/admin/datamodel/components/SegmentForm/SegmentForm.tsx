@@ -160,16 +160,10 @@ const SegmentFormActions = ({
 }: SegmentFormActionsProps): JSX.Element => {
   return (
     <div>
-      <Button
-        type="submit"
-        variant="filled"
-        size="sm"
-        disabled={!isValid}
-        mr="lg"
-      >
+      <Button type="submit" variant="filled" disabled={!isValid} mr="lg">
         {t`Save changes`}
       </Button>
-      <Button component={Link} size="sm" to="/admin/datamodel/segments">
+      <Button component={Link} to="/admin/datamodel/segments">
         {t`Cancel`}
       </Button>
     </div>

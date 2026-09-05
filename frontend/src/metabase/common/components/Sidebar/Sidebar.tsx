@@ -59,7 +59,7 @@ export function Sidebar({
                   disabled={isRemoveDisabled}
                   onClick={onRemove}
                   style={{ paddingLeft: 0, paddingRight: 0 }}
-                  size="compact-md"
+                  size="sm"
                   role="button"
                   aria-label={t`Remove`}
                 >{t`Remove`}</Button>

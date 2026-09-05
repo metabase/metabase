@@ -21,7 +21,7 @@ export const DatabaseReplicationSuccess = ({
         </Text>
       </Box>
 
-      <Button onClick={onClose} size="md" variant="filled" miw="30%">
+      <Button onClick={onClose} variant="filled" miw="30%">
         {t`Done`}
       </Button>
     </Stack>

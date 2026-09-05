@@ -100,7 +100,6 @@ export function MetricSearchPanel() {
               <Button
                 variant="light"
                 color="core-filter"
-                size="xs"
                 p="sm"
                 leftSection={
                   <Icon
@@ -117,7 +116,6 @@ export function MetricSearchPanel() {
                   <Button
                     variant="light"
                     color="core-filter"
-                    size="xs"
                     py="sm"
                     px="lg"
                     aria-label={toggleLabel}

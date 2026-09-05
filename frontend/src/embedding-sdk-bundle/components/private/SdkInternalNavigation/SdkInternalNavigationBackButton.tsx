@@ -40,7 +40,6 @@ const SdkInternalNavigationBackButtonInner = ({
     <Button
       variant="subtle"
       color="text-secondary"
-      size="sm"
       leftSection={<Icon name="chevronleft" />}
       onClick={pop}
       pl={0}

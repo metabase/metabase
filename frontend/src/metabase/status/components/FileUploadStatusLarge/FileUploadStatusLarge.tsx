@@ -139,7 +139,6 @@ const UploadErrorDisplay = ({ upload }: { upload: FileUpload }) => {
     <>
       <Button
         variant="subtle"
-        size="xs"
         h="1rem"
         p={0}
         fz="sm"

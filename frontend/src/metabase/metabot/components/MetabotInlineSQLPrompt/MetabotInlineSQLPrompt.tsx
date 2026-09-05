@@ -135,7 +135,6 @@ export const MetabotInlineSQLPrompt = ({
               <Button
                 className={S.submitButton}
                 data-testid="metabot-inline-sql-generate"
-                size="xs"
                 variant="filled"
                 px="0"
                 w="1.875rem"
@@ -158,7 +157,6 @@ export const MetabotInlineSQLPrompt = ({
           <Button
             className={S.cancelButton}
             data-testid="metabot-inline-sql-cancel"
-            size="xs"
             variant="subtle"
             onClick={handleClose}
           >

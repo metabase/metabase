@@ -55,7 +55,6 @@ export const SaveEditButton = () => {
         <ActionButton
           actionFn={onSave}
           variant="filled"
-          size="sm"
           normalText={t`Save`}
           activeText={t`Saving…`}
           failedText={t`Save failed`}

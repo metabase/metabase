@@ -92,7 +92,7 @@ export function AddDimensionsPanel({
             mt="xxs"
           >{t`You can pick one or many.`}</Text>
         </Box>
-        <Button variant="filled" onClick={onDone} size="sm">{t`Done`}</Button>
+        <Button variant="filled" onClick={onDone}>{t`Done`}</Button>
       </Group>
 
       {(!isEmpty || isSearchActive) && (

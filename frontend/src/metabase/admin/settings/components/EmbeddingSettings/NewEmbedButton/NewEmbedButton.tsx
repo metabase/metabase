@@ -17,7 +17,6 @@ export const NewEmbedButton = ({ forceIsGuest }: NewEmbedButtonProps) => {
   return (
     <Button
       variant="brand"
-      size="sm"
       onClick={() => {
         dispatch(
           setOpenModalWithProps({

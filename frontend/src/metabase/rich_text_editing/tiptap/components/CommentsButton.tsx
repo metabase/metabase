@@ -20,7 +20,6 @@ export const CommentsButton = <C extends ElementType = "button">({
         <Icon name={unresolvedCommentsCount > 0 ? "comment" : "add_comment"} />
       }
       px="sm"
-      size="xs"
       // Unjustified type cast. FIXME
       {...(props as ButtonProps)}
     >

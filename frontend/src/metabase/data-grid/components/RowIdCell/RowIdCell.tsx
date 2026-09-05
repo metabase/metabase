@@ -49,7 +49,7 @@ export const RowIdCell = memo(function RowIdCell({
               w={24}
               h={24}
               className={cx(DataGridS.rowHoverVisible, S.expandButton)}
-              size="compact-md"
+              size="sm"
               leftSection={
                 <Icon name={expanded ? "sidebar_closed" : "sidebar_open"} />
               }

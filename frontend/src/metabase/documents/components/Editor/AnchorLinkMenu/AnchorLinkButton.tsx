@@ -46,7 +46,6 @@ export const AnchorLinkButton = <C extends ElementType = "button">({
         bd={0}
         leftSection={<Icon name="link" />}
         px="sm"
-        size="xs"
         onClick={handleCopy}
         onKeyDown={handleKeyDown}
       />

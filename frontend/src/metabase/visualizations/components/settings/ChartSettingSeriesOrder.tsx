@@ -162,7 +162,7 @@ export const ChartSettingSeriesOrder = ({
               <Text truncate fw="bold">{t`Other`}</Text>
             </Group>
             <Button
-              size="compact-md"
+              size="sm"
               color="text-secondary"
               variant="subtle"
               leftSection={<Icon name="gear" />}
