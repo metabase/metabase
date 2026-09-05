@@ -20,6 +20,8 @@ const SOURCE_COLLECTION_NAME = "Dependency Source";
 const SOURCE_QUESTION_NAME = "Dependency Source Question";
 const DEPENDENT_QUESTION_NAME = "Dependent Question";
 const SECOND_DEPENDENT_QUESTION_NAME = "Second Dependent Question";
+const SNIPPET_NAME = "active_users";
+const SNIPPET_QUESTION_NAME = "Snippet Dependent Question";
 
 const setup = (snapshot = "default") => {
   H.restore(snapshot);
@@ -619,7 +621,7 @@ describe("Remote Sync", () => {
         cy.intercept("PUT", "/api/ee/remote-sync/settings").as("saveSettings");
       });
 
-      it("reports every blocked collection, re-opens after a dismissal, syncs them all, and stays hidden for unrelated errors", () => {
+      it("reports every blocked collection and allows to sync from dependency modal", () => {
         createDependencyFixture().then(({ source, blocked, alsoBlocked }) => {
           cy.visit("/admin/settings/remote-sync");
 
@@ -636,8 +638,12 @@ describe("Remote Sync", () => {
           saveAndExpectRefusal().then((interception) => {
             const body: RemoteSyncDependencyErrorResponse =
               interception.response?.body;
+
+            expect(body.errors.required).to.have.length(1);
             expect(
-              body.errors.collections.map((failure) => failure.collection.name),
+              body.errors.required[0].blocks.map(
+                (collection) => collection.name,
+              ),
             ).to.have.members([
               BLOCKED_COLLECTION_NAME,
               SECOND_BLOCKED_COLLECTION_NAME,
@@ -645,22 +651,19 @@ describe("Remote Sync", () => {
           });
 
           H.modal().within(() => {
-            // Every remedy here is a collection we can switch on, so the modal asks rather than refuses.
-            cy.findByText("Sync collections with dependencies?").should(
+            cy.findByText("Couldn’t sync selected collection").should(
               "be.visible",
             );
-            // Both failures resolve to the same remedy, so it is offered once.
             cy.findAllByText(SOURCE_COLLECTION_NAME).should("have.length", 1);
-            cy.button("Cancel").click();
+            cy.findByLabelText(`Sync ${SOURCE_COLLECTION_NAME}`)
+              .should("be.enabled")
+              .click({ force: true });
+            cy.button("Back").click();
           });
-          H.modal().should("not.exist");
 
-          cy.log("Saving the same selection again brings it back");
-          saveAndExpectRefusal();
-
-          H.modal().within(() => {
-            cy.button("Sync required collections").click();
-          });
+          cy.findByTestId("remote-sync-submit-button")
+            .should("be.enabled")
+            .click();
 
           cy.wait("@saveSettings").then(({ request, response }) => {
             expect(response?.statusCode).to.eq(200);
@@ -691,6 +694,44 @@ describe("Remote Sync", () => {
 
           cy.wait("@saveSettings").its("response.statusCode").should("eq", 400);
           H.undoToast().should("contain.text", "Used by remote synced content");
+          H.modal().should("not.exist");
+        });
+      });
+
+      it("leaves a snippet dependency with nothing to act on when no Library exists", () => {
+        createSnippetDependencyFixture().then(({ blocked }) => {
+          cy.visit("/admin/settings/remote-sync");
+
+          cy.findByLabelText(`Sync ${BLOCKED_COLLECTION_NAME}`).click({
+            force: true,
+          });
+
+          saveAndExpectRefusal().then((interception) => {
+            const body: RemoteSyncDependencyErrorResponse =
+              interception.response?.body;
+            const [required] = body.errors.required;
+
+            expect(required.blocks.map((collection) => collection.id)).to.eql([
+              blocked.id,
+            ]);
+            // With no Library there is no collection to name, so the remedy carries only its type.
+            expect(required.remedy).to.deep.equal({ type: "library" });
+            expect(required.syncable).to.be.false;
+            expect(required.dependencies).to.have.length(1);
+            expect(required.dependencies[0].model).to.eq("snippet");
+            expect(required.dependencies[0].name).to.eq(SNIPPET_NAME);
+          });
+
+          H.modal().within(() => {
+            cy.findByText("Couldn’t sync selected collection").should(
+              "be.visible",
+            );
+            cy.findByText(/sync with the Library/).should("be.visible");
+            cy.findByRole("switch").should("not.exist");
+
+            cy.button("Back").click();
+          });
+
           H.modal().should("not.exist");
         });
       });
@@ -1154,9 +1195,7 @@ const createCollection = (name: string) =>
 
 // Saves, clears the toast  and yields the refusal for inspection.
 const saveAndExpectRefusal = () => {
-  cy.findByRole("button", { name: "Save changes", timeout: 6000 })
-    .should("be.enabled")
-    .click(); // action button text
+  cy.findByTestId("remote-sync-submit-button").should("be.enabled").click();
   return cy.wait("@saveSettings").then((interception) => {
     expect(interception.response?.statusCode).to.eq(400);
     H.undoToast()
@@ -1177,6 +1216,30 @@ const createDependentQuestion = (
     query: { "source-table": `card__${sourceQuestionId}` },
     collection_id: collectionId,
   });
+
+const createSnippetDependencyFixture = () =>
+  H.createSnippet({ name: SNIPPET_NAME, content: "1 = 1" }).then(
+    ({ body: snippet }) =>
+      createCollection(BLOCKED_COLLECTION_NAME).then((blocked) =>
+        H.createNativeQuestion({
+          name: SNIPPET_QUESTION_NAME,
+          collection_id: blocked.id,
+          native: {
+            query: `select 1 where {{snippet: ${SNIPPET_NAME}}}`,
+            "template-tags": {
+              [`snippet: ${SNIPPET_NAME}`]: {
+                id: "6c1b2f34-5d6e-4a7b-8c9d-0e1f2a3b4c5d",
+                type: "snippet",
+                name: `snippet: ${SNIPPET_NAME}`,
+                "display-name": `Snippet: ${SNIPPET_NAME}`,
+                "snippet-id": snippet.id,
+                "snippet-name": SNIPPET_NAME,
+              },
+            },
+          },
+        }).then(() => ({ snippet, blocked })),
+      ),
+  );
 
 // Two collections that each depend on a question in a third, so syncing either alone is refused.
 const createDependencyFixture = () =>

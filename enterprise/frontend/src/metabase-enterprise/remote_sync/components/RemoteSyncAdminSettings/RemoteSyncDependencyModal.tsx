@@ -1,122 +1,225 @@
 import { useFormikContext } from "formik";
 import { useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
-import { Button, Card, Group, Icon, Modal, Stack, Text } from "metabase/ui";
-import type { RemoteSyncDependencyFailure } from "metabase-types/api";
+import { Link } from "metabase/common/components/Link";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import {
+  Accordion,
+  Anchor,
+  Button,
+  Card,
+  Ellipsified,
+  Group,
+  Icon,
+  Modal,
+  Stack,
+  Switch,
+  Text,
+} from "metabase/ui";
+import { collection as collectionUrl } from "metabase/urls";
+import type {
+  CollectionSyncPreferences,
+  RemoteSyncRequiredSync,
+} from "metabase-types/api";
 
 import { COLLECTIONS_KEY } from "../../constants";
 import type { RemoteSyncSettingsFormState } from "../../types";
 import {
-  canSyncRequiredCollections,
   getBlockedMessage,
-  getRequiredCollectionRows,
-  getRequiredCollections,
+  getListedRequiredSyncs,
+  getRequiredSyncRow,
 } from "../../utils";
 
 import S from "./RemoteSyncDependencyModal.module.css";
 
 interface RemoteSyncDependencyModalProps {
-  /** Why the last save was refused, one entry per collection. */
-  failures?: RemoteSyncDependencyFailure[];
+  /** Why the last save was refused, one entry per collection that has to be synced. */
+  required?: RemoteSyncRequiredSync[];
 }
 
 export const RemoteSyncDependencyModal = ({
-  failures,
+  required,
 }: RemoteSyncDependencyModalProps) => {
-  const { values, setValues, submitForm } =
+  const { values, setFieldValue, submitForm, isSubmitting } =
     useFormikContext<RemoteSyncSettingsFormState>();
-  // RTK returns a new error object per request, so identity separates fresh from dismissed.
-  const [dismissedFailures, setDismissedFailures] =
-    useState<RemoteSyncDependencyFailure[]>();
+  const [dismissedRequired, setDismissedRequired] =
+    useState<RemoteSyncRequiredSync[]>();
 
-  if (!failures?.length || failures === dismissedFailures) {
+  if (!required?.length || required === dismissedRequired) {
     return null;
   }
 
-  // Rows are for display and can include Our analytics; only real remedies are safe to switch on.
-  const requiredCollections = getRequiredCollections(failures);
-  const requiredCollectionRows = getRequiredCollectionRows(failures);
-  const canSync = canSyncRequiredCollections(failures);
+  const listedRequiredSyncs = getListedRequiredSyncs(required);
+  const syncedCollections = values[COLLECTIONS_KEY] ?? {};
+  const canSave = required.every(({ syncable }) => syncable);
 
-  const handleDismiss = () => setDismissedFailures(failures);
+  const handleDismiss = () => setDismissedRequired(required);
 
-  const handleSyncAndSave = async () => {
-    await setValues({
-      ...values,
-      [COLLECTIONS_KEY]: {
-        ...values[COLLECTIONS_KEY],
-        ...Object.fromEntries(requiredCollections.map(({ id }) => [id, true])),
-      },
-    });
-    await submitForm();
-  };
+  // Nested path, so the write survives the form reinitializing under the modal.
+  const handleToggle = (id: number, checked: boolean) =>
+    setFieldValue(`${COLLECTIONS_KEY}.${id}`, checked);
 
   return (
     <Modal
       opened
       onClose={handleDismiss}
       padding="xxl"
-      title={
-        canSync
-          ? t`Sync collections with dependencies?`
-          : t`Couldn’t sync selected collection`
-      }
+      title={t`Couldn’t sync selected collection`}
+      withCloseButton={false}
     >
       <Stack gap="xl" pt="lg">
-        <Text>{getBlockedMessage(failures)}</Text>
+        <Text>{getBlockedMessage(required)}</Text>
 
-        {requiredCollectionRows.length > 0 && (
-          <Card withBorder p={0} shadow="none">
-            <Stack gap={0}>
-              {requiredCollectionRows.map((collection) => (
-                <Group
-                  key={collection.id}
-                  gap="sm"
-                  className={S.collectionRow}
-                  py="sm"
-                  px="lg"
-                  justify="space-between"
-                  bg={collection.syncable ? undefined : "background-secondary"}
-                >
-                  <Group>
-                    <Icon
-                      name={collection.personal ? "person" : "collection"}
-                      c="text-secondary"
-                    />
-                    <Text fw="medium">{collection.name}</Text>
-                  </Group>
-                  {collection.syncable ? (
-                    <Group gap="sm">
-                      <Icon name="warning_triangle_filled" c="warning" />
-                      <Text c="feedback-warning-strong">{t`Sync to continue`}</Text>
-                    </Group>
-                  ) : (
-                    <Text c="text-secondary">{t`Can't be synced`}</Text>
-                  )}
-                </Group>
-              ))}
-            </Stack>
-          </Card>
+        {listedRequiredSyncs.length > 0 && (
+          <Accordion
+            multiple
+            chevronPosition="left"
+            className={S.accordion}
+            classNames={{
+              item: S.item,
+              control: S.control,
+              label: S.label,
+              chevron: S.chevron,
+              content: S.content,
+            }}
+          >
+            {listedRequiredSyncs.map((requiredSync) => (
+              <RequiredSyncItem
+                key={getRequiredSyncRow(requiredSync).key}
+                requiredSync={requiredSync}
+                syncedCollections={syncedCollections}
+                onToggle={handleToggle}
+              />
+            ))}
+          </Accordion>
         )}
 
-        <Group justify={canSync ? "space-between" : "end"} gap="sm">
-          <>
-            {canSync && (
-              <Button onClick={handleSyncAndSave}>
-                {t`Sync required collections`}
-              </Button>
-            )}
+        <Group justify="end" gap="sm">
+          <Button onClick={handleDismiss}>{t`Back`}</Button>
+          {canSave && (
             <Button
               variant="filled"
-              onClick={handleDismiss}
-              style={{ justifySelf: "end" }}
+              loading={isSubmitting}
+              onClick={submitForm}
             >
-              {canSync ? t`Cancel` : t`Back`}
+              {t`Save changes`}
             </Button>
-          </>
+          )}
         </Group>
       </Stack>
     </Modal>
+  );
+};
+
+interface RequiredSyncItemProps {
+  requiredSync: RemoteSyncRequiredSync;
+  syncedCollections: CollectionSyncPreferences;
+  onToggle: (id: number, checked: boolean) => void;
+}
+
+const RequiredSyncItem = ({
+  requiredSync,
+  syncedCollections,
+  onToggle,
+}: RequiredSyncItemProps) => {
+  const getIcon = PLUGIN_COLLECTIONS.useGetIcon();
+  const { dependencies } = requiredSync;
+  const row = getRequiredSyncRow(requiredSync);
+  const { syncableId } = row;
+  const isSynced = syncableId != null && !!syncedCollections[syncableId];
+
+  const icon = getIcon({
+    model: "collection",
+    type: row.type,
+    is_personal: row.personal,
+    location: "/",
+    is_remote_synced: isSynced,
+    is_library_root: row.type === "library",
+  });
+
+  return (
+    <Accordion.Item value={row.key} mt="sm">
+      {/* The switch sits outside the control, so flipping it doesn't also toggle the panel. */}
+      <Group
+        gap="sm"
+        px="md"
+        wrap="nowrap"
+        bg={"background-secondary"}
+        bdrs="md"
+      >
+        <Accordion.Control>
+          <Group gap="sm">
+            <Icon name={icon.name} c={icon.color ?? "text-secondary"} />
+            <Text fw="medium">{row.name}</Text>
+          </Group>
+        </Accordion.Control>
+        {syncableId == null ? (
+          <Text c="text-secondary">{t`Can't be synced`}</Text>
+        ) : (
+          <Group gap="sm" wrap="nowrap">
+            <Switch
+              size="sm"
+              checked={isSynced}
+              onChange={(event) =>
+                onToggle(syncableId, event.currentTarget.checked)
+              }
+              aria-label={c("{0} is the name of a metabase collection")
+                .t`Sync ${row.name}`}
+            />
+            <Text>{t`Sync`}</Text>
+          </Group>
+        )}
+      </Group>
+      <Accordion.Panel>
+        <Card withBorder mb="md" p={0} shadow="none">
+          <Group
+            px="md"
+            py="xs"
+            bg="background-secondary"
+            className={S.contentRow}
+          >
+            <Text className={S.cell} fz="sm">{t`Item`}</Text>
+            <Text className={S.cell} fz="sm">{t`Used By`}</Text>
+          </Group>
+          {dependencies.map((dependency) => (
+            <Group
+              px="md"
+              py="sm"
+              className={S.contentRow}
+              key={`${dependency.model}-${dependency.id}`}
+            >
+              <Group className={S.cell} gap="sm" wrap="nowrap">
+                <Icon
+                  name={
+                    getIcon({
+                      model: dependency.model,
+                      display: dependency.display,
+                    }).name
+                  }
+                />
+                <Ellipsified>{dependency.name}</Ellipsified>
+              </Group>
+              <Ellipsified className={S.cell}>
+                {dependency.used_by.map((used) => used.name).join(", ")}
+              </Ellipsified>
+            </Group>
+          ))}
+        </Card>
+
+        {row.collectionId != null && (
+          <Anchor
+            component={Link}
+            to={collectionUrl({ id: row.collectionId, name: row.name })}
+            target="_blank"
+          >
+            <Group gap="xs">
+              {t`Go to collection`}
+              <Icon name="external" />
+            </Group>
+          </Anchor>
+        )}
+      </Accordion.Panel>
+    </Accordion.Item>
   );
 };

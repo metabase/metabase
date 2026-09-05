@@ -6,6 +6,7 @@ import { screen, waitFor, within } from "__support__/ui";
 import type {
   RemoteSyncDependencyErrorResponse,
   RemoteSyncIneligibleDependency,
+  RemoteSyncRequiredSync,
 } from "metabase-types/api";
 import { createMockCollectionItemFromCollection } from "metabase-types/api/mocks";
 
@@ -14,59 +15,74 @@ import { setup } from "./RemoteSyncSettingsForm.setup.spec";
 const BLOCKED_COLLECTION = { id: 20, name: "Marketing" };
 const REQUIRED_COLLECTION = { id: 30, name: "Finance" };
 
+// `used_by` is what an expanded row lists as the dependent; `display` picks the visualization icon.
 const SYNCABLE_DEPENDENCY: RemoteSyncIneligibleDependency = {
   model: "card",
   id: 416,
   name: "Seats over time",
   collection: REQUIRED_COLLECTION,
-  remedy: {
-    type: "collection",
-    collection: { ...REQUIRED_COLLECTION, personal: false },
-  },
+  display: "bar",
+  used_by: [{ model: "dashboard", id: 7, name: "Q3 Review" }],
 };
 
-const PERSONAL_DEPENDENCY: RemoteSyncIneligibleDependency = {
-  model: "card",
-  id: 417,
-  name: "Draft",
-  collection: REQUIRED_COLLECTION,
-  remedy: {
+const requiredSync = (
+  remedy: RemoteSyncRequiredSync["remedy"],
+  syncable = false,
+  dependencies = [SYNCABLE_DEPENDENCY],
+): RemoteSyncRequiredSync => ({
+  remedy,
+  syncable,
+  blocks: [BLOCKED_COLLECTION],
+  dependencies,
+});
+
+const SYNCABLE_REQUIRED = requiredSync(
+  {
     type: "collection",
-    collection: { id: 5, name: "Nick's stuff", personal: true },
+    collection: { ...REQUIRED_COLLECTION, type: null, personal: false },
   },
-};
+  true,
+);
+
+const PERSONAL_REQUIRED = requiredSync({
+  type: "collection",
+  collection: { id: 5, name: "Nick's stuff", type: null, personal: true },
+});
 
 // `collection: null` is the root collection
-const ROOT_DEPENDENCY: RemoteSyncIneligibleDependency = {
-  model: "card",
-  id: 512,
-  name: "Orphaned",
-  collection: null,
-  remedy: { type: "none" },
-};
+const ROOT_REQUIRED = requiredSync({ type: "none", collection: null });
 
-// The backend sends no id for the Library, so there is nothing to switch on.
-const SNIPPET_DEPENDENCY: RemoteSyncIneligibleDependency = {
-  model: "snippet",
-  id: 3,
-  name: "active_users",
-  remedy: { type: "library" },
-};
+// The Library is an ordinary collection, so a snippet points at it like any other remedy.
+const LIBRARY_COLLECTION = { id: 2, name: "Library" };
+const LIBRARY_REQUIRED = requiredSync(
+  {
+    type: "collection",
+    collection: { ...LIBRARY_COLLECTION, type: "library", personal: false },
+  },
+  true,
+  [{ model: "snippet", id: 3, name: "active_users", used_by: [] }],
+);
+
+// ...unless the instance has no Library yet, leaving nothing to switch on.
+const LIBRARY_MISSING_REQUIRED = requiredSync({ type: "library" }, false, [
+  { model: "snippet", id: 4, name: "monthly_cutoff", used_by: [] },
+]);
 
 const createRefusal = (
-  ...dependencies: RemoteSyncIneligibleDependency[]
+  ...required: RemoteSyncRequiredSync[]
 ): RemoteSyncDependencyErrorResponse => ({
   error: "Uses content that is not remote synced.",
   error_code: "unsynced-dependencies",
-  errors: {
-    collections: [{ collection: BLOCKED_COLLECTION, dependencies }],
-  },
+  errors: { required },
 });
 
-// First save is refused with `body`; any retry succeeds, so the second PUT shows what the modal sent.
+// The first save is refused with `body`; later ones succeed unless `refuseRetry`, so the second PUT
+// shows what the modal staged.
 const setupRefusedSave = async ({
-  body = createRefusal(SYNCABLE_DEPENDENCY),
-}: { body?: RemoteSyncDependencyErrorResponse } = {}) => {
+  body = createRefusal(SYNCABLE_REQUIRED),
+}: {
+  body?: RemoteSyncDependencyErrorResponse;
+} = {}) => {
   setup({
     remoteSyncType: "read-write",
     remoteSyncUrl: "https://github.com/test/repo.git",
@@ -103,33 +119,20 @@ const setupRefusedSave = async ({
   await userEvent.click(
     screen.getByLabelText(`Sync ${BLOCKED_COLLECTION.name}`),
   );
-  await userEvent.click(screen.getByRole("button", { name: /Save changes/i }));
+  await save();
 };
 
-// The modal asks a question when it can act, and reports a failure when it can't.
-const expectFixOffered = (modal: HTMLElement) => {
-  expect(
-    within(modal).getByText("Sync collections with dependencies?"),
-  ).toBeInTheDocument();
-  expect(
-    within(modal).getByRole("button", { name: "Sync required collections" }),
-  ).toBeInTheDocument();
-  expect(
-    within(modal).getByRole("button", { name: "Cancel" }),
-  ).toBeInTheDocument();
-};
+// By test id, not label: the button reads "Failed" for several seconds after a rejected submit.
+const save = () =>
+  userEvent.click(screen.getByTestId("remote-sync-submit-button"));
 
-const expectNoFixOffered = (modal: HTMLElement) => {
-  expect(
-    within(modal).getByText(/Couldn.t sync selected collection/),
-  ).toBeInTheDocument();
-  expect(
-    within(modal).queryByRole("button", { name: "Sync required collections" }),
-  ).not.toBeInTheDocument();
-  expect(
-    within(modal).getByRole("button", { name: "Back" }),
-  ).toBeInTheDocument();
-};
+const dismiss = (modal: HTMLElement) =>
+  userEvent.click(within(modal).getByRole("button", { name: "Back" }));
+
+const expectClosed = () =>
+  waitFor(() => {
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
 
 const getSettingsPuts = async () => {
   const puts = await findRequests("PUT");
@@ -139,17 +142,19 @@ const getSettingsPuts = async () => {
 };
 
 describe("RemoteSyncDependencyModal", () => {
-  it("opens when a save is refused, naming the collection that must be synced too", async () => {
+  it("opens when a save is refused, offering the collection that must be synced too", async () => {
     await setupRefusedSave();
 
     const modal = await screen.findByRole("dialog");
-    expectFixOffered(modal);
+    expect(
+      within(modal).getByText(/Couldn.t sync selected collection/),
+    ).toBeInTheDocument();
     expect(
       within(modal).getByText(/rely on data saved elsewhere/),
     ).toBeInTheDocument();
     expect(
-      within(modal).getByText(REQUIRED_COLLECTION.name),
-    ).toBeInTheDocument();
+      within(modal).getByLabelText(`Sync ${REQUIRED_COLLECTION.name}`),
+    ).not.toBeChecked();
   });
 
   it("stays closed until a save is refused", async () => {
@@ -165,20 +170,20 @@ describe("RemoteSyncDependencyModal", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("switches the required collections on and saves them in one action", async () => {
+  it("carries a collection switched on in the modal into the next save", async () => {
     await setupRefusedSave();
 
     const modal = await screen.findByRole("dialog");
     await userEvent.click(
-      within(modal).getByRole("button", { name: "Sync required collections" }),
+      within(modal).getByLabelText(`Sync ${REQUIRED_COLLECTION.name}`),
     );
+    await dismiss(modal);
+    await save();
 
     await waitFor(async () => {
       expect(await getSettingsPuts()).toHaveLength(2);
     });
 
-    // The retry carries the collection the admin picked *and* the one the modal added — proof the
-    // save reads the flipped form state rather than the values that were refused.
     const [, retry] = await getSettingsPuts();
     expect(retry.body).toHaveProperty("collections", {
       [BLOCKED_COLLECTION.id]: true,
@@ -186,116 +191,146 @@ describe("RemoteSyncDependencyModal", () => {
     });
   });
 
-  it("closes once the retry succeeds", async () => {
-    await setupRefusedSave();
-
-    const modal = await screen.findByRole("dialog");
-    await userEvent.click(
-      within(modal).getByRole("button", { name: "Sync required collections" }),
-    );
-
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    });
-  });
-
-  it("stays closed after the admin dismisses it", async () => {
-    await setupRefusedSave();
-
-    const modal = await screen.findByRole("dialog");
-    await userEvent.click(
-      within(modal).getByRole("button", { name: "Cancel" }),
-    );
-
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    });
-    expect(await getSettingsPuts()).toHaveLength(1);
-  });
-
-  it("offers no fix when the blocking content sits in a personal collection", async () => {
-    await setupRefusedSave({ body: createRefusal(PERSONAL_DEPENDENCY) });
-
-    const modal = await screen.findByRole("dialog");
-    expect(
-      within(modal).getByText(/saved in a personal collection/),
-    ).toBeInTheDocument();
-    expectNoFixOffered(modal);
-  });
-
-  it("offers no fix when the blocking content sits in the root collection", async () => {
-    await setupRefusedSave({ body: createRefusal(ROOT_DEPENDENCY) });
-
-    const modal = await screen.findByRole("dialog");
-    expect(
-      within(modal).getByText(/can.t be synced where it currently lives/),
-    ).toBeInTheDocument();
-    expectNoFixOffered(modal);
-  });
-
-  it("lists Our analytics as unsyncable, rather than leaving the list empty", async () => {
-    await setupRefusedSave({
-      body: createRefusal(SYNCABLE_DEPENDENCY, ROOT_DEPENDENCY),
-    });
-
-    const modal = await screen.findByRole("dialog");
-    expect(within(modal).getByText("Our analytics")).toBeInTheDocument();
-    // The syncable remedy is still listed, but nothing here is actionable while the root one stands.
-    expect(
-      within(modal).getByText(REQUIRED_COLLECTION.name),
-    ).toBeInTheDocument();
-    expect(within(modal).getByText("Can't be synced")).toBeInTheDocument();
-  });
-
-  it("offers no fix when the dependency is a snippet, since the Library has no id to switch on", async () => {
-    await setupRefusedSave({ body: createRefusal(SNIPPET_DEPENDENCY) });
-
-    const modal = await screen.findByRole("dialog");
-    expect(
-      within(modal).getByText(/sync with the Library/),
-    ).toBeInTheDocument();
-    expectNoFixOffered(modal);
-  });
-
-  it("keeps the admin's selection after a refused save, so it can be retried", async () => {
-    await setupRefusedSave();
-
-    const modal = await screen.findByRole("dialog");
-    await userEvent.click(
-      within(modal).getByRole("button", { name: "Cancel" }),
-    );
-
-    // A refused save rolls back, so the collection list refetch it triggers must not reset the form.
-    await waitFor(async () => {
-      expect(await findRequests("GET")).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            url: expect.stringContaining("/api/collection/root/items"),
-          }),
-        ]),
-      );
-    });
-
-    expect(
-      screen.getByLabelText(`Sync ${BLOCKED_COLLECTION.name}`),
-    ).toBeChecked();
-    // Enabled means still dirty; the button relabels to "Failed" after a rejected submit.
-    expect(screen.getByTestId("remote-sync-submit-button")).toBeEnabled();
-  });
-
-  // Switching Finance on would leave the other dependency behind, so the save is refused again.
   it.each([
-    ["personal", PERSONAL_DEPENDENCY],
-    ["root", ROOT_DEPENDENCY],
-    ["snippet", SNIPPET_DEPENDENCY],
+    [
+      "personal",
+      PERSONAL_REQUIRED,
+      "Nick's stuff",
+      /saved in a personal collection/,
+    ],
+    [
+      "root",
+      ROOT_REQUIRED,
+      "Our analytics",
+      /can.t be synced where it currently lives/,
+    ],
   ])(
-    "offers no fix when a syncable dependency is joined by a %s one",
-    async (_label, dependency) => {
+    "explains a %s blocker and lists it beside the collection that can be switched on",
+    async (_label, requiredEntry, unsyncableName, message) => {
       await setupRefusedSave({
-        body: createRefusal(SYNCABLE_DEPENDENCY, dependency),
+        body: createRefusal(SYNCABLE_REQUIRED, requiredEntry),
       });
 
-      expectNoFixOffered(await screen.findByRole("dialog"));
+      const modal = await screen.findByRole("dialog");
+      expect(within(modal).getByText(message)).toBeInTheDocument();
+      expect(
+        within(modal).getByLabelText(`Sync ${REQUIRED_COLLECTION.name}`),
+      ).toBeInTheDocument();
+      expect(within(modal).getByText(unsyncableName)).toBeInTheDocument();
+      expect(
+        within(modal).queryByLabelText(`Sync ${unsyncableName}`),
+      ).not.toBeInTheDocument();
+      expect(within(modal).getByText("Can't be synced")).toBeInTheDocument();
     },
   );
+
+  it("offers the Library as a switchable row, like any other collection", async () => {
+    await setupRefusedSave({ body: createRefusal(LIBRARY_REQUIRED) });
+
+    const modal = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(modal).getByLabelText(`Sync ${LIBRARY_COLLECTION.name}`),
+    );
+    await dismiss(modal);
+    await save();
+
+    await waitFor(async () => {
+      expect(await getSettingsPuts()).toHaveLength(2);
+    });
+
+    const [, retry] = await getSettingsPuts();
+    expect(retry.body).toHaveProperty("collections", {
+      [BLOCKED_COLLECTION.id]: true,
+      [LIBRARY_COLLECTION.id]: true,
+    });
+  });
+
+  it("saves from the modal", async () => {
+    await setupRefusedSave();
+
+    const modal = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(modal).getByLabelText(`Sync ${REQUIRED_COLLECTION.name}`),
+    );
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Save changes" }),
+    );
+
+    await waitFor(async () => {
+      expect(await getSettingsPuts()).toHaveLength(2);
+    });
+
+    const [, retry] = await getSettingsPuts();
+    expect(retry.body).toHaveProperty("collections", {
+      [BLOCKED_COLLECTION.id]: true,
+      [REQUIRED_COLLECTION.id]: true,
+    });
+    await expectClosed();
+  });
+
+  it.each([
+    ["nothing in the list can be switched on", [ROOT_REQUIRED]],
+    ["one entry beside it can't be", [SYNCABLE_REQUIRED, ROOT_REQUIRED]],
+    [
+      "a Library that doesn't exist blocks it",
+      [SYNCABLE_REQUIRED, LIBRARY_MISSING_REQUIRED],
+    ],
+  ])("offers no save when %s", async (_label, entries) => {
+    await setupRefusedSave({ body: createRefusal(...entries) });
+
+    const modal = await screen.findByRole("dialog");
+    expect(
+      within(modal).queryByRole("button", { name: "Save changes" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(modal).getByRole("button", { name: "Back" }),
+    ).toBeInTheDocument();
+  });
+
+  it("lists what can't be synced above what can", async () => {
+    await setupRefusedSave({
+      body: createRefusal(SYNCABLE_REQUIRED, ROOT_REQUIRED),
+    });
+
+    const modal = await screen.findByRole("dialog");
+    const rows = within(modal)
+      .getAllByRole("button", { expanded: false })
+      .map((row) => row.textContent);
+
+    expect(rows[0]).toMatch(/Our analytics/);
+    expect(rows[1]).toMatch(new RegExp(REQUIRED_COLLECTION.name));
+  });
+
+  it.each([
+    ["a personal collection", PERSONAL_REQUIRED, /Nick's stuff/, "person icon"],
+    [
+      "the Library",
+      LIBRARY_REQUIRED,
+      new RegExp(LIBRARY_COLLECTION.name),
+      "repository icon",
+    ],
+  ])(
+    "icons %s by what kind of collection it is",
+    async (_label, entry, name, expectedIcon) => {
+      await setupRefusedSave({ body: createRefusal(entry) });
+
+      const modal = await screen.findByRole("dialog");
+      const row = within(modal).getByRole("button", { name });
+
+      expect(within(row).getByRole("img")).toHaveAttribute(
+        "aria-label",
+        expectedIcon,
+      );
+    },
+  );
+
+  it("explains a Library blocker with nothing to switch on, when there is no Library yet", async () => {
+    await setupRefusedSave({ body: createRefusal(LIBRARY_MISSING_REQUIRED) });
+
+    const modal = await screen.findByRole("dialog");
+    expect(
+      within(modal).getByText(/Create the Library in Data Studio/),
+    ).toBeInTheDocument();
+    expect(within(modal).queryAllByRole("switch")).toHaveLength(0);
+  });
 });

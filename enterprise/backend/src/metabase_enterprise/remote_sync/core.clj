@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.core
   (:require
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.settings :as settings]
@@ -180,51 +181,69 @@
               row (remote-sync.db/instance-names (keyword "model" model-name) (map :id group))]
           [[model-name (:id row)] (:name row)])))
 
-(defn- card-item-models
-  "`{card-id model}` for the Cards in `entities` — only their `type` separates questions from models and
-  metrics, and the eligibility select doesn't carry it."
+(defn- card-item-details
+  "`{card-id {:model model :display display}}` for the Cards in `entities`. Their `type` is what separates
+  questions from models and metrics, and `display` is what lets clients show a question's visualization
+  icon instead of a generic one; the eligibility select carries neither."
   [entities]
   (when-let [ids (seq (keep #(when (= "Card" (:model %)) (:id %)) entities))]
     (into {}
-          (map (fn [{:keys [id type]}]
-                 [id (case (keyword type)
-                       :model  "dataset"
-                       :metric "metric"
-                       "card")]))
+          (map (fn [{:keys [id type display]}]
+                 [id {:model   (case (keyword type)
+                                 :model  "dataset"
+                                 :metric "metric"
+                                 "card")
+                      ;; Named for the wire, as the dirty-changes payload already does for `display`.
+                      :display (some-> display name)}]))
           ;; :card_schema is required alongside :type — selecting it runs Card's schema upgrades.
           (remote-sync.db/card-types ids))))
 
 (defn- describe-entities
-  "`[{:model :id :name}]` for `entities`, which are `{:model \"Card\" :id 412}` maps, in the order given."
+  "`[{:model :id :name}]` for `entities`, which are `{:model \"Card\" :id 412}` maps, in the order given.
+  Cards carry `:display` too, so clients can pick the visualization icon."
   [entities]
-  (let [names       (entity-names entities)
-        card-models (card-item-models entities)]
+  (let [names        (entity-names entities)
+        card-details (card-item-details entities)]
     (mapv (fn [{:keys [model id]}]
-            {:model (if (= "Card" model)
-                      (get card-models id "card")
-                      (dependency-item-model model))
-             :id    id
-             :name  (get names [model id])})
+            ;; Keyed by id alone, so only consult it once the entity is known to be a Card.
+            (let [card (when (= "Card" model) (get card-details id))]
+              (cond-> {:model (if (= "Card" model)
+                                (:model card "card")
+                                (dependency-item-model model))
+                       :id    id
+                       :name  (get names [model id])}
+                (:display card) (assoc :display (:display card)))))
           entities)))
 
+(defn- remedy-collection
+  "The collection a remedy points at, as clients need it: enough to name the row, switch it on, and pick
+  the same icon the collection would get anywhere else."
+  [collection]
+  {:id       (:id collection)
+   :name     (:name collection)
+   :type     (:type collection)
+   :personal (some? (:personal_owner_id collection))})
+
 (defn- sync-remedy
-  "What an admin would have to sync for `dep` to be covered: a specific top-level collection, or the
-  Library for models whose eligibility keys on it (snippets) rather than on their own collection.
-  `:none` when the dependency lives outside any collection."
-  [{:keys [model instance]} collections top-levels]
+  "What an admin would have to sync for `dep` to be covered: a specific top-level collection, or
+  `:library` for models whose eligibility keys on the Library (snippets) on an instance that hasn't got
+  one yet — there being no collection to name. The Library itself is an ordinary top-level collection,
+  so once it exists it is reported as one. `:none` when the dependency lives outside any collection."
+  [{:keys [model instance]} collections top-levels library]
   (let [top (some->> (:collection_id instance)
                      (get collections)
                      top-level-ancestor-id
                      (get top-levels))]
     (cond
       (= :library-synced (get-in (spec/spec-for-model-key (keyword "model" model)) [:eligibility :type]))
-      {:type :library}
+      (if library
+        {:type       :collection
+         :collection (remedy-collection library)}
+        {:type :library})
 
       top
       {:type       :collection
-       :collection {:id       (:id top)
-                    :name     (:name top)
-                    :personal (some? (:personal_owner_id top))}}
+       :collection (remedy-collection top)}
 
       :else
       {:type :none})))
@@ -239,18 +258,65 @@
       {:collection (select-keys collection [:id :name])})
     {:collection nil}))
 
+(defn- referencing-entities
+  "`[model-name id]` pairs naming the entities that reference `dep`, in the order the traversal found them.
+  Nested models (DashboardCard, DashboardCardSeries, Action) fall away as they do for dependents — they
+  have no name of their own, and the parent that does is in the same path."
+  [dep]
+  (distinct (for [path            (:used-by dep)
+                  [model-name id] path
+                  :when           (contains? model-name->collection-item-model model-name)]
+              [model-name id])))
+
+(defn- describe-used-by
+  "The rendered `:used-by` of each dependency in `deps`, positionally. Names resolve in a single pass over
+  the whole set, so a refusal naming dozens of dependencies costs the same few selects as one naming a
+  single dependency."
+  [deps]
+  (let [entities  (vec (distinct (mapcat referencing-entities deps)))
+        described (zipmap entities
+                          (describe-entities (mapv (fn [[model-name id]] {:model model-name :id id})
+                                                   entities)))]
+    (mapv #(mapv described (referencing-entities %)) deps)))
+
+(defn- dependency-key
+  "Identity of a dependency in the traversal's own terms, which is how [[referencing-entities]] names it."
+  [{:keys [model id]}]
+  [model id])
+
+(defn- subsumed-dependency?
+  "Whether reporting `dep` would tell an admin nothing new: everything that reaches it is itself an
+  ineligible dependency whose remedy is the same, so the row that fixes it is already on screen. Click
+  behaviour pointing at an unsynced dashboard drags in every card that dashboard holds, and those cards
+  are covered by syncing the dashboard's collection. A referrer with a *different* remedy doesn't
+  subsume — that one needs its own row, or the next save is refused for a reason never shown."
+  [dep remedies]
+  (when-let [referrers (seq (referencing-entities dep))]
+    (let [remedy (get remedies (dependency-key dep))]
+      ;; Referrers outside `remedies` are eligible content, so they never subsume.
+      (every? #(= remedy (get remedies %)) referrers))))
+
 (defn- describe-dependencies
   "Renders [[collections/ineligible-dependencies]] for the API: what each dependency is, the collection it
-  lives in, and the collection (or the Library) that would have to be synced to cover it."
+  lives in, the entities that reference it, and the collection (or the Library) that would have to be
+  synced to cover it. Dependencies the traversal only reached through another one with the same remedy
+  are dropped — see [[subsumed-dependency?]]."
   [deps]
   (let [collections (collections-by-id (map (comp :collection_id :instance) deps))
-        top-levels  (collections-by-id (map top-level-ancestor-id (vals collections)))]
-    (mapv (fn [described {:keys [instance] :as dep}]
+        top-levels  (collections-by-id (map top-level-ancestor-id (vals collections)))
+        ;; Resolved once for the whole refusal rather than per snippet dependency.
+        library     (collections/library-collection)
+        remedies    (zipmap (map dependency-key deps)
+                            (map #(sync-remedy % collections top-levels library) deps))
+        reported    (into [] (remove #(subsumed-dependency? % remedies)) deps)]
+    (mapv (fn [described used-by {:keys [instance] :as dep}]
             (merge described
-                   {:remedy (sync-remedy dep collections top-levels)}
+                   {:remedy  (get remedies (dependency-key dep))
+                    :used_by used-by}
                    (dependency-collection instance collections)))
-          (describe-entities deps)
-          deps)))
+          (describe-entities reported)
+          (describe-used-by reported)
+          reported)))
 
 (defn- describe-dependents
   "Renders [[collections/remote-synced-dependents]] for the API. Each dependent arrives as a path map like
@@ -269,7 +335,7 @@
   Unlike [[collections/check-non-remote-synced-dependencies]] this reports every offending collection
   rather than throwing on the first, so an admin sees the whole picture in one pass. Realized eagerly:
   eligibility only reads correctly against the pending updates, so nothing may be left for
-  [[describe-dependency-failure]] to force after the transaction rolls back."
+  [[describe-required-syncs]] to force after the transaction rolls back."
   [collections-to-sync]
   (vec
    (for [collection collections-to-sync
@@ -289,10 +355,41 @@
          :when (seq dependents)]
      {:collection collection :dependents (vec dependents)})))
 
-(defn- describe-dependency-failure
-  [{:keys [collection dependencies]}]
-  {:collection   (select-keys collection [:id :name])
-   :dependencies (describe-dependencies dependencies)})
+(defn- group-remedy
+  "The remedy an entry is keyed on. A `:none` remedy carries the collection the dependency lives in —
+  the only one there is to name — keeping that key's own distinction, where nil is the root collection
+  and an absent key is a collection we could not resolve."
+  [{:keys [remedy] :as described}]
+  (if (= :none (:type remedy))
+    (cond-> remedy
+      (contains? described :collection) (assoc :collection (:collection described)))
+    remedy))
+
+(defn- remedy-syncable?
+  "Whether an admin can switch this remedy on from the settings list. A personal collection is named so
+  the refusal makes sense, but it can never be synced."
+  [{:keys [type collection]}]
+  (boolean (and (= :collection type) (not (:personal collection)))))
+
+(defn- describe-required-syncs
+  "The refusal as clients render it: one entry per collection an admin would act on, carrying the
+  dependencies it covers and the selected collections it unblocks. Grouping by remedy rather than by
+  selection is what collapses a dependency that blocks two selected collections into a single entry."
+  [failures]
+  (let [entries   (vec (for [{:keys [collection dependencies]} failures
+                             described (describe-dependencies dependencies)]
+                         {:remedy (group-remedy described)
+                          :blocks (select-keys collection [:id :name])
+                          :dep    (dissoc described :remedy)}))
+        by-remedy (group-by :remedy entries)]
+    ;; Ordered by first appearance rather than by `group-by`, whose order isn't guaranteed.
+    (mapv (fn [remedy]
+            (let [group (get by-remedy remedy)]
+              {:remedy       remedy
+               :syncable     (remedy-syncable? remedy)
+               :blocks       (vec (distinct (map :blocks group)))
+               :dependencies (into [] (m/distinct-by (juxt :model :id)) (map :dep group))}))
+          (distinct (map :remedy entries)))))
 
 (defn- describe-dependent-failure
   [{:keys [collection dependents]}]
@@ -310,7 +407,7 @@
       (ex-info (ex-message e)
                {:status-code 400
                 :error_code  "unsynced-dependencies"
-                :errors      {:collections (mapv describe-dependency-failure unsynced-dependencies)}})
+                :errors      {:required (describe-required-syncs unsynced-dependencies)}})
 
       remote-synced-dependents
       (ex-info (ex-message e)
