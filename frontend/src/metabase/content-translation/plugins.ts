@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
+import { definePluginSlot } from "metabase/plugins";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import { definePluginSlot } from "metabase/plugins/slot";
 import type { HoveredObject } from "metabase/viz-core";
 import type { EntityToken } from "metabase-types/api/entity";
 
