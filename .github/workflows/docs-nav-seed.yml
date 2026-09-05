@@ -1,0 +1,133 @@
+name: Seed docs/util/data/nav.yml (one-off)
+
+# One-off migration: creates docs/util/data/nav.yml on each target branch, seeded from
+# docs.metabase.github.io's per-version nav file. After this merges everywhere, that file
+# becomes the source of truth for doc nav, and docs.metabase.github.io generates its versioned
+# copies from it instead of the other way around (https://github.com/metabase/docs.metabase.github.io/pull/1315).
+#
+# Safe to re-run: any branch that already has docs/util/data/nav.yml, or that already has an
+# open add-docs-nav-yml-<branch> seed branch/PR, is skipped.
+on:
+  push:
+    branches:
+      - gro-686-seed-docs-nav
+  workflow_dispatch:
+    inputs:
+      branches:
+        description: 'Comma separated target branches, e.g. "release-x.44.x,master". Pass "all" for the full default list: release-x.44.x through release-x.63.x plus master.'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  params:
+    name: Build branch matrix
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: 'package.json'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: build
+        env:
+          # Push is a test trigger for this workflow, so limit it to a single version (not "all")
+          BRANCHES_INPUT: ${{ github.event_name == 'push' && 'release-x.45.x' || inputs.branches }}
+        run: echo "matrix=$(bun .github/scripts/docs-nav-seed-matrix.ts)" >> "$GITHUB_OUTPUT"
+
+  seed-nav-file:
+    needs: params
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.params.outputs.matrix) }}
+    name: Seed nav.yml on ${{ matrix.branch }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    env:
+      TARGET_BRANCH: ${{ matrix.branch }}
+      SOURCE_FILE: ${{ matrix.source_file }}
+      URL_PREFIX: ${{ matrix.url_prefix }}
+      SEED_BRANCH: add-docs-nav-yml-${{ matrix.branch }}
+    steps:
+      - name: Checkout metabase
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ matrix.branch }}
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Skip if already seeded or in progress
+        id: check
+        run: |
+          if [ -f docs/util/data/nav.yml ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "docs/util/data/nav.yml already exists on $TARGET_BRANCH, skipping"
+          elif git ls-remote --exit-code --heads origin "$SEED_BRANCH" > /dev/null; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "$SEED_BRANCH already exists, skipping (a seed PR is likely already open)"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout docs.metabase.github.io
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/checkout@v6
+        with:
+          repository: metabase/docs.metabase.github.io
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          path: docs-site
+
+        # The "Checkout metabase" step above checked out matrix.branch, which may be an old
+        # release branch without .github/scripts/docs-nav-seed-generate.ts. Fetch it from the ref
+        # that triggered this workflow instead, so generation works regardless of target branch.
+      - name: Checkout automation scripts
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
+          sparse-checkout: .github/scripts
+          path: _automation
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: steps.check.outputs.skip == 'false'
+        with:
+          bun-version-file: 'package.json'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate nav.yml
+        if: steps.check.outputs.skip == 'false'
+        env:
+          SOURCE_FILE: docs-site/${{ matrix.source_file }}
+        run: bun _automation/.github/scripts/docs-nav-seed-generate.ts
+
+      - name: Create branch and commit
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          git checkout -b "$SEED_BRANCH"
+          git add docs/util/data/nav.yml
+          git commit -m "Add docs/util/data/nav.yml (seeded from docs.metabase.github.io)"
+          git push -u origin "$SEED_BRANCH"
+
+      - name: Open pull request
+        if: steps.check.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr create \
+            --base "$TARGET_BRANCH" \
+            --head "$SEED_BRANCH" \
+            --title "Add docs/util/data/nav.yml for $TARGET_BRANCH" \
+            --body "One-off seed of \`docs/util/data/nav.yml\`, migrated from docs.metabase.github.io's \`$SOURCE_FILE\` with the \`$URL_PREFIX\` URL prefix stripped so links are relative to the docs root. Auto-generated via https://github.com/metabase/metabase/pull/81703." \
+            --label "no-backport" \
+            --label "ci:skip" \
+            --assignee bpander
