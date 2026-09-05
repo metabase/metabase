@@ -1,5 +1,5 @@
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import { PLUGIN_DATA_REFERENCE } from "metabase/querying/components/DataReference/plugin";
+import { PLUGIN_DATA_REFERENCE } from "metabase/querying/components/DataReference/plugins";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
