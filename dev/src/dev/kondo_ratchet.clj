@@ -321,7 +321,7 @@
 (defn- offset->line
   "1-based line number of character offset `i` in `content`."
   [content i]
-  (inc (count (filter #(= % \newline) (subs content 0 i)))))
+  (reduce (fn [cnt c] (cond-> cnt (= c \newline) inc)) 1 (subs content 0 i)))
 
 (defn- matches-with-offsets
   "Like re-seq, but returns `{:start _, :end _, :linters [...]}` for each match of `re` in `masked`."
