@@ -2,7 +2,7 @@ import cx from "classnames";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
-import { getAccentColors } from "metabase/ui/colors/groups";
+import { getNamedAccentColors } from "metabase/ui/colors/groups";
 import type { SingleSeries, VisualizationSettings } from "metabase-types/api";
 
 import { SeriesNameInput } from "./ChartNestedSettingSeries.styled";
@@ -42,8 +42,13 @@ const ChartNestedSettingsSeriesSingle = ({
         <ColorSelector
           withinPortal={false}
           value={computedSettings.color}
-          colors={getAccentColors()}
-          onChange={(value) => onChangeObjectSettings(object, { color: value })}
+          colors={getNamedAccentColors()}
+          onChange={(value, colorName) =>
+            onChangeObjectSettings(object, {
+              color: value,
+              color_name: colorName,
+            })
+          }
         />
         <SeriesNameInput
           className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}

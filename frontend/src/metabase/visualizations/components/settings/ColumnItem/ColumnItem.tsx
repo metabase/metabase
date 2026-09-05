@@ -29,7 +29,7 @@ export interface ColumnItemProps {
   onRemove?: (target: HTMLElement) => void;
   onEdit?: (target: HTMLElement) => void;
   onEnable?: (target: HTMLElement) => void;
-  onColorChange?: (newColor: string) => void;
+  onColorChange?: (newColor: string, colorName?: string) => void;
   accentColorOptions?: AccentColorOptions;
   onDragStart?: FlexProps["onDragStart"];
 }
