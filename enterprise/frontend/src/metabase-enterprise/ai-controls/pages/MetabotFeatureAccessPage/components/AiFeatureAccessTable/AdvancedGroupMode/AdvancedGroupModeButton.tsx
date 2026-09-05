@@ -16,7 +16,7 @@ export function AdvancedGroupModeButton() {
         className={S.button}
         onClick={toggleShowEnableModal}
         variant="default"
-        size="compact-sm"
+        size="sm"
         fz="sm"
       >
         {t`Switch to group-level permissions`}

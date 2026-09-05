@@ -20,12 +20,7 @@ const DatabaseAuthProviderSectionField = ({
 
   return (
     <FormField>
-      <Button
-        w="fit-content"
-        variant="subtle"
-        size="compact-sm"
-        onClick={handleClick}
-      >
+      <Button w="fit-content" variant="subtle" size="sm" onClick={handleClick}>
         {value ? t`Use password` : t`Use an authentication provider`}
       </Button>
     </FormField>

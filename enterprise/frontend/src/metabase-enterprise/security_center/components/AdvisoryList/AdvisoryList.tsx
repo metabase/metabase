@@ -89,7 +89,7 @@ export function AdvisoryList({
             {onAcknowledgeAll && undismissedNotAffecting.length > 0 && (
               <Button
                 variant="subtle"
-                size="compact-xs"
+                size="sm"
                 onClick={() =>
                   onAcknowledgeAll(
                     undismissedNotAffecting.map((a) => a.advisory_id),

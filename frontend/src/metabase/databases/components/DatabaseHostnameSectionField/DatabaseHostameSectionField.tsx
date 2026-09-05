@@ -20,12 +20,7 @@ const DatabaseHostnameSectionField = ({
 
   return (
     <FormField>
-      <Button
-        w="fit-content"
-        variant="subtle"
-        size="compact-sm"
-        onClick={handleClick}
-      >
+      <Button w="fit-content" variant="subtle" size="sm" onClick={handleClick}>
         {value ? t`Use account name` : t`Use hostname`}
       </Button>
     </FormField>
