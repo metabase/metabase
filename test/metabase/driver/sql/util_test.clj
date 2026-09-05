@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]))
 
 ;;; Ok to hardcode driver names here because it's for a general util function and not something that needs to be run
@@ -185,6 +186,25 @@
            (sql.u/format-sql-and-fix-params :mysql "SELECT A FROM { { #1234}} WHERE {{ STATE}  }")))
     (is (= "SELECT\n  A\nFROM\n  {{#1234}}\nWHERE\n  {{STATE}}"
            (sql.u/format-sql-and-fix-params :postgres "SELECT A FROM { { #1234}} WHERE {{ STATE}  }")))))
+
+(deftest ^:parallel fix-sql-params-no-catastrophic-backtracking-test
+  (testing "An unclosed `{ {` followed by a long run of whitespace must not trigger polynomial regex backtracking"
+    (let [payload (str "{ {" (apply str (repeat 20000 " ")))
+          timer   (u/start-timer)
+          result  (sql.u/fix-sql-params payload)
+          ms      (u/since-ms timer)]
+      (is (= payload result))
+      (is (< ms 1000) (format "fix-sql-params took %.0fms" ms))))
+  (testing "A brace payload inside a string literal survives formatting untouched and quickly"
+    (let [sql    (str "SELECT '{{" (apply str (repeat 20000 " ")) "' AS x")
+          timer  (u/start-timer)
+          result (sql.u/format-sql-and-fix-params :standardsql sql)
+          ms     (u/since-ms timer)]
+      (is (string? result))
+      (is (< ms 5000) (format "format-sql-and-fix-params took %.0fms" ms))))
+  (testing "Ordinary tags still get their whitespace collapsed"
+    (is (= "SELECT {{#1234}} {{STATE}}"
+           (sql.u/fix-sql-params "SELECT { { #1234 } } {{ STATE}  }")))))
 
 (defmulti pound-sign-is-special-word-char?
   {:arglists '([driver-or-dialect])}
