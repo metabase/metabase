@@ -554,8 +554,8 @@
         formatted-values (format-values values value-formatters)]
     (if-not data
       formatted-values
-      (map-indexed
-       (fn [index value]
+      (perf/mapv-indexed
+       (fn [^long index value]
          (assoc value
                 :clicked {:data       data
                           :dimensions dimensions
