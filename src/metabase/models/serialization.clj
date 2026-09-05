@@ -1631,9 +1631,17 @@
           (m/update-existing-in [:pivot_table.column_split :columns] export-mbql)))
 
 (defn- import-pivot-table [settings]
+  ;; `:rows`/`:columns` are each a *list* of independent column refs -- which can be `[:field ...]` clauses, but
+  ;; can also be bare column-name strings (e.g. for a pivot built off a native query's result columns). export-mbql
+  ;; already maps over sequential values element-by-element for exactly this reason (see its `sequential?` branch);
+  ;; import-mbql doesn't, since most of its callers hand it a single clause/query tree rather than a flat list. Passing
+  ;; the whole array to import-mbql in one call made it try to `lib/normalize` the array itself, and a bare string like
+  ;; "SOURCE" heading that array looks -- to normalize's clause-inference heuristic -- exactly like an MBQL clause
+  ;; tagged `:SOURCE`, which doesn't exist, so it blew up (metabase#74868). Mapping over each entry keeps every
+  ;; element's own shape (clause or bare string) intact.
   (some-> settings
-          (m/update-existing-in [:pivot_table.column_split :rows] import-mbql)
-          (m/update-existing-in [:pivot_table.column_split :columns] import-mbql)))
+          (m/update-existing-in [:pivot_table.column_split :rows] #(mapv import-mbql %))
+          (m/update-existing-in [:pivot_table.column_split :columns] #(mapv import-mbql %))))
 
 (defn- export-column-settings
   "Column settings use a JSON-encoded string as a map key, and it contains field numbers.
