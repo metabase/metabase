@@ -33,7 +33,7 @@ export function ColumnLabelOptions(props: ColumnLabelOptionsProps) {
           <Icon name="ellipsis" c="text-primary" />
         </ActionIcon>
       </Popover.Target>
-      <Popover.Dropdown p="lg">
+      <Popover.Dropdown p="md">
         <Switch
           label={t`Show column labels`}
           size="sm"

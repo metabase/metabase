@@ -35,7 +35,11 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   "text-primary": ["text-primary"],
   "text-secondary": ["text-secondary"],
   "text-tertiary": ["text-tertiary", "text-disabled"],
-  background: ["background-primary", "background_page-primary"],
+  background: [
+    "background-primary",
+    "background_page-primary",
+    "background_surface-primary",
+  ],
   "background-secondary": [
     "background-secondary",
     "background-tertiary",

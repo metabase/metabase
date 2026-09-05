@@ -1,4 +1,4 @@
-import { Menu } from "@mantine/core";
+import { Menu, MenuSub } from "@mantine/core";
 
 import MenuStyles from "./Menu.module.css";
 
@@ -16,6 +16,12 @@ export const menuOverrides = {
       itemSection: MenuStyles.itemSection,
       label: MenuStyles.label,
       divider: MenuStyles.divider,
+    },
+  }),
+
+  MenuSub: MenuSub.extend({
+    defaultProps: {
+      radius: "xs",
     },
   }),
 };
