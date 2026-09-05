@@ -95,6 +95,10 @@ export {
 } from "./echarts/cartesian/utils/timeseries";
 export { getWaterfallChartModel } from "./echarts/cartesian/waterfall/model";
 export { getWaterfallChartOption } from "./echarts/cartesian/waterfall/option";
+export {
+  WATERFALL_END_KEY,
+  WATERFALL_START_KEY,
+} from "./echarts/cartesian/waterfall/constants";
 export { getSankeyLayout } from "./echarts/graph/sankey/layout";
 export { getSankeyChartColumns } from "./echarts/graph/sankey/model/dataset";
 export { getSankeyChartModel } from "./echarts/graph/sankey/model";
