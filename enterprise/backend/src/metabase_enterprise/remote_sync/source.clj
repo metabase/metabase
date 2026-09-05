@@ -13,9 +13,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
    [metabase.util.yaml :as yaml]
-   [methodical.core :as methodical])
-  (:import
-   (java.io File)))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
@@ -71,12 +69,16 @@
     (seq root-dependencies) (ingestable/wrap-root-dep-ingestable root-dependencies)))
 
 (defn entity->path
-  "The repo-relative path an extracted `entity` serializes to, using storage context `opts`."
+  "The repo-relative path an extracted `entity` serializes to, using storage context `opts`.
+
+  Always joined with `/`, never `File/separator` -- this is a git path, not a filesystem path, and git
+  paths are `/`-separated on every OS. Joining with `File/separator` produced `\\`-separated paths on
+  Windows-hosted instances, which JGit's `DirCacheEntry` rejects outright (metabase#74095)."
   [opts entity]
   (let [resolved (serialization/resolve-storage-path opts entity)
         dirnames (drop-last resolved)
         basename (str (last resolved) ".yaml")]
-    (str/join File/separator (concat dirnames [basename]))))
+    (str/join "/" (concat dirnames [basename]))))
 
 (defn entity->content
   "The serialized YAML string for an extracted `entity`."
