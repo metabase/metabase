@@ -255,8 +255,7 @@ function DataModelContent() {
                   schemaName: table?.schema,
                 })}
                 leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                p="sm"
+                variant="light"
                 size="sm"
                 onClick={() => {
                   closePreview();
@@ -322,7 +321,7 @@ function DataModelContent() {
                   tableId: table?.id,
                 })}
                 leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
+                variant="light"
                 size="sm"
                 onClick={closePreview}
               />

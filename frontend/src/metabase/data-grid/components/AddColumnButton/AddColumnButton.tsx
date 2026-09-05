@@ -22,11 +22,8 @@ export const AddColumnButton = memo(function AddColumnButton({
       style={{ marginRight }}
     >
       <Button
-        className={S.button}
-        variant="subtle"
+        variant="light"
         size="sm"
-        w={23}
-        h={23}
         leftSection={<Icon name="add" />}
         title={t`Add column`}
         aria-label={t`Add column`}

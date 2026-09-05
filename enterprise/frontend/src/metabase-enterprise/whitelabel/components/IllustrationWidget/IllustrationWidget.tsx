@@ -249,7 +249,7 @@ export function IllustrationWidget({
                   {customIllustrationSource && (
                     <Button
                       leftSection={<Icon name="close" />}
-                      variant="subtle"
+                      variant="light"
                       c="text-primary"
                       ml="lg"
                       size="sm"

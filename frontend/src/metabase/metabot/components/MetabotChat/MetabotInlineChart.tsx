@@ -241,9 +241,9 @@ function SaveChartAction({
             component={ForwardRefLink}
             to={Urls.question(question.setId(savedCardId))}
             target="_blank"
-            variant="subtle"
+            variant="transparent"
             color="text-secondary"
-            size="sm"
+            size="compact-md"
             leftSection={<Icon name="check" size={14} />}
           >
             {t`Saved`}
