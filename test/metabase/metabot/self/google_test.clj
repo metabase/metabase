@@ -133,9 +133,13 @@
                                   self.core/reducible-with-api-errors (fn [r _ _] r)
                                   debug/capture-stream                (fn [r _] r)
                                   http/request                        (fn [req] {:body req})]
-        (is (=? {:url (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
-                           "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")}
-                (google-raw {:input [{:role :user :content "hi"}]})))))))
+        (let [req (google-raw {:input [{:role :user :content "hi"}]})]
+          (is (=? {:url (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
+                             "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")}
+                  req))
+          (testing "and the thinking directive keys off the defaulted model"
+            (is (=? {:generationConfig {:thinkingConfig {:includeThoughts true}}}
+                    (json/decode+kw (:body req))))))))))
 
 (deftest google-raw-request-body-test
   (testing "the request streams its response and carries the streamGenerateContent body as JSON"
@@ -152,7 +156,8 @@
           (is (=? {:as      :stream
                    :headers {"Content-Type" "application/json"}}
                   req))
-          (is (= {:contents [{:role "user" :parts [{:text "hi"}]}]}
+          (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
+                  :generationConfig {:thinkingConfig {:includeThoughts true}}}
                  (json/decode+kw (:body req)))))))))
 
 (deftest google-raw-regional-location-host-test
@@ -745,8 +750,8 @@
     (is (false? (google/reasoning-model? "anthropic/claude-haiku-4-5@20251001")))))
 
 (deftest reasoning-model?-gemini-test
-  (testing "Gemini sends thinking only as :thought parts, which the adapter drops"
-    (is (false? (google/reasoning-model? "google/gemini-3.5-flash")))
+  (testing "catalog Geminis stream thought summaries; off-catalog Geminis stay dark"
+    (is (true?  (google/reasoning-model? "google/gemini-3.5-flash")))
     (is (false? (google/reasoning-model? "google/gemini-3.6-pro")))))
 
 (deftest reasoning-model?-unqualified-test

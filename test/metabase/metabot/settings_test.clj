@@ -187,21 +187,56 @@
         (is (false? (metabot.settings/llm-metabot-configured?)))))))
 
 (deftest metabot-supports-reasoning-test
-  (testing "only anthropic and openai models that stream reasoning report support"
+  (testing "models that stream reasoning report support; others answer false"
     (with-connections [(connection "anthropic" "anthropic")
                        (connection "openai" "openai")
                        (connection "bedrock" "bedrock")
-                       (connection "google" "google")]
+                       (connection "google" "google")
+                       (connection "azure" "azure")
+                       (connection "zai" "zai")
+                       (connection "openrouter" "openrouter")
+                       (connection "google" "google")
+                       (connection "mistral" "mistral")
+                       (connection "moonshot" "moonshot")]
       (doseq [[model-ref expected]
               {"anthropic/claude-sonnet-4-6"                true
                "anthropic/claude-haiku-4-5"                 false
                "openai/gpt-5.4"                             true
                "openai/gpt-4o"                              false
-               "bedrock/anthropic.claude-opus-4-8"          false
-               ;; google serves both wire families; only its Claude models stream reasoning back
+               "bedrock/anthropic.claude-opus-4-8"          true
+               "bedrock/anthropic.claude-haiku-4-5"         false
+               ;; requests reasoning (encrypted replay), but the mantle never
+               ;; streams summaries, so nothing renders — see bedrock/reasoning-model?
+               "bedrock/openai.gpt-5.5"                     false
+               "azure/anthropic/claude-opus-5"              true
+               "azure/anthropic/claude-haiku-4-5"           false
+               "azure/openai/gpt-5.4"                       true
+               "azure/openai/my-deployment"                 false
+               ;; a family with no deployment segment names no model
+               "azure/anthropic"                            false
+               "zai/glm-5.2"                                true
+               "zai/glm-4.7"                                false
+               "openrouter/anthropic/claude-sonnet-4.6"     true
+               "openrouter/z-ai/glm-5.2"                    true
+               ;; streams reasoning summaries under the server default
+               "openrouter/openai/gpt-5.5"                  true
+               ;; re-probed 2026-09-04: streams summaries under the explicit enable
+               "openrouter/openai/gpt-5.4"                  true
+               "openrouter/anthropic/claude-haiku-4.5"      false
+               ;; google serves both wire families; Claude partner models and catalog Geminis both stream
                "google/anthropic/claude-sonnet-4-6"         true
                "google/anthropic/claude-haiku-4-5@20251001" false
-               "google/google/gemini-3.5-flash"             false}]
+               "google/google/gemini-3.5-flash"             true
+               "google/google/gemini-3.7-flash"             true
+               ;; off-catalog: no thinking directive — see google/models.clj
+               "google/google/gemini-2.5-flash"             false
+               "mistral/mistral-medium-3-5"                 true
+               ;; catalog aliases are not resolved — see mistral/reasoning-model?
+               "mistral/mistral-medium-latest"              false
+               "moonshot/kimi-k3"                           true
+               "moonshot/kimi-k2.6"                         true
+               ;; thinking-capable but excluded from supported-models — see moonshot/reasoning-model?
+               "moonshot/kimi-k2.7-code"                    false}]
         (testing model-ref
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))
@@ -227,6 +262,12 @@
         (with-selected-model "metabase/anthropic/claude-opus-5"
           (is (false? (metabot.settings/llm-metabot-supports-fast-mode?))))))))
 
+(deftest metabot-supports-reasoning-model-less-ref-test
+  (testing "a ref with no model segment answers false rather than throwing"
+    (with-connections [(connection "bedrock" "bedrock")]
+      (with-selected-model "bedrock"
+        (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))
+
 (deftest metabot-supports-reasoning-vllm-test
   (testing "vLLM answers from what the connect-time probe recorded on the connection, since neither its catalog
            nor its model names carry a reasoning field"
@@ -240,6 +281,18 @@
     (with-connections [(connection "vllm" "vllm" {:base-url "http://vllm.internal:8000/v1"})]
       (with-selected-model "vllm/vllm-test"
         (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))
+
+(deftest metabot-supports-reasoning-managed-proxy-test
+  (testing "the managed connection answers from the model's own provider segment"
+    (with-connections [(connection "metabase" "metabase")]
+      ;; only anthropic models are servable over the proxy (openai-raw rejects
+      ;; :ai-proxy?), so only anthropic refs are exercised here
+      (doseq [[model-ref expected]
+              {"metabase/anthropic/claude-sonnet-4-6" true
+               "metabase/anthropic/claude-haiku-4-5"  false}]
+        (testing model-ref
+          (with-selected-model model-ref
+            (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))
 
 (deftest metabot-configured-with-a-keyless-vllm-connection-test
   (testing "a vLLM server started without --api-key is a complete configuration: the base URL is the credential"

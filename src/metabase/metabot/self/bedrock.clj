@@ -223,17 +223,39 @@
 
 (def ^:private anthropic-version "2023-06-01")
 
-(defn- model->family
-  "Which mantle API family serves `model`, by vendor prefix: `:anthropic` or `:openai`."
+(defn- model-family
+  "Which mantle API family serves `model`, by vendor prefix: `:anthropic`, `:openai`, or nil."
   [model]
   (cond
-    (str/starts-with? model "anthropic.") :anthropic
-    (str/starts-with? model "openai.")    :openai
-    :else
-    (throw (ex-info (tru "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported." model)
-                    {:api-error  true
-                     :error-code :unsupported-model
-                     :model      model}))))
+    (str/starts-with? (str model) "anthropic.") :anthropic
+    (str/starts-with? (str model) "openai.")    :openai))
+
+(defn- model->family
+  "Like [[model-family]], but throws for models outside the supported families."
+  [model]
+  (or (model-family model)
+      (throw (ex-info (tru "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported." model)
+                      {:api-error  true
+                       :error-code :unsupported-model
+                       :model      model}))))
+
+(defn reasoning-model?
+  "Whether `model` streams renderable reasoning back to us.
+
+  False (rather than [[model->family]]'s throw) outside the supported families:
+  the settings capability gate asks about whatever model is selected."
+  [model]
+  (case (model-family model)
+    :anthropic (claude/reasoning-model? model)
+    ;; The mantle's Responses surface accepts the reasoning request fields and
+    ;; the GPT models do reason (at a per-model default effort: gpt-5.4 "none",
+    ;; gpt-5.5 "medium"), but it never streams reasoning summaries — `summary`
+    ;; comes back empty at every effort/summary combination — so nothing will
+    ;; ever render. The request deliberately keeps its reasoning fields (see
+    ;; [[openai/openai-request-body]]): where the model reasons by default they
+    ;; buy encrypted-content replay across tool calls.
+    :openai    false
+    nil        false))
 
 (defn ->mantle-anthropic-body
   "Adapt a canonical Anthropic Messages request body for the mantle endpoint.
@@ -250,7 +272,7 @@
   `:ai-proxy?` is not supported for Bedrock and throws when true."
   [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (let [opts   (assoc opts :model model :reasoning? false :fast? false)
+  (let [opts   (assoc opts :model model :fast? false)
         family (model->family model)
         {:keys [path headers req]}
         (case family

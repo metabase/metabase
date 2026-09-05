@@ -71,6 +71,61 @@
                                    :temperature 0.2
                                    :max-tokens  128})))))
 
+(deftest ^:parallel request-body-thinking-directive-test
+  (testing "whitelisted models get thinking enabled by default (making the server default explicit)"
+    (is (= {:type "enabled"}
+           (:thinking (zai/zai-request-body {:input [{:role :user :content "hi"}]})))))
+  (testing ":reasoning? false disables thinking explicitly — omitting the key would leave it on"
+    (is (= {:type "disabled"}
+           (:thinking (zai/zai-request-body {:input      [{:role :user :content "hi"}]
+                                             :reasoning? false})))))
+  (testing "structured output disables thinking: it would spend the output budget invisibly"
+    (is (= {:type "disabled"}
+           (:thinking (zai/zai-request-body {:input  [{:role :user :content "hi"}]
+                                             :schema {:type "object"}})))))
+  (testing "tool_choice \"required\" keeps thinking on — Z.AI accepts the combination"
+    (is (= {:type "enabled"}
+           (:thinking (zai/zai-request-body {:input       [{:role :user :content "hi"}]
+                                             :tools       [(metabot.tu/get-time-tool)]
+                                             :tool_choice "required"})))))
+  (testing "non-whitelisted models get an explicit disable — glm-4.7 thinks compulsorily by default,
+           and the xf forwards reasoning unconditionally (disable accepted, probed 2026-09-03)"
+    (are [opts] (= {:type "disabled"}
+                   (:thinking (zai/zai-request-body
+                               (assoc opts :model "glm-4.7" :input [{:role :user :content "hi"}]))))
+      {}
+      {:schema {:type "object"}}))
+  (testing "pre-4.5 models tolerate the disable (probed 2026-09-03) and do not think anyway"
+    (is (= {:type "disabled"}
+           (:thinking (zai/zai-request-body {:model "glm-4-32b-0414-128k"
+                                             :input [{:role :user :content "hi"}]})))))
+  (testing "thinking-only models reject the disable (error 1210) and get no directive at all"
+    (is (not (contains? (zai/zai-request-body {:model "glm-5.3"
+                                               :input [{:role :user :content "hi"}]})
+                        :thinking)))))
+
+(deftest ^:parallel reasoning-model?-test
+  (are [model expected] (= expected (zai/reasoning-model? model))
+    "glm-5.2" true
+    "glm-4.7" false
+    nil       false))
+
+(deftest ^:parallel reasoning-gate-matches-request-config-test
+  (testing "every whitelisted model gates true and requests thinking under default opts"
+    (doseq [model (keys @#'zai/supported-models)]
+      (testing model
+        (is (true? (zai/reasoning-model? model)))
+        ;; thinking-only models reject the directive and get none — their thinking is on
+        ;; server-side regardless, so the gate still holds
+        (is (= (if (@#'zai/thinking-only-models model) nil {:type "enabled"})
+               (:thinking (zai/zai-request-body {:model model
+                                                 :input [{:role :user :content "hi"}]})))))))
+  (testing "a non-whitelisted model gates false and its thinking is explicitly disabled"
+    (is (false? (zai/reasoning-model? "glm-4.7")))
+    (is (= {:type "disabled"}
+           (:thinking (zai/zai-request-body {:model "glm-4.7"
+                                             :input [{:role :user :content "hi"}]}))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
 ;;;
@@ -100,9 +155,10 @@
                              (self.core/aisdk-xf))
                     chunks))))))
 
-(deftest ^:parallel zai-reasoning-deltas-ignored-test
-  (testing "thinking-mode reasoning_content deltas produce no text blocks"
+(deftest ^:parallel zai-reasoning-deltas-become-reasoning-parts-test
+  (testing "thinking-mode reasoning_content deltas stream as a reasoning part ahead of the text"
     (is (=? [{:type :start}
+             {:type :reasoning :text "Let me think about 2+2."}
              {:type :text :text "4"}
              {:type :usage}]
             (into [] (comp (zai/zai->aisdk-chunks-xf)
