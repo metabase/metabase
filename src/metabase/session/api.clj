@@ -16,6 +16,7 @@
    [metabase.session.db :as session.db]
    [metabase.session.models.session :as session]
    [metabase.session.schema :as session.schema]
+   [metabase.session.settings :as session.settings]
    [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
@@ -146,13 +147,38 @@
 
 (defenterprise verify-second-factor!
   "Verify a second-factor code (TOTP, recovery, or emailed one-time code) for user-id, atomically
-  consuming it plus the challenge jti. Returns boolean.
+  consuming it plus the challenge jti.
 
-  OSS fallback returns false — OSS can never have issued a challenge token (the MFA gate lives in
+  Returns the AuthIdentity of the 2nd factor method verified, else nil.
+
+  OSS fallback returns nil — OSS can never have issued a challenge token (the MFA gate lives in
   EE), so this is unreachable in practice."
   metabase-enterprise.mfa.core
   [_user-id _code _jti]
-  false)
+  nil)
+
+(defenterprise start-enrollment!
+  "Begin enrollment of a new authenticator for a user who is not currently enrolled, and attempting to log in.
+  Only called when the instance is configured to *require* MFA, but this user is not enrolled.
+
+  Precondition: caller must validate that the correct username and password for this `user-id` have been provided.
+
+  Returns a map intended for the `:body` of a response, containing the plaintext `:secret` and the `:otpauth_uri`
+  used for the QR code. Returns nil if any conditions fail (e.g. if the user is already enrolled).
+
+  OSS always returns nil, since new enrollments are not allowed without the `:multi-factor-auth` feature."
+  metabase-enterprise.mfa.core
+  [_user-id]
+  nil)
+
+(defenterprise confirm-enrollment!
+  "Complete enrollment of a new authenticator for a currently pending enrollment. Requires the `user-id` and `code`,
+  plus the single-use `jti` from a [[metabase.session.challenge/issue-enrollment-token]].
+
+  OSS always returns nil, signaling that enrollment has failed."
+  metabase-enterprise.mfa.core
+  [_user-id _code _jti]
+  nil)
 
 (defenterprise send-mfa-email-otp!
   "Generate + email a one-time fallback code for user-id's confirmed enrollment; rejects a jti that
@@ -177,6 +203,32 @@
   [& body]
   `(do-http-401-on-error (fn [] ~@body)))
 
+(defn- mandatory-mfa-enrollment!
+  "Called by the login handler when MFA is required and the user is not enrolled.
+
+  This process and the wire response can be seen as combo of two things:
+  - Start the MFA enrollment process, creating a stub `:model/AuthIdentity` etc.
+      - Response contains the plaintext `secret` and an `otpauth_uri` for the QR code, just like authenticated
+        enrollment in [[metabase-enterprise.mfa.management]].
+  - Include an opaque JWT `enrollment_token`, which securely identifies the bearer to later requests as the user who
+    just correctly entered their password. The JWT can only be used for enrollment of a new MFA setup, and can only
+    be (successfully) used once.
+
+  These tokens and the current OTP should be turned in to `/api/session/mfa/enroll` to complete enrollment and log in."
+  [{{user-id :id} :user
+    :mfa/keys [methods first-factor]
+    :as _login-result}]
+  ;; Precondition for [[enrollment/start-enrollment!]] is met: this user just provided their username and password
+  ;; to `POST /api/session` and they have been successfully validated.
+  (let [enrollment-details (or (start-enrollment! user-id)
+                               (throw (ex-info (tru "Two-factor authentication is already set up. Disable it before re-enrolling.")
+                                               {:status-code 400})))]
+    {:status 200
+     :body   (assoc enrollment-details
+                    :mfa_enrollment   true
+                    :methods          methods
+                    :enrollment_token (session.challenge/issue-enrollment-token user-id first-factor))}))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -192,17 +244,29 @@
   (let [ip-address (request/ip-address request)
         do-login   (fn []
                      (let [result (login username password (request/device-info request))]
-                       (if (:mfa/pending? result)
-                         ;; First factor OK, but a second factor is required: build and sign a
-                         ;; challenge token here (OSS session machinery) and return it instead of
-                         ;; a session. No cookies are set yet.
+                       (cond
+                         ;; First factor OK, but this user does not have a second factor enrolled. However the
+                         ;; instance is configured to require MFA, so force this user to enroll a second factor.
+                         ;; Expects the user to send a POST /mfa/enroll.
+                         ;; No cookies are set here.
+                         (:mfa/enroll?  result)
+                         (mandatory-mfa-enrollment! result)
+
+                         (:mfa/pending? result)
+
+                         ;; First factor OK, but the user has a second factor configured. Build and sign a
+                         ;; challenge token here (OSS session machinery) and return it instead of a session.
+                         ;; Expects the user to send a POST /mfa/verify.
+                         ;; No cookies are set yet.
                          {:status 200
                           :body   {:mfa_required    true
                                    :methods         (:mfa/methods result)
                                    :challenge_token (session.challenge/issue-challenge-token
                                                      (get-in result [:user :id])
                                                      (:mfa/first-factor result))}}
-                         (session-response result request))))]
+
+                         ;; Otherwise, a straightforward single factor login.
+                         :else (session-response result request))))]
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
@@ -353,10 +417,12 @@
       (not (:success? auth-result))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))
 
-      ;; The password change succeeded, but the user is MFA-enrolled: issue no session, or anyone
-      ;; who can trigger a reset email routes around the second factor. They log in normally (and
-      ;; get challenged) with the new password.
-      (:mfa/pending? auth-result)
+      ;; The password change succeeded, but an MFA is required. Either the user is already enrolled with MFA or they
+      ;; are unenrolled but `mfa-required?`. Issue no session, or anyone who can trigger a password reset can bypass
+      ;; MFA! The user logs in normally with their new password, either providing their second factor or configuring
+      ;; MFA since it's required.
+      (or (session.settings/mfa-required?)
+          (:mfa/pending? auth-result))
       {:success true}
 
       :else
@@ -475,25 +541,86 @@
             (throw (ex-info (tru "Authentication session expired. Please log in again.")
                             {:status-code 401})))
         user-id      (:user-id claims)
-        first-factor (auth-identity/provider-string->keyword (:provider claims))]
-    ;; Throttle only failed attempts — counting successes would lock out a legitimately busy user.
-    ;; The inner fn throws on failure so call-with-failure-throttling records the attempt.
-    (call-with-failure-throttling
-     [[(verify-throttlers :ip-address) (request/ip-address request)]
-      [(verify-throttlers :user-id) user-id]]
-     (fn []
-       (when-not (verify-second-factor! user-id code jti)
-         (events/publish-event! :event/mfa-verification-failed
-                                {:object (session.db/user user-id)})
-         (throw (ex-info (tru "Invalid authentication code.") {:status-code 401})))))
-    (let [user (session.db/user-login-status user-id)]
-      ;; the account can be deactivated (or deleted) between the password step and here; a
-      ;; challenge token must not outlive the account. Same 401 as a bad token — no oracle.
-      (when-not (:is_active user)
-        (throw (ex-info (tru "Authentication session expired. Please log in again.")
-                        {:status-code 401})))
-      (session-response (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor)
-                        request))))
+        first-factor (auth-identity/provider-string->keyword (:provider claims))
+        ;; Throttle only failed attempts — counting successes would lock out a legitimately busy user.
+        ;; The inner fn throws on failure so call-with-failure-throttling records the attempt.
+        mfa-auth-identity (call-with-failure-throttling
+                           [[(verify-throttlers :ip-address) (request/ip-address request)]
+                            [(verify-throttlers :user-id) user-id]]
+                           (fn []
+                             (or
+                              (verify-second-factor! user-id code jti)
+                              (do
+                                (events/publish-event! :event/mfa-verification-failed
+                                                       {:object (session.db/user user-id)})
+                                (throw (ex-info (tru "Invalid authentication code.") {:status-code 401}))))))
+        user (session.db/user-login-status user-id)]
+    ;; the account can be deactivated (or deleted) between the password step and here; a
+    ;; challenge token must not outlive the account. Same 401 as a bad token — no oracle.
+    (when-not (:is_active user)
+      (throw (ex-info (tru "Authentication session expired. Please log in again.")
+                      {:status-code 401})))
+    (session-response (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor (:id mfa-auth-identity))
+                      request)))
+
+;; No response schema: the success path returns a full ring response (session cookies must be set),
+;; which the response-schema machinery would validate as the body. Same constraint as
+;; `POST /api/session`. Body shape: `{:id <session-key>}`.
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/mfa/enroll"
+  "Complete a two-step login by *enrolling* a second factor for the first time. This happens when a user without
+  MFA enrolled logs in for the first time after the instance starts *requiring* MFA.
+
+  After confirming their email and password, the user will see an MFA enrollment screen, served by `POST /session`
+  after it accepts the password. That body includes a single-use, signed JWT similar to the one used by an MFA
+  challenge (see `POST /mfa/verify` above) as well as the details needed to show the QR code for enrolling MFA.
+
+  This request must include the JWT (`enrollment_token`) and the OTP itself (`code`). If enrollment succeeds, both
+  the pending enrollment and the JWT's `jti` are consumed, preventing reuse of either.
+
+  A successful response **sets the session cookie, logging the user in!** Its body contains the recovery codes
+  in the same form as enrollment when already authenticated."
+  [_route-params
+   _query-params
+   ;; `:remember` is not bound here but is part of the contract: `request/set-session-cookies`
+   ;; reads it from the raw body to decide session-vs-permanent cookie, exactly as on
+   ;; `POST /api/session` — for a newly enrolled MFA user THIS request is the one that creates the session.
+   {enrollment-token :enrollment_token
+    code             :code} :- [:map
+                                [:enrollment_token ms/NonBlankString]
+                                [:code             ms/NonBlankString]
+                                [:remember         {:optional true} :boolean]]
+   request]
+  (let [claims         (or (session.challenge/verify-enrollment-token enrollment-token)
+                           (throw (ex-info (tru "Authentication session expired. Please log in again.")
+                                           {:status-code 401})))
+        {:keys [jti]}  claims
+        _              (when-not jti
+                         (throw (ex-info (tru "Authentication session expired. Please log in again.")
+                                         {:status-code 401})))
+        user-id        (:user-id claims)
+        first-factor   (auth-identity/provider-string->keyword (:provider claims))
+        ;; Throttle only failed attempts — counting successes would lock out a legitimately busy user.
+        ;; The inner fn throws on failure so call-with-failure-throttling records the attempt.
+        {:keys [recovery-codes
+                mfa-auth-identity-id]} (call-with-failure-throttling
+                                        [[(verify-throttlers :ip-address) (request/ip-address request)]
+                                         [(verify-throttlers :user-id) user-id]]
+                                        (fn []
+                                          (or
+                                           (confirm-enrollment! user-id code jti)
+                                           (do (events/publish-event! :event/mfa-required-enrollment-failed
+                                                                      {:object (session.db/user user-id)})
+                                               (throw (ex-info (tru "Invalid authentication code.") {:status-code 401}))))))
+        user           (session.db/user-login-status user-id)]
+    ;; the account can be deactivated (or deleted) between the password step and here; an
+    ;; enrollment token must not outlive the account. Same 401 as a bad token — no oracle.
+    (when-not (:is_active user)
+      (throw (ex-info (tru "Authentication session expired. Please log in again.")
+                      {:status-code 401})))
+    (-> (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor mfa-auth-identity-id)
+        (session-response request)
+        (assoc-in [:body :recovery_codes] recovery-codes))))
 
 (api.macros/defendpoint :post "/mfa/send-email-otp" :- [:map [:success [:= true]]]
   "Email a one-time code as a fallback second factor (for a user who lost their authenticator but

@@ -15,11 +15,9 @@
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.settings :as mfa.settings]
    [metabase-enterprise.mfa.throttling :as mfa.throttling]
-   [metabase-enterprise.mfa.totp :as totp]
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.appearance.core :as appearance]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
@@ -110,14 +108,11 @@
                  (throw (ex-info (tru "Invalid password.")
                                  {:status-code 400
                                   :errors      {:password (tru "Invalid password.")}})))
-               (let [secret     (or (enrollment/start-enrollment! api/*current-user-id*)
-                                    (throw (ex-info (tru "Two-factor authentication is already set up. Disable it before re-enrolling.")
-                                                    {:status-code 400})))
-                     user-email (mfa.db/user-email api/*current-user-id*)]
-                 {:secret      secret
-                  :otpauth_uri (totp/otpauth-uri {:issuer (or (appearance/site-name) "Metabase")
-                                                  :account user-email
-                                                  :secret  secret})}))))
+               ;; Precondition for [[enrollment/start-enrollment!]] is met: this user is logged in and we just
+               ;; re-validated their password.
+               (or (enrollment/start-enrollment! api/*current-user-id*)
+                   (throw (ex-info (tru "Two-factor authentication is already set up. Disable it before re-enrolling.")
+                                   {:status-code 400}))))))
 
 (api.macros/defendpoint :post "/enroll/confirm" :- [:map
                                                     [:recovery_codes [:sequential ms/NonBlankString]]]
@@ -127,14 +122,14 @@
    _query-params
    {:keys [code]} :- [:map [:code ms/NonBlankString]]]
   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
-  (let [codes (throttled :enroll
-                         (fn []
-                           (or (enrollment/confirm-enrollment! api/*current-user-id* code)
-                               (throw (invalid-code-ex)))))
+  (let [{:keys [recovery-codes]} (throttled :enroll
+                                            (fn []
+                                              (or (enrollment/confirm-enrollment! api/*current-user-id* code)
+                                                  (throw (invalid-code-ex)))))
         user  (mfa.db/user api/*current-user-id*)]
     (messages/send-mfa-enabled-email! (:email user))
     (events/publish-event! :event/mfa-enrolled {:object user})
-    {:recovery_codes codes}))
+    {:recovery_codes recovery-codes}))
 
 (api.macros/defendpoint :post "/disable" :- nil
   "Disable two-factor authentication for the current user. Re-auth is a fresh second factor — a

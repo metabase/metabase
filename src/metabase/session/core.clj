@@ -18,6 +18,7 @@
  (metabase.session.settings
   enable-password-login
   enable-password-login!
+  mfa-required?
   password-complexity
   session-cookies))
 

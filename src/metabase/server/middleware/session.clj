@@ -112,7 +112,8 @@
                                          (premium-features/enable-advanced-permissions?)
                                          (and (premium-features/enable-tenants?)
                                               (setting/get :use-tenants))
-                                         (request/enabled-session-timeout-seconds))
+                                         (request/enabled-session-timeout-seconds)
+                                         (session/mfa-required?))
             ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
             (update :is-group-manager? boolean))))
 

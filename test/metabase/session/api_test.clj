@@ -710,7 +710,8 @@
   (testing "LDAP login - no fallback when password login disabled"
     (ldap.test/with-ldap-server!
       (mt/with-premium-features #{:disable-password-login}
-        (mt/with-temporary-setting-values [enable-password-login false]
+        (mt/with-temporary-setting-values [enable-password-login false
+                                           mfa-enforcement       :off]
           (is (= "Password login is disabled for this instance."
                  (mt/client :post 401 "session" (mt/user->credentials :crowberto)))))))))
 
@@ -732,7 +733,8 @@
 (deftest ldap-login-fallback-for-broken-settings-test
   (testing "LDAP login - fallback to local for broken LDAP settings"
     (ldap.test/with-ldap-server!
-      (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
+      (mt/with-temporary-setting-values [mfa-enforcement :off
+                                         ldap-user-base  "cn=wrong,cn=com"]
         (mt/with-temp [:model/User {user-id :id} {:email "sally.brown@metabase.com"}]
           (auth-identity/set-password! user-id "1234")
           (is (malli= SessionResponse
@@ -742,7 +744,8 @@
 (deftest ldap-login-fallback-for-slow-ldap-test
   (testing "LDAP login - fallback to local for slow LDAP"
     (ldap.test/with-ldap-server!
-      (mt/with-temporary-setting-values [ldap-timeout-seconds 0.01]
+      (mt/with-temporary-setting-values [mfa-enforcement      :off
+                                         ldap-timeout-seconds 0.01]
         (mt/with-dynamic-fn-redefs [metabase.sso.ldap.default-implementation/search (fn [& _args]
                                                                                       (Thread/sleep 500))]
           (mt/with-temp [:model/User {user-id :id} {:email "sally.brown@metabase.com"}]
@@ -754,31 +757,34 @@
 (deftest ldap-login-new-user-test
   (testing "LDAP login - can login with new user"
     (ldap.test/with-ldap-server!
-      (try
-        (is (malli= SessionResponse
-                    (mt/client :post 200 "session" {:username "sbrown20", :password "1234"})))
-        (finally
-          (t2/delete! :model/User :email "sally.brown@metabase.com"))))))
+      (mt/with-temporary-setting-values [mfa-enforcement :off]
+        (try
+          (is (malli= SessionResponse
+                      (mt/client :post 200 "session" {:username "sbrown20", :password "1234"})))
+          (finally
+            (t2/delete! :model/User :email "sally.brown@metabase.com")))))))
 
 (deftest ldap-login-uppercase-email-test
   (testing "LDAP login - can login multiple times with uppercase email (#13739)"
     (ldap.test/with-ldap-server!
-      (try
-        (is (malli=
-             SessionResponse
-             (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
-        (is (malli=
-             SessionResponse
-             (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
-        (finally
-          (t2/delete! :model/User :email "john.smith@metabase.com"))))))
+      (mt/with-temporary-setting-values [mfa-enforcement :off]
+        (try
+          (is (malli=
+               SessionResponse
+               (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
+          (is (malli=
+               SessionResponse
+               (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
+          (finally
+            (t2/delete! :model/User :email "john.smith@metabase.com")))))))
 
 (deftest ldap-login-group-sync-without-uid-test
   (testing "LDAP login - group sync works even if ldap doesn't return uid (#22014)"
     (ldap.test/with-ldap-server!
       (mt/with-temp [:model/PermissionsGroup group {:name "Accounting"}]
         (mt/with-temporary-raw-setting-values
-          [ldap-group-mappings (json/encode {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
+          [ldap-group-mappings (json/encode {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})
+           mfa-enforcement     "off"]
           (is (malli= SessionResponse
                       (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
           (let [user-id (t2/select-one-pk :model/User :email "fred.taylor@metabase.com")]

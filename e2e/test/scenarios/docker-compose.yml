@@ -55,6 +55,16 @@ services:
     volumes:
       - ./maildev-keys:/keys
 
+  saml-idp:
+    image: boxyhq/mock-saml:1.4.2
+    ports:
+      - "8090:4000"
+    environment:
+      APP_URL: http://localhost:8090
+      ENTITY_ID: https://saml.example.com/entityid
+    env_file:
+      - ./saml-keys/mock-saml.env
+
   ldap:
     image: bitnamilegacy/openldap:2.6.4
     ports:

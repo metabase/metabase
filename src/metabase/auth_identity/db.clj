@@ -95,11 +95,12 @@
 
 (defn insert-session!
   "Insert a Session and return the inserted instance."
-  [session-id user-id auth-identity-id session-key expires-at]
+  [session-id user-id auth-identity-id session-key expires-at mfa-auth-identity-id]
   (t2/insert-returning-instance! :model/Session
                                  ;; Without setting the ID here we can't return an instance on MySQL
                                  :id session-id
                                  :user_id user-id
                                  :auth_identity_id auth-identity-id
                                  :session_key session-key
-                                 :expires_at expires-at))
+                                 :expires_at expires-at
+                                 :mfa_auth_identity_id mfa-auth-identity-id))

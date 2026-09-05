@@ -15,6 +15,7 @@
 
 ;; Register password provider in the hierarchy
 (derive :provider/password ::provider/provider)
+(derive :provider/password ::provider/supports-mfa)
 
 ;;; -------------------------------------------------- Multimethod Implementations --------------------------------------------------
 
