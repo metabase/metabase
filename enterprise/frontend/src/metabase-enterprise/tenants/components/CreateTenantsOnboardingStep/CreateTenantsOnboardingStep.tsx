@@ -128,7 +128,7 @@ export const CreateTenantsOnboardingStep = ({
         {tenants.map((tenant, index) => (
           <Paper key={index} withBorder p="lg" radius="sm">
             <Stack gap="lg">
-              <Group justify="space-between" align="flex-start">
+              <Group justify="space-between" align="center">
                 <TextInput
                   value={tenant.name}
                   onChange={(e) =>
@@ -141,13 +141,12 @@ export const CreateTenantsOnboardingStep = ({
                 />
                 {tenants.length > 1 && (
                   <Button
-                    variant="subtle"
-                    color="text-secondary"
-                    p={0}
+                    variant="transparent"
+                    size="compact-md"
                     onClick={() => removeTenantCard(index)}
                     aria-label={t`Remove tenant`}
                   >
-                    <Icon name="close" size={16} />
+                    <Icon name="close" />
                   </Button>
                 )}
               </Group>
