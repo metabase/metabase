@@ -81,6 +81,7 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require
+   [metabase.api.db :as api.db]
    [metabase.api.open-api :as open-api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -89,8 +90,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [potemkin :as p]
-   [toucan2.core :as t2]))
+   [potemkin :as p]))
 
 (declare check-403 check-404)
 
@@ -186,7 +186,7 @@
   ([entity id]
    (check-exists? entity :id id))
   ([entity k v & more]
-   (check-404 (apply t2/exists? entity k v more))))
+   (check-404 (apply api.db/entity-exists? entity k v more))))
 
 (defn check-superuser
   "Check that `*current-user*` is a superuser or throw a 403. This doesn't require a DB call."
@@ -348,10 +348,10 @@
    obj)
 
   ([entity id]
-   (read-check (t2/select-one entity :id id)))
+   (read-check (api.db/entity-by-id entity id)))
 
   ([entity id & other-conditions]
-   (read-check (apply t2/select-one entity :id id other-conditions))))
+   (read-check (apply api.db/entity-by-id entity id other-conditions))))
 
 (defn write-check
   "Check whether we can write an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
@@ -367,9 +367,9 @@
        (throw e)))
    obj)
   ([entity id]
-   (write-check (t2/select-one entity :id id)))
+   (write-check (api.db/entity-by-id entity id)))
   ([entity id & other-conditions]
-   (write-check (apply t2/select-one entity :id id other-conditions))))
+   (write-check (apply api.db/entity-by-id entity id other-conditions))))
 
 (defn query-check
   "Check whether we can query an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
@@ -386,9 +386,9 @@
        (throw e)))
    obj)
   ([entity id]
-   (query-check (t2/select-one entity :id id)))
+   (query-check (api.db/entity-by-id entity id)))
   ([entity id & other-conditions]
-   (query-check (apply t2/select-one entity :id id other-conditions))))
+   (query-check (apply api.db/entity-by-id entity id other-conditions))))
 
 (defn create-check
   "NEW! Check whether the current user has permissions to CREATE a new instance of an object with properties in map `m`.
@@ -460,25 +460,28 @@
   [collection-id :- [:maybe ms/PositiveInt]
    old-position  :- [:maybe ms/PositiveInt]
    new-position  :- [:maybe ms/PositiveInt]]
-  (let [update-fn! (fn [plus-or-minus position-update-clause]
-                     (doseq [model '[Card Dashboard Pulse Document]]
-                       (t2/update! model {:collection_id       collection-id
-                                          :collection_position position-update-clause}
-                                   {:collection_position [plus-or-minus :collection_position 1]})))]
-    (when (not= new-position old-position)
-      (cond
-        (and (nil? new-position)
-             old-position)
-        (update-fn! :-  [:> old-position])
+  (when (not= new-position old-position)
+    (cond
+      (and (nil? new-position)
+           old-position)
+      (doseq [shift-after! [api.db/shift-card-positions-after! api.db/shift-dashboard-positions-after!
+                            api.db/shift-pulse-positions-after! api.db/shift-document-positions-after!]]
+        (shift-after! collection-id old-position :-))
 
-        (and new-position (nil? old-position))
-        (update-fn! :+ [:>= new-position])
+      (and new-position (nil? old-position))
+      (doseq [shift-from! [api.db/shift-card-positions-from! api.db/shift-dashboard-positions-from!
+                           api.db/shift-pulse-positions-from! api.db/shift-document-positions-from!]]
+        (shift-from! collection-id new-position :+))
 
-        (> new-position old-position)
-        (update-fn! :- [:between old-position new-position])
+      (> new-position old-position)
+      (doseq [shift-between! [api.db/shift-card-positions-between! api.db/shift-dashboard-positions-between!
+                              api.db/shift-pulse-positions-between! api.db/shift-document-positions-between!]]
+        (shift-between! collection-id old-position new-position :-))
 
-        (< new-position old-position)
-        (update-fn! :+ [:between new-position old-position])))))
+      (< new-position old-position)
+      (doseq [shift-between! [api.db/shift-card-positions-between! api.db/shift-dashboard-positions-between!
+                              api.db/shift-pulse-positions-between! api.db/shift-document-positions-between!]]
+        (shift-between! collection-id new-position old-position :+)))))
 
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"

@@ -6,6 +6,7 @@ import {
 } from "metabase/plugins/components/PluginPlaceholder";
 import type { User, UserId } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
 import type { GetAuthProviders } from "../types";
 
 export type AuthSettingsPageTab =
@@ -28,18 +29,24 @@ const getDefaultPluginAuthProviders = () => ({
   providers: [] as GetAuthProviders[],
 });
 
-export const PLUGIN_AUTH_PROVIDERS = getDefaultPluginAuthProviders();
+export const PLUGIN_AUTH_PROVIDERS = definePluginSlot(
+  getDefaultPluginAuthProviders,
+);
 
 const getDefaultPluginLdapFormFields = () => ({
   LdapUserProvisioning: PluginPlaceholder,
   LdapGroupMembershipFilter: PluginPlaceholder,
 });
 
-export const PLUGIN_LDAP_FORM_FIELDS = getDefaultPluginLdapFormFields();
+export const PLUGIN_LDAP_FORM_FIELDS = definePluginSlot(
+  getDefaultPluginLdapFormFields,
+);
 
 const getDefaultPluginIsPasswordUser = (): ((user: User) => boolean)[] => [];
 
-export const PLUGIN_IS_PASSWORD_USER = getDefaultPluginIsPasswordUser();
+export const PLUGIN_IS_PASSWORD_USER = definePluginSlot(
+  getDefaultPluginIsPasswordUser,
+);
 
 const getDefaultPluginAdminUserFormFields = (): {
   FormLoginAttributes: ComponentType<{ userId?: UserId | null }>;
@@ -47,19 +54,6 @@ const getDefaultPluginAdminUserFormFields = (): {
   FormLoginAttributes: PluginPlaceholder,
 });
 
-export const PLUGIN_ADMIN_USER_FORM_FIELDS =
-  getDefaultPluginAdminUserFormFields();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_AUTH_PROVIDERS, getDefaultPluginAuthProviders());
-  Object.assign(PLUGIN_LDAP_FORM_FIELDS, getDefaultPluginLdapFormFields());
-  PLUGIN_IS_PASSWORD_USER.length = 0;
-  PLUGIN_IS_PASSWORD_USER.push(...getDefaultPluginIsPasswordUser());
-  Object.assign(
-    PLUGIN_ADMIN_USER_FORM_FIELDS,
-    getDefaultPluginAdminUserFormFields(),
-  );
-}
+export const PLUGIN_ADMIN_USER_FORM_FIELDS = definePluginSlot(
+  getDefaultPluginAdminUserFormFields,
+);

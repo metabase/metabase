@@ -3,14 +3,14 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.mcp.core :as mcp]
+   [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.scopes :as scopes]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.oauth-server.store :as store]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [oidc-provider.core :as oidc]
-   [oidc-provider.store :as oidc.store]
-   [toucan2.core :as t2]))
+   [oidc-provider.store :as oidc.store]))
 
 (set! *warn-on-reflection* true)
 
@@ -113,8 +113,8 @@
           (when (and (or (nil? expiry)
                          (t/after? (t/instant expiry) (t/instant)))
                      ;; Fail closed if the issuing client is gone (SEC-863).
-                     (t2/exists? :model/OAuthClient :client_id (:client-id token-data)))
+                     (oauth-server.db/oauth-client-exists? (:client-id token-data)))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
-              (when (t2/exists? :model/User :id user-id :is_active true)
+              (when (oauth-server.db/active-user-exists? user-id)
                 {:user-id user-id
                  :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))

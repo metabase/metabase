@@ -3,6 +3,7 @@
   (:require
    [malli.error :as me]
    [metabase.actions.args :as actions.args]
+   [metabase.actions.db :as actions.db]
    [metabase.actions.events :as actions.events]
    [metabase.actions.scope :as actions.scope]
    [metabase.actions.settings :as actions.settings]
@@ -22,8 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [methodical.core :as methodical])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -145,11 +145,7 @@
   nil)
 
 (defn- database-for-action [action-or-id]
-  (t2/select-one :model/Database {:select [:db.*]
-                                  :from   :action
-                                  :join   [[:report_card :card] [:= :card.id :action.model_id]
-                                           [:metabase_database :db] [:= :db.id :card.database_id]]
-                                  :where  [:= :action.id (u/the-id action-or-id)]}))
+  (actions.db/database-for-action (u/the-id action-or-id)))
 
 (defn check-actions-enabled!
   "Throws an appropriate error if actions are unsupported or disabled for the database of the action's model,
@@ -237,7 +233,7 @@
   "Uses cache to prevent redundant look-ups with an action call chain."
   [table-id]
   (assert table-id "Id cannot be nil")
-  (cached-database (:db_id (cached-value [:table-by-db-ids table-id] #(t2/select-one [:model/Table :db_id] table-id)))))
+  (cached-database (cached-value [:table-by-db-ids table-id] #(actions.db/table-database-id table-id))))
 
 (mu/defn- check-permissions
   [policy   :- :keyword

@@ -19,6 +19,7 @@ import type {
 } from "metabase-types/api";
 import { DataPermissionValue } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
 import type { PluginGroupManagersType } from "../types";
 
 // These describe the entries EE plugins contribute to the admin permissions
@@ -100,28 +101,37 @@ const getDefaultAdminPermissionsTableFieldsPostAction = (): {
   sandboxed: null,
 });
 
-export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES =
-  getDefaultAdminPermissionsDatabaseRoutes();
-export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES =
-  getDefaultAdminPermissionsDatabaseGroupRoutes();
-export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS =
-  getDefaultAdminPermissionsDatabasePostActions();
-export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS =
-  getDefaultAdminPermissionsDatabaseActions();
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS =
-  getDefaultAdminPermissionsTableOptions();
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES =
-  getDefaultAdminPermissionsTableRoutes();
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES =
-  getDefaultAdminPermissionsTableGroupRoutes();
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS =
-  getDefaultAdminPermissionsTableFieldsOptions();
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES = definePluginSlot(
+  getDefaultAdminPermissionsDatabaseRoutes,
+);
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES = definePluginSlot(
+  getDefaultAdminPermissionsDatabaseGroupRoutes,
+);
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS = definePluginSlot(
+  getDefaultAdminPermissionsDatabasePostActions,
+);
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS = definePluginSlot(
+  getDefaultAdminPermissionsDatabaseActions,
+);
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS = definePluginSlot(
+  getDefaultAdminPermissionsTableOptions,
+);
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = definePluginSlot(
+  getDefaultAdminPermissionsTableRoutes,
+);
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = definePluginSlot(
+  getDefaultAdminPermissionsTableGroupRoutes,
+);
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS = definePluginSlot(
+  getDefaultAdminPermissionsTableFieldsOptions,
+);
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS =
-  getDefaultAdminPermissionsTableFieldsConfirmations();
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS =
-  getDefaultAdminPermissionsTableFieldsActions();
+  definePluginSlot(getDefaultAdminPermissionsTableFieldsConfirmations);
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS = definePluginSlot(
+  getDefaultAdminPermissionsTableFieldsActions,
+);
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION =
-  getDefaultAdminPermissionsTableFieldsPostAction();
+  definePluginSlot(getDefaultAdminPermissionsTableFieldsPostAction);
 
 const getDefaultDataPermissions = () => ({
   permissionsPayloadExtraSelectors: [],
@@ -154,15 +164,19 @@ export const PLUGIN_DATA_PERMISSIONS: {
         permission: DataPermission,
       ) => GroupsPermissions)
     | null;
-} = getDefaultDataPermissions();
+} = definePluginSlot(getDefaultDataPermissions);
 
 const getDefaultAdminUserMenuItems = (): Array<
   (user: User) => React.ReactNode
 > => [];
 const getDefaultAdminUserMenuRoutes = (): (() => React.ReactNode)[] => [];
 
-export const PLUGIN_ADMIN_USER_MENU_ITEMS = getDefaultAdminUserMenuItems();
-export const PLUGIN_ADMIN_USER_MENU_ROUTES = getDefaultAdminUserMenuRoutes();
+export const PLUGIN_ADMIN_USER_MENU_ITEMS = definePluginSlot(
+  getDefaultAdminUserMenuItems,
+);
+export const PLUGIN_ADMIN_USER_MENU_ROUTES = definePluginSlot(
+  getDefaultAdminUserMenuRoutes,
+);
 
 const getDefaultAdvancedPermissions = () => ({
   addDatabasePermissionOptions: (
@@ -189,7 +203,9 @@ const getDefaultAdvancedPermissions = () => ({
   defaultViewDataPermission: DataPermissionValue.UNRESTRICTED,
 });
 
-export const PLUGIN_ADVANCED_PERMISSIONS = getDefaultAdvancedPermissions();
+export const PLUGIN_ADVANCED_PERMISSIONS = definePluginSlot(
+  getDefaultAdvancedPermissions,
+);
 
 const getDefaultFeatureLevelPermissions = () => ({
   getFeatureLevelDataPermissions: ({
@@ -236,8 +252,9 @@ const getDefaultFeatureLevelPermissions = () => ({
   databaseDetailsQueryProps: {} as any,
 });
 
-export const PLUGIN_FEATURE_LEVEL_PERMISSIONS =
-  getDefaultFeatureLevelPermissions();
+export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = definePluginSlot(
+  getDefaultFeatureLevelPermissions,
+);
 
 const getDefaultAdminPermissionsTabs = () => ({
   getRoutes: (): ReactNode => null,
@@ -245,7 +262,9 @@ const getDefaultAdminPermissionsTabs = () => ({
   tabs: [] as { name: string; value: string }[],
 });
 
-export const PLUGIN_ADMIN_PERMISSIONS_TABS = getDefaultAdminPermissionsTabs();
+export const PLUGIN_ADMIN_PERMISSIONS_TABS = definePluginSlot(
+  getDefaultAdminPermissionsTabs,
+);
 
 const getDefaultApplicationPermissions = () => ({
   getRoutes: (): ReactNode => null,
@@ -253,8 +272,9 @@ const getDefaultApplicationPermissions = () => ({
   tabs: [] as any,
 });
 
-export const PLUGIN_APPLICATION_PERMISSIONS =
-  getDefaultApplicationPermissions();
+export const PLUGIN_APPLICATION_PERMISSIONS = definePluginSlot(
+  getDefaultApplicationPermissions,
+);
 
 const getDefaultGroupManagers = (): PluginGroupManagersType => ({
   // Unjustified type cast. FIXME
@@ -269,87 +289,4 @@ const getDefaultGroupManagers = (): PluginGroupManagersType => ({
   confirmUpdateMembershipAction: null,
 });
 
-export const PLUGIN_GROUP_MANAGERS = getDefaultGroupManagers();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES.length = 0;
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES.push(
-    ...getDefaultAdminPermissionsDatabaseRoutes(),
-  );
-
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES.length = 0;
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES.push(
-    ...getDefaultAdminPermissionsDatabaseGroupRoutes(),
-  );
-
-  Object.assign(
-    PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
-    getDefaultAdminPermissionsDatabasePostActions(),
-  );
-  Object.assign(
-    PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
-    getDefaultAdminPermissionsDatabaseActions(),
-  );
-
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS.length = 0;
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS.push(
-    ...getDefaultAdminPermissionsTableOptions(),
-  );
-
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.length = 0;
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.push(
-    ...getDefaultAdminPermissionsTableRoutes(),
-  );
-
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES.length = 0;
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES.push(
-    ...getDefaultAdminPermissionsTableGroupRoutes(),
-  );
-
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.length = 0;
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(
-    ...getDefaultAdminPermissionsTableFieldsOptions(),
-  );
-
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.length = 0;
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.push(
-    ...getDefaultAdminPermissionsTableFieldsConfirmations(),
-  );
-
-  Object.assign(
-    PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
-    getDefaultAdminPermissionsTableFieldsActions(),
-  );
-  Object.assign(
-    PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
-    getDefaultAdminPermissionsTableFieldsPostAction(),
-  );
-
-  Object.assign(PLUGIN_DATA_PERMISSIONS, getDefaultDataPermissions());
-
-  PLUGIN_ADMIN_USER_MENU_ITEMS.length = 0;
-  PLUGIN_ADMIN_USER_MENU_ITEMS.push(...getDefaultAdminUserMenuItems());
-
-  PLUGIN_ADMIN_USER_MENU_ROUTES.length = 0;
-  PLUGIN_ADMIN_USER_MENU_ROUTES.push(...getDefaultAdminUserMenuRoutes());
-
-  Object.assign(PLUGIN_ADVANCED_PERMISSIONS, getDefaultAdvancedPermissions());
-  Object.assign(
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS,
-    getDefaultFeatureLevelPermissions(),
-  );
-
-  Object.assign(
-    PLUGIN_ADMIN_PERMISSIONS_TABS,
-    getDefaultAdminPermissionsTabs(),
-  );
-
-  Object.assign(
-    PLUGIN_APPLICATION_PERMISSIONS,
-    getDefaultApplicationPermissions(),
-  );
-  Object.assign(PLUGIN_GROUP_MANAGERS, getDefaultGroupManagers());
-}
+export const PLUGIN_GROUP_MANAGERS = definePluginSlot(getDefaultGroupManagers);
