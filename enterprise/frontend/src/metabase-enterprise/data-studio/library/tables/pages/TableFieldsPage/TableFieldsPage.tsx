@@ -115,7 +115,7 @@ export function TableFieldsPage() {
                 onClick={closePreview}
                 leftSection={<Icon name="close" c="text-secondary" />}
                 variant="subtle"
-                size="compact-sm"
+                size="sm"
                 p="sm"
               />
             </Group>

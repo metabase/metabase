@@ -77,7 +77,7 @@ export function EditorPanel({
             {({ copied, copy }) => (
               <Button
                 variant="subtle"
-                size="compact-sm"
+                size="sm"
                 leftSection={<Icon name="copy" size={16} />}
                 onClick={copy}
               >
@@ -108,7 +108,7 @@ export function EditorPanel({
                   <Button
                     variant="subtle"
                     pt="5"
-                    size="compact-sm"
+                    size="sm"
                     aria-label={t`Reset main colors to defaults`}
                     onClick={editor.resetMainColors}
                   >
@@ -152,7 +152,7 @@ export function EditorPanel({
                 >
                   <Button
                     variant="subtle"
-                    size="compact-sm"
+                    size="sm"
                     aria-label={t`Regenerate from brand color`}
                     onClick={editor.regenerateAdditionalColorsFromBrand}
                   >

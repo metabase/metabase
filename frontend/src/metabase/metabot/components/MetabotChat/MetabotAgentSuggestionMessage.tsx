@@ -254,7 +254,7 @@ export const AgentSuggestionMessage = ({
           >
             <Tooltip label={t`Read only`} disabled={!readonly}>
               <Button
-                size="compact-xs"
+                size="sm"
                 variant="subtle"
                 fw="normal"
                 fz="sm"
