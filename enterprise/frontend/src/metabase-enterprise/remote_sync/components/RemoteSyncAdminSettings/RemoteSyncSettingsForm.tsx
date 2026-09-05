@@ -132,11 +132,7 @@ export const RemoteSyncSettingsForm = ({
                   <Flex align="center" gap="lg">
                     <FormErrorMessage />
                     {onCancel && (
-                      <Button
-                        variant="default"
-                        onClick={onCancel}
-                        disabled={isSaving}
-                      >
+                      <Button onClick={onCancel} disabled={isSaving}>
                         {t`Cancel`}
                       </Button>
                     )}

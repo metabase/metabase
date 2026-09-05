@@ -14,7 +14,6 @@ export function ExploreMetricButton({ cardId }: ExploreMetricButtonProps) {
     <Button
       component={ForwardRefLink}
       to={Urls.exploreMetric(cardId)}
-      variant="default"
       leftSection={<Icon name="click" />}
       data-testid="explore-link"
     >

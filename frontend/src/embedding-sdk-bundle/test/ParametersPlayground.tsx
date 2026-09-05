@@ -95,10 +95,7 @@ export const ParametersPlayground = ({
             >
               Set
             </Button>
-            <Button
-              variant="default"
-              onClick={() => paramSlug && onClearOne(paramSlug)}
-            >
+            <Button onClick={() => paramSlug && onClearOne(paramSlug)}>
               Clear one
             </Button>
             <Button variant="subtle" onClick={onClearAll}>

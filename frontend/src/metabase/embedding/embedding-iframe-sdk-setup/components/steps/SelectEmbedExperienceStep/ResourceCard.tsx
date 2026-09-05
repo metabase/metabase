@@ -191,7 +191,6 @@ export const ResourceCard = () => {
           </Text>
 
           <Button
-            variant="default"
             leftSection={<Icon name={icon} c="core-brand" size={16} />}
             rightSection={<Icon name="chevrondown" size={12} />}
             onClick={openPicker}
