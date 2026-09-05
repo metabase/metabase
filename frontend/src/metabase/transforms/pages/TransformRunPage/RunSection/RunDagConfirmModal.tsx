@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { skipToken, useListDagTransformsQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 import {
   Button,
   Center,
@@ -13,6 +13,8 @@ import {
   Text,
 } from "metabase/ui";
 import type { TransformDagDirection, TransformId } from "metabase-types/api";
+
+import { useListDagTransformsQuery } from "../../../api/transform";
 
 type RunDagConfirmModalProps = {
   transformId: TransformId;

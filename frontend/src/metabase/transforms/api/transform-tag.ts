@@ -1,17 +1,16 @@
+import { Api } from "metabase/api";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideTransformTagListTags,
+} from "metabase/api/tags";
 import type {
   CreateTransformTagRequest,
   TransformTag,
   TransformTagId,
   UpdateTransformTagRequest,
 } from "metabase-types/api";
-
-import { Api } from "./api";
-import {
-  idTag,
-  invalidateTags,
-  listTag,
-  provideTransformTagListTags,
-} from "./tags";
 
 export const transformTagApi = Api.injectEndpoints({
   endpoints: (builder) => ({

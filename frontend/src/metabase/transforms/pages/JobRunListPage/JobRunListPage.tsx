@@ -3,11 +3,7 @@ import cx from "classnames";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetTransformJobQuery,
-  useListTransformJobRunsQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePageTitle } from "metabase/hooks/use-page-title";
@@ -26,6 +22,10 @@ import {
   type TransformRunMethod,
 } from "metabase-types/api";
 
+import {
+  useGetTransformJobQuery,
+  useListTransformJobRunsQuery,
+} from "../../api/transform-job";
 import { JobHeader } from "../../components/JobHeader";
 import { JobMoreMenu } from "../../components/JobMoreMenu";
 import { JobTabs } from "../../components/JobTabs";

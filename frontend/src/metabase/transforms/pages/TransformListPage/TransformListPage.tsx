@@ -6,7 +6,6 @@ import {
   skipToken,
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
-  useListTransformsQuery,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
@@ -42,6 +41,8 @@ import {
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
+
+import { useListTransformsQuery } from "../../api/transform";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import { CreateTransformMenu } from "./CreateTransformMenu";

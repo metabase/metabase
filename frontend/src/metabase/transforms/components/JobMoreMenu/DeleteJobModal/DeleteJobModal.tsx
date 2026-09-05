@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { useDeleteTransformJobMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -9,6 +8,8 @@ import {
 } from "metabase/forms";
 import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import type { TransformJob } from "metabase-types/api";
+
+import { useDeleteTransformJobMutation } from "../../../api/transform-job";
 
 type DeleteJobModalProps = {
   job: TransformJob;

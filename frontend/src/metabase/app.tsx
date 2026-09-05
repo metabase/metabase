@@ -45,6 +45,7 @@ import {
 } from "metabase/router";
 import { refetchSiteSettings } from "metabase/settings";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
+import { registerTransformQueryHooks } from "metabase/transforms/register";
 import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { captureClickModifierKeys } from "metabase/urls";
@@ -61,6 +62,7 @@ import { OverlayStackProvider } from "./ui/components/overlays/overlay-stack";
 setBasename(window.MetabaseRoot);
 
 initializePlugins();
+registerTransformQueryHooks();
 
 type Store = ReturnType<typeof getStore>;
 

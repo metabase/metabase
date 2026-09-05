@@ -4,10 +4,8 @@ import * as Yup from "yup";
 
 import {
   skipToken,
-  useDeleteTransformTargetMutation,
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
-  useUpdateTransformMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { hasFeature } from "metabase/databases";
@@ -31,6 +29,11 @@ import {
 } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Transform, UpdateTransformRequest } from "metabase-types/api";
+
+import {
+  useDeleteTransformTargetMutation,
+  useUpdateTransformMutation,
+} from "../../../../api/transform";
 
 type UpdateTargetModalProps = {
   transform: Transform;

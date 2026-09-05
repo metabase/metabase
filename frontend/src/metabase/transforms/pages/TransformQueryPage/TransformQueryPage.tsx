@@ -3,11 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetTransformQuery,
-  useUpdateTransformMutation,
-} from "metabase/api";
+import { skipToken } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EmptyState } from "metabase/common/components/EmptyState/EmptyState";
@@ -33,6 +29,10 @@ import type {
   UpdateTransformRequest,
 } from "metabase-types/api";
 
+import {
+  useGetTransformQuery,
+  useUpdateTransformMutation,
+} from "../../api/transform";
 import {
   buildIncrementalSource,
   buildIncrementalTarget,

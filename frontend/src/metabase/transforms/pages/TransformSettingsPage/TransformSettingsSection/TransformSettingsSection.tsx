@@ -5,7 +5,6 @@ import {
   skipToken,
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
-  useUpdateTransformMutation,
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
@@ -17,6 +16,7 @@ import { Button, Divider, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName, Transform, UserId } from "metabase-types/api";
 
+import { useUpdateTransformMutation } from "../../../api/transform";
 import { isTransformRunning, sourceDatabaseId } from "../../../utils";
 
 import { UpdateIncrementalSettings } from "./UpdateIncrementalSettings";

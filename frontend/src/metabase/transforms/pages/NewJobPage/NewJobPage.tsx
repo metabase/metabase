@@ -2,10 +2,6 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  useCreateTransformJobMutation,
-  useLazyGetTransformJobQuery,
-} from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/common/hooks";
@@ -14,6 +10,10 @@ import * as Urls from "metabase/urls";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { trackTransformJobCreated } from "../../analytics";
+import {
+  useCreateTransformJobMutation,
+  useLazyGetTransformJobQuery,
+} from "../../api/transform-job";
 import { JobEditor, type TransformJobInfo } from "../../components/JobEditor";
 
 export function NewJobPage() {

@@ -9,11 +9,7 @@ import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
-import {
-  skipToken,
-  useListTransformsQuery,
-  useListUserAttributesQuery,
-} from "metabase/api";
+import { skipToken, useListUserAttributesQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks/use-toast";
@@ -21,6 +17,7 @@ import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
+import { useListTransformsQuery } from "metabase/transforms/api/transform";
 import {
   Alert,
   Box,

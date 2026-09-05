@@ -1,7 +1,6 @@
 import { memo, useState } from "react";
 import { t } from "ttag";
 
-import { useListJobRunTransformRunsQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
@@ -22,6 +21,8 @@ import type {
   TransformJobRun,
   TransformRunForJobRun,
 } from "metabase-types/api";
+
+import { useListJobRunTransformRunsQuery } from "../../../api/transform-job";
 
 import { JobRunInfoSection } from "./JobRunInfoSection";
 import S from "./JobRunSidebar.module.css";

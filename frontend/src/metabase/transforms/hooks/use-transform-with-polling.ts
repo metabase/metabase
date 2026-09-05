@@ -1,8 +1,9 @@
 import { useState } from "react";
 
-import { skipToken, useGetTransformQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 import type { Transform } from "metabase-types/api";
 
+import { useGetTransformQuery } from "../api/transform";
 import { POLLING_INTERVAL } from "../constants";
 import {
   isTransformCanceling,

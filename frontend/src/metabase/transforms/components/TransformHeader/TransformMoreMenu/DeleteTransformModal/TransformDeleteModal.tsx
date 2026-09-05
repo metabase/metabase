@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { jt, t } from "ttag";
 
-import {
-  useDeleteTransformMutation,
-  useDeleteTransformTargetMutation,
-  useGetTransformQuery,
-} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
@@ -24,6 +19,12 @@ import {
   Text,
 } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
+
+import {
+  useDeleteTransformMutation,
+  useDeleteTransformTargetMutation,
+  useGetTransformQuery,
+} from "../../../../api/transform";
 
 type DeleteTransformModalProps = {
   transform: Transform;
