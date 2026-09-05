@@ -45,7 +45,7 @@ Three things need to happen: you publish the embed in Metabase, you paste the ch
 4. For authentication, choose **Guest**, so your app won't need to log anyone in to your Metabase. An admin needs to [turn on guest embedding](./guest-embedding.md#turning-on-guest-embedding-in-metabase) first.
 5. Click the **Publish** button. Publishing only applies to guest embeds.
 6. Under behavior, Metabase gives you several options for customizing how the embed works. See [web component attributes](./question-reference.md#web-component-metabase-question-attributes) for what each one does. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
-7. If you're embedding a SQL question with a variable, set the parameter to **Editable** or **Locked**. Parameters are **Disabled** by default, which hides them and prevents your server from setting them. See [Configuring parameters](./guest-embedding.md#configuring-parameters).
+7. If you're embedding a SQL question with a variable, set the parameter to **Editable** or **Locked**. Parameters are **Disabled** by default, which hides them and prevents your server from setting them. See [Parameters differ between guest and SSO embeds](./parameters.md#parameters-differ-between-guest-and-sso-embeds).
 8. Customize the [appearance](./appearance.md).
 9. Click the **Get code** button. You'll get both the frontend and backend code based on the selections you made in the wizard.
 10. Copy the client code and paste it in your app.
@@ -127,7 +127,7 @@ const payload = {
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-To get this code from the in-app wizard, set the `customer_id` parameter to **Locked** and publish the question. See [Locked parameters](./guest-embedding.md#locked-parameters).
+To get this code from the in-app wizard, set the `customer_id` parameter to **Locked** and publish the question. See [Locked parameters](./parameters.md#restrict-data-on-guest-embeds).
 
 For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
 
@@ -247,7 +247,7 @@ Say you want to show each customer only their own orders. How you restrict the r
 
 ### Lock a parameter on a guest embed
 
-Embeds with **Guest** authentication can [lock a parameter](./guest-embedding.md#locked-parameters). Your app sets the parameter's value in the signed token on your server, so the filter is controlled by your app rather than by whoever's clicking around the page. They can't see the value, and they can't change it. An embed on a customer's account page returns that account's rows, whether or not Metabase has any idea who's looking at it.
+Embeds with **Guest** authentication can [lock a parameter](./parameters.md#restrict-data-on-guest-embeds). Your app sets the parameter's value in the signed token on your server, so the filter is controlled by your app rather than by whoever's clicking around the page. They can't see the value, and they can't change it. An embed on a customer's account page returns that account's rows, whether or not Metabase has any idea who's looking at it.
 
 Locked parameters need a question written in SQL, with a [field filter or variable](../questions/native-editor/sql-parameters.md) to lock onto. Query builder questions have no parameters to lock, so segregate their data with permissions instead.
 
@@ -269,17 +269,9 @@ Embeds with **SSO** don't need to lock parameters. Since Metabase knows who's vi
 
 ## Control question parameters from your app
 
-To drive a question's parameters from your app's own code, pass values to its [SQL parameters](../questions/native-editor/sql-parameters.md) in the format `{parameter_name: parameter_value}`. Set the values once on load, or hold the values in your app and get a callback whenever they change. Holding the values in your app is what lets you build your own parameter widgets instead of using Metabase's.
+To drive a question's [SQL parameters](../questions/native-editor/sql-parameters.md) from your app's own code, pass values keyed by variable name. You can [set starting values](./parameters.md#set-starting-values) that people can still change, [hold the values in your app](./parameters.md#control-values-from-your-app) and get a callback whenever they change, and [hide Metabase's widgets](./parameters.md#hide-parameter-widgets) when your app supplies [its own](./parameters.md#build-your-own-filter-ui). Check out [Embedding parameters](./parameters.md) for all of it.
 
-For both the SDK props (`initialSqlParameters`, `sqlParameters`, and `onSqlParametersChange`) and the web component equivalents, see [Modular embedding parameters](./parameters.md).
-
-### Hide a parameter
-
-To hide a parameter from the question's UI, use the [`hidden-parameters`](./question-reference.md#web-component-metabase-question-attributes) attribute (web component) or the `hiddenParameters` prop (SDK). Both work in any modular embed, on any plan.
-
-In practice you'll reach for them on an [SSO embed](./introduction.md#components-with-sso-authentication), where every parameter on the question shows up by default. On a [guest embed](./guest-embedding.md#configuring-parameters), a parameter that you haven't set to **Editable** or **Locked** is already hidden, so the embed wizard won't generate `hidden-parameters` for you. You can still add the attribute by hand to hide a parameter you've made editable.
-
-Hiding a parameter declutters the UI; it doesn't restrict what people can query. Setting a value with `initial-sql-parameters` and then hiding the widget isn't a secure way to filter data, because your app sets that value in the browser. Instead, see [Show people only their own data](#show-people-only-their-own-data), or set [data permissions](../permissions/embedding.md).
+Your app sets these values in the browser, and people can change them, so they don't restrict what anyone can query. To restrict the data itself, see [Show people only their own data](#show-people-only-their-own-data).
 
 ## Let people set up alerts on a question
 
@@ -341,7 +333,8 @@ On the OSS and Starter plans, Metabase adds a "Powered by Metabase" banner to gu
 - [Embed a dashboard](./dashboard.md)
 - [Embed the query builder](./query-builder.md)
 - [Appearance](./appearance.md)
-- [Modular embedding parameters](./parameters.md)
+- [Embedding parameters](./parameters.md)
+- [Parameters reference](./parameters-reference.md)
 - [Translating embeds](./translations.md)
 - [Guest embeds](./guest-embedding.md)
 - [Authentication](./authentication.md)

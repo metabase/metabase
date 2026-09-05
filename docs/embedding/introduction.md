@@ -55,7 +55,7 @@ All SSO options require a Pro or Enterprise plan.
 | [Custom visualizations](./custom-visualizations.md)                                       | ✅  | ❌    |
 | [Usage analytics](../usage-and-performance-tools/usage-analytics.md)                      | ✅  | ❌    |
 | Customize layouts and behavior with [plugins](./sdk/plugins.md)                           | ✅  | ❌    |
-| [Locked filters](./guest-embedding.md#locked-parameters)\*\*\*                            | ❌  | ✅    |
+| [Locked filters](./parameters.md#restrict-data-on-guest-embeds)\*\*\*              | ❌  | ✅    |
 
 \* Each authentication method allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing/) plans can disable data downloads.
 
@@ -81,7 +81,7 @@ With [guest authentication](./guest-embedding.md), Metabase doesn't create a ses
 
 Guest doesn't mean unsecured. Metabase only loads the component if the request carries a JWT signed with a secret shared between your app and your Metabase. What Metabase doesn't have is an identity: with no account to check permissions against, Metabase can't tell whether a new query is one that person should be allowed to run. That's why components with guest authentication are view-only.
 
-**When to use guest**: embedding charts and dashboards where you don't want to offer ad-hoc querying or chart drill-through. To filter data down to what's relevant to the person viewing, use [locked parameters](./guest-embedding.md#locked-parameters), where your app sets the filter value in the signed token.
+**When to use guest**: embedding charts and dashboards where you don't want to offer ad-hoc querying or chart drill-through. To filter data down to what's relevant to the person viewing, use [locked parameters](./parameters.md#restrict-data-on-guest-embeds), where your app sets the filter value in the signed token.
 
 ## Set up modular embeds with web components or React
 
@@ -101,6 +101,18 @@ If your app runs on React and you want that extra control, go with the SDK. Othe
 If you'd like to share your data with the good people of the internet, admins can create a [public link](./public-links.md) or embed a question or dashboard directly in your website. A public link is a URL you can hand to anyone. A public embed is an iframe snippet you drop into one of your pages. Neither one is really an embedding setup — there's no authentication, and anyone with the link can see the data.
 
 **When to use public links and embeds**: one-off charts and dashboards. Admins can use public links when you just need to show someone a chart or dashboard without giving people access to your Metabase. And you don't care who sees the data; you want to make the item available to everyone.
+
+## Static embedding is deprecated
+
+Static embeds (also called signed embeds) put a signed JWT in an iframe URL, like `/embed/dashboard/YOUR_JWT_TOKEN`. Static embedding is deprecated in favor of [guest embeds](./guest-embedding.md), which use the same secret key and the same signed token, but render a web component instead of an iframe.
+
+Existing static embeds keep working. For items published with static embedding, the embed modal still offers **Use static embedding instead**. Their hash parameters are the same as the ones for public embeds, so check out [Appearance parameters](./public-links.md#appearance-parameters) if you need to tweak one.
+
+To migrate a static embed to a guest embed:
+
+- Keep your server-side signing code. The token payload (`resource`, `params`, and `exp`) is the same.
+- Replace the iframe with a `<metabase-dashboard>` or `<metabase-question>` element, and pass the token in its `token` attribute. Check out [Creating a guest embed](./guest-embedding.md#creating-a-guest-embed).
+- If you use an AI coding agent, give it the [Static → guest embeds skill](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-static-embedding-to-guest-embedding-upgrade-skill-md), which walks through the migration. Check out [AI agent resources](./ai-agent-resources.md).
 
 ## Resources for AI agents
 

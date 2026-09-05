@@ -31,14 +31,4 @@ const ExampleControlled = () => {
   // [<endsnippet example-controlled>]
 };
 
-const ExampleClear = () => (
-  // [<snippet example-clear>]
-  // Setting a SQL parameter to `null` clears it (ignores the parameter's default).
-  <InteractiveQuestion
-    questionId={questionId}
-    sqlParameters={{ state: null }}
-  />
-  // [<endsnippet example-clear>]
-);
-
-export { ExampleControlled, ExampleClear };
+export { ExampleControlled };
