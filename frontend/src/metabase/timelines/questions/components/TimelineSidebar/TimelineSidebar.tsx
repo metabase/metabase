@@ -135,8 +135,8 @@ export const TimelineSidebar = ({
       {focusedTimelineEventIds != null && (
         <Box mx="xl" mb="sm">
           <Button
-            p={0}
-            variant="subtle"
+            variant="transparent"
+            size="compact-md"
             leftSection={<Icon name="chevronleft" />}
             onClick={handleShowAllEvents}
             data-testid="timeline-sidebar-show-all"

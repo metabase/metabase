@@ -56,8 +56,8 @@ export const LegacyPermissionsModal = ({
       </Text>
       <Flex justify="space-between">
         <Button
-          variant="subtle"
-          p={0}
+          variant="transparent"
+          size="compact-md"
           component={Link}
           to={docsUrl}
           target="_blank"

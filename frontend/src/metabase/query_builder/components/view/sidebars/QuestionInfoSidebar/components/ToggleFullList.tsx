@@ -29,7 +29,7 @@ export const ToggleFullList = ({
                 .t`Showing ${sliceLength} of ${fullLength} questions`}
         </Text>
       }
-      <Button p={0} lh={1} variant="subtle" onClick={toggle}>
+      <Button lh={1} variant="transparent" size="compact-md" onClick={toggle}>
         {isExpanded ? t`Show less` : t`Show all`}
       </Button>
     </Group>

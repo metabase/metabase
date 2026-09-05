@@ -191,10 +191,10 @@ export const CreateTenantsOnboardingStep = ({
 
       <Flex justify="space-between" align="center">
         <Button
-          variant="subtle"
+          variant="transparent"
+          size="compact-md"
           leftSection={<Icon name="add" size={16} />}
           onClick={addTenantCard}
-          p={0}
           fw="bold"
         >
           {t`New tenant`}
