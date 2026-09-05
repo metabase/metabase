@@ -35,6 +35,43 @@ const {
 } = require("./frontend/build/shared/rspack/side-effect-free-modules");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
+/**
+ * The libraries the app shell is built out of, as opposed to the ones a feature
+ * happens to reach today.
+ *
+ * Everything else stays in `app-main`, where module concatenation can hoist it
+ * into the code that uses it. That is worth 25 kb of brotli, and a repeat visit
+ * about 34 ms.
+ *
+ * The reason to do it is neither of those. It keeps this chunk's hash still: a
+ * package only leaves it when we change its version, not when a feature stops
+ * importing something. The old `vendor`, which claimed every `node_modules`
+ * module, changed in three of the last four releases.
+ */
+const CORE_VENDOR_PACKAGES = [
+  "react",
+  "react-dom",
+  "react-is",
+  "scheduler",
+  "react-router",
+  "@reduxjs/toolkit",
+  "redux",
+  "react-redux",
+  "reselect",
+  "immer",
+  "@mantine",
+  "@floating-ui",
+  "dayjs",
+  "underscore",
+  "ttag",
+];
+
+// bun resolves a package to `node_modules/.bun/<name>@<version>/node_modules/<name>`,
+// so the package name always sits behind a `node_modules` segment either way.
+const CORE_VENDOR = new RegExp(
+  `[\\/]node_modules[\\/](${CORE_VENDOR_PACKAGES.join("|")})[\\/]`,
+);
+
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
@@ -296,15 +333,10 @@ const config = {
     splitChunks: {
       cacheGroups: {
         vendors: {
-          test: /[\\/]node_modules[\\/]/,
+          test: CORE_VENDOR,
           // The data-app and MCP iframes are isolated from main-app CSS/JS by
           // design; sharing the vendor chunk would re-link them. Keep their
           // node_modules in their own chunks.
-          //
-          // For MCP that also cuts both pages. `@modelcontextprotocol/ext-apps`
-          // reaches no entry but `app-embed-mcp`, so the shared chunk was
-          // charging `app-main` for it, while the MCP page pulled down a vendor
-          // chunk built for an app it never runs.
           chunks: (chunk) =>
             chunk.canBeInitial() &&
             chunk.name !== "data-app-vendors" &&
