@@ -75,6 +75,7 @@ Metabase flags a custom visualization on the **Manage visualizations** page when
 
 - **The SDK version doesn't match.** The visualization was built with a version of the Custom Visualizations SDK that your Metabase wasn't tested against.
 - **The Metabase version doesn't match.** A visualization that was in range when you uploaded it can fall out of range when you upgrade Metabase, so this warning can show up on a visualization that's been working for months.
+- **The identifier contains `:`.** Metabase no longer allows `:` in a custom visualization's identifier and won't serve a visualization that has one. Delete it and upload the bundle under a name without `:`.
 
 ## Exports
 
