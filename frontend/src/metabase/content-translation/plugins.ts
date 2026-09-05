@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import { definePluginSlot } from "metabase/plugins/slot";
 import type { HoveredObject } from "metabase/viz-core";
 import type { EntityToken } from "metabase-types/api/entity";
 
@@ -41,4 +42,6 @@ const getDefaultPluginContentTranslation = () => ({
     a.localeCompare(b),
 });
 
-export const PLUGIN_CONTENT_TRANSLATION = getDefaultPluginContentTranslation();
+export const PLUGIN_CONTENT_TRANSLATION = definePluginSlot(
+  getDefaultPluginContentTranslation,
+);

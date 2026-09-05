@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugin";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 
 import {
   useSetupAuthContentTranslations,
@@ -12,7 +12,7 @@ jest.mock("embedding-sdk-bundle/store", () => ({
   useSdkSelector: jest.fn(),
 }));
 
-jest.mock("metabase/content-translation/plugin", () => ({
+jest.mock("metabase/content-translation/plugins", () => ({
   PLUGIN_CONTENT_TRANSLATION: {
     setEndpointsForAuthEmbedding: jest.fn(),
     setEndpointsForStaticEmbedding: jest.fn(),

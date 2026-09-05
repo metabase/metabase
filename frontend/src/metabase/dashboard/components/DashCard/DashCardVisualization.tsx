@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugin";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import CS from "metabase/css/core/index.css";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
 import { dashboardClickActionMode } from "metabase/dashboard/click-behavior/mode";

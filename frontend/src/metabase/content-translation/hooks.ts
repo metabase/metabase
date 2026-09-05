@@ -1,4 +1,4 @@
-import { PLUGIN_CONTENT_TRANSLATION } from "./plugin";
+import { PLUGIN_CONTENT_TRANSLATION } from "./plugins";
 import type { ContentTranslationFunction } from "./types";
 
 /** To keep the components that require content translation tidier, they can

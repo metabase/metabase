@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbedRaw } from "embedding-sdk-bundle/store/selectors";
 import type { SdkEntityToken } from "embedding-sdk-bundle/types";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugin";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 
 export const useSetupContentTranslations = ({
   token,

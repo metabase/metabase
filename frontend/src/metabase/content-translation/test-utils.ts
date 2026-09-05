@@ -11,7 +11,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { PLUGIN_CONTENT_TRANSLATION } from "./plugin";
+import { PLUGIN_CONTENT_TRANSLATION } from "./plugins";
 
 export interface ContentTranslationTestSetupOptions {
   localeCode?: string;
