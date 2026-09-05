@@ -36,6 +36,10 @@
   "Schema for a valid `Field` visibility type."
   (into [:enum] (map name field/visibility-types)))
 
+(def ^:private FieldDataSensitivity
+  "Schema for a valid `Field` data sensitivity classification."
+  (into [:enum] (map name field/data-sensitivity-types)))
+
 (def ^:private max-field-ids-for-table-id-lookup
   1000)
 
@@ -152,6 +156,7 @@
                   [:semantic_type      {:optional true} [:maybe ms/FieldSemanticOrRelationTypeKeywordOrString]]
                   [:coercion_strategy  {:optional true} [:maybe ms/CoercionStrategyKeywordOrString]]
                   [:visibility_type    {:optional true} [:maybe FieldVisibilityType]]
+                  [:data_sensitivity   {:optional true} [:maybe FieldDataSensitivity]]
                   [:has_field_values   {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]
                   [:settings           {:optional true} [:maybe ms/Map]]
                   [:nfc_path           {:optional true} [:maybe [:sequential ms/NonBlankString]]]
@@ -198,7 +203,8 @@
           id
           (u/select-keys-when body
                               {:present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type
-                                          :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
+                                          :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding
+                                          :data_sensitivity}
                                :non-nil #{:display_name :visibility_type :settings}})))))
     (when (some? json-unfolding)
       (update-nested-fields-on-json-unfolding-change! field json-unfolding))

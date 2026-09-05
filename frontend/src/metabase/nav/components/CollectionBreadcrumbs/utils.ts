@@ -1,5 +1,11 @@
 import { isRootCollection } from "metabase/common/collections/utils";
-import type { Collection, CollectionId } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionEssentials,
+  CollectionId,
+} from "metabase-types/api";
+
+import type { BreadcrumbCrumb } from "./CollectionBreadcrumbsView";
 
 type GetCollectionListProps = {
   collection: Collection;
@@ -33,3 +39,20 @@ export const getCollectionList = ({
     return hasRoot ? crumbsWithoutRoot : ancestors;
   }
 };
+
+type CollectionToCrumbsProps = GetCollectionListProps & {
+  onClick?: (collection: CollectionEssentials) => void;
+};
+
+export const collectionToCrumbs = ({
+  collection,
+  baseCollectionId = null,
+  onClick,
+}: CollectionToCrumbsProps): BreadcrumbCrumb[] =>
+  [...getCollectionList({ baseCollectionId, collection }), collection].map(
+    (part) => ({
+      kind: "collection" as const,
+      collection: part,
+      onClick: onClick ? () => onClick(part) : undefined,
+    }),
+  );
