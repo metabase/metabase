@@ -1,9 +1,11 @@
 /* eslint-disable no-console */
-import type { EChartsCoreOption } from "echarts/core";
 import { useEffect } from "react";
 
 import { isChartsDebugLoggingEnabled } from "metabase/env";
-import type { BaseCartesianChartModel } from "metabase/viz-core";
+import type {
+  BaseCartesianChartModel,
+  EChartsCoreOption,
+} from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 
 export function useChartDebug({

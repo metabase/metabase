@@ -1,4 +1,3 @@
-import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo } from "react";
 
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
@@ -11,6 +10,7 @@ import {
   type ComputedVisualizationSettings,
   type EChartsEventHandler,
   type EChartsSeriesMouseEvent,
+  type EChartsType,
   type HoveredObject,
   extractSeriesDataKeyFromName,
   getBoxPlotClickData,

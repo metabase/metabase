@@ -1,8 +1,8 @@
-import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useState } from "react";
 
 import {
   type ChartLayout,
+  type EChartsType,
   TIMELINE_BAND_HEIGHT,
   TIMELINE_EVENTS_BAND,
   type TimelineEventGroup,

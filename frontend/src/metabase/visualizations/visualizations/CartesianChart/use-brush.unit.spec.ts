@@ -1,8 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
-import type { EChartsType } from "echarts/core";
 import type { MutableRefObject, RefObject } from "react";
 
 import { createMockMediaQueryList } from "__support__/ui";
+import type { EChartsType } from "metabase/viz-core";
 
 import {
   createZrenderMousedownEvent,

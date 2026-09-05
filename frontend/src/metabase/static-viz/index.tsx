@@ -1,4 +1,3 @@
-import { setPlatformAPI } from "echarts/core";
 import ReactDOMServer from "react-dom/server";
 
 // eslint-disable-next-line import/order
@@ -28,6 +27,7 @@ import {
   extractRemappings,
   isCartesianChart,
   makeCellBackgroundGetter,
+  setPlatformAPI,
 } from "metabase/viz-core";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {

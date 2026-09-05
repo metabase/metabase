@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import type { EChartsType } from "echarts/core";
 
 import { createMockChartLayout } from "__support__/echarts";
 import {
@@ -8,7 +7,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import type { TimelineEventsModel } from "metabase/viz-core";
+import type { EChartsType, TimelineEventsModel } from "metabase/viz-core";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
 import { TimelineEventsBand } from "./TimelineEventsBand";

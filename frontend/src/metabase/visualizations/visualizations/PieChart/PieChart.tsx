@@ -1,4 +1,3 @@
-import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
 
@@ -9,6 +8,7 @@ import { getTooltipOption } from "metabase/visualizations/echarts/pie/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
+import type { EChartsType } from "metabase/viz-core";
 import {
   extractRemappings,
   getArrayFromMapValues,

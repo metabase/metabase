@@ -3,7 +3,8 @@
     "frontend/src/metabase/router/",
     "frontend/src/metabase/ui/",
     "frontend/src/metabase/redux/",
-    "frontend/src/metabase/dayjs/"
+    "frontend/src/metabase/dayjs/",
+    "frontend/src/metabase/viz-core/echarts/"
   ],
   "packages": {
     "@mantine/core/styles.css": "global",
@@ -24,7 +25,6 @@
     "frontend/src/embedding-sdk-shared/jest/**": "entry",
     "enterprise/frontend/src/embedding-sdk-package/bin/*.ts": "entry",
     "enterprise/frontend/src/embedding-sdk-package/cli/**": "self",
-    "frontend/src/metabase/static-viz/components/**": "global",
     "**/*.styled.tsx": "self",
     "**/*.schema.ts": "self",
     "enterprise/frontend/src/custom-viz/scripts/check-package-versions.ts": "entry",
@@ -183,6 +183,7 @@
     "frontend/src/metabase/setup/components/InviteUserForm/InviteUserForm.tsx": "self",
     "frontend/src/metabase/setup/components/LicenseTokenStep/constants.tsx": "self",
     "frontend/src/metabase/setup/components/UserForm/UserForm.tsx": "self",
+    "frontend/src/metabase/static-viz/components/StaticVisualization/StaticVisualization.tsx": "global",
     "frontend/src/metabase/static-viz/index.tsx": "entry",
     "frontend/src/metabase/static-viz/lib/text.ts": "self",
     "frontend/src/metabase/static-viz/polyfill.ts": "global",
@@ -201,13 +202,13 @@
     "frontend/src/metabase/utils/settings.ts": "self",
     "frontend/src/metabase/value-formatting/geography.ts": "self",
     "frontend/src/metabase/visualizations/components/ClickActions/utils.ts": "self",
-    "frontend/src/metabase/visualizations/components/EChartsRenderer/EChartsRenderer.tsx": "global",
     "frontend/src/metabase/visualizations/components/LeafletChoropleth.tsx": "self",
     "frontend/src/metabase/visualizations/components/LeafletMap.tsx": "self",
     "frontend/src/metabase/visualizations/visualizations/Map/Map.tsx": "self",
     "frontend/src/metabase/visualizations/visualizations/ObjectDetail/ObjectDetail.ts": "self",
     "frontend/src/metabase/visualizations/visualizations/PivotTable/PivotTable.tsx": "self",
-    "frontend/src/metabase/visualizer/visualizer.slice.ts": "self"
+    "frontend/src/metabase/visualizer/visualizer.slice.ts": "self",
+    "frontend/src/metabase/viz-core/echarts/index.ts": "self"
   },
   "unclassified": []
 }

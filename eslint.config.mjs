@@ -70,6 +70,17 @@ const dayjsExtendRestriction = {
   message: "Register dayjs plugins in `metabase/dayjs`, not locally.",
 };
 
+const ECHARTS_RESTRICTED_IMPORT_MESSAGE =
+  "Please import echarts from `metabase/viz-core` instead.";
+const echartsRestrictedPath = {
+  name: "echarts",
+  message: ECHARTS_RESTRICTED_IMPORT_MESSAGE,
+};
+const echartsRestrictedPattern = {
+  group: ["echarts/*"],
+  message: ECHARTS_RESTRICTED_IMPORT_MESSAGE,
+};
+
 const e2eRestrictedConfig = {
   paths: [
     {
@@ -95,9 +106,11 @@ const baseMetabaseRestrictedConfig = {
     { group: ["cljs/metabase.lib*"] },
     { group: ["/embedding-sdk-package"] },
     dayjsRestrictedPattern,
+    echartsRestrictedPattern,
   ],
   paths: [
     dayjsRestrictedPath,
+    echartsRestrictedPath,
     {
       name: "react-redux",
       importNames: ["useSelector", "useDispatch", "connect"],
@@ -553,8 +566,16 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
-          paths: [...e2eRestrictedConfig.paths, dayjsRestrictedPath],
-          patterns: [...e2eRestrictedConfig.patterns, dayjsRestrictedPattern],
+          paths: [
+            ...e2eRestrictedConfig.paths,
+            dayjsRestrictedPath,
+            echartsRestrictedPath,
+          ],
+          patterns: [
+            ...e2eRestrictedConfig.patterns,
+            dayjsRestrictedPattern,
+            echartsRestrictedPattern,
+          ],
         },
       ],
       "import/no-unresolved": [
@@ -701,6 +722,24 @@ const configs = [
     },
   },
   {
+    // The echarts folder is the only place that imports `echarts` directly.
+    // The folder holds a whole chart layer, so the other base restrictions stay on.
+    files: ["frontend/src/metabase/viz-core/echarts/**/*"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: baseMetabaseRestrictedConfig.patterns.filter(
+            (pattern) => pattern !== echartsRestrictedPattern,
+          ),
+          paths: baseMetabaseRestrictedConfig.paths.filter(
+            (path) => path !== echartsRestrictedPath,
+          ),
+        },
+      ],
+    },
+  },
+  {
     files: ["frontend/src/metabase/ui/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
@@ -711,6 +750,7 @@ const configs = [
             { group: ["metabase-enterprise/*"] },
             { group: ["cljs/metabase.lib*"] },
             dayjsRestrictedPattern,
+            echartsRestrictedPattern,
           ],
           paths: [
             {
@@ -718,6 +758,7 @@ const configs = [
               message: "Please import routing from `metabase/router` instead.",
             },
             dayjsRestrictedPath,
+            echartsRestrictedPath,
             {
               name: "@emotion/styled",
               message: "Please style components using css modules.",
@@ -752,6 +793,7 @@ const configs = [
               ],
             },
             dayjsRestrictedPattern,
+            echartsRestrictedPattern,
           ],
           paths: [
             {
@@ -764,6 +806,7 @@ const configs = [
               message: "Please import routing from `metabase/router` instead.",
             },
             dayjsRestrictedPath,
+            echartsRestrictedPath,
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
@@ -796,9 +839,10 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
-          paths: [dayjsRestrictedPath],
+          paths: [dayjsRestrictedPath, echartsRestrictedPath],
           patterns: [
             dayjsRestrictedPattern,
+            echartsRestrictedPattern,
             {
               group: [
                 "metabase/*",
@@ -943,6 +987,7 @@ const configs = [
               message: TEST_FILES_NAME_PATTERN_ERROR_MESSAGE,
             },
             dayjsRestrictedPattern,
+            echartsRestrictedPattern,
           ],
           paths: [
             {
@@ -950,6 +995,7 @@ const configs = [
               message: "Please import routing from `metabase/router` instead.",
             },
             dayjsRestrictedPath,
+            echartsRestrictedPath,
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
@@ -1021,13 +1067,18 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
-          patterns: [{ group: ["cljs/metabase.lib*"] }, dayjsRestrictedPattern],
+          patterns: [
+            { group: ["cljs/metabase.lib*"] },
+            dayjsRestrictedPattern,
+            echartsRestrictedPattern,
+          ],
           paths: [
             {
               name: "react-router",
               message: "Please import routing from `metabase/router` instead.",
             },
             dayjsRestrictedPath,
+            echartsRestrictedPath,
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",

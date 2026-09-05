@@ -1,9 +1,9 @@
 import { act, renderHook } from "@testing-library/react";
-import type { EChartsType } from "echarts/core";
 import type { MutableRefObject } from "react";
 
 import {
   DEFAULT_VISUALIZATION_THEME,
+  type EChartsType,
   type RenderingContext,
   type TreemapFormatters,
   type TreemapTree,

@@ -1,17 +1,13 @@
-import { init } from "echarts/core";
-
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import {
   getChartLayout,
   getWaterfallChartModel,
   getWaterfallChartOption,
-  registerEChartsModules,
+  init,
 } from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
-
-registerEChartsModules();
 
 const WIDTH = 540;
 const HEIGHT = 360;

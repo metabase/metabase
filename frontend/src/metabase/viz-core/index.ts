@@ -163,7 +163,13 @@ export {
   HOVER_OVERLAY_Z,
   TREEMAP_HOVER_OVERLAY_FILL,
 } from "./echarts/graph/treemap/style";
-export { registerEChartsModules } from "./echarts";
+export { graphic, init, setPlatformAPI } from "./echarts";
+export type {
+  EChartsCoreOption,
+  EChartsOption,
+  EChartsType,
+  TooltipOption,
+} from "./echarts";
 export { DIMENSIONS, OTHER_SLICE_KEY } from "./echarts/pie/constants";
 export { getPieChartFormatters } from "./echarts/pie/format";
 export type { PieChartFormatters } from "./echarts/pie/format";

@@ -1,5 +1,3 @@
-import type { TooltipOption } from "echarts/types/dist/shared";
-
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 import { getTooltipModel } from "metabase/visualizations/visualizations/CartesianChart/events";
 import {
@@ -8,6 +6,7 @@ import {
   type DataKey,
   EChartsTooltip,
   GOAL_LINE_SERIES_ID,
+  type TooltipOption,
   getTooltipBaseOption,
 } from "metabase/viz-core";
 import type { CardDisplayType } from "metabase-types/api";
