@@ -1,0 +1,382 @@
+import {
+  test as base,
+  BrowserContext,
+  APIRequestContext,
+  request as playwrightRequest,
+} from "@playwright/test";
+
+import { MetabaseApi } from "./api";
+import {
+  resetWritableDb,
+  writableDialectFor,
+} from "./reset-writable-db";
+import { BASE_URL } from "./env";
+import { ensureMaildev, maildevEndpoint } from "./maildev";
+import { LOGIN_CACHE, USERS, UserName } from "./sample-data";
+import {
+  provisionWritableDb,
+  writableDbDetailsPatch,
+  writableDbName,
+  writableDbSlot,
+} from "./writable-db";
+import type { SnowplowCollector } from "./snowplow-collector";
+import { startWorkerBackend } from "./worker-backend";
+
+/** WRITABLE_DB_ID (e2e/support/cypress_data.js) — database 2 under the
+ * `-writable` snapshots. */
+const WRITABLE_DB_ID = 2;
+
+/**
+ * Port of the Cypress auth model (e2e/support/commands/user/authentication.ts):
+ * session ids cached at snapshot-creation time are injected as cookies, so no
+ * login request is needed. API requests run as the current user, mirroring
+ * cy.request's cookie-sharing behavior.
+ */
+class MetabaseHarness {
+  readonly api: MetabaseApi;
+  /** The backend this test actually targets (per-worker port when enabled). */
+  readonly baseUrl: string;
+  private sessionId: string | undefined;
+
+  constructor(
+    private context: BrowserContext,
+    request: APIRequestContext,
+    private sampleDbUrl?: string,
+    baseUrl: string = BASE_URL,
+    private collector?: SnowplowCollector,
+  ) {
+    this.api = new MetabaseApi(request, () => this.sessionId);
+    this.baseUrl = baseUrl;
+  }
+
+  /**
+   * This worker's private Snowplow collector — the seam for **backend-emitted**
+   * events, which leave the JVM directly and are invisible to `page.route`.
+   * Frontend-emitted events are still captured at the browser boundary by
+   * `installSnowplowCapture` (support/search-snowplow.ts); the two coexist.
+   *
+   * Throws rather than skipping when there is no collector (i.e. running
+   * against the shared BASE_URL backend without PW_PER_WORKER_BACKEND). A spec
+   * that silently no-ops when its observation seam is missing is the FINDINGS
+   * #49 "green run that never executed" shape. CI always sets
+   * PW_PER_WORKER_BACKEND=1 (.github/workflows/e2e-playwright.yml:136).
+   */
+  get snowplow(): SnowplowCollector {
+    if (!this.collector) {
+      throw new Error(
+        "No per-slot Snowplow collector: backend-emitted snowplow events can " +
+          "only be observed with PW_PER_WORKER_BACKEND=1, which boots each slot " +
+          "backend pointed at its own collector.",
+      );
+    }
+    return this.collector;
+  }
+
+  async signIn(user: UserName = "admin") {
+    const cached = LOGIN_CACHE[user];
+    if (cached) {
+      this.sessionId = cached.sessionId;
+      await this.setSessionCookies(cached.sessionId, cached.deviceId);
+      return;
+    }
+
+    // Fallback for users without a cached session. The session POST MUST NOT
+    // go through `this.api`'s shared request context: its Set-Cookie would
+    // land in that context's jar, and `wrap-session-key` resolves the cookie
+    // BEFORE the X-Metabase-Session header — every later `mb.api` call would
+    // silently run as this user, and a later cached signInAsAdmin() (header
+    // only) could not undo it (FINDINGS #139/#148 — the same leak that made
+    // sandboxing baselines pass while measuring nothing). Throwaway context,
+    // same shape as signInWithCredentials (support/sandboxing-via-api.ts).
+    const { email: username, password } = USERS[user];
+    const throwaway = await playwrightRequest.newContext({
+      baseURL: this.baseUrl,
+    });
+    let id: string;
+    try {
+      const response = await throwaway.post("/api/session", {
+        data: { username, password },
+      });
+      if (!response.ok()) {
+        throw new Error(
+          `POST /api/session for ${username} -> ${response.status()}`,
+        );
+      }
+      id = ((await response.json()) as { id: string }).id;
+    } finally {
+      await throwaway.dispose();
+    }
+    this.sessionId = id;
+    await this.setSessionCookies(id, "my-device-id");
+  }
+
+  signInAsAdmin() {
+    return this.signIn("admin");
+  }
+
+  signInAsNormalUser() {
+    return this.signIn("normal");
+  }
+
+  signInAsSandboxedUser() {
+    return this.signIn("sandboxed");
+  }
+
+  async signOut() {
+    this.sessionId = undefined;
+    await this.context.clearCookies({ name: "metabase.SESSION" });
+  }
+
+  async restore(name = "default") {
+    // Upstream's restore() resets the warehouse first whenever the snapshot is
+    // a "-writable" one (e2e-setup-helpers.js:44-49). That was never ported, so
+    // warehouse state accumulated forever on a long-lived container while the
+    // app DB was reset each time — 9 CI failures with "403 A table with that
+    // name already exists", ~30 debris schemas, and one spec that could not
+    // pass at all (FINDINGS #157). Order matters: reset BEFORE the snapshot.
+    if (name.includes("-writable")) {
+      await resetWritableDb({ type: writableDialectFor(name) });
+    }
+    await this.api.restore(name);
+    // ORDER: the db1/db2 repoints and the Quartz disarm run FIRST, the
+    // search-index poll LAST. The poll can take up to 30s, and until the PUTs
+    // land, database 1 points at the shared e2e/tmp H2 file (one-JVM lock) and
+    // database 2's restored QRTZ tables hold an overdue trigger that can
+    // misfire and sync away the metadata (see the db-2 block below). Polling
+    // first held those windows open for the whole poll; nothing in the poll
+    // depends on the repoints, and the disarm PUT does not itself trigger a
+    // sync (:event/database-update subscribers are audit-log and pool
+    // invalidation only — sync fires on database CREATE).
+    if (this.sampleDbUrl) {
+      // Snapshots pin database 1 to the shared e2e/tmp H2 file, which only
+      // one JVM can hold — re-point it at this worker's private copy. Uses
+      // the cached admin session (valid post-restore) since restore usually
+      // runs before signIn.
+      const adminApi = new MetabaseApi(
+        this.api.requestContext,
+        () => LOGIN_CACHE.admin?.sessionId,
+      );
+      await adminApi.put("/api/database/1", {
+        details: { db: this.sampleDbUrl },
+      });
+    }
+    // Same problem shape as database 1 above, for database 2. The `-writable`
+    // snapshots pin database 2 to the shared `writable_db`, which every worker
+    // then resets destructively; re-point it at this worker's private copy so
+    // the app and the direct-warehouse helpers agree on one database that
+    // nobody else can drop tables in. Gated on per-worker isolation being on —
+    // with it off `writableDbName()` is `writable_db` and this is a no-op we
+    // skip entirely.
+    if (name.includes("-writable") && writableDbSlot() !== null) {
+      const adminApi = new MetabaseApi(
+        this.api.requestContext,
+        () => LOGIN_CACHE.admin?.sessionId,
+      );
+      const dialect = writableDialectFor(name);
+      const current = await adminApi
+        .get(`/api/database/${WRITABLE_DB_ID}`, { failOnStatusCode: false })
+        .then((response) => (response.ok() ? response.json() : undefined))
+        .catch(() => undefined);
+      await adminApi.put(`/api/database/${WRITABLE_DB_ID}`, {
+        details: writableDbDetailsPatch(current?.details, dialect),
+        // Disable BACKGROUND scheduled syncs on db 2 for the duration of the
+        // test. Explicit POST /sync_schema calls (which several specs make on
+        // purpose) are unaffected — this only removes the Quartz actor.
+        //
+        // Why it matters: the snapshot's app-DB metadata is a LIE. It lists 8
+        // tables for database 2 (orders, products, reviews, ...) inherited from
+        // QA Postgres12, because upstream's convertToWritable only re-points
+        // `dbname` — while resetWritableDb (#157) empties the actual warehouse.
+        // Tests then select against metadata describing tables that do not
+        // exist. Any metadata sync reconciles the lie by DELETING them:
+        // measured, /schemas goes ["public"] -> [] in under a second.
+        //
+        // The snapshot also bakes in metadata_sync_schedule "0 31 * * * ? *"
+        // AND restores the QRTZ_* tables with fire times from snapshot creation
+        // (2026-07-17), i.e. massively overdue — so a restore can hand Quartz a
+        // trigger that misfires immediately. That wiped db 2 mid-spec and cost
+        // data-studio-bulk-table 4 deterministic CI failures, whose symptom was
+        // a waitForResponse timeout on a schema GET the FE never issued
+        // (because there were no tables left to expand).
+        //
+        // This hazard is INHERITED, not introduced: upstream Cypress runs the
+        // same emptied warehouse against the same hourly trigger and is green
+        // only because the minute rarely lines up.
+        //
+        // This narrows the window rather than closing it — the restore-to-PUT
+        // gap remains. The complete fix is to repopulate the warehouse after
+        // resetWritableDb so the metadata stops being a lie.
+        // "daily" is deliberate: it is the only schedule_type whose cron needs
+        // nothing but `hours` (util/cron.clj:103), so the payload cannot be
+        // rejected for a missing schedule_frame the way "monthly" would be. A
+        // 3am daily sync never fires inside a minutes-long test run, and
+        // re-issuing it pushes the snapshot's overdue Quartz trigger forward.
+        schedules: {
+          metadata_sync: { schedule_type: "daily", schedule_hour: 3 },
+          cache_field_values: { schedule_type: "daily", schedule_hour: 3 },
+        },
+      });
+    }
+    // The restore triggers an async search-index rebuild. A frontend search
+    // fired inside that window renders a permanent empty state (the FE never
+    // re-queries), so block until the index answers before the test starts.
+    const adminSession = LOGIN_CACHE.admin?.sessionId;
+    if (adminSession) {
+      const adminApi = new MetabaseApi(
+        this.api.requestContext,
+        () => adminSession,
+      );
+      const deadline = Date.now() + 30_000;
+      let forcedReindex = false;
+      while (Date.now() < deadline) {
+        // Query a TABLE specifically: the rebuild indexes models in phases,
+        // and cards can be searchable while tables still aren't (which broke
+        // the join mini-picker after the card-based poll passed).
+        const response = await adminApi.get(
+          "/api/search?q=Reviews&models=table&limit=1",
+          { failOnStatusCode: false },
+        );
+        if (response.ok()) {
+          const body = await response.json().catch(() => ({ data: [] }));
+          if ((body.data ?? []).length > 0) {
+            break;
+          }
+        }
+        if (!forcedReindex) {
+          // Back-to-back restores can drop the rebuild trigger entirely,
+          // leaving the index dead until something re-triggers it — do so.
+          forcedReindex = true;
+          await adminApi.post("/api/search/force-reindex", undefined, {
+            failOnStatusCode: false,
+          });
+        }
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      if (Date.now() >= deadline) {
+        // Expiring silently made the resulting failures (empty search states)
+        // surface far downstream, disconnected from this cause.
+        console.warn(
+          `[restore] search-index poll expired after 30s (snapshot "${name}") — ` +
+            "search-dependent assertions in this test may see an empty index",
+        );
+      }
+    }
+  }
+
+  private async setSessionCookies(sessionId: string, deviceId: string) {
+    // Domain from this.baseUrl, not the module-level BASE_URL: identical today
+    // (both `localhost`), but BASE_URL is the shared :4000 host and would be
+    // wrong if BACKEND_HOST ever became non-local under per-worker backends.
+    const { hostname } = new URL(this.baseUrl);
+    const cookie = { domain: hostname, path: "/" };
+    await this.context.addCookies([
+      { name: "metabase.SESSION", value: sessionId, httpOnly: true, ...cookie },
+      { name: "metabase.TIMEOUT", value: "alive", ...cookie },
+      { name: "metabase.DEVICE", value: deviceId, httpOnly: true, ...cookie },
+    ]);
+  }
+}
+
+type Fixtures = {
+  mb: MetabaseHarness;
+};
+
+type WorkerFixtures = {
+  workerBackend: {
+    url: string;
+    sampleDbUrl?: string;
+    snowplow?: SnowplowCollector;
+  };
+};
+
+export const test = base.extend<Fixtures, WorkerFixtures>({
+  // Per-worker backend experiment (PW_PER_WORKER_BACKEND=1): each worker
+  // boots its own Metabase so restore() calls can't collide across workers.
+  // Off by default — everything runs against the shared BASE_URL backend.
+  workerBackend: [
+    async ({}, use, workerInfo) => {
+      if (!process.env.PW_PER_WORKER_BACKEND) {
+        await use({ url: BASE_URL });
+        return;
+      }
+      // Static import above, NOT a dynamic `await import()`: node without
+      // native TS support can't load a raw .ts dynamically at runtime
+      // (CI failed with "Cannot use import statement outside a module"),
+      // while the static form goes through Playwright's transpiler.
+      // parallelIndex, not workerIndex: replacement workers land on the same
+      // slot and reuse the still-running backend instead of booting another.
+      // PW_SLOT_OFFSET partitions slots between concurrent INVOCATIONS
+      // (e.g. porting agents each verifying their own spec on their own
+      // backend): slot = parallelIndex + offset.
+      const backend = await startWorkerBackend(
+        workerInfo.parallelIndex + Number(process.env.PW_SLOT_OFFSET || 0),
+      );
+      // Give this worker its own writable warehouse databases, once, before
+      // any spec can reach one. Best-effort per dialect: a machine running only
+      // the postgres QA container must not fail every worker over a missing
+      // mysql — the specs that need mysql will fail loudly on their own, which
+      // is the honest signal.
+      for (const dialect of ["postgres", "mysql"] as const) {
+        try {
+          const name = await provisionWritableDb(dialect);
+          console.log(
+            `[worker ${workerInfo.workerIndex} slot ${workerInfo.parallelIndex}] writable ${dialect} db: ${name}`,
+          );
+        } catch (error) {
+          console.log(
+            `[worker ${workerInfo.workerIndex} slot ${workerInfo.parallelIndex}] could not provision ${dialect} ${writableDbName()}: ${error}`,
+          );
+        }
+      }
+      // Give this worker its own maildev, once, before any spec can send. Same
+      // reason as the writable databases above: a single shared mailbox is
+      // read as "the last email" / "exactly N emails" by every email helper,
+      // and `clearInbox` is a global DELETE (see support/maildev.ts).
+      // Best-effort, and it logs its own failure: no maildev means the email
+      // specs skip, which is their existing contract on a box without docker.
+      const maildevUp = await ensureMaildev();
+      console.log(
+        `[worker ${workerInfo.workerIndex} slot ${workerInfo.parallelIndex}] maildev: ${maildevEndpoint()}${
+          maildevUp ? "" : " (UNREACHABLE — email specs will skip)"
+        }`,
+      );
+      console.log(
+        `[worker ${workerInfo.workerIndex} slot ${workerInfo.parallelIndex}] backend on :${backend.port} ${
+          backend.startupMs === 0
+            ? "(reused)"
+            : `ready in ${Math.round(backend.startupMs / 1000)}s`
+        }`,
+      );
+      // Deliberately not stopped here — global teardown kills slot backends,
+      // so a replacement worker on this slot can pick the backend up warm.
+      await use({
+        url: `http://localhost:${backend.port}`,
+        sampleDbUrl: backend.sampleDbUrl,
+        snowplow: backend.snowplow,
+      });
+      // The collector, unlike the backend, IS stopped: it lives in this node
+      // process, so a replacement worker cannot inherit it and would fail to
+      // bind the port. A crashed worker releases the port with the process.
+      await backend.snowplow.stop();
+    },
+    { scope: "worker", timeout: 11 * 60_000 },
+  ],
+
+  baseURL: async ({ workerBackend }, use) => {
+    await use(workerBackend.url);
+  },
+
+  mb: async ({ context, request, workerBackend }, use) => {
+    await use(
+      new MetabaseHarness(
+        context,
+        request,
+        workerBackend.sampleDbUrl,
+        workerBackend.url,
+        workerBackend.snowplow,
+      ),
+    );
+  },
+});
+
+export { expect } from "@playwright/test";
