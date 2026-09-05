@@ -2,8 +2,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
+   [metabase-enterprise.data-apps.user-access :as data-app.user-access]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase.actions.core :as actions]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -48,45 +54,470 @@
 
 ;;; ---------------------------------------------- Permissions ----------------------------------------------
 
-(deftest non-superuser-can-view-and-list-but-not-manage-test
+(deftest data-app-access-requires-read-access-to-its-resource-collection-test
   ;; global mode so the `:data-apps-preview` premium feature is visible to the real-HTTP
   ;; `user-real-request` calls below (which run on Jetty threads that don't inherit
   ;; a thread-local `binding`).
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
-        (testing "a non-superuser can view (open) a data app"
-          (is (= [{:name "demo" :display_name "Demo"}]
-                 (mt/user-http-request :rasta :get 200 "apps")))
-          (is (= {:name "demo" :display_name "Demo"}
-                 (mt/user-http-request :rasta :get 200 "apps/demo")))
-          (is (str/includes?
-               (str (mt/user-real-request :rasta :get 200 "apps/demo/bundle"))
-               "BUNDLE")))
-        (testing "but is still forbidden from managing data apps"
+        (let [app (t2/select-one :model/DataApp :name "demo")
+              {:keys [permission_group_id]} (data-app.resources/ensure-resources! app)]
+          (testing "a non-member cannot open a data app or load its bundle"
+            (is (= [{:name "demo" :display_name "Demo"}]
+                   (mt/user-http-request :rasta :get 200 "apps")))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "apps/demo")))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "apps/demo/bundle"))))
+          (testing "a member can open a data app"
+            (perms/add-user-to-group! (mt/user->id :rasta) permission_group_id)
+            (is (= {:name "demo" :display_name "Demo"}
+                   (mt/user-http-request :rasta :get 200 "apps/demo")))
+            (is (str/includes?
+                 (str (mt/user-real-request :rasta :get 200 "apps/demo/bundle"))
+                 "BUNDLE"))))
+        (testing "a non-superuser is still forbidden from managing data apps"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "apps/repo-status")))
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 "apps/demo" {:enabled false}))))))))
 
+(deftest data-app-without-a-resource-collection-is-not-published-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+        (create-app!)
+        (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp :name "demo"))
+            "precondition: the app has no resource collection")
+        (testing "an app with no resource collection is not published: neither its metadata nor its
+                  bundle is served — to anyone — and a 409 lets the client show a \"not published\" screen"
+          (doseq [user [:rasta :crowberto]]
+            (is (= "This data app has not been published yet."
+                   (mt/user-http-request user :get 409 "apps/demo")))
+            (is (= "This data app has not been published yet."
+                   (mt/user-http-request user :get 409 "apps/demo/bundle")))))))))
+
 (deftest superuser-can-manage-and-view-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
+        (let [app (t2/select-one :model/DataApp :name "demo")
+              {:keys [resource_collection_id]} (data-app.resources/ensure-resources! app)]
+          (is (not (some #(= resource_collection_id (:id %))
+                         (mt/user-http-request :rasta :get 200 "collection")))))
         (testing "a superuser can list, read metadata, and serve the bundle"
           (is (=? [{:name "demo" :display_name "Demo"}]
                   (mt/user-http-request :crowberto :get 200 "apps")))
-          (is (=? {:name "demo"}
+          (is (=? {:name "demo"
+                   :resource_collection_id pos-int?
+                   :permission_group_id pos-int?}
                   (mt/user-http-request :crowberto :get 200 "apps/demo")))
           (is (str/includes?
                (str (mt/user-real-request :crowberto :get 200 "apps/demo/bundle"))
                "BUNDLE")))))))
 
-(deftest list-available-apps-test
+(deftest deleting-a-data-app-removes-its-permission-group-test
+  (testing "removing a data app through the admin API — clearing out one left behind after its
+            repo was disconnected or a remote-sync branch switch — deletes its server-managed
+            permission group and resource collection along with the row"
+    (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+        (create-app!)
+        (let [app (t2/select-one :model/DataApp :name "demo")
+              {:keys [permission_group_id resource_collection_id]}
+              (data-app.resources/ensure-resources! app)]
+          (is (t2/exists? :model/PermissionsGroup :id permission_group_id)
+              "precondition: the app has a permission group")
+          (mt/user-http-request :crowberto :delete 204 "apps/demo")
+          (is (not (t2/exists? :model/DataApp :id (:id app)))
+              "the app row is gone")
+          (is (not (t2/exists? :model/PermissionsGroup :id permission_group_id))
+              "its permission group is removed too")
+          (is (not (t2/exists? :model/Collection :id resource_collection_id))
+              "and so is its resource collection"))))))
+
+(deftest superuser-can-resolve-a-query-definition-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (create-app!)
+      (let [response (mt/user-http-request
+                      :crowberto :post 200 "apps/demo/query"
+                      {:stages [{:source {:type "table" :id (mt/id :venues)}
+                                 :limit  5}]})]
+        (is (= (mt/id) (:database_id response)))
+        (is (=? {:dataset_query {:lib/type "mbql/query"
+                                 :database (mt/id)
+                                 :stages [{:lib/type "mbql.stage/mbql"
+                                           :source-table (mt/id :venues)
+                                           :limit 5}]}}
+                response))))))
+
+(deftest referenced-metrics-excludes-non-metric-cards-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (create-app!)
+      (let [metadata-provider (mt/metadata-provider)
+            orders-query      (lib/query metadata-provider
+                                         (lib.metadata/table metadata-provider (mt/id :orders)))
+            venue-count-query (-> (lib/query metadata-provider
+                                             (lib.metadata/table metadata-provider (mt/id :venues)))
+                                  (lib/aggregate (lib/count)))]
+        (mt/with-temp [:model/Card {question-id :id}
+                       {:name          "Orders"
+                        :type          :question
+                        :database_id   (mt/id)
+                        :table_id      (mt/id :orders)
+                        :dataset_query orders-query}
+                       :model/Card {metric-id :id}
+                       {:name          "Venue count"
+                        :type          :metric
+                        :database_id   (mt/id)
+                        :table_id      (mt/id :venues)
+                        :dataset_query venue-count-query}]
+          (let [response (mt/user-http-request
+                          :crowberto :post 200 "apps/demo/query"
+                          {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                     :joins        [{:source     {:type "card" :id question-id}
+                                                     :strategy   "left-join"
+                                                     :conditions [{:operator "="
+                                                                   :left     {:type "column" :name "ID"}
+                                                                   :right    {:type "column" :name "USER_ID"}}]}]
+                                     :aggregations [{:type "metric" :id metric-id}]}]})]
+            (is (= [metric-id] (mapv :id (:metrics response))))))))))
+
+(deftest resolved-query-includes-implicitly-joined-tables-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (create-app!)
+      (let [orders-id            (mt/id :orders)
+            products-id          (mt/id :products)
+            product-id-field-id  (mt/id :orders :product_id)
+            response             (mt/user-http-request
+                                  :crowberto :post 200 "apps/demo/query"
+                                  {:stages [{:source    {:type "table" :id orders-id}
+                                             :breakouts [{:type            "column"
+                                                          :name            "CATEGORY"
+                                                          :source-field-id product-id-field-id}]}]})]
+        (is (= #{orders-id products-id}
+               (set (:table_ids response))))))))
+
+(deftest superuser-can-store-table-dependencies-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp]
+      (create-app!)
+      (let [table-ids [(mt/id :venues) (mt/id :orders)]]
+        (is (= (sort table-ids)
+               (:table_ids
+                (mt/user-http-request :crowberto :put 200 "apps/demo/table-dependencies"
+                                      {:table_ids (reverse table-ids)}))))
+        (is (= (sort table-ids)
+               (t2/select-one-fn :table_ids :model/DataApp :name "demo")))
+        (is (= []
+               (:table_ids
+                (mt/user-http-request :crowberto :put 200 "apps/demo/table-dependencies"
+                                      {:table_ids []}))))))))
+
+(deftest non-superuser-cannot-store-table-dependencies-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (create-app!)
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 "apps/demo/table-dependencies"
+                                   {:table_ids [(mt/id :venues)]}))))))
+
+(deftest table-dependencies-validates-table-ids-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (create-app!)
+      (is (= "One or more tables do not exist."
+             (mt/user-http-request :crowberto :put 400 "apps/demo/table-dependencies"
+                                   {:table_ids [Integer/MAX_VALUE]})))
+      (is (= [] (t2/select-one-fn :table_ids :model/DataApp :name "demo"))))))
+
+(deftest user-permission-warnings-test
+  (mt/with-premium-features #{:data-apps-preview :advanced-permissions :sandboxes}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Sandbox]
+      (mt/with-no-data-perms-for-all-users!
+        (create-app!)
+        (let [{app-group-id :permission_group_id}
+              (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
+              allowed-table-id (mt/id :venues)
+              missing-table-id (mt/id :orders)
+              user-id          (mt/user->id :rasta)]
+          (testing "an app with no synchronized dependencies has no warnings"
+            (is (= []
+                   (mt/user-http-request :crowberto :post 200 "apps/demo/user-permission-warnings"
+                                         {:user_ids [user-id]}))))
+          (mt/user-http-request :crowberto :put 200 "apps/demo/table-dependencies"
+                                {:table_ids [allowed-table-id missing-table-id]})
+          (perms/add-user-to-group! user-id app-group-id)
+          (perms/set-table-permission! app-group-id
+                                       missing-table-id
+                                       :perms/view-data
+                                       :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group)
+                                       allowed-table-id
+                                       :perms/view-data
+                                       :unrestricted)
+          (testing "returns only users who lack access from a non-data-app group"
+            (is (=? [{:user_id user-id
+                      :missing_tables [{:id missing-table-id
+                                        :name "Orders"
+                                        :database_id (mt/id)}]}]
+                    (mt/user-http-request :crowberto :post 200 "apps/demo/user-permission-warnings"
+                                          {:user_ids [user-id (mt/user->id :crowberto)]}))))
+          (testing "unrestricted access from another group is adequate"
+            (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+              (perms/add-user-to-group! user-id group-id)
+              (perms/set-table-permission! group-id
+                                           missing-table-id
+                                           :perms/view-data
+                                           :unrestricted)
+              (is (= []
+                     (mt/user-http-request :crowberto :post 200 "apps/demo/user-permission-warnings"
+                                           {:user_ids [user-id]})))))
+          (testing "sandboxed access is adequate"
+            (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                           :model/Sandbox _ {:group_id group-id :table_id missing-table-id}]
+              (perms/add-user-to-group! user-id group-id)
+              (is (= []
+                     (mt/user-http-request :crowberto :post 200 "apps/demo/user-permission-warnings"
+                                           {:user_ids [user-id]}))))))))))
+
+(deftest permission-warning-lookups-are-batched-test
+  (mt/with-premium-features #{:data-apps-preview :advanced-permissions :sandboxes}
+    (mt/with-no-data-perms-for-all-users!
+      (let [table-ids [(mt/id :venues) (mt/id :orders)]
+            users     [{:id (mt/user->id :rasta) :is_superuser false}
+                       {:id (mt/user->id :lucky) :is_superuser false}]
+            query-count (fn [users]
+                          (t2/with-call-count [call-count]
+                            (data-app.user-access/permission-warnings table-ids users)
+                            (call-count)))]
+        (is (= 3 (query-count users)))
+        (is (= (query-count (take 1 users))
+               (query-count users))
+            "permission warning query count must not grow with the number of users")))))
+
+(deftest data-app-list-warning-lookups-are-batched-test
+  (mt/with-premium-features #{:data-apps-preview :advanced-permissions :sandboxes}
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/PermissionsGroup {first-group-id :id} {}
+                     :model/PermissionsGroup {second-group-id :id} {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) first-group-id)
+        (perms/add-user-to-group! (mt/user->id :lucky) second-group-id)
+        (let [apps [{:permission_group_id first-group-id
+                     :table_ids [(mt/id :venues)]}
+                    {:permission_group_id second-group-id
+                     :table_ids [(mt/id :orders)]}]
+              warning-groups #(t2/with-call-count [call-count]
+                                (let [result (data-app.user-access/groups-with-permission-warnings %)]
+                                  {:result result :query-count (call-count)}))
+              one-app (warning-groups (take 1 apps))
+              two-apps (warning-groups apps)]
+          (is (= #{first-group-id} (:result one-app)))
+          (is (= #{first-group-id second-group-id} (:result two-apps)))
+          (is (= 3 (:query-count one-app) (:query-count two-apps))
+              "warning status query count must not grow with the number of apps"))))))
+
+(deftest data-app-list-includes-user-permission-warning-status-test
+  (mt/with-premium-features #{:data-apps-preview :advanced-permissions :sandboxes}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/with-no-data-perms-for-all-users!
+        (create-app!)
+        (let [{app-group-id :permission_group_id}
+              (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
+              table-id (mt/id :orders)
+              user-id  (mt/user->id :rasta)
+              warning? #(->> (mt/user-http-request :crowberto :get 200 "apps")
+                             (filter (comp #{"demo"} :name))
+                             first
+                             :has_user_permission_warnings)]
+          (mt/user-http-request :crowberto :put 200 "apps/demo/table-dependencies"
+                                {:table_ids [table-id]})
+          (perms/add-user-to-group! user-id app-group-id)
+          (is (true? (warning?)))
+          (perms/set-table-permission! (perms/all-users-group)
+                                       table-id
+                                       :perms/view-data
+                                       :unrestricted)
+          (is (false? (warning?))))))))
+
+(deftest data-app-list-warning-status-ignores-deactivated-members-test
+  (mt/with-premium-features #{:data-apps-preview :advanced-permissions :sandboxes}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/with-no-data-perms-for-all-users!
+        (create-app!)
+        (let [{app-group-id :permission_group_id}
+              (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
+              table-id (mt/id :orders)]
+          (mt/with-temp [:model/User {user-id :id} {:email "deactivated-data-app-user@example.com"}]
+            (perms/add-user-to-group! user-id app-group-id)
+            (t2/update! :model/User :id user-id {:is_active false})
+            (mt/user-http-request :crowberto :put 200 "apps/demo/table-dependencies"
+                                  {:table_ids [table-id]})
+            (is (false? (->> (mt/user-http-request :crowberto :get 200 "apps")
+                             (filter (comp #{"demo"} :name))
+                             first
+                             :has_user_permission_warnings)))))))))
+
+(deftest deactivated-users-cannot-be-added-to-data-apps-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (create-app!)
+      (let [{app-group-id :permission_group_id}
+            (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))]
+        (mt/with-temp [:model/User {user-id :id} {:email "deactivated-data-app-user@example.com"
+                                                  :is_active false}]
+          (is (= "Deactivated users cannot be added to data apps."
+                 (mt/user-http-request :crowberto :post 400 "permissions/membership"
+                                       {:group_id app-group-id :user_id user-id})))
+          (is (= "Deactivated users cannot be added to data apps."
+                 (mt/user-http-request :crowberto :post 400 "apps/demo/user-permission-warnings"
+                                       {:user_ids [user-id]}))))))))
+
+(deftest user-permission-warnings-validates-users-test
+  (mt/with-premium-features #{:data-apps-preview :tenants}
+    (mt/with-model-cleanup [:model/DataApp]
+      (create-app!)
+      (testing "unknown users"
+        (mt/user-http-request :crowberto :post 404 "apps/demo/user-permission-warnings"
+                              {:user_ids [Integer/MAX_VALUE]}))
+      (testing "tenant users"
+        (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Data app tenant" :slug "data-app-tenant"}
+                       :model/User {user-id :id} {:email "data-app-tenant-user@example.com"
+                                                  :tenant_id tenant-id}]
+          (is (= "Tenant users cannot be added to data apps."
+                 (mt/user-http-request :crowberto :post 400 "apps/demo/user-permission-warnings"
+                                       {:user_ids [user-id]}))))))))
+
+(deftest non-superuser-cannot-read-user-permission-warnings-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (create-app!)
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "apps/demo/user-permission-warnings"
+                                   {:user_ids [(mt/user->id :rasta)]}))))))
+
+(deftest data-app-write-endpoints-require-feature-token-test
+  (mt/with-premium-features #{}
+    (mt/user-http-request :crowberto :put 402 "apps/demo/table-dependencies"
+                          {:table_ids []})
+    (mt/user-http-request :crowberto :post 402 "apps/demo/user-permission-warnings"
+                          {:user_ids [(mt/user->id :rasta)]})
+    (mt/user-http-request :crowberto :post 402 "apps/demo/draft")))
+
+(deftest data-app-membership-writes-require-feature-token-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (create-app!)
+    (let [{group-id :permission_group_id}
+          (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
+          user-id (mt/user->id :rasta)]
+      (perms/add-user-to-group! user-id group-id)
+      (let [membership-id (t2/select-one-pk :model/PermissionsGroupMembership
+                                            :group_id group-id
+                                            :user_id user-id)]
+        (mt/with-premium-features #{}
+          (mt/user-http-request :crowberto :post 402 "permissions/membership"
+                                {:group_id group-id :user_id (mt/user->id :lucky)})
+          (mt/user-http-request :crowberto :put 402 (format "permissions/membership/%d/clear" group-id))
+          (mt/user-http-request :crowberto :delete 402 (format "permissions/membership/%d" membership-id)))))))
+
+(deftest query-definition-must-use-a-table-source-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (create-app!)
+      (is (= "Data app query definitions must use a table source."
+             (mt/user-http-request :crowberto :post 400 "apps/demo/query"
+                                   {:stages [{:source {:type "card" :id 1}}]}))))))
+
+(deftest query-definition-source-must-be-valid-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (create-app!)
+      (is (some? (mt/user-http-request :crowberto :post 400 "apps/demo/query"
+                                       {:stages [{:source {:type 1 :id (mt/id :venues)}}]}))))))
+
+(deftest non-superuser-cannot-resolve-a-query-definition-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (create-app!)
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "apps/demo/query"
+                                   {:stages [{:source {:type "table" :id (mt/id :venues)}}]}))))))
+
+(deftest superuser-can-create-or-reuse-a-data-app-draft-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (let [first-response  (mt/user-http-request :crowberto :post 200 "apps/draft-app/draft")
+            second-response (mt/user-http-request :crowberto :post 200 "apps/draft-app/draft")]
+        (is (=? {:name "draft-app"
+                 :resource_collection_id pos-int?
+                 :permission_group_id pos-int?}
+                first-response))
+        (is (= (select-keys first-response [:resource_collection_id :permission_group_id])
+               (select-keys second-response [:resource_collection_id :permission_group_id])))
+        (is (=? {:bundle nil :draft true}
+                (t2/select-one :model/DataApp :name "draft-app")))))))
+
+(deftest non-superuser-cannot-create-a-data-app-draft-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "apps/draft-app/draft")))
+      (is (not (t2/exists? :model/DataApp :name "draft-app"))))))
+
+(deftest data-app-draft-must-have-a-valid-slug-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (is (= "Data app draft slugs must use lowercase letters, numbers, and dashes."
+             (mt/user-http-request :crowberto :post 400 "apps/Draft/draft")))
+      (is (not (t2/exists? :model/DataApp :name "Draft"))))))
+
+(deftest data-app-group-reaches-only-copied-actions-test
+  (testing "an action is reachable exactly when its model lives in the data app collection"
+    (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+        (mt/with-non-admin-groups-no-root-collection-perms
+          ;; Its own slug: the `Data App: <slug>` group outlives other tests in
+          ;; this namespace, so sharing "demo" collides on the group name.
+          (let [{:keys [permission_group_id resource_collection_id]}
+                (data-app.sync/ensure-draft! "action-perms-app")
+                metadata-provider (mt/metadata-provider)
+                venues            (lib.metadata/table metadata-provider (mt/id :venues))]
+            (perms/add-user-to-group! (mt/user->id :rasta) permission_group_id)
+            (mt/with-temp
+              [:model/Collection {source-collection-id :id} {}
+               :model/Card       {source-model-id :id}      {:type          :model
+                                                             :collection_id source-collection-id
+                                                             :dataset_query (lib/query metadata-provider venues)}
+               ;; What `npm run sync-resources` produces: a copy of the model in the
+               ;; app's own collection, carrying its own copy of the action.
+               :model/Card       {copied-model-id :id}      {:type          :model
+                                                             :collection_id resource_collection_id
+                                                             :dataset_query (lib/query metadata-provider venues)}]
+              (let [action     {:name "Create Venue", :type :implicit, :kind :row/create}
+                    source-id  (actions/insert! (assoc action :model_id source-model-id))
+                    copied-id  (actions/insert! (assoc action :model_id copied-model-id))]
+                (testing "the app's group reads the action copied into its collection"
+                  (is (=? {:id copied-id}
+                          (mt/user-http-request :rasta :get 200 (str "action/" copied-id)))))
+                (testing "the same group cannot read the source action it was copied from"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :get 403 (str "action/" source-id)))))
+                (testing "copying does not widen access to the source model"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :get 403 (str "card/" source-model-id)))))
+                (testing "a superuser still reads both"
+                  (is (=? {:id source-id}
+                          (mt/user-http-request :crowberto :get 200 (str "action/" source-id)))))))))))))
+
+(deftest list-available-apps-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (t2/insert! :model/DataApp :name "ready" :display_name "Ready" :bundle_path "data_apps/ready/index.js")
       (t2/insert! :model/DataApp :name "disabled" :display_name "Disabled" :bundle_path "data_apps/disabled/index.js"
                   :enabled false)
@@ -97,7 +528,7 @@
 
 (deftest bundle-includes-allowed-hosts-header-test
   (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (t2/insert! :model/DataApp
                   :name          "demo"
                   :display_name  "Demo"
@@ -105,6 +536,8 @@
                   :bundle        (.getBytes "BUNDLE" "UTF-8")
                   :bundle_hash   "abc123"
                   :allowed_hosts ["https://api.example.com"])
+      ;; publish the app so its bundle is served (crowberto, as a superuser, can read the collection)
+      (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
       (testing "the bundle response carries the app's allowed_hosts as a JSON header"
         (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
           (is (= "[\"https://api.example.com\"]"
@@ -117,7 +550,7 @@
 
 (deftest list-includes-allowed-hosts-test
   (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (t2/insert! :model/DataApp
                   :name "withhosts" :display_name "With"
                   :bundle_path "data_apps/withhosts/index.js"
@@ -136,7 +569,7 @@
 ;;; ----------------------------------------------------- Sync -----------------------------------------------------
 
 (deftest import-materializes-apps-test
-  (mt/with-model-cleanup [:model/DataApp]
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (let [result (data-app.sync/import-from-snapshot!
                   (snapshot (merge (app-files "sales" {:name "Sales" :path "dist/index.js" :bundle "SALES-BUNDLE"})
                                    (app-files "ops"   {:name "Ops"   :path "dist/app.js"   :bundle "OPS-BUNDLE"}))))]
@@ -151,7 +584,7 @@
         (is (nil? (:sync_error sales)))))))
 
 (deftest import-stores-allowed-hosts-test
-  (mt/with-model-cleanup [:model/DataApp]
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (testing "allowed_hosts from data_app.yaml are persisted on the row"
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "sales" {:name "Sales" :path "dist/index.js" :bundle "B"
@@ -164,7 +597,7 @@
       (is (= [] (:allowed_hosts (t2/select-one :model/DataApp :name "sales")))))))
 
 (deftest import-prunes-apps-absent-from-snapshot-test
-  (mt/with-model-cleanup [:model/DataApp]
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (data-app.sync/import-from-snapshot!
      (snapshot (merge (app-files "keep" {:name "Keep" :path "index.js" :bundle "KEEP"})
                       (app-files "gone" {:name "Gone" :path "index.js" :bundle "GONE"}))))
@@ -181,20 +614,31 @@
 (deftest delete-endpoint-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
-        (testing "a non-superuser cannot remove an app"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :delete 403 "apps/demo")))
-          (is (t2/exists? :model/DataApp :name "demo")))
-        (testing "a superuser removes the app"
-          (is (nil? (mt/user-http-request :crowberto :delete 204 "apps/demo")))
-          (is (not (t2/exists? :model/DataApp :name "demo"))))
-        (testing "removing a non-existent app 404s"
-          (mt/user-http-request :crowberto :delete 404 "apps/missing"))))))
+        (let [{:keys [resource_collection_id permission_group_id]}
+              (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))]
+          (mt/with-temp [:model/Card {card-id :id} {:collection_id resource_collection_id}
+                         :model/PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)
+                                                              :group_id permission_group_id}]
+            (testing "a non-superuser cannot remove an app"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :delete 403 "apps/demo")))
+              (is (t2/exists? :model/DataApp :name "demo")))
+            ;; each data app owns a permission group and a collection
+            ;; containing saved questions and models
+            (testing "a superuser removes the app, its resources, and their contents"
+              (is (nil? (mt/user-http-request :crowberto :delete 204 "apps/demo")))
+              (is (not (t2/exists? :model/DataApp :name "demo")))
+              (is (not (t2/exists? :model/Collection :id resource_collection_id)))
+              (is (not (t2/exists? :model/Card :id card-id)))
+              (is (not (t2/exists? :model/PermissionsGroup :id permission_group_id)))
+              (is (not (t2/exists? :model/PermissionsGroupMembership :group_id permission_group_id))))
+            (testing "removing a non-existent app 404s"
+              (mt/user-http-request :crowberto :delete 404 "apps/missing"))))))))
 
 (deftest import-preserves-enabled-across-syncs-test
-  (mt/with-model-cleanup [:model/DataApp]
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (data-app.sync/import-from-snapshot!
      (snapshot (app-files "a" {:name "A" :path "index.js" :bundle "V1"})))
     (t2/update! :model/DataApp :name "a" {:enabled false})
@@ -207,7 +651,7 @@
 
 (deftest import-per-app-error-test
   (testing "a missing bundle file fails just that app, not the whole import"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (data-app.sync/import-from-snapshot!
        (snapshot (merge (app-files "good" {:name "Good" :path "index.js" :bundle "GOOD"})
                         ;; "bad" declares a path that doesn't exist
@@ -222,7 +666,7 @@
 
 (deftest import-serves-each-app-from-its-directory-test
   (testing "the directory an app lives in is the slug it's served at — two apps can't collide on one"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (data-app.sync/import-from-snapshot!
        (snapshot (merge (app-files "one" {:name "One" :path "a.js" :bundle "A"})
                         (app-files "two" {:name "Two" :path "b.js" :bundle "B"}))))
@@ -230,7 +674,7 @@
 
 (deftest import-isolates-bad-config-test
   (testing "a malformed data_app.yaml is isolated: sibling apps in the same repo still sync and are not pruned, the bad one is reported"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "existing" {:name "Existing" :path "i.js" :bundle "E"})))
       ;; The repo still holds "existing" and adds "good", alongside a broken "bad".
@@ -246,13 +690,13 @@
 
 (deftest sync-from-snapshot!-never-throws-test
   (testing "a malformed data_app.yaml is isolated into :config-errors; the app just doesn't appear, the sync doesn't throw"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (let [result (data-app.sync/sync-from-snapshot!
                     (snapshot {"data_apps/x/data_app.yaml" "name: [unterminated"}))]
         (is (seq (:config-errors result)))
         (is (empty? (t2/select-fn-set :name :model/DataApp))))))
   (testing "a clean sync materializes the app with no config errors"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (let [result (data-app.sync/sync-from-snapshot!
                     (snapshot (app-files "a" {:name "A" :path "index.js" :bundle "A"})))]
         (is (empty? (:config-errors result)))
@@ -263,7 +707,7 @@
 (deftest list-and-bundle-endpoints-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (data-app.sync/import-from-snapshot!
          (snapshot (app-files "demo" {:name "Demo app" :path "dist/index.js" :bundle "DEMOBUNDLE"})))
         (testing "GET / lists the synced apps"
@@ -289,7 +733,7 @@
 (deftest enable-disable-endpoint-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (data-app.sync/import-from-snapshot!
          (snapshot (app-files "demo" {:name "Demo" :path "index.js" :bundle "BUNDLE"})))
         (testing "PUT /:slug can disable an app"
@@ -332,7 +776,7 @@
   ;; routed as a data app named "sandbox-host" and 404.
   (testing "the route is not shadowed by the /:slug route"
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
         (is (= 200 (:status (mt/user-http-request-full-response
                              :crowberto :get 200 "apps/sandbox-host"))))))))

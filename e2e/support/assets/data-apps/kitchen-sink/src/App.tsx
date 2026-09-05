@@ -3,15 +3,10 @@ import {
   StaticQuestion,
   useAction,
 } from "@metabase/embedding-sdk-react";
-import type { MetabaseQueryOptions } from "@metabase/embedding-sdk-react/data-app";
 import {
-  aggregations,
-  breakout,
   copy,
   DataAppLink,
   DataAppRouter,
-  filter,
-  orderBy,
   useDataAppLocation,
   useMetabaseQuery,
   useMetabaseQueryObject,
@@ -197,161 +192,15 @@ function NativeQueryPage() {
   );
 }
 
-function Combinators() {
-  const combinators = getTestEnv().combinators!;
-  const countAgg = aggregations.count();
-
-  const q = useMetabaseQuery({
-    source: combinators.source,
-    filters: [filter(combinators.filterField, ">", combinators.filterValue)],
-    aggregations: [countAgg],
-    breakouts: [breakout(combinators.breakoutField)],
-    orderBys: [orderBy(countAgg, "desc")],
-  });
-
-  return (
-    <div data-testid="data-app-combinators" style={{ padding: 24 }}>
-      <h1>Combinators</h1>
-      <div data-testid="combinators-loading">
-        {q.isLoading ? "loading" : "done"}
-      </div>
-      <div data-testid="combinators-error">
-        {q.error ? "error" : "no-error"}
-      </div>
-      <div data-testid="combinators-rowcount">
-        {String(q.data?.rows?.length ?? 0)}
-      </div>
-    </div>
-  );
-}
-
-/**
- * A saved question used as a query source, with clauses applied on top of it.
- * Each case runs the same clauses against the table and against a question that
- * copies it; agreeing results are the assertion, so the spec never has to encode
- * sample-database numbers.
- */
-function CardSource() {
-  const {
-    source,
-    tableSource,
-    filterField,
-    filterColumn,
-    filterValue,
-    breakoutField,
-    breakoutColumn,
-  } = getTestEnv().cardSource!;
-
-  const countAgg = aggregations.count();
-
-  return (
-    <div data-testid="data-app-card-source" style={{ padding: 24 }}>
-      <h1>Card source</h1>
-
-      <CardSourceCase
-        caseKey="source"
-        tableQuery={{ source: tableSource, aggregations: [countAgg] }}
-        cardQuery={{ source, aggregations: [countAgg] }}
-        totalTestId="card-source-total"
-      />
-
-      <CardSourceCase
-        caseKey="filters"
-        tableQuery={{
-          source: tableSource,
-          filters: [filter(filterField, ">", filterValue)],
-          aggregations: [countAgg],
-        }}
-        cardQuery={{
-          source,
-          filters: [filter(filterColumn, ">", filterValue)],
-          aggregations: [countAgg],
-        }}
-      />
-
-      <CardSourceCase
-        caseKey="aggregations"
-        tableQuery={{
-          source: tableSource,
-          filters: [filter(filterField, ">", filterValue)],
-          aggregations: [countAgg, aggregations.sum(filterField)],
-        }}
-        cardQuery={{
-          source,
-          filters: [filter(filterColumn, ">", filterValue)],
-          aggregations: [countAgg, aggregations.sum(filterColumn)],
-        }}
-      />
-
-      <CardSourceCase
-        caseKey="breakouts"
-        tableQuery={{
-          source: tableSource,
-          filters: [filter(filterField, ">", filterValue)],
-          aggregations: [countAgg],
-          breakouts: [breakout(breakoutField)],
-          orderBys: [orderBy(breakoutField, "asc")],
-        }}
-        cardQuery={{
-          source,
-          filters: [filter(filterColumn, ">", filterValue)],
-          aggregations: [countAgg],
-          breakouts: [breakout(breakoutColumn)],
-          orderBys: [orderBy(breakoutColumn, "asc")],
-        }}
-      />
-    </div>
-  );
-}
-
-function CardSourceCase({
-  caseKey,
-  tableQuery,
-  cardQuery,
-  totalTestId,
-}: {
-  caseKey: string;
-  tableQuery: MetabaseQueryOptions<undefined>;
-  cardQuery: MetabaseQueryOptions<undefined>;
-  totalTestId?: string;
-}) {
-  const fromTable = useMetabaseQuery(tableQuery);
-  const fromCard = useMetabaseQuery(cardQuery);
-
-  const failure = fromTable.error ?? fromCard.error;
-  const tableResult = describeResult(fromTable.data);
-  const cardResult = describeResult(fromCard.data);
-
-  const status = failure
-    ? `error: ${describeError(failure)}`
-    : tableResult === null || cardResult === null
-      ? "loading"
-      : tableResult === cardResult
-        ? "match"
-        : `mismatch: table=${tableResult} card=${cardResult}`;
-
-  return (
-    <div>
-      <div data-testid={`card-source-case-${caseKey}`}>{status}</div>
-      {totalTestId && (
-        <div data-testid={totalTestId}>
-          {String(fromCard.data?.rawRows?.[0]?.[0] ?? "")}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Column names plus every row value, by position — comparable across sources. */
-const describeResult = (
-  data: { columns: { name: string }[]; rawRows: unknown[][] } | null,
-): string | null =>
-  data &&
-  `[${data.columns.map((column) => column.name).join(",")}] ${JSON.stringify(data.rawRows)}`;
-
 function Actions() {
   const { actionId, actionParams } = getTestEnv();
-  const action = useAction(actionId ?? null);
+  // A data app names its actions by definition. Nothing synchronizes here, so
+  // the copy the definition points at is the authored action itself.
+  const action = useAction(
+    actionId
+      ? { action: { id: actionId, parameters: [] }, copiedActionId: actionId }
+      : null,
+  );
   const [output, setOutput] = useState("idle");
 
   const onExecute = async () => {
@@ -576,8 +425,6 @@ const ROUTES: Record<string, ComponentType> = {
   "/native-query": NativeQueryPage,
   "/download-question": DownloadQuestionPage,
   "/custom-viz": CustomVizPage,
-  "/combinators": Combinators,
-  "/card-source": CardSource,
   "/actions": Actions,
   "/clipboard": Clipboard,
   "/missing-question": MissingQuestion,

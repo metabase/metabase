@@ -15,6 +15,7 @@
  [metabase.collections.create
   create-collection!]
  [metabase.collections.models.collection
+  archive-or-unarchive-collection!
   has-remote-synced-collection?
   check-for-remote-sync-update
   check-non-remote-synced-dependencies

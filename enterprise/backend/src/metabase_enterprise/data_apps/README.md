@@ -46,7 +46,8 @@ remote-sync import  →  snapshot  →  sync-from-snapshot!  →  discover confi
 layer and are counted separately in the pull summary (see `fold-data-app-changes` in
 `remote_sync/impl.clj` — without it, a pull whose only change is a data app reports "no changes").
 
-One import = one transaction. Discovery, upserts, and pruning all commit together.
+Apps are synced independently: each app's row and its resource links commit together, and pruning
+runs in its own transaction, so one failing app cannot roll back the others.
 
 ## The repository is the source of truth
 
@@ -64,7 +65,9 @@ consequences are worth stating explicitly, because they're the questions that co
 Pruning is by **directory presence**, not by successful parse. An app whose directory is still
 there but whose `data_app.yaml` is momentarily broken keeps its row and its last-good bundle, and is
 marked with a `sync_error` — see failure isolation below. Local `enabled` state does not protect a
-row: an app disabled in the admin UI and then deleted from the repo is still removed.
+row: an app disabled in the admin UI and then deleted from the repo is still removed. Draft rows —
+created via `POST /api/apps/:slug/draft` ahead of an app's first import — are the one exemption:
+pruning skips them until a sync materializes the app and clears the flag.
 
 ## Failure isolation
 
@@ -100,8 +103,14 @@ assets (`metabase.server.routes/static-files-handler`).
 - `GET /api/apps/:slug/bundle` — the cached bytes, with a content-hash ETag and `If-None-Match`
   → 304. Carries `X-Metabase-Data-App-Allowed-Hosts`, which the iframe reads to configure its
   sandbox fetch allowlist.
+- `GET /api/apps/sandbox-host` — the empty document loaded as the Near-Membrane realm iframe,
+  carrying the CSP that confines `'unsafe-eval'` to that realm.
 - `PUT /api/apps/:slug` — toggle `enabled` (superuser).
-- `DELETE /api/apps/:slug` — drop a row and its bundle (superuser).
+- `DELETE /api/apps/:slug` — drop a row, its bundle, and its owned resources (superuser).
+- `POST /api/apps/:slug/draft` — create or reuse a draft row with its resources before the app's
+  first import (superuser).
+- `POST /api/apps/:slug/query` — resolve an authored query definition into a serializable
+  Metabase query plus the table IDs it touches (superuser).
 - `GET /api/apps/repo-status` — whether a repo is connected (superuser).
 
 Responses are field-filtered by role: superusers get full metadata, everyone else gets `name` and
@@ -114,20 +123,36 @@ middleware's lookup doesn't pull in route code.
 
 ## Permissions
 
-**Viewing is not gated.** Any signed-in user may open any enabled app — `can-read?` is
-unconditionally true, and the endpoints are `+auth`, so reaching a read check already implies
-authentication. The data an app queries still runs through the QP under the viewing user's own
-permissions, so a user without data access opens the app and sees no data.
+Each app owns two server-managed resources (`resources.clj`), created on draft or first import and
+reasserted on every sync: a **collection** holding the copies the app is served from (saved
+questions, action models, table-sourced metrics) and a **permissions group** its users belong to.
+The group is set database-level `view-data :blocked` on every database, so it grants **no data
+access of its own** (which cascades `create-queries`/`download-results` to `:no`); every group but
+admins is revoked from the collection before the app group gets read access. Deleting an app deletes
+both resources and everything in the collection.
 
-**Managing is superuser-only** — enabling, disabling, deleting, and reading repo status.
+**Viewing an app** requires read access to its resource collection — in practice, membership in
+the app's group, or admin. `can-read?` on the row itself is unconditionally true (the listing shows
+every app to any signed-in user); the gate is the collection read check in the metadata and bundle
+endpoints, and the endpoints are `+auth`. An app with no linked collection yet is viewable by any
+signed-in user.
+
+**A viewer sees an app's data only through access they already hold.** The app group grants no
+view-data of its own, so a viewer without access to an app's tables (e.g. a sandboxed user) sees no
+data from it — their own groups' permissions and sandboxes apply unchanged. Because the group grants
+nothing, it can never lift another group's sandbox, so sandboxing needs no data-app special-casing.
+
+**Managing is superuser-only** — enabling, disabling, deleting, drafts, query resolution, and repo
+status.
 
 ## Namespace map
 
 | Namespace | Responsibility |
 |---|---|
-| `sync.clj` | Discovery, materialization, pruning. The entry point remote-sync calls. |
+| `sync.clj` | Discovery, materialization, pruning, drafts. The entry point remote-sync calls. |
 | `config.clj` | `data_app.yaml` parsing and validation; the `data_apps/` layout constants. |
 | `api.clj` | The `/api/apps` endpoints, bundle serving, ETag handling. |
+| `resources.clj` | Lifecycle of the app-owned collection and permission group: creation, view-data blocking, deletion. |
 | `models/data_app.clj` | The `:model/DataApp` Toucan model, permissions, blob coercion. |
 | `csp.clj` | `allowed_hosts` lookup for the core CSP middleware. |
 | `init.clj` | Loads the above so endpoints, models, and hooks register. |

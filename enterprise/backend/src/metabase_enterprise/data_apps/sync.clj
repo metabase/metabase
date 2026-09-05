@@ -15,6 +15,7 @@
    [clojure.string :as str]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -46,6 +47,31 @@
     (when-not (str/blank? url)
       url)))
 
+(defn- create-draft!
+  [slug]
+  (let [app (t2/with-transaction [_conn]
+              (when-not (data-apps.db/data-app-exists? slug)
+                (data-apps.db/insert-data-app!
+                 {:name         slug
+                  :display_name slug
+                  :bundle_path  (format "%s/%s/%s" data-app.config/apps-dir slug data-app.config/config-file-name)
+                  :sync_error   (tru "Bundle not synced yet.")
+                  :draft        true}))
+              (data-apps.db/non-blob-data-app-by-slug slug))]
+    (data-app.resources/ensure-resources! app)))
+
+(defn ensure-draft!
+  "Create a data app draft when needed and ensure its permission resources.
+   A later repository import fills the same row with the authoritative manifest
+   and bundle."
+  [slug]
+  (try
+    (create-draft! slug)
+    (catch Throwable e
+      (if (data-apps.db/data-app-exists? slug)
+        (create-draft! slug)
+        (throw e)))))
+
 ;;; ----------------------------------------------------- Discovery -----------------------------------------------------
 
 (defn- discover-app-configs
@@ -71,7 +97,8 @@
         :when (some #{config-path} (list-dir dir))]
     (try
       (if-let [content (read-file config-path)]
-        (let [{:keys [slug display_name description path allowed_hosts]} (data-app.config/parse-app-config (->bytes content) dir)]
+        (let [{:keys [slug display_name description path allowed_hosts]}
+              (data-app.config/parse-app-config (->bytes content) dir)]
           {:slug          slug
            :display_name  display_name
            :description   description
@@ -150,7 +177,8 @@
                                      :bundle          bytes
                                      :last_synced_sha sha
                                      :last_synced_at  :%now
-                                     :sync_error      nil))
+                                     :sync_error      nil
+                                     :draft            false))
         (app-content-changed? existing fields)))
     (catch Throwable e
       (let [fields {:display_name  display_name
@@ -166,6 +194,22 @@
             (not= (:sync_error existing) (ex-message e))
             (app-metadata-changed? existing fields))))))
 
+(defn- ensure-app-resources!
+  "Ensure one app's permission resources after its import transaction commits.
+   Returns whether the recorded sync state changed."
+  [slug]
+  (try
+    (-> (data-apps.db/non-blob-data-app-by-slug slug)
+        data-app.resources/ensure-resources!)
+    false
+    (catch Throwable e
+      (let [message (ex-message e)]
+        (log/warnf "[data-app] failed to ensure resources for app %s: %s" slug message)
+        (boolean
+         (when (not= (:sync_error (data-apps.db/non-blob-data-app-by-slug slug)) message)
+           (data-apps.db/update-data-app-by-slug! slug {:sync_error message})
+           true))))))
+
 (defn import-from-snapshot!
   "Materialize data apps from a synced repo `snapshot`:
 
@@ -174,7 +218,8 @@
       :sha       <commit-sha-string>}
 
    Discovers every `data_apps/<dir>/data_app.yaml`, upserts a row per app, and prunes
-   rows whose directory is gone from the snapshot — all in one transaction. Returns
+   rows whose directory is gone from the snapshot. Apps are synced independently, so
+   one failing app cannot roll back the others. Returns
    `{:synced <n>, :changed <n>, :removed <n>, :sha <sha>, :config-errors [<msg> ...]}`,
    where `:changed` counts apps actually created/updated (a `last_synced_sha` bump on
    unchanged content does not count) and `:removed` counts apps dropped for no longer
@@ -195,25 +240,33 @@
         ;; pre-sync rows, so we can tell a real change from a sha/timestamp bump
         existing      (into {} (map (juxt :name identity))
                             (data-apps.db/data-apps-sync-info))
-        {:keys [changed removed]}
+        {:keys [changed-slugs removed]}
         (t2/with-transaction [_conn]
-          (let [changed (reduce (fn [n {:keys [slug config-error] :as cfg}]
-                                  (cond-> n
-                                    ;; A parse failure on an app that still exists marks
-                                    ;; that row failed rather than syncing it; everything
-                                    ;; else is materialized normally.
-                                    (if config-error
-                                      (mark-config-error! (get existing slug) slug config-error)
-                                      (sync-app! (get existing slug)
-                                                 (assoc cfg :sha sha :read-file read-file)))
-                                    inc))
-                                0 results)
+          (when (seq present-slugs)
+            (data-apps.db/publish-data-app-drafts! present-slugs))
+          (let [changed-slugs (reduce (fn [slugs {:keys [slug config-error] :as cfg}]
+                                        (cond-> slugs
+                                          ;; A parse failure on an app that still exists marks
+                                          ;; that row failed rather than syncing it; everything
+                                          ;; else is materialized normally.
+                                          (if config-error
+                                            (mark-config-error! (get existing slug) slug config-error)
+                                            (sync-app! (get existing slug)
+                                                       (assoc cfg :sha sha :read-file read-file)))
+                                          (conj slug)))
+                                      #{} results)
                 ;; `enabled` is deliberately not consulted — see the README's
                 ;; source-of-truth table. (`[:not-in #{}]` is invalid SQL, so delete-all.)
                 removed (if (seq present-slugs)
                           (data-apps.db/delete-data-apps-not-named! present-slugs)
                           (data-apps.db/delete-all-data-apps!))]
-            {:changed changed, :removed removed}))]
+            {:changed-slugs changed-slugs, :removed removed}))
+        resource-changed-slugs (into #{}
+                                     (keep (fn [{:keys [slug]}]
+                                             (when (ensure-app-resources! slug)
+                                               slug)))
+                                     good)
+        changed (count (into changed-slugs resource-changed-slugs))]
     (log/infof "[data-app] synced sha=%s apps=%d changed=%d removed=%d errors=%d"
                sha (count good) changed removed (count errors))
     {:synced (count good), :changed changed, :removed removed, :sha sha, :config-errors errors}))

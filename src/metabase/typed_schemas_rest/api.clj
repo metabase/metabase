@@ -28,10 +28,6 @@
     [:maybe {:description (str "Comma-separated library collection ids or entity ids. "
                                "Limits tables and metrics to those library collections.")}
      ms/NonBlankString]]
-   [:question-collections {:optional true}
-    [:maybe {:description (str "Comma-separated collection ids or entity ids. "
-                               "Includes saved questions from those collections.")}
-     ms/NonBlankString]]
    [:include-data-library {:optional true}
     [:maybe {:description "Whether to include the entire data library."}
      :boolean]]
@@ -46,7 +42,12 @@
 (api.macros/defendpoint :get "/v1/typescript" :- :any
   "Generate a TypeScript semantic schema module."
   [_route-params
-   query-params :- TypedSchemaQueryParams]
+   query-params :- TypedSchemaQueryParams
+   _body-params
+   {{question-collections "question-collections"} :query-params}]
+  (when (some? question-collections)
+    (throw (ex-info "The question-collections query parameter is not supported."
+                    {:status-code 400})))
   {:status  200
    :headers typescript-response-headers
    :body    (-> query-params

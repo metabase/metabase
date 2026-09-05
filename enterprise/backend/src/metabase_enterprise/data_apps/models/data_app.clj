@@ -1,7 +1,9 @@
 (ns metabase-enterprise.data-apps.models.data-app
   (:require
+   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :refer [defenterprise]]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -25,7 +27,8 @@
 (t2/deftransforms :model/DataApp
   {:bundle        transform-bundle
    ;; JSON array of origins the sandboxed bundle may fetch/XHR (see config.clj).
-   :allowed_hosts mi/transform-json})
+   :allowed_hosts mi/transform-json
+   :table_ids     mi/transform-json})
 
 (doto :model/DataApp
   (derive :metabase/model)
@@ -38,7 +41,8 @@
 (t2/define-after-select :model/DataApp
   [app]
   (cond-> app
-    (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
+    (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))
+    (contains? app :table_ids)     (update :table_ids #(or % []))))
 
 ;; Deliberately ungated: any signed-in user may view a data app, and the `+auth`
 ;; endpoints mean reaching a read check already implies authentication. See the
@@ -55,7 +59,18 @@
   [_model _instance]
   api/*is-superuser?*)
 
+(t2/define-before-delete :model/DataApp
+  [app]
+  (data-app.resources/delete-resources! app))
+
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."
   [data-app json-generator]
   (next-method (dissoc data-app :bundle) json-generator))
+
+(defenterprise data-app-group-ids
+  "The data-app permission groups (those flagged `is_data_app_group`). SSO group sync must never touch
+   their membership, and newly-synced tables default to `:blocked` for them."
+  :feature :none
+  []
+  (t2/select-pks-set :model/PermissionsGroup :is_data_app_group true))

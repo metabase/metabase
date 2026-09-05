@@ -1,4 +1,5 @@
 import {
+  type DynamicQueryInput,
   type QueryInput,
   type QuestionQueryInput,
   type TableQueryInput,
@@ -23,6 +24,15 @@ const QUESTION_QUERY_KEYS: readonly string[] = [
   "limit",
   "enabled",
 ] satisfies readonly (keyof QuestionQueryInput)[];
+
+const DYNAMIC_QUERY_KEYS: readonly string[] = [
+  "filters",
+  "aggregations",
+  "breakouts",
+  "orderBys",
+  "limit",
+  "enabled",
+] satisfies readonly (keyof DynamicQueryInput)[];
 
 export function validateQueryInput(input: QueryInput) {
   if (isQuestionQueryInput(input)) {
@@ -62,24 +72,67 @@ function validateQuestionScopedInputs(input: QuestionQueryInput) {
     );
   }
 
+  validateResultColumnClauses(
+    input,
+    "Saved question query",
+    (reference, context) =>
+      validateQuestionResultColumn(reference, input.source, context),
+  );
+}
+
+/**
+ * The dynamic clauses a caller layers on top of a static query. They run as a
+ * stage of their own, so they see result columns rather than the source table —
+ * the same scoping a card stage has.
+ */
+export function validateDynamicQuery(input: DynamicQueryInput | undefined) {
+  if (!input) {
+    return;
+  }
+
+  const extraKeys = Object.keys(input).filter(
+    (key) => !DYNAMIC_QUERY_KEYS.includes(key),
+  );
+
+  if (extraKeys.length > 0) {
+    throw new Error(
+      `Dynamic queries only support ${DYNAMIC_QUERY_KEYS.join(
+        ", ",
+      )}, but received ${extraKeys.join(", ")}.`,
+    );
+  }
+
+  validateLimit(input.limit, "Dynamic query");
+  validateResultColumnClauses(
+    input,
+    "Dynamic query",
+    validateResultColumnShape,
+  );
+}
+
+/**
+ * Clause checks shared by every stage whose dimensions are result columns.
+ * `validateDimension` supplies the part that depends on knowing those columns.
+ */
+function validateResultColumnClauses(
+  input: DynamicQueryInput,
+  label: string,
+  validateDimension: (reference: unknown, context: string) => void,
+) {
   input.filters?.forEach((filter) => {
     if (isSegmentReference(filter)) {
       throw new Error(
-        "Saved question query filters cannot use Segments, which belong to a table source.",
+        `${label} filters cannot use Segments, which belong to a table source.`,
       );
     }
 
-    validateQuestionResultColumn(
-      getFirstOperatorArg(filter),
-      input.source,
-      "Saved question query filters",
-    );
+    validateDimension(getFirstOperatorArg(filter), `${label} filters`);
   });
 
   input.aggregations?.forEach((aggregation) => {
     if (isMeasureReference(aggregation) || isMetricReference(aggregation)) {
       throw new Error(
-        "Saved question query aggregations cannot use Measures or Metrics, which belong to a table source.",
+        `${label} aggregations cannot use Measures or Metrics, which belong to a table source.`,
       );
     }
 
@@ -87,32 +140,28 @@ function validateQuestionScopedInputs(input: QuestionQueryInput) {
       return;
     }
 
-    validateQuestionResultColumn(
+    validateDimension(
       getFirstOperatorArg(aggregation),
-      input.source,
-      "Saved question query aggregations",
+      `${label} aggregations`,
     );
   });
 
   input.breakouts?.forEach((breakout) => {
-    validateQuestionResultColumn(
-      breakout,
-      input.source,
-      "Saved question query breakouts",
-    );
+    validateDimension(breakout, `${label} breakouts`);
   });
 
   validateOrderBys(
     input,
-    "Saved question query orderBys",
-    (orderBy) =>
-      validateQuestionResultColumn(
-        orderBy,
-        input.source,
-        "Saved question query orderBys",
-      ),
+    `${label} orderBys`,
+    (orderBy) => validateDimension(orderBy, `${label} orderBys`),
     { matchBreakoutsByName: true },
   );
+}
+
+function validateResultColumnShape(reference: unknown, context: string) {
+  if (!isObject(reference) || typeof reference.name !== "string") {
+    throw new Error(`${context} must reference a result column.`);
+  }
 }
 
 function validateQuestionResultColumn(

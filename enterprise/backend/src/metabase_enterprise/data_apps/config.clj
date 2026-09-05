@@ -131,6 +131,13 @@
   [^String dir]
   (subs dir (inc (str/last-index-of dir "/"))))
 
+(defn valid-slug?
+  "Whether `slug` can name a data app directory and API route."
+  [slug]
+  (and (string? slug)
+       (re-matches slug-pattern slug)
+       (not (contains? reserved-slugs slug))))
+
 (defn parse-app-config
   "Parse the bytes of one `data_app.yaml` from the app directory `dir` (e.g.
    `data_apps/sales`) into `{:slug ..., :display_name ..., :description ...,
@@ -138,9 +145,8 @@
    relative to the directory; `:description` is an optional one-liner (nil when
    absent or blank, capped at [[max-description-chars]]); `:allowed_hosts` is a
    (possibly empty) vector of origins the sandboxed bundle may reach. Throws an
-   `ex-info` with `:status-code` 400 on
-   malformed or incomplete content — including a directory whose name isn't a
-   usable slug, since that app has no URL to be served at."
+   `ex-info` with `:status-code` 400 on malformed or incomplete content — including
+   a directory whose name isn't a usable slug, since that app has no URL to be served at."
   [^bytes bytes ^String dir]
   (let [parsed        (parse-yaml bytes dir)
         slug          (dir-slug dir)

@@ -8,11 +8,16 @@
    `metabase.server.routes/static-files-handler`)."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
+   [metabase-enterprise.data-apps.user-access :as data-app.user-access]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms])
   (:import
@@ -60,6 +65,10 @@
    [:bundle_path     ms/NonBlankString]
    [:enabled         :boolean]
    [:allowed_hosts   [:sequential :string]]
+   [:resource_collection_id [:maybe ms/PositiveInt]]
+   [:permission_group_id    [:maybe ms/PositiveInt]]
+   [:table_ids       [:sequential ms/PositiveInt]]
+   [:has_user_permission_warnings {:optional true} :boolean]
    [:bundle_hash     [:maybe :string]]
    [:last_synced_sha [:maybe :string]]
    [:last_synced_at  [:maybe :any]]
@@ -76,6 +85,57 @@
   [:map
    [:configured :boolean]
    [:url [:maybe :string]]])
+
+(def ^:private QuerySource
+  [:map
+   [:type :string]
+   [:id ms/PositiveInt]])
+
+(def ^:private QueryDefinition
+  [:map {:closed false}
+   [:stages [:sequential {:min 1}
+             [:map {:closed false}
+              [:source QuerySource]]]]])
+
+(def ^:private MetricResponse
+  [:map {:closed true}
+   [:id                     ms/PositiveInt]
+   [:name                   ms/NonBlankString]
+   [:type                   [:enum :metric]]
+   [:collection_id          [:maybe ms/PositiveInt]]
+   [:dataset_query          ms/Map]
+   [:database_id            ms/PositiveInt]
+   [:display                [:maybe [:or :keyword :string]]]
+   [:visualization_settings [:maybe ms/Map]]
+   [:description            [:maybe :string]]])
+
+(def ^:private QueryResolutionResponse
+  [:map
+   [:database_id ms/PositiveInt]
+   [:dataset_query ms/Map]
+   [:table_ids [:sequential ms/PositiveInt]]
+   [:metrics [:sequential MetricResponse]]])
+
+(def ^:private TableDependenciesRequest
+  [:map {:closed true}
+   [:table_ids [:sequential {:distinct true} ms/PositiveInt]]])
+
+(def ^:private PermissionWarningsRequest
+  [:map {:closed true}
+   [:user_ids [:sequential {:min 1 :max 100 :distinct true} ms/PositiveInt]]])
+
+(def ^:private MissingTable
+  [:map {:closed true}
+   [:id ms/PositiveInt]
+   [:name ms/NonBlankString]
+   [:schema [:maybe :string]]
+   [:database_id ms/PositiveInt]
+   [:database_name ms/NonBlankString]])
+
+(def ^:private PermissionWarning
+  [:map {:closed true}
+   [:user_id ms/PositiveInt]
+   [:missing_tables [:sequential MissingTable]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
@@ -131,14 +191,37 @@
     app
     (select-keys app [:name :display_name])))
 
+(defn- data-app-list-response
+  [warning-group-ids app]
+  (cond-> (data-app-response app)
+    api/*is-superuser?*
+    (assoc :has_user_permission_warnings
+           (contains? warning-group-ids (:permission_group_id app)))))
+
+(defn- read-check-data-app
+  "Check whether the current user can access a data app. Viewing requires read access to the app's
+   resource collection. An app with no linked resource collection has not been published yet: it is
+   not viewable by anyone through this endpoint (an admin must publish it first), signalled with a
+   409 so the client can show a dedicated \"not published\" screen rather than leaking metadata or
+   the bundle to every signed-in user."
+  [app]
+  (api/read-check app)
+  (if-let [collection-id (:resource_collection_id app)]
+    (api/read-check :model/Collection collection-id)
+    (throw (ex-info (tru "This data app has not been published yet.")
+                    {:status-code 409})))
+  app)
+
 (api.macros/defendpoint :get "/" :- [:sequential [:or DataAppResponse PublicDataAppResponse]]
   "List the data apps provided by the connected repository. Pass `available=true`
    to return only enabled apps without sync errors."
   [_route-params
    {:keys [available]} :- [:map [:available {:optional true} [:maybe :boolean]]]]
-  (->> (data-apps.db/non-blob-data-apps available)
-       (map api/read-check)
-       (mapv data-app-response)))
+  (let [apps (->> (data-apps.db/non-blob-data-apps available)
+                  (mapv api/read-check))
+        warning-group-ids (when api/*is-superuser?*
+                            (data-app.user-access/groups-with-permission-warnings apps))]
+    (mapv (partial data-app-list-response warning-group-ids) apps)))
 
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows
 ;; slashes inside a segment, so `/:slug` would otherwise swallow `/x/bundle`.
@@ -160,16 +243,87 @@
    longer in it is pruned by that sync anyway."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
   (api/check-superuser)
-  ;; `t2/delete!` returns the row count; a 0 means the slug wasn't there → 404.
+  ;; The delete returns the row count; a 0 means the slug wasn't there → 404.
   (api/check-404 (pos? (data-apps.db/delete-data-app-by-slug! slug)))
   ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
 
+(api.macros/defendpoint :put ["/:slug/table-dependencies" :slug slug-regex] :- DataAppResponse
+  "Store the tables used by the resources from a successful data app resource synchronization."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+   _query-params
+   {table-ids :table_ids} :- TableDependenciesRequest]
+  (api/check-superuser)
+  (let [app       (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))
+        table-ids (vec (sort table-ids))]
+    (api/check-400 (= (set table-ids)
+                      (data-apps.db/existing-table-ids table-ids))
+                   (tru "One or more tables do not exist."))
+    (data-apps.db/update-data-app! (:id app) {:table_ids table-ids})
+    (data-apps.db/non-blob-data-app (:id app))))
+
+(api.macros/defendpoint :post ["/:slug/user-permission-warnings" :slug slug-regex]
+  :- [:sequential PermissionWarning]
+  "Return warnings for users who cannot access every table used by a data app."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+   _query-params
+   {user-ids :user_ids} :- PermissionWarningsRequest]
+  (api/check-superuser)
+  (let [app   (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))
+        users (data-apps.db/users-for-permission-warnings user-ids)]
+    (api/check-404 (= (count users) (count user-ids)))
+    (api/check-400 (every? :is_active users)
+                   (tru "Deactivated users cannot be added to data apps."))
+    (api/check-400 (every? (comp nil? :tenant_id) users)
+                   (tru "Tenant users cannot be added to data apps."))
+    (data-app.user-access/permission-warnings (:table_ids app) users)))
+
+(defn- referenced-metrics
+  "Return direct metric references."
+  [query]
+  (let [metric-ids (lib/all-source-card-ids query)
+        metrics    (data-apps.db/metrics-by-ids metric-ids)]
+    (mapv #(update (select-keys % [:id :name :type :collection_id :dataset_query
+                                   :database_id :display :visualization_settings :description])
+                   :dataset_query
+                   lib/prepare-for-serialization)
+          (sort-by :id metrics))))
+
+(api.macros/defendpoint :post ["/:slug/query" :slug slug-regex] :- QueryResolutionResponse
+  "Resolve an authored data-app query definition into a serializable Metabase query."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+   _query-params
+   query-def :- QueryDefinition]
+  (api/check-superuser)
+  (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))
+  (let [{source-type :type, table-id :id} (get-in query-def [:stages 0 :source])
+        _           (api/check-400 (= (keyword source-type) :table)
+                                   "Data app query definitions must use a table source.")
+        database-id (api/check-404 (data-apps.db/table-database-id table-id))
+        query        (lib/test-query (lib-be/application-database-metadata-provider database-id) query-def)]
+    {:database_id database-id
+     :dataset_query (lib/prepare-for-serialization query)
+     :table_ids     (->> (concat (lib/all-source-table-ids query)
+                                 (lib/all-implicitly-joined-table-ids query))
+                         set
+                         sort
+                         vec)
+     :metrics       (referenced-metrics query)}))
+
+(api.macros/defendpoint :post ["/:slug/draft" :slug slug-regex] :- DataAppResponse
+  "Create or reuse a data app draft before its first repository import."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
+  (api/check-superuser)
+  (api/check-400 (data-app.config/valid-slug? slug)
+                 "Data app draft slugs must use lowercase letters, numbers, and dashes.")
+  (data-app.sync/ensure-draft! slug)
+  (data-apps.db/non-blob-data-app-by-slug slug))
+
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single enabled data app by its slug."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
-  (data-app-response (api/read-check (data-apps.db/enabled-non-blob-data-app-by-slug slug))))
+  (data-app-response (read-check-data-app (data-apps.db/enabled-non-blob-data-app-by-slug slug))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
   "Serve the cached JS bundle for a single enabled data app by slug. Honors
@@ -181,7 +335,7 @@
    respond
    raise]
   (try
-    (let [row  (api/read-check (data-apps.db/enabled-non-blob-data-app-by-slug slug))
+    (let [row  (read-check-data-app (data-apps.db/enabled-non-blob-data-app-by-slug slug))
           hash (:bundle_hash row)
           etag (some->> hash (format "\"%s\""))]
       (cond
