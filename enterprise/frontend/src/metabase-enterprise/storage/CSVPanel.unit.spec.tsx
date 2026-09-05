@@ -9,6 +9,7 @@ import {
   setupTokenRefreshEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   act,
   renderWithProviders,
@@ -19,7 +20,6 @@ import {
 import { useListDatabasesQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { CSVPanel } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/CSVPanel";
-import { createMockState } from "metabase/redux/store/mocks";
 import type {
   Database,
   ICloudAddOnProduct,

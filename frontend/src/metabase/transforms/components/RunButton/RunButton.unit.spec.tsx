@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Menu } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 import { createMockTransformRun } from "metabase-types/api/mocks";

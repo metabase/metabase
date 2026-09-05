@@ -10,10 +10,10 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { waitFor } from "__support__/ui";
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Settings, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,

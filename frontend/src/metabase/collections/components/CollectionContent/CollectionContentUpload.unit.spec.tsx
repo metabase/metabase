@@ -10,6 +10,7 @@ import {
   setupNullGetUserKeyValueEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import {
   act,
   renderWithProviders,
@@ -17,10 +18,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { FileUploadStatus } from "metabase/status/components/FileUploadStatus/FileUploadStatus";
 import {

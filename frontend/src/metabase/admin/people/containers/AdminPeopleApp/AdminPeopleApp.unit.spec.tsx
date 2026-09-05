@@ -1,12 +1,12 @@
-import { renderWithProviders, screen, within } from "__support__/ui";
-import { UpsellTenants } from "metabase/admin/upsells/UpsellTenants";
-import { createTenantsRouteGuard } from "metabase/admin/utils";
 import {
   createMockAdminAppState,
   createMockAdminState,
   createMockSettingsState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import { UpsellTenants } from "metabase/admin/upsells/UpsellTenants";
+import { createTenantsRouteGuard } from "metabase/admin/utils";
 import { Route } from "metabase/router";
 import type { EmbeddingHomepageStatus } from "metabase-types/api";
 import {

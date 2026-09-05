@@ -1,6 +1,5 @@
 import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-picker";
-
-import type { EmbeddingDataPickerState } from "../embedding-data-picker";
+import type { EmbeddingDataPickerState } from "metabase/redux/store/embedding-data-picker";
 
 export const createMockEmbeddingDataPickerState = (
   opts?: Partial<EmbeddingDataPickerState>,

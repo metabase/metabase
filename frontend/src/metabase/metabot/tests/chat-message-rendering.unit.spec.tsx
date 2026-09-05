@@ -10,6 +10,7 @@ import {
   setupDocumentEndpoints,
   setupGetMetabotConversationEndpoint,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import type {
@@ -30,7 +31,6 @@ import {
   thumbsUp,
 } from "metabase/metabot/tests/utils";
 import type { FetchedChatMessage } from "metabase/metabot/utils/normalize-fetched-chat-messages";
-import { createMockState } from "metabase/redux/store/mocks";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockCard,

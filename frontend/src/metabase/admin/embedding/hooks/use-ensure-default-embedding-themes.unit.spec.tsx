@@ -1,8 +1,8 @@
 import fetchMock from "fetch-mock";
 
+import { createMockState } from "__support__/state";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 
 import { useEnsureDefaultEmbeddingThemes } from "./use-ensure-default-embedding-themes";
 

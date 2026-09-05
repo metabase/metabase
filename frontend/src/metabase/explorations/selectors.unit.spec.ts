@@ -1,3 +1,4 @@
+import { createMockState } from "__support__/state";
 import { setHighlightedComment } from "metabase/explorations/explorations.slice";
 import {
   createBlock,
@@ -5,7 +6,6 @@ import {
   createPage,
   createQuery,
 } from "metabase/explorations/test-utils";
-import { createMockState } from "metabase/redux/store/mocks";
 
 import { getHighlightedForChildTarget, getQueriesById } from "./selectors";
 
