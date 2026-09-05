@@ -10,6 +10,21 @@ export {
 } from "./selectors";
 export type { MetadataSelectorOpts } from "./selectors";
 
+export {
+  selectMetadataProvider,
+  selectMetadataProviderFactory,
+  selectMetadataProviderUnfiltered,
+  selectMetricMetadataProvider,
+  selectQuestionFromCard,
+  selectQuestionFromOpts,
+  useMetadataProvider,
+  useMetadataProviderFactory,
+  useMetadataProviderUnfiltered,
+  useMetricMetadataProvider,
+  useQuestionFromCard,
+  useQuestionFromOpts,
+} from "./provider";
+
 export { entitiesReducer } from "./reducer";
 
 export { metadataHydrationMiddleware } from "./hydration";
