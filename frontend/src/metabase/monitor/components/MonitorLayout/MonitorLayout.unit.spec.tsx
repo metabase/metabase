@@ -249,8 +249,14 @@ describe("MonitorLayout", () => {
     },
   ] as const;
 
-  it.each(AI_AUDITING_SECTION_CASES)(
-    "marks $label as the current page for its route",
+  it.each([
+    ...AI_AUDITING_SECTION_CASES,
+    {
+      label: "Conversations",
+      route: Urls.monitorAiAuditingConversationDetail("convo-0"),
+    },
+  ])(
+    "marks $label as the current page for $route",
     async ({ label, route }) => {
       setup({
         initialRoute: route,
