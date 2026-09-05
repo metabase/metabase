@@ -86,7 +86,8 @@
   [^Connection conn ^Database database]
   (not (table-exists? (.getDatabaseChangeLogTableName database) conn)))
 
-(defn- decide-liquibase-file
+(defn decide-liquibase-file
+  "Find the correct Liquibase changelog file based on the database and the connection to it."
   [^Connection conn ^Database database]
   (if (fresh-install? conn database)
     changelog-file
@@ -124,12 +125,15 @@
     (liquibase.h2/h2-database liquibase-conn)
     (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)))
 
-(defn- liquibase ^Liquibase [^Connection conn ^Database database]
-  (u/prog1 (Liquibase.
-            ^String (decide-liquibase-file conn database)
-            (ClassLoaderResourceAccessor. (classloader/the-classloader))
-            database)
+(defn make-liquibase-from-filename
+  "Create a Liquibase instance from the given changelog `filename` and for the given `database`. Don't use directly,
+  use [[with-liquibase]] instead."
+  ^Liquibase [^String filename, ^Database database]
+  (u/prog1 (Liquibase. filename (ClassLoaderResourceAccessor. (classloader/the-classloader)) database)
     (.setObjectQuotingStrategy (.getDatabaseChangeLog <>) ObjectQuotingStrategy/QUOTE_ALL_OBJECTS)))
+
+(defn- liquibase ^Liquibase [conn database]
+  (make-liquibase-from-filename (decide-liquibase-file conn database) database))
 
 (mu/defn do-with-liquibase
   "Impl for [[with-liquibase-macro]]."
