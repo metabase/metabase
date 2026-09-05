@@ -443,14 +443,18 @@ jobs:
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: | # js
+            const { getVersionType } = require('${{ github.workspace }}/release/dist/index.cjs');
+
             const version = '${{ inputs.version }}';
             const enterpriseVersion = version.replace(/^v0\./, "v1.");
+            const versionKind = getVersionType(version);
 
             github.rest.repos.createDispatchEvent({
               owner: '${{ github.repository_owner }}',
               repo: 'metabase-ee-extra',
               event_type: 'update-ee-extra-build',
               client_payload: {
+                versionKind,
                 version: enterpriseVersion,
                 auto: 'true', // always auto-merge
               }
