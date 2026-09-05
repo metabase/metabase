@@ -1,4 +1,4 @@
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import { PLUGIN_CUSTOM_VIZ, lazyPluginComponent } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux/hooks";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -8,10 +8,6 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
-import { CustomVizDevPage } from "./components/CustomVizDevPage";
-import { CustomVizPage } from "./components/CustomVizPage";
-import { CustomVizSettingWidget } from "./components/CustomVizSettingWidget";
-import { ManageCustomVizPage } from "./components/ManageCustomVizPage";
 import {
   loadCustomVizPlugin,
   loadCustomVizPluginForDisplay,
@@ -24,9 +20,21 @@ import { isWidgetMount } from "./widget-mount";
 export function initializePlugin() {
   if (hasPremiumFeature("custom-viz")) {
     Object.assign(PLUGIN_CUSTOM_VIZ, {
-      ManageCustomVizPage,
-      CustomVizPage,
-      CustomVizDevPage,
+      ManageCustomVizPage: lazyPluginComponent(() =>
+        import("./components/ManageCustomVizPage").then(
+          ({ ManageCustomVizPage }) => ManageCustomVizPage,
+        ),
+      ),
+      CustomVizPage: lazyPluginComponent(() =>
+        import("./components/CustomVizPage").then(
+          ({ CustomVizPage }) => CustomVizPage,
+        ),
+      ),
+      CustomVizDevPage: lazyPluginComponent(() =>
+        import("./components/CustomVizDevPage").then(
+          ({ CustomVizDevPage }) => CustomVizDevPage,
+        ),
+      ),
       useAutoLoadCustomVizPlugin,
       useCustomVizPlugins,
       loadCustomVizPlugin,
@@ -40,7 +48,11 @@ export function initializePlugin() {
       useCustomVizPluginsIcon,
       isCustomVizDisplay,
       isWidgetMount,
-      CustomVizSettingWidget,
+      CustomVizSettingWidget: lazyPluginComponent(() =>
+        import("./components/CustomVizSettingWidget").then(
+          ({ CustomVizSettingWidget }) => CustomVizSettingWidget,
+        ),
+      ),
     });
   }
 }
