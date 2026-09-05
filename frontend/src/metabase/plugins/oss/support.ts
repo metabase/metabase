@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
+import { definePluginSlot } from "../slot";
 
 const getDefaultPluginSupport = () => ({
   isEnabled: false,
@@ -14,11 +15,4 @@ export const PLUGIN_SUPPORT: {
   isEnabled: boolean;
   SupportSettings: ComponentType;
   GrantAccessModal: ComponentType<ModalComponentProps>;
-} = getDefaultPluginSupport();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_SUPPORT, getDefaultPluginSupport());
-}
+} = definePluginSlot(getDefaultPluginSupport);

@@ -2,6 +2,8 @@ import type { ComponentType } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 
+import { definePluginSlot } from "../slot";
+
 const getDefaultPluginAdminSettings = () => ({
   InteractiveEmbeddingSettingsCard: null,
   LicenseAndBillingSettings: PluginPlaceholder,
@@ -21,11 +23,4 @@ export const PLUGIN_ADMIN_SETTINGS: {
   useUpsellFlow: (props: { campaign: string; location: string }) => {
     triggerUpsellFlow: (() => void) | undefined;
   };
-} = getDefaultPluginAdminSettings();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_ADMIN_SETTINGS, getDefaultPluginAdminSettings());
-}
+} = definePluginSlot(getDefaultPluginAdminSettings);
