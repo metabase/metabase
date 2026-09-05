@@ -195,8 +195,6 @@ import { reinitializeRequestHandlers } from "metabase/api/client";
 
 import { resetPluginSlots } from "./slot";
 
-export { definePluginSlot } from "./slot";
-
 /**
  * Mostly for test purposes, reinitialize all plugins.
  * You don't reinitialize plugins individually because some plugins depend on others,
