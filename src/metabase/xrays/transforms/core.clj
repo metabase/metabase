@@ -35,7 +35,7 @@
     [:field (field-name :guard string?) _]
     field-name
 
-    [:field (id :guard integer?) _]
+    [:field _ (id :guard integer?)]
     (xrays.db/field-name id)))
 
 (mu/defn- infer-resulting-dimensions :- DimensionBindings

@@ -1,11 +1,13 @@
 (ns metabase.xrays.api.automagic-dashboards-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.xrays.api.automagic-dashboards-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [malli.core :as mc]
    [metabase.api.macros :as api.macros]
    [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -139,6 +141,11 @@
   [collection-id]
   (perms/revoke-collection-permissions! (perms-group/all-users) collection-id))
 
+(defn- price-query []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 10)))))
+
 (deftest question-xray-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
@@ -159,8 +166,7 @@
         (mt/with-temp [:model/Collection {collection-id :id} {}
                        :model/Card       {card-id :id}       {:table_id      (mt/id :venues)
                                                               :collection_id collection-id
-                                                              :dataset_query (mt/mbql-query venues
-                                                                               {:filter [:> $price 10]})}]
+                                                              :dataset_query (price-query)}]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-fn collection-id card-id))))))
 
@@ -186,33 +192,50 @@
           (mt/with-temp [:model/Collection {collection-id :id} {}
                          :model/Card       {card-id :id}       {:table_id      (mt/id :venues)
                                                                 :collection_id collection-id
-                                                                :dataset_query (mt/mbql-query venues
-                                                                                 {:filter [:> $price 10]})
+                                                                :dataset_query (price-query)
                                                                 :type          :model}]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-fn collection-id card-id)))))))
 
+(comment
+  (mt/mbql-query orders
+    {:joins        [{:source-table $$reviews
+                     :alias        "Reviews"
+                     :condition    [:=
+                                    $product_id
+                                    [:field %reviews.id {:join-alias "Reviews"}]]
+                     :fields       :all}]})
+
+  (-> (lib/query mp (lib.metadata/table mp (meta/id :products)))
+    ;; I guess this join is named `Reviews`
+    (lib/join (-> (lib/join-clause (lib.metadata/table mp (meta/id :reviews))
+                                   [(lib/=
+                                     (lib.metadata/field mp (meta/id :products :id))
+                                     (lib.metadata/field mp (meta/id :reviews :product-id)))])
+                  (lib/with-join-fields :all)))))
+
 (deftest model-joins-xray-test
   (testing "Models with joins should not result in invalid parameter targets"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {collection-id :id} {}
-                     :model/Card       {card-id :id}       {:table_id      (mt/id :orders)
-                                                            :collection_id collection-id
-                                                            :dataset_query (mt/mbql-query orders
-                                                                             {:joins        [{:source-table $$reviews
-                                                                                              :alias        "Reviews"
-                                                                                              :condition    [:=
-                                                                                                             $product_id
-                                                                                                             [:field %reviews.id {:join-alias "Reviews"}]]
-                                                                                              :fields       :all}]})
-                                                            :type          :model}]
-        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-        (is (some? (api-call! "model/%s" [card-id] #(revoke-collection-permissions! collection-id))))))))
+    (let [mp (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/join (-> (lib/join-clause (lib.metadata/table mp (meta/id :reviews))
+                                                   [(lib/=
+                                                     (lib.metadata/field
+                                                      mp (meta/id :review :product-id))
+                                                     (lib.metadata/field
+                                                      mp (meta/id :reviews :id)))])
+                                     (lib/with-join-fields :all))))]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {collection-id :id} {}
+                       :model/Card       {card-id :id}       {:table_id      (mt/id :orders)
+                                                              :collection_id collection-id
+                                                              :dataset_query query
+                                                              :type          :model}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+          (is (some? (api-call! "model/%s" [card-id] #(revoke-collection-permissions! collection-id)))))))))
 
 (deftest adhoc-query-xray-test
-  (let [query (magic.util/encode-base64-json
-               (mt/mbql-query venues
-                 {:filter [:> $price 10]}))
+  (let [query (magic.util/encode-base64-json (price-query))
         cell-query (magic.util/encode-base64-json
                     [:> [:field (mt/id :venues :price) nil] 5])]
     (testing "GET /api/automagic-dashboards/adhoc/:query"
@@ -242,9 +265,7 @@
     (testing "GET /api/automagic-dashboards/adhoc/:id/cell/:cell-query/compare/segment/:segment-id"
       (is (some?
            (api-call! "adhoc/%s/cell/%s/compare/segment/%s"
-                      [(->> (mt/mbql-query venues
-                              {:filter [:> $price 10]})
-                            (magic.util/encode-base64-json))
+                      [(magic.util/encode-base64-json (price-query))
                        (->> [:= [:field (mt/id :venues :price) nil] 15]
                             (magic.util/encode-base64-json))
                        segment-id]))))))
@@ -391,7 +412,9 @@
   (mt/dataset test-data
     (testing "x-ray an mbql model"
       (with-indexed-model! [{:keys [model model-index model-index-value]}
-                            {:query     (mt/mbql-query products)
+                            {:query     (lib/query (mt/metadata-provider)
+                                                   (lib.metadata/table
+                                                    (mt/metadata-provider) (mt/id :products)))
                              :pk-ref    (mt/$ids :products $id)
                              :value-ref (mt/$ids :products $title)}]
         (let [dash (#'api.magic/create-linked-dashboard
@@ -567,8 +590,7 @@
 (deftest ^:parallel cell-query-xray-show-param-test
   (testing "x-ray of a cell-query with show set reduces the number of returned cards"
     (mt/with-temp [:model/Card {card-id :id} {:table_id      (mt/id :venues)
-                                              :dataset_query (mt/mbql-query venues
-                                                               {:filter [:> $price 10]})}]
+                                              :dataset_query (price-query)}]
       (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])
             show-limit 2
             {:keys [base-count show-count]} (card-count-check show-limit "question/%s/cell/%s" [card-id cell-query])]
@@ -583,11 +605,10 @@
       (let [show-limit 1
             {:keys [base-count show-count]} (card-count-check show-limit
                                                               "adhoc/%s/cell/%s/compare/segment/%s"
-                                                              [(->> (mt/mbql-query venues
-                                                                      {:filter [:> $price 10]})
-                                                                    (magic.util/encode-base64-json))
-                                                               (->> [:= [:field (mt/id :venues :price) nil] 15]
-                                                                    (magic.util/encode-base64-json))
+                                                              [(magic.util/encode-base64-json
+                                                                (price-query))
+                                                               (magic.util/encode-base64-json
+                                                                [:= [:field (mt/id :venues :price) nil] 15])
                                                                segment-id])]
         (testing "The slimmed dashboard produces less than the base dashboard"
           ;;NOTE - Comparisons produce multiple dashboards and merge the results, so you don't get exactly `show-limit` cards

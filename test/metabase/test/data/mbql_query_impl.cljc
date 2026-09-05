@@ -25,7 +25,13 @@
 (def ^:dynamic *id-fn-symb*              `druid-id-fn #_'metabase.test.data/id)
 (def ^:dynamic *field-name-fn-symb*      `field-name)
 (def ^:dynamic *field-base-type-fn-symb* `field-base-type)
-(def ^:dynamic ^Long *mbql-version*      4)
+
+(def ^:dynamic ^Long *mbql-version*
+  "The version of MBQL that the deprecated [[metabase.test/mbql-query]] macro and friends should generate. This is
+  dynamic to let the MBQL 5 versions of these macros (in [[metabase.lib.test-util.macros]]) reuse some of this code;
+  don't change this number otherwise or things will break and `mt/mbql-query` will generate a gnarly mix of MBQL 4 and
+  5."
+  4)
 
 (defn- token->sigil [token]
   (when-let [[_ sigil] (re-matches #"^([$%*!&]{1,2}).*[\w/]$" (str token))]

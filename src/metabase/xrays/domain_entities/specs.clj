@@ -4,12 +4,12 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   ;; legacy usages, do not use legacy MBQL stuff in new code.
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
-   ;; domain-entity specs are written against legacy MBQL clauses; no MBQL 5 port yet
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.yaml :as yaml]))
@@ -22,13 +22,13 @@
    ;;; make sure it's clear that it's an X-Rays-only thing and that it's different from the standard MBQL `:dimension`
    ;;; clause
    [:= {:decode/normalize keyword} :dimension]
-   :string
    [:? [:map
         {:decode/normalize lib.schema.common/normalize-map}
-        [:temporal-unit {:optional true} [:keyword {:decode/normalize keyword}]]]]])
+        [:temporal-unit {:optional true} [:keyword {:decode/normalize keyword}]]]]
+   :string])
 
-;;; it would be cool if there was a way to override `::mbql.s/dimension` and be able to use
-;;; `::mbql.normalize/normalize` normally but I can't figure out how to make it work. So we'll have to normalize
+;;; it would be cool if there was a way to override `:dimension` and be able to use
+;;; `lib/normalize` normally but I can't figure out how to make it work. So we'll have to normalize
 ;;; things the usual way and then go back and manually normalize our special dimension clauses.
 
 (defn- normalize-xrays-dimension [x]
@@ -46,16 +46,16 @@
               (= (first form) "dimension"))
        (normalize-xrays-dimension form)
        form))
-   (mbql.normalize/normalize x)))
+   (lib/normalize x)))
 
 (def MBQL
   "MBQL clause (ie. a vector starting with a keyword)"
-  [:fn
-   {:decode/domain-entity-spec normalize-mbql-clause
-    :decode/transform-spec     normalize-mbql-clause
-    :error/message             "valid MBQL clause"}
-   ;;; TODO (Cam 10/10/25) -- update this to use [[metabase.lib.core/clause?]] once we convert X-Rays to MBQL 5
-   #(and (vector? %) (keyword? (first %)))])
+  [:or ::xrays-dimension
+   [:fn
+    {:decode/domain-entity-spec normalize-mbql-clause
+     :decode/transform-spec     normalize-mbql-clause
+     :error/message             "valid MBQL clause"}
+    lib/clause?]])
 
 ;;; TODO (Cam 9/29/25) -- these decoding rules are BUSTED because it ends up creating totally nonsensical types like
 ;;; `:type/AvgPrice` which is not a real type at all. We should probably just leave the field names as strings.
@@ -169,8 +169,8 @@
   [:map
    {:closed true}
    [:name        :string]
-   [:aggregation ::mbql.s/Aggregation]
-   [:filter      {:optional true} ::mbql.s/Filter]])
+   [:aggregation ::lib.schema.aggregation/aggregation]
+   [:filter      {:optional true} [:ref ::lib.schema.expression/boolean]]])
 
 (mr/def ::instantiated-metrics
   [:map-of ::field-name ::instantiated-metric])
@@ -179,13 +179,13 @@
   [:map
    {:closed true}
    [:name   :string]
-   [:filter ::mbql.s/Filter]])
+   [:filter [:ref ::lib.schema.expression/boolean]]])
 
 (mr/def ::instantiated-segments
   [:map-of ::field-name ::instantiated-segment])
 
 (mr/def ::instantiated-breakouts
-  [:sequential ::mbql.s/field])
+  [:sequential ::lib.schema.ref/ref])
 
 (mr/def ::instantiated-domain-entity
   "Schema for a [[DomainEntitySpec]] that has been instantiated

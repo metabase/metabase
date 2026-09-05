@@ -271,7 +271,7 @@
           (let [dashboard (magic/automagic-analysis card {})
                 ;; i'm not sure why category isn't picked here
                 expected-targets #{[:dimension
-                                    [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ}]
+                                    [:field {:base-type :type/DateTimeWithLocalTZ} "CREATED_AT"]
                                     {:stage-number 0}]}
                 actual-targets (into #{}
                                      (comp (mapcat :parameter_mappings)
