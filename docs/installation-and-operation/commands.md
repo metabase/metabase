@@ -17,6 +17,9 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help
 
 Metabase will print out the help text for available commands.
 
+## `ai-providers-documentation`
+
+Generates a markdown file listing the AI providers Metabase can connect to, the credentials each one needs, and the models each one offers. This is written to a file called `docs/ai/providers.md`.
 
 ## `api-documentation`
 
@@ -115,4 +118,3 @@ Open an SQL shell for the Metabase H2 DB:
 ```sh
 java -cp metabase.jar org.h2.tools.Shell -url jdbc:h2:/path/to/metabase.db
 ```
-

@@ -42,6 +42,7 @@
   do-before-commit
   do-after-commit
   in-transaction?
+  quartz-data-source
   quoting-style
   unique-identifier
   transaction-state
@@ -59,7 +60,8 @@
  [mdb.encryption
   decrypt-db
   encrypt-db
-  encryption-check-status]
+  encryption-check-status
+  encrypt-plaintext-columns!]
  [metabase.app-db.format
   format-sql]
  [mdb.setup
@@ -71,6 +73,7 @@
   spec]
  [metabase.app-db.query
   compile
+  current-timestamp-string
   isa
   join
   qualify

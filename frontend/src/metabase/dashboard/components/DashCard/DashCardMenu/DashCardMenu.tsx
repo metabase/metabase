@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -14,15 +13,15 @@ import {
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import { useStore } from "metabase/redux";
-import { ActionIcon, Icon, Menu, type MenuProps } from "metabase/ui";
+import { Icon, Menu, type MenuProps } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type Question from "metabase-lib/v1/Question";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
 import type { DashboardCard, Dataset } from "metabase-types/api";
 
 import { getDashcardTokenId, getDashcardUuid } from "../dashcard-ids";
 
+import { DashCardMenuButton } from "./DashCardMenuButton";
 import { DashCardMenuItems } from "./DashCardMenuItems";
 
 interface DashCardMenuProps {
@@ -125,7 +124,7 @@ export const DashCardMenu = ({
           canEdit={canEdit}
         />
         {!!openUnderlyingQuestionItems?.length && (
-          <Menu.Sub position="right" shadow="md">
+          <Menu.Sub position="right" shadow="sm">
             <Menu.Sub.Target>
               <Menu.Sub.Item
                 fw="bold"
@@ -149,16 +148,7 @@ export const DashCardMenu = ({
   return (
     <Menu offset={4} position={position} opened={isOpen} onClose={close}>
       <Menu.Target>
-        <ActionIcon
-          size="xs"
-          className={cx({
-            [SAVING_DOM_IMAGE_HIDDEN_CLASS]: true,
-          })}
-          onClick={toggle}
-          data-testid="dashcard-menu"
-        >
-          <Icon name="ellipsis" />
-        </ActionIcon>
+        <DashCardMenuButton onClick={toggle} data-testid="dashcard-menu" />
       </Menu.Target>
 
       <Menu.Dropdown>{getMenuContent()}</Menu.Dropdown>

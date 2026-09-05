@@ -223,8 +223,8 @@ describe("ManageDataAppsPage", () => {
     });
 
     it("removes an app once the repository is unlinked", async () => {
-      // A sync never deletes, so an app synced while a repo was connected stays
-      // listed after unlinking — with a Remove action to clear it out.
+      // Unlinked, there's no sync to prune it, so an app synced while a repo was
+      // connected stays listed — with a Remove action to clear it out.
       setup({
         configured: false,
         apps: [createMockDataApp({ name: "sales" })],

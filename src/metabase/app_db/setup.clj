@@ -14,11 +14,14 @@
    [honey.sql :as sql]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations :as custom-migrations]
+   [metabase.app-db.db :as mdb.db]
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -29,6 +32,7 @@
    [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.pipeline :as t2.pipeline])
   (:import
+   (com.mchange.v2.c3p0 PoolBackedDataSource WrapperConnectionPoolDataSource)
    (liquibase.exception LockException)))
 
 (set! *warn-on-reflection* true)
@@ -119,6 +123,20 @@
         [result]    (vals first-row)]
     (= result 1)))
 
+(defn- unpooled-data-source
+  "The plain [[javax.sql.DataSource]] a c3p0 pool was built from, or `data-source` unchanged if it isn't a c3p0 pool.
+
+  Connecting through the pool hides why a connection could not be established: c3p0 acquires on background threads, so
+  the caller only ever learns that its checkout timed out, while the driver's actual complaint (e.g. Postgres `3D000`,
+  \"database ... does not exist\") is logged and dropped. Going direct keeps that exception on the stack, which matters
+  for the one-shot connectivity check at startup -- see [[verify-db-connection]]."
+  ^javax.sql.DataSource [^javax.sql.DataSource data-source]
+  (or (when (instance? PoolBackedDataSource data-source)
+        (let [pooled (.getConnectionPoolDataSource ^PoolBackedDataSource data-source)]
+          (when (instance? WrapperConnectionPoolDataSource pooled)
+            (.getNestedDataSource ^WrapperConnectionPoolDataSource pooled))))
+      data-source))
+
 (defn- load-supported-db-versions
   []
   (if-let [resource (io/resource "metabase/app_db/supported-db-versions.edn")]
@@ -163,7 +181,10 @@
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name db-type)))
   (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
-    (try (assert (can-connect-to-data-source? data-source) error-msg)
+    ;; deliberately probing the unpooled data source: a failure here is nearly always a misconfiguration, and we want
+    ;; the driver's own exception as the cause rather than c3p0's "checkout has timed out". See
+    ;; [[unpooled-data-source]].
+    (try (assert (can-connect-to-data-source? (unpooled-data-source data-source)) error-msg)
          (catch Throwable e
            (throw (ex-info error-msg {} e)))))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
@@ -223,6 +244,21 @@
   (migrate! data-source (if auto-migrate? :up :print))
   (log/info "Database Migrations Current ..." (u/emoji "✅")))
 
+(defn- migrate-settings!
+  "Run [[mdb.setting/migrate-settings!]] once the migrations have, in an encryption state where every row of the
+  database can be read: a caller that skips [[mdb.encryption/check-encryption]] (`enable-encryption`, `copy!`) can get
+  here with rows the key in hand cannot decrypt, and those are left for it to sort out. Here rather than at
+  application startup because every entry point that migrates the app DB comes through [[setup-db!]], and several
+  never reach `metabase.core.core/init!` -- `migrate up`, the serialization commands, `reset-password`, the
+  encryption commands -- and a JVM that skipped the repair would read every setting as nil."
+  [db-state]
+  (when (#{:encrypted :unencrypted :fresh :pre-sentinel} db-state)
+    (when (mdb.db/unmigrated-settings?)
+      (log/warn (str "Some settings were saved by an older version of Metabase and are being converted to the current "
+                     "storage format" (when (encryption/default-encryption-enabled?) ", encrypted with MB_ENCRYPTION_SECRET_KEY")
+                     ". This is expected once after an upgrade.")))
+    (mdb.setting/migrate-settings!)))
+
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 (mu/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
@@ -258,6 +294,7 @@
            (when manage-encryption-state?
              (mdb.encryption/check-encryption db-state))
            (run-schema-migrations! data-source auto-migrate?)
+           (migrate-settings! db-state)
            (when manage-encryption-state?
              (mdb.encryption/record-encryption-state! db-state))))))
    :done))

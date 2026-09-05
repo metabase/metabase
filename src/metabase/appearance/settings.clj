@@ -2,11 +2,11 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.appearance.db :as appearance.db]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.fonts :as u.fonts]
-   [metabase.util.i18n :refer [deferred-tru tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -58,8 +58,8 @@
 
 (defsetting landing-page
   (deferred-tru "Enter a relative URL like /dashboard/1 or /collection/2.")
-  :encryption :when-encryption-key-set
-  :visibility :public
+  :encryption :no
+  :visibility :authenticated
   :export?    true
   :type       :string
   :default    ""
@@ -98,7 +98,7 @@
 
 (defsetting application-colors
   (deferred-tru "Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You need to refresh your browser to see your changes take effect.")
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :json
@@ -147,7 +147,7 @@ To change the chart colors:
 
 (defsetting application-font-files
   (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :json
@@ -184,7 +184,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting application-logo-url
   (deferred-tru "Upload a file to replace the Metabase logo on the top bar.")
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -195,7 +195,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting application-favicon-url
   (deferred-tru "Upload a file to use as the favicon.")
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -225,7 +225,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting login-page-illustration-custom
   (deferred-tru "The custom illustration for the login page.")
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -244,8 +244,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting landing-page-illustration-custom
   (deferred-tru "The custom illustration for the landing page.")
-  :encryption :when-encryption-key-set
-  :visibility :public
+  :encryption :no
+  :visibility :authenticated
   :export?    true
   :type       :string
   :audit      :getter
@@ -263,7 +263,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting no-data-illustration-custom
   (deferred-tru "The custom illustration for when there are no results after running a question.")
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -282,7 +282,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting no-object-illustration-custom
   (deferred-tru "The custom illustration for when there are no results after searching.")
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -324,8 +324,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting help-link-custom-destination
   (deferred-tru "Custom URL for the help link.")
-  :encryption :when-encryption-key-set
-  :visibility :public
+  :encryption :no
+  :visibility :authenticated
   :type       :string
   :audit      :getter
   :default   "https://www.metabase.com/help/premium"
@@ -362,7 +362,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting custom-formatting
   (deferred-tru "Object keyed by type, containing formatting settings")
-  :encryption :when-encryption-key-set
+  :encryption :no
   :type       :json
   :export?    true
   :default    {}
@@ -402,7 +402,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :setter     :none
   :getter     (fn []
                 (let [id (setting/get-value-of-type :integer :example-dashboard-id)]
-                  (when (and id (t2/exists? :model/Dashboard :id id :archived false))
+                  (when (and id (appearance.db/unarchived-dashboard-exists? id))
                     id)))
   :doc        false)
 

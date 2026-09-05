@@ -586,7 +586,7 @@
             (is (= active-after (active-table-after period)))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "auto-refresh-test")
-          (#'search.index/delete-obsolete-tables!))))))
+          (search.index/delete-obsolete-tables!))))))
 
 (deftest pending-table-expiry-test
   (when (search/supports-index?)
@@ -618,7 +618,28 @@
             (is (= pending-new (#'search.index/pending-table)))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "pending-timeout-test")
-          (#'search.index/delete-obsolete-tables!))))))
+          (search.index/delete-obsolete-tables!))))))
+
+(deftest failed-reindex-drops-orphaned-tables-test
+  (when (search/supports-index?)
+    (binding [search.spec/*testing-only-index-version-hash* "orphan-cleanup-test"]
+      (try
+        (reset! @#'search.index/next-sync-at nil)
+        (search.index/reset-index!)
+        (let [orphan (search.index/gen-table-name)]
+          (search.index/create-table! orphan)
+          (mt/with-dynamic-fn-redefs [search.ingestion/searchable-documents #(throw (ex-info "Simulated connection loss" {}))]
+            (mt/with-log-level [metabase.search.appdb.core :fatal]
+              (is (thrown-with-msg? Exception #"Simulated connection loss"
+                                    (search.engine/reindex! :search.engine/appdb {})))))
+          (testing "the orphan is dropped even though the reindex never reached activation"
+            (is (not (search.index/exists? orphan))))
+          (testing "the active table and the pending table left behind by the failed run are kept"
+            (is (search.index/exists? (search.index/active-table)))
+            (is (search.index/exists? (#'search.index/pending-table)))))
+        (finally
+          (t2/delete! :model/SearchIndexMetadata :version "orphan-cleanup-test")
+          (search.index/delete-obsolete-tables!))))))
 
 (deftest strip-junk-chars-test
   (let [strip @#'search.index/strip-junk-chars]
@@ -787,4 +808,23 @@
               (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "index-age-test")
-          (#'search.index/delete-obsolete-tables!))))))
+          (search.index/delete-obsolete-tables!))))))
+
+(deftest missing-index-table-does-not-abort-enclosing-transaction-test
+  (when (search/supports-index?)
+    (testing "Handling writes to a missing index table does not abort an enclosing transaction"
+      (search.tu/with-temp-index-table
+        (let [table-name (search.index/active-table)]
+          (#'search.index/drop-table! table-name)
+          (testing "delete!"
+            (t2/with-transaction [_conn]
+              (is (= {"card" 0} (search.engine/delete! :search.engine/appdb "card" [1])))
+              (testing "\nthe enclosing transaction remains usable"
+                (is (true? (t2/exists? :model/User))))))
+          (testing "upsert"
+            (t2/with-transaction [_conn]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Currently tracked index does not exist"
+                                    (#'search.index/safe-batch-upsert! :active (constantly table-name)
+                                                                       [{:model "card" :model_id "1"}])))
+              (testing "\nthe enclosing transaction remains usable"
+                (is (true? (t2/exists? :model/User)))))))))))

@@ -3,12 +3,18 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
+   [metabase.app-db.core :as mdb]
    [metabase.app-db.data-source :as mdb.data-source]
+   [metabase.app-db.db :as mdb.db]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.test :as mt]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2])
   (:import
    (liquibase.changelog ChangeSet)))
@@ -26,6 +32,19 @@
     (testing "from a connection URL"
       (#'mdb.setup/verify-db-connection :h2 (mdb.data-source/raw-connection-string->DataSource
                                              (format "jdbc:h2:mem:%s" (mt/random-name)))))))
+
+(deftest unpooled-data-source-test
+  (let [unpooled (mdb.data-source/raw-connection-string->DataSource
+                  (format "jdbc:h2:mem:%s" (mt/random-name)))]
+    (testing "a c3p0 pool is unwrapped back to the data source it was built from"
+      (let [pooled (mdb.connection-pool-setup/connection-pool-data-source :h2 unpooled)]
+        (is (not (identical? unpooled pooled))
+            "sanity check: the pool really is a different object")
+        (is (identical? unpooled (#'mdb.setup/unpooled-data-source pooled))
+            (str "verify-db-connection must probe the unpooled data source, otherwise c3p0 swallows the driver's "
+                 "exception and reports a checkout timeout instead"))))
+    (testing "a data source that isn't pooled is returned as-is"
+      (is (identical? unpooled (#'mdb.setup/unpooled-data-source unpooled))))))
 
 (deftest supported-app-db-version?-test
   (testing "Should be able to check if an app DB is a supported version"
@@ -212,3 +231,68 @@
                         {:delete [:field]
                          :from   [[:metabase_field :field]]
                          :where  [:= :field.id 0]}))))))
+
+(deftest setup-db-leaves-settings-alone-without-their-key-test
+  (testing "setup-db! fills in setting.details, except in an encryption state where the rows cannot be read"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (let [ciphertext (encryption-test/with-secret-key "ABCDEFGH12345678"
+                         (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+                         (t2/insert! :model/Setting {:key "site-name", :value "Sad Can"})
+                         (t2/select-one-fn :value_with_aad :setting :key "site-name"))]
+        (is (encryption/possibly-encrypted-string? ciphertext))
+        (testing "with no key the state is :missing-key, and a repair would only wrap the ciphertext as a value"
+          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+          (mdb/setup-db! :create-sample-content? false :manage-encryption-state? false)
+          (is (= ciphertext (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))))
+
+(deftest setup-db-warns-about-settings-from-an-older-version-test
+  (testing "a setting row written by a version without value_with_aad is reported once and then filled in"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (is (not (mdb.db/unmigrated-settings?)))
+      (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
+      (is (mdb.db/unmigrated-settings?))
+      (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+      (mt/with-log-messages-for-level [messages :warn]
+        (mdb/setup-db! :create-sample-content? false)
+        (is (=? [{:level :warn, :message #"(?s)Some settings were saved by an older version of Metabase.*"}]
+                (filter #(re-find #"older version" (:message %)) (messages)))))
+      (is (not (mdb.db/unmigrated-settings?)))
+      (is (= "Sad Can" (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))
+
+(deftest migrate-settings-decides-by-decrypting-test
+  (testing "the value_with_aad backfill treats a value as encrypted only if it decrypts, and copes with one that encrypts to nothing"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+        (let [shaped (str (apply str (repeat 86 "a")) "==")]
+          (is (encryption/possibly-encrypted-string? shaped))
+          (t2/query {:insert-into :setting, :values [{:key "shaped", :value shaped}
+                                                     {:key "blank", :value (encryption/encrypt "")}]})
+          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+          (is (= :done (mdb/setup-db! :create-sample-content? false)))
+          (testing "a plaintext value that merely looks like ciphertext is a value, not skipped"
+            (is (= shaped (encryption/maybe-decrypt (t2/select-one-fn :value_with_aad :setting :key "shaped")
+                                                    {:aad (mdb.setting/setting-aad "shaped")}))))
+          (testing "an encrypted blank value has nothing to store, and is written as NULL rather than failing"
+            (is (nil? (t2/select-one-fn :value_with_aad :setting :key "blank")))))))))
+
+(deftest encryption-check-status-falls-back-to-value-test
+  (testing "the sentinel is read from `value`, whatever `value_with_aad` holds -- an older version rewrites only `value`"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+        (is (= :valid (mdb/encryption-check-status)))
+        (testing "an authenticated value left under a key a rotation on an older version has since replaced"
+          (let [old-key (encryption/secret-key->hash "12345678ABCDEFGH")]
+            (t2/update! :setting :key "encryption-check"
+                        {:value_with_aad (encryption/encrypt (str (random-uuid))
+                                                             {:secret-key old-key
+                                                              :aad        (mdb.setting/setting-aad "encryption-check")})})
+            (is (= :valid (mdb/encryption-check-status)))))
+        (testing "the unencrypted marker an older version's remove-encryption writes to value alone"
+          (t2/update! :setting :key "encryption-check" {:value "unencrypted"})
+          (is (= :absent (mdb/encryption-check-status))))))))

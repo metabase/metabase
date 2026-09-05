@@ -4,6 +4,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
@@ -36,7 +37,7 @@
 
 (t2/deftransforms :model/Channel
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))
-   :details mi/transform-encrypted-json})
+   :details (mi/transform-encrypted-json "channel.details")})
 
 (mr/def ::Channel
   "Channel schema."
@@ -86,8 +87,8 @@
   [instance]
   (let [deactivation? (false? (:active (t2/changes instance)))]
     (when deactivation?
-      (t2/delete! :model/PulseChannel :channel_id (:id instance))
-      (deactivate-orphaned-notifications! (:id instance)))
+        (channel.db/delete-pulse-channels-for-channel! (:id instance))
+        (deactivate-orphaned-notifications! (:id instance)))
     (cond-> instance
       deactivation?
       ;; Channel.name has an unique constraint and it's a useful property for serialization
@@ -99,7 +100,7 @@
 
 (defmethod serdes/load-find-local "Channel"
   [path]
-  (t2/select-one :model/Channel :name (:id (last path))))
+  (channel.db/channel-by-name (:id (last path))))
 
 (defmethod serdes/generate-path "Channel" [_ channel]
   [(serdes/infer-self-path "Channel" channel)])

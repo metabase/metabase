@@ -1,11 +1,11 @@
 (ns metabase.analytics.settings
   (:require
    [java-time.api :as t]
+   [metabase.analytics.db :as analytics.db]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting analytics-uuid
   (deferred-tru
@@ -75,7 +75,7 @@
 (defn- first-user-creation
   "Returns the earliest user creation timestamp in the database"
   []
-  (:min (t2/select-one [:model/User [:%min.date_joined :min]])))
+  (analytics.db/first-user-date-joined))
 
 (defn- -instance-creation []
   (when-not (setting/get-value-of-type :timestamp :instance-creation)
@@ -89,6 +89,7 @@
 
 (defsetting instance-creation
   (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     #'-instance-creation

@@ -28,6 +28,7 @@
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.task.bootstrap]
    [metabase.util.date-2 :as u.date]
@@ -45,8 +46,7 @@
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
    (liquibase.exception ValidationErrors)
-   (liquibase.util BooleanUtil)
-   (org.mindrot.jbcrypt BCrypt)))
+   (liquibase.util BooleanUtil)))
 
 (set! *warn-on-reflection* true)
 
@@ -130,9 +130,13 @@
         s))
     s))
 
-(def ^:private encrypted-json-in
-  "Should mirror [[metabase.models.interface/encrypted-json-in]]"
-  (comp encryption/maybe-encrypt json-in))
+(defn- encrypted-json-in
+  "Serialize `v` to replace `stored`, the encrypted-json column value it was derived from, keeping the column as it
+  was: encrypted when `stored` decrypts with the current key, plaintext otherwise. A migration that rewrites a row
+  never changes whether it is encrypted at rest; the startup sweep does that, with a warning."
+  [stored v]
+  (cond-> (json-in v)
+    (encryption/decryptable-string? stored) encryption/encrypt))
 
 (defn- encrypted-json-out
   "Lenient deserialize of an encrypted-json column that tolerates plaintext at rest, for reading legacy rows during
@@ -724,9 +728,10 @@
 
 (define-reversible-migration MigrateDatabaseOptionsToSettings
   (let [update-one! (fn [{:keys [id settings options]}]
-                      (let [settings     (encrypted-json-out settings)
+                      (let [stored       settings
+                            settings     (encrypted-json-out settings)
                             options      (json-out options true)
-                            new-settings (encrypted-json-in (merge settings options))]
+                            new-settings (encrypted-json-in stored (merge settings options))]
                         (t2/query {:update :metabase_database
                                    :set    {:settings new-settings}
                                    :where  [:= :id id]})))]
@@ -737,12 +742,13 @@
                                                     [:not= :options "{}"]
                                                     [:not= :options nil]]})))
   (let [rollback-one! (fn [{:keys [id settings options]}]
-                        (let [settings (encrypted-json-out settings)
+                        (let [stored   settings
+                              settings (encrypted-json-out settings)
                               options  (json-out options true)]
                           (when (some? (:persist-models-enabled settings))
                             (t2/query {:update :metabase_database
                                        :set    {:options (json/encode (select-keys settings [:persist-models-enabled]))
-                                                :settings (encrypted-json-in (dissoc settings :persist-models-enabled))}
+                                                :settings (encrypted-json-in stored (dissoc settings :persist-models-enabled))}
                                        :where  [:= :id id]}))))]
     (run! rollback-one! (t2/reducible-query {:select [:id :settings :options]
                                              :from   [:metabase_database]}))))
@@ -1115,44 +1121,36 @@
       ;; use the table, not model/Database because we don't want to trigger the hooks
       (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil}))))
 
-(defn- hash-bcrypt
-  "Hashes a given plaintext password using bcrypt.  Should be used to hash
-   passwords included in stored user credentials that are to be later verified
-   using `bcrypt-credential-fn`."
-  [password]
-  (BCrypt/hashpw password (BCrypt/gensalt)))
-
 (defn- internal-user-exists? []
   (pos? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:= :id config/internal-mb-user-id]})))))
 
 (define-migration CreateInternalUser
   ;; the internal user may have been created in a previous version for Metabase Analytics, so don't add it again if it
-  ;; exists already.
+  ;; exists already. It has no password: it is inactive and can never log in, and a password would be copied into
+  ;; `auth_identity` bare by the v58 SQL changesets.
   (when (not (internal-user-exists?))
-    (let [salt     (str (random-uuid))
-          password (hash-bcrypt (str salt (random-uuid)))
-          user     {;; we insert the internal user ID directly because it's
-                    ;; deliberately high enough to not conflict with any other
-                    :id               config/internal-mb-user-id
-                    :password_salt    salt
-                    :password         password
-                    :email            "internal@metabase.com"
-                    :first_name       "Metabase"
-                    :locale           nil
-                    :last_login       nil
-                    :is_active        false
-                    :settings         nil
-                    :type             "internal"
-                    :is_qbnewb        true
-                    :updated_at       nil
-                    :reset_triggered  nil
-                    :is_superuser     false
-                    :login_attributes nil
-                    :reset_token      nil
-                    :last_name        "Internal"
-                    :date_joined      :%now
-                    :sso_source       nil
-                    :is_datasetnewb   true}]
+    (let [user {;; we insert the internal user ID directly because it's
+                ;; deliberately high enough to not conflict with any other
+                :id               config/internal-mb-user-id
+                :password_salt    nil
+                :password         nil
+                :email            "internal@metabase.com"
+                :first_name       "Metabase"
+                :locale           nil
+                :last_login       nil
+                :is_active        false
+                :settings         nil
+                :type             "internal"
+                :is_qbnewb        true
+                :updated_at       nil
+                :reset_triggered  nil
+                :is_superuser     false
+                :login_attributes nil
+                :reset_token      nil
+                :last_name        "Internal"
+                :date_joined      :%now
+                :sso_source       nil
+                :is_datasetnewb   true}]
       (t2/query {:insert-into :core_user :values [user]}))
     (let [all-users-id (first (vals (t2/query-one {:select [:id] :from :permissions_group :where [:= :name "All Users"]})))
           perms-group  {:user_id config/internal-mb-user-id :group_id all-users-id}]
@@ -1768,7 +1766,8 @@
 
 (define-reversible-migration MigrateClickHouseDetailsToMultiDB
   (let [update-one! (fn [{:keys [id details]}]
-                      (let [decrypted-details (encrypted-json-out details)
+                      (let [stored details
+                            decrypted-details (encrypted-json-out details)
                             scan-all-databases? (boolean (:scan-all-databases decrypted-details))
                             db-filters-type (if scan-all-databases? "all" "inclusion")
                             dbname (:dbname decrypted-details)
@@ -1780,7 +1779,7 @@
                                                {:db-filters-type db-filters-type}
                                                (when-not scan-all-databases?
                                                  {:db-filters-patterns db-filters-patterns}))
-                            encrypted-details (encrypted-json-in new-details)]
+                            encrypted-details (encrypted-json-in stored new-details)]
                         (t2/query {:update :metabase_database
                                    :set    {:details encrypted-details}
                                    :where  [:= :id id]})))]
@@ -1788,12 +1787,13 @@
                                            :from   [:metabase_database]
                                            :where  [:= :engine "clickhouse"]})))
   (let [rollback-one! (fn [{:keys [id details]}]
-                        (let [decrypted-details (encrypted-json-out details)
+                        (let [stored details
+                              decrypted-details (encrypted-json-out details)
                               new-details (dissoc decrypted-details
                                                   :enable-multiple-db
                                                   :db-filters-type
                                                   :db-filters-patterns)
-                              encrypted-details (encrypted-json-in new-details)]
+                              encrypted-details (encrypted-json-in stored new-details)]
                           (t2/query {:update :metabase_database
                                      :set    {:details encrypted-details}
                                      :where  [:= :id id]})))]
@@ -2246,213 +2246,12 @@
   (llm-providers/migrate-up!)
   (llm-providers/migrate-down!))
 
-(define-migration EncryptAuthIdentityCredentials
-  (when (encryption/default-encryption-enabled?)
-    (run! (fn [{:keys [id credentials]}]
-            (when (not (encryption/decryptable-string? credentials))
-              (t2/query {:update :auth_identity
-                         :set    {:credentials (encryption/encrypt credentials)}
-                         :where  [:= :id id]})))
-          (t2/reducible-query {:select [:id :credentials]
-                               :from   [:auth_identity]
-                               :where  [:!= :credentials nil]}))))
-
-(define-reversible-migration EncryptApiKeys
-  (when (encryption/default-encryption-enabled?)
-    (run! (fn [{:keys [id] k :key}]
-            (when (not (encryption/decryptable-string? k))
-              (t2/query {:update :api_key
-                         :set    {:key (encryption/encrypt k)}
-                         :where  [:= :id id]})))
-          (t2/reducible-query {:select [:id :key]
-                               :from   [:api_key]
-                               :where  [:!= :key nil]})))
-  (when (encryption/default-encryption-enabled?)
-    (run! (fn [{:keys [id] k :key}]
-            (when (encryption/decryptable-string? k)
-              (t2/query {:update :api_key
-                         :set    {:key (encryption/decrypt k)}
-                         :where  [:= :id id]})))
-          (t2/reducible-query {:select [:id :key]
-                               :from   [:api_key]
-                               :where  [:!= :key nil]}))))
-
-(defn encrypt-settings
-  "Encrypt at rest the plaintext value of every setting in `setting-keys`, so the strict decrypting read of an
-  `:encryption :when-encryption-key-set` setting accepts it. A value already encrypted with the current key (e.g. by a
-  key rotation, which re-encrypts every setting) is left untouched -- decided by decrypting it, never by its shape,
-  since plaintext can look like ciphertext (see [[metabase.util.encryption/possibly-encrypted-string?]]). A blank value
-  is encrypted too, since a strict read would reject it as plaintext. No-op without an encryption key. Use it as the
-  forward body of a migration that marks existing settings as encrypted, paired with [[decrypt-settings]].
-
-  `setting-keys` must be exactly the settings whose `:encryption` went from `:no` to `:when-encryption-key-set` in the
-  release the migration ships in: only those were stored plaintext by the previous release."
-  [setting-keys]
-  (when (encryption/default-encryption-enabled?)
-    (run! (fn [{:keys [key value]}]
-            (when (not (encryption/decryptable-string? value))
-              (t2/query {:update :setting
-                         :set    {:value (encryption/encrypt value)}
-                         :where  [:= :key key]})))
-          (t2/reducible-query {:select [:key :value]
-                               :from   [:setting]
-                               :where  [:and [:in :key setting-keys] [:!= :value nil]]}))))
-
-(defn decrypt-settings
-  "Reverse of [[encrypt-settings]]: store the plaintext value of every setting in `setting-keys` that is encrypted with
-  the current key, so a downgraded version that reads them as `:encryption :no` still sees them. Plaintext values,
-  including ones that merely look like ciphertext, are left untouched."
-  [setting-keys]
-  (when (encryption/default-encryption-enabled?)
-    (run! (fn [{:keys [key value]}]
-            (when (encryption/decryptable-string? value)
-              (t2/query {:update :setting
-                         :set    {:value (encryption/decrypt value)}
-                         :where  [:= :key key]})))
-          (t2/reducible-query {:select [:key :value]
-                               :from   [:setting]
-                               :where  [:and [:in :key setting-keys] [:!= :value nil]]}))))
-
-(def ^:private encrypted-settings-v58
-  "Every registered setting stored in the setting table that is encrypted at rest as of v58: the ones whose
-  `:encryption` went from `:no` to `:when-encryption-key-set` in v58, and the previously-encrypted ones, whose rows
-  can still be plaintext from the era when encryption was write-time only. Settings with `:setter :none` are not
-  listed, since they have no row to encrypt; rows for settings that no longer exist are left alone.
-  `encrypt-settings-test` checks this list against the registry."
-  ["admin-email" "ai-service-base-url" "allowed-iframe-hosts"
-   "api-key" "application-colors" "application-favicon-url"
-   "application-font-files" "application-logo-url" "csp-img-allowed-hosts"
-   "custom-formatting" "custom-geojson" "database-replication-connections"
-   "ee-embedding-provider" "ee-embedding-service-api-key" "ee-embedding-service-base-url"
-   "email-from-address" "email-from-address-override" "email-from-name"
-   "email-reply-to" "email-smtp-host" "email-smtp-host-override"
-   "email-smtp-password" "email-smtp-password-override" "email-smtp-port"
-   "email-smtp-port-override" "email-smtp-security" "email-smtp-security-override"
-   "email-smtp-username" "email-smtp-username-override" "embedding-app-origins-interactive"
-   "embedding-app-origins-sdk" "embedding-secret-key" "google-auth-auto-create-accounts-domain"
-   "google-auth-client-id" "gsheets" "help-link-custom-destination"
-   "jwt-attribute-email" "jwt-attribute-firstname" "jwt-attribute-groups"
-   "jwt-attribute-lastname" "jwt-attribute-tenant" "jwt-attribute-tenant-attributes"
-   "jwt-group-mappings" "jwt-identity-provider-uri" "jwt-shared-secret"
-   "landing-page" "landing-page-illustration-custom" "ldap-attribute-email"
-   "ldap-attribute-firstname" "ldap-attribute-lastname" "ldap-bind-dn"
-   "ldap-group-base" "ldap-group-mappings" "ldap-group-membership-filter"
-   "ldap-host" "ldap-password" "ldap-port"
-   "ldap-sync-user-attributes-blacklist" "ldap-user-base" "ldap-user-filter"
-   "llm-anthropic-api-base-url" "llm-anthropic-api-key" "llm-azure-api-base-url"
-   "llm-azure-api-key" "llm-bedrock-access-key-id" "llm-bedrock-secret-access-key"
-   "llm-bedrock-session-token" "llm-deepseek-api-base-url" "llm-deepseek-api-key"
-   "llm-google-api-base-url" "llm-google-oauth-access-token" "llm-google-service-account-key"
-   "llm-mistral-api-base-url" "llm-mistral-api-key" "llm-moonshot-api-base-url"
-   "llm-moonshot-api-key" "llm-openai-api-base-url" "llm-openai-api-key"
-   "llm-openrouter-api-base-url" "llm-openrouter-api-key" "llm-providers"
-   "llm-proxy-base-url" "llm-vllm-api-base-url" "llm-vllm-api-key"
-   "llm-zai-api-base-url" "llm-zai-api-key" "locked-meters"
-   "login-page-illustration-custom" "map-tile-server-url" "mcp-apps-cors-custom-origins"
-   "mcp-apps-cors-enabled-clients" "metabot-chat-system-prompt" "metabot-nlq-system-prompt"
-   "metabot-quota-reached-message" "metabot-slack-signing-secret" "metabot-sql-system-prompt"
-   "metaplow-url" "mfa-challenge-signing-key" "migration-dump-file"
-   "no-data-illustration-custom" "no-object-illustration-custom" "notification-link-base-url"
-   "oidc-providers" "premium-embedding-token" "python-runner-api-token"
-   "python-runner-url" "python-storage-s-3-access-key" "python-storage-s-3-container-endpoint"
-   "python-storage-s-3-endpoint" "python-storage-s-3-secret-key" "remote-sync-allow"
-   "remote-sync-branch" "remote-sync-token" "remote-sync-url"
-   "saml-application-name" "saml-attribute-email" "saml-attribute-firstname"
-   "saml-attribute-group" "saml-attribute-lastname" "saml-attribute-tenant"
-   "saml-group-mappings" "saml-identity-provider-certificate" "saml-identity-provider-issuer"
-   "saml-identity-provider-slo-uri" "saml-identity-provider-uri" "saml-keystore-alias"
-   "saml-keystore-password" "saml-keystore-path" "sdk-encryption-validation-key"
-   "search-language" "security-center-email-recipients" "security-center-slack-channel"
-   "session-timeout" "site-url" "slack-app-token"
-   "slack-bug-report-channel" "slack-cached-channels-and-usernames" "slack-connect-attribute-team-id"
-   "slack-connect-authentication-mode" "slack-connect-client-id" "slack-connect-client-secret"
-   "slack-files-channel" "snowplow-url" "source-address-header"
-   "store-api-url" "store-url" "subscription-allowed-domains"
-   "uploads-settings"])
-
-(define-reversible-migration EncryptSettingsV58
-  (encrypt-settings encrypted-settings-v58)
-  (decrypt-settings encrypted-settings-v58))
-
-(define-reversible-migration EncryptPublicUuids
-  (when (encryption/default-encryption-enabled?)
-    (doseq [table [:report_card :report_dashboard :action :document]]
-      (run! (fn [{:keys [id public_uuid]}]
-              (when (not (encryption/decryptable-string? public_uuid))
-                (t2/query {:update table
-                           :set    {:public_uuid (encryption/encrypt public_uuid)}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id :public_uuid]
-                                 :from   [table]
-                                 :where  [:!= :public_uuid nil]}))))
-  (when (encryption/default-encryption-enabled?)
-    (doseq [table [:report_card :report_dashboard :action :document]]
-      (run! (fn [{:keys [id public_uuid]}]
-              (when (encryption/decryptable-string? public_uuid)
-                (t2/query {:update table
-                           :set    {:public_uuid (encryption/decrypt public_uuid)}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id :public_uuid]
-                                 :from   [table]
-                                 :where  [:!= :public_uuid nil]})))))
-
-(define-reversible-migration EncryptNotificationAndPulseChannelDetails
-  (when (encryption/default-encryption-enabled?)
-    (doseq [table [:notification_recipient :pulse_channel]]
-      (run! (fn [{:keys [id details]}]
-              (when (not (encryption/decryptable-string? details))
-                (t2/query {:update table
-                           :set    {:details (encryption/encrypt details)}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id :details]
-                                 :from   [table]
-                                 :where  [:!= :details nil]}))))
-  (when (encryption/default-encryption-enabled?)
-    (doseq [table [:notification_recipient :pulse_channel]]
-      (run! (fn [{:keys [id details]}]
-              (when (encryption/decryptable-string? details)
-                (t2/query {:update table
-                           :set    {:details (encryption/decrypt details)}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id :details]
-                                 :from   [table]
-                                 :where  [:!= :details nil]})))))
-
-(def ^:private encrypt-remaining-columns-v58
-  "Encrypted-at-rest string columns that predate any backfill: pre-v53 encryption was write-time only, and the
-  v53-v62 startup auto-encrypt and pre-v63 key rotation covered only `metabase_database.details`, `setting`, and
-  `secret`, so an upgraded database can hold a mix of plaintext and encrypted rows within one of these columns.
-  Columns newer than v58 (`metabase_database.write_data_details` and later) are not listed: they do not exist yet
-  when this changeset runs on an older database."
-  [[:metabase_database :details]
-   [:metabase_database :settings]
-   [:core_user :settings]
-   [:channel :details]])
-
-(defn- secret-value->bytes ^bytes [v]
-  (cond
-    (bytes? v)                  v
-    (instance? java.sql.Blob v) (.getBytes ^java.sql.Blob v 0 (.length ^java.sql.Blob v))
-    :else                       nil))
-
-(define-migration EncryptRemainingColumns
-  (when (encryption/default-encryption-enabled?)
-    (doseq [[table column] encrypt-remaining-columns-v58]
-      (run! (fn [{:keys [id value]}]
-              (when (and (string? value)
-                         (not (encryption/possibly-encrypted-string? value)))
-                (t2/query {:update table
-                           :set    {column (encryption/maybe-encrypt value)}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id [column :value]]
-                                 :from   [table]
-                                 :where  [:!= column nil]})))
-    (run! (fn [{:keys [id value]}]
-            (let [value (secret-value->bytes value)]
-              (when (and value (not (encryption/possibly-encrypted-bytes? value)))
-                (t2/query {:update :secret
-                           :set    {:value (encryption/maybe-encrypt-bytes value)}
-                           :where  [:= :id id]}))))
-          (t2/reducible-query {:select [:id :value]
-                               :from   [:secret]
-                               :where  [:!= :value nil]}))))
+(define-migration BackfillExampleDashboardIdValueWithAad
+  ;; `CreateSampleContentV2` runs before `setting.value_with_aad` exists, so it writes the setting's legacy `value` only.
+  (when-let [value (:value (t2/query-one {:select [:value]
+                                          :from   [:setting]
+                                          :where  [:and [:= :key "example-dashboard-id"] [:= :value_with_aad nil]]}))]
+    (t2/query {:update :setting
+               :set    {:value_with_aad (encryption/maybe-encrypt (encryption/maybe-decrypt value)
+                                                                  {:aad (mdb.setting/setting-aad "example-dashboard-id")})}
+               :where  [:= :key "example-dashboard-id"]})))

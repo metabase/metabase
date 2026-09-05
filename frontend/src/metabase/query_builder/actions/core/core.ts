@@ -12,6 +12,7 @@ import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase/common/utils/card";
+import { getMetadata } from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
@@ -21,11 +22,9 @@ import {
   questionUpdated,
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
 import { isNotNull } from "metabase/utils/types";
-import { shouldOpenInBlankWindow } from "metabase/visualizations/lib/open-url";
 import {
   getCardAfterVisualizationClick,
   getRegisteredDefaultSize,
@@ -180,7 +179,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
           previousCard,
         );
         const url = Urls.serializedQuestion(cardAfterClick);
-        if (shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
+        if (Urls.shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
           dispatch(openUrl(url));
         } else {
           dispatch(onCloseSidebars());

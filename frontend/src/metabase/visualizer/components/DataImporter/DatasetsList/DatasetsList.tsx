@@ -233,18 +233,18 @@ export function DatasetsList({
 
   return (
     <Flex
-      gap="xs"
+      gap="xxs"
       direction="column"
       data-testid="datasets-list"
       style={{ overflow: "auto", ...style }}
     >
       {debouncedIsFetching && (
         <>
-          <Skeleton height={30} radius="sm" />
-          <Skeleton height={30} mt={6} radius="sm" />
-          <Skeleton height={30} mt={6} radius="sm" />
-          <Skeleton height={30} mt={6} radius="sm" />
-          <Skeleton height={30} mt={6} radius="sm" />
+          <Skeleton height={30} radius="xs" />
+          <Skeleton height={30} mt={6} radius="xs" />
+          <Skeleton height={30} mt={6} radius="xs" />
+          <Skeleton height={30} mt={6} radius="xs" />
+          <Skeleton height={30} mt={6} radius="xs" />
         </>
       )}
       {items && items.length === 0 && (
