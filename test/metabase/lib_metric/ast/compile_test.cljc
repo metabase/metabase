@@ -1,7 +1,10 @@
 (ns metabase.lib-metric.ast.compile-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [metabase.lib-metric.ast.compile :as ast.compile]))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 ;;; -------------------------------------------------- Test Data --------------------------------------------------
 
@@ -443,6 +446,15 @@
       (is (= :field (first field-ref)))
       (is (= 123 (nth field-ref 2)))
       (is (= 42 (get-in field-ref [1 :source-field]))))))
+
+(deftest ^:parallel compile-fk-aggregation-column-test
+  (testing "aggregation over an FK column produces :source-field on the compiled field ref (implicit join)"
+    (let [ast (assoc-in sample-ast [:source :aggregation]
+                        {:node/type :aggregation/sum
+                         :column    {:node/type :ast/column :id 53 :source-field 3}})]
+      ;; a single stage in the pattern also verifies we stay single-stage (no explicit joins required)
+      (is (=? {:stages [{:aggregation [[:sum {} [:field {:source-field 3} 53]]]}]}
+              (ast.compile/compile-to-mbql ast))))))
 
 ;;; -------------------------------------------------- Options --------------------------------------------------
 
