@@ -438,6 +438,48 @@ describe("DataGrid", () => {
     expect(lines[2]).toBe("Item 2\tClothing");
   });
 
+  it("does not hijack arrow keys while an input is focused", () => {
+    renderWithProviders(
+      <>
+        <TestDataGrid enableSelection={true} />
+        <input data-testid="filter-input" />
+      </>,
+    );
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    const getSelectableCell = (text: string) =>
+      Array.from(
+        screen
+          .getByTestId("table-body")
+          .querySelectorAll("[data-selectable-cell]"),
+      ).find((cell) => cell.textContent === text);
+
+    const item1Cell = getSelectableCell("Item 1");
+    const electronicsCell = getSelectableCell("Electronics");
+    expect(item1Cell).toBeDefined();
+    expect(electronicsCell).toBeDefined();
+
+    // Select the "Item 1" cell so the grid's window keydown handler is active
+    fireEvent.mouseDown(item1Cell!);
+    fireEvent.mouseUp(item1Cell!);
+    expect(item1Cell).toHaveAttribute("aria-selected", "true");
+
+    // While an input is focused, arrow keys must not move the selection
+    const filterInput = screen.getByTestId<HTMLInputElement>("filter-input");
+    filterInput.focus();
+    fireEvent.keyDown(filterInput, { key: "ArrowRight" });
+    expect(item1Cell).toHaveAttribute("aria-selected", "true");
+    expect(electronicsCell).toHaveAttribute("aria-selected", "false");
+
+    // Once the input is no longer focused, arrow keys navigate the grid again
+    filterInput.blur();
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(electronicsCell).toHaveAttribute("aria-selected", "true");
+    expect(item1Cell).toHaveAttribute("aria-selected", "false");
+  });
+
   it("uses correct ARIA roles for grid structure (#70547)", () => {
     renderWithProviders(<TestDataGrid />);
 
