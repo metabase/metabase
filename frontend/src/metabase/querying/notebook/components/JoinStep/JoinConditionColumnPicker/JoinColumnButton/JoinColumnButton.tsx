@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugin";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import { Text } from "metabase/ui";
 import { isTouchDevice } from "metabase/utils/browser";

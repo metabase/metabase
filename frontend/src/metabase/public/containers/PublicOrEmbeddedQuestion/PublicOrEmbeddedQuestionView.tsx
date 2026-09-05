@@ -3,7 +3,7 @@ import { updateIn } from "icepick";
 import type { Dispatch, SetStateAction } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugin";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import CS from "metabase/css/core/index.css";
 import type { DisplayTheme } from "metabase/embedding/types";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";

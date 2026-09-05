@@ -10,7 +10,7 @@ import { NewEmbedButton } from "metabase/admin/settings/components/EmbeddingSett
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugin";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_EMBEDDING_SDK,

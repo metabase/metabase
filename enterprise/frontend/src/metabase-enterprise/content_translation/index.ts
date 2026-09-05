@@ -1,4 +1,4 @@
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugin";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ContentTranslationConfiguration } from "./components";

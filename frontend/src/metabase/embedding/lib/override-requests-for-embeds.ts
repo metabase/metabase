@@ -3,7 +3,7 @@ import {
   PLUGIN_API,
   type RequestMethod,
 } from "metabase/api/client";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugin";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import { isEmbedPreview } from "metabase/embedding/config";
 import { sessionPropertiesPath } from "metabase/settings";
 

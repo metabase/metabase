@@ -1,7 +1,7 @@
 import { type ReactNode, useMemo, useRef } from "react";
 import _ from "underscore";
 
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugin";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import { Box, Portal, Tooltip } from "metabase/ui";
 import { getEventTarget } from "metabase/utils/dom";
 import type { HoveredObject } from "metabase/viz-core";
