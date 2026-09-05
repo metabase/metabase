@@ -18,6 +18,7 @@
   51.x or older are now 'old'."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -52,6 +53,27 @@
 (use-fixtures :each (fn [thunk]
                       (binding [search.ingestion/*disable-updates* true]
                         (thunk))))
+
+(deftest run-migrations-in-range-records-per-major-versions-test
+  (testing "run-migrations-in-range! gives each legacy major its own deployment_id + databasechangelog_version row,"
+    (impl/with-temp-empty-app-db [conn :h2]
+      ;; from the start through v46, so the range spans many majors (we assert on two adjacent ones)
+      (impl/run-migrations-in-range! conn ["v00.00-000" "v46.00-000"])
+      (let [versions-table liquibase/databasechangelog-versions-table
+            rows           (jdbc/query {:connection conn}
+                                       [(format "SELECT deployment_id, metabase_version FROM %s" versions-table)])
+            major->deps    (-> (group-by #(liquibase/version->major (:metabase_version %)) rows)
+                               (update-vals #(set (map :deployment_id %))))]
+        (testing "both majors in the range are recorded"
+          (is (= #{"x.45.0.0"} (set (map :metabase_version (filter #(= 45 (liquibase/version->major (:metabase_version %))) rows))))
+              "major 45 recorded as x.45.0.0")
+          (is (= #{"x.46.0.0"} (set (map :metabase_version (filter #(= 46 (liquibase/version->major (:metabase_version %))) rows))))
+              "major 46 recorded as x.46.0.0"))
+        (testing "each major gets its own distinct deployment_id"
+          (is (= 1 (count (get major->deps 45))))
+          (is (= 1 (count (get major->deps 46))))
+          (is (empty? (set/intersection (get major->deps 45) (get major->deps 46)))
+              "major 45 and 46 use different deployment_ids"))))))
 
 (defn- migrations-versions []
   (letfn [(form->version [form]
