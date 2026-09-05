@@ -91,8 +91,8 @@ export const BugReportModal = ({
                   </Text>
                 </Stack>
                 <Button
-                  variant="subtle"
-                  p="0"
+                  variant="transparent"
+                  size="compact-md"
                   fz="lg"
                   miw="fit-content"
                   onClick={() => setIsDetailsVisible(!isDetailsVisible)}

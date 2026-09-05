@@ -82,7 +82,7 @@ export const NotificationChannelsAddMenu = ({
   return (
     <Menu position="bottom-start">
       <Menu.Target>
-        <Button variant="subtle" p={0} mt="-0.75rem" mb="-0.75rem">
+        <Button variant="transparent" size="compact-md">
           {hasAddedNoChannels
             ? t`Add a destination`
             : t`Add another destination`}

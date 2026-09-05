@@ -73,10 +73,10 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
               className={CS.link}
               component={Link}
               leftSection={<Icon name="reference" />}
-              p={0}
               target="_blank"
               to={fullDocsUrl}
-              variant="subtle"
+              variant="transparent"
+              size="compact-md"
             >
               {t`Read the full docs`}
             </Button>
@@ -89,8 +89,8 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
               className={CS.link}
               leftSection={<Icon name="mail" />}
               onClick={toggleUserModal}
-              p={0}
-              variant="subtle"
+              variant="transparent"
+              size="compact-md"
             >
               {t`Invite a teammate to help you`}
             </Button>
@@ -103,10 +103,10 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
               className={CS.link}
               component={Link}
               leftSection={<Icon name="person" />}
-              p={0}
               target="_blank"
               to={talkToExpertUrl}
-              variant="subtle"
+              variant="transparent"
+              size="compact-md"
             >
               {t`Talk to an expert`}
             </Button>
