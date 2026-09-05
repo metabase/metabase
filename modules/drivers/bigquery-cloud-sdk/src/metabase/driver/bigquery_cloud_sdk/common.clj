@@ -46,10 +46,13 @@
       .getProjectId))
 
 (defn get-project-id
-  "Project-id for `details`. Prefers the user-supplied `:project-id`, falls back to the
-  one embedded in the service-account credentials."
-  [{:keys [project-id] :as details}]
-  (or project-id (database-details->credential-project-id details)))
+  "Data project-id for `details`. Fallback: `:project-id`, then `:billing-project-id`, then the
+  SA credentials' project. `:billing-project-id` is included because a service account granted
+  `bigquery.jobs.create` on a project typically also has data access there — so setting only the
+  billing field implies the data lives there too. Users who want billing ≠ data set both keys
+  explicitly."
+  [{:keys [project-id billing-project-id] :as details}]
+  (or project-id billing-project-id (database-details->credential-project-id details)))
 
 (mu/defn populate-project-id-from-credentials!
   "Update the given `database` details blob to include the credentials' project-id as a separate entry (under a

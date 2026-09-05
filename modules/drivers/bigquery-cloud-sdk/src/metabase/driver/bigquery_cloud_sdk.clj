@@ -130,6 +130,8 @@
       (.setUniverseDomain bq-bldr universe-domain))
     (when-let [host (perf/not-empty (:host details))]
       (.setHost bq-bldr host))
+    (when-let [^String billing-project-id (not-empty (:billing-project-id details))]
+      (.setProjectId bq-bldr billing-project-id))
     (.. bq-bldr build getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
