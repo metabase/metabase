@@ -176,8 +176,8 @@ export function buildGridAndSeriesOption(
     : baseGoalSeriesOption;
 
   const trendSeriesOption = isSplitPanels
-    ? remapTrendLinesToPanels(chartModel, visibleSeries)
-    : getTrendLinesOption(chartModel);
+    ? remapTrendLinesToPanels(chartModel, visibleSeries, settings)
+    : getTrendLinesOption(chartModel, settings);
 
   const timelineEventsSeries = getTimelineSelectionSeries(
     timelineEventsModel,
@@ -565,8 +565,9 @@ export function buildPerPanelXAxes(
 export function remapTrendLinesToPanels(
   chartModel: BaseCartesianChartModel,
   visibleSeries: SeriesModel[],
+  settings: ComputedVisualizationSettings,
 ): EChartsSeriesOption[] {
-  const trendSeriesOptions = getTrendLinesOption(chartModel);
+  const trendSeriesOptions = getTrendLinesOption(chartModel, settings);
 
   return trendSeriesOptions.map((trendSeries, index) => {
     const sourceDataKey =

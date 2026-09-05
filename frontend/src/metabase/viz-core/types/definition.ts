@@ -253,6 +253,11 @@ export type VisualizationSettingsDefinitions = {
   >;
   "graph.tooltip_columns"?: SeriesSettingDefinition<Value, Props>;
   "graph.tooltip_type"?: SeriesSettingDefinition<Value, Props>;
+  "graph.trendline_color"?: SeriesSettingDefinition<Value, Props>;
+  "graph.trendline_style"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingSegmentedControlProps
+  >;
   "graph.x_axis._is_histogram"?: SeriesSettingDefinition<Value, Props>;
   "graph.x_axis._is_numeric"?: SeriesSettingDefinition<Value, Props>;
   "graph.x_axis._is_timeseries"?: SeriesSettingDefinition<Value, Props>;

@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/ui/colors";
+import { deriveChartShadeColor } from "metabase/ui/colors/accents";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Series, VisualizationDisplay } from "metabase-types/api";
@@ -40,6 +41,7 @@ import {
   isXAxisScaleValid,
   isYAxisUnpinFromZeroValid,
 } from "../../shared/settings/cartesian-chart";
+import { SERIES_COLORS_SETTING_KEY } from "../../shared/settings/series";
 import type {
   ComputedVisualizationSettings,
   SeriesSettingDefinition,
@@ -439,6 +441,22 @@ export const TOOLTIP_SETTINGS: VisualizationSettingsDefinitions = {
   },
 };
 
+const isTrendLineUnavailable = (
+  series: Series,
+  vizSettings: ComputedVisualizationSettings,
+) => {
+  const { insights } = series[0].data;
+  const graphDimensions = vizSettings["graph.dimensions"] ?? [];
+  return !insights || insights.length === 0 || graphDimensions.length > 1;
+};
+
+const isTrendLineDisabled = (
+  series: Series,
+  vizSettings: ComputedVisualizationSettings,
+) =>
+  isTrendLineUnavailable(series, vizSettings) ||
+  !vizSettings["graph.show_trendline"];
+
 export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.show_trendline": {
     getSection: () => t`Display`,
@@ -447,16 +465,54 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
     },
     widget: "toggle",
     getDefault: () => false,
-    getHidden: (series, vizSettings) => {
-      const { insights } = series[0].data;
-      const graphDimensions = vizSettings["graph.dimensions"] ?? [];
-      return !insights || insights.length === 0 || graphDimensions.length > 1;
-    },
+    getHidden: isTrendLineUnavailable,
     useRawSeries: true,
     inline: true,
     getWrapperStyle: () => ({
       marginBottom: "1rem",
     }),
+  },
+  "graph.trendline_color": {
+    getSection: () => t`Display`,
+    widget: "color",
+    getProps: () => ({ title: t`Trend line color` }),
+    getDefault: (_series, vizSettings) => {
+      const seriesColors: Record<string, string> =
+        vizSettings[SERIES_COLORS_SETTING_KEY] ?? {};
+      const firstSeriesColor = Object.values(seriesColors)[0];
+      return firstSeriesColor != null
+        ? deriveChartShadeColor(firstSeriesColor)
+        : color("brand");
+    },
+    getHidden: isTrendLineDisabled,
+    useRawSeries: true,
+    readDependencies: ["graph.show_trendline", SERIES_COLORS_SETTING_KEY],
+  },
+  "graph.trendline_style": {
+    getSection: () => t`Display`,
+    get title() {
+      return t`Trend line style`;
+    },
+    widget: "segmentedControl",
+    getProps: () => ({
+      options: [
+        { name: t`Solid`, value: "solid", icon: "line_style_solid" as const },
+        {
+          name: t`Dashed`,
+          value: "dashed",
+          icon: "line_style_dashed" as const,
+        },
+        {
+          name: t`Dotted`,
+          value: "dotted",
+          icon: "line_style_dotted" as const,
+        },
+      ],
+    }),
+    getDefault: () => "solid",
+    getHidden: isTrendLineDisabled,
+    useRawSeries: true,
+    readDependencies: ["graph.show_trendline"],
   },
 };
 
