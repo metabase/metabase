@@ -7,6 +7,8 @@ import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { getIconForVisualizationType } from "metabase/viz-core";
 import type { VisualizationDisplay } from "metabase-types/api";
 
+import { PLUGIN_ENTITY_ICON } from "./plugins";
+
 export const useGetIconForVisualizationType = () => {
   const getCustomVizIcon = PLUGIN_CUSTOM_VIZ.useCustomVizPluginsIcon();
 
@@ -68,18 +70,8 @@ export const useGetIconBase = () => {
   );
 };
 
-const getDefaultPluginIcon = () => ({
-  useGetIcon: useGetIconBase,
-});
-
-export const PLUGIN_ICON = getDefaultPluginIcon();
-
 /**
  * relies mainly on the `model` property to determine the icon to return
  * also handle special collection icons and visualization types for cards
  */
-export const useGetIcon = () => PLUGIN_ICON.useGetIcon();
-
-export function reinitialize() {
-  Object.assign(PLUGIN_ICON, getDefaultPluginIcon());
-}
+export const useGetIcon = () => PLUGIN_ENTITY_ICON.useGetIcon();
