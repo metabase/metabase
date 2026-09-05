@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { Link } from "metabase/common/components/Link/Link";
 import CS from "metabase/css/core/index.css";
 import { getNotificationHandlersGroupedByTypes } from "metabase/notifications/utils";
@@ -166,17 +167,7 @@ const MenuItemLink = ({
   to: string;
   children: React.ReactNode;
 }) => (
-  <Menu.Item py="0">
-    <Button
-      variant="subtle"
-      size="xs-compact"
-      component={Link}
-      to={to}
-      target="_blank"
-      pl="0"
-      fw="normal"
-    >
-      {children}
-    </Button>
+  <Menu.Item component={ForwardRefLink} to={to} target="_blank">
+    {children}
   </Menu.Item>
 );
