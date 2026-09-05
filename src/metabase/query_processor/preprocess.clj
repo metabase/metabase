@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [not-empty])
   (:require
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -128,7 +129,10 @@
      identity
      (fn
        ([preprocessed]
-        preprocessed)
+        (log/debugf "Preprocessed query:\n\n%s" (u/pprint-to-str preprocessed))
+        (if (or (config/config-bool :locked-query-map) config/is-dev?)
+          preprocessed
+          (lib-be/locked-query preprocessed)))
        ([query middleware-fn]
         (try
           (assert (ifn? middleware-fn))

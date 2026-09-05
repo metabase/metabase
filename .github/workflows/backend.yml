@@ -297,6 +297,7 @@ jobs:
       # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
+      LOCKED_QUERY_MAP: 'true'
     steps:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
