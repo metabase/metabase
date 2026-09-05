@@ -168,7 +168,7 @@ export const ChartSettingSeriesOrder = ({
             <Button
               size="sm"
               color="text-secondary"
-              variant="subtle"
+              variant="light"
               leftSection={<Icon name="gear" />}
               aria-label={t`Other series settings`}
               onClick={handleOtherSeriesSettingsClick}

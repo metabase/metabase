@@ -342,14 +342,14 @@ export const WebhookForm = ({
           <Flex
             mt="1.5rem"
             justify={onDelete ? "space-between" : "end"}
+            align="center"
             gap="0.75rem"
           >
             {onDelete && (
               <Button
-                variant="subtle"
+                variant="transparent"
                 c="text-secondary"
-                size="sm"
-                pl="0"
+                size="compact-md"
                 leftSection={<Icon name="trash" />}
                 onClick={onDelete}
               >{t`Delete this destination`}</Button>

@@ -45,11 +45,10 @@ export const RowIdCell = memo(function RowIdCell({
           ) : null}
           {canExpand && (
             <Button
+              variant="light"
               data-testid="detail-shortcut"
-              w={24}
-              h={24}
-              className={cx(DataGridS.rowHoverVisible, S.expandButton)}
               size="sm"
+              className={cx(DataGridS.rowHoverVisible, S.expandButton)}
               leftSection={
                 <Icon name={expanded ? "sidebar_closed" : "sidebar_open"} />
               }

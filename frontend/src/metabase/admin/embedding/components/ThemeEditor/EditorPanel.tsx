@@ -106,8 +106,7 @@ export function EditorPanel({
               {editor.hasMainColorChanges && (
                 <Tooltip label={t`Reset main colors to defaults`}>
                   <Button
-                    variant="subtle"
-                    pt="5"
+                    variant="light"
                     size="sm"
                     aria-label={t`Reset main colors to defaults`}
                     onClick={editor.resetMainColors}
@@ -151,7 +150,7 @@ export function EditorPanel({
                   label={t`Regenerate filter, summarize, positive, negative, and chart colors from the brand color`}
                 >
                   <Button
-                    variant="subtle"
+                    variant="light"
                     size="sm"
                     aria-label={t`Regenerate from brand color`}
                     onClick={editor.regenerateAdditionalColorsFromBrand}

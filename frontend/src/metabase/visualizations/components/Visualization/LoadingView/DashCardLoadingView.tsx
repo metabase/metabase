@@ -69,8 +69,8 @@ export const DashCardLoadingView = ({
                   {showMetabaseLinks && (
                     <Button
                       mt={12}
-                      variant="subtle"
-                      size="sm"
+                      variant="transparent"
+                      size="compact-md"
                       rightSection={<Icon name="external" />}
                       component={ExternalLink}
                       href={url}

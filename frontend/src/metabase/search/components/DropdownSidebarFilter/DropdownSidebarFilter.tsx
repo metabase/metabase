@@ -12,7 +12,7 @@ import type {
 } from "metabase/common/search/types";
 import { useSelector } from "metabase/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { Box, Button, Center, Icon, Popover, Stack, Text } from "metabase/ui";
+import { Box, Button, Icon, Popover, Stack, Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { IconName } from "metabase-types/api";
 
@@ -133,15 +133,10 @@ export const DropdownSidebarFilter = ({
               <Button
                 data-testid="sidebar-filter-dropdown-button"
                 size="sm"
-                mr="0.25rem"
                 c="inherit"
-                variant="subtle"
+                variant="light"
                 onClick={onClearFilter}
-                leftSection={
-                  <Center m="-0.25rem">
-                    <Icon size={16} name={getDropdownIcon()} />
-                  </Center>
-                }
+                leftSection={<Icon size={16} name={getDropdownIcon()} />}
               />
             </GroupOverflowHidden>
           </DropdownFieldSet>
