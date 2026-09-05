@@ -30,6 +30,11 @@ export function setupTableEndpoints(
     {},
     { name: `table-${table.id}-sync-schema` },
   );
+  fetchMock.post(
+    `path:/api/table/${table.id}/refingerprint`,
+    {},
+    { name: `table-${table.id}-refingerprint` },
+  );
   setupTableQueryMetadataEndpoint(table);
   table.fields?.forEach((field) => setupFieldEndpoints({ ...field, table }));
 }

@@ -1509,6 +1509,20 @@
         (sync/sync-database! db {:scan :schema})
         (is (= () (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent)))))))))
 
+(deftest refingerprint-table-test
+  (testing "POST /api/table/:id/refingerprint"
+    (testing "It should return success and actually call refingerprint-table!"
+      (mt/with-temp [:model/Table {table-id :id} {}]
+        (let [called? (atom false)]
+          (with-redefs [quick-task/submit-task! (fn [task] (task))
+                        sync/refingerprint-table! (fn [_table] (reset! called? true))]
+            (is (= {:status "success"}
+                   (mt/user-http-request :crowberto :post 200 (format "table/%d/refingerprint" table-id))))
+            (is @called? "refingerprint-table! should have been called")))))
+    (testing "It should return 404 for non-existent table"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :post 404 (format "table/%d/refingerprint" Integer/MAX_VALUE)))))))
+
 ;;; ---------------------------------------- can-query and can-write filter tests ----------------------------------------
 
 (deftest list-tables-can-query-filter-returns-only-queryable-tables-test

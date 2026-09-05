@@ -178,6 +178,14 @@ export const fieldApi = Api.injectEndpoints({
           tag("parameter-values"),
         ]),
     }),
+    refingerprintField: builder.mutation<void, FieldId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/field/${id}/refingerprint`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("field", id)]),
+    }),
   }),
 });
 
@@ -194,4 +202,5 @@ export const {
   useDeleteFieldDimensionMutation,
   useRescanFieldValuesMutation,
   useDiscardFieldValuesMutation,
+  useRefingerprintFieldMutation,
 } = fieldApi;
