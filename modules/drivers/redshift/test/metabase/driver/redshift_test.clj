@@ -322,7 +322,9 @@
         (mt/with-persistence-enabled! [persist-models!]
           (let [details (assoc (:details (mt/db))
                                :schema-filters-type "inclusion"
-                               :schema-filters-patterns "metabase_cache*,20*,pg_*")] ; 20* matches test session schemas
+                               ;; temp_* matches test session schemas, which [[unique-prefix]] names
+                               ;; `temp_<utc-date>_<hour>_<site-uuid>_schema`
+                               :schema-filters-patterns "metabase_cache*,temp_*,pg_*")]
             (mt/with-temp [:model/Card _      {:name          "model"
                                                :type          :model
                                                :dataset_query (mt/mbql-query users)
@@ -332,7 +334,10 @@
                 (persist-models!)
                 (let [synced-schemas (into #{} (map :schema) (:tables (driver/describe-database :redshift db)))]
                   (testing "sense check: there are results matching some schemas in the schema-filters-patterns"
-                    (is (some #(re-matches #"20(.*)" %) synced-schemas)))
+                    ;; the schema this run just loaded `avian-singles` into, rather than anything shaped like a
+                    ;; session schema: it ties the assertion to the name [[unique-prefix]] actually produces, so
+                    ;; renaming those schemas fails here instead of silently emptying the result
+                    (is (contains? synced-schemas (redshift.tx/unique-session-schema))))
                   (let [all-schemas (map :table_schema (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                                                                    "select distinct table_schema from information_schema.tables;"))]
                     (testing "metabase_cache_ tables are excluded from results"

@@ -224,7 +224,7 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
   Partial<
     Pick<
       DashboardContextProps,
-      | "getClickActionMode"
+      | "clickActionMode"
       | "dashboardActions"
       | "dashcardMenu"
       | "navigateToNewCardFromDashboard"
@@ -256,7 +256,7 @@ const SdkDashboardInner = ({
   renderDrillThroughQuestion: AdHocQuestionView,
   dashboardActions,
   dashcardMenu,
-  getClickActionMode,
+  clickActionMode,
   navigateToNewCardFromDashboard,
   className,
   style,
@@ -619,7 +619,7 @@ const SdkDashboardInner = ({
         onLoad={handleLoad}
         onLoadWithoutCards={handleLoadWithoutCards}
         onError={(error) => dispatch(setErrorPage(error))}
-        getClickActionMode={getClickActionMode}
+        clickActionMode={clickActionMode}
         dashcardMenu={finalDashcardMenu}
         dashboardActions={dashboardActions}
         onAddQuestion={(dashboard) => {

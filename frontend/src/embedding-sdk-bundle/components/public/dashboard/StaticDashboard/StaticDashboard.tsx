@@ -2,16 +2,19 @@ import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/compon
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
 import { EmbeddingSdkStaticMode } from "embedding-sdk-bundle/lib/modes/EmbeddingSdkStaticMode";
+import { getEmbeddingMode } from "embedding-sdk-bundle/lib/modes/getEmbeddingMode";
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { isQuestionCard } from "metabase/utils/dashboard";
-import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
 import { staticDashboardSchema } from "./StaticDashboard.schema";
+
+const staticClickActionMode = getEmbeddingMode({
+  queryMode: EmbeddingSdkStaticMode,
+});
 
 /**
  * @interface
@@ -50,17 +53,11 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
     },
   );
 
-  const getClickActionMode: ClickActionModeGetter = ({ question }) =>
-    getEmbeddingMode({
-      question,
-      queryMode: EmbeddingSdkStaticMode,
-    });
-
   return (
     <SdkDashboard
       // Unjustified type cast. FIXME
       {...(normalizedProps as SdkDashboardProps)}
-      getClickActionMode={getClickActionMode}
+      clickActionMode={staticClickActionMode}
       dashboardActions={[
         DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
         DASHBOARD_ACTION.DOWNLOAD_PDF,

@@ -181,6 +181,7 @@ export { PLUGIN_SECURITY_CENTER } from "./oss/security-center";
 export { PLUGIN_AI_CONTROLS, type AiControlsPlugin } from "./oss/ai-controls";
 export { PLUGIN_SUPPORT } from "./oss/support";
 export { PLUGIN_TENANTS } from "./oss/tenants";
+export { definePluginSlot } from "./slot";
 
 // Re-export types that are used by other files
 export type {
