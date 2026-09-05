@@ -68,11 +68,27 @@
                  (dissoc channel :details))
                json-generator))
 
+(defn- deactivate-orphaned-notifications!
+  "When channel `channel-id` is deactivated, some Notifications (alerts/subscriptions) sent through it can be
+  left with no remaining way to deliver: every NotificationHandler they have either has no `channel_id` (it
+  relies on global email/Slack settings, so it's unaffected) or points to a now-inactive Channel. Deactivate
+  those Notifications too, so their schedules stop firing into the void instead of silently \"succeeding\"
+  with nowhere to send (metabase#76712)."
+  [channel-id]
+  (doseq [notification-id (t2/select-fn-set :notification_id :model/NotificationHandler :channel_id channel-id)]
+    (let [handler-channel-ids (t2/select-fn-set :channel_id :model/NotificationHandler
+                                                :notification_id notification-id)]
+      (when (and (every? some? handler-channel-ids)
+                 (not (t2/exists? :model/Channel :id [:in handler-channel-ids] :active true))
+                 (t2/select-one-fn :active :model/Notification notification-id))
+        (t2/update! :model/Notification notification-id {:active false})))))
+
 (t2/define-before-update :model/Channel
   [instance]
   (let [deactivation? (false? (:active (t2/changes instance)))]
     (when deactivation?
-      (channel.db/delete-pulse-channels-for-channel! (:id instance)))
+        (channel.db/delete-pulse-channels-for-channel! (:id instance))
+        (deactivate-orphaned-notifications! (:id instance)))
     (cond-> instance
       deactivation?
       ;; Channel.name has an unique constraint and it's a useful property for serialization
