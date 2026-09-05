@@ -243,7 +243,7 @@ function SaveChartAction({
             target="_blank"
             variant="subtle"
             color="text-secondary"
-            size="compact-xs"
+            size="sm"
             leftSection={<Icon name="check" size={14} />}
           >
             {t`Saved`}
@@ -253,7 +253,7 @@ function SaveChartAction({
         .with({ savedCardId: P.nullish, readonly: false }, () => (
           <Button
             variant="subtle"
-            size="compact-xs"
+            size="sm"
             onClick={() => setIsSaveModalOpen(true)}
           >
             {t`Save`}

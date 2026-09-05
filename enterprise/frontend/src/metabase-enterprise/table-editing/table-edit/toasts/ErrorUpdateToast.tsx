@@ -76,7 +76,6 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
       </Group>
 
       <Button
-        size="compact-lg"
         c="background_page-secondary-inverse"
         variant="filled"
         autoContrast

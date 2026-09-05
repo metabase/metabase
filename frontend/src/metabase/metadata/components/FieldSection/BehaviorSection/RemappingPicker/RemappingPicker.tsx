@@ -340,7 +340,7 @@ export const RemappingPicker = ({
               <Group mt="sm">
                 <Button
                   p={0}
-                  size="compact-xs"
+                  size="sm"
                   variant="subtle"
                   disabled={isLoadingFieldValues}
                   onClick={() => setIsCustomMappingOpen(true)}

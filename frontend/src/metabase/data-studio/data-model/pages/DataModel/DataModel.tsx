@@ -257,7 +257,7 @@ function DataModelContent() {
                 leftSection={<Icon name="close" c="text-secondary" />}
                 variant="subtle"
                 p="sm"
-                size="compact-sm"
+                size="sm"
                 onClick={() => {
                   closePreview();
                   resetSelection();
@@ -323,7 +323,7 @@ function DataModelContent() {
                 })}
                 leftSection={<Icon name="close" c="text-secondary" />}
                 variant="subtle"
-                size="compact-sm"
+                size="sm"
                 onClick={closePreview}
               />
             </Group>

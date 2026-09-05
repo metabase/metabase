@@ -57,7 +57,7 @@ export const MetabotLongChatNotice = ({
       </Text>
       <Button
         variant="subtle"
-        size="compact-sm"
+        size="sm"
         onClick={onNewChat}
         fw="bold"
         data-testid="metabot-long-chat-new-chat"
