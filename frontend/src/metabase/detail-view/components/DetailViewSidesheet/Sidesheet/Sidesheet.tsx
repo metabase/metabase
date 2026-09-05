@@ -48,8 +48,8 @@ export function Sidesheet({
                 c="text-primary"
                 h={20}
                 leftSection={<Icon name="close" />}
-                p={0}
-                variant="subtle"
+                size="compact-md"
+                variant="transparent"
                 w={20}
                 onClick={onClose}
               />
