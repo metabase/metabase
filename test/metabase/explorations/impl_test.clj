@@ -139,7 +139,8 @@
 
 (defmacro ^:private with-synthetic-metrics [& body]
   `(mt/with-dynamic-fn-redefs [explorations.impl/hydrated-metrics synthetic-hydrated
-                               explorations.impl/index-metrics    synthetic-hydrated]
+                               explorations.impl/index-metrics    synthetic-hydrated
+                               explorations.impl/catalog-metrics  synthetic-hydrated]
      ~@body))
 
 (deftest research-metric-index-test

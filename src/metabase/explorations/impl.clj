@@ -502,24 +502,30 @@
    referenced metrics, and `:groups` echoes the validated specs for the FE to turn into picker
    blocks."
   [{:keys [groups]}]
-  (let [all          (mapv with-candidate-dimensions (hydrated-metrics {}))
-        metric-by-id (u/index-by :id all)]
-    (doseq [g groups]
-      (let [metric-id (:metric_id g)
-            metric    (get metric-by-id metric-id)]
-        (when-not metric
-          (throw (ex-info (format "Unknown or inaccessible metric id %s" metric-id)
-                          {:metric_id metric-id})))
-        (when (and (:replace_default_dimensions g) (empty? (:dimension_ids g)))
-          (throw (ex-info "replace_default_dimensions requires at least one dimension_id"
-                          {:metric_id metric-id})))
-        (let [valid (set (map :id (:dimensions metric)))]
-          (doseq [d (:dimension_ids g)]
-            (when-not (contains? valid d)
-              (throw (ex-info (format "Dimension %s is not a candidate of metric %s" d metric-id)
-                              {:metric_id metric-id :dimension_id d})))))))
-    (let [relevant         (into #{} (map :metric_id) groups)
-          relevant-metrics (filterv #(contains? relevant (:id %)) all)]
-      {:metrics          (mapv slim-metric relevant-metrics)
-       :dimension_groups (group-dimensions relevant-metrics)
-       :groups           (vec groups)})))
+  (lib-be/with-metadata-provider-cache
+    (let [all          (mapv with-candidate-dimensions (catalog-metrics {}))
+          metric-by-id (u/index-by :id all)]
+      (doseq [g groups]
+        (let [metric-id (:metric_id g)
+              metric    (get metric-by-id metric-id)]
+          (when-not metric
+            (throw (ex-info (format "Unknown or inaccessible metric id %s" metric-id)
+                            {:metric_id metric-id})))
+          (when (and (:replace_default_dimensions g) (empty? (:dimension_ids g)))
+            (throw (ex-info "replace_default_dimensions requires at least one dimension_id"
+                            {:metric_id metric-id})))
+          (let [valid (set (map :id (:dimensions metric)))]
+            (doseq [d (:dimension_ids g)]
+              (when-not (contains? valid d)
+                (throw (ex-info (format "Dimension %s is not a candidate of metric %s" d metric-id)
+                                {:metric_id metric-id :dimension_id d})))))))
+      (let [relevant         (into #{} (map :metric_id) groups)
+            ;; Only the referenced metrics pay [[resolve-metric-queries]] — validation above runs
+            ;; against the cheap catalog. `all` is already candidate-filtered and resolution only
+            ;; drops dimensions further, so no second [[with-candidate-dimensions]] pass is needed.
+            relevant-metrics (->> all
+                                  (filterv #(contains? relevant (:id %)))
+                                  resolve-metric-queries)]
+        {:metrics          (mapv slim-metric relevant-metrics)
+         :dimension_groups (group-dimensions relevant-metrics)
+         :groups           (vec groups)}))))
