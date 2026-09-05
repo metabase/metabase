@@ -51,11 +51,9 @@ export function makeDistortionCallback(
   // Ancestor realms reachable from the sandboxed iframe.
   // Near-Membrane remaps the guest's `window.parent` to the real parent (the
   // same-origin main app) — a realm it never wrapped, so its `fetch` isn't gated.
-  // Redirect every ancestor window, plus the frame element reachable via
-  // `ownerDocument.defaultView`, to the gated target: a valid Window->Window
-  // distortion, so `window.parent`/`frameElement` resolve to THIS realm (where
-  // `fetch`/`XMLHttpRequest` are gated). Captured before the membrane is built,
-  // while the ancestors are still reachable.
+  // Redirect every ancestor window to the gated target, and hide the frame
+  // element so DOM traversal libraries don't escape into the parent document.
+  // Captured before the membrane is built, while the ancestors are reachable.
   const realm = targetWindow as unknown as Window;
 
   // A same-origin child frame's realm is reachable ONLY through
@@ -65,8 +63,20 @@ export function makeDistortionCallback(
   // creates during a chart export — collapses to THIS gated realm. Deliberately
   // narrow: matching the whole `Window` type instead fires on every window the SDK
   // resolves at load and blows the stack.
-  const getterOf = (proto: object, key: string) =>
-    Object.getOwnPropertyDescriptor(proto, key)?.get;
+  const getterOf = (target: object, key: string) => {
+    let current: object | null = target;
+
+    while (current) {
+      const getter = Object.getOwnPropertyDescriptor(current, key)?.get;
+
+      if (getter) {
+        return getter;
+      }
+
+      current = Object.getPrototypeOf(current);
+    }
+  };
+
   const realmCreatingProtos = [
     HTMLIFrameElement,
     HTMLFrameElement,
@@ -83,6 +93,7 @@ export function makeDistortionCallback(
       .map((p) => getterOf(p, "contentDocument"))
       .filter(Boolean),
   );
+  const frameElementGetter = getterOf(realm, "frameElement");
   const getGatedRealm = () => realm;
   const getNull = () => null;
 
@@ -117,14 +128,6 @@ export function makeDistortionCallback(
   }
 
   try {
-    if (realm.frameElement) {
-      ancestors.add(realm.frameElement);
-    }
-  } catch {
-    // frameElement unreachable — nothing to redirect
-  }
-
-  try {
     if (realm.opener) {
       ancestors.add(realm.opener);
     }
@@ -145,6 +148,10 @@ export function makeDistortionCallback(
 
     if (ancestors.has(value)) {
       return realm;
+    }
+
+    if (frameElementGetter && value === frameElementGetter) {
+      return getNull;
     }
 
     // A child frame's `contentWindow` resolves to the gated realm; its

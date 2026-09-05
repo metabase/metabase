@@ -1,10 +1,11 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { useSdkInternalNavigation } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import { createEmbeddingSdkMode } from "embedding-sdk-bundle/lib/modes/EmbeddingSdkMode";
+import { getEmbeddingMode } from "embedding-sdk-bundle/lib/modes/getEmbeddingMode";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getPlugins } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
@@ -12,8 +13,6 @@ import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/Dash
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { isQuestionCard } from "metabase/utils/dashboard";
-import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 import {
   SdkDashboard,
@@ -57,10 +56,9 @@ export const InteractiveDashboardContent = (
     return { ...globalPlugins, ...props.plugins };
   }, [globalPlugins, props.plugins]);
 
-  const getClickActionMode: ClickActionModeGetter = useCallback(
-    ({ question }) =>
+  const clickActionMode = useMemo(
+    () =>
       getEmbeddingMode({
-        question,
         queryMode: createEmbeddingSdkMode({ pushNavigation }),
         // Unjustified type cast. FIXME
         plugins: plugins as InternalMetabasePluginsConfig,
@@ -71,7 +69,7 @@ export const InteractiveDashboardContent = (
   const dashboardProps: SdkDashboardInnerProps = useMemo(
     () => ({
       ...props,
-      getClickActionMode,
+      clickActionMode,
       dashboardActions: [
         DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
         DASHBOARD_ACTION.DOWNLOAD_PDF,
@@ -85,7 +83,7 @@ export const InteractiveDashboardContent = (
           <PublicOrEmbeddedDashCardMenu result={result} dashcard={dashcard} />
         ),
     }),
-    [props, getClickActionMode],
+    [props, clickActionMode],
   );
 
   return <SdkDashboard {...dashboardProps} />;
