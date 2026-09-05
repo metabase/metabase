@@ -132,6 +132,7 @@ export const JobListPage = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           <Button
+            size="lg"
             leftSection={<Icon name="add" />}
             component={ForwardRefLink}
             to={Urls.newTransformJob()}

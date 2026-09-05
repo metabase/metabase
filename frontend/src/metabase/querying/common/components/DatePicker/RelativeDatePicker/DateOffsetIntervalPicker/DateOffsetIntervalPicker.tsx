@@ -139,6 +139,7 @@ export function DateOffsetIntervalPicker({
           }}
         />
         <Button
+          size="lg"
           c="text-secondary"
           variant="subtle"
           leftSection={<Icon name="close" />}
