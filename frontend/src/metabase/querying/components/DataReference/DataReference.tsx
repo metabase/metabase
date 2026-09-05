@@ -3,7 +3,7 @@ import type { ComponentType } from "react";
 import type { DatabaseId } from "metabase-types/api";
 
 import { MainPane } from "./MainPane";
-import { PLUGIN_DATA_REFERENCE } from "./plugin";
+import { PLUGIN_DATA_REFERENCE } from "./plugins";
 import {
   type DataReferenceItem,
   type DataReferencePaneProps,
