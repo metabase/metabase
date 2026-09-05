@@ -35,7 +35,6 @@ export const GroupCategoryTabs = (props: GroupCategoryTabsProps) => {
           key={tabItem.tab}
           onClick={() => setActiveTab(tabItem.tab)}
           radius="xl"
-          size="xs"
         >
           {tabItem.label}
         </Button>

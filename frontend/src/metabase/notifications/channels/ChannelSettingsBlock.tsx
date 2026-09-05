@@ -29,7 +29,7 @@ export const ChannelSettingsBlock = ({
           leftSection={<Icon name="close" />}
           color="text-primary"
           variant="subtle"
-          size="compact-md"
+          size="sm"
           onClick={onRemoveChannel}
         />
       </Group>

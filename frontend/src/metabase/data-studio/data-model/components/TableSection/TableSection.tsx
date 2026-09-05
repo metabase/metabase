@@ -169,7 +169,6 @@ const TableSectionBase = ({
                 {canPublish && isLibraryEnabled && !remoteSyncReadOnly && (
                   <Button
                     flex="1"
-                    size="md"
                     variant={table.is_published ? "default" : "filled"}
                     leftSection={
                       <Icon

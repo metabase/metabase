@@ -50,7 +50,6 @@ export function MeasureList({ table }: MeasureListProps) {
             onClickCapture={onNewMeasureClick}
             px="sm"
             py="xxs"
-            size="xs"
             to={newMeasureUrl}
           >
             {t`New measure`}

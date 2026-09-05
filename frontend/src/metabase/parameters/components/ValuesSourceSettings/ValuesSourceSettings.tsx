@@ -119,7 +119,7 @@ function RadioContainer({
               disabled={disableEdit}
               variant="subtle"
               p={0}
-              size="compact-md"
+              size="sm"
               h="100%"
             >
               <Box

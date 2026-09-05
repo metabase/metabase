@@ -30,7 +30,6 @@ export const MetabotChatSuggestions = () => {
       {suggestedPrompts.map(({ prompt }, index) => (
         <Button
           key={index}
-          size="xs"
           variant="outline"
           fw={400}
           onClick={() => metabot.submitInput(prompt, { focusInput: true })}

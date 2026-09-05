@@ -37,16 +37,11 @@ export function MetricEditorHeader({
       className={S.root}
       title={question.displayName() ?? t`New metric`}
       buttons={[
-        <Button key="cancel" variant="subtle" size="sm" onClick={onCancel}>
+        <Button key="cancel" variant="subtle" onClick={onCancel}>
           {t`Cancel`}
         </Button>,
         !question.isSaved() ? (
-          <Button
-            key="create"
-            variant="filled"
-            size="sm"
-            onClick={handleCreate}
-          >
+          <Button key="create" variant="filled" onClick={handleCreate}>
             {t`Save`}
           </Button>
         ) : (
@@ -60,7 +55,6 @@ export function MetricEditorHeader({
             failedText={t`Save failed`}
             successText={t`Saved`}
             variant="filled"
-            size="sm"
           />
         ),
       ]}

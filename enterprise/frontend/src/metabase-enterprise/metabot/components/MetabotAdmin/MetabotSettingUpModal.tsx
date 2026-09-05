@@ -91,7 +91,7 @@ export function MetabotSettingUpModal({
               </Text>
             </Box>
 
-            <Button variant="filled" size="md" onClick={onClose}>
+            <Button variant="filled" onClick={onClose}>
               {t`Done`}
             </Button>
           </>

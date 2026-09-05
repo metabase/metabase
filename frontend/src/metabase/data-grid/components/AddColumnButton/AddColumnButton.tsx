@@ -24,7 +24,7 @@ export const AddColumnButton = memo(function AddColumnButton({
       <Button
         className={S.button}
         variant="subtle"
-        size="compact-md"
+        size="sm"
         w={23}
         h={23}
         leftSection={<Icon name="add" />}

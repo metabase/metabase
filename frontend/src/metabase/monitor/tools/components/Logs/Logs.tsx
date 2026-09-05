@@ -87,7 +87,6 @@ export const Logs = ({
                         aria-label={t`Clear`}
                         c="text-primary"
                         leftSection={<Icon name="close" />}
-                        size="xs"
                         variant="subtle"
                         onClick={() => {
                           patchUrlState({ query: "" });

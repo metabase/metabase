@@ -86,7 +86,6 @@ function NewVersionAvailable({
           component={ExternalLink}
           flex="0 0 auto"
           ml="sm"
-          size="sm"
           href={
             "https://www.metabase.com/docs/" +
             latestVersion +

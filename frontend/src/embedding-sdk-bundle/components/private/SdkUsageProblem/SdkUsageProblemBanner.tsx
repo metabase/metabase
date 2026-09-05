@@ -99,7 +99,6 @@ export const SdkUsageProblemBanner = ({
                 fz="sm"
                 ff={fontFamily}
                 fs="normal"
-                size="md"
                 radius="sm"
                 variant="subtle"
                 color="text-brand"
@@ -117,7 +116,6 @@ export const SdkUsageProblemBanner = ({
                   }
                   ff={fontFamily}
                   className={S.DocsButton}
-                  size="md"
                   radius="sm"
                 >
                   Documentation

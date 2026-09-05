@@ -43,7 +43,6 @@ export function SegmentList({ table }: SegmentListProps) {
             h={32}
             px="sm"
             py="xxs"
-            size="xs"
             leftSection={<Icon name="add" />}
             onClick={() =>
               trackSegmentCreateStarted(

@@ -27,7 +27,6 @@ export const DatabaseReplicationError = ({
               component={ExternalLink}
               variant="outline"
               rightSection={<Icon name="external" />}
-              size="md"
               role="link"
               href="https://www.metabase.com/docs/latest/"
             >
@@ -35,7 +34,7 @@ export const DatabaseReplicationError = ({
             </Button>
           )}
 
-          <Button variant="filled" size="md" onClick={onClose}>
+          <Button variant="filled" onClick={onClose}>
             {t`Close`}
           </Button>
         </Group>
