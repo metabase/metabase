@@ -55,8 +55,6 @@ const SHARED_PLATFORM_LEVELS = [
   // P3 — building blocks over querying, mutually independent.
   ["shared/metadata", "shared/parameters", "shared/questions"],
   // P4 — the metabot agent, which transforms and nav compose.
-  // metabot keeps its enforceSharedTiers flag for its remaining upward edges:
-  // Metabot.tsx imports MainNavbar.styled, and querying imports metabot in three places.
   ["shared/metabot"],
 ];
 
