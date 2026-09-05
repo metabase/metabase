@@ -1,10 +1,8 @@
 import { createMockState } from "__support__/state";
+import { reinitialize } from "metabase/plugins";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import {
-  PLUGIN_APPLICATION_PERMISSIONS_SELECTORS,
-  reinitialize,
-} from "./plugin";
+import { PLUGIN_APPLICATION_PERMISSIONS_SELECTORS } from "./plugins";
 import {
   canAccessDataModel,
   getUserAttributes,
