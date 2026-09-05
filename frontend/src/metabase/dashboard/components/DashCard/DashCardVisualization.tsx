@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import CS from "metabase/css/core/index.css";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
 import { dashboardClickActionMode } from "metabase/dashboard/click-behavior/mode";
@@ -19,7 +20,6 @@ import {
   isDashcardAccessRestricted,
 } from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Path } from "metabase/router";
 import { useNavigate } from "metabase/router";

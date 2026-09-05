@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import {
   MultiAutocomplete as MultiAutocompleteBase,
   type MultiAutocompleteProps,
