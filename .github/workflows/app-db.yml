@@ -137,7 +137,7 @@ jobs:
     needs: app-db-matrix
     if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mariadb') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -223,7 +223,7 @@ jobs:
     needs: app-db-matrix
     if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mysql') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -317,7 +317,7 @@ jobs:
     needs: app-db-matrix
     if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'postgres') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
