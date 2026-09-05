@@ -695,7 +695,7 @@ const SectionKindSection = ({ kind }: { kind: SectionKind }) => (
     title={kind.title}
     description={<StoryJsx>{`<Button ${kind.jsx}>Button</Button>`}</StoryJsx>}
   >
-    <Box style={matrixGridStyle(SECTION_COLUMNS.length, "0.5rem")}>
+    <Box style={matrixGridStyle(SECTION_COLUMNS.length, "1rem")}>
       <Box />
       {SECTION_COLUMNS.map((column) => (
         <StoryLabel key={column.key}>{column.key}</StoryLabel>
