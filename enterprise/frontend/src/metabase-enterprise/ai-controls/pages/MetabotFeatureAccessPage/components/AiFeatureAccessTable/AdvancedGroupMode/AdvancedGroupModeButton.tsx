@@ -15,7 +15,6 @@ export function AdvancedGroupModeButton() {
       <Button
         className={S.button}
         onClick={toggleShowEnableModal}
-        variant="default"
         size="sm"
         fz="sm"
       >

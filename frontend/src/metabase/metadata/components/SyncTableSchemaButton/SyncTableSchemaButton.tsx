@@ -21,7 +21,7 @@ export function SyncTableSchemaButton({ tableId }: { tableId: TableId }) {
   };
 
   return (
-    <Button variant="default" onClick={handleClick}>
+    <Button onClick={handleClick}>
       {started ? t`Sync triggered!` : t`Sync table schema`}
     </Button>
   );

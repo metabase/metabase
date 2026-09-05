@@ -168,7 +168,6 @@ export function DimensionSettingsPanel({
           <Button
             loading={isSettingDefault || isFetching}
             onClick={dimension.default ? handleRemoveDefault : handleSetDefault}
-            variant="default"
           >
             {dimension.default ? t`Remove default` : t`Set as default`}
           </Button>
