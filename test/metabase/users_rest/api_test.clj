@@ -1726,6 +1726,25 @@
         (is (nil? (t2/select-one :model/Session :id (:id session)))
             "the user's pre-existing session should be deleted after the password change")))))
 
+(deftest reset-password-self-service-revokes-other-sessions-test
+  (testing "PUT /api/user/:id/password changing your own password revokes your other live sessions"
+    (mt/with-temp [:model/User user {:is_superuser false}]
+      (auth-identity/set-password! (:id user) "def")
+      (let [creds     {:username (:email user), :password "def"}
+            session-a (:id (mt/client :post 200 "session" creds))
+            session-b (:id (mt/client :post 200 "session" creds))]
+        (testing "sanity check: both sessions are usable before the password change"
+          (is (=? {:id (:id user)} (mt/client session-a :get 200 "user/current")))
+          (is (=? {:id (:id user)} (mt/client session-b :get 200 "user/current"))))
+        (let [{new-session :session_id} (mt/client session-b :put 200 (format "user/%d/password" (:id user))
+                                                   {:password "abc123!!DEF", :old_password "def"})]
+          (testing "the other session is dead"
+            (mt/client session-a :get 401 "user/current"))
+          (testing "the session that made the change is dead too — it is replaced, not kept"
+            (mt/client session-b :get 401 "user/current"))
+          (testing "the replacement session handed back by the endpoint works"
+            (is (=? {:id (:id user)} (mt/client new-session :get 200 "user/current")))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
