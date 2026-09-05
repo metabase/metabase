@@ -7,6 +7,7 @@
   --mb-button-padding-y: 8px;
   --mb-button-padding-x: 12px;
   --mb-button-section-gap: 6px;
+  --mb-button-loader-size: 14px;
 
   font-family: var(--mb-default-font-family);
   font-size: 14px;
@@ -24,6 +25,17 @@
     --mb-button-padding-y: 4px;
     --mb-button-padding-x: 8px;
     --mb-button-section-gap: 4px;
+    --mb-button-loader-size: 12px;
+
+    font-size: 12px;
+
+    &[data-loading] {
+      --mb-button-padding-y: 6px;
+    }
+  }
+
+  &[data-size="md"][data-loading] {
+    --mb-button-padding-y: 9px;
   }
 
   &[data-size="lg"] {
@@ -37,9 +49,16 @@
     --mb-button-padding-y: 0px;
     --mb-button-padding-x: 0px;
     --mb-button-section-gap: 4px;
+    --mb-button-loader-size: 13.75px;
+  }
+
+  &[data-loading]::before {
+    content: none;
   }
 
   &[data-size="compact-sm"] {
+    --mb-button-loader-size: 11.5px;
+
     font-size: 12px;
     border-radius: var(--button-radius, 4px);
   }
@@ -66,16 +85,17 @@
   &[data-variant="filled"],
   &[data-variant="light"],
   &[data-variant="subtle"],
+  &[data-variant="transparent"],
   &[data-variant^="on-dark-"] {
     border-width: 0.5px;
 
-    &:hover,
-    &[aria-pressed="true"] {
+    &:hover:not([data-loading]),
+    &[aria-pressed="true"]:not([data-loading]) {
       color: var(--button-hover-color, var(--button-color));
       background-color: var(--button-hover);
     }
 
-    &:active {
+    &:active:not([data-loading]) {
       color: var(--button-hover-color, var(--button-color));
       background-color: var(--button-pressed, var(--button-hover));
       box-shadow: none;
@@ -95,7 +115,8 @@
     box-shadow: var(--mantine-shadow-xs);
   }
 
-  &[data-variant="subtle"] {
+  &[data-variant="subtle"],
+  &[data-variant="transparent"] {
     &:disabled:not([data-loading]),
     &[data-disabled]:not([data-loading]) {
       background-color: transparent;
@@ -193,6 +214,12 @@
   }
 }
 
+.loader {
+  /* Mantine's loader transition adds +1px on the Y axis; keep the loader centered */
+  top: calc(50% - 1px);
+  display: flex;
+}
+
 .label {
   height: auto;
   display: inline-block;
@@ -208,12 +235,20 @@
 }
 
 :global(.mb-mantine-ButtonGroup-group[data-orientation="horizontal"]) > .root {
-  &[data-variant][data-size]:nth-child(n + 2) {
-    border-inline-start-width: 0;
+  &[data-variant][data-size]:not(:last-child) {
+    border-inline-end-width: 0;
   }
 
-  &[data-variant="light"]:not(:last-child) {
-    border-inline-end-color: var(--mb-color-border-neutral-strong);
+  &[data-variant][data-size]:not(:first-child) {
+    border-inline-start-width: 0.5px;
+  }
+
+  &[data-variant="light"]:not(:first-child) {
+    border-inline-start-color: var(--mb-color-border-neutral-strong);
+  }
+
+  &[data-variant="filled"]:not(:first-child) {
+    border-inline-start-color: var(--mb-color-border-neutral-inverse-strong);
   }
 
   &[data-variant="default"] {

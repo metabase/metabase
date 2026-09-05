@@ -5,56 +5,44 @@ import ButtonStyles from "./Button.module.css";
 type ButtonRootVars = Record<string, string>;
 
 const DEFAULT_VARS: ButtonRootVars = {
-  "--button-color": "var(--mb-color-text-primary)",
-  "--button-hover-color": "var(--mb-color-text-primary)",
-  "--button-bg": "var(--mb-color-background_surface-primary)",
-  "--button-hover": "var(--mb-color-background_surface-primary-hover)",
-  "--button-pressed": "var(--mb-color-background_surface-primary-pressed)",
+  "--button-color": "var(--mb-color-button_label-default-neutral-default)",
+  "--button-hover-color":
+    "var(--mb-color-button_label-default-neutral-default)",
+  "--button-bg": "var(--mb-color-button-default-neutral-default)",
+  "--button-hover": "var(--mb-color-button-default-neutral-hover)",
+  "--button-pressed": "var(--mb-color-button-default-neutral-pressed)",
   "--button-bd": "0.5px solid var(--mb-color-border-neutral-strong)",
 };
 
-const BRAND_VARS: Record<string, ButtonRootVars> = {
-  filled: {
-    "--button-color": "var(--mb-color-text-primary-inverse)",
-    "--button-hover-color": "var(--mb-color-text-primary-inverse)",
-    "--button-bg": "var(--mb-color-background_surface-brand-strong)",
-    "--button-hover": "var(--mb-color-background_surface-brand-strong-hover)",
-    "--button-pressed":
-      "var(--mb-color-background_surface-brand-strong-pressed)",
-  },
-  light: {
-    "--button-color": "var(--mb-color-text-brand-strong)",
-    "--button-hover-color": "var(--mb-color-text-brand-strong-hover)",
-    "--button-bg": "var(--mb-color-background_surface-brand-subtle)",
-    "--button-hover": "var(--mb-color-background_surface-brand-subtle-hover)",
-    "--button-pressed":
-      "var(--mb-color-background_surface-brand-subtle-pressed)",
-  },
-  subtle: {
-    "--button-color": "var(--mb-color-text-brand-strong)",
-    "--button-hover-color": "var(--mb-color-text-brand-strong-hover)",
-    "--button-bg": "transparent",
-    "--button-hover": "var(--mb-color-background_surface-brand-subtle-hover)",
-    "--button-pressed":
-      "var(--mb-color-background_surface-brand-subtle-pressed)",
-  },
+const COLOR_FAMILIES: Record<string, string> = {
+  "core-brand": "brand",
+  "feedback-negative": "negative",
+  "text-primary": "neutral",
 };
 
-const NEUTRAL_VARS: Record<string, ButtonRootVars> = {
-  light: {
-    "--button-color": "var(--mb-color-text-primary)",
-    "--button-hover-color": "var(--mb-color-text-primary)",
-    "--button-bg": "var(--mb-color-background_surface-secondary)",
-    "--button-hover": "var(--mb-color-background_surface-secondary-hover)",
-    "--button-pressed": "var(--mb-color-background_surface-secondary-pressed)",
-  },
-  subtle: {
-    "--button-color": "var(--mb-color-text-primary)",
-    "--button-hover-color": "var(--mb-color-text-primary)",
-    "--button-bg": "transparent",
-    "--button-hover": "var(--mb-color-background_surface-primary-hover)",
-    "--button-pressed": "var(--mb-color-background_surface-primary-pressed)",
-  },
+const TOKENIZED_FAMILIES: Record<string, string[]> = {
+  filled: ["brand", "negative"],
+  light: ["brand", "negative", "neutral"],
+  subtle: ["brand", "negative", "neutral"],
+  transparent: ["brand", "negative", "neutral"],
+};
+
+const getFamilyVars = (variant: string, family: string): ButtonRootVars => {
+  const tokenVariant = variant === "transparent" ? "subtle" : variant;
+  const labelHover =
+    family === "neutral" || variant === "filled" ? "default" : "hover";
+  return {
+    "--button-color": `var(--mb-color-button_label-${tokenVariant}-${family}-default)`,
+    "--button-hover-color": `var(--mb-color-button_label-${tokenVariant}-${family}-${labelHover})`,
+    "--button-bg": `var(--mb-color-button-${tokenVariant}-${family}-default)`,
+    "--button-hover": `var(--mb-color-button-${tokenVariant}-${family}-hover)`,
+    "--button-pressed": `var(--mb-color-button-${tokenVariant}-${family}-pressed)`,
+  };
+};
+
+const TRANSPARENT_VARS: ButtonRootVars = {
+  "--button-hover": "transparent",
+  "--button-pressed": "transparent",
 };
 
 const ON_DARK_VARS: Record<string, ButtonRootVars> = {
@@ -87,7 +75,7 @@ const NON_BRAND_VARS: Record<string, ButtonRootVars> = {
   },
 };
 
-const getRootVars = ({ variant, color }: ButtonProps): ButtonRootVars => {
+const getRootVars = ({ variant, color, size }: ButtonProps): ButtonRootVars => {
   if (variant === "default") {
     return DEFAULT_VARS;
   }
@@ -97,11 +85,13 @@ const getRootVars = ({ variant, color }: ButtonProps): ButtonRootVars => {
   if (ON_DARK_VARS[variant]) {
     return ON_DARK_VARS[variant];
   }
-  if (!color || color === "core-brand") {
-    return BRAND_VARS[variant] ?? {};
-  }
-  if (color === "text-primary" && NEUTRAL_VARS[variant]) {
-    return NEUTRAL_VARS[variant];
+  const family = COLOR_FAMILIES[color ?? "core-brand"];
+  if (family && TOKENIZED_FAMILIES[variant]?.includes(family)) {
+    const vars = getFamilyVars(variant, family);
+    const isCompact = typeof size === "string" && size.startsWith("compact");
+    const isTransparent =
+      variant === "transparent" || (variant === "subtle" && isCompact);
+    return isTransparent ? { ...vars, ...TRANSPARENT_VARS } : vars;
   }
   return NON_BRAND_VARS[variant] ?? {};
 };
@@ -113,7 +103,7 @@ export const buttonOverrides = {
       variant: "default",
       size: "md",
       loaderProps: {
-        size: "1rem",
+        size: "var(--mb-button-loader-size)",
         color: "currentColor",
       },
     },
@@ -122,6 +112,7 @@ export const buttonOverrides = {
       root: ButtonStyles.root,
       label: ButtonStyles.label,
       inner: ButtonStyles.inner,
+      loader: ButtonStyles.loader,
     },
   }),
 };
