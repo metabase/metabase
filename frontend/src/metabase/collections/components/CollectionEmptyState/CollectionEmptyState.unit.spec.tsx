@@ -71,6 +71,17 @@ describe("empty collection", () => {
     expect(screen.getByText("New")).toBeInTheDocument();
   });
 
+  it("renders the empty-state title as an h2", async () => {
+    await setup();
+
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: "This collection is empty",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("should not show the 'new' menu button if the user lacks write access", async () => {
     await setup({ collection: { can_write: false } });
 

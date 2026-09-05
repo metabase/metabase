@@ -65,4 +65,11 @@ describe("HomePage", () => {
     setup();
     expect(screen.queryByText(TEST_DASHBOARD_NAME)).not.toBeInTheDocument();
   });
+
+  it("exposes a single visually hidden h1", () => {
+    setup();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Home" }),
+    ).toBeInTheDocument();
+  });
 });

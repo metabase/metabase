@@ -8,7 +8,7 @@ import animationStyles from "metabase/css/core/animation.module.css";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
-import { Flex, Tooltip } from "metabase/ui";
+import { Flex, Text, Tooltip } from "metabase/ui";
 
 import S from "./HomeGreeting.module.css";
 
@@ -25,9 +25,17 @@ export const HomeGreeting = (): JSX.Element | null => {
   return (
     <Flex align="center">
       <MetabotGreeting />
-      <span data-testid="greeting-message" className={S.greetingMessage}>
+      <Text
+        component="span"
+        data-testid="greeting-message"
+        c="text-primary"
+        fw={700}
+        lh="1.5rem"
+        fz={{ base: "1.125rem", xl: "1.25rem" }}
+        ml="0.5rem"
+      >
         {message}
-      </span>
+      </Text>
     </Flex>
   );
 };
