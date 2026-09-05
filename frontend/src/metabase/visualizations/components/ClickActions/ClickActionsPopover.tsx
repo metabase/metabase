@@ -1,9 +1,13 @@
-import { Component } from "react";
+import { Component, type ComponentProps, useRef } from "react";
 
 import { connect } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
 import type { Path } from "metabase/router";
 import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
+import {
+  PopoverSideFallbackProvider,
+  usePopoverSideFallbackMiddlewares,
+} from "metabase/ui/components/utils/PopoverSideFallback";
 import { getEventTarget } from "metabase/utils/dom";
 import { performAction } from "metabase/visualizations/lib/action";
 import type {
@@ -134,7 +138,7 @@ export class ClickActionsPopover extends Component<
     const columnName = clicked?.column?.display_name;
 
     return (
-      <PopoverWithRef
+      <SideFallbackPopoverWithRef
         anchorEl={popoverAnchor}
         opened={!!popoverAnchor}
         // TODO - come back to this
@@ -162,9 +166,34 @@ export class ClickActionsPopover extends Component<
             />
           </div>
         )}
-      </PopoverWithRef>
+      </SideFallbackPopoverWithRef>
     );
   }
+}
+
+function SideFallbackPopoverWithRef(
+  props: ComponentProps<typeof PopoverWithRef>,
+) {
+  return (
+    <PopoverSideFallbackProvider>
+      <SideFallbackPopoverWithRefInner {...props} />
+    </PopoverSideFallbackProvider>
+  );
+}
+
+function SideFallbackPopoverWithRefInner(
+  props: ComponentProps<typeof PopoverWithRef>,
+) {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const middlewares = usePopoverSideFallbackMiddlewares(dropdownRef);
+
+  return (
+    <PopoverWithRef
+      {...props}
+      dropdownRef={dropdownRef}
+      middlewares={middlewares}
+    />
+  );
 }
 
 export const ConnectedClickActionsPopover = connect()(ClickActionsPopover);
