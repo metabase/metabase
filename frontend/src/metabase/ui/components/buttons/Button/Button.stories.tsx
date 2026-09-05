@@ -640,7 +640,7 @@ const SECTION_COLUMNS: readonly SectionColumn[] = [
     colors: ["brand", "negative", "neutral"],
   },
   {
-    key: "compact",
+    key: "compact-md",
     variant: "transparent",
     size: "compact-md",
     colors: ["brand"],
