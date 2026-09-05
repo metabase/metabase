@@ -8,6 +8,8 @@ import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder
 import type { HoveredObject } from "metabase/viz-core";
 import type { EntityToken } from "metabase-types/api/entity";
 
+import { definePluginSlot } from "../slot";
+
 const getDefaultPluginContentTranslation = () => ({
   isEnabled: false,
   // Unjustified type cast. FIXME
@@ -40,14 +42,6 @@ const getDefaultPluginContentTranslation = () => ({
     a.localeCompare(b),
 });
 
-export const PLUGIN_CONTENT_TRANSLATION = getDefaultPluginContentTranslation();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(
-    PLUGIN_CONTENT_TRANSLATION,
-    getDefaultPluginContentTranslation(),
-  );
-}
+export const PLUGIN_CONTENT_TRANSLATION = definePluginSlot(
+  getDefaultPluginContentTranslation,
+);

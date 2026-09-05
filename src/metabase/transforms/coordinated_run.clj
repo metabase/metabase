@@ -6,51 +6,60 @@
   (:require
    [metabase.run-tracking.core :as rt]
    [metabase.transforms.canceling :as canceling]
-   [metabase.transforms.models.transform-run-cancelation :as transform-run-cancelation]
-   [toucan2.core :as t2]))
+   [metabase.transforms.db :as transforms.db]
+   [metabase.transforms.models.transform-run-cancelation :as transform-run-cancelation]))
 
 (set! *warn-on-reflection* true)
+
+(defn- touch-active-run!
+  [model run-id]
+  (case model
+    :model/TransformJobRun (transforms.db/touch-active-job-run! run-id)
+    :model/TransformDagRun (transforms.db/touch-active-dag-run! run-id)))
+
+(defn- finish-active-run!
+  [model run-id changes]
+  (case model
+    :model/TransformJobRun (transforms.db/finish-active-job-run! run-id changes)
+    :model/TransformDagRun (transforms.db/finish-active-dag-run! run-id changes)))
 
 (defn add-run-activity!
   "Note that a run has had activity (touches `updated_at`)."
   [model run-id]
-  (t2/update! model :id run-id :is_active true {:updated_at :%now}))
+  (touch-active-run! model run-id))
 
 (defn succeed-started-run!
   "Mark a started run as successfully completed."
   ([model run-id]
    (succeed-started-run! model run-id {}))
   ([model run-id properties]
-   (t2/update! model
-               :id        run-id
-               :is_active true
-               (merge {:end_time :%now}
-                      properties
-                      {:status    :succeeded
-                       :is_active nil}))))
+   (finish-active-run! model
+                       run-id
+                       (merge {:end_time :%now}
+                              properties
+                              {:status    :succeeded
+                               :is_active nil}))))
 
 (defn fail-started-run!
   "Mark the started active run as failed and inactive."
   [model run-id properties]
-  (t2/update! model
-              :id        run-id
-              :is_active true
-              (merge {:end_time :%now}
-                     properties
-                     {:status    :failed
-                      :is_active nil})))
+  (finish-active-run! model
+                      run-id
+                      (merge {:end_time :%now}
+                             properties
+                             {:status    :failed
+                              :is_active nil})))
 
 (defn cancel-started-run!
   "Mark an active run as canceled; a finished run is never resurrected into a canceled state.
   Returns the number of rows updated — 0 if the run had already finished."
   [model run-id]
-  (t2/update! model
-              :id        run-id
-              :is_active true
-              {:status    :canceled
-               :is_active nil
-               :end_time  :%now
-               :message   "Canceled"}))
+  (finish-active-run! model
+                      run-id
+                      {:status    :canceled
+                       :is_active nil
+                       :end_time  :%now
+                       :message   "Canceled"}))
 
 (defn cancel!
   "Cancel an in-progress coordinated run: mark it canceled and request cancellation of its
@@ -60,7 +69,7 @@
   [model member-fk run-id]
   (boolean
    (when (pos? (cancel-started-run! model run-id))
-     (doseq [member-run-id (t2/select-pks-vec :model/TransformRun member-fk run-id :is_active true)]
+     (doseq [member-run-id (transforms.db/active-run-ids-of-parent member-fk run-id)]
        (transform-run-cancelation/mark-cancel-started-run! member-run-id)
        (canceling/chan-signal-cancel! member-run-id))
      true)))

@@ -2,6 +2,7 @@
   "Provider for emailed secret tokens (password reset, email verification, magic links)."
   (:require
    [java-time.api :as t]
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.models.auth-identity :as auth-identity]
    [metabase.auth-identity.provider :as provider]
    [metabase.channel.email.messages :as messages]
@@ -105,15 +106,15 @@
   [user-id :- ms/PositiveInt]
   (u/prog1 (generate-reset-token user-id)
     (t2/with-transaction [_]
-      (let [user (t2/select-one :model/User user-id)
+      (let [user (auth-identity.db/user user-id)
             auth-identity {:user_id user-id
                            :provider "emailed-secret-password-reset"
                            :provider_id (:email user)
                            :credentials (create-reset-token-credentials <>)
                            :metadata (create-reset-token-metadata (:email user))}]
-        (if-let [auth-identity-id (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset")]
-          (t2/update! :model/AuthIdentity auth-identity-id auth-identity)
-          (t2/insert! :model/AuthIdentity auth-identity))))))
+        (if-let [auth-identity-id (auth-identity.db/auth-identity-id user-id "emailed-secret-password-reset")]
+          (auth-identity.db/update-auth-identity! auth-identity-id auth-identity)
+          (auth-identity.db/insert-auth-identity! auth-identity))))))
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
@@ -143,9 +144,7 @@
     :else
     (try
       (if-let [user-id (parse-token-user-id token)]
-        (if-let [auth-identity (t2/select-one :model/AuthIdentity
-                                              :user_id user-id
-                                              :provider (name provider))]
+        (if-let [auth-identity (auth-identity.db/auth-identity user-id (name provider))]
           (let [verification-result (verify-reset-token token (:credentials auth-identity))]
             (case verification-result
               :valid
@@ -189,6 +188,6 @@
   (when (:success? result)
     (if (:last_login user)
       (events/publish-event! :event/password-reset-successful {:object (assoc user :token (auth-identity/reset-token-hash (:id user)))})
-      (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User (:id user))))
+      (messages/send-user-joined-admin-notification-email! (auth-identity.db/user (:id user))))
     (auth-identity/set-password! (:id user) password))
   result)

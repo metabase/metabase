@@ -1,12 +1,12 @@
 (ns metabase-enterprise.tenants.auth-provider
   (:require
    [metabase-enterprise.tenants.api :as api.tenants]
+   [metabase-enterprise.tenants.db :as tenants.db]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (defn- validate-user-and-tenant-slug!
   [{:keys [tenant_id] :as user} existing-tenant user-will-have-tenant?]
@@ -27,14 +27,14 @@
            user-has-tenant?)
       (throw (ex-info "Tenant claim required for external user"
                       {:user/tenant-id tenant_id
-                       :user/tenant-slug (t2/select-one-fn :slug :model/Tenant :id tenant_id)
+                       :user/tenant-slug (tenants.db/tenant-slug tenant_id)
                        :status-code 403}))
 
       (and user-exists?
            (not= tenant_id (u/id existing-tenant)))
       (throw (ex-info "Tenant ID mismatch with existing user"
                       {:user/tenant-id tenant_id
-                       :user/tenant-slug (t2/select-one-fn :slug :model/Tenant :id tenant_id)
+                       :user/tenant-slug (tenants.db/tenant-slug tenant_id)
                        :tenant-slug/tenant-id (:id existing-tenant)
                        :tenant-slug/slug (:slug existing-tenant)
                        :status-code 403})))))
@@ -91,7 +91,7 @@
 
 (methodical/defmethod auth-identity/login! ::create-tenant-if-not-exists
   [provider {:keys [tenant-slug] :as request}]
-  (let [existing-tenant (when tenant-slug (t2/select-one :model/Tenant :slug tenant-slug))]
+  (let [existing-tenant (when tenant-slug (tenants.db/tenant-by-slug tenant-slug))]
     (next-method provider (create-tenant-if-not-exists! request existing-tenant))))
 
 (methodical/prefer-method! #'auth-identity/login! :metabase.auth-identity.provider/provider ::create-tenant-if-not-exists)

@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
+   [metabase.driver.bigquery-cloud-sdk.db :as bigquery.db]
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.common :as driver.common]
@@ -28,10 +29,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf]
-   ;; sync fix-ups read and write Database/Table/Field rows directly; the metadata provider is read-only
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [metabase.util.performance :as perf])
   (:import
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
@@ -763,7 +761,7 @@
 
 (defn- ingestion-time-partitioned-table?
   [table-id]
-  (t2/exists? :model/Field :table_id table-id :name partitioned-time-field-name :database_partitioned true :active true))
+  (bigquery.db/active-partitioned-field-exists? table-id partitioned-time-field-name))
 
 (defmethod driver/table-rows-sample :bigquery-cloud-sdk
   [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
@@ -1176,13 +1174,7 @@
     (log/infof "DB %s had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
                (pr-str db-id))
     (try
-      (t2/query-one {:update (t2/table-name :model/Table)
-                     :set    {:schema dataset-id}
-                     :where  [:and
-                              [:= :db_id db-id]
-                              [:or
-                               [:= :schema nil]
-                               [:not= :schema dataset-id]]]})
+      (bigquery.db/set-table-schemas! db-id dataset-id)
       ;; if we are upgrading to the sdk driver after having downgraded back to the old driver we end up with
       ;; duplicated tables with nil schema. Happily only in the "dataset-id" schema and not all schemas. But just
       ;; leave them with nil schemas and they will get deactivated in sync.
@@ -1191,7 +1183,7 @@
                               (assoc :dataset-filters-type "inclusion")
                               (assoc :dataset-filters-patterns dataset-id)
                               (dissoc :dataset-id))]
-      (t2/update! :model/Database db-id {:details updated-details})
+      (bigquery.db/update-database-details! db-id updated-details)
       (assoc database :details updated-details))))
 
 ;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])
@@ -1306,14 +1298,14 @@
   (let [base      (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
         cluster   (clustering-clause indexes)
         sql       (if cluster (str base " " cluster) base)
-        database  (t2/select-one :model/Database database-id)
+        database  (bigquery.db/database database-id)
         conn-spec (driver/connection-spec driver database)]
     (driver/execute-raw-queries! driver conn-spec [sql])))
 
 (defmethod driver/drop-table! :bigquery-cloud-sdk
   [driver database-id table-name]
   (let [sql       (driver/compile-drop-table driver table-name)
-        database  (t2/select-one :model/Database database-id)
+        database  (bigquery.db/database database-id)
         conn-spec (driver/connection-spec driver database)]
     (driver/execute-raw-queries! driver conn-spec [sql])))
 
@@ -1368,7 +1360,7 @@
   ;; update their metadata caches frequently enough for timely transform runs (or interactive previews).
   ;; rather than waiting many minutes, we trade torward consistency by using SQL DML, whose table metadata
   ;; is consistent, and we do not see cached non-existence and things like that causing trouble.
-  (let [database   (t2/select-one :model/Database db-id)
+  (let [database   (bigquery.db/database db-id)
         col-kws    (perf/mapv (comp keyword name :name) columns)
         num-cols   (count col-kws)
         ;; bigquery allows 10k query parameters per request

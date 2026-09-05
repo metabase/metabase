@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
   (:require
    [metabase-enterprise.sandbox.api.table :as table]
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -22,11 +23,9 @@
   called from a background sync), since sandboxes are scoped to a user's group memberships."
   [table-id]
   (when api/*current-user-id*
-    (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id api/*current-user-id*)
+    (let [group-ids (sandbox.db/user-group-ids api/*current-user-id*)
           sandboxes (when (seq group-ids)
-                      (t2/select :model/Sandbox
-                                 :group_id [:in group-ids]
-                                 :table_id table-id))]
+                      (sandbox.db/sandboxes-for-groups-and-table group-ids table-id))]
       (when sandboxes
         (sandboxing/assert-one-sandbox-per-table sandboxes)
         ;; there should be only one gtap per table and we only need one table here

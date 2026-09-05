@@ -1,19 +1,9 @@
 import { cardApi, datasetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch } from "metabase/redux/store";
-import { fetchTableMetadata } from "metabase/redux/tables";
-import type { Card, TableId, UnsavedCard } from "metabase-types/api";
+import type { Card, UnsavedCard } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
-
-export const loadMetadataForTable =
-  (tableId: TableId) => async (dispatch: Dispatch) => {
-    try {
-      await dispatch(fetchTableMetadata({ id: tableId }));
-    } catch (error) {
-      console.error("Error in loadMetadataForTable", error);
-    }
-  };
 
 export const loadMetadataForCard =
   (
