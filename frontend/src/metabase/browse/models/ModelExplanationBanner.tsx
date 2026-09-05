@@ -58,11 +58,15 @@ export const ModelExplanationBanner = () => {
           </Text>
           <Group gap="lg">
             {showMetabaseLinks && (
-              <Button variant="subtle" p={0}>
+              <Button variant="transparent" size="compact-md">
                 <ExternalLink href={url}>{t`Read the docs`}</ExternalLink>
               </Button>
             )}
-            <Button variant="subtle" p={0} onClick={dismissBanner}>
+            <Button
+              variant="transparent"
+              size="compact-md"
+              onClick={dismissBanner}
+            >
               {t`Dismiss`}
             </Button>
           </Group>

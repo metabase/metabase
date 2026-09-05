@@ -343,8 +343,8 @@ function AdvancedSettings({
     <Stack gap="lg">
       <Button
         type="button"
-        variant="subtle"
-        p={0}
+        variant="transparent"
+        size="compact-md"
         w="fit-content"
         aria-expanded={isOpened}
         onClick={onToggle}

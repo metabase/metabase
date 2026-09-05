@@ -119,8 +119,8 @@ export const NotebookNativePreview = ({
       {!readOnly && (
         <Box ta="end" p="1.5rem">
           <Button
-            variant="subtle"
-            p={0}
+            variant="transparent"
+            size="compact-md"
             onClick={handleConvertClick}
             disabled={!showQuery || disableConvert}
           >

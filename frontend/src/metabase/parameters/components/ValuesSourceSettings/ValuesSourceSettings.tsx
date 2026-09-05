@@ -117,9 +117,8 @@ function RadioContainer({
             <Button
               onClick={onEditClick}
               disabled={disableEdit}
-              variant="subtle"
-              p={0}
-              size="sm"
+              variant="transparent"
+              size="compact-md"
               h="100%"
             >
               <Box

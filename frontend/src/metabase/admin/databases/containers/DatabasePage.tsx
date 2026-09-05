@@ -78,9 +78,9 @@ export function DatabasePage() {
                 <Button
                   h="auto"
                   onClick={onHelpButtonClick}
-                  p={0}
                   style={{ verticalAlign: "baseline" }}
-                  variant="subtle"
+                  variant="transparent"
+                  size="compact-md"
                 >
                   {t`Help is here`}
                   <Icon name="chevronright" size={12} ml="xxs" />

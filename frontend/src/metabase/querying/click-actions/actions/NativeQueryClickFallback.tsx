@@ -26,8 +26,8 @@ export const NativeQueryClickFallback: LegacyDrill = ({ question }) => {
         const button = (
           <Button
             key="save-button"
-            variant="subtle"
-            p={0}
+            variant="transparent"
+            size="compact-md"
             onClick={() => dispatch(setUIControls({ modal: MODAL_TYPES.SAVE }))}
           >
             {c('in the sentence "Save this question to drill-through"').t`Save`}
