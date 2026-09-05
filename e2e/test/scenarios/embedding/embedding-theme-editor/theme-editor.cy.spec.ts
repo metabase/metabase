@@ -365,7 +365,7 @@ describe(
 
     describe("preview panel", () => {
       it("shows enable embedding prompt when embedding is not enabled", () => {
-        H.updateSetting("enable-embedding-simple", false);
+        H.updateSetting("enable-embedding-modular", false);
 
         createThemeViaApi("Preview test").then((theme) => {
           visitThemeEditor(theme.id);
@@ -384,8 +384,8 @@ describe(
       });
 
       it("shows theme preview when embedding is enabled", () => {
-        H.updateSetting("enable-embedding-simple", true);
-        H.updateSetting("show-simple-embed-terms", false);
+        H.updateSetting("enable-embedding-modular", true);
+        H.updateSetting("show-modular-embed-terms", false);
 
         createThemeViaApi("Preview test").then((theme) => {
           visitThemeEditor(theme.id);
@@ -398,8 +398,8 @@ describe(
 
     describe("preview picker", () => {
       beforeEach(() => {
-        H.updateSetting("enable-embedding-simple", true);
-        H.updateSetting("show-simple-embed-terms", false);
+        H.updateSetting("enable-embedding-modular", true);
+        H.updateSetting("show-modular-embed-terms", false);
       });
 
       it("defaults to a dashboard and can switch to a question", () => {

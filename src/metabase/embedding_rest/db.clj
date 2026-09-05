@@ -40,10 +40,10 @@
   (t2/select-one :model/DashboardCard dashcard-id))
 
 (defn embedding-themes
-  "The id, entity id, name, settings, and timestamps of every EmbeddingTheme, oldest first."
+  "The id, entity id, name, settings, default flag, and timestamps of every EmbeddingTheme, oldest first."
   []
   (t2/select :model/EmbeddingTheme {:order-by [[:created_at :asc]]
-                                    :select [:id :entity_id :name :settings :created_at :updated_at]}))
+                                    :select [:id :entity_id :name :settings :is_default :created_at :updated_at]}))
 
 (defn embedding-theme-exists?
   "Whether an EmbeddingTheme with `id` exists."

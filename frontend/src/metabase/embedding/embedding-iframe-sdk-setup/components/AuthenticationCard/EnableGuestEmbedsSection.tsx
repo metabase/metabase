@@ -11,17 +11,21 @@ import { UsageConditionsInfoIcon } from "./UsageConditionsInfoIcon";
 interface Props {
   isEnabled: boolean;
   termsAccepted: boolean;
+  isSimpleEmbedFeatureAvailable: boolean;
 }
 
 /**
- * Rendered under the Guest radio when guest embeds (`enable-embedding-static`)
- * aren't enabled yet or the AGPL usage conditions haven't been accepted. Lets
- * the admin enable the feature and accept the terms in a single click from
- * inside the wizard.
+ * Rendered under the Guest radio when `enable-embedding-modular` isn't on yet
+ * or the AGPL usage conditions haven't been accepted. Lets the admin do both
+ * in one click from inside the wizard.
+ *
+ * `show-static-embed-terms` is force-false on Pro (settings.clj), so the
+ * "agree to the usage conditions" wording never renders there.
  */
 export const EnableGuestEmbedsSection = ({
   isEnabled,
   termsAccepted,
+  isSimpleEmbedFeatureAvailable,
 }: Props) => {
   const [updateSettings] = useUpdateSettingsMutation();
   const [sendToast] = useToast();
@@ -33,14 +37,20 @@ export const EnableGuestEmbedsSection = ({
   const [showSection] = useState(!isAccepted);
   const initialDataRef = useRef({ isEnabled, termsAccepted });
 
+  // Wording follows the admin settings page's labels for the same toggle
+  // (EmbeddingMethodsCard.tsx).
+  const failedToEnableMessage = isSimpleEmbedFeatureAvailable
+    ? t`Failed to enable modular embedding`
+    : t`Failed to enable embedding`;
+
   const handleEnable = async () => {
     try {
       await updateSettings({
-        "enable-embedding-static": true,
+        "enable-embedding-modular": true,
         ...(!termsAccepted && { "show-static-embed-terms": false }),
       });
     } catch (error) {
-      sendToast({ message: t`Failed to enable guest embeds` });
+      sendToast({ message: failedToEnableMessage });
     }
   };
 
@@ -61,7 +71,9 @@ export const EnableGuestEmbedsSection = ({
   const { title, buttonCaption } =
     match(initialDataRef.current)
       .with({ isEnabled: false, termsAccepted: false }, () => ({
-        title: jt`To continue, enable guest embeds and agree to the ${usageConditionsLink}.`,
+        // Never matches on Pro: `show-static-embed-terms` is force-false
+        // there (settings.clj), so `termsAccepted` is always true.
+        title: jt`To continue, enable embedding and agree to the ${usageConditionsLink}.`,
         buttonCaption: t`Agree and enable`,
       }))
       .with({ isEnabled: true, termsAccepted: false }, () => ({
@@ -69,7 +81,9 @@ export const EnableGuestEmbedsSection = ({
         buttonCaption: t`Agree and continue`,
       }))
       .with({ isEnabled: false, termsAccepted: true }, () => ({
-        title: t`Enable guest embeds to get started.`,
+        title: isSimpleEmbedFeatureAvailable
+          ? t`Enable modular embedding to get started.`
+          : t`Enable embedding to get started.`,
         buttonCaption: t`Enable and continue`,
       }))
       .otherwise(() => null) ?? {};

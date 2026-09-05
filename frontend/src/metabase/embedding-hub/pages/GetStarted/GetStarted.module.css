@@ -1,0 +1,39 @@
+/* The numbered circle in the bottom-right of a checklist card. */
+.badge {
+  width: 2.625rem;
+  height: 2.625rem;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--mb-color-border);
+}
+
+.interactiveCard {
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.2s ease;
+}
+
+.interactiveCard:hover {
+  border-color: var(--mb-color-brand);
+}
+
+/*
+ * Flows instead of holding a fixed column count, so cards stop shrinking below
+ * a usable width when the window narrows. `auto-fill` rather than `auto-fit`:
+ * auto-fit collapses the empty tracks, which would stretch the last row's two
+ * cards to full width instead of leaving them column-sized as the design shows.
+ */
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15.625rem, 1fr));
+  gap: var(--mantine-spacing-lg);
+}
+
+/*
+ * Without modular embedding the checklist is shorter and its cards carry more
+ * weight, so the design fixes two columns rather than letting them flow.
+ */
+.cardGridTwoColumn {
+  grid-template-columns: repeat(2, 1fr);
+}

@@ -135,7 +135,8 @@
   and a signed JWT."
   []
   (perms/check-has-application-permission :setting)
-  (embedding.validation/check-embedding-enabled)
+  ;; Not gated on `enable-embedding-static`: an admin who turned guest embeds off still needs to see what is already
+  ;; published. Publishing itself stays gated.
   (queries-rest.db/embeddable-cards))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------

@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
+import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   useAdminSetting,
   useAdminSettings,
@@ -12,10 +13,8 @@ import { Switch, type SwitchProps, Text } from "metabase/ui";
 import { EmbeddingLegaleseModal } from "../EmbeddingLegaleseModal";
 
 export type EmbeddingSettingKey =
-  | "enable-embedding-static"
-  | "enable-embedding-sdk"
   | "enable-embedding-interactive"
-  | "enable-embedding-simple";
+  | "enable-embedding-modular";
 
 export type EmbeddingToggleProps = {
   settingKey: EmbeddingSettingKey;
@@ -32,8 +31,8 @@ export function EmbeddingToggle({
   const { values: dependentSettingsValues, updateSettings } =
     useAdminSettings(dependentSettingKeys);
 
-  const showSdkEmbedTerms = useSetting("show-sdk-embed-terms");
-  const showSimpleEmbedTerms = useSetting("show-simple-embed-terms");
+  const showModularEmbedTerms = useSetting("show-modular-embed-terms");
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
   const [
     isLegaleseModalOpen,
@@ -47,16 +46,14 @@ export function EmbeddingToggle({
   const isEnabled =
     Boolean(value) && Object.values(dependentSettingsValues).every(Boolean);
 
-  const isEmbeddingToggle =
-    settingKey === "enable-embedding-sdk" ||
-    settingKey === "enable-embedding-simple";
+  // Previously this covered modular embedding and the modular embedding SDK, not
+  // guest embeds. The merged toggle also covers guest embeds, so gate on the token
+  // feature to exclude them and match the previous behaviour.
+  const shouldShowModularEmbedTerms =
+    settingKey === "enable-embedding-modular" && hasSimpleEmbedding;
 
   const handleChange = (checked: boolean) => {
-    const shouldShowEmbedTerms =
-      (settingKey === "enable-embedding-sdk" && showSdkEmbedTerms) ||
-      (settingKey === "enable-embedding-simple" && showSimpleEmbedTerms);
-
-    if (shouldShowEmbedTerms && isEmbeddingToggle && checked) {
+    if (showModularEmbedTerms && shouldShowModularEmbedTerms && checked) {
       openLegaleseModal();
       return;
     }
@@ -84,9 +81,8 @@ export function EmbeddingToggle({
         }}
       />
 
-      {isEmbeddingToggle && (
+      {shouldShowModularEmbedTerms && (
         <EmbeddingLegaleseModal
-          setting={settingKey}
           opened={isLegaleseModalOpen}
           onClose={closeLegaleseModal}
         />

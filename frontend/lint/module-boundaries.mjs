@@ -395,6 +395,15 @@ const elements = [
       mode: "full",
     }),
   ),
+  // App tier only because a feature module may not import another feature
+  // module, and the hub mounts feature/admin pages directly. EMB-2229 moves
+  // the admin components the hub uses into shared/settings; once it lands,
+  // this becomes a feature module.
+  createElement({
+    type: "app",
+    name: "embedding-hub",
+    pattern: "frontend/src/metabase/embedding-hub/**",
+  }),
   createElement({
     type: "app",
     name: "nav",

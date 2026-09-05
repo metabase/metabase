@@ -1,17 +1,10 @@
 import { useState } from "react";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/settings";
-import { Button, Group, List, Modal, type ModalProps, Text } from "metabase/ui";
+import { Button, Group, Modal, type ModalProps, Text } from "metabase/ui";
 
-type SettingKey = "enable-embedding-sdk" | "enable-embedding-simple";
-
-export const EmbeddingLegaleseModal = ({
-  setting,
-  opened,
-  onClose,
-}: ModalProps & { setting: SettingKey }) => {
+export const EmbeddingLegaleseModal = ({ opened, onClose }: ModalProps) => {
   const [loading, setLoading] = useState(false);
   const [updateSettings] = useUpdateSettingsMutation();
 
@@ -19,10 +12,8 @@ export const EmbeddingLegaleseModal = ({
     setLoading(true);
 
     await updateSettings({
-      [setting]: true,
-
-      // hide the legalese modal and popups.
-      [getShowEmbedTermsSetting(setting)]: false,
+      "enable-embedding-modular": true,
+      "show-modular-embed-terms": false,
     });
 
     setLoading(false);
@@ -31,7 +22,7 @@ export const EmbeddingLegaleseModal = ({
 
   return (
     <Modal
-      title={t`First, some legalese`}
+      title={t`Each end user needs their own Metabase account`}
       onClose={onClose}
       opened={opened}
       size={670}
@@ -39,48 +30,21 @@ export const EmbeddingLegaleseModal = ({
       withCloseButton={false}
       closeOnClickOutside={false}
     >
-      <Text mt="xxs">{getTitle(setting)}</Text>
-      <List mt="xxs">
-        <List.Item mr="lg">
-          <Text>{t`Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account.`}</Text>
-        </List.Item>
-        <List.Item mr="lg">
-          <Text>{t`That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account.`}</Text>
-        </List.Item>
-      </List>
+      <Text mt="xxs">{t`When you embed Metabase, each person who uses your app needs their own Metabase account. That's because sharing a single account between users is a security risk. Filtering data on the client side doesn't solve it, since anyone with that account's token can reach anything the account can see. Additionally, we consider shared accounts to be unfair usage.`}</Text>
       <Group justify="right" mt="xl">
         <Button
           onClick={onClose}
-          variant="outline"
+          variant="subtle"
+          radius="xs"
           disabled={loading}
-        >{t`Decline and go back`}</Button>
+        >{t`Cancel`}</Button>
         <Button
           onClick={onAccept}
           variant="filled"
           data-is-loading={loading}
           loading={loading}
-        >{t`Agree and continue`}</Button>
+        >{t`Agree`}</Button>
       </Group>
     </Modal>
   );
 };
-
-const getTitle = (key: SettingKey) =>
-  match(key)
-    .with(
-      "enable-embedding-sdk",
-      () =>
-        t`When using the Embedded analytics SDK for React, each end user should have their own Metabase account.`,
-    )
-    .with(
-      "enable-embedding-simple",
-      () =>
-        t`When using modular embedding, each end user must have their own Metabase account.`,
-    )
-    .exhaustive();
-
-const getShowEmbedTermsSetting = (key: SettingKey) =>
-  match(key)
-    .with("enable-embedding-sdk", () => "show-sdk-embed-terms")
-    .with("enable-embedding-simple", () => "show-simple-embed-terms")
-    .exhaustive();

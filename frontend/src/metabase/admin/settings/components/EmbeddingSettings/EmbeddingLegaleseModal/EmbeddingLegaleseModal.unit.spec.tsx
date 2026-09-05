@@ -11,63 +11,43 @@ import { createMockSettings } from "metabase-types/api/mocks";
 
 import { EmbeddingLegaleseModal } from "./EmbeddingLegaleseModal";
 
-type SettingKey = "enable-embedding-sdk" | "enable-embedding-simple";
-
-const setup = (setting: SettingKey = "enable-embedding-sdk") => {
+const setup = () => {
   const onClose = jest.fn();
 
   setupPropertiesEndpoints(createMockSettings());
   setupSettingsEndpoints([]);
   setupUpdateSettingsEndpoint();
 
-  renderWithProviders(
-    <EmbeddingLegaleseModal setting={setting} opened onClose={onClose} />,
-  );
+  renderWithProviders(<EmbeddingLegaleseModal opened onClose={onClose} />);
 
   return { onClose };
 };
 
-describe("EmbeddingSdkLegaleseModal", () => {
-  it.each([
-    {
-      setting: "enable-embedding-sdk" as const,
-      expectedSettingUpdate: {
-        "show-sdk-embed-terms": false,
-        "enable-embedding-sdk": true,
-      },
-    },
-    {
-      setting: "enable-embedding-simple" as const,
-      expectedSettingUpdate: {
-        "show-simple-embed-terms": false,
-        "enable-embedding-simple": true,
-      },
-    },
-  ])(
-    "should update the settings and close the modal when the user clicks Accept for $setting",
-    async ({ setting, expectedSettingUpdate }) => {
-      const { onClose } = setup(setting);
+describe("EmbeddingLegaleseModal", () => {
+  it("should enable modular embedding, dismiss the terms and close the modal when the user clicks Accept", async () => {
+    const { onClose } = setup();
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "Agree and continue" }),
-        { delay: null },
-      );
+    await userEvent.click(screen.getByRole("button", { name: "Agree" }), {
+      delay: null,
+    });
 
-      const puts = await findRequests("PUT");
-      expect(puts).toHaveLength(1);
-      const [{ body }] = puts;
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    const [{ body }] = puts;
 
-      expect(body).toEqual(expectedSettingUpdate);
+    expect(body).toEqual({
+      "enable-embedding-modular": true,
+      "show-modular-embed-terms": false,
+    });
 
-      await waitFor(() => {
-        expect(onClose).toHaveBeenCalled();
-      });
-    },
-  );
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
 
   it("should not update settings when the user clicks Decline", async () => {
     const { onClose } = setup();
-    await userEvent.click(screen.getByText("Decline and go back"));
+    await userEvent.click(screen.getByText("Cancel"));
     expect(onClose).toHaveBeenCalled();
     const puts = await findRequests("PUT");
     expect(puts).toHaveLength(0);

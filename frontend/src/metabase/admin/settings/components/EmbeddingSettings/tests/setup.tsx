@@ -1,6 +1,7 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   findRequests,
+  setupEmbeddableEntitiesEndpoints,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupTokenStatusEndpoint,
@@ -22,9 +23,8 @@ import {
 
 export interface SetupOpts {
   renderCallback: (data: { state: Partial<State> }) => void;
-  showSdkEmbedTerms?: Settings["show-sdk-embed-terms"];
-  isEmbeddingSdkEnabled?: Settings["enable-embedding-sdk"];
-  isEmbeddingSimpleEnabled?: Settings["enable-embedding-simple"];
+  showModularEmbedTerms?: Settings["show-modular-embed-terms"];
+  isEmbeddingEnabled?: Settings["enable-embedding-modular"];
   isHosted?: Settings["is-hosted?"];
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
@@ -32,17 +32,15 @@ export interface SetupOpts {
 
 export async function setup({
   renderCallback,
-  showSdkEmbedTerms = true,
-  isEmbeddingSdkEnabled = false,
-  isEmbeddingSimpleEnabled = false,
+  showModularEmbedTerms = true,
+  isEmbeddingEnabled = false,
   isHosted = false,
   tokenFeatures = {},
   enterprisePlugins,
 }: SetupOpts) {
   const settings = createMockSettings({
-    "show-sdk-embed-terms": showSdkEmbedTerms,
-    "enable-embedding-sdk": isEmbeddingSdkEnabled,
-    "enable-embedding-simple": isEmbeddingSimpleEnabled,
+    "show-modular-embed-terms": showModularEmbedTerms,
+    "enable-embedding-modular": isEmbeddingEnabled,
     "is-hosted?": isHosted,
     "token-features": createMockTokenFeatures(tokenFeatures),
   });
@@ -66,6 +64,7 @@ export async function setup({
   setupUpdateSettingEndpoint();
   setupUpdateSettingsEndpoint();
   setupUpsellEndpoints();
+  setupEmbeddableEntitiesEndpoints({ dashboards: [], cards: [] });
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
     key: "upsell-dev_instances",

@@ -54,9 +54,16 @@ function DatabaseEditAppInner({
   const isModelPersistenceEnabled = useSetting("persisted-models-enabled");
 
   const databaseId = parseInt(params.databaseId ?? "", 10);
-  const fromEmbeddingSetupGuide = new URLSearchParams(
-    window.location.search,
-  ).has(RETURN_TO_SETUP_GUIDE_PARAM);
+  // The param carries where the guide was opened from. Older links carry the
+  // literal "true", which falls back to the default guide path.
+  const returnToSetupGuide = new URLSearchParams(window.location.search).get(
+    RETURN_TO_SETUP_GUIDE_PARAM,
+  );
+  const fromEmbeddingSetupGuide = returnToSetupGuide != null;
+  const setupGuideOrigin =
+    returnToSetupGuide && returnToSetupGuide !== "true"
+      ? returnToSetupGuide
+      : undefined;
 
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<number>();
@@ -156,6 +163,7 @@ function DatabaseEditAppInner({
           onClose={() => setShowReturnModal(false)}
           title={t`Database connected!`}
           message={t`Your database has been added and synced. Return to the setup guide to continue.`}
+          returnTo={setupGuideOrigin}
         />
       )}
     </>

@@ -2,6 +2,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import { memo, useCallback, useRef, useState } from "react";
 
+import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified, Flex, Text, Tooltip } from "metabase/ui";
@@ -217,6 +218,7 @@ const EntityRow = memo(function EntityRow({
   onSelect,
   onAction,
 }: EntityRowProps) {
+  const isEmbeddingHub = isEmbeddingHubPermissions();
   const entityName = (
     <span className={cx(CS.flex, CS.alignCenter)}>
       <Ellipsified>{entity.name}</Ellipsified>
@@ -231,7 +233,14 @@ const EntityRow = memo(function EntityRow({
     <PermissionsTableRow aria-label={`${entity.name} permissions`}>
       <PermissionsTableCell>
         {entity.canSelect ? (
-          <EntityNameLink onClick={() => onSelect?.(entity)}>
+          <EntityNameLink
+            onClick={() => onSelect?.(entity)}
+            // The hub overrides the link's default admin purple with its own
+            // blue, both colors the design system already owns.
+            style={
+              isEmbeddingHub ? { color: "var(--mb-color-brand)" } : undefined
+            }
+          >
             {entityName}
           </EntityNameLink>
         ) : (

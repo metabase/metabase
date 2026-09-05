@@ -35,7 +35,7 @@ export const EmbeddingSecretKeyWidget = () => {
     <Box data-testid="embedding-secret-key-setting">
       <SettingHeader
         id="embedding-secret-key"
-        title={t`Embedding secret key`}
+        title={t`Secret key for guest embeds`}
         titleProps={{ fz: "lg", mb: "xxs" }}
         description={t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`}
       />

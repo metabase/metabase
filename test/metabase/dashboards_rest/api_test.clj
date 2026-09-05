@@ -2745,7 +2745,13 @@
 (deftest fetch-embeddable-dashboards-test
   (testing "GET /api/dashboard/embeddable"
     (testing "Test that we can fetch a list of embeddable-accessible dashboards"
-      (mt/with-temporary-setting-values [enable-embedding-static true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
+        (mt/with-temp [:model/Dashboard _ {:enable_embedding true}]
+          (is (= [{:name true, :id true}]
+                 (for [dash (mt/user-http-request :crowberto :get 200 "dashboard/embeddable")]
+                   (m/map-vals boolean (select-keys dash [:name :id]))))))))
+    (testing "and that we can still see them once guest embeds are turned off"
+      (mt/with-temporary-setting-values [enable-embedding-modular false]
         (mt/with-temp [:model/Dashboard _ {:enable_embedding true}]
           (is (= [{:name true, :id true}]
                  (for [dash (mt/user-http-request :crowberto :get 200 "dashboard/embeddable")]
@@ -5691,7 +5697,7 @@
 (deftest update-dashboard-embedding-type-to-nil-test
   (testing "PUT /api/dashboard/:id"
     (testing "Admin should be able to set embedding_type to nil to clear it"
-      (mt/with-temporary-setting-values [enable-embedding-static true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
         (mt/with-temp [:model/Dashboard dashboard {:enable_embedding true
                                                    :embedding_type "static-legacy"}]
           (with-dashboards-in-writeable-collection! [dashboard]
@@ -6398,7 +6404,7 @@
 
 (deftest update-embedding-type-to-guest-embed-and-static-legacy-test
   (testing "PUT /api/dashboard/:id sets/echoes/persists embedding_type for guest-embed and static-legacy"
-    (mt/with-temporary-setting-values [enable-embedding-static true]
+    (mt/with-temporary-setting-values [enable-embedding-modular true]
       (mt/with-temp [:model/Dashboard dashboard {}]
         (doseq [embedding-type ["guest-embed" "static-legacy"]]
           (let [resp (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard))

@@ -7,6 +7,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDataStudioOpened } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
+import { canAccessEmbeddingHub as canAccessEmbeddingHubSelector } from "metabase/common/embedding-hub/selectors";
 import { useHelpLink } from "metabase/common/hooks";
 import { trackMonitorOpened } from "metabase/common/monitor/analytics";
 import { canAccessMonitor as canAccessMonitorSelector } from "metabase/common/monitor/selectors";
@@ -61,6 +62,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
   const canAccessOnboardingPage = useSelector(getCanAccessOnboardingPage);
   const canAccessDataStudio = useSelector(canAccessDataStudioSelector);
   const canAccessMonitor = useSelector(canAccessMonitorSelector);
+  const canAccessEmbeddingHub = useSelector(canAccessEmbeddingHubSelector);
   const isNewInstance = useSelector(getIsNewInstance);
   const helpLink = useHelpLink();
 
@@ -77,7 +79,12 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
   const appsSection = useMemo(() => {
     const showAdminSettingsItem = adminItems?.length > 0;
 
-    if (!canAccessDataStudio && !canAccessMonitor && !showAdminSettingsItem) {
+    if (
+      !canAccessDataStudio &&
+      !canAccessMonitor &&
+      !canAccessEmbeddingHub &&
+      !showAdminSettingsItem
+    ) {
       return null;
     }
 
@@ -115,6 +122,25 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
           }
         >
           {t`Data studio`}
+        </Menu.Item>,
+      );
+    }
+    if (canAccessEmbeddingHub) {
+      items.push(
+        <Menu.Item
+          key="embedding-hub-link"
+          component={ForwardRefLink}
+          to={Urls.embeddingHub()}
+          leftSection={
+            <Icon
+              name="embed"
+              {...(currentApp === "embedding-hub"
+                ? CURRENT_APP_ICON_OVERRIDES
+                : null)}
+            />
+          }
+        >
+          {t`Embedding hub`}
         </Menu.Item>,
       );
     }
@@ -161,7 +187,13 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         <Box px="lg">{items}</Box>
       </>
     );
-  }, [canAccessDataStudio, canAccessMonitor, adminItems, currentApp]);
+  }, [
+    canAccessDataStudio,
+    canAccessMonitor,
+    canAccessEmbeddingHub,
+    adminItems,
+    currentApp,
+  ]);
 
   // If the instance is not new, we remove the link from the sidebar automatically and show it here instead!
   const showOnboardingLink = !isNewInstance && canAccessOnboardingPage;
