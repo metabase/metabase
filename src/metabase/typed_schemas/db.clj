@@ -41,7 +41,10 @@
 (defn card-dimensions
   "The dimensions and dimension mappings of the Card with `card-id`, or nil."
   [card-id]
-  (t2/select-one [:model/Card :dimensions :dimension_mappings] :id card-id))
+  ;; Includes the fields required by the `:card_schema` upgrades.
+  (t2/select-one [:model/Card :id :card_schema :type :dataset_query :dimensions :dimension_mappings
+                  :database_id :result_metadata]
+                 :id card-id))
 
 (defn table-names
   "The id, name, and display name of the Tables with `table-ids`."

@@ -838,13 +838,39 @@
                  :visualization_settings
                  json/decode+kw))))))
 
+(def ^:private complete-card
+  "A card carrying every column the schema upgrade could need. Any SELECT that reads a schema-governed
+   column must project all of these — see [[metabase.queries.models.card/schema-upgrade-triggers]]."
+  {:id                 1
+   :type               :question
+   :database_id        1
+   :dataset_query      {}
+   :result_metadata    nil
+   :dimensions         nil
+   :dimension_mappings nil})
+
 (deftest ^:parallel upgrade-card-schema-after-downgrade
-  (testing "We exit the loop if a chard_schema is higher than the current schema."
-    (let [card {:id 1
-                :dataset_query {}
-                :card_schema (inc @#'card/current-schema-version)}]
+  (testing "We exit the loop if a card_schema is higher than the current schema."
+    (let [card (assoc complete-card :card_schema (inc @#'card/current-schema-version))]
       (is (= card
              (#'card/upgrade-card-schema-to-latest card))))))
+
+(deftest ^:parallel upgrade-card-schema-requires-every-trigger-column-test
+  (testing (str "Reading a schema-governed column without the rest of the columns an upgrade needs is a "
+                "programming error in the query, not a condition to recover from at read time. It throws "
+                "unconditionally — including when this row happens to be current — so the bug surfaces on "
+                "every instance rather than only the ones holding an out-of-date card.")
+    (doseq [omitted (disj @#'card/schema-upgrade-triggers :card_schema)]
+      (testing (str "omitting " omitted)
+        (let [card (dissoc (assoc complete-card :card_schema @#'card/current-schema-version) omitted)]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Cannot SELECT a Card with card_schema columns without all columns needed for an upgrade"
+               (#'card/upgrade-card-schema-to-latest card))
+              "a current-schema row is rejected just the same, so the missing column is never latent")))))
+  (testing "a card with no schema-governed column at all is passed through untouched"
+    (let [card {:id 1 :name "no governed columns here"}]
+      (is (= card (#'card/upgrade-card-schema-to-latest card))))))
 
 (deftest storing-metabase-version
   (testing "Newly created Card should know a Metabase version used to create it"
@@ -1189,12 +1215,43 @@
        (is (= "Orders, Metric A"
               (:query_description (t2/select-one :model/Card :id b-id))))))))
 
+(defn- stored-card-schema
+  "Read `card_schema` straight out of `report_card`. A `t2/select-one` would run the after-select schema
+   upgrade and report the current version whether or not it was ever written."
+  [card-id]
+  (:card_schema (t2/query-one {:select [:card_schema]
+                               :from   [:report_card]
+                               :where  [:= :id card-id]})))
+
+(defn- age-card!
+  "Put `card-id`'s stored `card_schema` behind the current version. Needs a raw UPDATE because
+   before-insert forces `:card_schema` to current, so passing it to `with-temp` is silently ignored."
+  [card-id schema-version]
+  (t2/query-one {:update :report_card
+                 :set    {:card_schema schema-version}
+                 :where  [:= :id card-id]})
+  (assert (= schema-version (stored-card-schema card-id))))
+
 (deftest before-update-card-schema-test
-  (testing "card_schema gets set to current-schema-version on update"
-    (mt/with-temp [:model/Card {card-id :id} {:card_schema 20}]
-      (t2/update! :model/Card card-id {:name "Updated Name"})
-      (is (= @#'card/current-schema-version
-             (t2/select-one-fn :card_schema :model/Card :id card-id))))))
+  (testing "card_schema moves as a unit with the columns it governs"
+    (testing "an update touching no schema-governed column leaves the vintage alone"
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (age-card! card-id 20)
+        (t2/update! :model/Card card-id {:name "Updated Name"})
+        (is (= "Updated Name" (t2/select-one-fn :name :model/Card :id card-id))
+            "the update itself is persisted")
+        (is (= 20 (stored-card-schema card-id))
+            (str "stamping the current version here would strand the row: the columns the schema governs "
+                 "still hold their old representation, and upgrade-card-schema-to-latest would never run "
+                 "over them again."))))
+    (testing "an update touching a schema-governed column migrates the group and stamps the version"
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (age-card! card-id 20)
+        (t2/update! :model/Card card-id {:dataset_query (mt/mbql-query venues)})
+        (is (= @#'card/current-schema-version (stored-card-schema card-id))
+            (str "the bump must reach the database. t2/update! diffs changes against a baseline SELECT; if "
+                 "the after-select schema upgrade runs on that baseline it already reads as current, the "
+                 "diff drops :card_schema, and the row stays behind forever."))))))
 
 (deftest before-update-dashboard-question-updates-test
   (testing "apply-dashboard-question-updates is called"

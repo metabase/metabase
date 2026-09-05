@@ -353,6 +353,8 @@
              {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
                           :c.description :c.collection_id :c.database_id :c.type
                           :c.source_card_id :c.created_at :c.entity_id :c.card_schema
+                          ;; required alongside :card_schema for the Card schema upgrade
+                          :c.dimensions :c.dimension_mappings
                           [:r.status :moderated_status]]
               :from      [[:report_card :c]]
               :left-join [[^:allow-subquery {:select   [:moderated_item_id :status]

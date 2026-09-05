@@ -148,6 +148,14 @@
       {:dimensions         (lib-metric/extract-persisted-dimensions dimensions)
        :dimension-mappings dimension-mappings})))
 
+(defn modernize-early-dimensions
+  "Given the `:dimensions` of an old `:type :metric` card from schema <= 23, modernize it to schema 24.
+
+  In practice this means that implicitly joined dimensions (those with `:group {:type \"connection\"}`) need to use
+  a `:display-name` that includes the group's `:display-name`, not just the base field's name."
+  [dimensions]
+  (mapv table-prefixed-dimension dimensions))
+
 (defn- seed-metric-dimensions!
   "First initialization of a v2 metric: seed dimensions from the entity's own columns and explicit
    query joins, leaving implicitly-joinable FK columns out.
@@ -212,7 +220,7 @@
 (defn sync-metric-dimensions-for-database!
   "Compute and persist dimensions for every metric Card in `database-id` that doesn't have any yet."
   [database-id]
-  (doseq [{:keys [id dimensions]} (metrics.db/metric-cards-for-database database-id)
+  (doseq [{:keys [id dimensions]} (metrics.db/raw-metric-cards-for-database database-id)
           :when (empty? dimensions)]
     (try
       (sync-dimensions! :metadata/metric id)

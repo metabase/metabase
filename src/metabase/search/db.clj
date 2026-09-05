@@ -281,4 +281,8 @@
 (defn card-result-metadata
   "A map of Card id to result metadata for the Cards with `card-ids`."
   [card-ids]
-  (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))
+  (if (empty? card-ids)
+    {}
+    (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata :type :database_id
+                                        :dataset_query :dimensions :dimension_mappings]
+                      :id [:in card-ids])))

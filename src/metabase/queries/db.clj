@@ -54,7 +54,9 @@
 (defn card-queries
   "The IDs and queries of the Cards with `card-ids`."
   [card-ids]
-  (t2/select [:model/Card :id :dataset_query :card_schema] :id [:in card-ids]))
+  (t2/select [:model/Card :id :dataset_query :card_schema :type :database_id
+              :result_metadata :dimensions :dimension_mappings]
+             :id [:in card-ids]))
 
 (defn source-card-dependents
   "The IDs and source Card IDs of the Cards whose source Card is one of `source-card-ids`."
