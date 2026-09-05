@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [compojure.response]
    [malli.error :as me]
    [metabase.driver :as driver]
@@ -72,23 +73,25 @@
          (reset! start-execution-chan nil)))))
 
 (defmethod driver/execute-reducible-query ::test-driver
-  [_driver {{{:keys [sleep]} :query} :native, database-id :database} _context respond]
-  {:pre [(integer? sleep) (integer? database-id)]}
-  (let [futur (future
-                (try
-                  (when-let [chan @start-execution-chan]
-                    (a/>!! chan ::started))
-                  (Thread/sleep (long sleep))
-                  (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]])
-                  (catch InterruptedException e
-                    (reset! canceled? ::interrupted-exception)
-                    (throw e))))]
-    (when-let [canceled-chan qp.pipeline/*canceled-chan*]
-      (a/go
-        (when (a/<! canceled-chan)
-          (reset! canceled? ::canceled-chan-message)
-          (future-cancel futur))))
-    (u/deref-with-timeout futur 5000)))
+  [_driver {{native-query :query} :native, database-id :database} _context respond]
+  (let [{:keys [sleep]} (walk/keywordize-keys native-query)]
+    (assert (integer? sleep))
+    (assert (integer? database-id))
+    (let [futur (future
+                  (try
+                    (when-let [chan @start-execution-chan]
+                      (a/>!! chan ::started))
+                    (Thread/sleep (long sleep))
+                    (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]])
+                    (catch InterruptedException e
+                      (reset! canceled? ::interrupted-exception)
+                      (throw e))))]
+      (when-let [canceled-chan qp.pipeline/*canceled-chan*]
+        (a/go
+          (when (a/<! canceled-chan)
+            (reset! canceled? ::canceled-chan-message)
+            (future-cancel futur))))
+      (u/deref-with-timeout futur 5000))))
 
 (defmethod driver/connection-properties ::test-driver
   [& _]
@@ -572,7 +575,8 @@
              os
              finished-chan
              canceled-chan
-             (AtomicBoolean. false))
+             (AtomicBoolean. false)
+             nil)
             (is (true? (deref task-started? 5000 ::timed-out)))
             (a/>!! canceled-chan ::request-canceled)
             (is (true? (deref interrupted? 5000 ::timed-out)))
@@ -636,7 +640,8 @@
            os
            finished-chan
            canceled-chan
-           completed?)
+           completed?
+           nil)
           (is (true? (.await task-started 5 TimeUnit/SECONDS))
               "Worker thread should start")
           (.set completed? true)
@@ -646,3 +651,31 @@
                                             (a/timeout 5000) ([_] ::timed-out)))))))
           (is (false? (.await complete-called 100 TimeUnit/MILLISECONDS))
               "Worker thread should not call .complete when timeout already completed the context"))))))
+
+(deftest do-f-async-custom-executor-test
+  (testing "the :executor option runs `f` on that executor instead of the shared streaming pool"
+    (let [executor      (java.util.concurrent.Executors/newSingleThreadExecutor
+                         (reify java.util.concurrent.ThreadFactory
+                           (newThread [_ r]
+                             (doto (Thread. ^Runnable r) (.setName "custom-streaming-executor")))))
+          ran-on        (promise)
+          finished-chan (a/promise-chan)
+          canceled-chan (a/promise-chan)]
+      (try
+        (with-open [os (java.io.ByteArrayOutputStream.)]
+          (#'streaming-response/do-f-async
+           (reify AsyncContext
+             (complete [_] nil))
+           nil
+           nil
+           (fn [_os _canceled-chan]
+             (deliver ran-on (.getName (Thread/currentThread))))
+           os
+           finished-chan
+           canceled-chan
+           (AtomicBoolean. false)
+           executor)
+          (is (= "custom-streaming-executor" (deref ran-on 5000 ::timed-out)))
+          (is (= :completed (a/<!! finished-chan))))
+        (finally
+          (.shutdownNow executor))))))

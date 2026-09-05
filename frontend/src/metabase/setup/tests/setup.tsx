@@ -8,6 +8,9 @@ import {
 } from "__support__/enterprise";
 import {
   setupCurrentUserEndpoint,
+  setupLlmModelsEndpoint,
+  setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -24,12 +27,36 @@ import type {
   UsageReason,
 } from "metabase-types/api";
 import {
+  createMockLlmProviderField,
+  createMockLlmProviderType,
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
 import { Setup } from "../components/Setup";
+
+const ANTHROPIC_TYPE = createMockLlmProviderType({
+  type: "anthropic",
+  label: "Anthropic",
+  fields: [
+    createMockLlmProviderField({
+      key: "api-key",
+      label: "API key",
+      type: "password",
+      required: true,
+      prefix: "sk-ant-",
+    }),
+  ],
+});
+
+const METABASE_TYPE = createMockLlmProviderType({
+  type: "metabase",
+  label: "Metabase AI service",
+  managed: true,
+  singleton: true,
+  fields: [],
+});
 
 export interface SetupOpts {
   step?: SetupStep;
@@ -76,6 +103,9 @@ export async function setup({
   );
   setupSettingsEndpoints([]);
   fetchMock.put("path:/api/setting", 200);
+  setupLlmProviderTypesEndpoint([ANTHROPIC_TYPE, METABASE_TYPE]);
+  setupLlmProvidersEndpoint([]);
+  setupLlmModelsEndpoint([]);
 
   renderWithProviders(<Setup />, { storeInitialState: state });
 
@@ -174,9 +204,11 @@ export const skipTokenStep = async (name = "Skip") =>
   await userEvent.click(screen.getByRole("button", { name }));
 
 export const startAiConfigStep = async () =>
-  await userEvent.click(screen.getByRole("button", { name: "Set up AI" }));
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Set up AI" }),
+  );
 
 export const skipAiConfigStep = async () =>
   await userEvent.click(
-    screen.getByRole("button", { name: "I'll set this up later" }),
+    await screen.findByRole("button", { name: "I'll set this up later" }),
   );

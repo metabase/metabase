@@ -1,4 +1,4 @@
-(ns ^:synchronous metabase-enterprise.support-access-grants.session-integration-test
+(ns ^:synchronized metabase-enterprise.support-access-grants.session-integration-test
   "Tests for session API integration with support access grants.
   Tests the fallback mechanism in /api/session/reset_password and /api/session/password_reset_token_valid
   that tries support-access-grant provider first, then falls back to emailed-secret-password-reset."
@@ -13,12 +13,30 @@
    [metabase.session.api :as api.session]
    [metabase.session.core :as session]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+;; :test-users is load-bearing, not boilerplate -- deactivating the support user is only legal while another admin
+;; exists, and crowberto is that admin.
+(use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:support-access-grants}
                               (with-redefs [api.session/throttling-disabled? true]
                                 (f)))))
+
+(defn- password-reset-emails
+  "Messages in the fake inbox for `email` sent by /api/session/forgot_password.
+
+  Other senders reach the support address too - notably the `:event/support-access-grant-created`
+  notification, which fires on a background thread and also carries a reset URL - so match on the
+  subject rather than counting everything in the inbox."
+  [email]
+  (filter #(re-find #"Password Reset Request" (:subject %)) (get @mt/inbox email)))
+
+(defn- email-body
+  [message]
+  (-> message :body first :content))
 
 (deftest reset-password-with-support-access-grant-token-test
   (testing "POST /api/session/reset_password works with support access grant token"
@@ -325,7 +343,7 @@
             (mt/user-http-request user :post 204 "session/forgot_password" {:email (:email user)})
             (is (not (t2/exists? :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
                 "Should not create a normal password reset token")
-            (is (empty? @mt/inbox)
+            (is (empty? (password-reset-emails (:email user)))
                 "No email should be sent when the grant has no active credentials")))))))
 
 (deftest forgot-password-support-user-active-grant-test
@@ -345,10 +363,10 @@
                 (mt/with-fake-inbox
                   (mt/client :post 204 "session/forgot_password" {:email "support-forgot@example.com"})
                   (testing "Email is sent with a valid reset URL"
-                    (let [emails (get @mt/inbox "support-forgot@example.com")]
-                      (is (= 1 (count emails)) "Should send exactly one email")
-                      (is (mt/received-email-body? "support-forgot@example.com"
-                                                   #"http://test.example.com/auth/reset_password/\d+_")
+                    (let [emails (password-reset-emails "support-forgot@example.com")]
+                      (is (= 1 (count emails)) "Should send exactly one password reset email")
+                      (is (re-find #"http://test.example.com/auth/reset_password/\d+_"
+                                   (email-body (first emails)))
                           "Email should contain a reset URL")))
                   (testing "No normal password reset token is created"
                     (let [support-user (t2/select-one :model/User :email "support-forgot@example.com")]
@@ -383,10 +401,10 @@
                   ;; Step 1: Request a password reset for the support user.
                   (mt/client :post 204 "session/forgot_password" {:email "support-reset@example.com"})
                   ;; Step 2: Extract the refreshed token from the email.
-                  (let [emails          (get @mt/inbox "support-reset@example.com")
-                        _               (is (= 1 (count emails)) "Should send exactly one email")
-                        email-body      (-> emails first :body first :content)
-                        [_ reset-token] (re-find #"/auth/reset_password/(\d+_[\w_-]+)" email-body)
+                  (let [emails          (password-reset-emails "support-reset@example.com")
+                        _               (is (= 1 (count emails)) "Should send exactly one password reset email")
+                        [_ reset-token] (re-find #"/auth/reset_password/(\d+_[\w_-]+)"
+                                                 (email-body (first emails)))
                         _               (is (some? reset-token) "Should find reset token in email")
                         new-password    "ResetViaForgot123!"
                         support-user    (t2/select-one :model/User :email "support-reset@example.com")]
@@ -414,3 +432,26 @@
                                                    :provider "password")]
                         (is (some? (:expires_at pw-auth))
                             "Password AuthIdentity should have an expiration from the grant")))))))))))))
+
+(deftest support-grant-session-does-not-outlive-the-grant-test
+  (testing "a session minted from a support access grant stops authenticating once the grant window has passed"
+    (mt/with-temp [:model/User {creator-id :id} {}]
+      (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
+        (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly "support-session-expiry@example.com")
+                                    sag.settings/support-access-grant-first-name (constantly "Support")
+                                    sag.settings/support-access-grant-last-name (constantly "User")]
+          (let [grant       (grants/create-grant! creator-id 60 "SUPPORT-SESSION-EXPIRY" "Time-boxed access")
+                session-key (:session_id (mt/client :post 200 "session/reset_password"
+                                                    {:token (:token grant) :password "SupportPass!2468"}))
+                session     (t2/select-one :model/Session :key_hashed (session/hash-session-key session-key))]
+            (testing "the session records the grant's end as its own expires_at"
+              (is (some? (:expires_at session))))
+            (testing "inside the grant window the support session works"
+              (is (true? (:is_superuser (mt/client session-key :get 200 "user/current")))))
+            (testing "past the grant window the support session is rejected"
+              ;; Sessions cannot be updated through the model and the clock cannot be wound forward, so
+              ;; simulate the grant window elapsing by moving expires_at into the past.
+              (t2/query-one {:update (t2/table-name :model/Session)
+                             :set    {:expires_at (t/minus (t/instant) (t/minutes 1))}
+                             :where  [:= :id (:id session)]})
+              (is (= "Unauthenticated" (mt/client session-key :get 401 "user/current"))))))))))

@@ -71,7 +71,7 @@
   (let [module                (module ns-symb)
         module-api-namespaces (module-api-namespaces config module)
         module-friends        (module-friends config module)]
-    (or (empty? module-api-namespaces)
+    (or (nil? module-api-namespaces)
         (contains? module-api-namespaces ns-symb)
         (contains? module-friends current-module))))
 

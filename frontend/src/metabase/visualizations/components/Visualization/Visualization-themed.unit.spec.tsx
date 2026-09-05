@@ -3,12 +3,17 @@ import { delay } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { getColorShades } from "metabase/ui/utils/colors";
 import { registerVisualizations } from "metabase/visualizations/register";
+import { loadVisualizationComponents } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import Visualization from ".";
 
 registerVisualizations();
+
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents(["bar"]));
 
 describe("Themed Visualization", () => {
   it("inherits the chart label color from the theme", async () => {

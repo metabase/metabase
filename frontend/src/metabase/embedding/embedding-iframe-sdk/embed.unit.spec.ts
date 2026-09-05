@@ -225,6 +225,19 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     );
   });
 
+  it('should have `allow="clipboard-write"` in the iframe to allow copying to clipboard in chrome', () => {
+    defineMetabaseConfig({
+      instanceUrl: "https://example.com",
+    });
+
+    const embed = document.createElement("metabase-dashboard");
+    embed.setAttribute("dashboard-id", "1");
+    document.body.appendChild(embed);
+
+    const iframe = embed.querySelector("iframe");
+    expect(iframe?.getAttribute("allow")).toBe("clipboard-write");
+  });
+
   describe("guest embed token provider", () => {
     function setupGuestEmbed({
       dashboardId,

@@ -1,17 +1,28 @@
 services:
   postgres:
-    image: postgres:15
+    image: metabase/qa-databases:postgres-sample-15
     environment:
       POSTGRES_USER: metabase
       POSTGRES_PASSWORD: metabase
-      POSTGRES_DB: metabase
+      # The image ships /docker-entrypoint-initdb.d/sample_data.sql.gz, which the
+      # entrypoint loads into POSTGRES_DB on first boot. Keep this as `sample` so
+      # the test data lands in its own database instead of the app db.
+      POSTGRES_DB: sample
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U metabase"]
+      # Only succeeds once the real server starts which means that 00-create-app-db.sql 
+      # and sample_data.sql.gz have finished (a temp server exists during initialization).
+      test: ["CMD-SHELL", "pg_isready -U metabase -h 127.0.0.1"]
       interval: 5s
       timeout: 5s
       retries: 5
+      # Grace period where retries aren't counted while everything initializes
+      start_period: 60s
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # QA image sets PGDATA=/data
+      - postgres_data:/data
+      # Runs before sample_data.sql.gz (initdb.d files run in alphabetical order)
+      # and creates the `metabase` app db alongside the `sample` data db.
+      - ./init/00-create-app-db.sql:/docker-entrypoint-initdb.d/00-create-app-db.sql:ro
 
   metabase:
     image: ${METABASE_IMAGE:-metabase/metabase:latest}

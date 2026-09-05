@@ -23,22 +23,22 @@ describe("getBehaviorDocsUrlParams", () => {
         componentName: "metabase-question",
         template: "exploration",
       },
-      expected: { page: "embedding/components", anchor: "question" },
+      expected: { page: "embedding/question-reference" },
     },
     {
       name: "metabase-question component",
       settings: { componentName: "metabase-question", questionId: 1 },
-      expected: { page: "embedding/components", anchor: "question" },
+      expected: { page: "embedding/question-reference" },
     },
     {
       name: "metabase-dashboard component",
       settings: { componentName: "metabase-dashboard", dashboardId: 1 },
-      expected: { page: "embedding/components", anchor: "dashboard" },
+      expected: { page: "embedding/dashboard-reference" },
     },
     {
       name: "metabase-browser component",
       settings: { componentName: "metabase-browser" },
-      expected: { page: "embedding/components", anchor: "browser" },
+      expected: { page: "embedding/browser-reference" },
     },
     {
       name: "metabase-metabot component",

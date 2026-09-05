@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { ExportFormat } from "metabase/common/types/export";
 import { createMockState } from "metabase/redux/store/mocks";
+import type { ExportFormat } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import type { PublicLinkPopoverProps } from "./PublicLinkPopover";

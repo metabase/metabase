@@ -21,14 +21,15 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
+   [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
   (:import
    (java.time LocalDate)))
 
-(def ^:private true-clause [:inline [:= 1 1]])
-(def ^:private false-clause [:inline [:= 0 1]])
+(def ^:private true-clause [:= [:inline 1] [:inline 1]])
+(def ^:private false-clause [:= [:inline 0] [:inline 1]])
 
 (def ^:private max-document-search-length
   "Cap the number of characters of a document's prose-mirror body that the legacy engine LIKE-scans.
@@ -395,8 +396,12 @@
                 display-type
                 is-superuser?]} search-context
         enabled-types (:enabled-transform-source-types search-context)
-        feature->supported-models (feature->supported-models)]
+        feature->supported-models (feature->supported-models)
+        hidden-by-visibility (into #{}
+                                   (remove #(search.filter/visible-to? search-context (search.spec/spec %)))
+                                   models)]
     (cond-> models
+      (seq hidden-by-visibility)   (set/difference hidden-by-visibility)
       (not   is-superuser?)        (disj "transform")
       (empty? enabled-types)       (disj "transform")
       (some? collection)           (set/intersection (:collection feature->supported-models))

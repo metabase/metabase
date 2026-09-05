@@ -165,6 +165,11 @@
   }
 }
 
+.root[data-variant="default"],
+.root[data-variant="filled"] {
+  box-shadow: var(--mantine-shadow-xs);
+}
+
 .label {
   height: auto;
   display: inline-block;

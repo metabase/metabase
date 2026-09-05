@@ -1,4 +1,4 @@
-(ns ^:synchronous metabase.documents.view-log-test
+(ns ^:synchronized metabase.documents.view-log-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

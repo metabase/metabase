@@ -248,6 +248,21 @@ describe("DataSourceSelector", () => {
       expect(await screen.findByText("Our analytics")).toBeInTheDocument();
       expect(screen.getByText("Saved Questions")).toBeInTheDocument();
     });
+
+    it("should return to the bucket step when closing the saved entity picker via its back button", async () => {
+      setup(setupOpts);
+
+      await userEvent.click(await screen.findByText("Saved Questions"));
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByTestId("saved-entity-back-navigation"));
+
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+      expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("saved-entity-back-navigation"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   // metabase#74428: after the "Remove database entity" PR the picker hydrated as

@@ -85,7 +85,7 @@ describe(
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
       H.updateSetting("transforms-enabled", true);
-      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+      H.setupAnthropicLlmProvider();
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
       cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");

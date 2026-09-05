@@ -1,10 +1,12 @@
 .root {
   --alert-control-size: 24px;
+  --alert-line-height: 20px;
 
-  padding: var(--mantine-spacing-lg) var(--mantine-spacing-md)
-    var(--mantine-spacing-lg) var(--mantine-spacing-lg);
+  padding: var(--mantine-spacing-xl) var(--mantine-spacing-lg)
+    var(--mantine-spacing-xl) var(--mantine-spacing-xl);
   border-radius: 12px;
   overflow: hidden;
+  box-shadow: var(--mantine-shadow-xs);
 }
 
 .wrapper {
@@ -27,7 +29,7 @@
 .body {
   grid-area: body;
   gap: var(--mantine-spacing-sm);
-  margin-inline-end: var(--mantine-spacing-md);
+  margin-inline-end: var(--mantine-spacing-lg);
 }
 
 .title {
@@ -40,7 +42,7 @@
 
 .message {
   font-size: var(--mantine-font-size-md);
-  line-height: 20px;
+  line-height: var(--alert-line-height);
   color: var(--mb-color-text-secondary);
 }
 
@@ -50,16 +52,30 @@
   grid-area: close;
   width: var(--alert-control-size);
   height: var(--alert-control-size);
-  border-radius: var(--mantine-radius-xs);
+  border-radius: var(--mantine-radius-xxs);
   color: var(--mb-color-text-primary);
 }
 
+.root:not(:has(.title)) {
+  & .icon {
+    height: var(--alert-line-height);
+  }
+
+  & .closeButton {
+    margin-block: calc(
+      (var(--alert-line-height) - var(--alert-control-size)) / 2
+    );
+  }
+}
+
 .root[data-size="compact"] {
-  padding: var(--mantine-spacing-md) 12px var(--mantine-spacing-md)
-    var(--mantine-spacing-md);
+  --alert-line-height: 16px;
+
+  padding: var(--mantine-spacing-lg) 12px var(--mantine-spacing-lg)
+    var(--mantine-spacing-lg);
 
   & .body {
-    gap: var(--mantine-spacing-xs);
+    gap: var(--mantine-spacing-xxs);
   }
 
   & .title {
@@ -70,12 +86,7 @@
 
   & .message {
     font-size: var(--mantine-font-size-sm);
-    line-height: 16px;
   }
-}
-
-.root[data-variant="default"][data-color="default"] {
-  box-shadow: var(--mantine-shadow-xs);
 }
 
 .root[data-variant="default"],

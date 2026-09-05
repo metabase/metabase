@@ -57,6 +57,10 @@ The following dimensions can be used for filter- or group-by operations:
 Before using any field in comparisons, filters, or conditions, you should check their metadata and sample values first, using the uri `metabase://metric/{{metric_id}}/dimensions/{field_id}`.
 This will help avoid errors due to unexpected data types or formats.
 {% endif %}
+{% if metric_join_required_xml %}
+### Dimensions that require an explicit join
+{{metric_join_required_xml|safe}}
+{% endif %}
 </metric>
 {% endif %}
 {% if is_table %}

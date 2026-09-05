@@ -599,6 +599,29 @@
                                     [:field {:temporal-unit :week}    (meta/id :orders :created-at)]]}]}
               (expand-parameters query))))))
 
+(deftest ^:parallel temporal-unit-param-does-not-rewrite-join-condition-test
+  (testing "a temporal-unit param only updates breakouts and order bys, not join conditions (#80098)"
+    (let [mp         meta/metadata-provider
+          created-at (meta/field-metadata :orders :created-at)
+          query      (-> (lib/query mp (meta/table-metadata :orders))
+                         (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                    [(lib/= (lib/with-temporal-bucket created-at :month)
+                                                            (lib/with-temporal-bucket (meta/field-metadata :products :created-at) :month))]))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket created-at :month))
+                         (lib/update-query-stage
+                          0 assoc :parameters
+                          [{:type   :temporal-unit
+                            :value  "year"
+                            :target [:dimension
+                                     (lib.convert/->legacy-MBQL (lib/ref (lib/with-temporal-bucket created-at :month)))
+                                     {}]}]))]
+      (is (=? {:stages [{:breakout [[:field {:temporal-unit :year} (meta/id :orders :created-at)]]
+                         :joins    [{:conditions [[:= {}
+                                                   [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                                   [:field {:temporal-unit :month} (meta/id :products :created-at)]]]}]}]}
+              (expand-parameters query))))))
+
 (deftest ^:parallel bigint-number-operators-test
   (testing "number operator params preserve type/BigInteger values without collapsing to a double (#5816)"
     (let [mp     meta/metadata-provider

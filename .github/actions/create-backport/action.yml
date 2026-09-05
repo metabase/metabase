@@ -1,4 +1,5 @@
 name: Create Backport PR
+description: Cherry-picks a commit onto a release branch and opens the backport pull request.
 
 inputs:
   target-version: # major version number like 34 or 86
@@ -24,6 +25,8 @@ runs:
         COMMIT: ${{ inputs.backport-commit }}
       shell: bash
       run: | # bash
+        source "${{ github.action_path }}/kondo-ratchets.sh"
+
         git config --global user.email "metabase-bot@metabase.com"
         git config --global user.name "Metabase bot"
 
@@ -33,7 +36,7 @@ runs:
         git checkout ${TARGET_BRANCH}
         git fetch --all
         git checkout -b ${BACKPORT_BRANCH}
-        git cherry-pick ${COMMIT} || true
+        cherry_pick_backport "${COMMIT}"
 
         CONFLICT_LIST=$(git ls-files -u)
 
@@ -42,13 +45,10 @@ runs:
           git cherry-pick --abort
 
           echo "Could not cherry pick because of a conflict"
-          echo "has-conflicts=true" >> $GITHUB_OUTPUT
+          echo "has-conflicts=true" >> "$GITHUB_OUTPUT"
 
           # Add a shell script for resolving conflicts
-          echo "git reset HEAD~1" > ./backport.sh
-          echo "rm ./backport.sh" >> ./backport.sh
-          echo "git cherry-pick ${COMMIT}" >> ./backport.sh
-          echo "echo 'Resolve conflicts and force push this branch.\n\nTo backport translations run: bin/i18n/merge-translations <release-branch>'" >> ./backport.sh
+          write_backport_script "${COMMIT}"
           chmod +x ./backport.sh
           git add ./backport.sh
           git commit -m "Add backport resolution script"
@@ -66,13 +66,13 @@ runs:
         END
           )
         else
-          echo "has-conflicts=false" >> $GITHUB_OUTPUT
+          echo "has-conflicts=false" >> "$GITHUB_OUTPUT"
           PR_BODY="#${ORIGINAL_PULL_REQUEST_NUMBER}"
         fi
 
         git push -u origin ${BACKPORT_BRANCH}
 
-        PR_ARGS=(--base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --assignee "${{ github.event.pull_request.user.login }}" --title "🤖 backported \"${ORIGINAL_TITLE}\"" --body "${PR_BODY}")
+        PR_ARGS=(--base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --assignee "${{ github.event.pull_request.user.login }}" --title "🤖 v${TARGET_VERSION} backported \"${ORIGINAL_TITLE}\"" --body "${PR_BODY}")
         if [ "$CONFLICTS" -gt 0 ]; then
           PR_ARGS+=(--draft)
         fi
@@ -80,24 +80,20 @@ runs:
         BACKPORT_PR_URL=$(gh pr create "${PR_ARGS[@]}")
         BACKPORT_PR_NUMBER=${BACKPORT_PR_URL##*/}
 
-        echo "backport_pr_number=$BACKPORT_PR_NUMBER" >> $GITHUB_OUTPUT
+        echo "backport_pr_number=$BACKPORT_PR_NUMBER" >> "$GITHUB_OUTPUT"
         echo "New PR has been created: #${BACKPORT_PR_NUMBER}"
 
         git checkout ${{ github.sha }}
 
-    - name: Auto approve backport PR
+    - name: Approve and Merge the PR
       if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
-      uses: juliangruber/approve-pull-request-action@68fcc9a5a73b5641cadf757cf99d73720dcb05d0 # v2.1.0
-      with:
-        github-token: ${{ inputs.github-token-2 }}
-        number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
-
-    - name: Enable Pull Request Automerge
-      if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
-      run: gh pr merge --squash --auto "$PR_NUMBER"
+      run: |
+        gh pr review --approve "$PR_NUMBER"
+        gh pr merge --squash --auto "$PR_NUMBER"
       shell: bash
       env:
-        GH_TOKEN: ${{ inputs.github-token }}
+        # uses a different token than the token that created the PR so we can approve and merge it
+        GH_TOKEN: ${{ inputs.github-token-2 }}
         PR_NUMBER: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
 
     - uses: ./.github/actions/notify-pull-request

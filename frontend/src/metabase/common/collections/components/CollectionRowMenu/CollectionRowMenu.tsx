@@ -9,8 +9,8 @@ import {
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { isRootCollection } from "metabase/common/collections/utils";
-import { useConfirmation } from "metabase/common/hooks";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useConfirmation, useMetadataToasts } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import {
   PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,
@@ -18,7 +18,6 @@ import {
 } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   ActionIcon,
   Box,

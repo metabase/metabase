@@ -27,6 +27,7 @@ import HTML5Backend from "react-dnd-html5-backend";
 import { createPortal } from "react-dom";
 import _ from "underscore";
 
+import "metabase/auth/plugins";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";

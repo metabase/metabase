@@ -7,13 +7,14 @@ import {
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { EmbeddingHubChecklist } from "metabase/api/embedding-hub";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { createMockSettings } from "metabase-types/api/mocks";
+
+import type { EmbeddingHubChecklist } from "../../api/embedding-hub";
 
 import { SetupSsoPage } from "./SetupSsoPage";
 

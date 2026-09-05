@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { useCallback } from "react";
 import { jt, t } from "ttag";
 
@@ -12,6 +11,7 @@ import { ExplorePlansIllustration } from "metabase/admin/settings/components/Set
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
+import { dayjs } from "metabase/dayjs";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getUpgradeUrl } from "metabase/selectors/settings";
@@ -126,7 +126,7 @@ export const LicenseAndBillingSettings = () => {
   return (
     <SettingsPageWrapper title={t`License`}>
       <SettingsSection>
-        <Stack data-testid="license-and-billing-content" gap="xl" maw="40rem">
+        <Stack data-testid="license-and-billing-content" gap="xxl" maw="40rem">
           <BillingInfo
             isStoreManagedBilling={isStoreManagedBilling}
             hasToken={hasToken}
@@ -179,7 +179,7 @@ function UpsellSection() {
           </ExternalLink>
         )}`}
       />
-      <Flex mt="lg" justify="center">
+      <Flex mt="xl" justify="center">
         <ExplorePlansIllustration />
       </Flex>
       <Divider />

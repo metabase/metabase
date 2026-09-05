@@ -73,7 +73,8 @@
         display-text (or label
                          (when (= model "user") (str "@" entityId))
                          (str model " " entityId))
-        url-fn       (model->url-fn model)]
+        url-fn       (when (pos-int? entityId)
+                       (model->url-fn model))]
     (if url-fn
       [:a {:href (url-fn entityId)} display-text]
       ;; Unknown model or user mention — render as escaped plain text
@@ -99,7 +100,7 @@
       "blockquote"     (into [:blockquote] (children->hiccup content))
       "horizontalRule" [:hr]
       "hardBreak"      [:br]
-      "text"           (wrap-marks text (sanitize-marks marks))
+      "text"           (wrap-marks (str text) (sanitize-marks marks))
       "smartLink"      (smart-link->hiccup node))))
 
 (defn content->html

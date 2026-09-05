@@ -6,7 +6,6 @@ const { H } = cy;
 
 describe("Cross-version questions - joins", () => {
   it("setup: creates a joined question", { tags: ["@source"] }, () => {
-    H.restoreCrossVersionDev("01-complete");
     cy.signIn("admin", { skipCache: true });
 
     cy.log("-- Create a joined question --");
@@ -69,7 +68,5 @@ describe("Cross-version questions - joins", () => {
       .and("contain", "Gizmo")
       .and("contain", "$0")
       .and("contain", "$5.00");
-
-    H.snapshotCrossVersionDev("02-complete");
   });
 });

@@ -68,6 +68,27 @@
   [m]
   (-> m normalize-map-no-kebab-case map->kebab-case))
 
+(defn internal-key?
+  "True if `k` is a namespaced key outside the `:lib` namespace. These are internal keys the query processor adds to a
+  query as it runs, as opposed to the `:lib/*` and simple keys that make up a query itself. Handles string keys too,
+  since keys are not always keywordized yet when this runs."
+  [k]
+  (let [k (cond-> k (string? k) keyword)]
+    (and (qualified-keyword? k)
+         (not= "lib" (namespace k)))))
+
+(defn remove-internal-keys
+  "For use as a `:decode/deserialize` (and `:encode/serialize`) transformer on a query/stage/join/options map: remove
+  every [[internal-key?]] from map `m`."
+  [m]
+  (if-not (map? m)
+    m
+    (reduce-kv (fn [acc k _v]
+                 (cond-> acc
+                   (internal-key? k) (dissoc k)))
+               m
+               m)))
+
 (defn normalize-string-key
   "Base normalization behavior for things that should be string map keys. Converts keywords to strings if needed. This
   is mostly to work around the REST API recursively keywordizing the entire request body by default."
@@ -161,7 +182,10 @@
   [x]
   (normalize-keyword x))
 
-(defn- normalize-base-type [x]
+(defn normalize-base-type
+  "Normalize `x` to a base type keyword, repairing the lower-cased type names some prod fingerprints were stored
+  under (#63397). Returns `nil` if it isn't keyword-able."
+  [x]
   (when-let [k (normalize-base-type* x)]
     (or (cond
           (isa? k :type/*)
@@ -183,6 +207,19 @@
      :error/fn      (fn [{:keys [value]} _]
                       (str "Not a valid base type: " (pr-str value)))}
     base-type?]])
+
+(defn- coercion-strategy? [x]
+  (isa? x :Coercion/*))
+
+(mr/def ::coercion-strategy
+  [:and
+   [:keyword
+    {:decode/normalize #'normalize-keyword}]
+   [:fn
+    {:error/message "valid coercion strategy"
+     :error/fn      (fn [{:keys [value]} _]
+                      (str "Not a valid coercion strategy: " (pr-str value)))}
+    coercion-strategy?]])
 
 (defn normalize-options-map
   "Basic normalization behavior for an MBQL clause options map."
@@ -270,6 +307,7 @@
    {:default {}}
    [:map
     {:decode/normalize   #'normalize-options-map
+     :decode/api         #'remove-internal-keys
      :encode/for-hashing #'encode-map-for-hashing}
     [:lib/uuid ::uuid]
     ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
@@ -279,7 +317,19 @@
     [:semantic-type  {:optional true} [:maybe ::semantic-or-relation-type]]
     [:database-type  {:optional true} [:maybe ::non-blank-string]]
     [:name           {:optional true} [:maybe ::non-blank-string]]
-    [:display-name   {:optional true} [:maybe ::non-blank-string]]]
+    [:display-name   {:optional true} [:maybe ::non-blank-string]]
+    ;; the keys clauses add to a plain options map. Clause-specific option schemas (`::lib.schema.ref/field.options`
+    ;; and friends) declare the rest; they all have to be named here because a map schema strips whatever it doesn't
+    ;; declare.
+    ;;
+    ;; the name an expression is defined under, on the expression's own clause
+    [:lib/expression-name {:optional true} ::non-blank-string]
+    ;; `:contains`/`:starts-with`/`:ends-with` and the other string filters
+    [:case-sensitive      {:optional true} :boolean]
+    ;; `:time-interval`
+    [:include-current     {:optional true} :boolean]
+    ;; the name an aggregation is referenced by
+    [:lib/source-name     {:optional true} ::non-blank-string]]
    (disallowed-keys
     {:ident ":ident is deprecated and should not be included in options maps"})])
 

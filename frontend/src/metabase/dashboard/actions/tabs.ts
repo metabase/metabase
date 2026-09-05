@@ -8,14 +8,11 @@ import { CANCEL_EDITING_DASHBOARD } from "metabase/dashboard/actions/core";
 import { INITIALIZE, selectTab } from "metabase/redux/dashboard";
 import type {
   DashboardState,
-  Dispatch,
-  GetState,
   SelectedTabId,
   StoreDashboard,
   StoreDashcard,
   TabDeletionId,
 } from "metabase/redux/store";
-import { addUndo } from "metabase/redux/undo";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import { getPositionForNewDashCard } from "metabase/utils/dashboard_grid";
 import { checkNotNull } from "metabase/utils/types";
@@ -27,16 +24,13 @@ import type {
   ParameterId,
 } from "metabase-types/api";
 
-import { trackCardMoved } from "../analytics";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
-import { getDashCardById, getDashcards } from "../selectors";
 import {
   calculateDashCardRowAfterUndo,
   generateTemporaryDashcardId,
 } from "../utils";
 
-import { duplicateParameters } from "./parameters";
-import { getDashCardMoveToTabUndoMessage, getExistingDashCards } from "./utils";
+import { getExistingDashCards } from "./utils";
 
 type CreateNewTabPayload = {
   tabId: DashboardTabId;
@@ -61,7 +55,7 @@ type MoveTabPayload = {
   sourceTabId: DashboardTabId;
   destinationTabId: DashboardTabId;
 };
-type MoveDashCardToTabPayload = {
+export type MoveDashCardToTabPayload = {
   dashCardId: DashCardId;
   destinationTabId: DashboardTabId;
 };
@@ -132,45 +126,20 @@ function _createInitialTabs({
   return { firstTabId, secondTabId };
 }
 
-export function createNewTab() {
-  // Decrement by 2 to leave space for two new tabs if dash doesn't have tabs already
+// Decrement by 2 to leave space for two new tabs if the dashboard has none yet.
+// Exported because `tabs-thunks` allocates ids from the same sequence.
+export function takeTempTabId() {
   const tabId = tempTabId;
   tempTabId -= 2;
-
-  return createNewTabAction({ tabId });
+  return tabId;
 }
 
-const duplicateTabAction = createAction<DuplicateTabPayload>(DUPLICATE_TAB);
+export function createNewTab() {
+  return createNewTabAction({ tabId: takeTempTabId() });
+}
 
-export const duplicateTab =
-  (sourceTabId: DashboardTabId | null) =>
-  (dispatch: Dispatch, getState: GetState) => {
-    // Decrement by 2 to leave space for two new tabs if dash doesn't have tabs already
-    const newTabId = tempTabId;
-    tempTabId -= 2;
-
-    const sourceTabDashCards = Object.values(getDashcards(getState())).filter(
-      (dashcard) => dashcard.dashboard_tab_id === sourceTabId,
-    );
-    const sourceParameters = sourceTabDashCards.flatMap((dashcard) =>
-      "inline_parameters" in dashcard ? (dashcard.inline_parameters ?? []) : [],
-    );
-    const newParameters = duplicateParameters(
-      dispatch,
-      getState,
-      sourceParameters,
-    );
-    const sourceToNewParameterIdMap = Object.fromEntries(
-      sourceParameters.map((parameter, index) => [
-        parameter,
-        newParameters[index].id,
-      ]),
-    );
-
-    dispatch(
-      duplicateTabAction({ sourceTabId, newTabId, sourceToNewParameterIdMap }),
-    );
-  };
+export const duplicateTabAction =
+  createAction<DuplicateTabPayload>(DUPLICATE_TAB);
 
 function _selectTab({
   state,
@@ -191,37 +160,7 @@ export const renameTab = createAction<RenameTabPayload>(RENAME_TAB);
 
 export const moveTab = createAction<MoveTabPayload>(MOVE_TAB);
 
-export const moveDashCardToTab =
-  ({ destinationTabId, dashCardId }: MoveDashCardToTabPayload) =>
-  (dispatch: Dispatch, getState: GetState) => {
-    const dashCard = getDashCardById(getState(), dashCardId);
-
-    const originalCol = dashCard.col;
-    const originalRow = dashCard.row;
-    const originalTabId = checkNotNull(dashCard.dashboard_tab_id);
-
-    dispatch(_moveDashCardToTab({ destinationTabId, dashCardId }));
-
-    dispatch(
-      addUndo({
-        message: getDashCardMoveToTabUndoMessage(dashCard),
-        action: () => {
-          dispatch(
-            undoMoveDashCardToTab({
-              dashCardId,
-              originalCol,
-              originalRow,
-              originalTabId,
-            }),
-          );
-        },
-      }),
-    );
-
-    trackCardMoved(dashCard.dashboard_id);
-  };
-
-const _moveDashCardToTab =
+export const _moveDashCardToTab =
   createAction<MoveDashCardToTabPayload>(MOVE_DASHCARD_TO_TAB);
 
 export const undoMoveDashCardToTab = createAction<UndoMoveDashCardToTabPayload>(
@@ -433,10 +372,10 @@ export const tabsReducer = createReducer<DashboardState>(
           if (sourceDashCard.card_id == null) {
             throw Error("sourceDashCard is non-virtual yet has null card_id");
           }
-          state.dashcardData[newDashCardId] = {
-            [sourceDashCard.card_id]:
-              state.dashcardData[sourceDashCard.id][sourceDashCard.card_id],
-          };
+          const sourceDashCardData = state.dashcardData[sourceDashCard.id];
+          if (sourceDashCardData) {
+            state.dashcardData[newDashCardId] = { ...sourceDashCardData };
+          }
         });
 
         // 3. Select new tab

@@ -1,11 +1,18 @@
 import { getVirtualCardType } from "metabase/dashboard/utils";
 import type {
   BaseDashboardCard,
-  Series,
+  Card,
+  DashCardDataSeries,
+  DashCardSeriesItem,
   VisualizerColumnValueSource,
   VisualizerDataSourceId,
+  VisualizerSeriesItem,
   VisualizerVizDefinition,
 } from "metabase-types/api";
+import {
+  isVirtualCard,
+  isVisualizerSeriesItem,
+} from "metabase-types/guards/dashboard";
 
 const VIZ_WITH_CUSTOM_MAPPING_UI = ["heading", "placeholder"];
 
@@ -25,7 +32,7 @@ export function shouldShowParameterMapper({
 
 export function getMissingColumnsFromVisualizationSettings(options: {
   visualizerEntity: VisualizerVizDefinition | undefined;
-  rawSeries: Series;
+  rawSeries: DashCardDataSeries;
 }) {
   const { visualizerEntity, rawSeries } = options;
 
@@ -65,4 +72,21 @@ export function getMissingColumnsFromVisualizationSettings(options: {
   });
 
   return missingCols;
+}
+
+export function getCardsFromSeries(
+  series: (DashCardSeriesItem | VisualizerSeriesItem)[],
+): Card[] {
+  const cards: Card[] = [];
+  for (const item of series) {
+    if (isVisualizerSeriesItem(item)) {
+      continue;
+    }
+    const card = item.card;
+    if (isVirtualCard(card)) {
+      continue;
+    }
+    cards.push(card);
+  }
+  return cards;
 }

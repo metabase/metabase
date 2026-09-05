@@ -7,9 +7,9 @@ import {
   useListCommentsQuery,
   useListTimelinesQuery,
 } from "metabase/api";
+import { explorationApi } from "metabase/api/exploration";
 import { getListCommentsQuery } from "metabase/comments/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { useLocation, useNavigate, useParams } from "metabase/router";
@@ -27,7 +27,6 @@ import type {
   TimelineId,
 } from "metabase-types/api";
 import {
-  getExplorationPages,
   isSettledExplorationQueryStatus,
   isTerminalExplorationThreadStatus,
 } from "metabase-types/api";
@@ -37,13 +36,13 @@ import {
   ExplorationTitle,
 } from "../components/ExplorationSidebar";
 import {
-  type ExplorationTreeNode,
+  type SelectedSidebarEntity,
   flattenTree,
+  getExplorationSidebarModel,
   getExplorationSidebarTabsInfo,
-  getExplorationSidebarTree,
-  isHiddenTreeItem,
-  pickInitialSidebarPage,
+  pickInitialSidebarEntity,
 } from "../components/ExplorationSidebar/utils";
+import { ExplorationSummary } from "../components/ExplorationSummary";
 import {
   ExplorationChartAreaSkeleton,
   ExplorationGroupVisualization,
@@ -61,6 +60,8 @@ import {
   type ExplorationSidebarTab,
   isExplorationSidebarTab,
 } from "../types";
+import { getAdjacentById } from "../utils";
+
 const QUERY_POLL_INTERVAL_MS = 2000;
 
 const TIMELINE_QUERY_PARAM = "timeline";
@@ -98,13 +99,19 @@ function activeThreadStaleDeadlines(
     });
 }
 
-export function ExplorationPage() {
-  const params = useParams<ExplorationPageParams>();
+type ExplorationPageView = "summary";
 
-  return <ExplorationPageForId key={params.id} />;
+interface ExplorationPageProps {
+  view?: ExplorationPageView;
 }
 
-function ExplorationPageForId() {
+export function ExplorationPage({ view }: ExplorationPageProps) {
+  const params = useParams<ExplorationPageParams>();
+
+  return <ExplorationPageForId key={params.id} view={view} />;
+}
+
+function ExplorationPageForId({ view }: ExplorationPageProps) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { id = "", pageId } = useParams<ExplorationPageParams>();
@@ -115,7 +122,12 @@ function ExplorationPageForId() {
     [location.search],
   );
 
-  const isCommentsSidebarOpen = searchParams.get("comments") === "true";
+  // `?comments=<childTargetId>` opens the panel; `"true"` is accepted as a
+  // legacy alias and resolves to the current page id when on a page route.
+  const commentsParam = searchParams.get("comments") ?? undefined;
+  const commentsChildTargetId =
+    commentsParam === "true" ? pageId : commentsParam;
+  const isCommentsSidebarOpen = commentsParam != null;
   const wasCommentsSidebarOpen = usePrevious(isCommentsSidebarOpen);
 
   const selectedSidebarTab = useMemo<ExplorationSidebarTab>(() => {
@@ -149,17 +161,51 @@ function ExplorationPageForId() {
 
   const getSelectedPageUrl = useCallback(
     (
-      pageId: ExplorationPageNodeId,
+      nextPageId: ExplorationPageNodeId,
       options?: { tab?: ExplorationSidebarTab },
     ) => {
       const search = new URLSearchParams(location.search);
       if (options?.tab) {
         search.set("tab", options.tab);
       }
+      // Keep the comments panel open across page navigations, but retarget it
+      // to the destination page so the query param stays accurate.
+      if (search.has("comments")) {
+        search.set("comments", String(nextPageId));
+      }
       const searchString = search.toString();
-      return `${Urls.exploration(parseInt(params.id, 10))}/page/${encodeURIComponent(pageId)}${searchString ? `?${searchString}` : ""}`;
+      return `${Urls.exploration(parseInt(params.id, 10))}/page/${encodeURIComponent(nextPageId)}${searchString ? `?${searchString}` : ""}`;
     },
     [params.id, location.search],
+  );
+
+  const getSelectedSummaryUrl = useCallback(
+    (options?: { tab?: ExplorationSidebarTab }) => {
+      const search = new URLSearchParams(location.search);
+      if (options?.tab) {
+        search.set("tab", options.tab);
+      }
+      const searchString = search.toString();
+      return `${Urls.explorationSummary(parseInt(params.id, 10))}${searchString ? `?${searchString}` : ""}`;
+    },
+    [params.id, location.search],
+  );
+
+  const setSelectedEntity = useCallback(
+    (
+      entity: SelectedSidebarEntity,
+      options?: { tab?: ExplorationSidebarTab; scrollIntoView?: boolean },
+    ) => {
+      if (options?.scrollIntoView) {
+        shouldScrollSelectionRef.current = true;
+      }
+      const url =
+        entity.type === "summary"
+          ? getSelectedSummaryUrl(options)
+          : getSelectedPageUrl(entity.id, options);
+      navigate(url);
+    },
+    [navigate, getSelectedPageUrl, getSelectedSummaryUrl],
   );
 
   const setSelectedPageId = useCallback(
@@ -167,12 +213,16 @@ function ExplorationPageForId() {
       pageId: ExplorationPageNodeId,
       options?: { tab?: ExplorationSidebarTab; scrollIntoView?: boolean },
     ) => {
-      if (options?.scrollIntoView) {
-        shouldScrollSelectionRef.current = true;
-      }
-      navigate(getSelectedPageUrl(pageId, options));
+      setSelectedEntity({ type: "page", id: pageId }, options);
     },
-    [navigate, getSelectedPageUrl],
+    [setSelectedEntity],
+  );
+
+  const setSelectedSummary = useCallback(
+    (options?: { tab?: ExplorationSidebarTab; scrollIntoView?: boolean }) => {
+      setSelectedEntity({ type: "summary" }, options);
+    },
+    [setSelectedEntity],
   );
 
   // Poll the exploration while any query is still in a non-terminal state.
@@ -260,24 +310,16 @@ function ExplorationPageForId() {
     );
   }, [exploration, commentsData?.comments]);
 
-  const tree = useMemo(() => {
+  const { tree, contentMode: sidebarContentMode } = useMemo(() => {
     if (!exploration) {
-      return [];
+      return { tree: [], contentMode: "loading" as const };
     }
-    const tabFilter =
-      explorationSidebarTabsInfo[selectedSidebarTab].treeItemFilter;
-
-    const treeItemFilter = showHidden
-      ? tabFilter
-      : (node: ITreeNodeItem<ExplorationTreeNode>) =>
-          tabFilter(node) && !isHiddenTreeItem(node);
-
-    const hasHiddenPages = getExplorationPages(exploration).some(
-      (page) => page.hidden,
-    );
-
-    return getExplorationSidebarTree(exploration, treeItemFilter, sortOrder, {
-      keepEmptyInitialThread: selectedSidebarTab === "all" && hasHiddenPages,
+    return getExplorationSidebarModel({
+      exploration,
+      selectedSidebarTab,
+      tabsInfo: explorationSidebarTabsInfo,
+      showHidden,
+      sortOrder,
     });
   }, [
     exploration,
@@ -287,114 +329,39 @@ function ExplorationPageForId() {
     sortOrder,
   ]);
 
-  // Selection comes from the URL. When the URL has no page yet
-  // (e.g. user landed on `/explorations/:id` directly), fall back to
-  // the first query so the sidebar highlight, the scroll anchor, and
-  // the right-pane chart all agree on the very first paint — without
-  // waiting for the URL-sync effect below to navigate().
-  //
-  // Once the URL update lands the fallback drops out (params take
-  // precedence) and the URL becomes authoritative again.
   // Selection model:
   //
   //   - The URL is the "pinned by the user" indicator. Only user
-  //     clicks call `setSelectedPageId`, which pushes the page
-  //     into the URL. Once the URL carries a page, that's
+  //     clicks call `setSelectedEntity`, which pushes the entity
+  //     into the URL. Once the URL carries a page or summary, that's
   //     authoritative — no more auto-tracking.
   //
   //   - Until then, every render (including ones triggered by polling
   //     bringing in fresh interestingness scores) re-derives the
   //     selection from the current top of the sidebar via
-  //     `pickInitialSidebarPage`. This is what makes the right pane
+  //     `pickInitialSidebarEntity`. This is what makes the right pane
   //     and the sidebar follow the "first, most interesting chart"
-  //     as new data lands.
+  //     as new data lands — until the Summary is curated, at which
+  //     point newcomers land on the Summary.
   //
   // We deliberately do NOT push the auto-derived selection into the
   // URL: doing so would freeze the selection at the first auto-pick
   // and prevent it from following subsequent data updates.
-  const selectedPageId: ExplorationPageNodeId | null = useMemo(() => {
+  const selectedEntity: SelectedSidebarEntity | null = useMemo(() => {
+    if (view === "summary") {
+      return { type: "summary" };
+    }
     if (params.pageId) {
       // Page ids are opaque strings (the page's numeric PK stringified, the
       // same value comments anchor to) — we URL-encode them on push and
       // decode them here.
-      return decodeURIComponent(params.pageId);
+      return { type: "page", id: decodeURIComponent(params.pageId) };
     }
-    return pickInitialSidebarPage(tree);
-  }, [params.pageId, tree]);
+    return pickInitialSidebarEntity(tree, exploration?.document);
+  }, [view, params.pageId, tree, exploration?.document]);
 
-  const orderedPageIds = useMemo(
-    () =>
-      flattenTree(tree).flatMap((item) =>
-        item.data?.type === "page" ? [item.data.page_id] : [],
-      ),
-    [tree],
-  );
-  const currentPageIndex =
-    selectedPageId != null ? orderedPageIds.indexOf(selectedPageId) : -1;
-  const previousPageId =
-    currentPageIndex > 0 ? orderedPageIds[currentPageIndex - 1] : undefined;
-  const nextPageId =
-    currentPageIndex !== -1 && currentPageIndex < orderedPageIds.length - 1
-      ? orderedPageIds[currentPageIndex + 1]
-      : undefined;
-  const goToPreviousPage = useCallback(() => {
-    if (previousPageId != null) {
-      setSelectedPageId(previousPageId, { scrollIntoView: true });
-    }
-  }, [previousPageId, setSelectedPageId]);
-  const goToNextPage = useCallback(() => {
-    if (nextPageId != null) {
-      setSelectedPageId(nextPageId, { scrollIntoView: true });
-    }
-  }, [nextPageId, setSelectedPageId]);
-
-  useEffect(() => {
-    if (selectedPageId != null && !readPageIds.has(selectedPageId)) {
-      setExplorationPageRead(Number(params.id), selectedPageId);
-      setReadPageIds((prev) => new Set(prev).add(String(selectedPageId)));
-    }
-  }, [selectedPageId, readPageIds, params.id]);
-
-  // Detect new threads (from "Explore further") and toast when their first
-  // page lands. Threads arrive without pages while query planning is still
-  // running, so we wait for a page before marking a thread as seen.
-  const seenThreadIdsRef = useRef<Set<number> | null>(null);
-  useEffect(() => {
-    const threads = exploration?.threads;
-    if (!threads) {
-      return;
-    }
-
-    if (seenThreadIdsRef.current == null) {
-      seenThreadIdsRef.current = new Set(threads.map((thread) => thread.id));
-      return;
-    }
-
-    const seen = seenThreadIdsRef.current;
-    for (const thread of threads) {
-      if (seen.has(thread.id)) {
-        continue;
-      }
-      const firstPage = thread.blocks?.flatMap((b) => b.pages ?? [])?.[0];
-      if (!firstPage) {
-        continue;
-      }
-      seen.add(thread.id);
-      if (thread.name) {
-        sendToast({
-          icon: "bolt",
-          message: c("{0} is the name of a new research thread")
-            .t`Added ${thread.name}`,
-          actionLabel: t`View`,
-          action: () =>
-            setSelectedPageId(String(firstPage.id), {
-              tab: "all",
-              scrollIntoView: true,
-            }),
-        });
-      }
-    }
-  }, [exploration, sendToast, setSelectedPageId]);
+  const selectedPageId =
+    selectedEntity?.type === "page" ? selectedEntity.id : null;
 
   const pageIdToPageAndQueries: Map<
     ExplorationPageNodeId,
@@ -427,6 +394,128 @@ function ExplorationPageForId() {
     }
     return map;
   }, [exploration]);
+
+  const prefetchQueryResult = explorationApi.usePrefetch(
+    "getExplorationQueryResult",
+  );
+
+  const prefetchPage = useCallback(
+    (pageId: ExplorationPageNodeId) => {
+      const entry = pageIdToPageAndQueries.get(pageId);
+      if (!entry) {
+        return;
+      }
+      for (const query of entry.queries) {
+        if (query.status === "done") {
+          prefetchQueryResult(query.id);
+        }
+      }
+    },
+    [pageIdToPageAndQueries, prefetchQueryResult],
+  );
+
+  const orderedPages = useMemo(
+    () =>
+      flattenTree(tree).flatMap((item) =>
+        item.data?.type === "page" ? [{ id: item.data.page_id }] : [],
+      ),
+    [tree],
+  );
+  const previousPage = getAdjacentById(orderedPages, selectedPageId, -1);
+  const nextPage = getAdjacentById(orderedPages, selectedPageId, 1);
+  // Undefined when there's nowhere else to go (empty or single-page list).
+  const previousPageId =
+    previousPage != null && previousPage.id !== selectedPageId
+      ? previousPage.id
+      : undefined;
+  const nextPageId =
+    nextPage != null && nextPage.id !== selectedPageId
+      ? nextPage.id
+      : undefined;
+
+  // Navigate and prefetch the page after the destination in the same
+  // direction — once a user pages once they're likely to page again.
+  // Both directions wrap around the ordered page list.
+  const goToAdjacentPage = useCallback(
+    (direction: 1 | -1) => {
+      const destination = getAdjacentById(
+        orderedPages,
+        selectedPageId,
+        direction,
+      );
+      if (destination == null || destination.id === selectedPageId) {
+        return;
+      }
+      setSelectedPageId(destination.id, { scrollIntoView: true });
+      const following = getAdjacentById(
+        orderedPages,
+        destination.id,
+        direction,
+      );
+      if (following != null) {
+        prefetchPage(following.id);
+      }
+    },
+    [orderedPages, selectedPageId, setSelectedPageId, prefetchPage],
+  );
+  const goToPreviousPage = useCallback(
+    () => goToAdjacentPage(-1),
+    [goToAdjacentPage],
+  );
+  const goToNextPage = useCallback(
+    () => goToAdjacentPage(1),
+    [goToAdjacentPage],
+  );
+
+  useEffect(() => {
+    if (selectedPageId != null && !readPageIds.has(selectedPageId)) {
+      setExplorationPageRead(Number(params.id), selectedPageId);
+      setReadPageIds((prev) => new Set(prev).add(String(selectedPageId)));
+    }
+  }, [selectedPageId, readPageIds, params.id]);
+
+  // Detect new threads (from "Explore further") and toast when their first
+  // page lands. Threads arrive without pages while query planning is still
+  // running, so we wait for a page with queries before marking a thread as seen.
+  const seenThreadIdsRef = useRef<Set<number> | null>(null);
+  useEffect(() => {
+    const threads = exploration?.threads;
+    if (!threads) {
+      return;
+    }
+
+    if (seenThreadIdsRef.current == null) {
+      seenThreadIdsRef.current = new Set(threads.map((thread) => thread.id));
+      return;
+    }
+
+    const seen = seenThreadIdsRef.current;
+    for (const thread of threads) {
+      if (seen.has(thread.id)) {
+        continue;
+      }
+      const firstPage = thread.blocks?.flatMap((b) =>
+        b.pages.filter((p) => p.query_ids.length > 0),
+      )?.[0];
+      if (!firstPage) {
+        continue;
+      }
+      seen.add(thread.id);
+      if (thread.name) {
+        sendToast({
+          icon: "bolt",
+          message: c("{0} is the name of a new research thread")
+            .t`Added ${thread.name}`,
+          actionLabel: t`View`,
+          action: () =>
+            setSelectedPageId(String(firstPage.id), {
+              tab: "all",
+              scrollIntoView: true,
+            }),
+        });
+      }
+    }
+  }, [exploration, sendToast, setSelectedPageId]);
 
   const selectedPage = useMemo(() => {
     return selectedPageId != null
@@ -515,9 +604,9 @@ function ExplorationPageForId() {
             selectedSidebarTab={selectedSidebarTab}
             getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
             tree={tree}
-            selectedPageId={selectedPageId}
-            setSelectedPageId={setSelectedPageId}
+            selectedEntity={selectedEntity}
             getSelectedPageUrl={getSelectedPageUrl}
+            getSelectedSummaryUrl={getSelectedSummaryUrl}
             shouldScrollSelectionRef={shouldScrollSelectionRef}
             isOpen={isSidebarOpen}
             readPageIds={readPageIds}
@@ -525,7 +614,20 @@ function ExplorationPageForId() {
             onToggleShowHidden={() => setShowHidden((prev) => !prev)}
             sortOrder={sortOrder}
             onChangeSortOrder={handleChangeSortOrder}
+            contentMode={sidebarContentMode}
+            onPreviousPage={goToPreviousPage}
+            onNextPage={goToNextPage}
+            onPrefetchPage={prefetchPage}
           />
+          {selectedEntity?.type === "summary" && exploration.document && (
+            <ExplorationSummary
+              document={exploration.document}
+              explorationId={exploration.id}
+              commentsChildTargetId={commentsChildTargetId}
+              onCloseCommentsSidebar={closeCommentsSidebar}
+              timelines={allTimelines}
+            />
+          )}
           {selectedPage && (
             <ExplorationGroupVisualization
               // Key on page id so the component remounts when the user
@@ -536,7 +638,6 @@ function ExplorationPageForId() {
               explorationId={exploration.id}
               page={selectedPage.page}
               queries={selectedPage.queries}
-              blockType={selectedPage.block.type}
               exploreFilters={selectedPage.block.explore_filters}
               availableTimelines={availableTimelines}
               selectedTimelineId={selectedTimelineId}
@@ -547,13 +648,19 @@ function ExplorationPageForId() {
               isCommentsSidebarOpen={isCommentsSidebarOpen}
               wasCommentsSidebarOpen={wasCommentsSidebarOpen ?? false}
               onCloseCommentsSidebar={closeCommentsSidebar}
+              canAddToSummary={
+                exploration.can_write && exploration.document != null
+              }
+              setSelectedSummary={setSelectedSummary}
               onPreviousPage={
                 previousPageId != null ? goToPreviousPage : undefined
               }
               onNextPage={nextPageId != null ? goToNextPage : undefined}
             />
           )}
-          {!selectedPage && shouldPoll && <ExplorationChartAreaSkeleton />}
+          {!selectedPage &&
+            selectedEntity?.type !== "summary" &&
+            shouldPoll && <ExplorationChartAreaSkeleton />}
         </Group>
       </Stack>
     </Group>

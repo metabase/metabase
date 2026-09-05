@@ -40,9 +40,7 @@ describe("Native SQL generation", () => {
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
-      cy.request("PUT", "/api/setting/llm-anthropic-api-key", {
-        value: "sk-ant-api03-test-token",
-      });
+      H.setupAnthropicLlmProvider({ apiKey: "sk-ant-api03-test-token" });
       cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     });
 
@@ -128,9 +126,7 @@ describe("Native SQL generation", () => {
       H.restore("postgres-12");
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
-      cy.request("PUT", "/api/setting/llm-anthropic-api-key", {
-        value: "sk-ant-api03-test-token",
-      });
+      H.setupAnthropicLlmProvider({ apiKey: "sk-ant-api03-test-token" });
       cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     });
 

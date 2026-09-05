@@ -23,6 +23,12 @@
 
     <base href="{{{baseHref}}}" />
 
+    <!--
+      PreloadAssetTags replaces this marker at build time. Keep it after <base href>,
+      which the hints resolve against, and before the inline JSON, which is large.
+    -->
+    <!-- asset-preloads -->
+
     <script type="application/json" id="_metabaseBootstrap">
       {{{bootstrapJSON}}}
     </script>

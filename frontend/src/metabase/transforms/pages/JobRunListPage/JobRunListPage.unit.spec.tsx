@@ -103,7 +103,7 @@ describe("JobRunListPage", () => {
 
     expect(await screen.findAllByText("Nightly job")).not.toHaveLength(0);
     expect(
-      screen.getByRole("tab", { name: "Run history" }),
+      screen.getByRole("link", { name: "Run history" }),
     ).toBeInTheDocument();
     expect(await screen.findByText("Success")).toBeInTheDocument();
   });

@@ -19,6 +19,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.expression.conditional :as lib.schema.expression.conditional]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -93,9 +94,15 @@
                                              (lib.metadata.calculation/cacheable-options {})]
     (fn []
       (let [base-type (lib.metadata.calculation/type-of query stage-number expression-ref-clause)]
-        (merge {:lib/type                :metadata/column
-                ;; TODO (Cam 8/7/25) -- is the source UUID of an expression ref supposed to be the ID of the ref, or the ID
-                ;; of the expression definition??
+        ;; special case for when the expression is just a plain field -- pull in the Field ID and Table ID so we can
+        ;; resolve Field ID refs in later stages (fix for a very specific bug, #70233)
+        (merge (let [resolved (resolve-expression query stage-number expression-name)]
+                 (when (lib.util/clause-of-type? resolved :field)
+                   (select-keys (lib.metadata.calculation/metadata query stage-number resolved)
+                                [:id :table-id])))
+               {:lib/type                :metadata/column
+                ;; TODO (Cam 8/7/25) -- is the source UUID of an expression ref supposed to be the ID of the ref, or
+                ;; the ID of the expression definition??
                 :lib/source-uuid         (:lib/uuid opts)
                 :name                    expression-name
                 :lib/expression-name     expression-name
@@ -421,12 +428,25 @@
     unit))
 
 (mu/defn value :- ::lib.schema.expression/expression
-  "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."
-  [literal :- [:or :string number? :boolean [:fn u.number/bigint?]]]
-  (let [base-type (lib.schema.expression/type-of-resolved literal)]
-    (lib.options/ensure-uuid [:value
-                              {:base-type base-type, :effective-type base-type}
-                              (cond-> literal (u.number/bigint? literal) str)])))
+  "Generate a new `:value` clause, used to wrap wrap value literals to allow type information to be attached to them.
+  Mostly used by the query processor. Converts bigint literals to strings for serialization purposes.
+
+  Note that `:effective-type` is required in `opts`."
+  ([literal :- [:or :string number? :boolean [:fn {:error/message "big integer?"} u.number/bigint?]]]
+   (value nil literal))
+  ([opts :- [:maybe [:merge
+                     [:ref ::lib.schema.literal/value.options]
+                     ;; `:lib/uuid` and `:effective-type` are optional, as they will be added automatically
+                     [:map
+                      [:lib/uuid       {:optional true} ::lib.schema.common/uuid]
+                      [:effective-type {:optional true} ::lib.schema.common/base-type]]]]
+    literal]
+   (let [base-type      (or (:base-type opts) (lib.schema.expression/type-of-resolved literal))
+         effective-type (or (:effective-type opts) base-type)]
+     (-> [:value
+          (merge {:base-type base-type, :effective-type effective-type} opts)
+          (cond-> literal (u.number/bigint? literal) str)]
+         lib.options/ensure-uuid))))
 
 (mu/defn expression-metadata :- ::lib.schema.metadata/column
   "Return column metadata for an `expression-definition` MBQL clause."

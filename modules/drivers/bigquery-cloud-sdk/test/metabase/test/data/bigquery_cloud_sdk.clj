@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -58,17 +59,24 @@
     {:error/message "Dataset IDs must be alphanumeric (plus underscores)"}
     #"^[\w_]+$"]])
 
+(defn- already-qualified? [database-name]
+  (and (string? database-name)
+       (or (str/starts-with? database-name "temp_")
+           (str/starts-with? database-name "sha_"))))
+
+(def ^:private to-cleanup (atom #{}))
+
 (mu/defn test-dataset-id :- ::dataset-id
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
-  [{:keys [database-name] :as db-def}]
-  (cond (str/starts-with? database-name "sha_")
-        database-name
-        ;; releases get their own isolated datasets
-        (tx/on-master-or-release-branch?)
-        (str "sha_rel_" (tx/hash-dataset db-def) "_" (normalize-name database-name))
-        :else
-        (str "sha__" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
+  [{:keys [database-name options] :as db-def}]
+  (cond (already-qualified? database-name) database-name
+        (:static options) (str "sha_" (tx/hash-dataset (update db-def :options
+                                                               dissoc :static))
+                               "_" (normalize-name database-name))
+        :else (let [name (sql.tu.unique-prefix/unique-prefix (normalize-name database-name))]
+                (swap! to-cleanup conj name)
+                name)))
 
 (defn- test-db-details []
   (if tx/*use-routing-details*
@@ -152,13 +160,13 @@
   ;; the printlns below are on purpose because we want them to show up when running tests, even on CI, to make sure this
   ;; stuff is working correctly. We can change it to `log` in the future when we're satisfied everything is working as
   ;; intended -- Case
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (println "Deleting dataset: " dataset-id)
+  (tx/print-progress! :bigquery-cloud-sdk "deleting %s" dataset-id)
   (when (= dataset-id (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
     (throw (Exception. "tried to delete test-data")))
   (.delete (bigquery) dataset-id (u/varargs
                                    BigQuery$DatasetDeleteOption
                                    [(BigQuery$DatasetDeleteOption/deleteContents)]))
+  ;; TODO: drop the test tracking table once 58 and 64 are EOL
   (execute-params!
    (format "DELETE FROM `%s.metabase_test_tracking.datasets` WHERE `name` = ?"
            (project-id))
@@ -348,64 +356,43 @@
               (recur (dec num-retries))
               (throw e))))))))
 
-(defn delete-old-datasets! []
-  (let [all-outdated (execute!
-                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets`"
-                           " WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))"
-                           " UNION ALL "
-                           "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
-                             where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
-                             and d.schema_name like 'sha_%%'
-                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))")
-                      (project-id)
-                      (project-id)
-                      (project-id))]
-    (doseq [outdated (map first all-outdated)]
-      (log/info (u/format-color 'blue "Deleting temporary dataset: %s`." outdated))
-      (destroy-dataset! outdated))))
+(defn- drop-orphan! [server dry-run? name]
+  (try
+    (when-not dry-run?
+      (destroy-dataset! name))
+    {:server server :name name :status :deleted}
+    (catch Exception e
+      {:server server :name name :status :error :error (ex-message e)})))
 
-(defonce ^:private deleted-old-datasets?
-  (atom false))
+(defn- gc-tracked-datasets!
+  "Datasets created by CI runs from older versions still use the tracking table. Until
+  we stop supporting version 58 and 63 we'll have to keep GCing these, but we handle them
+  in a separate function so they'll be easier to delete later."
+  [hours dry-run?]
+  (mapv (fn [[dataset-name]] (drop-orphan! (project-id) dry-run? dataset-name))
+        (execute! (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets`"
+                       " WHERE `name` LIKE '%2$s'"
+                       " AND `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%d hour))"
+                       " UNION ALL "
+                       "(select schema_name from `%1$s`.INFORMATION_SCHEMA.SCHEMATA d
+                           where d.schema_name not in (select name from `%1$s.metabase_test_tracking.datasets`)
+                           and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%d hour))")
+                  (project-id) hours hours)))
 
-(defn- delete-old-datasets-if-needed!
-  "Call [[delete-old-datasets!]], only if we haven't done so already."
-  []
-  (when (compare-and-set! deleted-old-datasets? false true)
-    (delete-old-datasets!)))
+(defmethod tx/gc-orphans! :bigquery-cloud-sdk
+  [_driver {:keys [hours tracked? dry-run?]}]
+  (->> (execute-params!
+        (format "select schema_name from `%s`.%s where schema_name like 'temp_%%'"
+                (project-id) "INFORMATION_SCHEMA.SCHEMATA") [])
+       (filter (partial sql.tu.unique-prefix/old-temp-dataset? hours))
+       (mapv (partial drop-orphan! (project-id) dry-run?))
+       (concat (and tracked? (gc-tracked-datasets! hours dry-run?)))))
 
-(defn- setup-tracking-dataset!
-  "Idempotently create test tracking database"
-  []
-  (let [dataset-id "metabase_test_tracking"]
-    (try
-      (create-dataset! dataset-id)
-      (catch BigQueryException e
-        ;; Already exists, ignore
-        (when-not (= (.getCode e) 409)
-          (throw e))))
-    (try
-      (create-table*! dataset-id "datasets" [{:field-name "hash"
-                                              :base-type  :type/Text}
-                                             {:field-name "name"
-                                              :base-type  :type/Text}
-                                             {:field-name "accessed_at"
-                                              :base-type  :type/DateTimeWithTZ}
-                                             {:field-name "access_note"
-                                              :base-type  :type/Text}])
-      (catch BigQueryException e
-        ;; Already exists, ignore
-        (when-not (= (.getCode e) 409)
-          (throw e))))))
-
-(defn- dataset-tracked?!
-  [db-def]
-  (->
-   (execute-params!
-    (format "SELECT true FROM `%s.metabase_test_tracking.datasets` WHERE `hash` = ? and `name` = ?"
-            (project-id))
-    [(tx/hash-dataset db-def)
-     (test-dataset-id db-def)])
-   ffirst))
+(defmethod tx/count-datasets :bigquery-cloud-sdk
+  [_driver]
+  (let [project (project-id)]
+    {project (ffirst (execute! "SELECT COUNT(*) FROM `%s`.INFORMATION_SCHEMA.SCHEMATA"
+                               project))}))
 
 (defn database-exists?!
   [db-def]
@@ -426,20 +413,6 @@
   (and (database-exists?! db-def)
        (set/subset? (set (map :table-name (:table-definitions db-def)))
                     (set (get-existing-tables (test-dataset-id db-def))))))
-
-(defmethod tx/track-dataset :bigquery-cloud-sdk
-  [_driver db-def]
-  (setup-tracking-dataset!)
-  ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
-  (u/ignore-exceptions
-    (execute-params!
-     (format (str "MERGE INTO `%s.metabase_test_tracking.datasets` d"
-                  "  USING (select ? as `hash`, ? as `name`, current_timestamp() as accessed_at, ? as access_note) as n on d.`hash` = n.`hash`"
-                  "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
-                  "  WHEN NOT MATCHED THEN INSERT (`hash`,`name`, accessed_at, access_note) VALUES (n.`hash`, n.`name`, n.accessed_at, n.access_note)") (project-id))
-     [(tx/hash-dataset db-def)
-      (test-dataset-id db-def)
-      (tx/tracking-access-note)])))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [driver {:keys [database-name table-definitions options] :as db-def} & _]
@@ -500,13 +473,7 @@
 
 (comment
   "REPL utilities for static datasets"
-  (setup-tracking-dataset!)
-  (destroy-dataset! "metabase_test_tracking")
   (destroy-dataset! (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
-  (tx/track-dataset :bigquery-cloud-sdk (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data)))
-  (dataset-tracked?! (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'attempted-murders)))
-
-  (execute! "select name from `%s`.metabase_test_tracking.datasets order by accessed_at" (project-id))
   (database-exists?! (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
 
 (defn ^:private get-test-data-name

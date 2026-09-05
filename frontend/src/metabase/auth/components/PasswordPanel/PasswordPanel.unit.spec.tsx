@@ -1,4 +1,4 @@
-import "metabase/plugins/builtin";
+import "metabase/auth/plugins";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 

@@ -108,8 +108,12 @@ describe("scenarios > data studio > measures > queries", () => {
       H.createSegment({
         name: "TotalSegment",
         definition: {
-          "source-table": ORDERS_ID,
-          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          },
         },
       });
 
@@ -129,8 +133,12 @@ describe("scenarios > data studio > measures > queries", () => {
       H.createMeasure({
         name: "TotalMeasure",
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          },
         },
       });
 
@@ -150,8 +158,12 @@ describe("scenarios > data studio > measures > queries", () => {
       H.createMeasure({
         name: "TotalMeasure",
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          },
         },
       });
 
@@ -171,8 +183,12 @@ describe("scenarios > data studio > measures > queries", () => {
       H.createMeasure({
         name: "TotalMeasure",
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          },
         },
       });
 
@@ -317,8 +333,12 @@ describe("scenarios > data studio > measures > queries", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          },
         },
       });
 
@@ -342,8 +362,12 @@ describe("scenarios > data studio > measures > queries", () => {
     H.createMeasure({
       name: MEASURE_NAME,
       definition: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
       },
     });
 
@@ -367,8 +391,12 @@ describe("scenarios > data studio > measures > queries", () => {
     H.createMeasure({
       name: MEASURE_NAME,
       definition: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
       },
     });
 
@@ -400,8 +428,12 @@ describe("scenarios > data studio > measures > queries", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          },
         },
       });
 
@@ -439,8 +471,12 @@ describe("scenarios > data studio > measures > queries", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          },
         },
       });
 
@@ -467,8 +503,12 @@ describe("scenarios > data studio > measures > queries", () => {
     H.createMeasure({
       name: MEASURE_NAME,
       definition: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
       },
     });
     useMeasureInAdhocQuestion({
@@ -500,8 +540,12 @@ describe("scenarios > data studio > measures > queries", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          },
         },
       }).then(({ body: measure }) => {
         useMeasureInAdhocQuestion();
@@ -520,8 +564,12 @@ describe("scenarios > data studio > measures > queries", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          },
         },
       });
 
@@ -542,8 +590,12 @@ describe("scenarios > data studio > measures > queries", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+          },
         },
       }).then(({ body: measure }) => {
         H.createQuestion({
@@ -579,8 +631,12 @@ describe("scenarios > data studio > measures > queries", () => {
           H.updateMeasure({
             id: measure.id,
             definition: {
-              "source-table": ORDERS_ID,
-              aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+              database: SAMPLE_DB_ID,
+              type: "query",
+              query: {
+                "source-table": ORDERS_ID,
+                aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+              },
             },
           });
 
@@ -598,8 +654,12 @@ describe("scenarios > data studio > measures > queries", () => {
     H.createMeasure({
       name: MEASURE_NAME,
       definition: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
       },
     }).then(({ body: measure }) => {
       H.createQuestion(
@@ -644,8 +704,12 @@ describe("scenarios > data studio > measures > queries", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          },
         },
       }).then(({ body: measure }) => {
         H.createQuestion({
@@ -697,8 +761,12 @@ describe("scenarios > data studio > measures > queries", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          },
         },
       }).then(({ body: measure }) => {
         H.createQuestion({
@@ -751,8 +819,12 @@ describe("scenarios > data studio > measures > queries", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+          },
         },
       })
         .then(({ body: measure }) => {
@@ -784,8 +856,12 @@ describe("scenarios > data studio > measures > queries", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+          },
         },
       })
         .then(({ body: measure }) => {

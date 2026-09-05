@@ -6,10 +6,8 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
-  setupDashboardQuestionCandidatesEndpoint,
   setupDatabasesEndpoints,
   setupNullGetUserKeyValueEndpoints,
-  setupSearchEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
@@ -69,10 +67,8 @@ const uploadedModel2 = createMockCollectionItem({
 async function setupCollectionContent(overrides = {}) {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([createMockDatabase({ can_upload: true })]);
-  setupSearchEndpoints([]);
   setupBookmarksEndpoints([]);
   setupNullGetUserKeyValueEndpoints();
-  setupDashboardQuestionCandidatesEndpoint([]);
 
   const settings = createMockSettingsState({
     "uploads-settings": {

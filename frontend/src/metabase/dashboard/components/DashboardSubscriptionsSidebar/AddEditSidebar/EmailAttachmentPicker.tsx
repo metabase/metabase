@@ -11,11 +11,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
-import type { ExportFormat } from "metabase/common/types/export";
 import CS from "metabase/css/core/index.css";
-import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { Box, Checkbox, Group, Icon, Switch, Text, Tooltip } from "metabase/ui";
-import type { SubscriptionSupportingCard } from "metabase-types/api";
+import type {
+  DraftDashboardSubscription,
+  ExportFormat,
+  SubscriptionSupportingCard,
+} from "metabase-types/api";
 
 import S from "./EmailAttachmentPicker.module.css";
 
@@ -427,7 +429,7 @@ export function EmailAttachmentPicker({
         checked={includePdf}
         onChange={(e) => onToggleIncludePdf(e.target.checked)}
         disabled={!canAttachFiles}
-        mb="md"
+        mb="lg"
         classNames={{
           body: S.AttachmentSwitchBody,
           input: S.AttachmentSwitchInput,
@@ -466,7 +468,7 @@ export function EmailAttachmentPicker({
               body: S.AttachmentSwitchBody,
               input: S.AttachmentSwitchInput,
             }}
-            mb="md"
+            mb="lg"
           />
         </Box>
       </Tooltip>

@@ -1,10 +1,10 @@
-import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { dayjs } from "metabase/dayjs";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
@@ -268,7 +268,7 @@ export function ConversationStatsPage() {
 
   return (
     <MonitorMain>
-      <Stack gap="lg">
+      <Stack gap="xl">
         <MonitorHeaderTitle>
           {hasDataComplexityFeature ? t`Usage metrics` : t`Usage stats`}
         </MonitorHeaderTitle>
@@ -302,13 +302,13 @@ export function ConversationStatsPage() {
         hasTenants={hasTenants}
       />
 
-      <Stack gap="lg">
+      <Stack gap="xl">
         <ConversationsByDayChart
           {...sharedChartProps}
           onDimensionClick={handleDayClick}
         />
 
-        <SimpleGrid cols={2} spacing="lg">
+        <SimpleGrid cols={2} spacing="xl">
           <BreakoutChart
             {...sharedChartProps}
             titles={sourceTitles}
@@ -323,7 +323,7 @@ export function ConversationStatsPage() {
           />
         </SimpleGrid>
 
-        <SimpleGrid cols={hasTenants ? 2 : 3} spacing="lg">
+        <SimpleGrid cols={hasTenants ? 2 : 3} spacing="xl">
           {hasTenants && (
             <BreakoutChart
               {...sharedChartProps}

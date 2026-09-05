@@ -98,6 +98,20 @@
                 :type        :metric
                 :entity-id   metric-entity-id}]}))
 
+(def ^:private cards-content-store
+  "Serves the [[mp-with-cards]] cards by numeric id. Card export reads `entity_id` through a
+  ContentStore rather than the permission-agnostic metadata provider, so a provider-only
+  fixture needs a matching store."
+  (reify resolve.mp/ContentStore
+    (card-by-entity-id    [_ _entity-id] nil)
+    (measure-by-entity-id [_ _entity-id] nil)
+    (segment-by-entity-id [_ _entity-id] nil)
+    (card-by-id           [_ card-id] (get {500 {:id 500 :database_id 1 :entity_id card-entity-id}
+                                            501 {:id 501 :database_id 1 :entity_id metric-entity-id}}
+                                           card-id))
+    (measure-by-id        [_ _measure-id] nil)
+    (segment-by-id        [_ _segment-id] nil)))
+
 ;;; ============================================================
 ;;; import-table-fk
 ;;; ============================================================
@@ -133,7 +147,7 @@
     ;;
     ;; The fix in [[resolve.mp/find-table]] bypasses the metadata provider for app-DB-backed
     ;; lookups and queries `metabase_table` directly with schema in the WHERE clause, the
-    ;; same shape `metabase.models.serialization.resolve.db/import-table-fk` has always
+    ;; same shape `metabase.models.serialization.resolve.default/import-table-fk` has always
     ;; used.
     (mt/with-temp [:model/Database db {:name (str "DW " (random-uuid)) :engine :h2}
                    :model/Table    raw-orders   {:name "ORDERS" :schema "RAW"   :db_id (:id db)}
@@ -162,7 +176,10 @@
               (is (= :unknown-table (:error d)))
               (is (= 400 (:status-code d)))
               (is (true? (:agent-error? d)))
-              (is (re-find #"read_resource" msg) "message points the LLM at read_resource to re-list")
+              (is (re-find #"No table found matching portable FK" msg)
+                  "the resolver states the miss (positive check, so an empty/unrelated message can't pass)")
+              (is (not (re-find #"read_resource|browse_data" msg))
+                  "the resolver states the miss; the calling surface owns the recovery sentence")
               (testing "inactive-row miss is indistinguishable from a never-existed miss (no oracle)"
                 (let [never-existed (try (resolve/import-table-fk r [(:name db) "PUBLIC" "never_existed_xyz"])
                                          (catch clojure.lang.ExceptionInfo e2 (.getMessage e2)))]
@@ -228,8 +245,10 @@
             (testing "ex-data carries only the rejected path — no candidates / schemas"
               (is (nil? (:candidates d)))
               (is (nil? (:available-schemas d))))
-            (testing "message points the LLM at read_resource for self-correction"
-              (is (re-find #"read_resource" msg)))))))))
+            (testing "the resolver states the miss without naming any surface's discovery tool"
+              (is (re-find #"No table found matching portable FK" msg)
+                  "positive check: the message actually states the miss")
+              (is (not (re-find #"read_resource|browse_data" msg))))))))))
 
 (deftest ^:parallel import-table-fk-error-test-2
   (testing "schema does not exist in DB → still :unknown-table, no schema enumeration"
@@ -409,7 +428,7 @@
       (is (= path (resolve/export-field-fk er (resolve/import-field-fk ir path)))))))
 
 (deftest ^:parallel export-database-and-card-fks-test
-  (let [r (resolve.mp/export-resolver mp-with-cards)]
+  (let [r (resolve.mp/export-resolver mp-with-cards cards-content-store)]
     (testing "database id exports to the provider's database name"
       (is (= "Sample" (resolve/export-fk-keyed r 1 :model/Database :name)))
       (is (= "Sample" (resolve/export-fk-keyed r 1 'Database :name))))
@@ -422,8 +441,8 @@
       (is (nil? (resolve/export-fk-keyed r nil :model/Database :name))))))
 
 (deftest ^:parallel export-mbql-with-mp-resolver-round-trip-shape-test
-  (testing "final numeric pMBQL exports back to portable DB/table/field/card references"
-    (let [r        (resolve.mp/export-resolver mp-with-cards)
+  (testing "final numeric MBQL 5 exports back to portable DB/table/field/card references"
+    (let [r        (resolve.mp/export-resolver mp-with-cards cards-content-store)
           exported (resolve/export-mbql
                     r
                     {:lib/type :mbql/query
@@ -442,7 +461,7 @@
       (is (string? (get-in exported [:stages 0 :fields 0 1 :lib/uuid])))
       (is (string? (get-in exported [:stages 0 :aggregation 0 1 :lib/uuid])))))
   (testing "source-card map keys export through the Card entity_id path"
-    (let [r (resolve.mp/export-resolver mp-with-cards)]
+    (let [r (resolve.mp/export-resolver mp-with-cards cards-content-store)]
       (is (= {:source-card card-entity-id}
              (resolve/export-mbql r {:source-card 500}))))))
 
@@ -691,8 +710,47 @@
       (get entity-id->card entity-id))
     (measure-by-entity-id [_ _entity-id] nil)
     (segment-by-entity-id [_ _entity-id] nil)
+    (card-by-id [_ card-id]
+      (first (filter #(= card-id (:id %)) (vals entity-id->card))))
     (measure-by-id [_ _measure-id] nil)
     (segment-by-id [_ _segment-id] nil)))
+
+(deftest ^:parallel export-fk-card-via-custom-content-store-test
+  (testing "Card export gets the entity id from the supplied store, including kebab-case rows"
+    (let [store-entity-id "storeEntityId12345678"
+          store           (map-content-store
+                           {"lookup-key"
+                            {:id 500 :database_id 1 :entity-id store-entity-id}})
+          er              (resolve.mp/export-resolver mp-with-cards store)
+          exported        (resolve/export-fk er 500 'Card)]
+      (is (= store-entity-id exported))
+      (is (not= card-entity-id exported)
+          "the metadata provider's permission-agnostic entity id is not used"))))
+
+(deftest ^:parallel export-fk-card-cross-database-test
+  (testing "a stored card pinned to another database is rejected"
+    (let [store (map-content-store {"lookup-key" {:id 500 :database_id 999 :entity_id card-entity-id}})
+          er    (resolve.mp/export-resolver mp-with-cards store)]
+      (try
+        (resolve/export-fk er 500 'Card)
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (let [d (ex-data e)]
+            (is (= :cross-database-card (:error d)))
+            (is (= 999 (:card-database-id d)))))))))
+
+(deftest ^:parallel export-fk-card-missing-entity-id-test
+  (testing "a card the store does not know is distinct from one with a blank entity id"
+    (doseq [[rows expected-error] {{}                                                    :unknown-card-id
+                                   {"lookup-key" {:id 500 :database_id 1}}               :missing-card-entity-id
+                                   {"lookup-key" {:id 500 :database_id 1 :entity_id ""}} :missing-card-entity-id
+                                   {"lookup-key" {:id 500 :database_id 1 :entity_id "  \t"}} :missing-card-entity-id}]
+      (let [er (resolve.mp/export-resolver mp-with-cards (map-content-store rows))]
+        (try
+          (resolve/export-fk er 500 'Card)
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (is (= expected-error (:error (ex-data e))))))))))
 
 (deftest ^:parallel import-fk-card-via-custom-content-store-happy-path-test
   (testing "a custom ContentStore lets the resolver work without an app DB"

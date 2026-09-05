@@ -2,11 +2,6 @@ import { RTK_CACHE_KEY_PARAM } from "metabase/api/api";
 import { cardApi } from "metabase/api/card";
 import { dashboardApi } from "metabase/api/dashboard";
 import { datasetApi } from "metabase/api/dataset";
-import {
-  dispatchQueryEndpoint,
-  makePivotAwareQueryRunner,
-  shouldUsePivotEndpoint,
-} from "metabase/api/query-endpoints";
 import type { Dispatch } from "metabase/redux/store";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -20,13 +15,18 @@ import type {
   DatasetQuery,
 } from "metabase-types/api";
 
+import {
+  dispatchQueryEndpoint,
+  makePivotAwareQueryRunner,
+  shouldUsePivotEndpoint,
+} from "./api/query-endpoints";
+
 type RunQuestionQueryOptions = {
   dispatch: Dispatch;
   signal?: AbortSignal;
   isDirty?: boolean;
   token?: string | null;
   ignoreCache?: boolean;
-  collectionPreview?: boolean;
   // Ability to override or add extra query params to the request, used by Embedding SDK
   queryParamsOverride?: Record<string, unknown>;
 };
@@ -34,7 +34,6 @@ type RunQuestionQueryOptions = {
 type SavedCardQueryOptions = {
   parameters: unknown[];
   ignoreCache?: boolean;
-  collectionPreview?: boolean;
   token?: string | null;
   queryParamsOverride?: Record<string, unknown>;
 };
@@ -121,7 +120,6 @@ function runSavedCardQuery(
   {
     parameters,
     ignoreCache,
-    collectionPreview,
     token,
     queryParamsOverride,
   }: SavedCardQueryOptions,
@@ -134,7 +132,6 @@ function runSavedCardQuery(
 
   const body = {
     ignore_cache: ignoreCache,
-    collection_preview: collectionPreview,
     parameters,
     // Disambiguate the RTK cache key so two callers running the same saved card
     // don't co-subscribe to one in-flight request — otherwise one caller
@@ -186,14 +183,11 @@ export async function runQuestionQuery(
     isDirty = false,
     token,
     ignoreCache = false,
-    collectionPreview = false,
     queryParamsOverride = {},
   }: RunQuestionQueryOptions,
 ): Promise<[Dataset]> {
   const canUseCardApiEndpoint = !isDirty && question.isSaved();
-  const parameters = normalizeParameters(
-    question.parameters({ collectionPreview }),
-  );
+  const parameters = normalizeParameters(question.parameters());
   const card = question.card();
 
   if (canUseCardApiEndpoint) {
@@ -205,7 +199,6 @@ export async function runQuestionQuery(
           {
             parameters,
             ignoreCache,
-            collectionPreview,
             token,
             queryParamsOverride,
           },

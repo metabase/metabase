@@ -169,7 +169,7 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
   const joinsCount = treeData.length;
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       {joinsCount > 0 && (
         <>
           <Title order={4}>

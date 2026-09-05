@@ -88,4 +88,56 @@ describe("useListSelect", () => {
     act(() => result.current.clear());
     expect(result.current.selected).toHaveLength(0);
   });
+
+  it("should preserve all items toggled in the same batch", () => {
+    const result = setup();
+
+    act(() => {
+      result.current.toggleItem(OBJECT_LIST[0]);
+      result.current.toggleItem(OBJECT_LIST[1]);
+    });
+
+    expect(result.current.selected).toEqual([OBJECT_LIST[0], OBJECT_LIST[1]]);
+  });
+
+  it("should toggle matching keys across distinct objects", () => {
+    const result = setup();
+    const cardCopy = { id: 1, name: "first" };
+    const rowCopy = { id: 1, name: "first" };
+
+    act(() => result.current.toggleItem(cardCopy));
+    expect(result.current.getIsSelected(rowCopy)).toBeTruthy();
+
+    act(() => result.current.toggleItem(rowCopy));
+    expect(result.current.selected).toHaveLength(0);
+    expect(result.current.getIsSelected(cardCopy)).toBeFalsy();
+  });
+
+  it("should deduplicate selectOnlyTheseItems input by key", () => {
+    const result = setup();
+
+    act(() =>
+      result.current.selectOnlyTheseItems([
+        { ...OBJECT_LIST[0] },
+        { ...OBJECT_LIST[0] },
+      ]),
+    );
+
+    expect(result.current.selected).toHaveLength(1);
+  });
+
+  it("should clear items after mixed selection operations", () => {
+    const result = setup();
+
+    act(() =>
+      result.current.selectOnlyTheseItems([OBJECT_LIST[0], OBJECT_LIST[1]]),
+    );
+    act(() => result.current.toggleItem(OBJECT_LIST[2]));
+    act(() => result.current.clear());
+
+    expect(result.current.selected).toHaveLength(0);
+    OBJECT_LIST.forEach((item) => {
+      expect(result.current.getIsSelected(item)).toBeFalsy();
+    });
+  });
 });

@@ -1,6 +1,9 @@
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { AdminPath } from "metabase/redux/store";
 import {
+  createMockAdminAppState,
+  createMockAdminState,
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
@@ -9,7 +12,12 @@ import { setBasename } from "metabase/utils/basename";
 import { replaceLocation } from "metabase/utils/dom";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import { IsAdmin, IsAuthenticated, IsNotAuthenticated } from "./auth-guards";
+import {
+  CanAccessSettings,
+  IsAdmin,
+  IsAuthenticated,
+  IsNotAuthenticated,
+} from "./auth-guards";
 
 jest.mock("metabase/utils/dom", () => ({
   ...jest.requireActual("metabase/utils/dom"),
@@ -109,6 +117,50 @@ describe("route-guards", () => {
           initialRoute: "/admin/settings",
         },
       );
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe("/unauthorized");
+      });
+    });
+  });
+
+  describe("CanAccessSettings", () => {
+    const DATABASES_PATH: AdminPath = {
+      name: "Databases",
+      path: "/admin/databases",
+      key: "databases",
+    };
+
+    const setup = (paths: AdminPath[]) =>
+      renderWithProviders(
+        <>
+          <Route element={<CanAccessSettings />}>
+            <Route path="/admin/databases" element={<Protected />} />
+          </Route>
+          <Route path="/unauthorized" element={<Unauthorized />} />
+        </>,
+        {
+          storeInitialState: createMockState({
+            currentUser: createMockUser({ is_superuser: false }),
+            settings: createMockSettingsState({ "has-user-setup": true }),
+            admin: createMockAdminState({
+              app: createMockAdminAppState({ paths }),
+            }),
+          }),
+          withRouter: true,
+          initialRoute: "/admin/databases",
+        },
+      );
+
+    it("lets a non-admin through when a permission grant left them an admin path", async () => {
+      const { router } = setup([DATABASES_PATH]);
+
+      expect(await screen.findByText("protected")).toBeInTheDocument();
+      expect(router?.location.pathname).toBe("/admin/databases");
+    });
+
+    it("redirects a non-admin with no admin paths to /unauthorized", async () => {
+      const { router } = setup([]);
 
       await waitFor(() => {
         expect(router?.location.pathname).toBe("/unauthorized");

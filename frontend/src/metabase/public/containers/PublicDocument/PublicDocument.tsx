@@ -9,14 +9,14 @@ import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { DocumentEditorHostProvider } from "metabase/documents/components/Editor/DocumentEditorHost";
+import { CardEmbed } from "metabase/documents/components/editor-extensions/CardEmbed/CardEmbedNode";
+import { ExternalCardDataProvider } from "metabase/documents/components/editor-extensions/CardEmbed/ExternalCardDataContext";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { MetabotNode } from "metabase/metabot/components/editor-extensions/MetabotEmbed";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
-import { ExternalCardDataProvider } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/ExternalCardDataContext";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { FlexContainer } from "metabase/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
 import { ResizeNode } from "metabase/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
@@ -151,7 +151,7 @@ export const PublicDocument = () => {
           {document && editor && (
             <DocumentEditorHostProvider>
               <ExternalCardDataProvider value={externalCardDataValue}>
-                <Box maw={900} mx="auto" p="xl" w="100%">
+                <Box maw={900} mx="auto" p="xxl" w="100%">
                   <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
                   <div className={S.editorContent}>
                     <EditorContent

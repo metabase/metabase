@@ -4,6 +4,7 @@
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
+   [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision.diff :refer [diff-strings*]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -37,12 +38,12 @@
 
 (defmethod revert-to-revision! :default
   [model id _user-id serialized-instance]
-  (let [valid-columns   (keys (t2/select-one (t2/table-name model) :id id))
+  (let [valid-columns   (keys (revisions.db/raw-row model id))
         ;; Only include fields that we know are on the model in the current version of Metabase! Otherwise we'll get
         ;; an error if a field in an earlier version has since been dropped, but is still present in the revision.
         ;; This is best effort — other kinds of schema changes could still break the ability to revert successfully.
         revert-instance (select-keys serialized-instance valid-columns)]
-    (t2/update! model id revert-instance)))
+    (revisions.db/update-entity! model id revert-instance)))
 
 (defmulti diff-map
   "Return a map describing the difference between `object-1` and `object-2`."
@@ -67,6 +68,17 @@
   [model o1 o2]
   (diff-strings* (name model) o1 o2))
 
+(defmulti revision-readable?
+  "Whether the current user may see the revision whose serialized snapshot is `object`. Defaults to true: a caller
+  who can read an object's current row can read its whole revision history. Models whose snapshots carry
+  data-permission-sensitive definitions override this to authorize each snapshot on its own terms."
+  {:arglists '([model object])}
+  mi/dispatch-on-model)
+
+(defmethod revision-readable? :default
+  [_model _object]
+  true)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Revision [_model] :revision)
@@ -81,12 +93,7 @@
 (t2/define-before-insert :model/Revision
   [{:keys [model model_id] :as revision}]
   ;; obtain a lock on the existing revisions for this entity to prevent concurrent inserts of new revisions
-  (t2/query {:select [:id]
-             :from [:revision]
-             :where [:and
-                     [:= :model model]
-                     [:= :model_id model_id]]
-             :for :update})
+  (revisions.db/lock-revisions! model model_id)
   (assoc revision
          :timestamp (or (:timestamp revision) :%now)
          :metabase_version config/mb-version-string
@@ -116,23 +123,15 @@
 (defn- delete-old-revisions!
   "Delete old revisions of `model` with `id` when there are more than `max-revisions` in the DB."
   [model id]
-  (when-let [old-revisions (seq (drop max-revisions (t2/select-fn-vec :id :model/Revision
-                                                                      :model    (name model)
-                                                                      :model_id id
-                                                                      {:order-by [[:timestamp :desc]
-                                                                                  [:id :desc]]})))]
-    (t2/delete! :model/Revision :id [:in old-revisions])))
+  (when-let [old-revisions (seq (drop max-revisions (revisions.db/revision-ids-newest-first (name model) id)))]
+    (revisions.db/delete-revisions! old-revisions)))
 
 (t2/define-after-insert :model/Revision
   [revision]
   (u/prog1 revision
     (let [{:keys [id model model_id]} revision]
-      ;; Note 1: Update the last `most_recent revision` to false (not including the current revision)
-      ;; Note 2: We don't allow updating revision but this is a special case, so we by pass the check by
-      ;; updating directly with the table name
-      (t2/update! (t2/table-name :model/Revision)
-                  {:model model :model_id model_id :most_recent true :id [:not= id]}
-                  {:most_recent false})
+      ;; Update the last `most_recent revision` to false (not including the current revision)
+      (revisions.db/unmark-most-recent-revisions! model model_id id)
       (delete-old-revisions! model model_id))))
 
 ;;; # Functions
@@ -177,14 +176,16 @@
   [model :- [:fn toucan-model?]
    id    :- pos-int?]
   (let [model-name (name model)]
-    (t2/select :model/Revision :model model-name :model_id id {:order-by [[:id :desc]]})))
+    (revisions.db/revisions model-name id)))
 
 (mu/defn revisions+details
-  "Fetch `revisions` for `model` with `id` and add details."
+  "Fetch `revisions` for `model` with `id` that the current user may see, and add details. Diffs and descriptions
+  are computed between consecutive *visible* revisions, so a snapshot the caller is not entitled to never leaks
+  through an adjacent revision's diff."
   [model :- [:fn toucan-model?]
    id    :- pos-int?]
   (when-let [revisions (revisions model id)]
-    (loop [acc [], [r1 r2 & more] revisions]
+    (loop [acc [], [r1 r2 & more] (filterv #(revision-readable? model (:object %)) revisions)]
       (if-not r2
         (conj acc (add-revision-details model r1 nil))
         (recur (conj acc (add-revision-details model r1 r2))
@@ -204,7 +205,7 @@
                                         [:message      {:optional true} [:maybe :string]]]]
   (let [entity-name (name entity)
         serialized-object (serialize-instance entity id (dissoc object :message))
-        last-object (t2/select-one-fn :object :model/Revision :model entity-name :model_id id {:order-by [[:id :desc]]})
+        last-object (revisions.db/latest-revision-object entity-name id)
         ;; For Card entities, ensure :card_schema is excluded from comparison
         ;; Old revisions might have :card_schema added by after-select, but this field
         ;; shouldn't trigger new revisions as it's a technical/internal field
@@ -218,14 +219,13 @@
     ;; so to be safe, we'll just compare them as string
     (when-not (= (json/encode serialized-object)
                  (json/encode last-object-for-comparison))
-      (t2/insert! :model/Revision
-                  :model        entity-name
-                  :model_id     id
-                  :user_id      user-id
-                  :object       serialized-object
-                  :is_creation  is-creation?
-                  :is_reversion false
-                  :message      message)
+      (revisions.db/insert-revision! {:model        entity-name
+                                      :model_id     id
+                                      :user_id      user-id
+                                      :object       serialized-object
+                                      :is_creation  is-creation?
+                                      :is_reversion false
+                                      :message      message})
       object)))
 
 (mu/defn revert!
@@ -237,17 +237,20 @@
             [:entity      [:fn toucan-model?]]]]
   (let [{:keys [id user-id revision-id entity]} info
         model-name (name entity)
-        serialized-instance (t2/select-one-fn :object :model/Revision :model model-name :model_id id :id revision-id)]
+        serialized-instance (revisions.db/revision-object model-name id revision-id)]
     (t2/with-transaction [_conn]
-      ;; Do the reversion of the object
-      (revert-to-revision! entity id user-id serialized-instance)
-      ;; Push a new revision to record this change
-      (let [last-revision (t2/select-one :model/Revision :model model-name, :model_id id, {:order-by [[:id :desc]]})
-            new-revision  (first (t2/insert-returning-instances! :model/Revision
-                                                                 :model        model-name
-                                                                 :model_id     id
-                                                                 :user_id      user-id
-                                                                 :object       serialized-instance
-                                                                 :is_creation  false
-                                                                 :is_reversion true))]
-        (add-revision-details entity new-revision last-revision)))))
+      (let [already-in-target-state? (= serialized-instance
+                                        (revisions.db/latest-revision-object model-name id))]
+        ;; Do the reversion of the object
+        (revert-to-revision! entity id user-id serialized-instance)
+        ;; Push a new revision to record this change
+        (let [last-revision (revisions.db/latest-revision model-name id)]
+          (if already-in-target-state?
+            last-revision
+            (let [new-revision (revisions.db/insert-revision-returning! {:model        model-name
+                                                                         :model_id     id
+                                                                         :user_id      user-id
+                                                                         :object       serialized-instance
+                                                                         :is_creation  false
+                                                                         :is_reversion true})]
+              (add-revision-details entity new-revision last-revision))))))))

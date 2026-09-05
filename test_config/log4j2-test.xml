@@ -7,10 +7,12 @@
         <ThresholdFilter level="FATAL" onMatch="ACCEPT" onMismatch="DENY"/>
       </Filters>
     </Console>
-    <Console name="ConsoleInfoLevel" target="SYSTEM_OUT" follow="true">
+    <!-- The shared Console only accepts FATAL, which is right for a suite this chatty. Warnings that mean a
+         test silently broke its own isolation need to be seen, so they get an appender that accepts them. -->
+    <Console name="WarnConsole" target="SYSTEM_OUT" follow="true">
       <PatternLayout pattern="[%t] %-5level %logger{36} - %msg %notEmpty{%X}%n"/>
       <Filters>
-        <ThresholdFilter level="FATAL" onMatch="ACCEPT" onMismatch="DENY"/>
+        <ThresholdFilter level="WARN" onMatch="ACCEPT" onMismatch="DENY"/>
       </Filters>
     </Console>
     <File name="File" fileName="logs/test-log.json" append="false">
@@ -31,9 +33,10 @@
          resources/log4j2.xml, minus the per-session RoutingAppender (tests don't read the files). -->
     <Logger name="metabase.ai-tracing.log" level="info" additivity="false"/>
 
-    <Logger name="metabase.test.gentest" level="INFO" additivity="false">
-      <AppenderRef ref="ConsoleInfoLevel"/>
-      <AppenderRef ref="Console"/>
+    <!-- A rollback-only scope that could not roll back leaves its rows behind for every later test, and the
+         tests that trip over them fail somewhere else entirely. Say so where the run can be read. -->
+    <Logger name="metabase.app-db.connection" level="INFO" additivity="false">
+      <AppenderRef ref="WarnConsole"/>
       <AppenderRef ref="File"/>
     </Logger>
 

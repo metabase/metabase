@@ -19,6 +19,7 @@ import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.cs
 import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
 import { InsightsTabOrLink } from "metabase/common/components/upsells/components/InsightsTabOrLink";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/common/utils/dashboard";
+import { getUser } from "metabase/current-user";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import {
   type DashboardContextReturned,
@@ -26,7 +27,6 @@ import {
 } from "metabase/dashboard/context";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { Stack, Tabs, Text } from "metabase/ui";
 import type {
   Dashboard,
@@ -142,7 +142,7 @@ export function DashboardInfoSidebarInner({
             defaultValue={Tab.Overview}
             className={SidesheetS.FlexScrollContainer}
           >
-            <Tabs.List mx="xl">
+            <Tabs.List mx="xxl">
               <Tabs.Tab value={Tab.Overview}>{t`Overview`}</Tabs.Tab>
               {!isIADashboard && (
                 <Tabs.Tab value={Tab.History}>{t`History`}</Tabs.Tab>
@@ -196,8 +196,8 @@ const OverviewTab = ({
   canWrite: boolean;
 }) => {
   return (
-    <Stack gap="lg">
-      <SidesheetCard title={t`Description`} pb="md">
+    <Stack gap="xl">
+      <SidesheetCard title={t`Description`} pb="lg">
         <SidesheetEditableDescription
           description={dashboard.description}
           onChange={handleDescriptionChange}
@@ -206,7 +206,7 @@ const OverviewTab = ({
           onBlur={handleDescriptionBlur}
         />
         {!!descriptionError && (
-          <Text color="feedback-negative" size="xs" mt="xs">
+          <Text color="feedback-negative" size="xs" mt="xxs">
             {descriptionError}
           </Text>
         )}

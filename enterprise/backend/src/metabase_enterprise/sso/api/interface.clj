@@ -8,7 +8,8 @@
   [req]
   (case (:request-method req)
     :get  (get-in req [:params :jwt])
-    :post (get-in req [:body :jwt])
+    :post (or (get-in req [:body "jwt"])
+              (get-in req [:body :jwt]))
     nil))
 
 (defn- select-sso-backend

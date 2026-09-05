@@ -13,9 +13,7 @@ import { Link } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
@@ -23,6 +21,7 @@ import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
+import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Ellipsified } from "metabase/ui";
@@ -325,20 +324,14 @@ export const TransformListPage = () => {
 
   return (
     <PageContainer data-testid="transforms-list" gap={0}>
-      <PaneHeader
-        breadcrumbs={
-          <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
-        }
-        showMetabotButton
-        py={0}
-      />
+      <TransformsHeader showMetabotButton />
       <Stack className={CS.overflowHidden}>
         {isMeterLocked && <LockedTransformsBanner />}
-        <Flex gap="md">
+        <Flex gap="lg">
           <TextInput
             placeholder={t`Search...`}
             leftSection={<Icon name="search" />}
-            bdrs="md"
+            bdrs="sm"
             flex="1"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

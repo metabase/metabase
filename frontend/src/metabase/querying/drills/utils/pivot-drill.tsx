@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import { Box } from "metabase/ui";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {

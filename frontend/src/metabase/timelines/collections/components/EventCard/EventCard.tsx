@@ -5,7 +5,7 @@ import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Settings from "metabase/utils/settings";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
+import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import {
@@ -65,7 +65,7 @@ const EventCard = ({
       </CardBody>
       {menuItems.length > 0 && (
         <CardAside>
-          <Menu position="bottom-end" shadow="md">
+          <Menu position="bottom-end" shadow="sm">
             <Menu.Target>
               <ActionIcon variant="subtle" aria-label={t`Event menu`}>
                 <Icon name="ellipsis" />

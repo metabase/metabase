@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 
 // Setup CSP nonce for CodeMirror dynamic styles
-import "metabase/utils/csp";
+import "metabase/utils/csp-setup";
 
 // Import the embedding SDK vendors side-effects
 import "metabase/embedding-sdk/vendors-side-effects";

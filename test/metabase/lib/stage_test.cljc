@@ -24,7 +24,6 @@
   (testing "make sure columns are coming back the way we'd expect for :field clauses"
     (let [query {:lib/type     :mbql/query
                  :stages       [{:lib/type     :mbql.stage/mbql
-                                 :lib/options  {:lib/uuid "0311c049-4973-4c2a-8153-1e2c887767f9"}
                                  :source-table (meta/id :venues)
                                  :fields       [(lib.tu/field-clause :venues :price)]}]
                  :database     (meta/id)

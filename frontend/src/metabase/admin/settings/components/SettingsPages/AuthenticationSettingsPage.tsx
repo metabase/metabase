@@ -2,13 +2,12 @@ import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellSSO } from "metabase/admin/upsells";
-import { hasAnySsoFeature } from "metabase/common/utils/plan";
 import {
   type AuthSettingsPageTab,
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_MULTI_FACTOR_AUTH,
 } from "metabase/plugins";
-import { useGetSettingsQuery } from "metabase/settings";
+import { hasAnySsoFeature, useGetSettingsQuery } from "metabase/settings";
 import { Box, Flex, Stack } from "metabase/ui";
 
 import { ApiKeysAuthCard } from "../../auth/components/ApiKeysAuthCard";
@@ -33,8 +32,8 @@ export function AuthenticationSettingsPage({
 
   return (
     <SettingsPageWrapper title={t`Authentication`}>
-      <Flex justify={"space-between"} gap="lg">
-        <Stack gap="lg">
+      <Flex justify={"space-between"} gap="xl">
+        <Stack gap="xl">
           <GoogleAuthCard />
           <LdapAuthCard />
           <ApiKeysAuthCard />

@@ -88,9 +88,7 @@ describe("MetricTabs", () => {
   }
 
   function getTabLabels() {
-    return Array.from(
-      document.querySelectorAll(".mb-mantine-Tabs-tabLabel"),
-    ).map((element) => element.textContent);
+    return screen.queryAllByRole("link").map((link) => link.textContent);
   }
 
   it("does not show the caching tab in the tabs row regardless of write access", async () => {

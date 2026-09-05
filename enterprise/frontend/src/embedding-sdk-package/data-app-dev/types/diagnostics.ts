@@ -22,4 +22,5 @@ export type DevDiagnosticEvent =
 export type DevDiagnosticEntry = {
   id: number;
   time: number;
+  buildId: number | null;
 } & DevDiagnosticEvent;

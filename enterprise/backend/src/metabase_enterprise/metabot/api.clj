@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
-   [metabase.metabot.provider-util :as provider-util]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -22,7 +22,7 @@
 (defn- default-metabase-meter-key
   []
   (some-> metabot.settings/default-metabase-llm-metabot-provider
-          provider-util/strip-metabase-prefix
+          llm.provider/strip-managed-prefix
           u/qualified-name
           (str/replace-first "/" ":")
           (str ":tokens")))

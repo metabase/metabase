@@ -1,9 +1,9 @@
 (ns metabase.explorations.derived-perms
   "Decides whether the *current user* may see an exploration thread's derived read-data — its
-  queries, the block/page tree built from them, and the thread name. All of these embed verbatim
-  values from results computed under the exploration creator's data-access lens (sandboxing /
-  connection impersonation / database routing), so a viewer whose lens is incompatible with the
-  creator's must not see them.
+  queries, the block/page tree built from them, the thread name, and the Summary document's
+  content. All of these embed verbatim values from results computed under the exploration
+  creator's data-access lens (sandboxing / connection impersonation / database routing), so a
+  viewer whose lens is incompatible with the creator's must not see them.
 
   The per-artifact rule is exactly the gate the results themselves are streamed through
   ([[metabase.queries.cached-result]]): superusers pass unconditionally; any other viewer must hold
@@ -20,11 +20,11 @@
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
+   [metabase.explorations.db :as explorations.db]
    [metabase.lib-be.core :as lib-be]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (defn- visibility-key
   "The inputs [[metabase.queries.cached-result/viewer-can-view-cached-result?]] actually depends on,
@@ -90,11 +90,7 @@
   check and the lens comparison, and throws without it. That is also the step that stamps the token,
   so a row that has one but no token is a write-path bug — adjudicated and denied, not skipped."
   [thread-ids]
-  (t2/select [:model/ExplorationQuery
-              :id :exploration_thread_id :database_id :dataset_query :data_access_token]
-             :exploration_thread_id [:in thread-ids]
-             :dataset_query [:not= nil]
-             {:order-by [[:id :asc]]}))
+  (explorations.db/lens-stamped-queries thread-ids))
 
 (defn- lens-stamped-threads
   "The `exploration_thread` rows for `thread-ids` carrying a tracked lens, in the shape the gate takes.
@@ -107,12 +103,8 @@
   stamped, and, unlike the thread's queries, not deleted by a restart. A thread whose Card cannot be
   resolved is still returned, marked [[::indeterminate]] so it denies."
   [thread-ids]
-  (when-let [threads (seq (t2/select [:model/ExplorationThread :id :data_access_token]
-                                     :id [:in thread-ids]
-                                     :data_access_token [:not= nil]))]
-    (let [blocks    (t2/select [:model/ExplorationBlock :exploration_thread_id :metrics]
-                               :exploration_thread_id [:in (map :id threads)]
-                               {:order-by [[:position :desc] [:id :desc]]})
+  (when-let [threads (seq (explorations.db/lens-stamped-threads thread-ids))]
+    (let [blocks    (explorations.db/block-metrics-for-threads-newest-first (map :id threads))
           ;; descending order + `into {}` (later pairs win) leaves the thread's *first* block
           ;; standing, whose metric is the one the token was computed over.
           card-id   (into {} (keep (fn [b]
@@ -121,8 +113,7 @@
                           blocks)
           cards     (when (seq card-id)
                       ;; `:card_schema` is mandatory in any explicit Card column list
-                      (u/index-by :id (t2/select [:model/Card :id :card_schema :database_id :dataset_query]
-                                                 :id [:in (distinct (vals card-id))])))]
+                      (u/index-by :id (explorations.db/card-queries (distinct (vals card-id)))))]
       (map (fn [{thread-id :id :as thread}]
              (let [card (get cards (get card-id thread-id))]
                (cond-> {:id                    thread-id
@@ -181,3 +172,61 @@
         (set/difference thread-ids
                         (blocked-thread-ids (concat (finalized-queries thread-ids)
                                                     (lens-stamped-threads thread-ids))))))))
+
+(defn- exploration-content-visible?
+  "The gate's verdict for a document owned by `exploration-id` (nil => not a Summary, unaffected)."
+  [exploration-id]
+  (if (nil? exploration-id)
+    true
+    (let [thread-ids (explorations.db/thread-ids-for-exploration exploration-id)]
+      (or (empty? thread-ids)
+          (= thread-ids (thread-ids-with-visible-derived-data thread-ids))))))
+
+(defn doc-content-visible-to-current-user?
+  "Content-visibility gate installed via
+  [[metabase.documents.core/register-doc-content-visibility-fn!]] at init: a document owned by
+  an exploration (the Summary) embeds verbatim result values, so its content follows the
+  exploration's threads' derived-data visibility. Documents outside explorations are unaffected."
+  [document]
+  (cond
+    (contains? document :exploration_id)
+    (exploration-content-visible? (:exploration_id document))
+
+    (:id document)
+    (exploration-content-visible?
+     (explorations.db/document-exploration-id (:id document)))
+
+    :else
+    false))
+
+(defn gate-comment-contexts
+  "Withhold `:context` from `comments` on `exploration-id` whose data the current user may not see.
+
+  A comment's context carries the identity of the chart point it is anchored to, including dimension
+  values read out of the creator's result set — the same material
+  [[metabase.explorations.api/gate-threads-derived-data]] redacts from the exploration itself. The
+  comments endpoint cannot rely on its read check to cover that: an Exploration is read-checked on
+  collection permissions alone, since the derived-data gate is applied by its read endpoints rather
+  than by `can-read?`.
+
+  The comment itself is left in place — conversations stay visible, only the values they carry are
+  withheld. A comment anchored to a page of a thread the viewer can see keeps its context; anything
+  else (a Summary block, an unanchored comment, or a page of a gated thread) loses it."
+  [exploration-id comments]
+  (let [thread-ids (explorations.db/thread-ids-for-exploration exploration-id)]
+    (if (or (empty? thread-ids) (not-any? :context comments))
+      comments
+      (let [visible (thread-ids-with-visible-derived-data thread-ids)]
+        (if (= thread-ids visible)
+          comments
+          (let [page->thread (into {}
+                                   (map (juxt :id :thread_id))
+                                   (explorations.db/page-thread-ids (vec thread-ids)))]
+            (mapv (fn [comment]
+                    ;; A non-numeric `child_target_id` is a Summary block uuid, and a nil one is
+                    ;; unanchored; both parse to nil and so fall through to the deny branch.
+                    (let [thread-id (get page->thread (parse-long (str (:child_target_id comment))))]
+                      (if (contains? visible thread-id)
+                        comment
+                        (dissoc comment :context))))
+                  comments)))))))

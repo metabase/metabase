@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
+import type { ComponentProps } from "react";
 
 import {
   createMockMetabotConversationDetail,
@@ -13,13 +14,17 @@ import { renderWithProviders, screen, within } from "__support__/ui";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import type {
   MetabotAgentChatMessage,
+  MetabotAgentTurnIncompleteMessage,
   MetabotChatMessage,
 } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import {
   assertConversation,
+  continueResponseButton,
+  conversationIdForAgent,
   enterChatMessage,
   input,
+  queryContinueResponseButton,
   setup as renderMetabotChat,
   thumbsDown,
   thumbsUp,
@@ -47,7 +52,10 @@ const textMessage = (
   message: string,
 ): FetchedChatMessage => ({ id: message, role, type: "text", message });
 
-const setup = (message: MetabotAgentChatMessage) =>
+const setup = (
+  message: MetabotAgentChatMessage,
+  props?: Partial<ComponentProps<typeof AgentMessage>>,
+) =>
   renderWithProviders(
     <AgentMessage
       debug={false}
@@ -58,6 +66,7 @@ const setup = (message: MetabotAgentChatMessage) =>
       submittedFeedback={undefined}
       getCopyText={() => ""}
       message={message}
+      {...props}
     />,
     {
       storeInitialState: {
@@ -75,6 +84,30 @@ describe("AgentMessage", () => {
           { id: "a1", role: "agent", type: "text", message: "hello" },
         ]}
         isDoingScience
+        debug={false}
+        conversationId="convo-1"
+      />,
+    );
+
+    const [, agentMessage] = screen.getAllByTestId("metabot-chat-message");
+    expect(
+      within(agentMessage).queryByTestId("metabot-chat-message-copy"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the copy action when the agent response has no text", () => {
+    renderWithProviders(
+      <Messages
+        messages={[
+          { id: "u1", role: "user", type: "text", message: "hi" },
+          {
+            id: "a1",
+            role: "agent",
+            type: "data_part",
+            part: { type: "data-todo_list", data: [] },
+          },
+        ]}
+        isDoingScience={false}
         debug={false}
         conversationId="convo-1"
       />,
@@ -271,11 +304,7 @@ describe("AgentMessage", () => {
       ]);
       expect(await input()).toHaveTextContent("How many orders?");
 
-      const conversationId =
-        store.getState().metabot.conversations.omnibot?.conversationId;
-      if (!conversationId) {
-        throw new Error("expected an active omnibot conversation");
-      }
+      const conversationId = conversationIdForAgent(store);
       const reloaded: ["user" | "agent", string][] = [
         ["user", "How many orders?"],
         ["agent", "There are 42 orders."],
@@ -323,6 +352,72 @@ describe("AgentMessage", () => {
       );
       expect(debugCard).toHaveTextContent(/stream_error/);
       expect(debugCard).toHaveTextContent(/boom/);
+    });
+  });
+
+  describe("turn_incomplete", () => {
+    const incompleteMessage = (
+      finishReason: MetabotAgentTurnIncompleteMessage["finishReason"],
+    ): MetabotAgentTurnIncompleteMessage => ({
+      id: "msg",
+      role: "agent",
+      type: "turn_incomplete",
+      finishReason,
+    });
+
+    it("offers to continue a length-limited response", async () => {
+      const onContinue = jest.fn();
+      setup(incompleteMessage("length"), { onContinue });
+
+      expect(
+        screen.getByText(/was cut off because it hit the maximum length/),
+      ).toBeInTheDocument();
+      await userEvent.click(await continueResponseButton());
+      expect(onContinue).toHaveBeenCalledWith(
+        expect.stringMatching(/Pick up exactly where you left off/),
+      );
+    });
+
+    it("offers to continue a step-limited response", async () => {
+      const onContinue = jest.fn();
+      setup(incompleteMessage("tool-calls"), { onContinue });
+
+      expect(
+        screen.getByText(/paused after reaching its step limit/),
+      ).toBeInTheDocument();
+      await userEvent.click(await continueResponseButton());
+      expect(onContinue).toHaveBeenCalledWith(
+        expect.stringMatching(/Continue working on my last request/),
+      );
+    });
+
+    it("shows a terminal notice when the context window is full", () => {
+      setup(
+        { ...incompleteMessage("length"), contextWindowFull: true },
+        { onContinue: jest.fn() },
+      );
+
+      expect(
+        screen.getByText(/reached its maximum length and can't continue/),
+      ).toBeInTheDocument();
+      expect(queryContinueResponseButton()).not.toBeInTheDocument();
+    });
+
+    it("explains a content-filtered response without offering to continue", () => {
+      setup(incompleteMessage("content-filter"), { onContinue: jest.fn() });
+
+      expect(
+        screen.getByText(/was stopped by a content filter/),
+      ).toBeInTheDocument();
+      expect(queryContinueResponseButton()).not.toBeInTheDocument();
+    });
+
+    it("falls back to a generic notice for other reasons", () => {
+      setup(incompleteMessage("other"));
+
+      expect(
+        screen.getByText(/stopped before it finished/),
+      ).toBeInTheDocument();
     });
   });
 });

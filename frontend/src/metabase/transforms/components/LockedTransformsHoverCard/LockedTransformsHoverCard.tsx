@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux/hooks";
 import { getStoreUsers } from "metabase/selectors/store-users";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, HoverCard, Text } from "metabase/ui";
 
 export const LockedTransformsHoverCard = ({ children }: PropsWithChildren) => {
@@ -22,7 +22,7 @@ export const LockedTransformsHoverCard = ({ children }: PropsWithChildren) => {
       position="bottom-end"
     >
       <HoverCard.Target>{children}</HoverCard.Target>
-      <HoverCard.Dropdown p="lg" data-testid="locked-transforms-hover-card">
+      <HoverCard.Dropdown p="xl" data-testid="locked-transforms-hover-card">
         <Text fw="bold" lh="inherit">
           {t`You've used all the transform runs included in your trial.`}
         </Text>
@@ -40,7 +40,7 @@ export const LockedTransformsHoverCard = ({ children }: PropsWithChildren) => {
             component={ExternalLink}
             href={storeUrl}
             fullWidth
-            mt="md"
+            mt="lg"
           >{t`Start paid subscription`}</Button>
         )}
       </HoverCard.Dropdown>

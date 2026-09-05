@@ -95,14 +95,14 @@ jobs:
         id: version-properties
         run: |
           cat version.properties
-          echo "commit=$(cat ./COMMIT-ID)" >> $GITHUB_OUTPUT
+          echo "commit=$(cat ./COMMIT-ID)" >> "$GITHUB_OUTPUT"
 
           version=$(grep -o '^tag=.*' version.properties | cut -d'=' -f2)
 
           if [[ "${{ matrix.edition }}" == "ee" ]]; then
-            echo "ee_version=$version" >> $GITHUB_OUTPUT
+            echo "ee_version=$version" >> "$GITHUB_OUTPUT"
           else
-            echo "oss_version=$version" >> $GITHUB_OUTPUT
+            echo "oss_version=$version" >> "$GITHUB_OUTPUT"
           fi
         shell: bash
       - name: Upload Metabase ${{ matrix.edition }} JAR as artifact
@@ -223,7 +223,7 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            $CYPRESS_GREP_FLAG grepTags="@prerelease+-@EE" \
+            "$CYPRESS_GREP_FLAG" grepTags="@prerelease+-@EE" \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Run a few important EE Cypress tests as sanity check
@@ -232,7 +232,7 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            $CYPRESS_GREP_FLAG grepTags="@prerelease+-@OSS" \
+            "$CYPRESS_GREP_FLAG" grepTags="@prerelease+-@OSS" \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Upload Cypress Artifacts upon failure
@@ -254,7 +254,7 @@ jobs:
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}
       tag: ${{ needs.release-artifact.outputs.oss_version }}-${{ inputs.commit }}
-      release: "true"
+      release: true
 
   containerize-ee:
     needs: release-artifact
@@ -265,7 +265,7 @@ jobs:
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}
       tag: ${{ needs.release-artifact.outputs.ee_version }}-${{ inputs.commit }}
-      release: "true"
+      release: true
 
   tests-complete-message:
     if: always()

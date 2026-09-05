@@ -38,12 +38,12 @@
       ;; I don't know why the Cljs versions give us slightly different answers, but I think that's an upstream Malli
       ;; problem, so I'm not going to spend too much time digging in to it. Close enough.
       [:field {:lib/uuid "ede8dc3c-de7e-49ec-a78c-bacfb43f2301"} :1]
-      #?(:clj  [nil nil ["should be a positive int" "should be a string"]]
-         :cljs [nil nil ["should be a positive int" "should be a string"]])
+      #?(:clj  [nil nil ["should be a string" "should be a positive int"]]
+         :cljs [nil nil ["should be a string" "should be a positive int"]])
 
       [:field {:lib/uuid "ede8dc3c-de7e-49ec-a78c-bacfb43f2301"} -1]
-      #?(:clj  [nil nil ["should be a positive int" "should be a string" "should be a positive int"]]
-         :cljs [nil nil ["should be a positive int" "should be a string" "should be a positive int"]]))))
+      #?(:clj  [nil nil ["should be a string" "should be a positive int" "should be a positive int"]]
+         :cljs [nil nil ["should be a string" "should be a positive int" "should be a positive int"]]))))
 
 (deftest ^:parallel field-with-empty-name-test
   (testing "We need to support fields with empty names, this is legal in SQL Server (QUE-1418)"

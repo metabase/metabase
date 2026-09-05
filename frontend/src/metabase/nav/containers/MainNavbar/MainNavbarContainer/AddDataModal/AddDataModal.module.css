@@ -1,6 +1,6 @@
 .tab {
   height: 2.5rem;
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
 
   &[data-active="true"] {
     color: var(--mb-color-core-brand);
@@ -30,8 +30,8 @@
 }
 
 .panel {
-  padding-inline: var(--mantine-spacing-lg);
-  padding-bottom: var(--mantine-spacing-lg);
+  padding-inline: var(--mantine-spacing-xl);
+  padding-bottom: var(--mantine-spacing-xl);
   flex: 1;
   overflow: hidden;
 }

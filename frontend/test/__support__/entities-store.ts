@@ -3,10 +3,13 @@ import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { Api } from "metabase/api";
+import {
+  entitiesReducer,
+  metadataHydrationMiddleware,
+} from "metabase/metadata-store";
 import { commonReducers } from "metabase/reducers-common";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
-import { reducer as entitiesReducer } from "metabase/redux/entities";
 import type { State } from "metabase/redux/store";
 import {
   type StoreSeedState,
@@ -57,7 +60,10 @@ export function getStore(
       getDefaultMiddleware({
         immutableCheck: false,
         serializableCheck: false,
-      }).concat(middleware)) as never,
+        // Appended rather than defaulted: callers pass their own `middleware`
+        // list, and dropping the mirror's only writer would stop hydration in
+        // that spec with nothing failing.
+      }).concat(middleware, metadataHydrationMiddleware)) as never,
   });
 }
 

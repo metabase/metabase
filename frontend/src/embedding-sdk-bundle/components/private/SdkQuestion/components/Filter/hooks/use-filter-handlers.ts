@@ -1,4 +1,4 @@
-import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
+import type { UpdateQueryHookProps } from "metabase/query_builder";
 import * as Lib from "metabase-lib";
 
 import { LAST_STAGE_INDEX } from "../../../utils/stages";

@@ -1,21 +1,17 @@
 import { t } from "ttag";
 
-import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
+import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
 import {
   BOXPLOT_DATA_SETTINGS,
   BOXPLOT_SETTINGS,
+  type ComputedVisualizationSettings,
   GRAPH_AXIS_SETTINGS,
-} from "metabase/visualizations/lib/settings/graph";
-import { validateChartDataSettings } from "metabase/visualizations/lib/settings/validation";
-import {
+  GRAPH_GOAL_SETTINGS,
+  type VisualizationDefinition,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationDefinition,
-} from "metabase/visualizations/types";
-import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
+  validateChartDataSettings,
+} from "metabase/viz-core";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 
@@ -23,7 +19,6 @@ export const BOXPLOT_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Box Plot`,
   identifier: "boxplot",
   iconName: "boxplot",
-  usesEChartsRenderer: true,
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   noun: t`box plot`,
   minSize: getMinSize("boxplot"),

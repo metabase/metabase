@@ -7,12 +7,17 @@ import {
   useListDatabaseXraysQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
+  Box,
   Combobox,
   DefaultSelectItem,
+  Flex,
+  Icon,
+  Text,
   UnstyledButton,
   useCombobox,
 } from "metabase/ui";
@@ -24,15 +29,6 @@ import type { Database, DatabaseXray } from "metabase-types/api";
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeXrayCard } from "../HomeXrayCard";
-
-import {
-  DatabaseLink,
-  DatabaseLinkIcon,
-  DatabaseLinkText,
-  SchemaTriggerIcon,
-  SchemaTriggerText,
-  SectionBody,
-} from "./HomeXraySection.styled";
 
 export const HomeXraySection = () => {
   const {
@@ -78,7 +74,7 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
   const hasTables = (candidate?.tables.length ?? 0) > 0;
 
   return (
-    <div>
+    <Box>
       {isSample ? (
         <HomeCaption primary>
           {t`Try out these sample x-rays to see what ${applicationName} can do.`}
@@ -100,7 +96,7 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
           <DatabaseInfo database={database} />
         </HomeCaption>
       ) : null}
-      <SectionBody>
+      <Flex gap="xl" wrap="wrap">
         {candidate?.tables.map((table, index) => (
           <HomeXrayCard
             key={table.url}
@@ -110,8 +106,8 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
           />
         ))}
         <HomeHelpCard />
-      </SectionBody>
-    </div>
+      </Flex>
+    </Box>
   );
 };
 
@@ -143,17 +139,23 @@ const SchemaSelect = ({ schema, schemas, onChange }: SchemaSelectProps) => {
       }}
     >
       <Combobox.Target>
-        <UnstyledButton
+        <Flex
+          component={UnstyledButton}
+          align="center"
           display="inline-flex"
           mx="sm"
-          style={{ alignItems: "center", outline: "none" }}
           onClick={() => combobox.toggleDropdown()}
         >
-          <SchemaTriggerText data-testid="xray-schema-name">
+          <Text
+            component="span"
+            c="core-brand"
+            fw="bold"
+            data-testid="xray-schema-name"
+          >
             {schema}
-          </SchemaTriggerText>
-          <SchemaTriggerIcon name="chevrondown" />
-        </UnstyledButton>
+          </Text>
+          <Icon name="chevrondown" c="core-brand" size={10} ml="xxs" />
+        </Flex>
       </Combobox.Target>
       <Combobox.Dropdown>
         <Combobox.Options>
@@ -182,10 +184,22 @@ interface DatabaseInfoProps {
 
 const DatabaseInfo = ({ database }: DatabaseInfoProps) => {
   return (
-    <DatabaseLink to={Urls.browseDatabase(database)}>
-      <DatabaseLinkIcon name="database" />
-      <DatabaseLinkText>{database.name}</DatabaseLinkText>
-    </DatabaseLink>
+    <Flex
+      component={Link}
+      to={Urls.browseDatabase(database)}
+      align="center"
+      ml="sm"
+    >
+      <Icon
+        name="database"
+        c="input-focus"
+        size="var(--mantine-spacing-lg)"
+        mr="xxs"
+      />
+      <Text component="span" c="core-brand" fw="bold">
+        {database.name}
+      </Text>
+    </Flex>
   );
 };
 

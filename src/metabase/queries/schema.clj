@@ -1,9 +1,8 @@
 (ns metabase.queries.schema
   (:require
    [metabase.documents.schema :as documents.schema]
-   [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.parameters.schema :as parameters.schema]
@@ -18,25 +17,6 @@
 
 (mr/def ::card-type
   ::lib.schema.metadata/card.type)
-
-(mr/def ::empty-map
-  "An empty map, allowed for Card.dataset_query for historic purposes."
-  [:= {} {}])
-
-(mr/def ::query
-  "Schema for Card.dataset_query. Cards are for some wacko reason allowed to be saved with empty queries (`{}`), but not
-  `NULL` ones, because the column is non-null. This sorta seems like an oversight but fixing all the tests that save
-  Cards with empty queries is too much to attempt at this point. So a Card either has an empty query or a valid MBQL 5
-  query."
-  [:multi {:dispatch (comp boolean empty?)}
-   [true  ::empty-map]
-   [false [:schema
-           {:decode/normalize lib-be/normalize-query}
-           [:merge
-            [:ref ::lib.schema/query]
-            ;; Card query is guaranteed to have a metadata provider
-            [:map
-             [:lib/metadata ::lib.schema.metadata/metadata-provider]]]]]])
 
 (mr/def ::card.result-metadata
   [:and
@@ -68,7 +48,7 @@
    [:dashboard_id       {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:database_id        {:optional true} [:maybe ::lib.schema.id/database]]
    [:document_id        {:optional true} [:maybe ::documents.schema/document.id]]
-   [:dataset_query      {:optional true} [:maybe ::query]]
+   [:dataset_query      {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
    [:description        {:optional true} [:maybe :string]]
    [:name               {:optional true} [:maybe :string]]
    [:parameters         {:optional true} [:maybe [:ref ::parameters.schema/parameters]]]

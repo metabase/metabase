@@ -21,7 +21,7 @@ export const LibrarySyncRow = ({ isReadOnly }: LibrarySyncRowProps) => {
   };
 
   return (
-    <Box p="md" className={CS.borderRowDivider}>
+    <Box p="lg" className={CS.borderRowDivider}>
       <Flex justify="space-between" align="center">
         <Flex align="center" gap="sm">
           <Icon name="repository" c="text-secondary" />

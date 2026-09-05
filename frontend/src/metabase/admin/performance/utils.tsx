@@ -3,7 +3,7 @@ import { c } from "ttag";
 import * as Yup from "yup";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
-import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
+import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
 import { getScheduleStrings } from "metabase/common/components/Schedule/strings";
 import {
   PLUGIN_CACHING,
@@ -11,7 +11,6 @@ import {
   type StrategyData,
   type StrategyLabel,
   defaultMinDurationMs,
-  strategies,
 } from "metabase/plugins";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type {
@@ -21,6 +20,7 @@ import type {
   CacheStrategyType,
   CacheableModel,
 } from "metabase-types/api";
+import { CacheDurationUnit } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { rootId } from "./constants/simple";
@@ -48,7 +48,7 @@ export const resolveSmoothly = async (
 };
 
 export const getFrequencyFromCron = (cron: string) => {
-  const scheduleType = cronToScheduleSettings(cron)?.schedule_type;
+  const scheduleType = cronToBuilderValue(cron)?.schedule_type;
   const { scheduleOptionNames } = getScheduleStrings();
   return isNullOrUndefined(scheduleType)
     ? ""
@@ -81,12 +81,35 @@ export const getShortStrategyLabel = (
     .with({ type: "schedule" }, (strategy) =>
       getFrequencyFromCron(strategy.schedule),
     )
-    .with(
-      { type: "duration" },
-      (strategy) =>
-        c(
-          "{0} is a number. Indicates a number of hours (the length of a cache)",
-        ).t`${strategy.duration}h`,
+    .with({ type: "duration" }, ({ duration, unit }) =>
+      match(unit)
+        .with(
+          CacheDurationUnit.Minutes,
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} minutes (the length of a cache)",
+            ).t`${duration}m`,
+        )
+        .with(
+          CacheDurationUnit.Seconds,
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} seconds (the length of a cache)",
+            ).t`${duration}s`,
+        )
+        .with(
+          CacheDurationUnit.Days,
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} days (the length of a cache)",
+            ).t`${duration}d`,
+        )
+        .otherwise(
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} hours (the length of a cache)",
+            ).t`${duration}h`,
+        ),
     )
     .otherwise(() => null);
   if (subLabel) {
@@ -124,7 +147,7 @@ export const strategyValidationSchema = Yup.object().test(
         path: "type",
       });
     }
-    const schema = getStrategyValidationSchema(strategies[type]);
+    const schema = getStrategyValidationSchema(PLUGIN_CACHING.strategies[type]);
     try {
       schema.validateSync(value);
       return true;

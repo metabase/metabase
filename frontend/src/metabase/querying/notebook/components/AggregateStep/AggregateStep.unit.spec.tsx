@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import {
   getIcon,
   queryIcon,
@@ -13,7 +14,10 @@ import {
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { DEFAULT_QUESTION, createMockNotebookStep } from "../../test-utils";
 import type { NotebookStep } from "../../types";
@@ -46,6 +50,8 @@ interface SetupOpts {
 
 function setup({ step = createMockNotebookStep() }: SetupOpts = {}) {
   const updateQuery = jest.fn();
+
+  setupDatabaseEndpoints(createSampleDatabase());
 
   renderWithProviders(
     <AggregateStep

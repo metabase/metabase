@@ -10,6 +10,7 @@
    [medley.core :as m]
    [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.email :as email]
    [metabase.channel.email.logo :as email.logo]
    [metabase.channel.render.core :as channel.render]
@@ -27,8 +28,7 @@
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -166,12 +166,7 @@
   []
   (concat (when-let [admin-email (system/admin-email)]
             [admin-email])
-          (t2/select-fn-set :email 'User
-                            :is_superuser true
-                            :is_active    true
-                            :last_login   [:not= nil]
-                            :type         "personal"
-                            {:order-by [[:id :asc]]})))
+          (channel.db/accepted-admin-emails)))
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
@@ -224,7 +219,7 @@
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by [[metabase.login-history.models.login-history/human-friendly-infos]]."
   [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map [:user_id pos-int?]]]
-  (let [user-info    (or (t2/select-one [:model/User :last_name :first_name :email :locale] :id user-id)
+  (let [user-info    (or (channel.db/user-contact-info user-id)
                          (throw (ex-info (tru "User {0} does not exist" user-id)
                                          {:user-id user-id, :status-code 404})))
         user-locale  (or (:locale user-info) (i18n/site-locale))
@@ -258,11 +253,12 @@
                                          :from     [[:permissions_group_membership :pgm]]
                                          :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
                                          :where    [:and
-                                                    [:exists {:select [1]
-                                                              :from [[:permissions :p]]
-                                                              :where [:and
-                                                                      [:= :p.group_id :pg.id]
-                                                                      [:= :p.object monitoring]]}]]
+                                                    [:exists ^:allow-subquery
+                                                     {:select [1]
+                                                      :from [[:permissions :p]]
+                                                      :where [:and
+                                                              [:= :p.group_id :pg.id]
+                                                              [:= :p.object monitoring]]}]]
                                          :group-by [:pgm.user_id]}
                                         app-db/query
                                         (mapv :user_id)))
@@ -275,9 +271,7 @@
      (concat
       (all-admin-recipients)
       (when (seq user-ids)
-        (t2/select-fn-set :email :model/User {:where [:and
-                                                      [:= :is_active true]
-                                                      [:in :id user-ids]]}))))))
+        (channel.db/active-user-emails user-ids))))))
 
 (defn send-persistent-model-error-email!
   "Format and send an email informing the user about errors in the persistent model refresh task.

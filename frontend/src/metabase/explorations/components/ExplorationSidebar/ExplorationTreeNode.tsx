@@ -49,7 +49,9 @@ import { ExplorationErrorMarker } from "./ExplorationErrorMarker";
 import { ExplorationLastActivity } from "./ExplorationLastActivity";
 import S from "./ExplorationTreeNode.module.css";
 import {
+  EXPLORATION_SUMMARY_TREE_ID,
   type ExplorationHeadingKind,
+  type ExplorationTreeDocument,
   type ExplorationTreeHeading,
   type ExplorationTreeNode,
   type ExplorationTreePage,
@@ -69,9 +71,10 @@ const HEADING_ICON: Record<
 export interface ExplorationTreeContextValue {
   explorationId: ExplorationId;
   canWrite: boolean;
-  handlePrefetch: (item: ITreeNodeItem<ExplorationTreeNode>) => void;
+  onPrefetchPage: (pageId: ExplorationPageNodeId) => void;
   shouldScrollSelectionRef: React.MutableRefObject<boolean>;
   getSelectedPageUrl: (pageId: ExplorationPageNodeId) => string;
+  getSelectedSummaryUrl: () => string;
   readPageIds: ReadonlySet<string>;
 }
 
@@ -89,6 +92,9 @@ export function ExplorationTreeNode(props: TreeNodeProps<ExplorationTreeNode>) {
   const nodeProps = { ...props, ...treeContext };
   if (isExplorationTreeHeadingProps(nodeProps)) {
     return <ExplorationTreeHeading {...nodeProps} />;
+  }
+  if (isExplorationTreeDocumentProps(nodeProps)) {
+    return <ExplorationTreeDocumentItem {...nodeProps} />;
   }
   if (isExplorationTreeItemProps(nodeProps)) {
     return <ExplorationTreeItem {...nodeProps} />;
@@ -117,7 +123,6 @@ function isExplorationTreeHeadingProps(
 function ExplorationTreeHeading({
   item,
   isExpanded,
-  hasChildren,
   onToggleExpand,
   depth,
   explorationId,
@@ -125,16 +130,11 @@ function ExplorationTreeHeading({
   getSelectedPageUrl,
 }: ExplorationTreeHeadingProps) {
   const isLoading = isLoadingStatus(item.data?.status);
-  // Only the retained initial-investigation heading can be childless (pruning
-  // drops every other empty heading). The tree controller can't expand a node
-  // without children, so force the expanded look: the all-hidden note beneath
-  // then reads as the group's content rather than a collapsed group.
-  const displayExpanded = isExpanded || !hasChildren;
   return (
     <Box
       role="group"
       aria-label={item.name}
-      aria-expanded={displayExpanded}
+      aria-expanded={isExpanded}
       aria-busy={isLoading}
       className={cx(S.treeRow, S.treeRowHeading, {
         [S.treeRowNested]: depth > 0,
@@ -153,7 +153,7 @@ function ExplorationTreeHeading({
     >
       <Box className={S.treeChevron} aria-hidden>
         <Icon
-          name={displayExpanded ? "chevrondown" : "chevronright"}
+          name={isExpanded ? "chevrondown" : "chevronright"}
           size={12}
           c="text-tertiary"
         />
@@ -212,8 +212,7 @@ function ExplorationGroupMenu({
   const pageIds = useMemo(() => itemPageIds ?? [], [itemPageIds]);
   // when the whole group is already hidden, the action shows it again
   const allHidden = item.data?.allHidden === true;
-  const canHideGroup =
-    canWrite && item.data?.hideable === true && pageIds.length > 0;
+  const canHideGroup = canWrite && pageIds.length > 0;
 
   const setGroupHidden = useCallback(
     async (hidden: boolean) => {
@@ -353,10 +352,65 @@ interface ExplorationTreeItemProps extends ExplorationTreeNodeProps {
   item: ITreeNodeItem<ExplorationTreePage>;
 }
 
+interface ExplorationTreeDocumentItemProps extends ExplorationTreeNodeProps {
+  item: ITreeNodeItem<ExplorationTreeDocument>;
+}
+
 function isExplorationTreeItemProps(
   props: ExplorationTreeNodeProps,
 ): props is ExplorationTreeItemProps {
   return props.item.data?.type === "page";
+}
+
+function isExplorationTreeDocumentProps(
+  props: ExplorationTreeNodeProps,
+): props is ExplorationTreeDocumentItemProps {
+  return props.item.data?.type === "document";
+}
+
+function ExplorationTreeDocumentItem({
+  item,
+  isSelected,
+  depth,
+  shouldScrollSelectionRef,
+  getSelectedSummaryUrl,
+}: ExplorationTreeDocumentItemProps) {
+  const itemRef = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    if (isSelected && shouldScrollSelectionRef.current) {
+      itemRef.current?.scrollIntoView({
+        block: "nearest",
+      });
+      shouldScrollSelectionRef.current = false;
+    }
+  }, [isSelected, shouldScrollSelectionRef]);
+
+  const iconProps: IconProps = {
+    color: isSelected ? "brand" : "icon-secondary",
+    name: typeof item.icon === "string" ? item.icon : item.icon.name,
+  };
+
+  return (
+    <ForwardRefLink
+      ref={itemRef}
+      to={getSelectedSummaryUrl()}
+      role="treeitem"
+      aria-selected={isSelected}
+      className={cx(S.treeRow, {
+        [S.treeRowSelected]: isSelected,
+        [S.treeRowNested]: depth > 0,
+      })}
+      // custom css var used for tree styles
+      style={{ "--tree-depth": depth } as React.CSSProperties}
+      data-testid={`exploration-tree-item-${EXPLORATION_SUMMARY_TREE_ID}`}
+    >
+      <Icon {...iconProps} aria-label={t`Summary`} />
+      <Ellipsified flex={1} size="md" lh="1rem" fw={500}>
+        {item.name}
+      </Ellipsified>
+    </ForwardRefLink>
+  );
 }
 
 function ExplorationTreeItem({
@@ -364,7 +418,7 @@ function ExplorationTreeItem({
   isSelected,
   depth,
   explorationId,
-  handlePrefetch,
+  onPrefetchPage,
   shouldScrollSelectionRef,
   getSelectedPageUrl,
   readPageIds,
@@ -414,7 +468,7 @@ function ExplorationTreeItem({
         [S.treeRowSelected]: isSelected,
         [S.treeRowNested]: depth > 0,
       })}
-      onMouseEnter={() => handlePrefetch(item)}
+      onMouseEnter={() => onPrefetchPage(pageId)}
       onClick={handleClick}
       // custom css var used for tree styles
       style={{ "--tree-depth": depth } as React.CSSProperties}
@@ -467,6 +521,13 @@ function ExplorationHeadingIcon({
   if (status === "canceled") {
     return (
       <Icon name="octagon_alert" c="icon-primary" aria-label={t`Stopped`} />
+    );
+  }
+  const isThreadNode =
+    headingKind === "root" || headingKind === "sub-exploration";
+  if (status === "error" && isThreadNode) {
+    return (
+      <Icon name="warning_triangle_filled" c="error" aria-label={t`Failed`} />
     );
   }
   if (headingKind == null) {

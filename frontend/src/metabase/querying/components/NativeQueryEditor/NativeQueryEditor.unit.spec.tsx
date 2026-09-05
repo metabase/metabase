@@ -56,7 +56,7 @@ describe("NativeQueryEditor", () => {
         // Unjustified type cast. FIXME
         storeInitialState: createMockState({
           metabot: {
-            conversations: {
+            agents: {
               omnibot: {
                 visible: isMetabotSidebarOpen,
               },

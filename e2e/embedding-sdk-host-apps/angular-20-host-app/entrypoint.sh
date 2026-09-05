@@ -7,7 +7,7 @@ HOST_APP_DIR="$(pwd)"
 
 npm ci --install-links
 
-npm i ../../../resources/embedding-sdk --install-links --no-save --no-package-lock
+npm i ../../../resources/embedding-sdk --install-links --no-save
 
 if [ "$WATCH" = "true" ]; then
   npm run watch -- --port $CLIENT_PORT

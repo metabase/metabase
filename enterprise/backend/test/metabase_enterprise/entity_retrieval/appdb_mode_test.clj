@@ -71,6 +71,10 @@
     (testing "opted in, but a library_retrieval schema already exists — refusing to clobber it"
       (is false "the appdb-mode job should start from a fresh app db"))
 
+    (contains? (tables-in-schema (mdb/data-source) "public") (:vectors index-table/legacy-tables))
+    (testing "opted in, but a public library_entity_index already exists — refusing to clobber it"
+      (is false "the round trip creates that table itself; drop the leftover from an interrupted run"))
+
     :else
     (mt/with-premium-features #{:library :library-retrieval}
       ;; near-identical vectors, so the query lands on its document and nothing else
@@ -91,19 +95,14 @@
                 (is (= :app-db (semantic.db.datasource/pgvector-mode)))
                 (is (true? (entity-retrieval.core/available?)))
                 (is (= index-table/default-tables (index-table/tables))))
+              ;; an application table carrying the name this index used before it had a schema of its own.
+              ;; No app db can hold an old index of ours -- the bare names date from when the index was
+              ;; dedicated-only -- so nothing may move this one, whatever it is called.
+              (jdbc/execute! app-db ["CREATE TABLE library_entity_index (id bigint primary key)"])
+              (jdbc/execute! app-db ["INSERT INTO library_entity_index VALUES (1)"])
               (let [ds            (semantic.db.datasource/ensure-initialized-data-source!)
                     public-before (tables-in-schema app-db "public")]
                 (is (identical? app-db ds) "app-db mode shares the application pool")
-                ;; an index built before the schema existed, standing in for an upgrading instance. Its
-                ;; rows must survive: rebuilding instead would re-embed the whole library.
-                ;; ensure-tables! installs the extension, but this table predates that call and its
-                ;; vector(4) column needs the type to exist already
-                (jdbc/execute! app-db ["CREATE EXTENSION IF NOT EXISTS vector"])
-                (jdbc/execute! app-db ["CREATE TABLE library_entity_index
-                                        (doc_id text primary key, entity_type text, entity_local_id bigint,
-                                         doc_type text, doc_text text, doc_embedding vector(4))"])
-                (jdbc/execute! app-db ["INSERT INTO library_entity_index
-                                        VALUES ('legacy-doc', 'table', 1, 'name', 'legacy', '[0,0,0,0]')"])
                 (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
                                :model/Collection {data-id :id} {:type     "library-data"
                                                                 :location (str "/" lib-id "/")}
@@ -114,22 +113,17 @@
                                                                  :active       true
                                                                  :name         "dog_training_guide"
                                                                  :display_name "Dog Training Guide"}]
-                  (testing "adoption keeps the rows an upgrading instance already embedded"
-                    ;; asserted here rather than after the reconcile, which GCs any document the library
-                    ;; no longer implies -- including this synthetic one
-                    (index-table/ensure-tables! ds semantic.tu/mock-embedding-model)
+                  (index-table/ensure-tables! ds semantic.tu/mock-embedding-model)
+                  (testing "an application table sharing the index's old bare name is left where it is"
                     (is (= 1 (:count (jdbc/execute-one!
                                       app-db
-                                      [(format "SELECT count(*) AS count FROM %s WHERE doc_id = 'legacy-doc'"
-                                               (index-table/vectors-table-sql))]
+                                      ["SELECT count(*) AS count FROM public.library_entity_index"]
                                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
-                        "moved, not recreated empty -- otherwise the whole library re-embeds"))
+                        "adoption belongs to a dedicated store, whose bare tables really are ours"))
                   (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
                   (testing "both tables live inside the library_retrieval schema"
                     (is (= #{"library_entity_index" "library_entity_index_meta"}
                            (tables-in-schema app-db index-table/index-schema))))
-                  (testing "the pre-existing index was moved, not left behind"
-                    (is (not (contains? (tables-in-schema app-db "public") "library_entity_index"))))
                   (testing "the application schema is untouched"
                     (is (= public-before (tables-in-schema app-db "public"))))
                   (testing "retrieval round-trips through the app-db pool"
@@ -148,5 +142,6 @@
                     (is (= #{"library_entity_index" "library_entity_index_meta"}
                            (tables-in-schema app-db index-table/index-schema))))))
               (finally
+                (jdbc/execute! app-db ["DROP TABLE IF EXISTS public.library_entity_index"])
                 (jdbc/execute! app-db [(format "DROP SCHEMA IF EXISTS %s CASCADE"
                                                index-table/index-schema)])))))))))

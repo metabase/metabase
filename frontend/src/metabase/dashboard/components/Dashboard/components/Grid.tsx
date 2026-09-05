@@ -1,15 +1,15 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useDashboardContext } from "metabase/dashboard/context";
-import { useSelector } from "metabase/redux";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
-} from "metabase/selectors/user";
+} from "metabase/current-user";
+import { useSelector } from "metabase/redux";
 import { Loader } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
+import { useDashboardContext } from "../../../context";
 import {
   DashboardGridConnected,
   type DashboardGridProps,

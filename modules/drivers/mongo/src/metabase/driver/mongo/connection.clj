@@ -1,6 +1,6 @@
 (ns metabase.driver.mongo.connection
   "This namespace contains code responsible for connecting to mongo deployment."
-  (:refer-clojure :exclude [not-empty])
+  (:refer-clojure :exclude [every? not-empty])
   (:require
    [clojure.string :as str]
    [metabase.driver-api.core :as driver-api]
@@ -12,14 +12,16 @@
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [not-empty]])
+   [metabase.util.performance :refer [every? not-empty]])
   (:import
    (com.mongodb
     ConnectionString
     MongoClientSettings
     MongoClientSettings$Builder
     MongoCredential)
-   (com.mongodb.connection SslSettings$Builder)))
+   (com.mongodb.connection SslSettings$Builder)
+   (com.mongodb.spi.dns InetAddressResolver)
+   (java.net InetAddress)))
 
 (set! *warn-on-reflection* true)
 
@@ -65,18 +67,30 @@
                                  (.context ^SslSettings$Builder builder ssl-context)))))
       builder)))
 
+(defn- warehouse-inet-address-resolver
+  "Mongo resolves every seed, SRV target, and topology-discovered server through this resolver. With an SSH tunnel,
+  loopback is the intentional local tunnel entrance; other addresses still follow the configured warehouse policy."
+  [tunnel-enabled]
+  (reify InetAddressResolver
+    (lookupByName [_ host]
+      (let [addresses (vec (InetAddress/getAllByName ^String host))]
+        (when-not (and tunnel-enabled (every? #(.isLoopbackAddress ^InetAddress %) addresses))
+          (driver.u/validate-resolved-addresses! addresses))
+        addresses))))
+
 (defn db-details->mongo-client-settings
   "Generate `MongoClientSettings` from `db-details`. `ConnectionString` is generated and applied to
    `MongoClientSettings$Builder` first. Then credentials are set and ssl context is updated in the `builder` object.
    Afterwards, `MongoClientSettings` are built using `.build`."
   ^MongoClientSettings
-  [{:keys [authdb user pass use-conn-uri ssl additional-options] :as db-details}]
+  [{:keys [authdb user pass use-conn-uri ssl additional-options tunnel-enabled] :as db-details}]
   (let [connection-string (-> db-details
                               db-details->connection-string
                               ConnectionString.)
         builder (com.mongodb.MongoClientSettings/builder)]
     (.applicationName builder driver-api/mb-app-id-string)
     (.applyConnectionString builder connection-string)
+    (.inetAddressResolver builder (warehouse-inet-address-resolver tunnel-enabled))
     (when-not use-conn-uri
       ;; NOTE: authSource connection parameter is the second argument of `createCredential`. We currently set it only
       ;;       when some credentials are used (ie. user is not empty), previously we did that in all cases. I've
@@ -113,8 +127,8 @@
   "Create instance of `MongoClient` for `database` and bind it to [[*mongo-client*]]. `database` can be anything
    digestable by [[mongo.db/details-normalized]]. Call of this macro in its body will reuse existing
    [[*mongo-client*]]."
-  {:clj-kondo/lint-as 'clojure.core/let
-   :clj-kondo/ignore [:unresolved-symbol :type-mismatch]}
+  {:clj-kondo/ignore  [:unresolved-symbol :type-mismatch]
+   :clj-kondo/lint-as 'clojure.core/let} ;; kondo can't follow the syntax-quoted fn indirection under lint-as let
   [[client-sym database] & body]
   `(let [f# (fn [~client-sym] ~@body)]
      (if (nil? *mongo-client*)
@@ -130,8 +144,8 @@
 
 (defmacro with-mongo-database
   "Utility for accessing database directly instead of a client. For more info see [[with-mongo-client]]."
-  {:clj-kondo/lint-as 'clojure.core/let
-   :clj-kondo/ignore [:unresolved-symbol :type-mismatch]}
+  {:clj-kondo/ignore  [:unresolved-symbol :type-mismatch]
+   :clj-kondo/lint-as 'clojure.core/let} ;; kondo can't follow the syntax-quoted fn indirection under lint-as let
   [[db-sym database] & body]
   `(let [f# (fn [~db-sym] ~@body)]
      (do-with-mongo-database f# ~database)))

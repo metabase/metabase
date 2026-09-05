@@ -49,7 +49,7 @@ describe("scenarios > data studio > library", () => {
       event: "data_studio_opened",
       triggered_from: "nav_menu",
     });
-    H.DataStudio.nav().findByLabelText("Library").click();
+    H.DataStudio.nav().findByLabelText("Semantic layer").click();
 
     cy.log("Create library via inline empty state");
     H.DataStudio.Library.libraryPage().within(() => {

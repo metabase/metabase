@@ -404,12 +404,7 @@ describe("scenarios > collections > trash", () => {
     archiveBanner().should("not.exist");
 
     cy.visit("/trash");
-
-    collectionTable().within(() => {
-      cy.findByText("Collection A").should("not.exist");
-      cy.findByText("Dashboard A").should("not.exist");
-      cy.findByText("Question A").should("not.exist");
-    });
+    cy.findByTestId("collection-empty-state").should("be.visible");
 
     cy.visit(`/collection/${FIRST_COLLECTION_ID}`);
 
@@ -494,9 +489,7 @@ describe("scenarios > collections > trash", () => {
     archiveBanner().findByText("Delete permanently").click();
     H.modal().findByText("Delete Question B permanently?").should("exist");
     H.modal().findByText("Delete permanently").click();
-    collectionTable().within(() => {
-      cy.findByText("Question B").should("not.exist");
-    });
+    cy.findByTestId("collection-empty-state").should("be.visible");
   });
 
   describe("bulk actions", () => {

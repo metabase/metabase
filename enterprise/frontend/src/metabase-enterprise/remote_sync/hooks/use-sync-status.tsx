@@ -1,5 +1,4 @@
-import dayjs from "dayjs";
-
+import { dayjs } from "metabase/dayjs";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import { useGetRemoteSyncCurrentTaskQuery } from "metabase-enterprise/api";

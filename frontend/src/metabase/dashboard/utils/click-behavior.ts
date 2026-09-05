@@ -1,12 +1,11 @@
 import { parseParameterValue } from "metabase/parameters/utils/parameter-parsing";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { checkNotNull } from "metabase/utils/types";
-import { clickBehaviorIsValid } from "metabase/visualizations/lib/formatting/click-data";
+import type { ValueAndColumnForColumnNameDate } from "metabase/value-formatting";
 import {
   formatDateTimeForParameter,
   formatDateToRangeForParameter,
-} from "metabase/visualizations/lib/formatting/date";
-import type { ValueAndColumnForColumnNameDate } from "metabase/visualizations/lib/formatting/link";
+} from "metabase/value-formatting";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {
@@ -17,7 +16,11 @@ import {
 import { getParameterColumns } from "metabase-lib/v1/parameters/utils/targets";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import { isDate, isa } from "metabase-lib/v1/types/utils/isa";
+import {
+  isDate,
+  isDateWithoutTime,
+  isa,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   ClickBehavior,
   ClickBehaviorDimensionTarget,
@@ -30,6 +33,7 @@ import type {
   Parameter,
   QuestionDashboardCard,
 } from "metabase-types/api";
+import { clickBehaviorIsValid } from "metabase-types/guards";
 
 interface Target {
   id: Parameter["id"];
@@ -44,7 +48,7 @@ interface SourceFilters {
   userAttribute: (userAttribute: string) => boolean;
 }
 
-interface ExtraData {
+export interface ClickBehaviorExtraData {
   dashboard?: Dashboard;
   parameters?: Parameter[];
   dashboards?: Record<Dashboard["id"], Dashboard>;
@@ -269,7 +273,7 @@ export function formatSourceForTarget(
     clickBehavior,
   }: {
     data: ValueAndColumnForColumnNameDate;
-    extraData: ExtraData;
+    extraData: ClickBehaviorExtraData;
     clickBehavior: ClickBehavior;
   },
 ) {
@@ -287,6 +291,7 @@ export function formatSourceForTarget(
     typeof datum.value === "string"
   ) {
     const sourceDateUnit = datum.column.unit || null;
+    const fallbackUnit = isDateWithoutTime(datum.column) ? "day" : "minute";
 
     if (target.type === "parameter") {
       // we should serialize differently based on the target parameter type
@@ -294,12 +299,10 @@ export function formatSourceForTarget(
         return formatDateForParameterType(
           datum.value,
           parameter.type,
-          sourceDateUnit,
+          sourceDateUnit ?? fallbackUnit,
         );
       }
     } else {
-      // If the target is a dimension or variable, we serialize as a date to remove the timestamp
-
       if (
         typeof sourceDateUnit === "string" &&
         ["week", "month", "quarter", "year", "hour", "minute"].includes(
@@ -312,7 +315,7 @@ export function formatSourceForTarget(
       return formatDateForParameterType(
         datum.value,
         "date/single",
-        sourceDateUnit,
+        sourceDateUnit ?? fallbackUnit,
       );
     }
   }
@@ -361,7 +364,7 @@ export function getTargetForQueryParams(
     extraData,
     clickBehavior,
   }: {
-    extraData: ExtraData;
+    extraData: ClickBehaviorExtraData;
     clickBehavior: ClickBehavior;
   },
 ) {
@@ -378,7 +381,7 @@ function getParameter(
     extraData,
     clickBehavior,
   }: {
-    extraData: ExtraData;
+    extraData: ClickBehaviorExtraData;
     clickBehavior: ClickBehavior;
   },
 ): Parameter | undefined {

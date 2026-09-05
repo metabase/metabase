@@ -63,14 +63,14 @@ jobs:
           fi
 
           echo "Changed e2e Cypress specs:"
-          echo "$FILES" | sed 's/^/  - /'
+          echo "$FILES" | awk '{ print "  - " $0 }'
 
           # Compact JSON array for the matrix, e.g. ["e2e/test/scenarios/a.cy.spec.js"].
           SPECS_JSON=$(echo "$FILES" | jq -R . | jq -cs .)
           echo "specs=${SPECS_JSON}" >> "$GITHUB_OUTPUT"
           echo "should_run=true" >> "$GITHUB_OUTPUT"
 
-          echo "Note: you can use the burn-50 or burn-100 labels to increase the burn-in count from the default of 20." >> $GITHUB_STEP_SUMMARY
+          echo "Note: you can use the burn-50 or burn-100 labels to increase the burn-in count from the default of 20." >> "$GITHUB_STEP_SUMMARY"
 
   stress-test:
     name: Stress test

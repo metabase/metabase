@@ -560,22 +560,17 @@ describe("scenarios > setup > AI config step", () => {
   it("should offer BYOK providers without the managed option and allow skipping", () => {
     navigateToAiConfigStep();
 
-    cy.findByLabelText("Connect to an AI provider")
-      .findByLabelText("Provider")
-      .click();
-
-    H.popover().within(() => {
-      cy.findByText("Anthropic").should("be.visible");
-      cy.findByText("OpenAI").should("be.visible");
-      cy.findByText("OpenRouter").should("be.visible");
-      cy.findByText("Microsoft Azure").should("be.visible");
-      cy.findByText("Amazon Bedrock").should("be.visible");
-      cy.findByText("Metabase").should("not.exist");
-    });
-    H.popover().findByText("Anthropic").click();
-
     cy.findByLabelText("Connect to an AI provider").within(() => {
-      cy.findByLabelText("API key").should("be.visible");
+      cy.findByRole("button", { name: /OpenAI/ }).should("be.visible");
+      cy.findByRole("button", { name: /OpenRouter/ }).should("be.visible");
+      cy.findByRole("button", { name: /Microsoft Azure/ }).should("be.visible");
+      cy.findByRole("button", { name: /Amazon Bedrock/ }).should("be.visible");
+      // the managed provider is offered but not connectable without the LLM proxy,
+      // which e2e does not configure
+      cy.findByRole("button", { name: /Metabase/ }).should("be.disabled");
+
+      cy.findByRole("button", { name: /Anthropic/ }).click();
+      cy.findByLabelText(/API key/).should("be.visible");
       cy.button("I'll set this up later").click();
     });
 
@@ -591,25 +586,21 @@ describe("scenarios > setup > AI config step", () => {
       port: MOCK_LLM_PORT,
       responseText: "Hello from mock LLM!",
     });
-    cy.intercept("PUT", "/api/metabot/settings").as("connectProvider");
+    cy.intercept("POST", "/api/llm/providers").as("connectProvider");
 
     navigateToAiConfigStep();
 
-    // The wizard runs as the freshly created admin, so settings can be
-    // updated mid-flow. Point the Anthropic client at the mock server that
-    // answers the credential-validating /v1/models call.
-    H.updateSetting(
-      "llm-anthropic-api-base-url",
-      `http://localhost:${MOCK_LLM_PORT}`,
-    );
-
-    cy.findByLabelText("Connect to an AI provider")
-      .findByLabelText("Provider")
-      .click();
-    H.popover().findByText("Anthropic").click();
-
     cy.findByLabelText("Connect to an AI provider").within(() => {
-      cy.findByLabelText("API key").type("sk-ant-api03-e2e-test-key");
+      cy.findByRole("button", { name: /Anthropic/ }).click();
+      cy.findByLabelText(/API key/).type("sk-ant-api03-e2e-test-key");
+
+      // The base URL belongs to the connection now rather than to a global setting, so
+      // this is what points the credential-verifying /v1/models call at the mock server.
+      cy.findByRole("button", { name: /Advanced settings/ }).click();
+      cy.findByLabelText("API base URL").type(
+        `http://localhost:${MOCK_LLM_PORT}`,
+      );
+
       cy.button("Connect").click();
       cy.wait("@connectProvider");
 
@@ -650,6 +641,16 @@ describe("scenarios > setup > AI config step", () => {
       });
     };
 
+    const managedConnection = {
+      key: "metabase",
+      type: "metabase",
+      name: "Metabase AI service",
+      source: "db",
+      usable: true,
+      env_vars: [],
+      config: {},
+    };
+
     let isConnected = false;
     cy.intercept("GET", "/api/session/properties", (req) => {
       req.reply((res) => {
@@ -664,6 +665,20 @@ describe("scenarios > setup > AI config step", () => {
             "metabase/anthropic/claude-sonnet-4-6";
         }
       });
+    });
+    // the managed type is only connectable once the LLM proxy is configured, which has no
+    // backing in e2e, so mark it available the same way the token features are patched
+    cy.intercept("GET", "/api/llm/provider-types", (req) => {
+      req.reply((res) => {
+        res.body = res.body.map((providerType: { type: string }) =>
+          providerType.type === "metabase"
+            ? { ...providerType, available: true }
+            : providerType,
+        );
+      });
+    });
+    cy.intercept("GET", "/api/llm/providers", (req) => {
+      req.reply(isConnected ? [managedConnection] : []);
     });
     cy.intercept("GET", "/api/ee/cloud-add-ons/addons", [
       {
@@ -695,9 +710,9 @@ describe("scenarios > setup > AI config step", () => {
       updated_at: null,
     });
     cy.intercept("POST", "/api/premium-features/token/refresh", {});
-    cy.intercept("PUT", "/api/metabot/settings", (req) => {
+    cy.intercept("POST", "/api/llm/providers", (req) => {
       isConnected = true;
-      req.reply({ value: "metabase/anthropic/claude-sonnet-4-6", models: [] });
+      req.reply(managedConnection);
     }).as("connectManaged");
 
     cy.visit(
@@ -728,16 +743,18 @@ describe("scenarios > setup > AI config step", () => {
     startAiConfigStep();
 
     cy.findByLabelText("Connect to an AI provider").within(() => {
-      cy.findByLabelText("Provider").should("have.value", "Metabase");
-      cy.findByText("About Metabase AI service").should("be.visible");
+      cy.findByRole("button", { name: /Metabase/ }).click();
+      cy.findByText(
+        /The simplest way to get started with AI in Metabase/,
+      ).should("be.visible");
       cy.findByText(/You get 1M tokens for free/).should("be.visible");
       cy.button("Connect").click();
     });
 
     cy.wait("@connectManaged")
       .its("request.body")
-      .should("deep.equal", { provider: "metabase", model: "" });
-    cy.findByLabelText("Connected to Metabase").should("be.visible");
+      .should("deep.equal", { type: "metabase" });
+    cy.findByLabelText("Connected to Metabase AI service").should("be.visible");
   });
 
   it("should not offer the step when AI features are disabled", () => {

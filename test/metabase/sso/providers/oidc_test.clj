@@ -217,6 +217,60 @@
         (is (nil? (get-in result [:user-data :last_name])))
         (is (= "user456" (get-in result [:user-data :provider-id])))))))
 
+(defn- authenticate-with-claims
+  "Run the OIDC callback flow with mocked token exchange/validation returning `claims`."
+  [claims config]
+  (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                              (fn [_issuer] test-discovery-doc)
+                              http/post
+                              (fn [_url _opts]
+                                {:status 200
+                                 :body {:id_token "valid-token"
+                                        :access_token "access-token-123"}})
+                              oidc.tokens/validate-id-token
+                              (fn [_token _config _nonce]
+                                {:valid? true
+                                 :claims claims})]
+    (provider/authenticate :provider/oidc {:oidc-config config
+                                           :code "auth-code-123"
+                                           :state "state-token-456"
+                                           :nonce "test-nonce"})))
+
+(def ^:private base-claims
+  {:sub "user123"
+   :iss "https://provider.example.com"
+   :aud "test-client-id"
+   :email "user@example.com"})
+
+(deftest authenticate-email-verified-test
+  (testing "Rejects token when email_verified is explicitly false"
+    (let [result (authenticate-with-claims (assoc base-claims :email_verified false) test-config)]
+      (is (false? (:success? result)))
+      (is (= :email-not-verified (:error result)))
+      (is (nil? (:user-data result)))))
+  (testing "Rejects token when email_verified is the string \"false\""
+    (let [result (authenticate-with-claims (assoc base-claims :email_verified "false") test-config)]
+      (is (false? (:success? result)))
+      (is (= :email-not-verified (:error result)))))
+  (testing "Rejects token with email_verified false even with a custom email attribute mapping"
+    (let [config (assoc test-config :attribute-email "mail")
+          claims (assoc base-claims
+                        :mail "user@example.com"
+                        :email_verified false)
+          result (authenticate-with-claims claims config)]
+      (is (false? (:success? result)))
+      (is (= :email-not-verified (:error result)))))
+  (testing "Accepts token when email_verified is true"
+    (let [result (authenticate-with-claims (assoc base-claims :email_verified true) test-config)]
+      (is (true? (:success? result)))
+      (is (= "user@example.com" (get-in result [:user-data :email])))))
+  (testing "Accepts token when email_verified is the string \"true\""
+    (let [result (authenticate-with-claims (assoc base-claims :email_verified "true") test-config)]
+      (is (true? (:success? result)))))
+  (testing "Accepts token without an email_verified claim (claim is optional per OIDC Core)"
+    (let [result (authenticate-with-claims base-claims test-config)]
+      (is (true? (:success? result))))))
+
 (deftest authenticate-custom-attribute-mapping-test
   (testing "Uses custom attribute mappings when provided"
     (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration

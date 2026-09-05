@@ -7,6 +7,7 @@
 (comment metabase.cache.models.cache-config/keep-me
          metabase.cache.settings/keep-me)
 
+;; the re-exported var carries the docstring; kondo can't see through import-def
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.cache.models.cache-config/invalidate! invalidate-config!)
 

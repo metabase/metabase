@@ -12,4 +12,5 @@
   plugins-dir
   plugins-dir-info]
  [metabase.plugins.initialize
-  load-plugin!])
+  load-plugin!
+  registered?])

@@ -10,9 +10,10 @@ import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { ScheduleSettings } from "metabase-types/api";
 
 import { Schedule } from "./Schedule";
+import { cronToBuilderValue } from "./cron";
+import type { ScheduleValue } from "./domain";
 
 const storeInitialState = createMockState({
   settings: mockSettings(),
@@ -38,7 +39,7 @@ export default {
 const Template: StoryFn<typeof Schedule> = (args) => {
   const [
     {
-      cronString,
+      value,
       scheduleOptions = [
         "every_n_minutes",
         "hourly",
@@ -49,27 +50,21 @@ const Template: StoryFn<typeof Schedule> = (args) => {
       timezone = "UTC",
       locale = "en",
       longVerb = false,
-      isCustomSchedule = false,
     },
     updateArgs,
   ] = useArgs();
 
   const verb = longVerb ? t`Clear cache for this dashboard` : t`Send`;
-  const handleChange = (cronString: string, schedule: ScheduleSettings) =>
-    updateArgs({
-      cronString,
-      isCustomSchedule: schedule.schedule_type === "cron",
-    });
+
   return (
     <LocaleProvider locale={locale}>
       <Schedule
         {...args}
         verb={verb}
-        cronString={cronString}
+        value={value}
         scheduleOptions={scheduleOptions}
         timezone={timezone}
-        onScheduleChange={handleChange}
-        isCustomSchedule={isCustomSchedule}
+        onScheduleChange={updateArgs}
       />
     </LocaleProvider>
   );
@@ -79,7 +74,7 @@ export const Default = {
   render: Template,
 
   args: {
-    cronString: "0 0 9 * * ? *",
+    value: cronToBuilderValue("0 0 9 * * ? *"),
     longVerb: false,
     locale: "en",
   },
@@ -88,7 +83,7 @@ export const Default = {
 export const LongVerb = {
   render: Template,
   args: {
-    cronString: "0 0 9 * * ? *",
+    value: cronToBuilderValue("0 0 9 * * ? *"),
     longVerb: true,
     locale: "en",
   },
@@ -97,7 +92,7 @@ export const LongVerb = {
 export const EveryNMinutes = {
   render: Template,
   args: {
-    cronString: "0 0/10 * * * ? *",
+    value: cronToBuilderValue("0 0/10 * * * ? *"),
     longVerb: false,
     locale: "en",
   },
@@ -106,7 +101,7 @@ export const EveryNMinutes = {
 export const HourlyOnSpecificMinute = {
   render: Template,
   args: {
-    cronString: "0 10 * * * ? *",
+    value: cronToBuilderValue("0 10 * * * ? *"),
     longVerb: false,
     locale: "en",
     minutesOnHourPicker: true,
@@ -116,7 +111,7 @@ export const HourlyOnSpecificMinute = {
 export const CustomSchedule = {
   render: Template,
   args: {
-    cronString: "0 10 10 * * ? *",
+    value: { schedule_type: "cron", cron: "0 10 10 * * ? *" },
     scheduleOptions: [
       "every_n_minutes",
       "hourly",
@@ -125,18 +120,14 @@ export const CustomSchedule = {
       "monthly",
       "cron",
     ],
-    isCustomSchedule: true,
-    renderScheduleDescription: (
-      schedule: ScheduleSettings,
-      cronString: string,
-    ) => {
+    renderScheduleDescription: (value: ScheduleValue, cronString: string) => {
       return (
         <ul style={{ marginTop: "1rem" }}>
           <li>
             Demo of <code>renderScheduleDescription</code>:
           </li>
           <li>Cron String: {cronString}</li>
-          <li>Schedule updated on blur: {JSON.stringify(schedule)}</li>
+          <li>Schedule updated on blur: {JSON.stringify(value)}</li>
         </ul>
       );
     },

@@ -5,11 +5,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type {
-  ScheduleSettings,
-  ScheduleType,
-  TokenFeatures,
-} from "metabase-types/api";
+import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -17,12 +13,25 @@ import {
 
 import type { ScheduleProps } from "./Schedule";
 import { Schedule } from "./Schedule";
+import type {
+  GetScheduleDefaults,
+  ScheduleValue,
+  ScheduleValueType,
+} from "./domain";
+import { getScheduleDefaults } from "./domain";
+import type { ScheduleChangeEvent } from "./types";
+
+export const getDefaultsWithoutHour: GetScheduleDefaults = (scheduleType) => ({
+  ...getScheduleDefaults(scheduleType),
+  schedule_hour: null,
+});
+
 export interface SetupOpts {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
-const mockScheduleOptions: ScheduleType[] = [
+const mockScheduleOptions: ScheduleValueType[] = [
   "every_n_minutes",
   "hourly",
   "daily",
@@ -48,65 +57,29 @@ const buildStoreState = ({
 export const setup = ({
   enterprisePlugins,
   tokenFeatures = {},
-  ...props
-}: SetupOpts & Partial<ScheduleProps> = {}) => {
-  const onScheduleChange = jest.fn();
-
-  if (enterprisePlugins) {
-    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
-  }
-
-  const propsWithDefaults: ScheduleProps = {
-    cronString: props.cronString ?? "0 0 8 * * ? *",
-    scheduleOptions: mockScheduleOptions,
-    onScheduleChange,
-    timezone: mockTimezone,
-    verb: mockVerb,
-    ...props,
-  };
-
-  const renderResult = renderWithProviders(
-    <Schedule {...propsWithDefaults} />,
-    { storeInitialState: buildStoreState({ tokenFeatures }) },
-  );
-
-  return { ...renderResult, onScheduleChange };
-};
-
-/**
- * Stateful wrapper that holds the cron string in React state and re-renders
- * `<Schedule>` after every change. Required for tests that drive multiple
- * sequential clicks — `<Schedule>` derives its settings from `cronString` on
- * each render, so the parent must update `cronString` for subsequent clicks
- * to see the new state.
- */
-export const setupHarness = ({
-  enterprisePlugins,
-  tokenFeatures = {},
-  initialCronString = "0 0 * * * ? *",
+  value: initialValue,
   ...props
 }: SetupOpts &
-  Omit<Partial<ScheduleProps>, "cronString" | "onScheduleChange"> & {
-    initialCronString?: string;
-  } = {}) => {
-  const onScheduleChange = jest.fn<void, [string, ScheduleSettings]>();
+  Omit<Partial<ScheduleProps>, "onScheduleChange"> &
+  Pick<ScheduleProps, "value">) => {
+  const onScheduleChange = jest.fn<void, [ScheduleChangeEvent]>();
 
   if (enterprisePlugins) {
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   const Harness = () => {
-    const [cron, setCron] = useState(initialCronString);
+    const [value, setValue] = useState<ScheduleValue>(initialValue);
     return (
       <Schedule
-        cronString={cron}
         scheduleOptions={mockScheduleOptions}
         timezone={mockTimezone}
         verb={mockVerb}
         {...props}
-        onScheduleChange={(next, settings) => {
-          onScheduleChange(next, settings);
-          setCron(next);
+        value={value}
+        onScheduleChange={(event) => {
+          onScheduleChange(event);
+          setValue(event.value);
         }}
       />
     );

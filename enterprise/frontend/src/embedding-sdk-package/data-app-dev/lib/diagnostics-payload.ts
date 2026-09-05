@@ -109,6 +109,7 @@ export const toPayload = (
 
   return {
     time: entry.time,
+    buildId: entry.buildId,
     kind: entry.kind,
     summary: truncateDiagnosticText(summary),
     detail: detail === null ? null : truncateDiagnosticText(detail),

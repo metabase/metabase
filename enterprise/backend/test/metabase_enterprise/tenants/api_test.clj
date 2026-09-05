@@ -276,7 +276,9 @@
             response (mt/user-http-request :crowberto :post 400 "ee/tenant/" tenant-data)]
         (is (contains? (:errors response) :attributes))
         (is (contains? (:specific-errors response) :attributes))
-        (is (contains? (get-in response [:specific-errors :attributes]) (keyword "@system")))))))
+        (is (re-find #"must not start with `@`" (get-in response [:errors :attributes])))
+        (testing "nothing is written"
+          (is (nil? (t2/select-one :model/Tenant :name "Invalid Tenant"))))))))
 
 (deftest can-update-tenant-attributes-via-put-test
   (testing "Can update tenant attributes via PUT"
@@ -327,7 +329,7 @@
                                            {:attributes invalid-attrs})]
         (is (contains? (:errors response) :attributes))
         (is (contains? (:specific-errors response) :attributes))
-        (is (contains? (get-in response [:specific-errors :attributes]) (keyword "@system")))
+        (is (re-find #"must not start with `@`" (get-in response [:errors :attributes])))
         ;; Original attributes should remain unchanged
         (is (= {"valid" "value"} (:attributes (t2/select-one :model/Tenant :id id))))))))
 

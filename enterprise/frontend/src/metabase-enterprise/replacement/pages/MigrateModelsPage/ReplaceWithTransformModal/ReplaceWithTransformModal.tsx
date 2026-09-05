@@ -9,7 +9,7 @@ import {
 } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { hasFeature } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import {
   Form,
   FormErrorMessage,
@@ -30,7 +30,7 @@ import {
   Text,
 } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import { slugify } from "metabase/visualizations/lib/formatting/url";
+import { slugify } from "metabase/utils/formatting";
 import { useReplaceModelWithTransformMutation } from "metabase-enterprise/api";
 import type { Card, Database } from "metabase-types/api";
 
@@ -59,7 +59,7 @@ export function ReplaceWithTransformModal({
     <Modal
       title={t`Convert this model to a transform?`}
       opened={opened}
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
@@ -158,7 +158,7 @@ function ReplaceWithTransformForm({
       onSubmit={handleSubmit}
     >
       <Form>
-        <Stack gap="lg" mt="sm">
+        <Stack gap="xl" mt="sm">
           <Text>
             {t`We'll create a transform based on the model and replace usages of the model with the transform's output table. Then we'll convert the model to a saved question.`}
           </Text>
@@ -184,7 +184,7 @@ function ReplaceWithTransformForm({
             label={t`Scheduling tags`}
             description={t`Transforms are run by jobs. Jobs run every transform with matching tags.`}
           />
-          <Group gap="xs">
+          <Group gap="xxs">
             <Box flex={1}>
               <FormErrorMessage />
             </Box>

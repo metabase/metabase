@@ -2,12 +2,12 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
+   [metabase.search.db :as search.db]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.string :as u.str]
-   [toucan2.core :as t2]))
+   [metabase.util.string :as u.str]))
 
 (defn impossible-condition?
   "An (incomplete) check where queries will definitely return nothing, to help avoid spurious index update queries."
@@ -52,40 +52,45 @@
 
 (def ^:private available-tsv-languages
   "Mapping of our available locals to the names of the postgres tsvector languages.
-  Queries the pg_ts_config table to find out which languages are actually available."
-  (if (= :postgres (mdb/db-type))
-    (let [default-mapping {:ar    :arabic
-                           :ar_SA :arabic
-                           :ca    :catalan
-                           :da    :danish
-                           :en    :english
-                           :fi    :finnish
-                           :fr    :french
-                           :de    :german
-                           :hu    :hungarian
-                           :id    :indonesian
-                           :it    :italian
-                           :nb    :norwegian
-                           :pt_BR :portuguese
-                           :ru    :russian
-                           :sr    :serbian
-                           :es    :spanish
-                           :sv    :swedish
-                           :tr    :turkish}
-          available-languages (->> (t2/query {:select [:cfgname]
-                                              :from   [:pg_ts_config]})
-                                   (map :cfgname)
-                                   (map keyword)
-                                   set)]
-      (into {} (filter (comp available-languages val) default-mapping)))
-    {}))
+  Queries the pg_ts_config table to find out which languages are actually available.
+
+  Computed on first use rather than at namespace-load time: this namespace is required during the boot require chain,
+  before [[metabase.app-db.setup/verify-db-connection]] has run, so querying eagerly turns any app DB connection
+  problem into an `ExceptionInInitializerError` that buries the real cause."
+  (mdb/memoize-for-application-db
+   (fn []
+     (if (= :postgres (mdb/db-type))
+       (let [default-mapping {:ar    :arabic
+                              :ar_SA :arabic
+                              :ca    :catalan
+                              :da    :danish
+                              :en    :english
+                              :fi    :finnish
+                              :fr    :french
+                              :de    :german
+                              :hu    :hungarian
+                              :id    :indonesian
+                              :it    :italian
+                              :nb    :norwegian
+                              :pt_BR :portuguese
+                              :ru    :russian
+                              :sr    :serbian
+                              :es    :spanish
+                              :sv    :swedish
+                              :tr    :turkish}
+             available-languages (->> (search.db/pg-text-search-configs)
+                                      (map :cfgname)
+                                      (map keyword)
+                                      set)]
+         (into {} (filter (comp available-languages val) default-mapping)))
+       {}))))
 
 (defn tsv-language
   "Get the appropriate text search configuration language for Postgres tsvector operations."
   []
   (if-let [custom-language (search.settings/search-language)]
     custom-language
-    (if-let [lang ((keyword (i18n/site-locale-string)) available-tsv-languages)]
+    (if-let [lang ((keyword (i18n/site-locale-string)) (available-tsv-languages))]
       (name lang)
       "simple")))
 
@@ -157,4 +162,4 @@
    (weighted-tsvector weight text (tsv-language)))
   ([weight text lang]
    ;; tsvector has a max value size of 1048575 bytes, limit to less than that because the multiple values get concatenated together
-   [:setweight [:to_tsvector [:inline lang] [:cast (u.str/limit-bytes text search.ingestion/max-searchable-value-length) :text]] [:inline weight]]))
+   [:setweight [:to_tsvector ^:allow-raw-sql [:inline lang] [:cast (u.str/limit-bytes text search.ingestion/max-searchable-value-length) :text]] ^:allow-raw-sql [:inline weight]]))

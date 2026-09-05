@@ -56,15 +56,18 @@ function elementBody(inner: string): string {
 }
 
 /**
- * Parse one JUnit XML document into normalized entries — one per `<testcase>`
- * that carries a `<failure>` or `<error>`. Multiple problems in a single
- * testcase are joined into one `stack`. Passing (self-closing or problem-free)
- * testcases are skipped. Never throws.
+ * Parse one JUnit XML document into normalized entries. Multiple problems in a
+ * single `<testcase>` are joined into one `stack`. Never throws.
+ *
+ * By default only testcases carrying a `<failure>` or `<error>` are emitted.
+ * Pass `ignorePassingTests: false` on a rerun to also emit the passes (as
+ * `status: "passed"`), which is what lets ci-conductor tell a recovered flake
+ * from a still-broken test. Either way, `<skipped/>` testcases are dropped.
  *
  * Pure (string → normalized), so it's the unit-tested core that each suite's
  * adapter wraps with its own file discovery / labeling.
  */
-export function parseJunit(xml: string): NormalizedTest[] {
+export function parseJunit(xml: string, ignorePassingTests: boolean = true): NormalizedTest[] {
   try {
     const tests: NormalizedTest[] = [];
     // <testcase ...>...</testcase> (failing) or <testcase .../> (passing,
@@ -85,15 +88,21 @@ export function parseJunit(xml: string): NormalizedTest[] {
       `<(failure|error)\\b(${ATTRS})>([\\s\\S]*?)</\\1>`,
       "g",
     );
+    // `<skipped/>`, `<skipped message="..."/>` or `<skipped>...</skipped>`.
+    // Non-global on purpose: `.test` would otherwise carry `lastIndex` between
+    // testcases and start missing matches.
+    const skippedRe = /<skipped\b/;
     for (const match of xml.matchAll(testcaseRe)) {
       const attrs = match[1];
-      const inner = match[2];
-      if (!inner) {
+      const inner = match[2] ?? "";
+      if (!inner && ignorePassingTests) {
         continue; // self-closing => passed
       }
 
       const problems = [...inner.matchAll(problemRe)];
-      if (problems.length === 0) {
+      // Don't report a test to CI Conductor if the test has no failures and we are ignoring passing tests OR
+      // the test has no failures and a skipped tag.
+      if (problems.length === 0 && ( ignorePassingTests || skippedRe.test(inner))) {
         continue;
       }
 
@@ -127,9 +136,7 @@ export function parseJunit(xml: string): NormalizedTest[] {
         file: file || null,
         message,
         stack: stack || undefined,
-        // JUnit only tells us a test failed/errored, never that it recovered,
-        // so everything is "failure".
-        status: "failure",
+        status: problems.length === 0 && !ignorePassingTests ? "passed" : "failure",
       });
     }
     return tests;

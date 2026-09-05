@@ -1,0 +1,17 @@
+## Move the per-provider LLM credential settings (`llm-anthropic-api-key` and friends) onto the
+## `llm-providers` connection list, and delete them.
+##
+## Reversible on purpose: code that predates the list reads those settings directly, so an instance
+## rolled back to it would otherwise run on whatever was last written there — a credential that may
+## since have been rotated through the new UI — rather than on what is actually configured. The
+## rollback writes the list back out into the settings, and rewrites `llm-metabot-provider` when it
+## names a connection the old code cannot resolve.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.7qmx3p
+      author: undrfined
+      comment: Migrate the per-provider LLM credential settings onto llm-providers
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.MigrateLlmProviderSettings

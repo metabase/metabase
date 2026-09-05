@@ -6,10 +6,14 @@ import { SettingHeader } from "metabase/admin/settings/components/SettingHeader"
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { UpsellSemanticSearchPill } from "metabase/admin/upsells/UpsellSemanticSearch";
 import { getErrorMessage } from "metabase/api/utils";
-import { getPlan, isProPlan } from "metabase/common/utils/plan";
 import type { SearchSettingsWidgetProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getSetting, useAdminSetting } from "metabase/settings";
+import {
+  getPlan,
+  getSetting,
+  isProPlan,
+  useAdminSetting,
+} from "metabase/settings";
 import { Box, Progress, Stack, Text, Tooltip } from "metabase/ui";
 import { useGetSemanticSearchStatusQuery } from "metabase-enterprise/api/search";
 
@@ -101,7 +105,7 @@ export function SearchSettingsWidget({
           )}
 
           {!response.error && isIndexing && (
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <Progress
                 size="md"
                 value={progress}

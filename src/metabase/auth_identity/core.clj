@@ -11,7 +11,9 @@
 ;; Import model query functions
 (p/import-vars
  [auth-identity
-  hash-password-credentials])
+  hash-password-credentials
+  set-password!
+  reset-token-hash])
 
 ;; ==============================================================================
 ;; Provider Multimethod System

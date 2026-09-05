@@ -7,10 +7,16 @@ import {
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { getMetadataUnfiltered } from "metabase/metadata-store";
 import { fetchTableMetadata } from "metabase/redux/tables";
-import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
-import type { DatasetQuery, TestQuerySpec } from "metabase-types/api";
+import type {
+  DatasetQuery,
+  TestColumnSpec,
+  TestExpressionSpec,
+  TestQuerySpec,
+  TestStageWithSourceSpec,
+} from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { loadReferencedMetricMetadata } from "./metric-metadata";
@@ -52,8 +58,58 @@ function resolveQueryFromLoadedMetadata(
   const provider = Lib.metadataProvider(databaseId, metadata);
 
   return Lib.toJsQuery(
-    Lib.createTestQuery(provider, { stages: [input] } satisfies TestQuerySpec),
+    Lib.createTestQuery(provider, {
+      stages: [toStageSpec(input)],
+    } satisfies TestQuerySpec),
   );
+}
+
+function toStageSpec(input: QueryInput): TestStageWithSourceSpec {
+  if (!isQuestionInput(input)) {
+    return input;
+  }
+
+  const { source, filters, aggregations, breakouts, orderBys, limit } = input;
+
+  return {
+    source: { type: "card", id: source.id },
+    ...(filters && { filters: filters.map(toResultColumnExpressionSpec) }),
+    ...(aggregations && {
+      aggregations: aggregations.map(toResultColumnExpressionSpec),
+    }),
+    ...(breakouts && { breakouts: breakouts.map(toResultColumnSpec) }),
+    ...(orderBys && { orderBys: orderBys.map(toResultColumnSpec) }),
+    ...(limit != null && { limit }),
+  };
+}
+
+// A card stage exposes the saved question's result columns, so they are looked
+// up by name. Keys that scope a column to a table narrow that lookup and stop
+// it matching, so drop them from generated table fields used as result columns.
+function toResultColumnSpec<TSpec extends TestColumnSpec>(spec: TSpec) {
+  const {
+    tableId: _tableId,
+    sourceName: _sourceName,
+    sourceFieldId: _sourceFieldId,
+    displayName: _displayName,
+    ...resultColumn
+  } = spec;
+
+  return resultColumn;
+}
+
+function toResultColumnExpressionSpec(
+  spec: TestExpressionSpec,
+): TestExpressionSpec {
+  if (spec.type === "column") {
+    return toResultColumnSpec(spec);
+  }
+
+  if (spec.type === "operator") {
+    return { ...spec, args: spec.args?.map(toResultColumnExpressionSpec) };
+  }
+
+  return spec;
 }
 
 async function loadSourceMetadata(store: SdkStore, input: QueryInput) {

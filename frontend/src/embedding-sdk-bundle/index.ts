@@ -18,9 +18,6 @@ import { initializePlugins } from "sdk-ee-plugins";
 
 initializePlugins();
 
-// Imports which are only applicable to the embedding sdk, and not the new iframe embedding.
-import "sdk-specific-imports";
-
 import { sdkBundleExports } from "./sdk-bundle-exports";
 
 import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";

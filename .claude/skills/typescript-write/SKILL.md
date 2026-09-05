@@ -75,10 +75,6 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 - **No comments by default**. Well-named identifiers carry the `what`.
 - **Comments should be concise**. Add a short, concise comment only when the `why` is non-obvious: a workaround, a hidden invariant, a subtle ordering constraint, a clever reduction. Never document the actual implementation, focus on the intent and the why.
 
-## TypeScript Migration
-
-**When touching existing JavaScript files, propose to convert them to TypeScript first**. Create a separate PR for the conversion, then implement the changes.
-
 ## Verify before done
 
 - **Run the project type-check** when finished (see the shared TypeScript commands above).

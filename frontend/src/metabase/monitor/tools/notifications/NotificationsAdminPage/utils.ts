@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -10,6 +9,7 @@ import {
   getAllParamValues,
   getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
+import { dayjs } from "metabase/dayjs";
 import type {
   AdminNotificationListParams,
   AdminNotificationSortColumn,

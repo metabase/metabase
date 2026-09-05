@@ -88,6 +88,10 @@ export type UseMetabotResult = {
    * completes — including success, error, or cancellation.
    */
   isProcessing: boolean;
+  /** How much of the model's context window the conversation occupies, 0-100. */
+  contextWindowPercentUsage: number;
+  /** Whether the conversation has consumed its entire context window. */
+  isContextWindowFull: boolean;
 
   /**
    * A pre-wired component bound to the latest chart the agent produced.

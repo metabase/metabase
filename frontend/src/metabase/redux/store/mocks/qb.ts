@@ -20,7 +20,6 @@ export const createMockQueryBuilderUIControlsState = (
   isShowingSnippetSidebar: false,
   isShowingTimelineSidebar: false,
   focusedTimelineEventIds: null,
-  isShowingAIQuestionAnalysisSidebar: false,
   initialChartSetting: {},
   isShowingRawTable: false,
   isNativeEditorOpen: false,

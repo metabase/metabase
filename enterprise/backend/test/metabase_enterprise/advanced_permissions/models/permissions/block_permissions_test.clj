@@ -138,7 +138,7 @@
               new-graph     (assoc-in current-graph
                                       [:groups group-id (mt/id)]
                                       {:view-data :blocked :create-queries :query-builder-and-native})]
-          (is (=? #"Cannot parse permissions graph because it is invalid.*"
+          (is (=? {:specific-errors {:groups [#"Invalid DB permissions: If you have write access for native queries.*"]}}
                   (mt/with-premium-features #{:advanced-permissions}
                     (mt/user-http-request :crowberto :put 400 "permissions/graph" new-graph)))))))))
 
@@ -284,12 +284,15 @@
                          #"You do not have permissions to run this query"
                          (mt/rows (process-query-for-card child-card)))
                         "Even if the user has can-write? on a Card, they should not be able to run it because they are blocked on Card's db"))))
-              (testing "view-data = unrestricted is required to allow running the query (#15131)"
+              (testing "view-data alone is not enough: the child reads a Card in a Collection the user cannot read"
                 (mt/with-restored-data-perms!
                   (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
                   (rasta-view-data-perm= :unrestricted)
-                  (is (= [[1] [2]] (mt/rows (process-query-for-card child-card)))
-                      "view-data = unrestricted is sufficient to allow running the query"))))))))))
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"You do not have permissions to view Card"
+                       (mt/rows (process-query-for-card child-card)))
+                      "reading the child still requires reading the parent it sources, which is in a blocked Collection"))))))))))
 
 ;; Similar to the above test, but with table-level block in place for the nested query
 (deftest nested-query-table-level-block-permissions-test

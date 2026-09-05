@@ -14,10 +14,16 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private byok-credentials
+  "What a resolved OpenAI connection hands the adapter: adapters read credentials only, never settings."
+  {:api-key "sk-byok" :base-url "https://api.openai.com"})
+
 (defn- fixture
   "Load cached OpenAI raw chunks, or capture from the API when `*live*` / no cache."
   [fixture-name opts]
-  (metabot.tu/raw-fixture fixture-name #(openai/openai-raw (merge {:model "gpt-4.1-mini"} opts))))
+  (metabot.tu/raw-fixture
+   fixture-name
+   #(openai/openai-raw (merge {:model "gpt-4.1-mini" :credentials byok-credentials} opts))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
@@ -192,11 +198,14 @@
           parts      (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)]
       (is (=? [{:type :start}
                {:type :text :text string?}
-               {:type  :usage
-                :usage {:promptTokens        pos-int?
-                        :completionTokens    pos-int?
-                        :cacheCreationTokens nat-int?
-                        :cacheReadTokens     nat-int?}}]
+               {:type              :usage
+                ;; a truncated response must not report as a clean completion
+                :finish-reason     "length"
+                :raw-finish-reason "max_output_tokens"
+                :usage             {:promptTokens        pos-int?
+                                    :completionTokens    pos-int?
+                                    :cacheCreationTokens nat-int?
+                                    :cacheReadTokens     nat-int?}}]
               parts))
       (testing "no error chunk is produced for an incomplete (partial-but-valid) response"
         (is (empty? (filter #(= :error (:type %)) parts)))))))
@@ -412,7 +421,32 @@
         (is (= [{:id "gpt-5.4" :display_name "GPT-5.4"}
                 {:id "gpt-5.6-luna" :display_name "GPT-5.6 Luna"}
                 {:id "gpt-5.6-sol" :display_name "GPT-5.6 Sol"}]
-               (:models (openai/list-models))))))))
+               (:models (openai/list-models {:credentials byok-credentials}))))))))
+
+(deftest openai-raw-explicit-credentials-test
+  (testing "a passed-in api-key and base-url are used over the configured ones"
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key      "sk-setting"
+                                       llm.settings/llm-openai-api-base-url "https://configured.example"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:url     "https://explicit.example/v1/responses"
+                                                          :headers {"Authorization" "Bearer sk-explicit"}}
+                                                         req))
+                                                 (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (openai/openai-raw {:input       [{:role :user :content "hi"}]
+                                 :credentials {:api-key  "sk-explicit"
+                                               :base-url "https://explicit.example"}})))))))
+
+(deftest openai-raw-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No OpenAI API key is set"
+           (openai/openai-raw {:input       [{:role :user :content "hi"}]
+                               :credentials {:api-key ""}}))))))
 
 (deftest list-models-explicit-credentials-test
   (testing "a passed-in api-key is used over the configured key"
@@ -424,15 +458,13 @@
         (is (= {:models []}
                (openai/list-models {:credentials {:api-key "sk-explicit"}})))))))
 
-(deftest list-models-blank-credentials-fall-back-to-configured-key-test
-  (testing "a blank passed-in api-key falls back to the configured key"
-    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-setting"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (=? {:headers {"Authorization" "Bearer sk-setting"}}
-                                                         req))
-                                                 {:status 200 :body {:data []}})]
-        (is (= {:models []}
-               (openai/list-models {:credentials {:api-key ""}})))))))
+(deftest list-models-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No OpenAI API key is set"
+           (openai/list-models {:credentials {:api-key ""}}))))))
 
 (deftest list-models-blank-credentials-without-configured-key-test
   (testing "throws when the passed-in api-key is blank and no key is configured"
@@ -465,47 +497,52 @@
     (is (true? (#'openai/model-supports-temperature? "openai.gpt-4.1-mini")))))
 
 (deftest temperature-omitted-for-reasoning-models-test
-  (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-test"]
-    (let [request-body (fn [opts]
-                         (with-redefs [self.core/sse-reducible identity
-                                       self.core/reducible-with-api-errors (fn [r _ _] r)
-                                       debug/capture-stream    (fn [r _] r)
-                                       http/request            (fn [req] {:body req})]
-                           (json/decode+kw (:body (openai/openai-raw
-                                                   (merge {:input [{:role :user :content "hi"}]
-                                                           :temperature 0.3}
-                                                          opts))))))]
-      (testing "temperature is sent for a non-reasoning model"
-        (is (= 0.3 (:temperature (request-body {:model "gpt-4.1-mini"})))))
-      (testing "temperature is omitted for a GPT-5 model"
-        (is (not (contains? (request-body {:model "gpt-5"}) :temperature))))
-      (testing "temperature is omitted for an o-series model"
-        (is (not (contains? (request-body {:model "o3-mini"}) :temperature)))))))
+  (let [request-body (fn [opts]
+                       (with-redefs [self.core/sse-reducible             identity
+                                     self.core/reducible-with-api-errors (fn [r _ _] r)
+                                     debug/capture-stream                (fn [r _] r)
+                                     http/request                        (fn [req] {:body req})]
+                         (json/decode+kw (:body (openai/openai-raw
+                                                 (merge {:input       [{:role :user :content "hi"}]
+                                                         :temperature 0.3
+                                                         :credentials byok-credentials}
+                                                        opts))))))]
+    (testing "temperature is sent for a non-reasoning model"
+      (is (= 0.3 (:temperature (request-body {:model "gpt-4.1-mini"})))))
+    (testing "temperature is omitted for a GPT-5 model"
+      (is (not (contains? (request-body {:model "gpt-5"}) :temperature))))
+    (testing "temperature is omitted for an o-series model"
+      (is (not (contains? (request-body {:model "o3-mini"}) :temperature))))))
 
 (deftest openai-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-      (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-ant-byok"
-                                         llm.settings/llm-proxy-base-url "https://proxy.example"]
-        (testing "Prefers BYOK over ai proxy"
+      (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
+        (testing "Uses the connection's own credentials"
           (with-redefs [self.core/sse-reducible identity
                         self.core/reducible-with-api-errors (fn [r _ _] r)
                         debug/capture-stream    (fn [r _] r)
                         http/request            (fn [req] {:body req})]
             (is (=? {:method  :post
                      :url     "https://api.openai.com/v1/responses"
-                     :headers {"Authorization" "Bearer sk-ant-byok"}
+                     :headers {"Authorization" "Bearer sk-byok"}
                      :body    string?}
-                    (openai/openai-raw {:input [{:role :user :content "hi"}]})))))
-        (testing "Does not fall back to ai proxy when BYOK is missing"
-          (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
+                    (openai/openai-raw {:input       [{:role :user :content "hi"}]
+                                        :credentials byok-credentials})))))
+        (testing "Does not fall back to ai proxy when the connection carries no key"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No OpenAI API key is set"
+               (openai/openai-raw {:input [{:role :user :content "hi"}]}))))
+        (testing "Does not borrow the single-provider setting when the connection carries no key"
+          (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-elsewhere"]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No OpenAI API key is set"
-                 (openai/openai-raw {:input [{:role :user :content "hi"}]})))))
+                 (openai/openai-raw {:input       [{:role :user :content "hi"}]
+                                     :credentials {:api-key ""}})))))
         (testing "Throws an error if nothing is defined"
-          (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil
-                                             llm.settings/llm-proxy-base-url nil]
+          (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No OpenAI API key is set"

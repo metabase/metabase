@@ -124,7 +124,7 @@ describe("scenarios > explorations > new research > manual flow", () => {
           // instead of leaving the research flow (UXW-4832).
           cy.location("pathname").should("eq", "/question/research/plan");
 
-          H.addMetricsAndDimensions({
+          H.addMetricsToExploration({
             metrics: [ORDERS_COUNT_METRIC_NAME],
           });
 
@@ -188,9 +188,8 @@ describe("scenarios > explorations > new research > manual flow", () => {
     H.visitNewExploration();
     H.startManualExploration();
 
-    // --- "+ Data" → Metrics modal search ---
-    cy.findByRole("button", { name: /Data/ }).click();
-    cy.findByRole("menuitem", { name: "Metrics" }).click();
+    // --- "+ Metrics" modal search ---
+    cy.findByRole("button", { name: /Metrics/ }).click();
     // Seeded names are "Count of orders" + "Count of orders over time".
     cy.wait("@getDimensions");
     // Seeded metrics aren't in the library; switch off the default Library tab.
@@ -300,7 +299,7 @@ describe("scenarios > explorations > new research > metabot flow", () => {
           result: {
             metrics: [firstMetric],
             dimension_groups: [interestingGroup],
-            groups: [{ anchor: "metric", metric_id: firstMetric.id }],
+            groups: [{ metric_id: firstMetric.id }],
           },
         },
         {
@@ -366,77 +365,6 @@ describe("scenarios > explorations > detail page", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("auto-selects the top-ranked sidebar row on first load", () => {
-    H.createExplorationViaApi({ name: "Auto-select fixture" }).then((id) => {
-      visitExplorationUntilSettled(id, 2);
-
-      // Auto-selection follows the interestingness-sorted tree the backend's
-      // scores produce: the top page row is selected on load. The
-      // ArrowRight/ArrowLeft and click selection mechanics are unit-tested
-      // in ExplorationSidebar.unit.spec.tsx.
-      cy.findAllByRole("treeitem", { timeout: 15000 })
-        .first()
-        .should("have.attr", "aria-selected", "true");
-      cy.findAllByRole("treeitem")
-        .filter('[aria-selected="true"]')
-        .should("have.length", 1);
-    });
-  });
-
-  it("groups sidebar rows under their metric heading, ordered by interestingness", () => {
-    createTwoPageExploration("Sidebar grouping fixture").then(
-      ({ explorationId, metricName, pageNames }) => {
-        visitExplorationUntilSettled(explorationId, pageNames.length);
-
-        // Deliberately no `.within()` here: a `within` captures the sidebar
-        // node once, and background refetches can remount it (or its rows) —
-        // after which every inner query runs against the detached old node
-        // and times out. Fresh root-based chains re-query on every retry.
-        const sidebarScope = () => cy.findByTestId("exploration-page-sidebar");
-
-        sidebarScope()
-          .findByRole("group", { name: metricName })
-          .should("be.visible");
-        for (const pageName of pageNames) {
-          sidebarScope().findByText(pageName).should("be.visible");
-        }
-
-        // Row order is backend-driven: pages sort by their queries' highest
-        // interestingness score. Collapse/expand click mechanics are
-        // unit-tested in ExplorationSidebar.unit.spec.tsx.
-        cy.request("GET", `/api/exploration/${explorationId}`).then(
-          ({ body }) => {
-            // Unjustified type cast. FIXME
-            const exploration = body as Exploration;
-            const thread = exploration.threads?.[0];
-            const queries = thread?.queries ?? [];
-            const pages = (thread?.blocks ?? []).flatMap(
-              (block) => block.pages ?? [],
-            );
-            const scoreOf = (page: { query_ids: number[] }) =>
-              Math.max(
-                ...page.query_ids.map(
-                  (queryId) =>
-                    queries.find((query) => query.id === queryId)
-                      ?.interestingness_score ?? -Infinity,
-                ),
-              );
-            const expectedOrder = [...pages]
-              .sort((a, b) => scoreOf(b) - scoreOf(a))
-              .map((page) => page.name);
-
-            sidebarScope()
-              .findAllByRole("treeitem")
-              .then(($rows) => {
-                const rowTexts = [...$rows].map((el) => el.textContent?.trim());
-                expect(rowTexts).to.deep.eq(expectedOrder);
-              });
-          },
-        );
-      },
-    );
-  });
-
   it("changes sidebar selection on click and shows the corresponding visualization area", () => {
     H.createExplorationViaApi({ name: "Click selection fixture" }).then(
       (id) => {
@@ -447,7 +375,7 @@ describe("scenarios > explorations > detail page", () => {
         // row that is NOT selected and assert the selection moves to it.
         cy.findAllByRole("treeitem")
           .filter('[aria-selected="false"]')
-          .first()
+          .eq(1) // first treeitem is the summary document
           .invoke("attr", "href")
           .then((href) => {
             cy.get(`[role="treeitem"][href="${href}"]`).click();
@@ -599,6 +527,22 @@ function visitExplorationUntilSettled(
   awaitThreadCompletion(0);
 }
 
+/**
+ * The FE polls every 2s while the new thread's queries are in flight, then
+ * toasts once its first page lands. Timing is covered by
+ * ExplorationPage.unit.spec.tsx — here we just wait for the real BE.
+ * Scoped to the toast container so we don't match the thread name in the
+ * sidebar.
+ */
+function openExploreFurtherToast(threadName: string): void {
+  H.undoToastListContainer().within(() => {
+    cy.findByText(`Added ${threadName}`, { timeout: 60000 }).should(
+      "be.visible",
+    );
+    cy.findByRole("button", { name: "View" }).click();
+  });
+}
+
 describe("scenarios > explorations > sidebar triage", () => {
   const sidebar = () => cy.findByTestId("exploration-page-sidebar");
   const filterToggle = () => cy.findByTestId("exploration-show-hidden-toggle");
@@ -642,7 +586,7 @@ describe("scenarios > explorations > sidebar triage", () => {
 
         cy.log("Star the selected page with the s shortcut");
         cy.findByRole("radio", { name: "All" }).click({ force: true });
-        cy.findAllByRole("treeitem").should("have.length", 2);
+        cy.findAllByRole("treeitem").should("have.length", 3); // summary document + 2 pages
         sidebar().findByText(pageNames[0]).click();
         selectedRows().should("contain.text", pageNames[0]);
         cy.intercept("PUT", "/api/exploration/page/*/starred").as("setStarred");
@@ -711,7 +655,7 @@ describe("scenarios > explorations > sidebar triage", () => {
     );
   });
 
-  it("hides pages from the toolbar and group menus, reveals them via Show hidden items, and keeps Initial investigation when everything is hidden", () => {
+  it("hides pages from the toolbar and group menus and reveals them via Show hidden items", () => {
     createTwoPageExploration("Sidebar hide fixture").then(
       ({ explorationId, metricName, pageNames }) => {
         cy.intercept("PUT", "/api/exploration/pages/hidden").as(
@@ -723,7 +667,7 @@ describe("scenarios > explorations > sidebar triage", () => {
         // orders pages by interestingness — so which of the two
         // dimension-named pages is selected is data-dependent; derive it
         // from the DOM instead of assuming.
-        cy.findAllByRole("treeitem").should("have.length", 2);
+        cy.findAllByRole("treeitem").should("have.length", 3); // summary document + 2 pages
         selectedRows().should("have.length", 1);
         selectedRows()
           .first()
@@ -735,7 +679,6 @@ describe("scenarios > explorations > sidebar triage", () => {
             )!;
 
             cy.log("Triage arrows step between pages");
-            cy.findByRole("button", { name: "Previous" }).should("be.disabled");
             cy.findByRole("button", { name: "Next" }).click();
             selectedRows().should("contain.text", secondPageName);
             cy.findByRole("button", { name: "Previous" }).click();
@@ -753,7 +696,7 @@ describe("scenarios > explorations > sidebar triage", () => {
 
             cy.log("Auto-advance moves the selection to the remaining page");
             selectedRows().should("contain.text", secondPageName);
-            cy.findAllByRole("treeitem").should("have.length", 1);
+            cy.findAllByRole("treeitem").should("have.length", 2); // summary document + 1 non-hidden page
             sidebar().findByText(firstPageName).should("not.exist");
 
             cy.log("Show hidden items reveals the page with a Hidden marker");
@@ -762,7 +705,7 @@ describe("scenarios > explorations > sidebar triage", () => {
             sidebar().findByText(firstPageName).should("be.visible");
             sidebar().findAllByLabelText("Hidden").should("have.length", 1);
             toggleShowHiddenItems();
-            cy.findAllByRole("treeitem").should("have.length", 1);
+            cy.findAllByRole("treeitem").should("have.length", 2);
             sidebar().findByText(firstPageName).should("not.exist");
           });
 
@@ -779,29 +722,16 @@ describe("scenarios > explorations > sidebar triage", () => {
           .findByText(`${metricName} hidden`)
           .should("be.visible");
 
-        cy.log(
-          "Initial investigation stays, expanded, with an all-hidden note",
-        );
-        sidebar()
-          .findByText("All items have been hidden.")
-          .should("be.visible");
-        sidebar()
-          .findAllByRole("group")
-          .should("have.length", 1)
-          .first()
-          .should("have.attr", "aria-expanded", "true")
-          .and("have.attr", "aria-label", "Initial investigation");
-        cy.findAllByRole("treeitem").should("not.exist");
+        cy.log("Everything but the summary document is hidden");
+        cy.findAllByRole("treeitem").should("have.length", 1);
 
         cy.log("Hidden state is persisted server-side across a reload");
         cy.reload();
-        sidebar()
-          .findByText("All items have been hidden.", { timeout: 15000 })
-          .should("be.visible");
+        cy.findAllByRole("treeitem").should("have.length", 1);
 
         cy.log("Show hidden items + the group Show action restore the pages");
         toggleShowHiddenItems();
-        cy.findAllByRole("treeitem").should("have.length", 2);
+        cy.findAllByRole("treeitem").should("have.length", 3);
         sidebar().findAllByLabelText("Hidden").should("have.length", 2);
         sidebar()
           .findByRole("group", { name: metricName })
@@ -811,12 +741,12 @@ describe("scenarios > explorations > sidebar triage", () => {
         cy.wait("@setPagesHidden")
           .its("request.body.hidden")
           .should("eq", false);
-        cy.findAllByRole("treeitem").should("have.length", 2);
+        cy.findAllByRole("treeitem").should("have.length", 3);
         sidebar().findAllByLabelText("Hidden").should("not.exist");
 
         cy.log("Hiding the group with every page visible sends both page ids");
         toggleShowHiddenItems();
-        cy.findAllByRole("treeitem").should("have.length", 2);
+        cy.findAllByRole("treeitem").should("have.length", 3);
         sidebar()
           .findByRole("group", { name: metricName })
           .findByRole("button", { name: "Group actions" })
@@ -826,9 +756,7 @@ describe("scenarios > explorations > sidebar triage", () => {
           expect(request.body.hidden).to.eq(true);
           expect(request.body.page_ids).to.have.length(2);
         });
-        sidebar()
-          .findByText("All items have been hidden.")
-          .should("be.visible");
+        cy.findAllByRole("treeitem").should("have.length", 1);
 
         cy.log("Undo on the group-hidden toast restores the whole group");
         H.undoToastListContainer()
@@ -840,8 +768,7 @@ describe("scenarios > explorations > sidebar triage", () => {
         cy.wait("@setPagesHidden")
           .its("request.body.hidden")
           .should("eq", false);
-        cy.findAllByRole("treeitem").should("have.length", 2);
-        sidebar().findByText("All items have been hidden.").should("not.exist");
+        cy.findAllByRole("treeitem").should("have.length", 3);
       },
     );
   });
@@ -986,10 +913,12 @@ describe("scenarios > explorations > chart click-through", () => {
             expect(request.body.explore_filters).to.be.an("array").and.not.be
               .empty;
             expect(request.body.explore_filters[0]).to.include.keys(
+              "operator",
               "field_ref",
               "value",
               "display_value",
             );
+            expect(request.body.explore_filters[0].operator).to.eq("=");
 
             // Unjustified type cast. FIXME
             const threads = (response?.body as Exploration).threads ?? [];
@@ -1000,18 +929,9 @@ describe("scenarios > explorations > chart click-through", () => {
             cy.wrap(newThread!.name).as("newThreadName");
           });
 
-          // The FE polls every 2s while the new thread's queries are in flight,
-          // then toasts once its first page lands. Timing is covered by
-          // ExplorationPage.unit.spec.tsx — here we just wait for the real BE.
-          cy.get("@newThreadName").then((name) => {
-            // Scoped to the toast container — an unscoped text query could
-            // match the thread name rendered in the sidebar instead.
-            H.undoToastListContainer()
-              .findByText(`Added ${name}`, { timeout: 60000 })
-              .should("be.visible");
+          cy.get<string>("@newThreadName").then((name) => {
+            openExploreFurtherToast(name);
           });
-
-          cy.findByRole("button", { name: "View" }).click();
 
           cy.location("pathname").should(
             "include",
@@ -1034,6 +954,272 @@ describe("scenarios > explorations > chart click-through", () => {
         });
       });
     });
+  });
+
+  it("brushing a timeseries cartesian chart opens Explore further only, posts between explore_filters, navigates from the new-thread toast, and Add to Summary preserves filter pills", () => {
+    cy.request<GetExplorationDataResponse>(
+      "GET",
+      "/api/exploration/dimensions",
+    ).then(({ body: data }) => {
+      const ordersMetric = data.metrics.find(
+        (metric) => metric.name === ORDERS_COUNT_METRIC_NAME,
+      );
+      expect(
+        ordersMetric,
+        `"${ORDERS_COUNT_METRIC_NAME}" metric is exposed by /api/exploration/dimensions`,
+      ).to.exist;
+      const dimsById = new Map(
+        data.dimension_groups.flatMap((group) =>
+          group.dimensions.map((dim) => [dim.id, dim] as const),
+        ),
+      );
+      const temporalDimension = ordersMetric!.dimension_ids
+        .map((id) => dimsById.get(id))
+        .find((dim) => dim != null && dim.effective_type.includes("Date"));
+      expect(
+        temporalDimension,
+        "orders metric exposes at least one temporal dimension",
+      ).to.exist;
+
+      H.createExplorationViaApi({
+        name: "Chart brush explore-further fixture",
+        metricCardIds: [ordersMetric!.id],
+        dimensionIds: [temporalDimension!.id],
+      }).then((explorationId) => {
+        let initialThreadIds: number[] = [];
+
+        cy.intercept(
+          "POST",
+          `/api/exploration/${explorationId}/explore-further`,
+        ).as("exploreFurther");
+
+        visitExplorationUntilSettled(explorationId, 1);
+
+        cy.request<Exploration>(
+          "GET",
+          `/api/exploration/${explorationId}`,
+        ).then(({ body: exploration }) => {
+          initialThreadIds = (exploration.threads ?? []).map(
+            (thread) => thread.id,
+          );
+        });
+
+        cy.findByTestId("exploration-page-sidebar").within(() => {
+          cy.findByRole("group", { name: ordersMetric!.name }).then(
+            ($group) => {
+              if ($group.attr("aria-expanded") !== "true") {
+                cy.wrap($group).click();
+              }
+            },
+          );
+          cy.findByRole("treeitem", {
+            // Anchor on end so we don't match e.g. "Hour of day".
+            name: new RegExp(`${temporalDimension!.display_name}$`),
+          }).click();
+        });
+
+        H.ensureEchartsContainerHasSvg();
+        H.applyBrush(120, 280);
+
+        cy.findByTestId("click-actions-view").within(() => {
+          cy.findByRole("button", { name: /Explore further/i }).should(
+            "be.visible",
+          );
+          cy.findByRole("button", { name: /Add comment/i }).should("not.exist");
+        });
+
+        cy.findByTestId("click-actions-view")
+          .findByRole("button", { name: /Explore further/i })
+          .click();
+
+        cy.wait("@exploreFurther").then(({ request, response }) => {
+          expect(request.body.explore_filters)
+            .to.be.an("array")
+            .and.have.length(1);
+          expect(request.body.explore_filters[0]).to.include.keys(
+            "operator",
+            "field_ref",
+            "values",
+            "display_value",
+          );
+          expect(request.body.explore_filters[0].operator).to.eq("between");
+          expect(request.body.explore_filters[0].values)
+            .to.be.an("array")
+            .and.have.length(2);
+
+          // Cypress does not type intercept response bodies.
+          const threads = (response?.body as Exploration).threads ?? [];
+          const newThread = threads.find(
+            (thread) => !initialThreadIds.includes(thread.id),
+          );
+          expect(newThread, "explore-further adds a new thread").to.exist;
+          cy.wrap(newThread!.name).as("newThreadName");
+        });
+
+        cy.get<string>("@newThreadName").then((name) => {
+          openExploreFurtherToast(name);
+        });
+
+        cy.location("pathname").should(
+          "include",
+          `/question/research/${explorationId}/page/`,
+        );
+
+        // Temporal ranges use an en-dash (e.g. "Feb 2020 – Mar 2020"); exact
+        // bounds depend on brush pixel coords, so just assert range formatting.
+        cy.findByTestId("filter-pill")
+          .should("be.visible")
+          .invoke("text")
+          .should("match", /–/)
+          .as("exploreFilterPillText");
+
+        cy.intercept(
+          "POST",
+          `/api/exploration/${explorationId}/summary/append`,
+        ).as("appendSummary");
+
+        cy.findByRole("button", { name: "Add to Summary" }).click();
+        cy.wait("@appendSummary");
+
+        H.undoToastListContainer().within(() => {
+          cy.findByText(/Added to/).should("be.visible");
+          cy.findByRole("button", { name: "View" }).click();
+        });
+
+        cy.location("pathname").should(
+          "eq",
+          `/question/research/${explorationId}/summary`,
+        );
+        cy.findByTestId("document-card-embed", { timeout: 15000 })
+          .should("be.visible")
+          .findByTestId("filter-pill")
+          .should("be.visible")
+          .invoke("text")
+          .then((text) => {
+            cy.get("@exploreFilterPillText").should("eq", text);
+          });
+      });
+    });
+  });
+});
+
+describe("scenarios > explorations > Summary document", () => {
+  beforeEach(() => {
+    cy.task("stopMockLlmServer");
+    H.restore();
+    cy.signInAsAdmin();
+    H.enableExplorations();
+    seedMetrics();
+  });
+
+  it("auto-creates Summary at the top of the tree, keeps pages selected initially, supports Add to Summary, and mirrors comments both ways", () => {
+    H.createExplorationViaApi({ name: "Summary fixture" }).then(
+      (explorationId) => {
+        cy.request("GET", `/api/exploration/${explorationId}`).then(
+          ({ body }) => {
+            // api returns an Exploration
+            const exploration = body as Exploration;
+            expect(exploration.document, "BE auto-creates a Summary document")
+              .to.exist;
+            expect(exploration.document?.name).to.eq("Summary");
+            expect(exploration.document?.is_placeholder).to.eq(true);
+          },
+        );
+
+        visitExplorationUntilSettled(explorationId, 1);
+
+        // Summary is pinned at the top of the tree but not initially selected
+        // while it is still a placeholder.
+        cy.findAllByRole("treeitem")
+          .first()
+          .should("contain.text", "Summary")
+          .and("have.attr", "aria-selected", "false");
+
+        // Capture the settled page id from the auto-selected sidebar row
+        // (pages only exist after settlement), then click through
+        cy.findAllByRole("treeitem")
+          .filter('[aria-selected="true"]')
+          .should("have.length", 1)
+          .and("not.contain.text", "Summary")
+          .invoke("attr", "href")
+          .should("match", /\/page\/\d+/)
+          .then((href) => {
+            const pageId = Number(/\/page\/(\d+)/.exec(href!)![1]);
+            cy.wrap(pageId).as("pageId");
+            cy.get(`[role="treeitem"][href="${href}"]`).click();
+          });
+
+        cy.location("pathname").should("match", /\/page\/\d+$/);
+        cy.findByTestId("exploration-chart-grid").should("be.visible");
+
+        cy.intercept(
+          "POST",
+          `/api/exploration/${explorationId}/summary/append`,
+        ).as("appendSummary");
+
+        cy.findByRole("button", { name: "Add to Summary" }).click();
+        cy.wait("@appendSummary").then(({ response }) => {
+          expect(response?.statusCode).to.eq(200);
+          expect(response?.body?.is_placeholder).to.eq(false);
+        });
+
+        H.undoToastListContainer()
+          .findByText(/Added to/)
+          .should("be.visible");
+        H.undoToast().findByRole("button", { name: "View" }).click();
+
+        cy.location("pathname").should(
+          "eq",
+          `/question/research/${explorationId}/summary`,
+        );
+        cy.findByTestId("document-card-embed", { timeout: 15000 }).should(
+          "be.visible",
+        );
+
+        // Seed a page comment via API
+        cy.get<number>("@pageId").then((pageId) => {
+          H.createComment({
+            target_type: "exploration",
+            target_id: explorationId,
+            child_target_id: String(pageId),
+            parent_comment_id: null,
+            content: {
+              type: "doc",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Shared comment" }],
+                },
+              ],
+            },
+          });
+        });
+
+        // Cold-load the Summary with the comments query param — the panel
+        // must open without a prior click (the deep-link regression).
+        cy.get<number>("@pageId").then((pageId) => {
+          cy.visit(
+            `/question/research/${explorationId}/summary?comments=${pageId}`,
+          );
+          cy.findByTestId("exploration-summary-comments", {
+            timeout: 15000,
+          })
+            .should("be.visible")
+            .and("contain.text", "Shared comment");
+        });
+
+        cy.get<number>("@pageId").then((pageId) => {
+          cy.visit(
+            `/question/research/${explorationId}/page/${pageId}?comments=${pageId}`,
+          );
+        });
+
+        cy.findByTestId("exploration-comments", { timeout: 15000 }).should(
+          "contain.text",
+          "Shared comment",
+        );
+      },
+    );
   });
 });
 

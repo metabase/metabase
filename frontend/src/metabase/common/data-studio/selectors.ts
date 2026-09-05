@@ -1,6 +1,6 @@
+import { getUserIsAdmin, getUserIsAnalyst } from "metabase/current-user";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
 import { isWithinIframe } from "metabase/utils/iframe";
 
 // Must be in sync with CanAccessDataStudio in frontend/src/metabase/data-studio/route-guards.tsx

@@ -6,6 +6,8 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.queries.core :as queries]
+   [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision :as revision]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru deferred-trun]]
@@ -18,7 +20,7 @@
     ;; > The position this Dashboard should appear in the Dashboards list,
     ;;   lower-numbered positions appearing before higher numbered ones.
     ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
-    :public_uuid :made_public_by_id
+    :public_uuid :public_uuid_prefix :made_public_by_id :enable_embedding :embedding_params :embedding_type
     :position :initially_published_at :view_count
     :last_viewed_at})
 
@@ -46,9 +48,11 @@
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]
-  (let [current-cards    (t2/select-fn-vec #(apply dissoc (t2.realize/realize %) excluded-columns-for-dashcard-revision)
-                                           :model/DashboardCard
-                                           :dashboard_id dashboard-id)
+  (let [current-cards    (->> (t2/hydrate (revisions.db/dashcards dashboard-id) :series)
+                              (mapv (fn [dashcard]
+                                      (-> (apply dissoc (t2.realize/realize dashcard)
+                                                 excluded-columns-for-dashcard-revision)
+                                          (assoc :series (mapv :id (:series dashcard)))))))
         id->current-card (zipmap (map :id current-cards) current-cards)
         {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-cards)]
     (when (seq to-delete)
@@ -65,15 +69,7 @@
   [dashboard-id dashcards]
   (let [card-ids          (set (keep :card_id dashcards))
         active-card-ids   (when-let [card-ids (seq card-ids)]
-                            (t2/select-pks-set :model/Card
-                                               {:where [:and
-                                                        [:in :id card-ids]
-                                                        ;; skip when archived
-                                                        [:= :archived false]
-                                                        ;; belong to this dashboard, or are not Dashboard Questions
-                                                        [:or
-                                                         [:= :dashboard_id dashboard-id]
-                                                         [:= :dashboard_id nil]]]}))
+                            (revisions.db/active-card-ids-for-dashboard card-ids dashboard-id))
         inactive-card-ids (set/difference card-ids active-card-ids)]
     (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
 
@@ -83,10 +79,7 @@
   [parameters]
   (let [card-ids        (set (keep #(get-in % [:values_source_config :card_id]) parameters))
         active-card-ids (when (seq card-ids)
-                          (t2/select-pks-set :model/Card
-                                             {:where [:and
-                                                      [:in :id card-ids]
-                                                      [:= :archived false]]}))
+                          (revisions.db/active-card-ids card-ids))
         invalid-card-ids (set/difference card-ids active-card-ids)]
     (if (empty? invalid-card-ids)
       parameters
@@ -101,12 +94,14 @@
   ;; Clean invalid parameter card references before reverting (cards may have been deleted since the revision)
   (let [cleaned-parameters   (clean-invalid-parameter-card-references (or (:parameters serialized-dashboard) []))
         serialized-dashboard (assoc serialized-dashboard :parameters cleaned-parameters)]
+    (queries/check-new-parameter-source-card-permissions "dashboard" dashboard-id cleaned-parameters)
     ;; Update the dashboard description / name / permissions
-    ((get-method revision/revert-to-revision! :default) model dashboard-id user-id (dissoc serialized-dashboard :cards :tabs))
+    ((get-method revision/revert-to-revision! :default) model dashboard-id user-id
+                                                        (apply dissoc serialized-dashboard :cards :tabs excluded-columns-for-dashboard-revision))
     ;; Now update the tabs and cards as needed
     (let [serialized-dashcards      (:cards serialized-dashboard)
-          current-tabs              (t2/select-fn-vec #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
-                                                      :model/DashboardTab :dashboard_id dashboard-id)
+          current-tabs              (mapv #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
+                                          (revisions.db/dashboard-tabs dashboard-id))
           {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
           _                         (dashboard/archive-or-unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
           serialized-dashcards      (cond->> serialized-dashcards

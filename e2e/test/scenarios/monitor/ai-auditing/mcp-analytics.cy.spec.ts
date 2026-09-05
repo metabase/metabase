@@ -59,7 +59,7 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
     });
 
     cy.log("The seeded tool call shows up in the Events table");
-    H.main().findByRole("tab", { name: "Tool calls" }).click();
+    H.main().findByRole("link", { name: "Tool calls" }).click();
     cy.wait("@dataset");
     H.main().findByText(SEED_TOOL_NAME).should("be.visible");
   });
@@ -88,7 +88,7 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
     cy.log(
       "The Tool calls table shows the derived error type and gated message",
     );
-    H.main().findByRole("tab", { name: "Tool calls" }).click();
+    H.main().findByRole("link", { name: "Tool calls" }).click();
     cy.wait("@dataset");
     H.main().within(() => {
       cy.findByText(SEED_ERROR_TOOL).scrollIntoView().should("be.visible");

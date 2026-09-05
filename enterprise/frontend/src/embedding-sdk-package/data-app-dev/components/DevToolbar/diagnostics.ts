@@ -19,6 +19,7 @@ export class DevDiagnosticsCollector {
   private entries: DevDiagnosticEntry[] = [];
   private connectionStatus: InstanceConnectionStatus | null = null;
   private nextEntryId = 1;
+  private buildId: number | null = null;
   private uncapturedConsoleError: typeof console.error | null = null;
   private readonly listeners = new Set<() => void>();
 
@@ -32,7 +33,7 @@ export class DevDiagnosticsCollector {
     console.error = (...args: unknown[]) => {
       this.record({
         kind: "error",
-        message: args.map((arg) => this.formatArg(arg)).join(" "),
+        message: this.formatArgs(args),
       });
 
       originalError(...args);
@@ -63,10 +64,15 @@ export class DevDiagnosticsCollector {
     });
   }
 
+  setBuildId(buildId: number): void {
+    this.buildId = Number.isFinite(buildId) && buildId > 0 ? buildId : null;
+  }
+
   record(event: DevDiagnosticEvent): void {
     const newEntry = {
       id: this.nextEntryId++,
       time: Date.now(),
+      buildId: this.buildId,
       ...this.truncateEventText(event),
     };
 
@@ -126,6 +132,29 @@ export class DevDiagnosticsCollector {
 
   private logToConsole(message: string) {
     this.uncapturedConsoleError?.(message);
+  }
+
+  /**
+   * Join `console.error` arguments, substituting `%s` — the only specifier React warnings use.
+   **/
+  private formatArgs(args: unknown[]): string {
+    const [format, ...rest] = args;
+
+    if (typeof format !== "string" || !format.includes("%s")) {
+      return args.map((arg) => this.formatArg(arg)).join(" ");
+    }
+
+    let consumed = 0;
+    // Leave a `%s` alone once the arguments run out, as the console does.
+    const substituted = format.replace(/%s/g, (match) =>
+      consumed < rest.length ? this.formatArg(rest[consumed++]) : match,
+    );
+
+    // Arguments past the last `%s` are appended, as the console does.
+    return [
+      substituted,
+      ...rest.slice(consumed).map((arg) => this.formatArg(arg)),
+    ].join(" ");
   }
 
   private formatArg(arg: unknown): string {

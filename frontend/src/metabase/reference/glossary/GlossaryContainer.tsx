@@ -10,10 +10,10 @@ import {
 import S from "metabase/common/components/Glossary/Glossary.module.css";
 import { GlossaryTable } from "metabase/common/components/Glossary/GlossaryTable";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin, getUserIsAnalyst } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
-import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
 import { Card, Group, Stack, Text } from "metabase/ui";
 
 export function GlossaryContainer() {
@@ -47,7 +47,7 @@ export function GlossaryContainer() {
           m={0}
           className={cx(CS.wrapper, CS.wrapperTrim)}
         >
-          <Card px="lg" pb="sm" withBorder shadow="none" className={S.card}>
+          <Card px="xl" pb="sm" withBorder shadow="none" className={S.card}>
             <GlossaryTable
               className={S.table}
               glossary={glossary}

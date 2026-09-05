@@ -123,5 +123,12 @@ breakage keeps happening, *that* is the signal a comment was warranted.
 - Spaces on a line with nothing after it is not allowed
 - After changing module boundaries (adding/removing/renaming a `src` namespace, a cross-module `require`
   or `:model/X` reference, or a new module), run `./bin/mage fix-modules-config` to regenerate
-  `.clj-kondo/config/modules/config.edn` and keep `metabase.core.modules-test` green. No-op when nothing
-  drifted; see "Module Boundaries" in the project `CLAUDE.md`.
+  `.clj-kondo/config/modules/config.edn`, then run `./bin/mage project-tests modules`. The fixer is a no-op when
+  nothing drifted; see "Module Boundaries" in the project `CLAUDE.md`.
+- Fix kondo warnings instead of suppressing them. Add a suppression only as a last resort, with approval
+  and a `;;` comment explaining why it is necessary.
+- Do not lower budgets in `.clj-kondo/ratchets.edn` after removing ignores. The shrink workflow records
+  reductions on `master`.
+- If `.clj-kondo/ratchets.edn` conflicts during a merge, rebase, or restack, run
+  `./bin/merge-kondo-ratchets`. It preserves one-sided changes, chooses the policy that allows fewer
+  suppressions when both sides change the same entry, and stops when the conflict needs a human decision.

@@ -1,4 +1,4 @@
-import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -950,8 +950,12 @@ function createSegmentWithTableDataSource({
   return H.createSegment({
     name,
     definition: {
-      "source-table": tableId,
-      filter: [["=", "A", "A"]],
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": tableId,
+        filter: ["=", "A", "A"],
+      },
     },
   });
 }
@@ -968,8 +972,12 @@ function createSegmentWithSegmentClause({
   return H.createSegment({
     name,
     definition: {
-      "source-table": tableId,
-      filter: ["segment", segmentId],
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": tableId,
+        filter: ["segment", segmentId],
+      },
     },
   });
 }

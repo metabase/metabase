@@ -38,8 +38,8 @@ export const MetabaseAccountCard = () => {
   };
 
   return (
-    <Card p="md">
-      <Stack gap="md">
+    <Card p="lg">
+      <Stack gap="lg">
         <Text size="lg" fw="bold">
           {
             // eslint-disable-next-line metabase/no-literal-metabase-strings -- Public Facing string

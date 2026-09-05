@@ -147,6 +147,30 @@
   animation-delay: var(--shimmer-delay, 0ms);
 }
 
+.skeletonRow {
+  --shimmer-spread: 3rem;
+
+  height: 2rem;
+  border-radius: var(--default-border-radius);
+  background-size:
+    250% 100%,
+    auto;
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent calc(50% - var(--shimmer-spread)),
+      var(--mb-color-background-primary),
+      transparent calc(50% + var(--shimmer-spread))
+    ),
+    linear-gradient(
+      var(--mb-color-background-tertiary),
+      var(--mb-color-background-tertiary)
+    );
+  background-position: 50%;
+  animation: exploration-shimmer 2500ms ease infinite;
+  animation-delay: var(--shimmer-delay, 0ms);
+}
+
 @keyframes exploration-shimmer {
   0% {
     background-position: 120%;

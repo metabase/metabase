@@ -10,13 +10,12 @@
    outside the normal sync sweep, or scores null'ed to force a recompute)."
   (:require
    [metabase.interestingness.core :as interestingness]
-   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -26,17 +25,12 @@
   [field :- i/FieldInstance]
   (sync-util/with-error-handling (format "Error scoring interestingness for %s" (sync-util/name-for-logging field))
     (let [dim-score (interestingness/dimension-interestingness field)]
-      (t2/update! :model/Field (u/the-id field)
-                  {:dimension_interestingness dim-score}))))
+      (sync.db/update-field! (u/the-id field) {:dimension_interestingness dim-score}))))
 
 (mu/defn- fields-to-score :- [:maybe [:sequential i/FieldInstance]]
   "Return Fields in `table` with fresh fingerprints that haven't completed analysis yet."
   [table :- i/TableInstance]
-  (seq (apply t2/select :model/Field
-              :table_id (u/the-id table)
-              :active true
-              :visibility_type [:not-in ["sensitive" "retired"]]
-              (reduce concat [] (sync.fingerprint/incomplete-analysis-kvs)))))
+  (seq (sync.db/incomplete-analysis-fields-for-table (u/the-id table) i/*latest-fingerprint-version*)))
 
 (mu/defn score-fields!
   "Score interestingness for all qualifying Fields in `table`."
@@ -80,14 +74,7 @@
                       (update stats :fields-failed inc))
                     (update stats :fields-scored inc)))))
              {:fields-scored 0 :fields-failed 0}
-             (t2/reducible-select :model/Field
-                                  {:where [:and
-                                           [:= :active true]
-                                           [:= :dimension_interestingness nil]
-                                           [:not-in :visibility_type ["sensitive" "retired"]]
-                                           [:in :table_id {:select [:id]
-                                                           :from   [(t2/table-name :model/Table)]
-                                                           :where  [:= :db_id (u/the-id database)]}]]})))
+             (sync.db/unscored-fields-for-database-reducible (u/the-id database))))
 
 (mu/defn score-fields-for-db!
   "Score interestingness for all qualifying Fields in `database`."

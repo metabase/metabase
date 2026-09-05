@@ -2,28 +2,46 @@ import {
   type QueryInput,
   type QuestionQueryInput,
   type TableQueryInput,
+  isMeasureReference,
   isMetricReference,
+  isSegmentReference,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
-import type { MetricSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
+import type {
+  MetricSchema,
+  QuestionSchema,
+} from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { isObject } from "metabase-types/guards";
+
+// `satisfies` ties the list to the input type, so a renamed or mistyped clause
+// key fails to compile instead of silently skipping its validation.
+const QUESTION_QUERY_KEYS: readonly string[] = [
+  "source",
+  "filters",
+  "aggregations",
+  "breakouts",
+  "orderBys",
+  "limit",
+  "enabled",
+] satisfies readonly (keyof QuestionQueryInput)[];
 
 export function validateQueryInput(input: QueryInput) {
   if (isQuestionQueryInput(input)) {
-    validateQuestionInput(input);
+    validateLimit(input.limit, "Saved question query");
+    validateQuestionScopedInputs(input);
     return;
   }
 
-  validateLimit(input.limit);
+  validateLimit(input.limit, "Table query");
   validateTableScopedInputs(input);
 }
 
-function validateLimit(limit: number | undefined) {
+function validateLimit(limit: number | undefined, context: string) {
   if (limit == null) {
     return;
   }
 
   if (!Number.isInteger(limit) || limit <= 0) {
-    throw new Error("Table query limit must be a positive integer.");
+    throw new Error(`${context} limit must be a positive integer.`);
   }
 }
 
@@ -31,16 +49,94 @@ function isQuestionQueryInput(input: QueryInput): input is QuestionQueryInput {
   return input.source.type === "card";
 }
 
-function validateQuestionInput(input: QuestionQueryInput) {
+function validateQuestionScopedInputs(input: QuestionQueryInput) {
   const extraKeys = Object.keys(input).filter(
-    (key) => key !== "source" && key !== "enabled",
+    (key) => !QUESTION_QUERY_KEYS.includes(key),
   );
 
   if (extraKeys.length > 0) {
     throw new Error(
-      `Saved question queries only support source and enabled, but received ${extraKeys.join(
+      `Saved question queries only support ${QUESTION_QUERY_KEYS.join(
         ", ",
-      )}.`,
+      )}, but received ${extraKeys.join(", ")}.`,
+    );
+  }
+
+  input.filters?.forEach((filter) => {
+    if (isSegmentReference(filter)) {
+      throw new Error(
+        "Saved question query filters cannot use Segments, which belong to a table source.",
+      );
+    }
+
+    validateQuestionResultColumn(
+      getFirstOperatorArg(filter),
+      input.source,
+      "Saved question query filters",
+    );
+  });
+
+  input.aggregations?.forEach((aggregation) => {
+    if (isMeasureReference(aggregation) || isMetricReference(aggregation)) {
+      throw new Error(
+        "Saved question query aggregations cannot use Measures or Metrics, which belong to a table source.",
+      );
+    }
+
+    if (isCountAggregation(aggregation)) {
+      return;
+    }
+
+    validateQuestionResultColumn(
+      getFirstOperatorArg(aggregation),
+      input.source,
+      "Saved question query aggregations",
+    );
+  });
+
+  input.breakouts?.forEach((breakout) => {
+    validateQuestionResultColumn(
+      breakout,
+      input.source,
+      "Saved question query breakouts",
+    );
+  });
+
+  validateOrderBys(
+    input,
+    "Saved question query orderBys",
+    (orderBy) =>
+      validateQuestionResultColumn(
+        orderBy,
+        input.source,
+        "Saved question query orderBys",
+      ),
+    { matchBreakoutsByName: true },
+  );
+}
+
+function validateQuestionResultColumn(
+  reference: unknown,
+  source: QuestionSchema,
+  context: string,
+) {
+  const columnName = isObject(reference) ? reference.name : undefined;
+
+  if (typeof columnName !== "string") {
+    throw new Error(
+      `${context} must reference a result column of the saved question.`,
+    );
+  }
+
+  // Id-only question references (`{ type: "card", id }`) carry no result
+  // metadata, so the column can only be resolved while the query is built.
+  if (!source.columns) {
+    return;
+  }
+
+  if (!source.columns.some(({ name }) => name === columnName)) {
+    throw new Error(
+      `${context} must reference a result column of saved question ${source.id}, but received ${columnName}.`,
     );
   }
 }
@@ -91,6 +187,17 @@ function validateTableScopedInputs(input: TableQueryInput) {
     validateGeneratedTableReference(breakout, tableId, "Table query breakouts");
   });
 
+  validateOrderBys(input, "Table query orderBys", (orderBy) =>
+    validateGeneratedTableReference(orderBy, tableId, "Table query orderBys"),
+  );
+}
+
+function validateOrderBys(
+  input: GroupedQueryClauses,
+  context: string,
+  validateDimension: (orderBy: unknown) => void,
+  { matchBreakoutsByName = false } = {},
+) {
   input.orderBys?.forEach((orderBy) => {
     if (isAggregationResultReference(input.aggregations, orderBy)) {
       return;
@@ -98,14 +205,14 @@ function validateTableScopedInputs(input: TableQueryInput) {
 
     if (
       isGroupedQuery(input) &&
-      !isBreakoutReference(input.breakouts, orderBy)
+      !isBreakoutReference(input.breakouts, orderBy, matchBreakoutsByName)
     ) {
       throw new Error(
-        "Table query orderBys for grouped queries must use query breakouts or aggregations included in the query.",
+        `${context} for grouped queries must use query breakouts or aggregations included in the query.`,
       );
     }
 
-    validateGeneratedTableReference(orderBy, tableId, "Table query orderBys");
+    validateDimension(orderBy);
   });
 }
 
@@ -155,7 +262,17 @@ function isCountAggregation(value: unknown) {
   );
 }
 
-function isGroupedQuery(input: TableQueryInput) {
+type GroupingClauses = {
+  aggregations?: readonly unknown[];
+  breakouts?: readonly unknown[];
+};
+
+type GroupedQueryClauses = GroupingClauses & {
+  orderBys?: readonly unknown[];
+};
+
+// Only aggregations and breakouts group a query; `orderBy` is not.
+function isGroupedQuery(input: GroupingClauses) {
   return Boolean(input.aggregations?.length || input.breakouts?.length);
 }
 
@@ -203,8 +320,9 @@ function getColumns(value: unknown) {
 }
 
 function isBreakoutReference(
-  breakouts: TableQueryInput["breakouts"] | undefined,
+  breakouts: readonly unknown[] | undefined,
   value: unknown,
+  matchByName: boolean,
 ) {
   if (!isObject(value)) {
     return false;
@@ -212,7 +330,9 @@ function isBreakoutReference(
 
   return (breakouts ?? []).some(
     (breakout) =>
-      fieldsMatch(breakout, value) && bucketOptionsMatch(breakout, value),
+      (matchByName
+        ? namesMatch(breakout, value)
+        : fieldsMatch(breakout, value)) && bucketOptionsMatch(breakout, value),
   );
 }
 
@@ -272,6 +392,9 @@ function getMetricAllowedTableIds(metric: MetricSchema) {
 
   return null;
 }
+
+const namesMatch = (left: unknown, right: Record<string, unknown>) =>
+  isObject(left) && left.name === right.name;
 
 function fieldsMatch(left: unknown, right: Record<string, unknown>) {
   if (!isObject(left)) {

@@ -30,6 +30,7 @@
                                                            :value v
                                                            :expires-at expires-at}
                                                           (mtx/transformer
+                                                           (mtx/key-transformer {:decode keyword})
                                                            (mtx/default-value-transformer)
                                                            (mett/time-transformer)
                                                            {:name :api-request})))

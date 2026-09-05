@@ -2,19 +2,24 @@
   "Tests for `execute-representations-query` - the representations-format entry point for
   `construct_notebook_query`.
 
-  Covers the happy path (external-query JSON -> resolved pMBQL wrapped in structured output),
+  Covers the happy path (external-query JSON -> resolved MBQL 5 wrapped in structured output),
   unknown table, the `:agent-error?` error-translation contract, and the database-id
   resolution from the query's first-stage `source-table:` (per `repr-plan.md` step 13:
   unknown name, ambiguous name, missing name, mismatched DB component in source-table)."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.tools.construct :as construct]
-   [metabase.models.serialization :as serdes]))
+   [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]))
 
 (set! *warn-on-reflection* true)
 
@@ -717,7 +722,7 @@
 (deftest expression-map-shape-end-to-end-test
   (testing (str "The LLM-friendly `expressions: {Name: clause, …}` map shape is normalised\n"
                 "to the canonical sequential MBQL 5 form with `lib/expression-name` stamped,\n"
-                "and the resolved query carries the expression in its pMBQL.")
+                "and the resolved query carries the expression in its MBQL 5.")
     (with-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query
@@ -867,15 +872,25 @@
                 :result-metadata [{:name "ID"    :base-type :type/Integer}
                                   {:name "TOTAL" :base-type :type/Float}]}]}))
 
-(defn- lookup-card-stub [model eid]
-  (when (and (or (= model 'Card) (= model :model/Card))
-             (= eid card-entity-id))
-    {:id 500 :database_id 1 :entity_id eid}))
+(defn- stub-content-store
+  "Stands in for the app-DB store over a mock metadata provider, serving `row` by entity id and
+  by numeric id. It answers from `row` rather than delegating to
+  [[metabase.models.serialization/lookup-by-id]], so code that bypassed the store could not
+  satisfy these tests by reaching the serdes resolver directly."
+  [row]
+  (reify resolve.mp/ContentStore
+    (card-by-entity-id    [_ eid] (when (= eid (:entity_id row)) row))
+    (measure-by-entity-id [_ _] nil)
+    (segment-by-entity-id [_ _] nil)
+    (card-by-id           [_ id] (when (= id (:id row)) row))
+    (measure-by-id        [_ _] nil)
+    (segment-by-id        [_ _] nil)))
 
 (defn- with-card-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-with-card)
                 construct/resolve-database-id-from-first-stage (fn [_] 1)
-                serdes/lookup-by-id                             lookup-card-stub
+                construct/permission-aware-content-store        (stub-content-store
+                                                                 {:id 500 :database_id 1 :entity_id card-entity-id})
                 api/read-check                                  allow-read-check
                 api/query-check                                 allow-read-check]
     (f)))
@@ -907,6 +922,42 @@
             (let [exported (get-in result [:structured-output :query-json])]
               (is (= card-entity-id
                      (get-in exported ["stages" 0 "source-card"]))))))))))
+
+(deftest source-card-multi-stage-cross-stage-ref-end-to-end-test
+  (testing
+   (str "Regression (BOT-1604): a two-stage query whose FIRST stage sources from a\n"
+        "`source-card:` (not `source-table:`), aggregating and breaking out on the card's own\n"
+        "columns, with a SECOND stage that filters on the aggregation output by cross-stage\n"
+        "name (`count`). `infer-cross-stage-field-types*` mini-resolves stage 0 to learn its\n"
+        "returned columns' types, but stage 0's own `source-card` field refs (`ID` in the\n"
+        "breakout) only get their `base-type` from `infer-source-card-field-types*` - if that\n"
+        "pass runs AFTER the cross-stage pass, the mini-resolve of stage 0 fails\n"
+        "schema-validation on its own untyped refs, is silently swallowed, and stage 1's\n"
+        "`count` ref is left without `base-type` - failing the final `lib.schema/query`\n"
+        "validation (\"missing required key\") every time, regardless of how the LLM retries.")
+    (with-card-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                     "source-card" card-entity-id
+                                     "aggregation" [["count" {}]]
+                                     "breakout"    [["field" {} "ID"]]}
+                                    {"lib/type" "mbql.stage/mbql"
+                                     "filters"  [[">" {} ["field" {} "count"] 10]]}]}))
+              q             (get-in result [:structured-output :query])
+              filter-clause (get-in q [:stages 1 :filters 0])
+              field-clause  (nth filter-clause 2)]
+          (testing "two-stage shape preserved, stage 0 keeps source-card"
+            (is (= 2 (count (:stages q))))
+            (is (= 500 (get-in q [:stages 0 :source-card]))))
+          (testing "stage-1 cross-stage `count` ref resolved with an inferred base-type"
+            (is (= :> (first filter-clause)))
+            (is (= :field (first field-clause)))
+            (is (= "count" (nth field-clause 2)))
+            (is (= :type/Integer (get-in field-clause [1 :base-type])))))))))
 
 (deftest source-card-unknown-entity-id-surfaces-agent-error-test
   (testing "a valid-shaped entity_id that does not resolve to any card returns :unknown-card with :agent-error? true"
@@ -1043,15 +1094,11 @@
                                             :aggregation  [[:sum {}
                                                             [:field {:base-type :type/Float} 101]]]}]}}]}))
 
-(defn- lookup-metric-stub [model eid]
-  (when (and (or (= model 'Card) (= model :model/Card))
-             (= eid metric-entity-id))
-    {:id 900 :database_id 1 :entity_id eid}))
-
 (defn- with-metric-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-with-metric)
                 construct/resolve-database-id-from-first-stage (fn [_] 1)
-                serdes/lookup-by-id                             lookup-metric-stub
+                construct/permission-aware-content-store        (stub-content-store
+                                                                 {:id 900 :database_id 1 :entity_id metric-entity-id})
                 api/read-check                                  allow-read-check
                 api/query-check                                 allow-read-check]
     (f)))
@@ -1109,3 +1156,166 @@
               (testing "and the export round-trips: re-running the exported form yields an equal export"
                 (let [redo (construct/execute-representations-query (walk/keywordize-keys exported))]
                   (is (= exported (get-in redo [:structured-output :query-json]))))))))))))
+
+;;; ============================================================
+;;; Metric explicit-join feedback (BOT-1612)
+;;;
+;;; A metric on ORDERS explicitly joins CAMPAIGNS (NO foreign key from ORDERS) to reach
+;;; CAMPAIGNS.NAME. The fix is feedback-based, not backend-materialization:
+;;;   * the metric's /dimensions resource surfaces the joined dims + the exact join clause to
+;;;     paste (see entity-details-test / llm-shape-test);
+;;;   * a consumer query that INCLUDES that join is honored as-is (no rewrite);
+;;;   * a consumer query that OMITS the join gets an actionable `:no-fk-path` error pointing at
+;;;     the metric's dimensions resource - it is NOT silently repaired.
+;;; ============================================================
+
+(def ^:private metric-eid
+  "Valid 21-char NanoID so `import-mbql` picks up the `[:metric …]` branch."
+  "Metric123_456DefGhI78")
+
+(def ^:private mock-db-id
+  Integer/MAX_VALUE)
+
+(def ^:private mp-metric-base
+  "ORDERS(10) and CAMPAIGNS(30) with NO foreign key between them."
+  (lib.tu/mock-metadata-provider
+   {:database {:id mock-db-id :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"    :schema "PUBLIC" :db-id mock-db-id}
+               {:id 30 :name "CAMPAIGNS" :schema "PUBLIC" :db-id mock-db-id}]
+    :fields   [{:id 100 :name "ID"          :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "TOTAL"       :table-id 10 :base-type :type/Float}
+               {:id 102 :name "CAMPAIGN_ID" :table-id 10 :base-type :type/Integer} ;; NO :fk-target-field-id
+               {:id 300 :name "ID"          :table-id 30 :base-type :type/Integer}
+               {:id 301 :name "NAME"        :table-id 30 :base-type :type/Text}]}))
+
+(def ^:private metric-definition
+  "Count of ORDERS with an EXPLICIT (no-FK) join to CAMPAIGNS, as legacy MBQL for storage."
+  (-> (lib/query mp-metric-base (lib.metadata/table mp-metric-base 10))
+      (lib/join (lib/join-clause (lib.metadata/table mp-metric-base 30)
+                                 [(lib/= (lib.metadata/field mp-metric-base 102)
+                                         (lib.metadata/field mp-metric-base 300))]))
+      (lib/aggregate (lib/count))
+      lib.convert/->legacy-MBQL))
+
+(def ^:private mp-metric
+  (lib.tu/mock-metadata-provider
+   mp-metric-base
+   {:cards [{:id 700 :name "Order Count by Campaign" :type :metric :database-id mock-db-id :table-id 10
+             :entity-id metric-eid :dataset-query metric-definition}]}))
+
+(defn- with-joined-metric-mp-and-stubs! [f]
+  (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-metric)
+                construct/resolve-database-id-from-first-stage (fn [_] mock-db-id)
+                construct/permission-aware-content-store (stub-content-store
+                                                          {:id 700 :database_id mock-db-id :entity_id metric-eid})
+                api/read-check  allow-read-check
+                api/query-check allow-read-check
+                ;; `metric-details` gates its base table and every surfaced column on app-db
+                ;; Table/sandbox read permissions. The mock provider's table ids have no
+                ;; `:model/Table` rows, so those checks are stubbed open to keep this namespace
+                ;; app-DB-free (see the fixture note above). That the surfaced dimensions ARE
+                ;; permission-filtered is covered against real tables in entity-details-test.
+                mi/can-read?                             (constantly true)
+                mi/can-query?                            (constantly true)
+                entity-details/permission-filter-columns (fn [cols & _] cols)
+                entity-details/verified-review?          (constantly false)]
+    (f)))
+
+;; The join clause the metric /dimensions resource hands the LLM (uuid-free), to paste into `joins:`.
+(def ^:private advertised-campaigns-join
+  {"lib/type"   "mbql/join"
+   "fields"     "all"
+   "strategy"   "left-join"
+   "alias"      "Campaign"
+   "conditions" [["=" {}
+                  ["field" {"base-type" "type/Integer"} ["Sample" "PUBLIC" "ORDERS" "CAMPAIGN_ID"]]
+                  ["field" {"base-type" "type/Integer" "join-alias" "Campaign"}
+                   ["Sample" "PUBLIC" "CAMPAIGNS" "ID"]]]]
+   "stages"     [{"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "CAMPAIGNS"]}]})
+
+(deftest metric-joined-breakout-with-explicit-join-is-honored-test
+  (testing (str "A consumer query that INCLUDES the advertised explicit join (metric aggregation on "
+                "ORDERS + join to CAMPAIGNS + breakout on CAMPAIGNS.NAME) is honored as-is: the join "
+                "stays, the breakout resolves, and the joined column appears in the result columns. "
+                "No backend materialization needed (BOT-1612).")
+    (with-joined-metric-mp-and-stubs!
+      (fn []
+        (let [result     (construct/execute-representations-query
+                          (query-data
+                           {"lib/type" "mbql/query"
+                            "database" "Sample"
+                            "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                         "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                         "joins"        [advertised-campaigns-join]
+                                         "aggregation"  [["metric" {} metric-eid]]
+                                         "breakout"     [["field" {"join-alias" "Campaign"}
+                                                          ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]]]}]}))
+              structured (:structured-output result)
+              q          (:query structured)
+              joins      (get-in q [:stages 0 :joins])
+              breakout   (get-in q [:stages 0 :breakout 0])]
+          (testing "the LLM-authored join is preserved (exactly one, targeting CAMPAIGNS)"
+            (is (=? [{:stages [{:source-table 30}]}] joins))
+            (is (= "Campaign" (:alias (first joins)))))
+          (testing "the breakout keeps its join-alias and resolves to CAMPAIGNS.NAME"
+            (is (= "Campaign" (get-in breakout [1 :join-alias])))
+            (is (= 301 (nth breakout 2))))
+          (testing "CAMPAIGNS.NAME is a result column"
+            (is (some #(= 301 (:field_id %)) (:result-columns structured)))))))))
+
+(deftest metric-joined-breakout-without-join-errors-actionably-test
+  (testing (str "A consumer query that OMITS the join (bare breakout on CAMPAIGNS.NAME) is NOT "
+                "silently repaired: it errors :no-fk-path with an actionable message that points the "
+                "LLM at the metric's dimensions resource for the exact join to add (BOT-1612).")
+    (with-joined-metric-mp-and-stubs!
+      (fn []
+        (try
+          (construct/execute-representations-query
+           (query-data
+            {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["metric" {} metric-eid]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]]]}]}))
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (= :no-fk-path (:error d)))
+              (is (:agent-error? d))
+              (testing "message is actionable: explains the explicit join and points at the metric resource"
+                (is (str/includes? (ex-message e) "joins:"))
+                (is (str/includes? (ex-message e) "metabase://metric"))))))))))
+
+(deftest metric-details-surfaced-artifacts-round-trip-test
+  (testing (str "END-TO-END: the join AND the per-dimension reference that `metric-details` surfaces "
+                "are pasteable verbatim - a consumer query built from BOTH resolves to CAMPAIGNS.NAME "
+                "without :no-fk-path. Guards against surfacing a bare FK reference that dead-ends "
+                "(BOT-1612).")
+    (with-joined-metric-mp-and-stubs!
+      (fn []
+        (let [entry        (first (:join-required-dimensions
+                                   (entity-details/metric-details
+                                    (lib.metadata/card mp-metric 700) mp-metric {:field-values-fn identity})))
+              surfaced-join (:join entry)
+              name-ref      (:reference (first (filter #(= 301 (:field_id %)) (:dimensions entry))))]
+          (testing "the surfaced reference is alias-qualified (NOT a bare portable FK that dead-ends)"
+            (is (= "field" (first name-ref)))
+            (is (some? (:join_alias entry)))
+            (is (= (:join_alias entry) (get (second name-ref) "join-alias"))
+                "the reference carries the metric join's alias, so QP re-expansion dedupes at execution")
+            (is (= ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"] (nth name-ref 2))))
+          (testing "pasting the surfaced join + reference verbatim resolves cleanly"
+            (let [result     (construct/execute-representations-query
+                              (query-data
+                               {"lib/type" "mbql/query"
+                                "database" "Sample"
+                                "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                             "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                             "joins"        [surfaced-join]
+                                             "aggregation"  [["metric" {} metric-eid]]
+                                             "breakout"     [name-ref]}]}))
+                  structured (:structured-output result)]
+              (is (= 1 (count (get-in structured [:query :stages 0 :joins]))))
+              (is (some #(= 301 (:field_id %)) (:result-columns structured))
+                  "CAMPAIGNS.NAME resolves from the surfaced artifacts"))))))))

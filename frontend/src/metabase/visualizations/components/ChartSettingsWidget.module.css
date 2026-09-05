@@ -5,3 +5,9 @@
   align-items: center;
   gap: var(--mantine-spacing-sm);
 }
+
+/* Important that margin-inline is set in a class so that
+   the `style prop` can override it's value. */
+.root {
+  margin-inline: 1.5rem;
+}

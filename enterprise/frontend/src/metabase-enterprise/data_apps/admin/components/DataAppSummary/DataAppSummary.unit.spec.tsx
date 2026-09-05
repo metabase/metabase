@@ -48,6 +48,34 @@ describe("DataAppSummary", () => {
     ).not.toBeInTheDocument();
   });
 
+  describe("description", () => {
+    it("renders the description when the app declares one", () => {
+      renderWithProviders(
+        <DataAppSummary
+          app={createMockDataApp({
+            display_name: "Sales",
+            description: "Pipeline health by region",
+          })}
+        />,
+      );
+
+      expect(screen.getByText("Pipeline health by region")).toBeInTheDocument();
+    });
+
+    it("renders nothing extra when the app has no description", () => {
+      renderWithProviders(
+        <DataAppSummary
+          app={createMockDataApp({ display_name: "Sales", description: null })}
+        />,
+      );
+
+      expect(screen.getByText("Sales")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Pipeline health by region"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("sync status", () => {
     it("shows the short synced SHA when the app has synced", () => {
       renderWithProviders(

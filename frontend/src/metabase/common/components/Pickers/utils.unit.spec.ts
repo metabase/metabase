@@ -1,4 +1,14 @@
-import { isItemInCollectionOrItsDescendants } from "./utils";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+import { reinitialize } from "metabase/plugins";
+import type { CollectionItemModel } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
+
+import {
+  getCollectionItemsOptions,
+  getValidCollectionItemModels,
+  isItemInCollectionOrItsDescendants,
+} from "./utils";
 
 describe("isItemInCollectionOrItsDescendants", () => {
   it("returns false when collectionId is undefined", () => {
@@ -77,5 +87,54 @@ describe("isItemInCollectionOrItsDescendants", () => {
     expect(isItemInCollectionOrItsDescendants(item, 1)).toBe(false);
     expect(isItemInCollectionOrItsDescendants(item, 12)).toBe(true);
     expect(isItemInCollectionOrItsDescendants(item, 123)).toBe(true);
+  });
+});
+
+describe("getValidCollectionItemModels", () => {
+  it("should filter valid collection models and append 'collection'", () => {
+    const input = [
+      "card",
+      "dashboard",
+      "pikachu",
+      "table",
+      "transform",
+      "snippet",
+      "",
+    ];
+    const result = getValidCollectionItemModels(
+      // Unjustified type cast. FIXME
+      input as CollectionItemModel[],
+    );
+    expect(result).toEqual([
+      "card",
+      "dashboard",
+      "table",
+      "transform",
+      "snippet",
+      "collection",
+    ]);
+  });
+});
+
+describe("getCollectionItemsOptions", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
+  it("should include library collections when the library plugin is disabled (metabase#73143)", () => {
+    expect(
+      getCollectionItemsOptions({ models: ["card"] }).include_library,
+    ).toBe(true);
+  });
+
+  it("should not include library collections when the library plugin is enabled", () => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({ library: true }),
+    });
+    setupEnterpriseOnlyPlugin("library");
+
+    expect(
+      getCollectionItemsOptions({ models: ["card"] }).include_library,
+    ).toBe(false);
   });
 });

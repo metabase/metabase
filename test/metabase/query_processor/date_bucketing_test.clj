@@ -33,6 +33,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.format-rows :as format-rows]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; reads the provider that mt/with-metadata-provider binds in the ambient store
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]

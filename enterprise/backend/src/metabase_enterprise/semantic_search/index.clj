@@ -8,6 +8,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   [metabase-enterprise.semantic-search.db :as semantic-search.db]
    ;; TODO: extract schema code to go under db.migration
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase-enterprise.semantic-search.scoring :as scoring]
@@ -27,6 +28,7 @@
    [toucan2.core :as t2])
   (:import
    [com.mchange.v2.c3p0 PooledDataSource]
+   [java.nio.charset StandardCharsets]
    [java.time Instant LocalDate OffsetDateTime ZonedDateTime]
    [java.util.concurrent ArrayBlockingQueue RejectedExecutionHandler RejectedExecutionException TimeUnit ThreadPoolExecutor]
    [org.postgresql.util PGobject]))
@@ -133,8 +135,7 @@
    Uses at most 2 queries regardless of the number of collection-ids."
   [collection-ids]
   (when-let [collection-ids (not-empty (set (remove nil? collection-ids)))]
-    (let [colls                (t2/select [:model/Collection :id :personal_owner_id :location]
-                                          :id [:in collection-ids])
+    (let [colls                (semantic-search.db/collection-owners-and-locations collection-ids)
           {personal     true
            non-personal false} (group-by (comp some? :personal_owner_id) colls)
           direct               (into {} (map (juxt :id :personal_owner_id)) personal)
@@ -146,9 +147,7 @@
           root-id->owner       (into direct
                                      (map (juxt :id :personal_owner_id))
                                      (when (seq unknown-roots)
-                                       (t2/select [:model/Collection :id :personal_owner_id]
-                                                  :id [:in unknown-roots]
-                                                  :personal_owner_id [:not= nil])))]
+                                       (semantic-search.db/personal-collection-owners unknown-roots)))]
       (into direct
             (keep (fn [[coll-id root-id]]
                     (when-let [owner (get root-id->owner root-id)]
@@ -271,11 +270,9 @@
 
   Note: The index parameters will still be available in index_metadata"
   [identifier]
-  (if (<= (count identifier) 63)
+  (if (<= (alength (.getBytes ^String identifier StandardCharsets/UTF_8)) 63)
     identifier
-    (let [hashed-name (str "index_" (buddy-codecs/bytes->hex (buddy-hash/sha1 identifier)))]
-      (log/warnf "Using hashed name for index table %s as original table name %s exceeded the maximum table name length" hashed-name identifier)
-      hashed-name)))
+    (str "index_" (buddy-codecs/bytes->hex (buddy-hash/sha1 identifier)))))
 
 (defn model-table-suffix
   "Returns a new suffix for a table name, based on current timestamp"
@@ -287,10 +284,13 @@
 
   Table names produced here must stay recognizable by [[index-table-name?]]."
   [embedding-model]
-  (let [{:keys [model-name provider vector-dimensions]} embedding-model
+  (let [{:keys [model-name provider vector-dimensions embedding-space-id]} embedding-model
         provider-name (embedding/abbrev-provider-name provider)
         abbrev-model-name (embedding/abbrev-model-name model-name)
-        ideal-table-name (str "index_" provider-name "_" abbrev-model-name "_" vector-dimensions)]
+        space-suffix (when embedding-space-id
+                       (subs (buddy-codecs/bytes->hex (buddy-hash/sha1 embedding-space-id)) 0 12))
+        ideal-table-name (str "index_" provider-name "_" abbrev-model-name "_" vector-dimensions
+                              (when space-suffix (str "_e" space-suffix)))]
     (hash-identifier-if-exceeds-pg-limit ideal-table-name)))
 
 (def ^:private index-table-name-pattern
@@ -298,8 +298,9 @@
   suffix appended by [[metabase-enterprise.semantic-search.pgvector-api/fresh-index]]),
   [[hash-identifier-if-exceeds-pg-limit]], and the legacy pre-BOT-337 naming era:
 
-    index_<provider>_<model>_<dims>            e.g. index_ais_text_3_sm_1536
-    index_<provider>_<model>_<dims>_<digits>   force-reset suffix ([[model-table-suffix]])
+    index_<provider>_<model>_<dims>                  legacy name
+    index_<provider>_<model>_<dims>_e<12-hex>        immutable-space name
+    either modern name followed by _<digits>         force-reset suffix ([[model-table-suffix]])
     index_<40-hex-sha1>                        names exceeding the 63-byte pg identifier limit
     index_table_<anything>                     legacy pre-BOT-337 naming (index_table_<provider>_<model>_<dims>)
 
@@ -308,7 +309,7 @@
   gives the modern shapes their structure, while the index_table_ prefix — used exclusively by the
   legacy era — claims anything under it. Deliberately does NOT match the control-plane tables
   (index_metadata, index_control, index_gate): no trailing _<digits>, not 40-hex, not index_table_."
-  #"\Aindex_(?:.+_\d+|[0-9a-f]{40}|table_.+)\z")
+  #"\Aindex_(?:.+_\d+(?:_e[0-9a-f]{12})?(?:_\d+)?|[0-9a-f]{40}|table_.+)\z")
 
 (defn index-table-name?
   "Does the bare (schema- and qualifier-stripped) table name look like a semantic-search index table?
@@ -702,8 +703,7 @@
                      :keyword_rank]])
      :from [(keyword (:table-name index))]
      ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
-     ;; This follows the same secure pattern as metabase.search.appdb.specialization.postgres/base-query
-     :join [[[:raw "to_tsquery('" tsv-lang "', " [:lift ts-search-expr] ")"]
+     :join [[[:to_tsquery ^:allow-raw-sql [:inline tsv-lang] [:lift ts-search-expr]]
              :query] [:= 1 1]]
      :where (let [ts-query-filter [:raw (format "%s @@ query" (name vector-column))]]
               (if (seq filters)
@@ -995,7 +995,7 @@
         fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
         slow-t2-instances (vec
                            (for [[t2-model docs] (group-by doc->t2-model slow-docs)
-                                 t2-instance (t2/select t2-model :id [:in (map :id docs)])]
+                                 t2-instance (semantic-search.db/instances t2-model (map :id docs))]
                              t2-instance))
         doc->t2 (comp (u/index-by (juxt :id t2/model) slow-t2-instances)
                       (juxt :id doc->t2-model))
@@ -1016,8 +1016,7 @@
   [docs collection-id]
   (let [collection-ids (keep :collection_id docs)
         collections-map (when (seq collection-ids)
-                          (->> (t2/select [:collection :id :location]
-                                          :id [:in collection-ids])
+                          (->> (semantic-search.db/collection-locations collection-ids)
                                (into {} (map (juxt :id identity)))))]
     (filterv (fn [doc]
                (let [doc-collection-id (:collection_id doc)]
@@ -1413,7 +1412,8 @@
   ;; no user
   (query-index db index {:search-string "Copper knife"})
 
-  #_:clj-kondo/ignore
+  ;; REPL scratch; metabase.test is off-limits to this module's real code
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (require '[metabase.test :as mt])
   (mt/with-test-user :crowberto
     (doall (query-index db index {:search-string "Copper knife"}))))
@@ -1465,13 +1465,15 @@
   ;; Code to test the custom thread pool. The transduction should process batches in parallel and new batches should
   ;; only be realized in memory once a thread is available.
   (defn process-batch [batch]
-    #_:clj-kondo/ignore
+    ;; REPL scratch; println shows batch progress on stdout
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (println "Processing batch starting with " (first batch))
     (Thread/sleep 2000)
     {:count (count batch)})
 
   (defn logging-range [n]
-    #_:clj-kondo/ignore
+    ;; REPL scratch; println shows lazy realization on stdout
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (map #(do (println "Realizing item" %) %)
          (range n)))
 

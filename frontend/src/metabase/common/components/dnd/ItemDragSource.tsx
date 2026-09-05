@@ -13,13 +13,13 @@ import { isRootTrashCollection } from "metabase/common/collections/utils";
 import {
   type MovableItem,
   type PinnableItem,
-  isMovable,
-  isPinnable,
   useSetCollection,
   useSetPinned,
   useToast,
 } from "metabase/common/hooks";
 import type { Collection, CollectionItem } from "metabase-types/api";
+
+import { type ItemDropResult, handleItemDrop } from "./handle-item-drop";
 
 import { type ItemDragPayload, dragTypeForItem, isItemDragPayload } from ".";
 
@@ -61,7 +61,10 @@ interface DragSourceOwnProps {
   collection?: Collection;
   onDrop?: () => void;
   onMoveError?: (error: unknown) => void;
-  setPinned: (item: PinnableItem, pinned: boolean | number) => void;
+  setPinned: (
+    item: PinnableItem,
+    pinned: boolean | number,
+  ) => PromiseLike<unknown>;
   setCollection: (
     item: MovableItem,
     destination: { id: Collection["id"] },
@@ -110,28 +113,19 @@ const DragSourceComponent = DragSource(
         return;
       }
       const { items } = payload;
-      // Unjustified type cast. FIXME
-      const { collection, pinIndex } = monitor.getDropResult() as {
-        collection?: Collection;
-        pinIndex?: number;
-      };
+      // React DnD v4 does not expose a type for target-specific drop results.
+      const dropResult = monitor.getDropResult() as ItemDropResult;
       if (items.length > 0) {
         try {
-          if (collection !== undefined) {
-            if (!items.every(isMovable)) {
-              return;
-            }
-            await Promise.all(
-              items.map((item) => setCollection(item, collection)),
-            );
-          } else if (pinIndex !== undefined) {
-            if (!items.every(isPinnable)) {
-              return;
-            }
-            await Promise.all(items.map((item) => setPinned(item, pinIndex)));
+          const handled = await handleItemDrop({
+            items,
+            dropResult,
+            setPinned,
+            setCollection,
+          });
+          if (handled) {
+            onDrop?.();
           }
-
-          onDrop?.();
         } catch (e) {
           onMoveError?.(e);
         }

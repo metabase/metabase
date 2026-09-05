@@ -2,6 +2,7 @@
   "Code for executing writeback queries."
   (:require
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -13,6 +14,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
+   ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -53,13 +55,14 @@
 (mu/defn execute-write-query!
   "Execute an writeback query (which currently has to be an MBQL 4 native query) from an action."
   [query :- ::lib.schema/native-only-query]
-  (qp.setup/with-qp-setup [query (assoc query :impersonation/allow-write? true)]
-    (let [query (qp.preprocess/preprocess query)]
-      ;; make sure this is a native query.
-      (when-not (lib/native-only-query? query)
-        (throw (ex-info (tru "Only native queries can be executed as write queries.")
-                        {:type qp.error-type/invalid-query, :status-code 400, :query query})))
-      ((writeback-qp) query (constantly conj)))))
+  (binding [driver.settings/*impersonation-allow-write?* true]
+    (qp.setup/with-qp-setup [query query]
+      (let [query (qp.preprocess/preprocess query)]
+        ;; make sure this is a native query.
+        (when-not (lib/native-only-query? query)
+          (throw (ex-info (tru "Only native queries can be executed as write queries.")
+                          {:type qp.error-type/invalid-query, :status-code 400, :query query})))
+        ((writeback-qp) query (constantly conj))))))
 
 (mu/defn execute-write-sql!
   "Execute a write query in SQL against a database given by `db-id`."

@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [diehard.core :as dh]
+   [metabase-enterprise.serialization.settings :as serialization.settings]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.app-db.core :as mdb]
@@ -257,36 +258,37 @@
   [ingestion & {:keys [continue-on-error reindex?]
                 :or   {continue-on-error false
                        reindex?          true}}]
-  (u/prog1
-    ;; Each entity is loaded in its own transaction (inside load-one!), so a deadlock or transient
-    ;; failure on one entity doesn't abort the entire import. See #74412.
-    ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared
-    ;; dependencies guide the import, and make sure all containers are imported before contents, etc.
-    (let [contents      (serdes.ingest/ingest-list ingestion)
-          ingest-errors (serdes.ingest/ingest-errors ingestion)
-          ctx           (cond-> (new-context ingestion)
-                          (seq ingest-errors) (update :errors into ingest-errors))]
-      (when (and (seq ingest-errors) (not continue-on-error))
-        (let [file-names (mapv #(or (:file (ex-data %)) (ex-message %)) ingest-errors)]
-          (throw (ex-info (format "Failed to read %d file(s) during ingestion: %s"
-                                  (count ingest-errors)
-                                  (str/join ", " file-names))
-                          {:ingest-errors ingest-errors
-                           :files         file-names}
-                          (first ingest-errors)))))
-      (log/infof "Starting deserialization, total %s documents" (count contents))
-      (reduce (fn [ctx item]
-                (try
-                  (load-one! ctx item)
-                  (catch Exception e
-                    (when-not continue-on-error
-                      (throw e))
-                    ;; eschew big and scary stacktrace
-                    (log/warnf (u/strip-error e "Skipping deserialization error"))
-                    (update ctx :errors conj e))))
-              ctx
-              contents))
-    (when reindex?
-      ;; Reindex after all entities are loaded. Individual entity commits may have produced stale
-      ;; search index entries; this ensures the index reflects the final state.
-      (search/reindex!))))
+  (binding [serdes/*skip-schema-validation?* (serialization.settings/serialization-skip-schema-validation)]
+    (u/prog1
+      ;; Each entity is loaded in its own transaction (inside load-one!), so a deadlock or transient
+      ;; failure on one entity doesn't abort the entire import. See #74412.
+      ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared
+      ;; dependencies guide the import, and make sure all containers are imported before contents, etc.
+      (let [contents      (serdes.ingest/ingest-list ingestion)
+            ingest-errors (serdes.ingest/ingest-errors ingestion)
+            ctx           (cond-> (new-context ingestion)
+                            (seq ingest-errors) (update :errors into ingest-errors))]
+        (when (and (seq ingest-errors) (not continue-on-error))
+          (let [file-names (mapv #(or (:file (ex-data %)) (ex-message %)) ingest-errors)]
+            (throw (ex-info (format "Failed to read %d file(s) during ingestion: %s"
+                                    (count ingest-errors)
+                                    (str/join ", " file-names))
+                            {:ingest-errors ingest-errors
+                             :files         file-names}
+                            (first ingest-errors)))))
+        (log/infof "Starting deserialization, total %s documents" (count contents))
+        (reduce (fn [ctx item]
+                  (try
+                    (load-one! ctx item)
+                    (catch Exception e
+                      (when-not continue-on-error
+                        (throw e))
+                      ;; eschew big and scary stacktrace
+                      (log/warnf (u/strip-error e "Skipping deserialization error"))
+                      (update ctx :errors conj e))))
+                ctx
+                contents))
+      (when reindex?
+        ;; Reindex after all entities are loaded. Individual entity commits may have produced stale
+        ;; search index entries; this ensures the index reflects the final state.
+        (search/reindex!)))))

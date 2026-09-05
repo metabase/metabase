@@ -123,6 +123,15 @@
 
 (defn execute-http-action!
   "Calls an http endpoint based on action and params"
+  [_action _params->value]
+  (throw (ex-info (tru "HTTP actions are disabled.")
+                  {:type        :http
+                   :status-code 400})))
+
+;; the real implementation, kept intact while execute-http-action! above refuses; nothing calls it
+;; until HTTP actions are switched back on
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var :unused-private-var]}
+(defn- execute-http-action-impl!
   [action params->value]
   (try
     (let [{:keys [method url body headers]} (:template action)

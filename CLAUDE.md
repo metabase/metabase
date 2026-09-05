@@ -35,7 +35,7 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 
 - **[analytics-events](.claude/skills/analytics-events/SKILL.md)** - Add product analytics events to track user interactions
 
-**Important**: When working with frontend code, read [frontend/CLAUDE.md](frontend/CLAUDE.md) for project-specific guidelines on component preferences, styling, TypeScript migration, testing requirements, and available scripts.
+**Important**: When working with frontend code, read [frontend/CLAUDE.md](frontend/CLAUDE.md) for project-specific guidelines on component preferences, styling, testing requirements, and available scripts.
 
 ## Running Backend Tests
 
@@ -77,26 +77,63 @@ It piggybacks on a running dev nREPL (~5s) and auto-spawns a JVM if none is runn
 the four generated keys; structural changes it can't safely make (a new module needs a human `:team`, or
 modules need reordering) are printed as `WARNING:` lines for you to resolve by hand.
 
+Run all repository-level checks, or one named suite:
+
+```bash
+./bin/mage project-tests
+./bin/mage project-tests <backend|migrations|modules|ratchets>
+```
+
 ## Kondo Ignore Ratchets
 
 `.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
-tree may contain. `metabase.core.kondo-ratchet-test` fails when the budgets drift from the actual counts,
-in either direction. Prefer fixing the underlying warning over adding an ignore.
+tree may contain, and how many config-level suppressions (`:off` switches and `:exclude` entries in
+`.clj-kondo/config.edn`) exist. Each `:ignore-counts` value is either a non-negative integer ceiling or
+`:unlimited`, which has no ceiling. This count policy is independent of `:comment-exempt`, described below.
 
-Budget too high (you removed ignores): a local run of the test tightens the file for you — commit the
-change. PRs labelled `kondo-ratchets-self-healing` get the lowered budgets committed to the branch by CI.
-To tighten by hand (babashka, no JVM; a no-op prints `unchanged`):
+Both ratchet commands are quick Babashka tasks, not JVM test runs:
 
 ```bash
-./bin/mage fix-kondo-ratchets
+./bin/mage kondo-ratchets                       # validate the file without changing it
+./bin/mage kondo-ratchets-shrink [--seed :lint] # lower budgets; optionally seed one
 ```
 
-Budget too low (you added an ignore): the task only raises a budget when told to. If the ignore is
-genuinely required, run `./bin/mage fix-kondo-ratchets --seed :the-linter` and defend the increase in the
-PR.
+`kondo-ratchets` is the command CI runs. It rejects suppression counts above their budgets, ignores without
+required justification comments, unknown linter names, and a missing or incorrectly formatted ratchets
+file. It allows budgets above the current counts.
+
+`kondo-ratchets-shrink` lowers budgets to the current counts and normalizes the file. It is the only Mage
+command that writes the file. With `--seed`, it can also add or raise an inline-ignore budget.
+
+Every policy key must name a linter: one of the pinned clj-kondo version's built-ins, a linter configured
+under `.clj-kondo/`, or an external diagnostic such as `:clojure-lsp/unused-public-var`. Both commands
+reject unknown names rather than dropping them.
+
+Release branches disable ratchet enforcement by replacing `.clj-kondo/ratchets.edn` with
+`{:disabled true}`. Both commands recognize this explicit opt-out; a missing file remains an error.
+
+When you remove ignores, leave the higher budget unchanged on the feature branch. After the change lands,
+the shrink workflow opens a `Tighten ratchets` PR to record the reduction. Avoiding ratchet-file changes in
+feature PRs also prevents unrelated PRs from conflicting over the file. The shrinker removes a bounded
+budget when its count reaches zero. It preserves an unused `:unlimited` entry and prints a warning so that
+the entry can be reviewed and removed manually on `master`.
+
+When you add a necessary ignore, run `./bin/mage kondo-ratchets-shrink --seed :the-linter` and explain the
+budget increase in the PR. Use `:unlimited` only when future ignores for that linter should not require
+budget changes.
+
+Fix the underlying warning when possible. Adding a suppression is a last resort and requires approval.
+In every suppression map, `:clj-kondo/ignore` must be the first key. Unless every suppressed linter is in
+`:comment-exempt`, add a `;;` comment directly above the suppression or at the end of the same line to
+explain why it is necessary. The check reports missing comments.
+When a linter's last uncommented ignore is commented or removed, the check warns that its exemption is
+stale. Remove the entry by hand; nothing does so automatically. Like `:unlimited`, an exemption records a
+decision rather than a count.
 
 Introducing a new linter: `./bin/mage kondo-insert-ignores :the-linter` inserts an ignore at every site it
-flags, then `./bin/mage fix-kondo-ratchets --seed :the-linter` records the budget — no big-bang cleanup.
+flags, then `./bin/mage kondo-ratchets-shrink --seed :the-linter` records the budget. This lets the linter
+land without fixing all its existing findings at once.
+
 To burn debt down, `./bin/mage kondo-redundant-ignores` lists ignores that are no longer needed (slow:
 full kondo run). Kondo's redundancy report can't see hook-linter warnings, so `--fix` re-lints after
 removing, puts any still-working ignore back exactly as it was, and stamps it with a `[kondo-keep]`
@@ -106,6 +143,11 @@ marked sites too, removing any that have become truly redundant along with their
 comments (a marker trailing on a code line is left for a hand fix). `[kondo-keep]` can also be added
 by hand to protect an ignore whose exact form matters — it only counts on the line directly above the
 ignore, or trailing on the ignore's own line.
+
+If `.clj-kondo/ratchets.edn` conflicts during a merge, rebase, or restack, run
+`./bin/merge-kondo-ratchets`. A change on one side wins over an unchanged base. When both sides change
+the same policy, the tool chooses the smaller budget, a numeric budget over `:unlimited`, or a removed
+entry over either. A file deleted on one side and changed on the other is left for you to resolve.
 
 ## Tool Preferences
 

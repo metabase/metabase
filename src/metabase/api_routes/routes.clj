@@ -41,7 +41,6 @@
    [metabase.mcp.callback-api]
    [metabase.measures.api]
    [metabase.metabot.api]
-   [metabase.metabot.api.entity-analysis]
    [metabase.metrics.api]
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
@@ -173,7 +172,6 @@
   {"/action"               (+auth 'metabase.actions-rest.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/agent"                (metabase.agent-api.api/+agent-api-enabled metabase.agent-api.api/routes)
-   "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
    "/analytics-proxy"      (+public-exceptions 'metabase.analytics.api.proxy)
@@ -195,7 +193,7 @@
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
-   "/email"                metabase.channel.api/email-routes
+   "/email"                (+auth metabase.channel.api/email-routes)
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)

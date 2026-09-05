@@ -92,14 +92,16 @@ describe("AIMarkdown", () => {
     );
 
     expect(await screen.findByText("Orders by month")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Orders by month/ }),
+    ).toHaveAttribute("href", expect.stringContaining("/question#"));
   });
 
   it("should still render the chart mention chip when the chart is not in conversation state", async () => {
     setup({ children: "[Orders by month](metabase://chart/chart-1)" });
 
     expect(await screen.findByText("Orders by month")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
   it("should render GFM tables", async () => {

@@ -71,6 +71,24 @@
   (some-> (ns-form-node->ns-symb-node ns-form-node)
           hooks/sexpr))
 
+(defn- lint-test-parallel-metadata [ns-form-node]
+  (when-let [ns-symb-node (ns-form-node->ns-symb-node ns-form-node)]
+    (let [ns-metadata (meta (hooks/sexpr ns-symb-node))]
+      (cond
+        (:synchronous ns-metadata)
+        (hooks/reg-finding!
+         (assoc (meta ns-symb-node)
+                :message (str "Use `^:synchronized` to mark this namespace explicitly non-parallel; "
+                              "`^:synchronous` is ignored by Hawk. [:metabase/validate-deftest]")
+                :type :metabase/validate-deftest))
+
+        (and (contains? ns-metadata :parallel)
+             (false? (:parallel ns-metadata)))
+        (hooks/reg-finding!
+         (assoc (meta ns-symb-node)
+                :message "Use `^:synchronized` instead of `^{:parallel false}`. [:metabase/validate-deftest]"
+                :type :metabase/validate-deftest))))))
+
 (defn- lint-modules [ns-form-node config]
   (let [ns-symb (ns-form-node->ns-symb ns-form-node)]
     (when-not (modules/ignored-namespace? config ns-symb)
@@ -140,6 +158,7 @@
     lint-requires-on-new-lines
     (lint-modules (modules/config x))
     lint-namespace-name
+    lint-test-parallel-metadata
     lint-jsqlparser-imports)
   x)
 

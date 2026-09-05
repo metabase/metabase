@@ -3,8 +3,8 @@
   for more details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
+   [metabase-enterprise.advanced-permissions.db :as advanced-permissions.db]
    [metabase.permissions.core :as perms]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -19,7 +19,14 @@
 (def ^:private ApplicationPermissionsGraph
   [:map {:closed true}
    [:revision :int]
+   [:force {:optional true} [:maybe :boolean]]
    [:groups [:map-of ms/PositiveInt GroupPermissionsGraph]]])
+
+(def ^:private ApplicationPermissionsGraphUpdate
+  [:map {:closed true}
+   [:revision {:optional true} [:maybe :int]]
+   [:force    {:optional true} [:maybe :boolean]]
+   [:groups   [:map-of ms/PositiveInt GroupPermissionsGraph]]])
 
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
@@ -27,10 +34,7 @@
   "Returns a map of group-id -> application permissions paths.
   Only groups that has at least one application permission enabled will be included."
   []
-  (let [application-permissions (t2/select :model/Permissions
-                                           {:where [:or
-                                                    [:= :object "/"]
-                                                    [:like :object (h2x/literal "/application/%")]]})]
+  (let [application-permissions (advanced-permissions.db/application-permissions)]
     (into {} (for [[group-id perms] (group-by :group_id application-permissions)]
                {group-id (set (map :object perms))}))))
 
@@ -73,10 +77,10 @@
   "Update the application Permissions graph.
   This works just like [[metabase.permissions-rest.data-permissions.graph/update-data-perms-graph!]], but for
   Application permissions; refer to that function's extensive documentation to get a sense for how this works."
-  ([new-graph :- ApplicationPermissionsGraph]
+  ([new-graph :- ApplicationPermissionsGraphUpdate]
    (update-graph! new-graph false))
 
-  ([new-graph :- ApplicationPermissionsGraph
+  ([new-graph :- ApplicationPermissionsGraphUpdate
     force?     :- :boolean]
    (let [old-graph          (graph)
          old-perms          (:groups old-graph)

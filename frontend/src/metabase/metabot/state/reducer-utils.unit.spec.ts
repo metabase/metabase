@@ -9,14 +9,14 @@ import {
   openChain,
   startChainReasoning,
 } from "./reducer-utils";
-import type { MetabotConverstationState } from "./types";
+import type { MetabotConversationState } from "./types";
 
-const chainOf = (convo: MetabotConverstationState) =>
+const chainOf = (convo: MetabotConversationState) =>
   convo.messages.find((m) => m.type === "chain_of_thought");
 
 describe("chain of thought duration timing", () => {
   it("stamps and advances endedAtMs on each step so the span lives in redux", () => {
-    const opened = produce(createConversation("omnibot"), (d) => openChain(d));
+    const opened = produce(createConversation(), (d) => openChain(d));
     const started = produce(opened, (d) => startChainReasoning(d, 1000));
     expect(chainOf(started)).toMatchObject({
       startedAtMs: 1000,
@@ -33,7 +33,7 @@ describe("chain of thought duration timing", () => {
   });
 
   it("keeps the last step's end time when the answer closes the chain without a clock", () => {
-    const convo = produce(createConversation("omnibot"), (d) => {
+    const convo = produce(createConversation(), (d) => {
       openChain(d);
       startChainReasoning(d, 1000);
       appendChainReasoning(d, "x", 3000);
@@ -43,7 +43,7 @@ describe("chain of thought duration timing", () => {
   });
 
   it("drops a shell that never gathered a step at turn teardown", () => {
-    const convo = produce(createConversation("omnibot"), (d) => {
+    const convo = produce(createConversation(), (d) => {
       openChain(d);
       closeChain(d);
     });
@@ -52,7 +52,7 @@ describe("chain of thought duration timing", () => {
   });
 
   it("advances endedAtMs when a tool ends, so a turn ending on a tool counts its runtime", () => {
-    const convo = produce(createConversation("omnibot"), (d) => {
+    const convo = produce(createConversation(), (d) => {
       addChainTool(d, { id: "t1", name: "analyze_data", nowMs: 1000 });
       endChainTool(d, "t1", 9000);
     });
@@ -63,7 +63,7 @@ describe("chain of thought duration timing", () => {
   });
 
   it("leaves a settled chain's span alone when its tool ends late", () => {
-    const convo = produce(createConversation("omnibot"), (d) => {
+    const convo = produce(createConversation(), (d) => {
       addChainTool(d, { id: "t1", name: "analyze_data", nowMs: 1000 });
       closeChain(d, 2000); // answer text settled the chain
       endChainTool(d, "t1", 9000);
@@ -74,7 +74,7 @@ describe("chain of thought duration timing", () => {
 
 describe("chain tool step dedupe", () => {
   it("updates the existing step across a closed chain instead of re-adding it", () => {
-    const convo = produce(createConversation("omnibot"), (d) => {
+    const convo = produce(createConversation(), (d) => {
       // tool-input-start, then answer text closes the chain, then
       // tool-input-available arrives late with the title
       addChainTool(d, { id: "t1", name: "search", nowMs: 1000 });

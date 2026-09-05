@@ -1,5 +1,6 @@
 (ns metabase.channel.render.util-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.render.util :as render-util]))
 
@@ -170,3 +171,22 @@
       (is (= (map #(select-keys % [:name :display_name]) (:cols expected-merged-data))
              (map #(select-keys % [:name :display_name]) (:cols result))))
       (is (= (:rows expected-merged-data) (:rows result))))))
+
+(deftest ^:parallel render-parameters-escapes-html-test
+  (testing "parameter names and values are HTML-escaped"
+    ;; Callers splice this fragment into the email body as-is, so it has to arrive escaped.
+    (let [name-html  "<b>Bold</b>"
+          value-html "R&D <i>x</i>"
+          rendered   (render-util/render-parameters
+                      [{:id    "f0d3d4d3"
+                        :type  "string/="
+                        :name  name-html
+                        :value [value-html]}])]
+      (testing "no markup from the parameter survives into the rendered HTML"
+        (is (not (str/includes? rendered name-html))
+            "parameter name was not escaped")
+        (is (not (str/includes? rendered value-html))
+            "parameter value was not escaped"))
+      (testing "the text is still shown, escaped"
+        (is (str/includes? rendered "&lt;b&gt;Bold&lt;/b&gt;"))
+        (is (str/includes? rendered "R&amp;D &lt;i&gt;x&lt;/i&gt;"))))))

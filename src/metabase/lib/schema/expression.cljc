@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.expression
   (:refer-clojure :exclude [some empty? #?(:clj for)])
   (:require
+   [malli.core :as mc]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
@@ -235,8 +236,11 @@
    [:ref ::expression]
    [:cat
     #_tag :any
+    ;; `::mc/default` because this only checks and normalizes the name -- the rest of the options map is validated by
+    ;; `::expression` above, and would otherwise be stripped here before it got there.
     #_opts [:map
-            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]]
+            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]
+            [::mc/default :any]]
     #_args [:* :any]]
    [:fn
     {:error/message "non-aggregation expression"}

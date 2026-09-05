@@ -65,7 +65,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -76,6 +75,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
+   [metabase.parameters.db :as parameters.db]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -92,8 +92,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.field-values :as field-values]))
 
 ;; so the hydration method for name_field is loaded
 (comment params/keep-me)
@@ -547,64 +546,18 @@
               (get v->human-readable v (get v->human-readable (str v))))
             values)))
 
-(defn- format-union
-  "Workaround for https://github.com/seancorfield/honeysql/issues/451. Wrap the subselects in parens, otherwise it will
-  fail on Postgres."
-  [_clause exprs]
-  (let [[sqls args] (sql/format-expr-list exprs)
-        sql         (str/join " UNION " sqls)]
-    (into [sql] args)))
-
-(sql/register-clause! ::union format-union :union)
-
-(defn- implicit-pk->name-mapping-query
-  [field-id mapping-type]
-  {:select    [[:dest.id :id] [[:inline mapping-type] :mapping_type]]
-   :from      [[:metabase_field :source]]
-   :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
-               [:metabase_field :dest] [:= :dest.table_id :table.id]]
-   :where     [:and
-               [:= :source.id field-id]
-               (mdb/isa :source.semantic_type :type/PK)
-               (mdb/isa :dest.semantic_type :type/Name)]
-   :limit     1})
-
 (def ^:dynamic *allow-implicit-uuid-field-remapping*
   "Should implicit remapping be allowed _for uuid fields_? Not eg. for
   `GET /dashboard/:id/params/:param-key/search/:query` to search on actual field that was picked
   for filtering (#59020). Apart from the endpoint it is bound in [[chain-filter-search]]!"
   true)
 
-(defn- remapped-field-id-query [field-id]
-  {:select [[:mapping.id :id] [:mapping.mapping_type :mapping_type]]
-   :from   [[{::union (into [;; Explicit FK Field->Field remapping
-                             {:select [[:dimension.human_readable_field_id :id] [[:inline "fk->field"] :mapping_type]]
-                              :from   [[:dimension :dimension]]
-                              :where  [:and
-                                       [:= :dimension.field_id field-id]
-                                       [:not= :dimension.human_readable_field_id nil]]
-                              :limit  1}]
-                            (when *allow-implicit-uuid-field-remapping*
-                              [;; Implicit FK Field -> PK Field -> [Name] Field remapping
-                               (implicit-pk->name-mapping-query
-                                {:select    [:fk_target_field_id]
-                                 :from      [:metabase_field]
-                                 :where     [:and
-                                             [:= :id field-id]
-                                             (mdb/isa :semantic_type :type/FK)]
-                                 :limit     1}
-                                "fk->pk->name")
-                               ;; Implicit PK Field-> [Name] Field remapping
-                               (implicit-pk->name-mapping-query field-id "pk->name")]))}
-             :mapping]]
-   :limit  1})
-
 ;; TODO -- add some caching here?
 (mu/defn remapped-field-id :- [:maybe ::lib.schema.id/field]
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
   [field-id :- [:maybe ::lib.schema.id/field]]
-  (:id (t2/query-one (remapped-field-id-query field-id))))
+  (:id (parameters.db/remapped-field field-id *allow-implicit-uuid-field-remapping*)))
 
 (mu/defn remapping :- [:maybe [:map
                                [:id ::lib.schema.id/field]
@@ -612,7 +565,7 @@
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
   [field-id :- [:maybe ::lib.schema.id/field]]
-  (when-let [raw-mapping (t2/query-one (remapped-field-id-query field-id))]
+  (when-let [raw-mapping (parameters.db/remapped-field field-id *allow-implicit-uuid-field-remapping*)]
     (-> raw-mapping
         (dissoc :mapping_type)
         (assoc :mapping-type (-> raw-mapping :mapping_type keyword)))))
@@ -640,8 +593,8 @@
   ;; TODO: why don't we remap the human readable values here?
   (let [{:keys [values] has-more-values? :has_more_values}
         (if (empty? constraints)
-          (params.field-values/get-or-create-field-values-for-current-user! (t2/select-one :model/Field :id field-id))
-          (params.field-values/get-or-create-linked-filter-field-values! (t2/select-one :model/Field :id field-id) constraints))]
+          (params.field-values/get-or-create-field-values-for-current-user! (parameters.db/field field-id))
+          (params.field-values/get-or-create-linked-filter-field-values! (parameters.db/field field-id) constraints))]
     {:values          (cond->> values
                         limit (take limit))
      :has_more_values (or (when limit
@@ -704,7 +657,7 @@
       (let [{the-remapped-field-id :id, :keys [mapping-type]} @remapping]
         (if-let [pk-field-id (when (and (= mapping-type :fk->pk->name)
                                         relax-fk-requirement?)
-                               (t2/select-one-fn :fk_target_field_id :model/Field field-id))]
+                               (parameters.db/field-fk-target-field-id field-id))]
           (unremapped-chain-filter the-remapped-field-id
                                    (map #(cond-> %
                                            (= (:field-id %) field-id) (assoc :field-id pk-field-id))
@@ -722,12 +675,12 @@
 (defn- check-valid-search-field
   "Before running a search query, make sure the Field actually exists and that it's a Text field."
   [field-id]
-  (let [base-type (t2/select-one-fn :base_type :model/Field :id field-id)]
+  (let [base-type (parameters.db/field-base-type field-id)]
     (when-not base-type
       (throw (ex-info (tru "Field {0} does not exist." field-id)
                       {:field field-id, :status-code 404})))
     (when-not (isa? base-type :type/Text)
-      (let [field-name (t2/select-one-fn :name :model/Field :id field-id)]
+      (let [field-name (parameters.db/field-name field-id)]
         (throw (ex-info (tru "Cannot search against non-Text Field {0} {1}" field-id (pr-str field-name))
                         {:status-code 400
                          :field-id    field-id
@@ -773,22 +726,16 @@
        :has_more_values false}))
 
 (defn- search-cached-field-values? [field-id constraints]
-  (let [field (t2/select-one :model/Field :id field-id)]
+  (let [field (parameters.db/field field-id)]
     (and (use-cached-field-values? field-id)
          (isa? (:base_type field) :type/Text)
-         (apply t2/exists? :model/FieldValues (mapcat
-                                               identity
-                                               (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
-                                                      ;; if we are doing a search, make sure we only use field values
-                                                      ;; when we're certain the fieldvalues we stored are all the possible values.
-                                                      ;; otherwise, we should search directly from DB
-                                                      {:has_more_values false}
-                                                      (let [hash-input (params.field-values/hash-input-for-field-values field constraints)
-                                                            hash-key (str (hash hash-input))]
-                                                        (if (not= hash-input {:field-id field-id})
-                                                          {:type "advanced"
-                                                           :hash_key hash-key}
-                                                          {:type "full"}))))))))
+         ;; if we are doing a search, make sure we only use field values when we're certain the fieldvalues we stored
+         ;; are all the possible values. otherwise, we should search directly from DB
+         (let [hash-input (params.field-values/hash-input-for-field-values field constraints)
+               hash-key   (str (hash hash-input))]
+           (if (not= hash-input {:field-id field-id})
+             (parameters.db/advanced-field-values-exist? field-id hash-key)
+             (parameters.db/full-field-values-exist? field-id))))))
 
 (defn- cached-field-values-search
   [field-id query constraints {:keys [limit]}]

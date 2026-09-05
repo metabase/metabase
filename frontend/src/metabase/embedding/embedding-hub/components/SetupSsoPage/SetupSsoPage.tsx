@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
 import { Link } from "metabase/common/components/Link";
 import { OnboardingStepper } from "metabase/embedding/embedding-hub/components/OnboardingStepper";
 import type { OnboardingStepperHandle } from "metabase/embedding/embedding-hub/components/OnboardingStepper/types";
 import { Group, Icon, Stack, Text, Title } from "metabase/ui";
+
+import { useGetEmbeddingHubChecklistQuery } from "../../api/embedding-hub";
 
 import { AddEndpointStep } from "./AddEndpointStep";
 import { SetupJwtStep } from "./SetupJwtStep";
@@ -54,13 +55,13 @@ export const SetupSsoPage = () => {
   return (
     <Stack mx="auto" gap="sm" maw={680}>
       <Link to={SETUP_GUIDE_PATH} className={S.backLink}>
-        <Group gap="xs">
+        <Group gap="xxs">
           <Icon name="chevronleft" size={12} />
           <Text size="sm" c="text-secondary">{t`Back to the setup guide`}</Text>
         </Group>
       </Link>
 
-      <Title order={1} c="text-primary" mb="xl">
+      <Title order={1} c="text-primary" mb="xxl">
         {t`Configure SSO`}
       </Title>
 

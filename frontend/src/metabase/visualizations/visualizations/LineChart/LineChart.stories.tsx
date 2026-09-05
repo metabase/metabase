@@ -7,8 +7,8 @@ import {
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Box } from "metabase/ui";
-import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { registerVisualization } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 import {
   createMockCard,

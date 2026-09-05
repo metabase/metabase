@@ -85,8 +85,23 @@
               index            (:index state)
               table-name       (:table-name index)
               stalled-at       (-> state :metadata-row :indexer_stalled_at)
-              model-mismatch?  (not= (:embedding-model index) (semantic.env/get-configured-embedding-model))
-              embedder-problem (when-not model-mismatch? (embedding-health/embedding-problem))
+              ;; The embedding space, not the settings, decides whether the stored vectors are still usable:
+              ;; a provider upgrade can resolve unchanged settings to a new space and strand the index.
+              ;; Resolution reaches the provider, so it can fail outright (plugin absent, platform
+              ;; unsupported) -- that is its own incident, not a mismatch.
+              configured       (try
+                                 {:space-id (:embedding-space-id
+                                             (semantic.embedding/resolve-model
+                                              (semantic.env/get-configured-embedding-model)))}
+                                 (catch InterruptedException e
+                                   (throw e))
+                                 (catch Exception e
+                                   {:error e}))
+              model-mismatch?  (and (nil? (:error configured))
+                                    (not= (:embedding-space-id (:embedding-model index))
+                                          (:space-id configured)))
+              embedder-problem (when-not (or model-mismatch? (:error configured))
+                                 (embedding-health/embedding-problem))
               problems         (cond-> []
                                  (not (active-index-queryable? pgvector table-name))
                                  (conj "active index table not queryable")
@@ -96,6 +111,10 @@
 
                                  (some? stalled-at)
                                  (conj (str "indexer stalled since " stalled-at))
+
+                                 (some? (:error configured))
+                                 (conj (str "configured embedding model cannot be resolved: "
+                                            (ex-message (:error configured))))
 
                                  model-mismatch?
                                  (conj "active index embedding model does not match configured model")

@@ -38,12 +38,26 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       cy.findByText("Slack").should("not.exist");
     });
 
+    H.selectScheduleTime();
     cy.button("Done").click();
 
     cy.wait("@saveAlert").then(({ response: { body } }) => {
       expect(body.handlers).to.have.length(1);
       expect(body.handlers[0].channel_type).to.eq("channel/email");
     });
+  });
+
+  it("should not claim a schedule when sending a one-off alert", () => {
+    createQuestionAndOpenAlert("One-off alert");
+
+    H.sendAlertAndVisitIt();
+
+    cy.get("table.header")
+      .first()
+      .within(() => {
+        cy.findByText("One-off alert").should("be.visible");
+        cy.findByText(/Run daily at/).should("not.exist");
+      });
   });
 
   it("should respect email alerts toggled off (metabase#12349)", () => {
@@ -69,6 +83,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     H.removeNotificationHandlerChannel("Email");
 
+    H.selectScheduleTime();
     H.modal().within(() => {
       cy.button("Done").click();
     });
@@ -104,6 +119,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       .click();
     H.popover().findByText("#work").click();
 
+    H.selectScheduleTime();
     H.modal().within(() => {
       cy.button("Done").click();
     });
@@ -164,6 +180,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       .should("have.attr", "value", "weekly")
       .should("have.attr", "aria-selected", "false")
       .click();
+    H.selectScheduleTime();
     cy.button("Save changes").click();
 
     cy.log("Check that /api/card has still only been called once");
@@ -225,10 +242,11 @@ function saveAlert() {
 
   cy.findByLabelText("Move, duplicate, and more…").click();
   H.popover().findByText("Create an alert").click();
+  H.selectScheduleTime();
   H.modal().button("Done").click();
 }
 
-function sendTestAlertForQuestion(name) {
+function createQuestionAndOpenAlert(name) {
   H.createNativeQuestion(
     {
       name,
@@ -239,6 +257,11 @@ function sendTestAlertForQuestion(name) {
 
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Create an alert").click();
+}
+
+function sendTestAlertForQuestion(name) {
+  createQuestionAndOpenAlert(name);
+  H.selectScheduleTime();
   H.sendAlertAndVisitIt();
   cy.findAllByRole("link").filter(`:contains(${name})`).should("be.visible");
 }

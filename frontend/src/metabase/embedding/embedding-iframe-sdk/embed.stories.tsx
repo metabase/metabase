@@ -87,7 +87,7 @@ const ControlledParametersEmbedJsPlayground = () => {
       {...playground}
       title="Embed.js — parameters playground"
       description={
-        <Stack gap="xs">
+        <Stack gap="xxs">
           <Text size="sm" c="text-secondary">
             Initial seed comes from the <code>initial-parameters</code>{" "}
             attribute (set once at mount).

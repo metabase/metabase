@@ -1,6 +1,6 @@
 import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 import type Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import type { Card, VisualizationDisplay } from "metabase-types/api";
 
 export const trackNewQuestionSaved = (
   draftQuestion: Question,
@@ -37,10 +37,12 @@ export const trackNotebookNativePreviewShown = (
   });
 };
 
-export const trackFirstNonTableChartGenerated = (card: Card) => {
+export const trackFirstNonTableChartGenerated = (
+  display: VisualizationDisplay,
+) => {
   trackSimpleEvent({
     event: "chart_generated",
-    event_detail: card.display,
+    event_detail: display,
   });
 };
 

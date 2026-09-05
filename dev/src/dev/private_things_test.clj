@@ -73,9 +73,10 @@
 
   (privatize-symbol! symb+analysis))
 
+;; standalone dev utility for ad hoc privacy audits, with no in-tree caller
 #_{:clj-kondo/ignore [:unused-private-var]}
 (defn- privacy-report
-  "Writes privacy report into a file, which is used by the privacy-reporter.yml github action."
+  "Write the privacy report to a file for ad hoc inspection."
   [& _args]
   (when-let [ttsbp (things-that-should-be-private)]
     (spit "privacy_report.txt"

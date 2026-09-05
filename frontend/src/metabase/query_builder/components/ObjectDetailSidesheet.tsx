@@ -10,7 +10,10 @@ import {
   getRowUrl,
   getSingleResultsRow,
 } from "metabase/visualizations/components/ObjectDetail/utils";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import {
+  getComputedSettingsForSeries,
+  getSeriesWithDisplay,
+} from "metabase/viz-core";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
 import {
@@ -19,6 +22,7 @@ import {
   viewNextObjectDetail,
   viewPreviousObjectDetail,
 } from "../actions";
+import { getIsObjectDetail } from "../store/mode-selectors";
 import {
   getCanZoomNextRow,
   getCanZoomPreviousRow,
@@ -27,8 +31,7 @@ import {
   getTableMetadata,
   getZoomRow,
   getZoomedObjectId,
-} from "../selectors";
-import { getIsObjectDetail } from "../selectors/mode";
+} from "../store/selectors";
 
 export function ObjectDetailSidesheet() {
   const isObjectDetail = useSelector(getIsObjectDetail);
@@ -60,9 +63,7 @@ function ObjectDetailSidesheetInner() {
       return undefined;
     }
     // Force "object" display so settings resolve the object-detail column config.
-    const series = [
-      { ...first, card: { ...first.card, display: "object" as const } },
-    ];
+    const series = getSeriesWithDisplay([first], "object");
     return { series, settings: getComputedSettingsForSeries(series) };
   }, [rawSeries]);
 

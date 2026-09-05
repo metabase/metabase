@@ -3,8 +3,8 @@ import fetchMock from "fetch-mock";
 import { getMainStore } from "__support__/entities-store";
 import { createMockEntitiesState } from "__support__/store";
 import { waitFor } from "__support__/ui";
+import { getMetadata } from "metabase/metadata-store";
 import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -110,7 +110,6 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
         `path:/api/card/${question.id()}/query`,
       );
       expect(await call?.request?.json()).toEqual({
-        collection_preview: false,
         ignore_cache: false,
         parameters: [],
       });
@@ -129,7 +128,6 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
         `path:/api/card/pivot/${question.id()}/query`,
       );
       expect(await call?.request?.json()).toEqual({
-        collection_preview: false,
         ignore_cache: false,
         parameters: [],
       });
@@ -146,7 +144,6 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
         `path:/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${question.id()}/query`,
       );
       expect(await call?.request?.json()).toEqual({
-        collection_preview: false,
         ignore_cache: false,
         parameters: [],
       });
@@ -167,7 +164,6 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
         `path:/api/dashboard/pivot/${dashboardId}/dashcard/${dashcardId}/card/${question.id()}/query`,
       );
       expect(await call?.request?.json()).toEqual({
-        collection_preview: false,
         ignore_cache: false,
         parameters: [],
       });

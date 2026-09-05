@@ -1,0 +1,17 @@
+.iconWrapper {
+  padding: 0.75rem;
+  background-color: transparent;
+  cursor: pointer;
+  color: var(--mb-color-core-brand);
+  width: 3em;
+  height: 3em;
+
+  &.pinned {
+    color: var(--mb-color-accent4);
+  }
+
+  &.disabled {
+    cursor: default;
+    color: var(--mb-color-text-disabled);
+  }
+}

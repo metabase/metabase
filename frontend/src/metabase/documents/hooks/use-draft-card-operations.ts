@@ -46,11 +46,13 @@ export function useDraftCardOperations(
           };
 
           dispatch(
-            datasetApi.util.upsertQueryData(
-              "getAdhocQuery",
-              draftQueryArgs,
-              regularDataset,
-            ),
+            datasetApi.util.upsertQueryEntries([
+              {
+                endpointName: "getAdhocQuery",
+                arg: draftQueryArgs,
+                value: regularDataset,
+              },
+            ]),
           );
         }
 
