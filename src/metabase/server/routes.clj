@@ -10,6 +10,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.initialization-status.core :as init-status]
    [metabase.oauth-server.api :as oauth-server.api]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
    [metabase.server.auth-wrapper :as auth-wrapper]
@@ -37,6 +38,17 @@
     (redirect-including-query-string (format "%s/api/public/card/%s/query/%s" (system/site-url) uuid export-format)))
   (GET "*" [] index/public))
 
+(defn- data-app-entrypoint
+  "Serve the `/embed/apps/:name` iframe SPA shell, but only when the
+   `:data-apps-preview` feature is enabled. Without it, respond nil so routing
+   falls through to the generic embed handler below — the instance then behaves
+   exactly as if data apps did not exist, matching how the rest of data-app
+   support is gated behind the token feature."
+  [request respond raise]
+  (if (premium-features/enable-data-apps?)
+    (index/data-app request respond raise)
+    (respond nil)))
+
 ;; /embed routes.
 ;; /embed/sdk/v1 -> new iframe embedding based on embedding sdk components
 ;; /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
@@ -46,8 +58,8 @@
   ;; Same `data-app.html` for the bare path and any deeper sub-route — the
   ;; iframe's React Router owns the sub-path; reloads at an inner URL still
   ;; have to serve the SPA shell.
-  (GET [(str "/" request/data-app-url-segment "/:name"), :name #"[^/]+"] [] index/data-app)
-  (GET [(str "/" request/data-app-url-segment "/:name/*"), :name #"[^/]+"] [] index/data-app)
+  (GET [(str "/" request/data-app-url-segment "/:name"), :name #"[^/]+"] [] data-app-entrypoint)
+  (GET [(str "/" request/data-app-url-segment "/:name/*"), :name #"[^/]+"] [] data-app-entrypoint)
   (GET ["/question/:token.:export-format", :export-format qp.schema/export-formats-regex]
     [token export-format]
     (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (system/site-url) token export-format)))

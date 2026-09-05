@@ -30,6 +30,23 @@
         (when description (format "description: %s\n" description)))
    (format "data_apps/%s/%s" dir path) bundle})
 
+(deftest sync-from-snapshot-is-gated-by-the-data-apps-feature-test
+  (testing "the remote-sync entry point does nothing without the :data-apps-preview feature —
+            an instance then behaves exactly as if data apps did not exist"
+    (let [files (app-files "a" {:name "A" :path "index.js" :bundle "V1"})]
+      (mt/with-premium-features #{}
+        (mt/with-model-cleanup [:model/DataApp]
+          (is (nil? (data-app.sync/sync-from-snapshot! (snapshot files)))
+              "returns nil rather than a sync result")
+          (is (not (t2/exists? :model/DataApp :name "a"))
+              "materializes no data app")))
+      (mt/with-premium-features #{:data-apps-preview}
+        (mt/with-model-cleanup [:model/DataApp]
+          (is (=? {:synced 1 :changed 1}
+                  (data-app.sync/sync-from-snapshot! (snapshot files)))
+              "with the feature it materializes the app as usual")
+          (is (t2/exists? :model/DataApp :name "a")))))))
+
 (deftest changed-count-tracks-content-not-sha-bumps-test
   (mt/with-model-cleanup [:model/DataApp]
     (let [files (app-files "a" {:name "A" :path "index.js" :bundle "V1"})]

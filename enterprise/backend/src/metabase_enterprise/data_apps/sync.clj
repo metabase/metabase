@@ -15,6 +15,7 @@
    [clojure.string :as str]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -224,14 +225,19 @@
    Never throws, so it can't break the surrounding remote-sync import: a thrown
    failure is logged and swallowed, and a malformed `data_app.yaml` is logged and
    its app simply doesn't appear. Returns the [[import-from-snapshot!]] result, or
-   nil if the sync threw."
+   nil if the sync threw.
+
+   A no-op returning nil when the `:data-apps-preview` feature is absent: without
+   it an instance behaves exactly as if data apps did not exist — no rows,
+   collections, or permission groups are materialized, and nothing is pruned."
   [snapshot]
-  (try
-    (let [{:keys [config-errors] :as result} (import-from-snapshot! snapshot)]
-      (when (seq config-errors)
-        (log/warnf "[data-app] %d data_app.yaml config(s) skipped: %s"
-                   (count config-errors) (str/join "; " config-errors)))
-      result)
-    (catch Throwable e
-      (log/warnf "[data-app] sync from remote-sync snapshot failed: %s" (ex-message e))
-      nil)))
+  (when (premium-features/enable-data-apps?)
+    (try
+      (let [{:keys [config-errors] :as result} (import-from-snapshot! snapshot)]
+        (when (seq config-errors)
+          (log/warnf "[data-app] %d data_app.yaml config(s) skipped: %s"
+                     (count config-errors) (str/join "; " config-errors)))
+        result)
+      (catch Throwable e
+        (log/warnf "[data-app] sync from remote-sync snapshot failed: %s" (ex-message e))
+        nil))))
