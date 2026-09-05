@@ -11,6 +11,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
@@ -1095,3 +1096,23 @@
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->Time]
   [_driver _semantic_type expr]
   (h2x/->time expr))
+
+;; BigQuery infers untyped `NULL` in `UNION ALL` as `INT64` and then rejects the union against
+;; sibling `TIMESTAMP` / `STRING` columns. Emit `CAST(NULL AS <type>)` so the branch's null-padded
+;; column carries the same type as its counterpart in the full-breakout branch.
+(defn- base-type->bigquery-cast-type
+  [base-type]
+  (cond
+    (isa? base-type :type/Text)     "STRING"
+    (isa? base-type :type/Integer)  "INT64"
+    (isa? base-type :type/Float)    "FLOAT64"
+    (isa? base-type :type/Decimal)  "NUMERIC"
+    (isa? base-type :type/Boolean)  "BOOL"
+    (isa? base-type :type/Date)     "DATE"
+    (isa? base-type :type/Time)     "TIME"
+    (isa? base-type :type/DateTime) "TIMESTAMP"))
+
+(defmethod sql.pivot/null-pad-breakout-hsql :bigquery-cloud-sdk
+  [_driver [_tag opts _id-or-name] _breakout-expr]
+  (when-let [bq-type (base-type->bigquery-cast-type (or (:effective-type opts) (:base-type opts)))]
+    (h2x/cast bq-type nil)))

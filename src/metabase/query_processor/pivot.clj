@@ -12,6 +12,7 @@
   (:refer-clojure :exclude [every? mapv some select-keys update-keys empty? not-empty get-in])
   (:require
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -33,7 +34,6 @@
    [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot.common :as pivot.common]
-   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.settings :as qp.settings]
@@ -47,6 +47,10 @@
    [metabase.util.performance :refer [empty? every? get-in mapv not-empty select-keys some update-keys]]))
 
 (set! *warn-on-reflection* true)
+
+(def group-bitmask
+  "Re-export of [[metabase.query-processor.pivot.common/group-bitmask]]."
+  pivot.common/group-bitmask)
 
 (defn- powerset
   "Generate a powerset while maintaining the original ordering as much as possible"
@@ -508,28 +512,6 @@
              :show-row-totals    (lib.pivot/read-show-flag query :show-row-totals    :show_row_totals)
              :show-column-totals (lib.pivot/read-show-flag query :show-column-totals :show_column_totals)}))))))
 
-(defn- has-window-fn-aggregation?
-  "True iff any aggregation in the last stage of `query` contains a window-function aggregation clause at any depth."
-  [query]
-  (boolean (some lib.schema.aggregation/window-aggregation-expression?
-                 (lib/aggregations query))))
-
-(defn native-pivot-compatible?
-  "True iff the native MBQL5 pivot path can handle `query` end-to-end.
-
-  Preprocesses the query first so the check sees the fully-expanded form — after metric/measure/segment
-  expansion and source-card inlining — and then rejects only when a known incompatibility remains."
-  [query]
-  ;; The set of incompatibility reasons is intentionally small: each entry must point at a specific demonstrated
-  ;; problem, never "just in case." Add new conditions by combining the existing predicates with `or` inside the
-  ;; `not`.
-  ;;
-  ;; Window-function aggregations: a running total over `GROUPING SETS` results would span detail rows AND
-  ;; subtotal rows, which is meaningless. The multi-query path runs one query per breakout combination, where
-  ;; these aggregations behave as expected. Importantly, this check has to see the EXPANDED query — a metric
-  ;; that resolves to `:cum-sum` is just as problematic as a `:cum-sum` written inline.
-  (not (has-window-fn-aggregation? (qp.preprocess/preprocess query))))
-
 (defn- remapped-field
   [breakout]
   (when (and (vector? breakout)
@@ -653,21 +635,60 @@
       (get-in result [:cache/details :updated_at])))
 
 (defn- pivot-rows-equivalent?
-  "Compare pivot result maps from the two pivot paths. The candidate always uses `default-rff` and so carries
-  `(:data :rows)` and `:row_count`; the control uses the caller's rff and may carry anything.
-
-  When comparing rows, each cell is normalised via [[round-numeric]] to tolerate float-associativity noise
-  between multi-`SUM` per-subquery and native `SUM` over `GROUPING SETS`.
-
-  On mismatch — when at least one side was served from the QP cache — logs each side's cache `updated_at` so
-  that mismatches caused by asymmetric cache freshness (control served from a stale multi-path cache while
-  candidate ran fresh, or vice versa) can be distinguished from true code regressions."
+  "Row-frequency equivalence for pivot results. Each cell is normalised via [[round-numeric]] to tolerate
+  float-associativity noise between multi-`SUM` per-subquery and native `SUM` over `GROUPING SETS`. Falls
+  back to `:row_count` when a caller-supplied rff didn't carry rows through, and to `true` when neither
+  side exposes rows or a row count — the caller's rff (e.g. a bare-count reducer or a streaming HTTP
+  writer) has reduced past what the parity checker can meaningfully compare."
   [r1 r2]
-  (let [equivalent? (cond
-                      (-> r1 :data :rows) (= (frequencies (mapv #(mapv round-numeric %) (-> r1 :data :rows)))
-                                             (frequencies (mapv #(mapv round-numeric %) (-> r2 :data :rows))))
-                      (:row_count r1)     (= (:row_count r1) (:row_count r2))
-                      :else               true)
+  (cond
+    (and (map? r1) (-> r1 :data :rows)
+         (map? r2) (-> r2 :data :rows))
+    (= (frequencies (mapv #(mapv round-numeric %) (-> r1 :data :rows)))
+       (frequencies (mapv #(mapv round-numeric %) (-> r2 :data :rows))))
+
+    (and (map? r1) (:row_count r1)
+         (map? r2) (:row_count r2))
+    (= (:row_count r1) (:row_count r2))
+
+    :else
+    true))
+
+(defn- ->cols-fingerprint
+  "Extract the field-shape signature the FE contract cares about — `:name`, `:field_ref`, `:source`, and
+  `:base_type` — for each column in `result`'s metadata. Ignores incidental fields (`:fingerprint`,
+  `:lib/*`, `:table_id`, `:id`, `:display_name`, etc.) that legitimately differ between pivot paths, and
+  drops the synthetic `pivot-grouping` column, which the multi-query post-processing middleware splices in
+  fresh (no `:field_ref`) but the SQL native path emits as a real `SELECT` column (with a `:field_ref`)."
+  [result]
+  (into []
+        (comp (remove #(= (:name %) lib.pivot/pivot-grouping-column-name))
+              (map (fn [col] (select-keys col [:name :field_ref :source :base_type]))))
+        (or (get-in result [:data :cols])
+            (get-in result [:data :results_metadata :columns]))))
+
+(defn pivot-cols-equivalent?
+  "Column-metadata equivalence for pivot results — compares the [[->cols-fingerprint]] projection so pivot
+  paths agree on the FE-visible shape (name/field_ref/source/base_type) even when rows legitimately differ
+  (e.g. `:limit N` under multi-query applies per subquery). Exposed so
+  [[metabase.query-processor.pivot.test-util/with-metadata-only-parity]] can bind
+  [[*pivot-outcome-comparator*]] to it."
+  [r1 r2]
+  (= (->cols-fingerprint r1) (->cols-fingerprint r2)))
+
+(def ^:dynamic *pivot-outcome-comparator*
+  "Predicate `(fn [r1 r2])` the parity checker uses to decide whether two pivot-flow outcomes agree. Defaults
+  to [[pivot-rows-equivalent?]] (row-frequency compare). Tests whose paths legitimately diverge on rows but
+  should agree on column metadata can bind this to [[pivot-cols-equivalent?]] via
+  [[metabase.query-processor.pivot.test-util/with-metadata-only-parity]]."
+  pivot-rows-equivalent?)
+
+(defn- outcomes-data-equivalent?
+  "Delegates to [[*pivot-outcome-comparator*]], then logs an asymmetric-cache warning when a mismatch shows
+  the cache freshness diverged between the two sides (helps distinguish stale-cache flakes from real
+  regressions)."
+  [r1 r2]
+  (let [equivalent? (*pivot-outcome-comparator* r1 r2)
         control-cached-at   (cache-updated-at r1)
         candidate-cached-at (cache-updated-at r2)]
     (when (and (not equivalent?)
@@ -684,7 +705,7 @@
     (not (lib.pivot/has-pivot? query))
     (lib.pivot/with-pivot {:rows [] :columns [] :show-row-totals true :show-column-totals true})))
 
-(defn- run-native-pivot-query
+(defn- run-sql-pivot-query
   "Translate `query`'s pivot intent (legacy top-level keys and/or viz-settings) into an MBQL5 `:pivot` clause
   on the last stage and submit to the standard QP through `rff`."
   [query rff]
@@ -722,85 +743,161 @@
     ::default (running-in-clojure-test?)
     (boolean *check-pivot-parity?*)))
 
-(defn- default-on-parity-mismatch!
-  "Default handler for pivot parity mismatches: reports a `clojure.test` failure when a test is on the
-  stack — the two outcomes are handed to the reporter as `:expected` (multi-query) and `:actual` (native)
-  so the test runner prints the diff — and logs otherwise."
-  [{:keys [native-outcome multi-outcome] :as ctx}]
-  (if (running-in-clojure-test?)
-    ((requiring-resolve 'clojure.test/do-report)
-     {:type     :fail
-      :message  "Pivot parity mismatch — native and multi-query paths disagree"
-      :expected multi-outcome
-      :actual   native-outcome})
-    (log/warnf "Pivot parity mismatch — native and multi-query paths disagree: %s" (pr-str ctx))))
-
-(def ^:dynamic *on-parity-mismatch*
-  "Called with `{:native-outcome ..., :multi-outcome ...}` when the two pivot paths disagree under
-  [[*check-pivot-parity?*]]. Each outcome is either the result map returned by the path, or the
-  `Throwable` it threw. Defaults to [[default-on-parity-mismatch!]]."
-  default-on-parity-mismatch!)
-
-(defn- native-path-applicable?
-  "True when `query` can be served by the native pivot path on `db`'s driver."
-  [db query]
-  (and (driver.u/supports? (:engine db) :native-pivot-tables db)
-       (native-pivot-compatible? query)))
-
-(defn- run-secondary-for-parity
-  "Run the non-primary pivot path with the default rff and result handler purely to capture its outcome
-  for comparison. Returns `{:outcome ...}` on success or `{:throwable ...}` on failure."
-  [runner query]
-  (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
-    (try
-      {:outcome (runner query qp.reducible/default-rff)}
-      (catch Throwable t
-        {:throwable t}))))
+(def ^:private pivot-flow-comparison-pairs
+  "Pivot flow pairs the parity checker compares, in order. `:multi-query` is placed first in each pair that
+  includes it so `do-report` renders it as `:expected` (the reference)."
+  [[:multi-query :grouping-sets]
+   [:multi-query :union-all]
+   [:grouping-sets :union-all]])
 
 (def ^:private throwable-signature
   (juxt class ex-message ex-data))
 
 (defn- outcomes-match?
   "True when two `{:outcome ...}`/`{:throwable ...}` maps represent equivalent behavior — both threw
-  throwables with the same signature (see [[throwable-signature]]), or both succeeded with row-equivalent results."
-  [{primary-outcome :outcome primary-t :throwable}
-   {secondary-outcome :outcome secondary-t :throwable}]
+  throwables with the same signature (see [[throwable-signature]]), or both succeeded with results the
+  active [[*pivot-outcome-comparator*]] considers equivalent."
+  [{a-outcome :outcome a-throwable :throwable}
+   {b-outcome :outcome b-throwable :throwable}]
   (cond
-    (and primary-t secondary-t) (= (throwable-signature primary-t) (throwable-signature secondary-t))
-    (or  primary-t secondary-t) false
-    :else                       (pivot-rows-equivalent? primary-outcome secondary-outcome)))
+    (and a-throwable b-throwable) (= (throwable-signature a-throwable) (throwable-signature b-throwable))
+    (or  a-throwable b-throwable) false
+    :else                         (outcomes-data-equivalent? a-outcome b-outcome)))
+
+(defn- divergent-pivot-pairs
+  "Vector of `[flow-a flow-b]` pairs (drawn in [[pivot-flow-comparison-pairs]] order) whose outcomes in
+  `outcomes` disagree. Pairs where either side is missing (flow didn't run) are skipped."
+  [outcomes]
+  (into []
+        (filter (fn [[a b]]
+                  (when-let [oa (get outcomes a)]
+                    (when-let [ob (get outcomes b)]
+                      (not (outcomes-match? oa ob))))))
+        pivot-flow-comparison-pairs))
 
 (defn- outcome->reportable
   "The value inside an outcome map, whether success or failure."
   [{:keys [outcome throwable]}]
   (or outcome throwable))
 
+(defn- default-on-parity-mismatch!
+  "Default handler for pivot parity mismatches: emits one `clojure.test/do-report` `:fail` per divergent pair
+  when a test is on the stack (each pair's outcomes fed as `:expected` / `:actual` so the runner prints a
+  diff), and logs otherwise."
+  [{:keys [outcomes divergent-pairs]}]
+  (if (running-in-clojure-test?)
+    (doseq [[a b] divergent-pairs]
+      ((requiring-resolve 'clojure.test/do-report)
+       {:type     :fail
+        :message  (str "Pivot parity mismatch — " (name a) " and " (name b) " paths disagree")
+        :expected (outcome->reportable (get outcomes a))
+        :actual   (outcome->reportable (get outcomes b))}))
+    (log/warnf "Pivot parity mismatch — divergent pairs %s; outcomes %s"
+               (pr-str divergent-pairs)
+               (pr-str (update-vals outcomes outcome->reportable)))))
+
+(def ^:dynamic *on-parity-mismatch*
+  "Called with `{:outcomes {<flow> <outcome-map> ...} :divergent-pairs [[<flow-a> <flow-b>] ...]}` when the
+  parity checker sees any divergence across the pivot flows it ran (a subset of `:grouping-sets`,
+  `:union-all`, `:multi-query`). Each outcome is a `{:outcome ...}` on success or `{:throwable ...}` on
+  failure. `:divergent-pairs` preserves the order of [[pivot-flow-comparison-pairs]]. Defaults to
+  [[default-on-parity-mismatch!]]."
+  default-on-parity-mismatch!)
+
+(def ^:dynamic *force-compilation-shape*
+  "Optional hint that coerces the single-query pivot compiler for the current call to a specific shape. Each
+  per-driver-family compiler interprets the values it knows and ignores the rest — SQL recognises
+  `:grouping-sets` and `:union-all`; a future Mongo compiler could recognise e.g. `:facet`. `nil` (default)
+  means the compiler picks the shape via its usual logic. Used by the parity checker to compare each SQL
+  compiler shape against multi-query in one run — no new routing plumbing."
+  nil)
+
+(defn- query-has-window-fn-aggregation?
+  "True iff any aggregation in the last stage of the preprocessed `query` is a window-function aggregation."
+  [query]
+  (some? (some lib.schema.aggregation/window-aggregation-expression?
+               (lib/aggregations query))))
+
+(defn- run-pivot-flow
+  "Run one pivot `flow` (`:multi-query`, `:grouping-sets`, or `:union-all`) against `query`. The primary
+  flow uses the caller's `rff` and lets `qp.pipeline/*result*` pass through; the others use the default rff
+  and result handler purely to collect an outcome for comparison. Returns `{:outcome ...}` on success or
+  `{:throwable ...}` on failure — annotated with `:elapsed-ms` and `:flow` so the parity checker (and CI
+  log inspection) can see per-flow timings without extra plumbing."
+  [flow query rff primary-flow]
+  (let [primary?    (= flow primary-flow)
+        runner      (if (= flow :multi-query) run-pivot-query-multi run-sql-pivot-query)
+        force-shape (case flow
+                      :multi-query   nil
+                      :grouping-sets :grouping-sets
+                      :union-all     :union-all)
+        do-run      (fn [rff]
+                      (binding [*force-compilation-shape* force-shape]
+                        (let [t0     (System/nanoTime)
+                              result (try {:outcome (runner query rff)}
+                                          (catch Throwable t {:throwable t}))]
+                          (assoc result :flow flow, :elapsed-ms (long (/ (- (System/nanoTime) t0) 1e6))))))]
+    (if primary?
+      (do-run rff)
+      (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
+        (do-run qp.reducible/default-rff)))))
+
+(defn- driver-supports-grouping-sets?
+  "True iff `query`'s driver supports the `:native-pivot-tables` feature — i.e. forcing the
+  `:grouping-sets` compilation shape would produce valid SQL."
+  [query]
+  (let [db (query-database query)]
+    (driver.u/supports? (driver.u/database->driver db) :native-pivot-tables db)))
+
 (defn- run-with-parity-check
-  "Run `primary` with the caller's `rff` (this is what the caller receives) and `secondary` with the
-  default rff purely to compare outcomes; report a mismatch via [[*on-parity-mismatch*]]. Returns
-  primary's success value or rethrows its exception."
-  [primary secondary query rff use-native?]
-  (let [primary-outcome   (try {:outcome (primary query rff)}
-                               (catch Throwable t {:throwable t}))
-        secondary-outcome (run-secondary-for-parity secondary query)
-        native-outcome    (if use-native? primary-outcome secondary-outcome)
-        multi-outcome     (if use-native? secondary-outcome primary-outcome)]
-    (when-not (outcomes-match? primary-outcome secondary-outcome)
-      (*on-parity-mismatch* {:native-outcome (outcome->reportable native-outcome)
-                             :multi-outcome  (outcome->reportable multi-outcome)}))
-    (if-let [t (:throwable primary-outcome)]
-      (throw t)
-      (:outcome primary-outcome))))
+  "Run every applicable pivot flow — `:multi-query` always, `:union-all` on every SQL driver, and
+  `:grouping-sets` when the driver supports `:native-pivot-tables` and the query has no window-function
+  aggregation — and report any pairwise divergence via [[*on-parity-mismatch*]]. The primary flow (per
+  `sql-primary?` + GS applicability) uses the caller's `rff`; other flows use the default rff for
+  comparison only. Returns the primary flow's success value or rethrows its exception.
+
+  Logs a per-flow timing summary at WARN so CI logs surface which flow was slow and by how much when a
+  mismatch or timeout occurs on some environment (e.g. Presto CI). Format: `pivot-parity {:driver ..
+  :primary .. :outcomes {<flow> {:elapsed-ms .. :ok? .. :cause [..]}}}`. `:cause` is the ex-message chain
+  (root cause first) — populated only for failing flows so a Presto `Socket closed` after the JDBC
+  polling budget shows up plainly instead of the QP's wrapping `Error preparing statement` text."
+  [query rff sql-primary?]
+  (let [skip-gs?        (or (query-has-window-fn-aggregation? query)
+                            (not (driver-supports-grouping-sets? query)))
+        primary-flow    (cond
+                          (not sql-primary?) :multi-query
+                          skip-gs?           :union-all
+                          :else              :grouping-sets)
+        flows           (cond-> [:multi-query :union-all]
+                          (not skip-gs?) (conj :grouping-sets))
+        outcomes        (into {} (map (fn [flow] [flow (run-pivot-flow flow query rff primary-flow)])) flows)
+        divergent-pairs (divergent-pivot-pairs outcomes)
+        cause-chain     (fn [^Throwable t]
+                          (loop [t t, acc []]
+                            (if t (recur (.getCause t) (conj acc (.getMessage t))) acc)))]
+    (log/warnf "pivot-parity %s"
+               (pr-str {:driver  (:engine (query-database query))
+                        :primary primary-flow
+                        :flows   (update-vals outcomes
+                                              (fn [{:keys [throwable elapsed-ms]}]
+                                                (cond-> {:elapsed-ms elapsed-ms
+                                                         :ok?        (nil? throwable)}
+                                                  throwable (assoc :cause (cause-chain throwable)))))
+                        :divergent-pairs divergent-pairs}))
+    (when (seq divergent-pairs)
+      (*on-parity-mismatch* {:outcomes outcomes, :divergent-pairs divergent-pairs}))
+    (let [{:keys [outcome throwable]} (get outcomes primary-flow)]
+      (if throwable (throw throwable) outcome))))
 
 (mu/defn run-pivot-query
   "Run the pivot `query` through `rff`.
 
   Dispatches between two implementations:
-  * **Native** — a single `GROUPING SETS` query, chosen when [[qp.settings/use-native-pivot-tables]] is on,
-    the driver supports `:native-pivot-tables`, and `query` is [[native-pivot-compatible?]].
+  * **SQL** — a single query (GROUPING SETS or UNION ALL, per the SQL pivot compiler's dispatch), chosen when
+    [[qp.settings/use-native-pivot-tables]] is on and the driver derives from `:sql`.
   * **Multi-query** — one query per breakout combination, results concatenated. Used otherwise.
 
-  When [[*check-pivot-parity?*]] is on and both paths are applicable, both run (primary via the caller's
+  When [[*check-pivot-parity?*]] is on and the SQL path is applicable, both run (primary via the caller's
   rff, secondary via the default rff for comparison) and disagreement is reported via
   [[*on-parity-mismatch*]]. Parity checking is on by default in clojure.test tests.
 
@@ -816,15 +913,14 @@
    ;; run-pivot-query, so binding it here from the query's :info map would be
    ;; redundant and could mis-set it for ad-hoc queries that carry a :card-id in :info.
    (qp.setup/with-qp-setup [query query]
-     (let [query       (-> query
-                           qp.middleware.normalize/normalize-preprocessing-middleware
-                           lib/prepare-after-deserialization)
-           db          (query-database query)
-           nativable?  (native-path-applicable? db query)
-           use-native? (and nativable? (qp.settings/use-native-pivot-tables))
-           primary     (if use-native? run-native-pivot-query run-pivot-query-multi)
-           secondary   (if use-native? run-pivot-query-multi run-native-pivot-query)]
+     (let [query             (-> query
+                                 qp.middleware.normalize/normalize-preprocessing-middleware
+                                 lib/prepare-after-deserialization)
+           db                (query-database query)
+           sql-driver?       (isa? driver/hierarchy (:engine db) :sql)
+           use-single-query? (and sql-driver? (qp.settings/use-native-pivot-tables))
+           primary           (if use-single-query? run-sql-pivot-query run-pivot-query-multi)]
        (binding [qp.pipeline/*pivot?* true]
-         (if (and nativable? (pivot-parity-enabled?))
-           (run-with-parity-check primary secondary query rff use-native?)
+         (if (and sql-driver? (pivot-parity-enabled?))
+           (run-with-parity-check query rff use-single-query?)
            (primary query rff)))))))
