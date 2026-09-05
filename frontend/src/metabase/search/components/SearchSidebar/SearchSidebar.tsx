@@ -19,7 +19,7 @@ import { NativeQueryFilter } from "metabase/search/components/filters/NativeQuer
 import { PersonalCollectionsFilter } from "metabase/search/components/filters/PersonalCollectionsFilter";
 import { SearchTrashedItemsFilter } from "metabase/search/components/filters/SearchTrashedItemsFilter";
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
-import { PLUGIN_SEARCH_FILTERS } from "metabase/search/plugin";
+import { PLUGIN_SEARCH_FILTERS } from "metabase/search/plugins";
 import { Stack } from "metabase/ui";
 
 type SearchSidebarProps = {
