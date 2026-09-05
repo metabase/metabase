@@ -67,4 +67,23 @@ describe("useSetArchive", () => {
 
     expect(screen.queryByText("Trashed collection")).not.toBeInTheDocument();
   });
+
+  it("surfaces the backend's error message instead of failing silently (metabase#73831)", async () => {
+    fetchMock.put("path:/api/collection/7", {
+      status: 400,
+      body: {
+        message:
+          "This can't be trashed because it's used by Dashboard 14, which is managed by remote sync.",
+      },
+    });
+
+    setup();
+    await clickArchive();
+
+    expect(
+      await screen.findByText(
+        "This can't be trashed because it's used by Dashboard 14, which is managed by remote sync.",
+      ),
+    ).toBeInTheDocument();
+  });
 });
