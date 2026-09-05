@@ -483,6 +483,11 @@
         ;; return the lesser of limit (if set) or max results
         (lib/limit ((fnil min Integer/MAX_VALUE) limit max-results))
         (assoc-in [:middleware :disable-remaps?] true)
+        ;; without this, a large integer/decimal value (e.g. a big Snowflake ID) loses precision once the
+        ;; frontend JSON.parses it, since raw JSON numbers only round-trip through JS doubles up to 2^53
+        ;; (metabase#79752). The QP already has a dedicated middleware for this -- it just needs to be
+        ;; asked for, same as the main dataset endpoint and the table data endpoint already do.
+        (assoc-in [:middleware :js-int-to-string?] true)
         (add-joins source-table-id joins)
         (cond-> original-field (->
                                 ;; don't return rows that don't have values for the original Field. e.g. if
