@@ -847,6 +847,47 @@
                                         :rows [["x" "y"]]}}}]
         (is (fills-cell-width? (width fallback 1000) 1000))))))
 
+(deftest ^:parallel fixed-body-scale-test
+  (let [scale-for @#'pdf/fixed-body-scale
+        cell-w    261.6
+        cell-h    180.0]
+    (testing "a body far smaller than its cell is scaled up to reach the target DPI"
+      ;; a 93x64 scalar drawn into this cell is width-bound, so it needs ~11x to hit 300 DPI
+      (is (< 11.0 (scale-for cell-w cell-h 93 64) 12.5)))
+    (testing "a body already big enough is never scaled down"
+      (is (= 1.0 (scale-for cell-w cell-h 4000 200))))
+    (testing "a degenerate body doesn't divide by zero"
+      (is (= 1.0 (scale-for cell-w cell-h 0 0)))
+      (is (= 1.0 (scale-for cell-w cell-h 10 0))))
+    (testing "the raster is bounded by the cell at the target DPI, so no cap is needed"
+      (doseq [[iw ih] [[93 64] [239 110] [10 10] [500 20] [1 300]]]
+        (let [device-w (* iw (scale-for cell-w cell-h iw ih))
+              ceiling  (* cell-w (/ (double @#'pdf/body-target-dpi) 72.0))]
+          (is (<= device-w (inc ceiling))
+              (format "a %dx%d body must not rasterize wider than its cell at the target DPI" iw ih)))))))
+
+;; not ^:parallel: exercises the real CSSBox HTML rendering path
+(deftest ^:synchronized card-body-png-target-dpi-test
+  (testing "a fixed-size card body rasterizes at the target DPI for its cell, not at its intrinsic size"
+    (let [cell-w 261.6
+          cell-h 180.0]
+      (doseq [[display data] [[:scalar      {:cols [{:name "n" :display_name "N" :base_type :type/Integer}]
+                                             :rows [[1004]]}]
+                              [:smartscalar {:cols [{:name "d" :display_name "D" :base_type :type/Date
+                                                     :unit :month}
+                                                    {:name "n" :display_name "N" :base_type :type/Integer}]
+                                             :rows [["2026-01-01" 4] ["2026-02-01" 19]]}]]]
+        (testing display
+          (let [part               {:card {:display display :name "Total"} :dashcard nil :result {:data data}}
+                ^BufferedImage img (ImageIO/read (io/input-stream (#'pdf/card-body-png nil part cell-w cell-h)))
+                w                  (.getWidth img)
+                h                  (.getHeight img)
+                ;; what draw-image-in-cell! will fit it to -- independent of the supersample factor
+                drawn-w-pt         (min cell-w (* w (/ (double cell-h) h)))
+                ppi                (/ w (/ drawn-w-pt 72.0))]
+            (is (<= 290.0 ppi 310.0)
+                (format "%s body is %dx%d, drawn %.1fpt wide => %.0f PPI" display w h drawn-w-pt ppi))))))))
+
 (deftest ^:parallel table-like-chart-types-test
   (testing "native table, pivot, and object-detail cards all classify into the framed table path"
     (let [data {:cols [{:name "n" :display_name "N" :base_type :type/Integer}]

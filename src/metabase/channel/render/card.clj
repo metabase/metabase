@@ -359,10 +359,13 @@
       image-bundle/render-img-data-uri))
 
 (mu/defn png-from-render-info :- bytes?
-  "Create a PNG file (as a byte array) from rendering info."
-  ^bytes [rendered-info :- ::body/RenderedPartCard width]
-  ;; TODO huh? why do we need this indirection?
-  (png/render-html-to-png rendered-info width))
+  "Create a PNG file (as a byte array) from rendering info. `options` takes the keys
+  [[metabase.channel.render.png/render-html-to-png]] reads, e.g. `:channel.render/scale`."
+  (^bytes [rendered-info :- ::body/RenderedPartCard width]
+   ;; TODO huh? why do we need this indirection?
+   (png/render-html-to-png rendered-info width))
+  (^bytes [rendered-info :- ::body/RenderedPartCard width options]
+   (png/render-html-to-png rendered-info width options)))
 
 (mu/defn defaulted-timezone :- :string
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
