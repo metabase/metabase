@@ -160,6 +160,15 @@
       :model/ConnectionImpersonation
       :model/CustomVizPlugin])))
 
+(def ^:private always-cleared-table-names
+  "Physical target tables that must be cleared even when their Toucan models are unavailable in the current classpath."
+  [:metabot_permissions])
+
+(defn- target-table-names-to-clear []
+  (distinct
+   (concat always-cleared-table-names
+           (map t2/table-name (reverse entities)))))
+
 (defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
   statement, and a sequence of rows (as sequences)."
@@ -369,7 +378,7 @@
             (letfn [(add-batch! [^String sql]
                       (.addBatch stmt sql))]
               ;; do these in reverse order so child rows get deleted before parents
-              (doseq [table-name (map t2/table-name (reverse entities))]
+              (doseq [table-name (target-table-names-to-clear)]
                 (add-batch! (format (if (= target-db-type :postgres)
                                       "TRUNCATE TABLE %s CASCADE;"
                                       "TRUNCATE TABLE %s;")
