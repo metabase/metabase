@@ -256,7 +256,7 @@
             (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
             (do-test)))))))
 
-(deftest native-query-with-long-column-alias
+(deftest ^:synchronized native-query-with-long-column-alias
   (testing "nested native query with long column alias (#47584)"
     (let [short-col-name       "coun"
           long-col-name        "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
@@ -266,9 +266,10 @@
                                       (some #(str/includes? % long-col-name) native-form-lines)))
           ;; Disable truncate-alias when compiling the native query to ensure we don't truncate the column.
           ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
-          native-sub-query     (mt/with-dynamic-fn-redefs [metabase.lib.util.unique-name-generator/truncate-alias
-                                                           (fn mock-truncate-alias
-                                                             [ss & _] ss)]
+          ;; `truncate-alias` is called for every generated SQL alias; avoid permanently proxying that hot path.
+          native-sub-query     (with-redefs [metabase.lib.util.unique-name-generator/truncate-alias
+                                             (fn mock-truncate-alias
+                                               [ss & _] ss)]
                                  ;; make sure the schema checks don't fail for aliases > 60 characters
                                  (mu/disable-enforcement
                                    (-> (mt/mbql-query people

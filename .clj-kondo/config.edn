@@ -70,6 +70,7 @@
   :metabase/missing-test-expr-requires-in-cljs               {:level :warning}
   :metabase/modules                                          {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
   :metabase/namespace-name                                   {:level :warning}
+  :metabase/no-dynamic-fn-redefs-on-hot-path                 {:level :error}
   :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/toucan-model-ns                                  {:level :warning}
@@ -686,6 +687,7 @@
    metabase.test.data/mbql-query                                                                                             hooks.metabase.test.data/mbql-query
    metabase.test.data/run-mbql-query                                                                                         hooks.metabase.test.data/mbql-query
    metabase.test.util.async/with-open-channels                                                                               hooks.common/let-with-optional-value-for-last-binding
+   metabase.test.util.dynamic-redefs/with-dynamic-fn-redefs                                                                 hooks.clojure.core.with-redefs/lint-with-dynamic-fn-redefs
    metabase.test.util.generators.jvm/with-random-cards                                                                       hooks.metabase.test.util.generators.jvm/with-random-cards
    metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
    metabase.test.util/discard-setting-changes                                                                                hooks.common/with-ignored-first-arg
@@ -703,6 +705,7 @@
    metabase.test/test-driver                                                                                                 hooks.metabase.test.data.datasets/test-driver
    metabase.test/test-drivers                                                                                                hooks.metabase.test.data.datasets/test-drivers
    metabase.test/with-column-remappings                                                                                      hooks.common/with-ignored-first-arg
+   metabase.test/with-dynamic-fn-redefs                                                                                      hooks.clojure.core.with-redefs/lint-with-dynamic-fn-redefs
    metabase.test/with-group                                                                                                  hooks.common/let-one-with-optional-value
    metabase.test/with-log-level                                                                                              hooks.common/with-ignored-first-arg
    metabase.test/with-log-messages-for-level                                                                                 hooks.metabase.util.log.capture/with-log-messages-for-level

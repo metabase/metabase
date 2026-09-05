@@ -5140,11 +5140,13 @@
       (testing "At most 1 db call should be executed for :metadata/tables"
         (is (<= @cached-calls-count 1)))
       (testing "dashboard card /query calls reuse metadata providers"
-        (let [providers               (atom [])
-              load-id                 (str (random-uuid))]
-          (mt/with-dynamic-fn-redefs [lib.metadata.protocols/table (fn [mp table-id]
-                                                                     (swap! providers conj mp)
-                                                                     ((mt/dynamic-value lib.metadata.protocols/table) mp table-id))]
+        (let [providers      (atom [])
+              load-id        (str (random-uuid))
+              original-table @#'lib.metadata.protocols/table]
+          ;; Metadata table lookup is a tight Lib hot path; avoid permanently proxying it for one test.
+          (with-redefs [lib.metadata.protocols/table (fn [mp table-id]
+                                                       (swap! providers conj mp)
+                                                       (original-table mp table-id))]
             (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query"
                                                        (:id d) (:id dc1) (:id c1))
                                   {"dashboard_load_id" load-id})

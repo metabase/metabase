@@ -355,7 +355,7 @@
   (try (driver/column-name-length-limit driver)
        (catch Exception _ nil)))
 
-(deftest card-id-native-source-query-with-long-alias-test
+(deftest ^:synchronized card-id-native-source-query-with-long-alias-test
   (testing "nested card with native query and long column alias (#47584)"
     (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries)
                                        (descendants driver/hierarchy :sql))
@@ -369,10 +369,11 @@
                                        (count long-col-full-name)))
             ;; Disable truncate-alias when compiling the native query to ensure we don't further truncate the column.
             ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
-            native-sub-query   (mt/with-dynamic-fn-redefs [metabase.lib.util.unique-name-generator/truncate-alias
-                                                           (fn mock-truncate-alias
-                                                             ([ss] ss)
-                                                             ([ss _] ss))]
+            ;; `truncate-alias` is called for every generated SQL alias; avoid permanently proxying that hot path.
+            native-sub-query   (with-redefs [metabase.lib.util.unique-name-generator/truncate-alias
+                                             (fn mock-truncate-alias
+                                               ([ss] ss)
+                                               ([ss _] ss))]
                                  (mu/disable-enforcement
                                    (-> (mt/mbql-query people
                                          {:source-table $$people

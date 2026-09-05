@@ -257,7 +257,7 @@
               invalid-base64 (.encodeToString encoder (byte-array [1 2 3 5 6]))]
           (is (thrown? Exception (decode [{:embedding invalid-base64}]))))))))
 
-(deftest test-get-embedding
+(deftest ^:synchronized test-get-embedding
   (mt/with-temporary-setting-values [llm-openai-api-key              "sk-mock-openai-api-key"
                                      ee-embedding-service-base-url  "http://mock-embedding-service"
                                      ee-embedding-service-api-key   "mock-embedding-service-key"]
@@ -280,12 +280,13 @@
                 :mock-response  {:embedding mock-embedding}
                 :counts-tokens? false}]]
         (t2/delete! :model/SemanticSearchTokenTracking)
-        (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
-                                                     (swap! analytics-calls conj [metric args]))
-                                    http/post (fn post-mock [_url & _options]
-                                                {:status  200
-                                                 :headers {"Content-Type" "application/json"}
-                                                 :body    (json/encode mock-response)})]
+        ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+        (with-redefs [analytics/inc! (fn [metric & args]
+                                       (swap! analytics-calls conj [metric args]))
+                      http/post (fn post-mock [_url & _options]
+                                  {:status  200
+                                   :headers {"Content-Type" "application/json"}
+                                   :body    (json/encode mock-response)})]
           (testing provider
             (reset! analytics-calls [])
             (is (= mock-embedding (vec (#'embedding/get-embedding {:provider          provider
