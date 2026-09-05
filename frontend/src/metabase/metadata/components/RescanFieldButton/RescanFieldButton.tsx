@@ -25,7 +25,7 @@ export const RescanFieldButton = ({ fieldId }: Props) => {
   };
 
   return (
-    <Button variant="default" onClick={handleClick}>
+    <Button onClick={handleClick}>
       {started ? t`Scan triggered!` : t`Re-scan field`}
     </Button>
   );

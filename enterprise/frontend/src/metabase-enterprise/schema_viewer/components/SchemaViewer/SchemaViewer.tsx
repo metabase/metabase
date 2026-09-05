@@ -315,7 +315,6 @@ export function SchemaViewer({
             <Group gap="sm">
               <Button
                 bg="background_page-primary"
-                variant="default"
                 leftSection={<Icon name="sparkles" />}
                 onClick={resetLayout}
               >
@@ -324,7 +323,6 @@ export function SchemaViewer({
               {selectedNodeId != null && (
                 <Button
                   bg="background_page-primary"
-                  variant="default"
                   onClick={() => focusOnNode(selectedNodeId)}
                 >
                   {t`Focus node`}

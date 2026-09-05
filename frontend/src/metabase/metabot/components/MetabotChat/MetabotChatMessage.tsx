@@ -438,7 +438,6 @@ const AgentErroredTurnAlert = ({
       cta={
         isOutOfSync && onRefreshConversation ? (
           <Button
-            variant="default"
             size="sm"
             fz="xs"
             onClick={onRefreshConversation}
@@ -475,7 +474,6 @@ const AbortedTurnAlert = ({
       cta={
         !debug && onRetry ? (
           <Button
-            variant="default"
             size="sm"
             fz="xs"
             onClick={() => onRetry(messageId)}
@@ -536,7 +534,6 @@ const IncompleteTurnAlert = ({
       cta={
         resumePrompt && onContinue ? (
           <Button
-            variant="default"
             size="sm"
             fz="xs"
             onClick={() => onContinue(resumePrompt)}

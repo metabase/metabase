@@ -44,7 +44,7 @@ export function SyncTableSchemaButton({
   };
 
   return (
-    <Button variant="default" onClick={handleClick}>
+    <Button onClick={handleClick}>
       {started
         ? t`Sync triggered!`
         : isSingleTable

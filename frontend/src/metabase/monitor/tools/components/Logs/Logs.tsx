@@ -140,7 +140,6 @@ export const Logs = ({
                   component={Link}
                   to={Urls.monitorLogLevels()}
                   leftSection={<Icon name="pulse" />}
-                  variant="default"
                 >{t`Customize log levels`}</Button>
 
                 <Button

@@ -142,7 +142,6 @@ export const EmbedQuestionSettingsSidebar = ({
             <Menu position="bottom-start">
               <Menu.Target>
                 <Button
-                  variant="default"
                   disabled={!selectedElem}
                   rightSection={<Icon ml="xxs" size={10} name="chevrondown" />}
                   leftSection={
