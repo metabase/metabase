@@ -113,7 +113,9 @@
                [:native-ddl {:optional true} [:sequential :any]]
                ;; When true, drivers that support it (e.g., MySQL) will disable FK checks during data loading.
                ;; Useful for datasets with self-referencing FKs that need to be inserted in a single batch.
-               [:disable-fk-checks {:optional true} :boolean]]]]
+               [:disable-fk-checks {:optional true} :boolean]
+               ;; static datasets are not subject to periodic GC
+               [:static {:optional true} :boolean]]]]
    (ms/InstanceOfClass DatabaseDefinition)])
 
 ;; TODO - this should probably be a protocol instead
@@ -398,7 +400,7 @@
   what was found. Runs nightly (`.github/workflows/test.cleanup-dwh-data.yml`) because [[after-run]] never fires when
   a CI job is cancelled.
 
-  `options` are `:temp-data-hours` (per-run garbage) and `:fixture-hours` (datasets runs share).
+  `options` are `:hours` and `:dry-run?`
 
   Returns one map per object it tried to delete:
 
@@ -698,17 +700,6 @@
                        (original-db-supports?# driver-arg# feature-arg# db-arg#)))]
        ~@body)))
 
-(defmulti track-dataset
-  "Track the creation or the usage of the database.
-   This is useful for cloud databases with shared state to ensure that stale datasets can be deleted and dataset loading is not done more than necessary. Pairs well with [[dataset-already-loaded?]]"
-  {:arglists '([driver dbdef]) :added "0.56.0"}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod track-dataset ::test-extensions
-  [_driver _dbdef]
-  nil)
-
 (defmulti create-db!
   "Create a new database from `database-definition`, including adding tables, fields, and foreign key constraints,
   and load the appropriate data. (This refers to creating the actual *DBMS* database itself, *not* a Metabase
@@ -904,9 +895,12 @@
    `(defdataset ~dataset-name nil ~definition))
 
   ([dataset-name docstring definition]
+   `(defdataset ~dataset-name ~docstring ~definition {:static true}))
+  ([dataset-name docstring definition options]
    {:pre [(symbol? dataset-name)]}
-   `(~(if config/is-dev? 'def 'defonce) ~(vary-meta dataset-name assoc :doc docstring, :tag `DatabaseDefinition)
-                                        (dataset-definition ~(name dataset-name) ~definition))))
+   `(~(if config/is-dev? 'def 'defonce)
+     ~(vary-meta dataset-name assoc :doc docstring, :tag `DatabaseDefinition)
+     (dataset-definition ~(name dataset-name) ~definition ~options))))
 
 (p.types/deftype+ ^:private NativeDatasetDefinition [dataset-name table-definitions native-ddl]
   pretty/PrettyPrintable
@@ -947,7 +941,7 @@
 (p.types/deftype+ ^:private EDNDatasetDefinition [dataset-name def]
   pretty/PrettyPrintable
   (pretty [_]
-    (list `edn-dataset-definition dataset-name)))
+    (list `edn-dataset-definition dataset-name {})))
 
 (defmethod get-dataset-definition EDNDatasetDefinition
   [^EDNDatasetDefinition this]
@@ -956,12 +950,12 @@
 (mu/defn edn-dataset-definition
   "Define a new test dataset using the definition in an EDN file in the `test/metabase/test/data/dataset_definitions/`
   directory. (Filename should be `dataset-name` + `.edn`.)"
-  [dataset-name :- ms/NonBlankString]
+  [dataset-name :- ms/NonBlankString options :- map?]
   (let [get-def (delay
                   (let [file-contents (edn/read-string
                                        {:eof nil, :readers {'t #'u.date/parse}}
                                        (slurp (str edn-definitions-dir dataset-name ".edn")))]
-                    (dataset-definition dataset-name file-contents)))]
+                    (dataset-definition dataset-name file-contents options)))]
     (EDNDatasetDefinition. dataset-name get-def)))
 
 (defmacro defdataset-edn
@@ -969,7 +963,7 @@
   directory. (Filename should be `dataset-name` + `.edn`.)"
   [dataset-name & [docstring]]
   `(defonce ~(vary-meta dataset-name assoc :doc docstring, :tag `EDNDatasetDefinition)
-     (edn-dataset-definition ~(name dataset-name))))
+     (edn-dataset-definition ~(name dataset-name) {:static true})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Transformed Dataset Definitions                                         |

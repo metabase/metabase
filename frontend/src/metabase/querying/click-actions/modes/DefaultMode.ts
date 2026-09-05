@@ -1,10 +1,11 @@
-import type { QueryClickActionsMode } from "../../types";
-import { ColumnFormattingAction } from "../actions/ColumnFormattingAction";
+import { ColumnFormattingAction } from "metabase/visualizations/click-actions/actions/ColumnFormattingAction";
+import { HideColumnAction } from "metabase/visualizations/click-actions/actions/HideColumnAction";
+
 import { CombineColumnsAction } from "../actions/CombineColumnsAction";
 import { CopyValueAction } from "../actions/CopyValueAction";
 import { ExtractColumnAction } from "../actions/ExtractColumnAction";
-import { HideColumnAction } from "../actions/HideColumnAction";
 import { NativeQueryClickFallback } from "../actions/NativeQueryClickFallback";
+import type { QueryClickActionsMode } from "../types";
 
 export const DefaultMode: QueryClickActionsMode = {
   name: "default",
