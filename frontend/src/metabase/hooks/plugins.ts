@@ -1,4 +1,4 @@
-import { definePluginSlot } from "metabase/plugins/slot";
+import { definePluginSlot } from "metabase/plugins";
 
 import { useGetIconBase } from "./use-icon";
 
