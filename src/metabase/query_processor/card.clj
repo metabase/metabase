@@ -23,6 +23,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.referenced-entities :as qp.referenced-entities]
    [metabase.query-processor.schema :as qp.schema]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]}
@@ -370,6 +371,8 @@
         qp          (if (= :pivot (:display card))
                       qp.pivot/run-pivot-query
                       (or qp process-query-for-card-default-qp))
+        ;; wrapping the qp (rather than the `:make-run`) covers every card/dashcard/embed/public endpoint
+        qp          (qp.referenced-entities/maybe-wrap-qp-for-goals qp merged-viz)
         runner      (make-run qp export-format)
         query       (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                         (assoc :viz-settings merged-viz)

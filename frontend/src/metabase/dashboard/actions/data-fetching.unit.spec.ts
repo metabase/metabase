@@ -16,13 +16,21 @@ import {
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import type { Dashboard } from "metabase-types/api";
+import type {
+  Dashboard,
+  DatasetData,
+  GoalSegment,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockCard,
+  createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
   createMockDashboardTab,
+  createMockDataset,
+  createMockDatasetData,
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
@@ -549,6 +557,129 @@ describe("fetchDashboardCardData", () => {
     // Before the fix, the batch cancellation loop would cancel Tab 1's
     // in-flight request, causing a re-execution on return.
     expect(tab1QueryCount).toBe(1);
+  });
+});
+
+describe("fetchCardDataAction with goal references", () => {
+  const DASHBOARD_ID = 5;
+  const QUERY_URL = `/api/dashboard/${DASHBOARD_ID}/dashcard/1/card/1/query`;
+
+  const REF_SEGMENTS: GoalSegment[] = [
+    { min: 0, max: { type: "card", id: 9, column: "total" }, color: "red" },
+  ];
+
+  function setupGaugeDashcard({
+    referencedEntities = {},
+    cardSettings = { "gauge.segments": REF_SEGMENTS },
+    unsavedDashcardSettings,
+    editing = false,
+  }: {
+    referencedEntities?: DatasetData["referenced_entities"];
+    cardSettings?: VisualizationSettings;
+    unsavedDashcardSettings?: VisualizationSettings;
+    editing?: boolean;
+  } = {}) {
+    const card = createMockCard({
+      id: 1,
+      display: "gauge",
+      visualization_settings: cardSettings,
+    });
+    const savedDashcard = createMockDashboardCard({
+      id: 1,
+      card_id: card.id,
+      dashboard_id: DASHBOARD_ID,
+      card,
+    });
+    const dashcard =
+      unsavedDashcardSettings != null
+        ? { ...savedDashcard, visualization_settings: unsavedDashcardSettings }
+        : savedDashcard;
+    const lastResult = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createMockColumn({ name: "count" })],
+        rows: [[10]],
+        referenced_entities: referencedEntities,
+      }),
+    });
+    const dashboard = createMockDashboard({
+      id: DASHBOARD_ID,
+      dashcards: [savedDashcard],
+    });
+
+    const store = setup({
+      dashboards: [dashboard],
+      dashboard: createMockDashboardState({
+        dashboardId: DASHBOARD_ID,
+        dashboards: {
+          [DASHBOARD_ID]: createMockStoreDashboard({
+            ...dashboard,
+            dashcards: [dashcard.id],
+          }),
+        },
+        dashcards: { [dashcard.id]: dashcard },
+        dashcardData: { [dashcard.id]: { [card.id]: lastResult } },
+        editingDashboard: editing ? dashboard : null,
+      }),
+    });
+
+    fetchMock.post(QUERY_URL, { data: [] });
+
+    return { store, card, dashcard, lastResult };
+  }
+
+  it("refetches when the cached result has no answer for a goal reference", async () => {
+    const { store, card, dashcard } = setupGaugeDashcard();
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+
+    expect(fetchMock.callHistory.called(QUERY_URL)).toBe(true);
+  });
+
+  it("returns the cached result when it answers every goal reference", async () => {
+    const { store, card, dashcard, lastResult } = setupGaugeDashcard({
+      referencedEntities: {
+        card: {
+          9: {
+            status: "completed",
+            data: {
+              cols: [createMockColumn({ name: "total" })],
+              rows: [[250]],
+            },
+          },
+        },
+      },
+    });
+
+    const result = await store.dispatch(
+      fetchCardDataAction({ card, dashcard, options: {} }),
+    );
+
+    expect(fetchMock.callHistory.called(QUERY_URL)).toBe(false);
+    expect(result.payload).toMatchObject({ result: lastResult });
+  });
+
+  it("keeps the cached result when only unsaved dashcard settings reference a goal", async () => {
+    const { store, card, dashcard, lastResult } = setupGaugeDashcard({
+      cardSettings: {},
+      unsavedDashcardSettings: { "gauge.segments": REF_SEGMENTS },
+      editing: true,
+    });
+
+    const result = await store.dispatch(
+      fetchCardDataAction({ card, dashcard, options: {} }),
+    );
+
+    // a refetch can't answer them: the backend reads the saved dashcard row
+    expect(fetchMock.callHistory.called(QUERY_URL)).toBe(false);
+    expect(result.payload).toMatchObject({ result: lastResult });
+  });
+
+  it("refetches while editing when the saved settings reference an unanswered goal", async () => {
+    const { store, card, dashcard } = setupGaugeDashcard({ editing: true });
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+
+    expect(fetchMock.callHistory.called(QUERY_URL)).toBe(true);
   });
 });
 

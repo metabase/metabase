@@ -572,6 +572,30 @@
                             doc)]
             (is (not (render-error? pulse-body)))))))))
 
+(deftest render-gauge-with-dynamic-goals-test
+  (testing "Static-viz Gauge resolves a bound naming another column of the same query and fills a legacy colorless
+            segment with a default color instead of failing"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {card-id :id} {:display                :gauge
+                                                :dataset_query          (mt/mbql-query venues
+                                                                          {:aggregation [[:count] [:sum $price]]})
+                                                :visualization_settings {:gauge.segments
+                                                                         [{:min 0 :max "sum" :color "#84BB4C"}
+                                                                          {:min 0 :max "count"}]}}]
+        (let [doc        (render.tu/render-card-as-hickory! card-id)
+              pulse-body (hik.s/select (hik.s/class "pulse-body") doc)
+              arc-paths  (hik.s/select (hik.s/descendant (hik.s/class "visx-pie-arcs-group") (hik.s/tag :path))
+                                       doc)
+              arc-fills  (->> arc-paths
+                              (map (comp :fill :attrs))
+                              ;; the first arc is the full-range background arc
+                              rest)]
+          (is (not (render-error? pulse-body)))
+          (is (= 2 (count arc-fills)))
+          (is (some #{"#84BB4C"} arc-fills))
+          (is (every? #(re-matches #"#[0-9A-Fa-f]{6}" %) arc-fills)
+              "the colorless segment gets a resolved hex fill"))))))
+
 (def ^:private funnel-rows
   [["cart" 1500]
    ["checkout" 450]
@@ -1283,13 +1307,13 @@
           test-rows [[1 "Alice"] [2 "Bob"]]
           test-data {:cols test-cols :rows test-rows}
           ;; Simulate duplicated table columns viz settings
-          viz-settings {:metabase.models.visualization-settings/table-columns
-                        [{:metabase.models.visualization-settings/table-column-name "ID"
-                          :metabase.models.visualization-settings/table-column-enabled true}
-                         {:metabase.models.visualization-settings/table-column-name "ID" ; duplicate
-                          :metabase.models.visualization-settings/table-column-enabled true}
-                         {:metabase.models.visualization-settings/table-column-name "NAME"
-                          :metabase.models.visualization-settings/table-column-enabled true}]}
+          viz-settings {:metabase.visualization-settings.core/table-columns
+                        [{:metabase.visualization-settings.core/table-column-name "ID"
+                          :metabase.visualization-settings.core/table-column-enabled true}
+                         {:metabase.visualization-settings.core/table-column-name "ID" ; duplicate
+                          :metabase.visualization-settings.core/table-column-enabled true}
+                         {:metabase.visualization-settings.core/table-column-name "NAME"
+                          :metabase.visualization-settings.core/table-column-enabled true}]}
           [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
       (testing "should return cols without errors"
         (is (= 2 (count ordered-cols)))
@@ -1310,10 +1334,10 @@
           test-rows [[1 "Alice" "alice@example.com" "555-1234" "123 Main St" "Boston" "MA" "02101" "USA" "2024-01-01"]]
           test-data {:cols test-cols :rows test-rows}
           reordered-names ["EMAIL" "NAME" "CITY" "STATE" "ZIP" "ID" "PHONE" "ADDRESS" "COUNTRY" "CREATED_AT"]
-          viz-settings {:metabase.models.visualization-settings/table-columns
+          viz-settings {:metabase.visualization-settings.core/table-columns
                         (vec (for [col-name reordered-names]
-                               {:metabase.models.visualization-settings/table-column-name col-name
-                                :metabase.models.visualization-settings/table-column-enabled true}))}
+                               {:metabase.visualization-settings.core/table-column-name col-name
+                                :metabase.visualization-settings.core/table-column-enabled true}))}
           [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
       (testing "cols should follow table-columns order"
         (is (= reordered-names (map :name ordered-cols))))
@@ -1325,10 +1349,10 @@
   (mt/with-column-remappings [orders.product_id products.title]
     (testing "order-data respect table-columns order from viz-settings and keep remapped columns (#62053)"
       (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders {:limit 1})
-                                       :visualization_settings {:metabase.models.visualization-settings/table-columns
+                                       :visualization_settings {:metabase.visualization-settings.core/table-columns
                                                                 (vec (for [col-name ["QUANTITY" "CREATED_AT" "DISCOUNT" "TOTAL" "TAX" "SUBTOTAL" "USER_ID" "ID" "PRODUCT_ID"]]
-                                                                       {:metabase.models.visualization-settings/table-column-name col-name
-                                                                        :metabase.models.visualization-settings/table-column-enabled true}))}}]
+                                                                       {:metabase.visualization-settings.core/table-column-name col-name
+                                                                        :metabase.visualization-settings.core/table-column-enabled true}))}}]
         ;; trigger render to gather prep-data for rendering
         (let [table (body/render :table nil "UTC" card nil  (:data (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))))]
           (is (=  ["Quantity"

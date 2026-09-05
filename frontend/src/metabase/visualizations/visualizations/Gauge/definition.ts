@@ -4,15 +4,19 @@ import _ from "underscore";
 
 import { color as colorHex } from "metabase/ui/colors";
 import {
+  hasFailedGoalReferences,
+  resolveGoalSegments,
+} from "metabase/visualizations/lib/dynamic-goals";
+import {
   type VisualizationDefinition,
   columnSettings,
   getDefaultSize,
   getMinSize,
-  segmentIsValid,
 } from "metabase/viz-core";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
-import { isGaugeSegmentsArray } from "./types";
+import { DEFAULT_GAUGE_RANGE } from "./constants";
+import { getSegmentsRange } from "./utils";
 
 export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Gauge`,
@@ -23,13 +27,15 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
   isSensible: ({ cols, rows }) => {
     return rows.length === 1 && cols.length === 1;
   },
-  checkRenderable: ([
-    {
-      data: { cols },
-    },
-  ]) => {
-    if (!isNumeric(cols[0]) || isDate(cols[0])) {
+  checkRenderable: ([{ data }], settings) => {
+    if (!isNumeric(data.cols[0]) || isDate(data.cols[0])) {
       throw new Error(t`Gauge visualization requires a number.`);
+    }
+
+    if (hasFailedGoalReferences(data, settings["gauge.segments"])) {
+      throw new Error(
+        t`Couldn't load a value one of this gauge's ranges depends on.`,
+      );
     }
   },
   settings: {
@@ -47,18 +53,12 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
     }),
     "gauge.range": {
       // currently not exposed in settings, just computed from gauge.segments
-      getDefault(_series, vizSettings) {
-        const gaugeSegments = vizSettings["gauge.segments"];
-        const segments = isGaugeSegmentsArray(gaugeSegments)
-          ? gaugeSegments.filter((segment) => segmentIsValid(segment))
-          : [];
-        const values = [
-          ...segments.map((segment) => segment.max),
-          ...segments.map((segment) => segment.min),
-        ];
-        return values.length > 0
-          ? [Math.min(...values), Math.max(...values)]
-          : [0, 1];
+      getDefault(series, vizSettings) {
+        const segments = resolveGoalSegments(
+          series[0].data,
+          vizSettings["gauge.segments"],
+        );
+        return getSegmentsRange(segments) ?? DEFAULT_GAUGE_RANGE;
       },
       readDependencies: ["gauge.segments"],
     },
@@ -84,6 +84,10 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: "segmentsEditor",
       persistDefault: true,
+      getProps: ([{ card, data }]) => ({
+        data,
+        datasetQuery: card.dataset_query,
+      }),
       getWrapperStyle: () => ({
         marginLeft: 0,
         marginRight: 0,

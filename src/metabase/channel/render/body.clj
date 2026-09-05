@@ -17,7 +17,6 @@
    [metabase.formatter.core :as formatter]
    [metabase.geojson.api :as geojson.api]
    [metabase.geojson.settings :as geojson.settings]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot.core]
    [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -30,7 +29,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.visualization-settings.core :as mb.viz])
   (:import
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))

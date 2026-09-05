@@ -1,10 +1,10 @@
 (ns metabase.pivot.core
   (:require
    [medley.core :as m]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.performance :as perf])
+   [metabase.util.performance :as perf]
+   [metabase.visualization-settings.core :as mb.viz])
   (:import
    #?(:clj (java.text Collator))))
 

@@ -148,7 +148,8 @@
   [results]
   (u/select-nested-keys
    results
-   [[:data :cols :rows :rows_truncated :insights :requested_timezone :results_timezone]
+   ;; :referenced_entities carries dynamic-goal values for public/embedded cards.
+   [[:data :cols :rows :rows_truncated :insights :requested_timezone :results_timezone :referenced_entities]
     [:json_query :parameters]
     :status]))
 

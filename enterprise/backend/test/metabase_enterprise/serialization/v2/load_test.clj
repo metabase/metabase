@@ -2939,3 +2939,40 @@
                     (is (= (:id data-dest) (:id data-after))))
                   (testing "permissions are unchanged after import"
                     (is (= perms-before perms-after))))))))))))
+
+(deftest dynamic-goals-round-trip-test
+  (testing "a card goal referencing another card round-trips onto the destination card's id"
+    (let [serialized (atom nil)
+          coll1s     (atom nil)
+          source1s   (atom nil)
+          card1s     (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (reset! coll1s   (ts/create! :model/Collection :name "Goals"))
+          (reset! source1s (ts/create! :model/Card :name "Target Revenue" :collection_id (:id @coll1s)))
+          (reset! card1s   (ts/create! :model/Card
+                                       :name "Revenue"
+                                       :collection_id (:id @coll1s)
+                                       :visualization_settings
+                                       {:graph.goal_value {:id (:id @source1s) :type "card" :column "total"}}))
+          (reset! serialized (into [] (serdes.extract/extract {}))))
+        (testing "the exported goal carries the referenced card's entity id"
+          (is (= {:graph.goal_value {:id (:entity_id @source1s) :type "card" :column "total"}}
+                 (-> (filter #(= "Revenue" (:name %)) (by-model @serialized "Card"))
+                     first
+                     :visualization_settings
+                     (select-keys [:graph.goal_value])))))
+        (testing "the referenced card is declared as a dependency"
+          (is (contains? (set (serdes/deserialization-dependencies
+                               {:visualization_settings
+                                {:graph.goal_value {:id (:entity_id @source1s) :type "card" :column "total"}}
+                                :serdes/meta [{:model "Card" :id (:entity_id @card1s)}]}))
+                         [{:model "Card" :id (:entity_id @source1s)}])))
+        (testing "loading remaps the goal onto the destination card's id"
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (let [source1d (t2/select-one :model/Card :name "Target Revenue")
+                  card1d   (t2/select-one :model/Card :name "Revenue")]
+              (is (pos-int? (:id source1d)))
+              (is (= {:id (:id source1d) :type "card" :column "total"}
+                     (:graph.goal_value (:visualization_settings card1d)))))))))))

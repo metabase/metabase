@@ -6,7 +6,6 @@
    [metabase.channel.urls :as urls]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
-   [metabase.models.visualization-settings :as viz-settings]
    [metabase.notification.db :as notification.db]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.parameters.shared :as shared.params]
@@ -19,6 +18,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.visualization-settings.core :as viz-settings]
    [toucan2.core :as t2]))
 
 (defn is-card-empty?
@@ -157,7 +157,7 @@
   (-> (select-keys qp-result [:status :row_count :database_id :error
                               :notification/truncated? :data.rows-file-size])
       (assoc :data (select-keys (:data qp-result)
-                                [:cols :rows :viz-settings :results_metadata :insights
+                                [:cols :rows :viz-settings :results_metadata :insights :referenced_entities
                                  :results_timezone :format-rows? :pivot-export-options]))))
 
 (def cells-to-disk-threshold

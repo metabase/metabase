@@ -4,8 +4,8 @@
    [medley.core :as m]
    [metabase.appearance.core :as appearance]
    [metabase.formatter.datetime :as datetime]
-   [metabase.models.visualization-settings :as mb.viz]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.visualization-settings.core :as mb.viz])
   (:import
    (java.util Locale)))
 
