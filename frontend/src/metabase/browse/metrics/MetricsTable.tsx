@@ -244,6 +244,7 @@ function NameCell({ metric }: { metric?: MetricResult }) {
               type: "metric",
             })}
             onClick={preventDefault}
+            style={{ overflow: "hidden" }}
           >
             <EntityItemName name={metric.name} id={headingId} />
           </Link>
