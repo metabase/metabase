@@ -43,7 +43,16 @@
       (messages/send-password-reset-email! "test@test.com" nil "http://localhost/some/url" false)
       (is (-> (@et/inbox "test@test.com")
               (get-in [0 :body 0 :content])
-              (str/includes? "deactivated"))))))
+              (str/includes? "deactivated")))))
+  (testing "with a custom (data-URI) logo, the body is tagged :related so mail clients that require it
+            (e.g. Thunderbird) resolve the logo's cid: reference instead of showing it as a broken
+            attachment (metabase#56844)"
+    (et/with-fake-inbox
+      (mt/with-temporary-setting-values
+        [application-logo-url "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="]
+        (messages/send-password-reset-email! "test@test.com" nil "http://localhost/some/url" true)
+        (is (= :related
+               (first (:body (first (@et/inbox "test@test.com"))))))))))
 
 #_(deftest render-pulse-email-test
     (testing "Email with few rows and columns can be rendered when tracing (#21166)"
