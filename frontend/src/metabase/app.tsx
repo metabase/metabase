@@ -28,6 +28,7 @@ import { createRoot } from "react-dom/client";
 import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
+import { CalendarProvider } from "metabase/common/components/CalendarProvider";
 import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading/DelayedLoading";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import { getUserId } from "metabase/current-user";
@@ -119,15 +120,17 @@ function _init(
         <DragDropContextProvider backend={ModifiedBackend} context={{ window }}>
           <OverlayStackProvider>
             <AppThemeProvider>
-              <GlobalStyles />
-              {createPortal(<PortalContainer />, document.body)}
-              <MetabotProvider>
-                <RouterProvider
-                  routes={routes}
-                  onLocationChange={mirrorLocation}
-                  hydrateFallback={<DelayedLoadingSpinner />}
-                />
-              </MetabotProvider>
+              <CalendarProvider>
+                <GlobalStyles />
+                {createPortal(<PortalContainer />, document.body)}
+                <MetabotProvider>
+                  <RouterProvider
+                    routes={routes}
+                    onLocationChange={mirrorLocation}
+                    hydrateFallback={<DelayedLoadingSpinner />}
+                  />
+                </MetabotProvider>
+              </CalendarProvider>
             </AppThemeProvider>
           </OverlayStackProvider>
         </DragDropContextProvider>

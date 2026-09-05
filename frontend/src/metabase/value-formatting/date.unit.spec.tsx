@@ -1,5 +1,7 @@
 import { dayjs, loadDayjsLocale } from "metabase/dayjs";
 
+import { setDisplayCalendar } from "metabase/utils/calendar";
+
 import {
   DATE_RANGE_FORMAT_SPECS,
   SPECIFIC_DATE_TIME_UNITS,
@@ -209,6 +211,23 @@ describe("formatDateTimeForParameter", () => {
   describe("formatDateTimeWithUnit", () => {
     afterEach(() => {
       dayjs.locale("en");
+      setDisplayCalendar("gregory");
+    });
+
+    it("formats exact dates using the selected display calendar", () => {
+      setDisplayCalendar("persian");
+
+      expect(formatDateTimeWithUnit("2024-03-20", "day")).toEqual(
+        "Farvardin 1, 1403",
+      );
+    });
+
+    it("keeps backend temporal buckets in the Gregorian calendar", () => {
+      setDisplayCalendar("persian");
+
+      expect(formatDateTimeWithUnit("2024-03-01", "month")).toEqual(
+        "March 2024",
+      );
     });
 
     it("should format week ranges", () => {

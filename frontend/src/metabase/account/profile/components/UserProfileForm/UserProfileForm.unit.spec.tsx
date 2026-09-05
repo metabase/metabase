@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupNullGetUserKeyValueEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -16,6 +17,10 @@ const setup = (props: UserProfileFormProps) => {
 };
 
 describe("UserProfileForm", () => {
+  beforeEach(() => {
+    setupNullGetUserKeyValueEndpoints();
+  });
+
   it("should show a success message after form submit", async () => {
     const props = getProps({
       onSubmit: jest.fn().mockResolvedValue({}),
