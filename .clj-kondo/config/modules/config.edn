@@ -3124,6 +3124,7 @@
   {:team "UX West"
    :api  #{metabase-enterprise.billing.api.routes}
    :uses #{api
+           permissions
            premium-features
            store-api
            util}

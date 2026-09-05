@@ -22,7 +22,9 @@ export function useTransformsBilling() {
     data: billingInfo,
     error: billingInfoError,
     isLoading: billingInfoLoading,
-  } = useGetBillingInfoQuery();
+  } = useGetBillingInfoQuery(undefined, {
+    skip: !isAdmin,
+  });
 
   const hadTransforms =
     billingInfo?.data?.previous_add_ons?.some(
