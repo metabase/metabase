@@ -1,7 +1,7 @@
 import { within } from "@storybook/test";
 import { Fragment } from "react";
 
-import { Badge, Box, Group, Icon, Kbd, Stack } from "metabase/ui";
+import { Badge, Box, Group, Icon, KeyboardShortcut, Stack } from "metabase/ui";
 import {
   StoryBoard,
   StoryJsx,
@@ -23,7 +23,15 @@ const args = {
 
 const argTypes = {
   variant: {
-    options: ["default", "filled", "outline", "subtle", "inverse"],
+    options: [
+      "default",
+      "filled",
+      "light",
+      "subtle",
+      "transparent",
+      "outline",
+      "inverse",
+    ],
     control: { type: "inline-radio" },
   },
   color: {
@@ -573,7 +581,7 @@ export const MatrixCompact = {
   render: () => (
     <VariantMatrix
       title="Button · compact"
-      variant="subtle"
+      variant="transparent"
       colors={["brand"]}
       sizes={COMPACT_SIZES}
     />
@@ -631,7 +639,12 @@ const SECTION_COLUMNS: readonly SectionColumn[] = [
     size: "md",
     colors: ["brand", "negative", "neutral"],
   },
-  { key: "compact", variant: "subtle", size: "compact-md", colors: ["brand"] },
+  {
+    key: "compact",
+    variant: "transparent",
+    size: "compact-md",
+    colors: ["brand"],
+  },
 ];
 
 const SECTION_ROW_COLORS = ["brand", "negative", "neutral"] as const;
@@ -652,8 +665,8 @@ const SECTION_KINDS = [
   {
     key: "right-kbd",
     title: "Right · kbd",
-    jsx: "rightSection={<Kbd>⌘K</Kbd>}",
-    props: () => ({ rightSection: <Kbd>⌘K</Kbd> }),
+    jsx: 'rightSection={<KeyboardShortcut shortcut="$mod+c" />}',
+    props: () => ({ rightSection: <KeyboardShortcut shortcut="$mod+c" /> }),
   },
   {
     key: "right-badge",
