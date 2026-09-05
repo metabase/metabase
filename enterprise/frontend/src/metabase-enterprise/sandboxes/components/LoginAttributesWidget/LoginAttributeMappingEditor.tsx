@@ -254,6 +254,7 @@ const ValueInput = ({
       />
       {canDelete && (
         <Button
+          size="lg"
           leftSection={<Icon name="close" />}
           onClick={onDelete}
           data-testid="remove-mapping"

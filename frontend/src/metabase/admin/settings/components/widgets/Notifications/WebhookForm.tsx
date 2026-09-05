@@ -261,7 +261,7 @@ export const WebhookForm = ({
                 maw="21rem"
               />
               <Button
-                h="2.5rem"
+                size="lg"
                 onClick={() => handleTest(values, setFieldError)}
               >
                 {testButtonLabel}

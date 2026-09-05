@@ -134,7 +134,7 @@ export const CreateMenu = ({
     <>
       <Menu position="bottom-end">
         <Menu.Target>
-          <Button leftSection={<Icon name="add" />}>{t`New`}</Button>
+          <Button size="lg" leftSection={<Icon name="add" />}>{t`New`}</Button>
         </Menu.Target>
         <Menu.Dropdown>{menuItems}</Menu.Dropdown>
       </Menu>
