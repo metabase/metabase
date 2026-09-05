@@ -1,5 +1,5 @@
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
-import { PLUGIN_SEARCH_FILTERS } from "metabase/search/plugin";
+import { PLUGIN_SEARCH_FILTERS } from "metabase/search/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { VerifiedFilter } from "./VerifiedFilter";
