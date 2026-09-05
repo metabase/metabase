@@ -39,7 +39,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -60,64 +61,18 @@
        (every? #(or (string? %) (nil? %)) v)))
 
 (defn- clause-like?
-  "Heuristic: a real clause vector (not a map entry, not an FK path) whose head is a non-blank
-  operator string. We skip:
-
-    * `map-entry?` values (postwalk descends into map entries; their shape is [k v] and our
-      heuristic would otherwise misidentify them as bare clauses);
-    * FK-paths of length >= 3 consisting entirely of strings and `nil`s (see
-      [[looks-like-fk-path?]])."
+  "Heuristic: a real clause vector (not an FK path) whose head is a non-blank operator string."
   [v]
-  (and (vector? v)
-       (not (map-entry? v))
-       (pos? (count v))
-       (non-blank-string? (first v))
+  (and (match/matches? v [(_ :guard non-blank-string?) & _])
        (not (looks-like-fk-path? v))))
 
-(defn- needs-options-map?
-  "True if `v` is a clause-like vector whose position 2 is either missing or `nil`.
-
-  IMPORTANT: we do NOT treat a non-nil non-map at position 2 as \"missing options\". That would be
-  ambiguous -- position 2 might be a nested clause (`[\"=\", [\"field\", ...], 10]` where the LLM
-  forgot the options on `=`), and replacing that nested clause with `{}` would silently drop
-  data. Instead we only repair the two unambiguous cases:
-
-    * clause too short (no position 2 at all): `[\"count\"]` -> `[\"count\" {}]`;
-    * explicit nil at position 2: `[\"count\", nil]` -> `[\"count\" {}]`.
-
-  For a clause like `[\"=\", [\"field\", ...], 10]` where the options slot holds another clause,
-  we **insert** `{}` before the existing element (see [[insert-options-map]])."
-  [v]
-  (and (clause-like? v)
-       (or (< (count v) 2)
-           (nil? (nth v 1))
-           ;; position 2 is present but not a map -- means the LLM skipped the options slot
-           ;; entirely and the arg at position 1 is actually a term (nested clause or FK-path
-           ;; vector or a scalar). In that case we need to insert, not replace.
-           (not (map? (nth v 1))))))
-
-(defn- insert-options-map
-  "Given a clause-like vector missing its options map at position 2, produce a vector with `{}`
-  there. Three cases:
-
-    * `[op]` -> `[op {}]`
-    * `[op nil …args]` -> `[op {} …args]`  (replace the nil placeholder)
-    * `[op <non-nil-non-map> …args]` -> `[op {} <non-nil-non-map> …args]`  (insert, don't replace)"
-  [v]
-  (cond
-    (< (count v) 2)           (conj v {})
-    (nil? (nth v 1))          (assoc v 1 {})
-    (not (map? (nth v 1)))    (into [(first v) {}] (subvec v 1))
-    :else                     v))
-
 (defn- ensure-clause-options*
+  "Fix a clause-like vector missing options map at position 2 in nested clause-like vectors."
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (and (vector? node) (not (map-entry? node)) (needs-options-map? node))
-       (insert-options-map node)
-       node))
-   form))
+  (match/replace form
+    (:and [op] (_ :guard clause-like?)) [op {}]
+    (:and [op nil & _] (_ :guard clause-like?)) (&recur (assoc &match 1 {}))
+    (:and [op (non-map :guard (not (map? non-map))) & args] (_ :guard clause-like?)) (&recur (into [op {} non-map] args))))
 
 ;;; ============================================================
 ;;; Pass 1.7 -- unwrap nested `[field opts [field inner-opts target]]` clauses.
@@ -137,35 +92,11 @@
 ;;; we collapse.
 ;;; ============================================================
 
-(defn- field-clause-shape?
-  "True if `v` looks like a `field` clause: `[\"field\" <opts-map> <target>]`."
-  [v]
-  (and (vector? v)
-       (= 3 (count v))
-       (= "field" (nth v 0))
-       (map? (nth v 1))))
-
-(defn- collapse-nested-field
-  "If `node` is a `field` clause whose target slot is itself a `field` clause, collapse
-  them into one clause with merged options (outer options win), recursively. Returns the
-  collapsed clause (or the original `node` if no collapse applies)."
-  [node]
-  (loop [outer-opts (nth node 1)
-         inner      (nth node 2)]
-    (if (field-clause-shape? inner)
-      (recur (merge (nth inner 1) outer-opts)
-             (nth inner 2))
-      ["field" outer-opts inner])))
-
 (defn- unwrap-nested-field-clauses*
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (and (field-clause-shape? node)
-              (field-clause-shape? (nth node 2)))
-       (collapse-nested-field node)
-       node))
-   form))
+  (match/replace form
+    ["field" (outer :guard map?) ["field" (inner :guard map?) target]]
+    (&recur ["field" (into inner outer) target])))
 
 ;;; ============================================================
 ;;; Pass 1.75 -- strip stray double-quotes from portable-FK field references.
@@ -198,21 +129,15 @@
     s))
 
 (defn- dequote-field-target
-  "Dequote each string segment of a `field` clause's portable-FK vector target. Non-vector
-  targets (cross-stage column-name strings) are returned unchanged."
+  "Dequote each string segment of a `field` clause's portable-FK vector target."
   [target]
-  (if (vector? target)
-    (mapv #(if (string? %) (dequote-identifier %) %) target)
-    target))
+  (mapv #(if (string? %) (dequote-identifier %) %) target))
 
 (defn- dequote-field-targets*
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (field-clause-shape? node)
-       (assoc node 2 (dequote-field-target (nth node 2)))
-       node))
-   form))
+  (match/replace form
+    ["field" (opts :guard map?) (target :guard vector?)]
+    ["field" opts (&recur (dequote-field-target target))]))
 
 ;;; ============================================================
 ;;; Pass 1.81 -- canonicalise common operator-name aliases.
@@ -272,27 +197,15 @@
    "temporal-diff"  "datetime-diff"
    "is-not-null"    "not-null"})
 
-(defn- operator-alias-clause?
-  "True when `node` is a clause whose head (case-insensitive) matches a known alias and
-  is not already canonical. Requires options-map at slot 1 - bare-clause case is handled
-  by Pass 1, which runs first."
-  [node]
-  (and (vector? node)
-       (>= (count node) 2)
-       (string? (nth node 0))
-       (map? (nth node 1))
-       (let [lower (u/lower-case-en (nth node 0))]
-         (and (contains? operator-name-aliases lower)
-              (not= (nth node 0) (get operator-name-aliases lower))))))
-
 (defn- rewrite-operator-name-aliases*
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (operator-alias-clause? node)
-       (assoc node 0 (get operator-name-aliases (u/lower-case-en (nth node 0))))
-       node))
-   form))
+  (match/replace form
+    [(op :guard (and (string? op)
+                     (let [lower (u/lower-case-en op)]
+                       (and (contains? operator-name-aliases lower)
+                            (not= op (operator-name-aliases lower))))))
+     (_ :guard map?) & _]
+    (&recur (assoc &match 0 (operator-name-aliases (u/lower-case-en op))))))
 
 ;;; ============================================================
 ;;; Pass 1.8 -- canonicalise temporal-bucket extraction aliases.
@@ -317,25 +230,11 @@
    "month-of-year"   "get-month"
    "quarter-of-year" "get-quarter"})
 
-(defn- temporal-bucket-alias-clause?
-  "True when `node` is a clause whose head is a known temporal-bucket-extraction alias.
-  Requires an options map in slot 1 - the bare-clause case (no options) is handled by
-  Pass 1, which runs first."
-  [node]
-  (and (vector? node)
-       (>= (count node) 2)
-       (string? (nth node 0))
-       (map? (nth node 1))
-       (contains? temporal-bucket-extraction-aliases (nth node 0))))
-
 (defn- rewrite-temporal-bucket-aliases*
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (temporal-bucket-alias-clause? node)
-       (assoc node 0 (get temporal-bucket-extraction-aliases (nth node 0)))
-       node))
-   form))
+  (match/replace form
+    [(op :guard (and (string? op) (temporal-bucket-extraction-aliases op))) (_ :guard map?) & _]
+    (&recur (assoc &match 0 (temporal-bucket-extraction-aliases (u/lower-case-en op))))))
 
 ;;; ============================================================
 ;;; Pass 1.815 -- drop unsupported `get-day-of-week` week-mode arguments.
@@ -361,26 +260,14 @@
 ;;; the clause has arity 3 and the predicate no longer fires.
 ;;; ============================================================
 
-(defn- get-day-of-week-clause-with-mode?
-  "True when `node` is `[\"get-day-of-week\" <opts-map> <field> <mode>]` (arity 4) whose mode is an
-  unsupported (non-`iso`) string. `nil`/absent mode (arity 3) and `iso` are left alone."
-  [node]
-  (and (vector? node)
-       (= 4 (count node))
-       (= "get-day-of-week" (nth node 0))
-       (map? (nth node 1))
-       (let [mode (nth node 3)]
-         (and (string? mode)
-              (not= "iso" (u/lower-case-en (str/trim mode)))))))
-
 (defn- drop-unsupported-day-of-week-mode*
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (get-day-of-week-clause-with-mode? node)
-       (subvec node 0 3)
-       node))
-   form))
+  (match/replace form
+    ["get-day-of-week"
+     (_ :guard map?)
+     _
+     (mode :guard  (and (string? mode) (not= "iso" (u/lower-case-en (str/trim mode)))))]
+    (subvec &match 0 3)))
 
 ;;; ============================================================
 ;;; Pass 1.85 -- canonicalise order-by direction aliases.
@@ -412,27 +299,14 @@
   idempotency cheaply)."
   [head]
   (and (string? head)
-       (let [lower (u/lower-case-en head)]
-         (and (contains? direction-aliases lower)
-              (not= head (get direction-aliases lower))))))
-
-(defn- direction-alias-clause?
-  "True when `node` is a clause-shaped vector (head + options-map + 1 arg) whose head is
-  a direction alias to be rewritten."
-  [node]
-  (and (vector? node)
-       (= 3 (count node))
-       (map? (nth node 1))
-       (direction-clause-head? (nth node 0))))
+       (let [canonical (direction-aliases (u/lower-case-en head))]
+         (and canonical (not= head canonical)))))
 
 (defn- rewrite-direction-aliases*
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (direction-alias-clause? node)
-       (assoc node 0 (get direction-aliases (u/lower-case-en (nth node 0))))
-       node))
-   form))
+  (match/replace form
+    [(head :guard direction-clause-head?) (_ :guard map?) _]
+    (&recur (assoc &match 0 (get direction-aliases (u/lower-case-en head))))))
 
 ;;; ============================================================
 ;;; Pass 1.87 -- rewrite known misspelled `lib/type` markers to their canonical value.
@@ -448,12 +322,9 @@
 
 (defn- rewrite-lib-type-aliases*
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if-let [canonical (and (map? node) (lib-type-aliases (get node "lib/type")))]
-       (assoc node "lib/type" canonical)
-       node))
-   form))
+  (match/replace form
+    {"lib/type" (canonical :guard lib-type-aliases)}
+    (&recur (assoc &match "lib/type" (lib-type-aliases canonical)))))
 
 ;;; ============================================================
 ;;; Pass 1.88 -- merge a trailing extra options-map into the position-1 options.
@@ -549,12 +420,12 @@
 
 (defn- merge-trailing-options*
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (needs-trailing-options-merge? node)
-       (merge-trailing-options node)
-       node))
-   form))
+  (match/replace form
+    (_ :guard needs-trailing-options-merge?)
+    ;; &recur: dropping the trailing element changes the count, so the guard no longer fires
+    ;; on the result -- this just resumes descent into the clause's own args, where a nested
+    ;; clause might need the same fix.
+    (&recur (merge-trailing-options &match))))
 
 ;;; ============================================================
 ;;; Pass 1.89 -- merge a trailing options-map into position-1 on N-ary string-search filters
@@ -596,12 +467,9 @@
 
 (defn- merge-string-filter-trailing-options*
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (needs-string-filter-options-merge? node)
-       (merge-trailing-options node)
-       node))
-   form))
+  (match/replace form
+    (_ :guard needs-string-filter-options-merge?)
+    (&recur (merge-trailing-options &match))))
 
 ;;; ============================================================
 ;;; Pass 1.84 -- normalise alternative `case` / `if` argument shapes.
@@ -674,77 +542,47 @@
   the central `canonical-case-args` step uniformly handles trailing-else stripping). Return
   `nil` only when the args are unrecognised."
   [args]
-  (cond
+  (match/match-one args
     ;; Already canonical or canonical-with-trailing-else: a single vector in slot 0 whose
     ;; entries are branch-pairs (or a final else-branch), with optional explicit default in
     ;; slot 1.
-    (and (or (= 1 (count args)) (= 2 (count args)))
-         (vector? (nth args 0))
-         (seq (nth args 0))
-         (every? pair-or-else? (nth args 0)))
-    [(nth args 0) (when (= 2 (count args)) (nth args 1))]
+    [(pred :guard (and (vector? pred) (seq pred) (every? pair-or-else? pred))) & (extra :guard (<= (count extra) 1))]
+    (into [pred] extra)
 
     ;; Three bare non-pair args: pred, then, else
-    (and (= 3 (count args))
-         (not (branch-pair? (nth args 0))))
-    [[[(nth args 0) (nth args 1)]] (nth args 2)]
+    [(pred :guard (not (branch-pair? pred))) then else]
+    [[[pred then]] else]
 
     ;; Two bare non-pair args: pred, then (no default)
-    (and (= 2 (count args))
-         (not (branch-pair? (nth args 0))))
-    [[[(nth args 0) (nth args 1)]] nil]
+    [(pred :guard (not (branch-pair? pred))) then]
+    [[[pred then]] nil]
 
     ;; Leading branch pairs followed by an optional non-pair fallback
     ;; (covers \"branch pairs as separate args\").
-    (and (>= (count args) 2)
-         (branch-pair? (nth args 0)))
-    (let [pairs    (vec (take-while branch-pair? args))
-          remainder (drop (count pairs) args)]
+    [(pred :guard (branch-pair? pred)) & extra]
+    (let [pairs    (vec (take-while branch-pair? &match))
+          remainder (drop (count pairs) &match)]
       [pairs (when (= 1 (count remainder)) (first remainder))])
 
     ;; Flat alternating pred/then args (≥4 args). Falls through from "branch pairs as
     ;; separate args" above when the first arg is a non-2-tuple vector like `["=" {} field
     ;; val]`.
-    (>= (count args) 4)
+    (_ :guard (>= (count args) 4))
     (let [n          (count args)
           even-cnt   (- n (rem n 2))
           pred-thens (partition 2 (take even-cnt args))
           default    (when (odd? n) (nth args (dec n)))]
       [(mapv vec pred-thens) default])
 
-    :else nil))
+    _ nil))
 
-(defn- case-clause? [v]
-  (and (vector? v)
-       (>= (count v) 2)
-       (string? (nth v 0))
-       (map? (nth v 1))
-       (contains? #{"case" "if"} (nth v 0))))
-
-(defn- normalise-case-args
-  "Inspect the args of `clause`; if they match a recognised shape, return the clause with
-  canonical args (uniformly stripping any trailing `else` branch from the pairs vector).
-  Unrecognised args pass through untouched."
-  [clause]
-  (let [head (nth clause 0)
-        opts (nth clause 1)
-        args (subvec clause 2)]
-    (if-let [[branches default] (classify-case-args args)]
-      (let [canonical-args (canonical-case-args branches default)
-            new-clause     (into [head opts] canonical-args)]
-        ;; Idempotency: only return the rewritten form when it's actually different.
-        ;; Identical → the input was already canonical.
-        (if (= new-clause clause) clause new-clause))
-      clause)))
-
-(defn- normalise-case-clauses*
-  [form]
-  (walk/postwalk
-   (fn [node]
-     (if (case-clause? node)
-       (normalise-case-args node)
-       node))
-   form))
+(defn- normalise-case-clauses* [form]
+  (match/replace form
+    [(head :guard #{"case" "if"}) (opts :guard map?) & args]
+    (let [canonical-args (if-let [[branches default] (classify-case-args args)]
+                           (canonical-case-args branches default)
+                           args)]
+      (into [head opts] (map #(&recur % nil)) canonical-args))))
 
 ;;; ============================================================
 ;;; Pass 1.82 -- normalise filter clauses where the LLM passed a values-list as a single
@@ -830,20 +668,26 @@
                  (values-list? values-slot))
         [head (if opts-at (nth node 1) {}) lhs values-slot]))))
 
+(defn- in-not-in-values-list-clause [node]
+  (list-value-comparison-clause #{"in" "not-in"} node))
+
+(defn- eq-values-list-clause [node]
+  (list-value-comparison-clause #{"=" "!="} node))
+
 (defn- normalise-list-value-comparisons*
   "Pre-Pass-1 sweep: splat values-list args of `in`/`not-in` and rewrite `=`/`!=` against a
   values-list to `in`/`not-in`. Runs *before* `ensure-clause-options*` because Pass 1 would
   otherwise mis-identify a 2-element values-list (e.g. `[\"alice\" \"bob\"]`) as a bare
   clause and corrupt it by inserting `{}` between the two scalars."
   [form]
-  (walk/postwalk
-   (fn [node]
-     (or (when-let [[head opts lhs values] (list-value-comparison-clause #{"in" "not-in"} node)]
-           (splat-in-values-clause head opts lhs values))
-         (when-let [[head opts lhs values] (list-value-comparison-clause #{"=" "!="} node)]
-           (splat-in-values-clause (=->in-head head) opts lhs values))
-         node))
-   form))
+  (match/replace form
+    (_ :guard in-not-in-values-list-clause)
+    (let [[head opts lhs values] (in-not-in-values-list-clause &match)]
+      (&recur (splat-in-values-clause head opts lhs values)))
+
+    (_ :guard eq-values-list-clause)
+    (let [[head opts lhs values] (eq-values-list-clause &match)]
+      (&recur (splat-in-values-clause (=->in-head head) opts lhs values)))))
 
 ;;; ============================================================
 ;;; Pass 1.83 -- unwrap boolean wrapper clauses.
@@ -886,12 +730,8 @@
 
 (defn- unwrap-boolean-wrappers*
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (boolean-wrapper-clause? node)
-       (unwrap-boolean-wrapper node)
-       node))
-   form))
+  (match/replace form
+    (_ :guard boolean-wrapper-clause?) (&recur (unwrap-boolean-wrapper &match))))
 
 ;;; ============================================================
 ;;; Pass 1.87 -- swap out-of-order literal bounds in `between` clauses.
@@ -949,15 +789,17 @@
        (= "between" (nth v 0))
        (map? (nth v 1))))
 
+(defn- swappable-between-clause? [node]
+  (and (between-clause? node)
+       (bounds-comparable-and-swappable? (nth node 3) (nth node 4))))
+
 (defn- swap-between-bounds*
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (and (between-clause? node)
-              (bounds-comparable-and-swappable? (nth node 3) (nth node 4)))
-       (-> node (assoc 3 (nth node 4)) (assoc 4 (nth node 3)))
-       node))
-   form))
+  (match/replace form
+    (_ :guard swappable-between-clause?)
+    ;; &recur: after the swap the bounds compare in order, so `swappable-between-clause?` no
+    ;; longer fires on the result -- this just resumes descent into the clause.
+    (&recur (-> &match (assoc 3 (nth &match 4)) (assoc 4 (nth &match 3))))))
 
 ;;; ============================================================
 ;;; Pass 1.86 -- wrap bare ISO-date string bounds in `between` clauses as
@@ -1015,17 +857,19 @@
       (iso-date-string? lo)
       (iso-date-string? hi)))
 
+(defn- between-needs-iso-wrap-clause? [node]
+  (and (between-clause? node)
+       (between-needs-iso-wrap? (nth node 3) (nth node 4))))
+
 (defn- wrap-iso-date-bounds*
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (and (between-clause? node)
-              (between-needs-iso-wrap? (nth node 3) (nth node 4)))
-       (-> node
-           (assoc 3 (wrap-iso-date (nth node 3)))
-           (assoc 4 (wrap-iso-date (nth node 4))))
-       node))
-   form))
+  ;; No `&recur`: a wrapped ISO bound becomes an `absolute-datetime` clause, which is itself
+  ;; temporal-shaped, so `between-needs-iso-wrap-clause?` would fire on the result forever.
+  (match/replace form
+    (_ :guard between-needs-iso-wrap-clause?)
+    (-> &match
+        (assoc 3 (wrap-iso-date (nth &match 3)))
+        (assoc 4 (wrap-iso-date (nth &match 4))))))
 
 ;;; ============================================================
 ;;; Pass 1.865 -- wrap bare `"now"` string literals in temporal contexts as the canonical
@@ -1123,26 +967,12 @@
 ;;; sequential-of-clause and the predicate no longer matches.
 ;;; ============================================================
 
-(defn- single-clause-shape? [v]
-  (and (vector? v)
-       (>= (count v) 2)
-       (string? (nth v 0))
-       (map? (nth v 1))))
-
-(defn- normalise-fields-key [m]
-  (let [fields (get m "fields")]
-    (if (single-clause-shape? fields)
-      (assoc m "fields" [fields])
-      m)))
-
 (defn- normalise-fields-shape*
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (and (map? node) (contains? node "fields"))
-       (normalise-fields-key node)
-       node))
-   form))
+  (match/replace form
+    {"fields" (:and single-clause
+                    [(_ :guard string?) (_ :guard map?) & _])}
+    (&recur (assoc &match "fields" [single-clause]))))
 
 ;;; ============================================================
 ;;; Pass 1.5 -- normalize `expressions:` shape (map -> sequential; stamp `lib/expression-name`)
@@ -1177,38 +1007,19 @@
       clause
       (assoc clause 1 (assoc opts "lib/expression-name" expr-name)))))
 
-(defn- normalize-stage-expressions
-  [stage]
-  (let [exprs (get stage "expressions")]
-    (cond
-      ;; Map-shape: {Name clause, ...} -> [clause-with-name ...]
-      (map? exprs)
-      (assoc stage "expressions"
-             (into []
-                   (keep (fn [[expr-name clause]]
-                           (when (expression-clause? clause)
-                             (stamp-expression-name clause expr-name))))
-                   exprs))
-
-      ;; Sequential: leave as-is (name lives in each clause's options; schema enforces).
-      (sequential? exprs)
-      stage
-
-      ;; Missing or something we don't understand: leave alone.
-      :else
-      stage)))
-
 (defn- normalize-expressions-shape*
-  "Walk the query and, for every map that has an `\"expressions\"` key, convert a map-shape
-  expressions block into the canonical sequential shape with `lib/expression-name` stamped
-  from the map key. Idempotent: sequential input passes through unchanged."
+  "Walk the query and, for every map that has a map-shape `\"expressions\"` key, convert it
+  into the canonical sequential shape with `lib/expression-name` stamped from the map key.
+  Idempotent: sequential input passes through unchanged."
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (and (map? node) (contains? node "expressions"))
-       (normalize-stage-expressions node)
-       node))
-   form))
+  (match/replace form
+    {"expressions" (exprs :guard map?)}
+    (&recur (assoc &match "expressions"
+                   (into []
+                         (keep (fn [[expr-name clause]]
+                                 (when (expression-clause? clause)
+                                   (stamp-expression-name clause expr-name))))
+                         exprs)))))
 
 ;;; ============================================================
 ;;; Pass 1.9 -- stamp top-level `database:` from the first stage
@@ -1284,9 +1095,7 @@
 
 (defn- top-level-query-map?
   [m]
-  (and (map? m)
-       (contains? m "database")
-       (contains? m "stages")))
+  (match/matches? m {"database" _, "stages" _}))
 
 (defn- join-like-map?
   "A map that looks like an explicit join: it carries join-only keys (`conditions`, or
@@ -1313,28 +1122,17 @@
               ["source-table" "source-card" "filters" "aggregation"
                "breakout" "order-by" "fields" "joins" "expressions" "limit"]))))
 
-(defn- infer-query-lib-type [m]
-  (if (and (top-level-query-map? m) (not (contains? m "lib/type")))
-    (assoc m "lib/type" "mbql/query")
-    m))
-
-(defn- infer-join-lib-type [m]
-  (if (and (join-like-map? m) (not (contains? m "lib/type")))
-    (assoc m "lib/type" "mbql/join")
-    m))
-
-(defn- infer-stage-lib-type [m]
-  (if (and (stage-like-map? m) (not (contains? m "lib/type")))
-    (assoc m "lib/type" "mbql.stage/mbql")
-    m))
+(defn- needs-lib-type-marker? [m]
+  (and (map? m)
+       (not (contains? m "lib/type"))
+       (or (top-level-query-map? m) (join-like-map? m) (stage-like-map? m))))
 
 (defn- ensure-lib-types* [form]
-  (walk/postwalk
-   (fn [node]
-     (if (map? node)
-       (-> node infer-query-lib-type infer-join-lib-type infer-stage-lib-type)
-       node))
-   form))
+  (match/replace form
+    (_ :guard needs-lib-type-marker?)
+    (&recur (assoc &match "lib/type" (cond (top-level-query-map? &match) "mbql/query"
+                                           (join-like-map? &match) "mbql/join"
+                                           (stage-like-map? &match) "mbql.stage/mbql")))))
 
 ;;; ============================================================
 ;;; Pass 2.7 -- rewrite inline aggregation expressions in `order-by` to aggregation refs
@@ -1367,19 +1165,12 @@
   against the stage's `aggregation` entry without being thrown off by `lib/uuid` differences
   or unrelated option keys.
 
-  Walks via `postwalk` and uses the same `clause-like?` predicate as the options-insertion
-  pass, so map-entries, FK-paths, and non-clause vectors are left alone."
+  Uses the same `clause-like?` predicate as the options-insertion pass, so FK-paths and
+  non-clause vectors are left alone."
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (and (vector? node)
-              (not (map-entry? node))
-              (clause-like? node)
-              (>= (count node) 2)
-              (map? (nth node 1)))
-       (into [(first node)] (subvec node 2))
-       node))
-   form))
+  (match/replace form
+    (:and (_ :guard clause-like?) [op (_ :guard map?) & args])
+    (&recur (into [op] args))))
 
 (defn- ensure-aggregation-uuid
   "Return a tuple `[stamped-aggregation uuid]`. If the aggregation already has a `lib/uuid` in
@@ -1578,13 +1369,8 @@
   whether to complain about a missing `aggregation:` vector (if there are no integer refs
   and no `aggregation:` block, it's a perfectly valid stage)."
   [stage]
-  (let [found? (atom false)]
-    (walk/postwalk
-     (fn [n]
-       (when (integer-index-agg-ref? n) (reset! found? true))
-       n)
-     (dissoc stage "aggregation"))
-    @found?))
+  (some? (match/match-one (dissoc stage "aggregation")
+           (_ :guard integer-index-agg-ref?) true)))
 
 (defn- resolve-integer-agg-refs-in-stage
   "Resolve all integer-index aggregation refs in a single stage to canonical UUID form.
@@ -1732,18 +1518,8 @@
   "True if `form` contains any `[aggregation, opts, <uuid>]` clause whose uuid is in
   `same-stage-uuids`."
   [form same-stage-uuids]
-  (let [found? (atom false)]
-    (walk/postwalk
-     (fn [n]
-       (when (and (vector? n)
-                  (>= (count n) 3)
-                  (= "aggregation" (nth n 0))
-                  (string? (nth n 2))
-                  (contains? same-stage-uuids (nth n 2)))
-         (reset! found? true))
-       n)
-     form)
-    @found?))
+  (some? (match/match-one form
+           ["aggregation" _ (s :guard (and (string? s) (contains? same-stage-uuids s))) & _] true)))
 
 (defn- aggregation-uuid->column-name
   "Build a `{uuid → column-name}` map for the stage's aggregation vector. Returns `nil` when
@@ -2224,17 +2000,9 @@
 ;;; is cached, and we only do this for queries that actually have multiple stages.
 ;;; ============================================================
 
-(defn- string-cross-stage-field-clause?
-  "`[\"field\" <opts-map> <string>]` - a cross-stage column reference by name. We require
-  the opts map to be a real map and the third element to be a non-blank string. Anything else
-  (FK vector, missing slot, non-map opts) is left to [[field-clause?]] / the resolver."
-  [v]
-  (and (vector? v)
-       (not (map-entry? v))
-       (= 3 (count v))
-       (= "field" (nth v 0))
-       (map? (nth v 1))
-       (non-blank-string? (nth v 2))))
+(defn- string-cross-stage-field-clause? [v]
+  (and (not (map-entry? v))
+       (match/matches? v (:and ["field" (_ :guard map?) (_ :guard non-blank-string?)]))))
 
 (defn- types-from-column
   "Pull `\"base-type\"` (and optionally `\"effective-type\"`) off a `lib/returned-columns`
@@ -2475,26 +2243,28 @@
   on the happy path, where every ref already carries a stamped `base-type`."
   [stage]
   (let [stage' (cond-> stage (contains? stage "joins") (dissoc "joins"))]
-    (boolean (some unstamped-cross-stage-ref? (tree-seq coll? seq stage')))))
+    (some? (match/match-one stage'
+             (_ :guard unstamped-cross-stage-ref?) true))))
 
 (defn- first-unresolved-cross-stage-ref
   "Return the first [[unstamped-cross-stage-ref?]] clause in `stage` that matches no column in
   `cols`, or nil. Skips `joins` subtrees (their own resolution context)."
   [stage cols]
   (let [stage' (cond-> stage (contains? stage "joins") (dissoc "joins"))]
-    (some (fn [node]
-            (when (and (unstamped-cross-stage-ref? node)
-                       (nil? (match-cross-stage-column cols (nth node 2))))
-              node))
-          (tree-seq coll? seq stage'))))
+    (match/match-one stage'
+      (node :guard (and (unstamped-cross-stage-ref? node)
+                        (nil? (match-cross-stage-column cols (nth node 2)))))
+      node)))
 
 (defn- assert-cross-stage-refs-resolved*
   "Pass 5.7: raise an `:agent-error?` for any string-named cross-stage / source-card field ref
   that resolves to no real column. No-op when `mp` is nil. Only stages that still carry an
   unstamped ref pay the cost of re-resolving their column universe to build the message."
   [query mp content-store]
-  (when (and mp (map? query) (vector? (get query "stages")))
-    (doseq [[idx stage] (map-indexed vector (get query "stages"))
+  (when-let [stages (and mp (match/match-one query
+                              {"stages" (stages :guard vector?)} stages
+                              _ nil))]
+    (doseq [[idx stage] (map-indexed vector stages)
             :when        (and (map? stage) (stage-has-unstamped-cross-stage-ref? stage))]
       (when-let [cols (cond
                         (get stage "source-card") (mini-resolved-columns-for-source-card mp query idx content-store)
@@ -2573,22 +2343,13 @@
   Throws `:agent-error?` ex-info on the first offender. Carried over from the sexp
   pipeline's `validate/operators.clj/validate-operator-specific!` `case` branch."
   [form]
-  (walk/postwalk
-   (fn [node]
-     (when (and (vector? node)
-                (not (map-entry? node))
-                (>= (count node) 2)
-                (string? (nth node 0))
-                (contains? #{"case" "if"} (nth node 0))
-                (map? (nth node 1))
-                (contains? (nth node 1) "default"))
-       (throw (ex-info
-               (tru "`case` (and `if`) uses its third positional argument as the fallback value, not a `default` key in the options map. Move the value out of the options map and append it as the third arg of the clause: `[case, <opts>, <branch-pairs>, <default>]`. Omit the third arg entirely if you have no fallback (the result will be null on miss).")
-               {:agent-error? true
-                :error        :case-default-in-opts
-                :clause       node})))
-     node)
-   form))
+  (match/match-one form
+    [#{"case" "if"} {"default" _} & _]
+    (throw (ex-info
+            (tru "`case` (and `if`) uses its third positional argument as the fallback value, not a `default` key in the options map. Move the value out of the options map and append it as the third arg of the clause: `[case, <opts>, <branch-pairs>, <default>]`. Omit the third arg entirely if you have no fallback (the result will be null on miss).")
+            {:agent-error? true
+             :error        :case-default-in-opts
+             :clause       &match}))))
 
 ;;; ----- E3: sexp-legacy top-level operations used as clause heads ---------------------
 
@@ -2611,30 +2372,17 @@
   `[filter, …]`, etc.). lib accepts these silently because they look like generic
   unknown-but-shape-valid clauses; the resulting query produces wrong results or fails
   at SQL-generation time. Carried over from the sexp pipeline's
-  `validate/operators.clj` `top-level-operation` branch.
-
-  Excludes `map-entry?` nodes - postwalk descends into map entries, and a stage's
-  `{\"breakout\" […]}` entry would otherwise look exactly like a `[\"breakout\", …]`
-  clause to this detector."
+  `validate/operators.clj` `top-level-operation` branch."
   [form]
-  (walk/postwalk
-   (fn [node]
-     (when (and (vector? node)
-                (not (map-entry? node))
-                (>= (count node) 1)
-                (string? (nth node 0))
-                (contains? sexp-legacy-top-level-ops (nth node 0)))
-       (let [head (nth node 0)
-             hint (get sexp-legacy-top-level-ops head)]
-         (throw (ex-info
-                 (tru "`{0}` is not a clause in repr; it was a top-level operation in the older sexp pipeline. {1}"
-                      head hint)
-                 {:agent-error? true
-                  :error        :sexp-legacy-op-as-clause
-                  :head         head
-                  :clause       node}))))
-     node)
-   form))
+  (match/match-one form
+    [(head :guard sexp-legacy-top-level-ops) & _]
+    (throw (ex-info
+            (tru "`{0}` is not a clause in repr; it was a top-level operation in the older sexp pipeline. {1}"
+                 head (get sexp-legacy-top-level-ops head))
+            {:agent-error? true
+             :error        :sexp-legacy-op-as-clause
+             :head         head
+             :clause       &match}))))
 
 ;;; ----- E5: blank `[expression, opts, ""]` reference --------------------------------
 
@@ -2647,23 +2395,13 @@
   Carried over from the sexp pipeline's
   `validate/operators.clj/validate-operator-specific!` `expression-ref` branch."
   [form]
-  (walk/postwalk
-   (fn [node]
-     (when (and (vector? node)
-                (not (map-entry? node))
-                (= 3 (count node))
-                (= "expression" (nth node 0))
-                (map? (nth node 1)))
-       (let [name-slot (nth node 2)]
-         (when (or (not (string? name-slot))
-                   (= "" (str/trim (str name-slot))))
-           (throw (ex-info
-                   (tru "`[expression, <opts>, <name>]` reference requires a non-blank string identifier in the third slot, matching an entry in some stage''s `expressions:` block.")
-                   {:agent-error? true
-                    :error        :blank-expression-ref
-                    :clause       node})))))
-     node)
-   form))
+  (match/match-one form
+    ["expression" (_ :guard map?) (name-slot :guard (or (not (string? name-slot)) (str/blank? name-slot)))]
+    (throw (ex-info
+            (tru "`[expression, <opts>, <name>]` reference requires a non-blank string identifier in the third slot, matching an entry in some stage''s `expressions:` block.")
+            {:agent-error? true
+             :error        :blank-expression-ref
+             :clause       &match}))))
 
 ;;; ----- E6: numeric `[field, opts, 100]` (sexp legacy form) -------------------------
 
@@ -2679,23 +2417,13 @@
   `validate/operators.clj/validate-operator-specific!` `field` branch. A no-op on surfaces
   that accept numeric field ids (see [[metabase.models.serialization.resolve/*numeric-ids-allowed?*]])."
   [form]
-  (when-not resolve/*numeric-ids-allowed?*
-    (walk/postwalk
-     (fn [node]
-       (when (and (vector? node)
-                  (not (map-entry? node))
-                  (= 3 (count node))
-                  (= "field" (nth node 0))
-                  (map? (nth node 1))
-                  (integer? (nth node 2)))
-         (throw (ex-info
-                 (tru "`field` clause needs a portable FK in its third slot, not a numeric id. Use a vector `[<database>, <schema>, <table>, <column>]` (resolved against the metadata provider) or a string column-name (for cross-stage references).")
-                 {:agent-error? true
-                  :error        :numeric-field-id
-                  :clause       node})))
-       node)
-     form))
-  form)
+  (match/match-one form
+    ["field" (_ :guard map?) (_ :guard integer?)]
+    (throw (ex-info
+            (tru "`field` clause needs a portable FK in its third slot, not a numeric id. Use a vector `[<database>, <schema>, <table>, <column>]` (resolved against the metadata provider) or a string column-name (for cross-stage references).")
+            {:agent-error? true
+             :error        :numeric-field-id
+             :clause       &match}))))
 
 ;;; ----- friendly-errors pipeline driver -----------------------------------------------
 

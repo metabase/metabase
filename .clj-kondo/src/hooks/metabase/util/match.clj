@@ -124,6 +124,25 @@
                       (concat [(api/token-node 'clojure.core/or)] result-exprs [opaque-node]))))]
       {:node new-node})))
 
+(defn matches?
+  "clj-kondo :analyze-call hook for matches?. Similar to `match-one`, but supports just a single clause with no result."
+  [{:keys [node]}]
+  (let [[_ value pat] (:children node)]
+    (let [all-bindings (->> (collect-bindings pat)
+                            dedupe-bindings)
+          special-bindings [(api/token-node '_)        value
+                            (api/token-node '&match)   opaque-node
+                            ;; Pretend to use &match so that Kondo doesn't complain about it.
+                            (api/token-node '_) (api/token-node '&match)]
+          binding-nodes (into special-bindings all-bindings)
+          new-node (api/list-node
+                    (list
+                     (api/token-node 'let)
+                     (api/vector-node binding-nodes)
+                     (api/list-node
+                      (list opaque-node))))]
+      {:node new-node})))
+
 (def match-many match-one)
 (def replace match-one)
 
