@@ -5,7 +5,7 @@ import PaperStyles from "./Paper.module.css";
 export const paperOverrides: MantineThemeOverride["components"] = {
   Paper: Paper.extend({
     defaultProps: {
-      radius: "sm",
+      radius: "xxs",
       shadow: "xs_outline",
     },
     classNames: {
