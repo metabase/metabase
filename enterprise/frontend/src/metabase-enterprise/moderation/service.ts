@@ -76,16 +76,31 @@ export const getTextForReviewBanner = (
   return {};
 };
 
+// "{0} verified this" is grammatically third-person (e.g. Spanish "{0}
+// verificó esto"), so it can't be reused for the current-user case, where
+// {0} is filled with the second-person pronoun "You" ("Tú verificó esto" is
+// ungrammatical - it should be "Tú verificaste esto"). Callers must check
+// this first and use a dedicated, independently-translatable string instead
+// of substituting "You" into the third-person template.
+export const isCurrentUserModerator = (
+  moderator: BaseUser | null,
+  currentUser?: BaseUser | null,
+) => {
+  const { id: moderatorId } = moderator || {};
+  const { id: currentUserId } = currentUser || {};
+  return currentUserId != null && moderatorId === currentUserId;
+};
+
 export const getModeratorDisplayName = (
   moderator: BaseUser | null,
   currentUser?: BaseUser | null,
 ) => {
-  const { id: moderatorId, common_name } = moderator || {};
-  const { id: currentUserId, is_superuser } = currentUser || {};
+  const { common_name } = moderator || {};
+  const { is_superuser } = currentUser || {};
 
-  if (currentUserId != null && moderatorId === currentUserId) {
+  if (isCurrentUserModerator(moderator, currentUser)) {
     return t`You`;
-  } else if (moderatorId != null && is_superuser && common_name) {
+  } else if (moderator?.id != null && is_superuser && common_name) {
     return common_name;
   } else {
     return t`A moderator`;
@@ -96,6 +111,9 @@ export const getModeratorDisplayText = (
   moderator: BaseUser | null,
   currentUser: BaseUser | null,
 ) => {
+  if (isCurrentUserModerator(moderator, currentUser)) {
+    return t`You verified this`;
+  }
   const moderatorName = getModeratorDisplayName(moderator, currentUser);
   return c("{0} is the name of a user").t`${moderatorName} verified this`;
 };
@@ -113,18 +131,29 @@ export const isItemVerified = (
 
 const getModerationReviewEventText = (
   review: ModerationReview,
-  moderatorDisplayName: string,
+  moderator: BaseUser | null,
+  currentUser?: User,
 ) => {
+  const isCurrentUser = isCurrentUserModerator(moderator, currentUser);
+  const moderatorDisplayName = getModeratorDisplayName(moderator, currentUser);
+
   switch (review.status) {
     case "verified":
-      return c("{0} is the name of a user")
-        .t`${moderatorDisplayName} verified this`;
+      return isCurrentUser
+        ? t`You verified this`
+        : c("{0} is the name of a user")
+            .t`${moderatorDisplayName} verified this`;
     case null:
-      return c("{0} is the name of a user")
-        .t`${moderatorDisplayName} removed verification`;
+      return isCurrentUser
+        ? t`You removed verification`
+        : c("{0} is the name of a user")
+            .t`${moderatorDisplayName} removed verification`;
     default:
-      return c("{0} is the name of a user, {1} is the status of a review")
-        .t`${moderatorDisplayName} changed status to ${review.status}`;
+      return isCurrentUser
+        ? c("{0} is the status of a review")
+            .t`You changed status to ${review.status}`
+        : c("{0} is the name of a user, {1} is the status of a review")
+            .t`${moderatorDisplayName} changed status to ${review.status}`;
   }
 };
 
@@ -134,11 +163,7 @@ export function getModerationTimelineEvents(
 ) {
   return reviews.map((review) => {
     const moderator = review.user;
-    const moderatorDisplayName = getModeratorDisplayName(
-      moderator,
-      currentUser,
-    );
-    const text = getModerationReviewEventText(review, moderatorDisplayName);
+    const text = getModerationReviewEventText(review, moderator, currentUser);
     const icon = isRemovedReviewStatus(review.status)
       ? getRemovedReviewStatusIcon()
       : getIconForReview(review);
