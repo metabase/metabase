@@ -1,0 +1,95 @@
+name: Bundle Load Stats
+
+# Reuses the uberjar built on every master merge: boots it, signs in, loads the
+# app in a throttled headless Chrome across four network and CPU conditions, and
+# appends the times to eng-stats-importer.
+#
+# The instance is blank on purpose. `index.html` is built from settings and the
+# signed-in user alone, so seeding content would not change a single byte of the
+# document this measures.
+
+on:
+  workflow_run:
+    workflows: ["Build Uberjar"]
+    types: [completed]
+    # Master only: a release forms a non-linear line whose times cannot be
+    # compared against the commit before it.
+    branches: [master]
+
+concurrency:
+  group: bundle-load-stats-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  bundle-load-stats:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 25
+    env:
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      MB_JETTY_PORT: "4000"
+      SITE: http://localhost:4000
+      # Loads per condition. The first is the cold reading and the rest give the
+      # median, so this trades run time for a steadier number.
+      RUNS: "8"
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: ./.github/actions/prepare-node-bun
+      - name: Prepare JDK 25
+        uses: actions/setup-java@v5.2.0
+        with:
+          java-version: "25"
+          distribution: "temurin"
+      - name: Install Chrome v144
+        uses: browser-actions/setup-chrome@2e1d749697dd1612b833dba4a722266286fbefcd # v2.1.2
+        with:
+          chrome-version: 144
+        id: setup-chrome
+      - name: Download EE uberjar
+        uses: ./.github/actions/fetch-artifact
+        with:
+          commit: ${{ github.event.workflow_run.head_sha }}
+          edition: ee
+          extract-path: temp/uberjar
+      - name: Start Metabase
+        run: |
+          mkdir -p artifacts
+          # --add-opens matches how the jar is launched everywhere else
+          # (uberjar.yml, pre-release.yml, bin/docker/run_metabase.sh), so the
+          # benchmark runs the app under the JVM configuration we ship.
+          MB_DB_FILE="${RUNNER_TEMP}/bench.db" \
+            nohup java --add-opens java.base/java.nio=ALL-UNNAMED \
+            -jar temp/uberjar/metabase.jar > artifacts/metabase.log 2>&1 &
+      - name: Sign in
+        run: |
+          # Waits for the instance to migrate and come up, then creates the
+          # first user. Masked because the token authenticates as that user.
+          session=$(node frontend/build/bench/sign-in.js "$SITE")
+          echo "::add-mask::$session"
+          echo "SESSION_COOKIE=$session" >> "$GITHUB_ENV"
+      - name: Warm the backend
+        run: |
+          # The first document a fresh JVM renders pays for its own JIT. Spend
+          # that here rather than inside the first condition measured.
+          for _ in 1 2 3 4 5; do curl -sS -o /dev/null "$SITE/"; done
+      - name: Measure load times
+        env:
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: |
+          node frontend/build/bench/matrix.js "$SITE/" "$RUNS" \
+            | tee artifacts/load-times.json
+      - name: Show the Metabase log if something went wrong
+        if: failure()
+        run: tail -100 artifacts/metabase.log || true
+      - name: Import load times into Stats
+        env:
+          ROWS: artifacts/load-times.json
+          # Passed via env (not interpolated into the shell) so the commit
+          # message can't inject commands; the script keeps only the subject.
+          COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
+          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
+          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
+        run: bun .github/scripts/upload-bundle-load-stats.ts
