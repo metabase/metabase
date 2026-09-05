@@ -11,6 +11,7 @@
    [iapetos.collector :as collector]
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
+   [iapetos.metric :as metric]
    [iapetos.registry.collectors :as collectors]
    [jvm-alloc-rate-meter.core :as alloc-rate-meter]
    [jvm-hiccup-meter.core :as hiccup-meter]
@@ -1074,13 +1075,33 @@
   ([metric labels amount]
    (prometheus/set (:registry system) metric (qualified-vals labels) amount)))
 
+(defn- lookup-collector
+  [metric]
+  (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil))
+
 (defn clear!
   "Call Collector.clear() on given metric."
   [metric]
   (when-not system
     (setup!))
   (when system
-    (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil)))))
+    (.clear ^SimpleCollector (:raw (lookup-collector metric)))))
+
+(defn remove-series!
+  "Call Collector.remove() for one label combination of `metric`, so it stops being exported entirely.
+  Unlike [[clear!]], which drops every label combination, and unlike setting the value to NaN, which keeps
+  exporting the series with a value that poisons `avg`/`sum`. Prometheus marks a series that stops being
+  exported stale, which is what makes queries ignore it."
+  [metric labels]
+  (when-not system
+    (setup!))
+  (when system
+    (let [{:keys [raw] declared :labels} (lookup-collector metric)
+          ;; iapetos.collector/set-labels builds the same array to find a child, so removal has to order
+          ;; the values exactly as the collector declared its label names
+          label->value (update-keys (qualified-vals labels) metric/dasherize)
+          ordered      (into-array String (map (comp str label->value) declared))]
+      (.remove ^SimpleCollector raw ordered))))
 
 (def ^:private real-reporter
   "A real analytics.interface/Reporter that reports here"
@@ -1095,7 +1116,9 @@
     (-observe! [_ metric labels amount]
       (observe! metric labels amount))
     (-clear! [_ metric]
-      (clear! metric))))
+      (clear! metric))
+    (-remove-series! [_ metric labels]
+      (remove-series! metric labels))))
 
 (defn- install-real-reporter!
   "Called after setup to wire up the real reporter"
