@@ -1,13 +1,11 @@
 name: created_at
 display_name: Created At
-description: Timestamp the conversation was created.
-created_at: '2026-04-24T19:39:29.987038Z'
+created_at: '2026-07-23T14:27:51.91162Z'
 visibility_type: normal
-table_id: [Internal Metabase Database, public, v_metabot_conversations]
+table_id: [Internal Metabase Database, public, v_mcp_tool_calls]
 database_type: timestamptz
 base_type: type/DateTimeWithLocalTZ
 effective_type: type/DateTimeWithLocalTZ
-semantic_type: type/CreationTimestamp
 dimensions: []
 position: 1
 custom_position: 0
@@ -15,7 +13,7 @@ database_position: 1
 serdes/meta:
 - {id: Internal Metabase Database, model: Database}
 - {id: public, model: Schema}
-- {id: v_metabot_conversations, model: Table}
+- {id: v_mcp_tool_calls, model: Table}
 - {id: created_at, model: Field}
 database_is_generated: false
 database_is_nullable: true

@@ -8,11 +8,7 @@ database_type: int4
 base_type: type/Integer
 effective_type: type/Integer
 semantic_type: type/FK
-fk_target_field_id:
-- Internal Metabase Database
-- public
-- v_users
-- user_id
+fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
 dimensions: []
 position: 10
 custom_position: 0

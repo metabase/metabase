@@ -1,0 +1,21 @@
+created_at: '2026-05-11T18:03:22.333247Z'
+entity_id: RTr0orB42nde35Q6T60Ss
+name: Dark
+settings:
+  colors:
+    background: hsla(204, 66%, 8%, 1)
+    background-secondary: hsla(205, 63%, 5%, 1)
+    border: hsla(0, 0%, 100%, 0.21)
+    brand: hsla(208, 72%, 60%, 1.00)
+    charts: ['#509EE3', '#88BF4D', '#A989C5', '#EF8C8C', '#F9D45C', '#F2A86F', '#98D9D9', '#7172AD']
+    filter: hsla(240, 69%, 74%, 1)
+    negative: hsla(358, 71%, 62%, 1)
+    positive: hsla(89, 48%, 40%, 1)
+    shadow: color-mix(in srgb, hsla(205, 63%, 5%, 1) 20%, transparent)
+    summarize: hsla(89, 47%, 45%, 1)
+    text-primary: hsla(0, 0%, 100%, 0.95)
+    text-secondary: hsla(0, 0%, 100%, 0.69)
+    text-tertiary: hsla(0, 0%, 100%, 0.46)
+updated_at: '2026-05-11T18:03:22.333247Z'
+serdes/meta:
+- {id: RTr0orB42nde35Q6T60Ss, label: dark, model: EmbeddingTheme}

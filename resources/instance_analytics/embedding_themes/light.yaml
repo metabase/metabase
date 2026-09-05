@@ -1,0 +1,21 @@
+created_at: '2026-05-11T18:03:22.333247Z'
+entity_id: XI7LGWhivhpLJlMP6Bsc7
+name: Light
+settings:
+  colors:
+    background: hsla(0, 0%, 100%, 1.00)
+    background-secondary: hsla(240, 11%, 98%, 1)
+    border: hsla(195, 6%, 87%, 1)
+    brand: hsla(208, 72%, 60%, 1.00)
+    charts: ['#509EE3', '#88BF4D', '#A989C5', '#EF8C8C', '#F9D45C', '#F2A86F', '#98D9D9', '#7172AD']
+    filter: hsla(240, 65%, 69%, 1)
+    negative: hsla(358, 71%, 62%, 1)
+    positive: hsla(89, 48%, 40%, 1)
+    shadow: hsla(204, 66%, 8%, 0.17)
+    summarize: hsla(89, 48%, 40%, 1)
+    text-primary: hsla(204, 66%, 8%, 0.84)
+    text-secondary: hsla(204, 66%, 8%, 0.62)
+    text-tertiary: hsla(204, 66%, 8%, 0.44)
+updated_at: '2026-05-11T18:03:22.333247Z'
+serdes/meta:
+- {id: XI7LGWhivhpLJlMP6Bsc7, label: light, model: EmbeddingTheme}
