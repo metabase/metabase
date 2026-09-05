@@ -12,6 +12,8 @@ import type {
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
 
+import { definePluginSlot } from "../slot";
+
 export type LoadCustomVizPluginForDisplayResult =
   | { status: "loaded"; display: VisualizationDisplay }
   | { status: "unavailable" }
@@ -92,11 +94,4 @@ const getDefaultPluginCustomViz = () => ({
   }>,
 });
 
-export const PLUGIN_CUSTOM_VIZ = getDefaultPluginCustomViz();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_CUSTOM_VIZ, getDefaultPluginCustomViz());
-}
+export const PLUGIN_CUSTOM_VIZ = definePluginSlot(getDefaultPluginCustomViz);

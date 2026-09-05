@@ -271,8 +271,10 @@
                                                        req))
                                                {:status 200 :body {:data [{:id "glm-4.7"}
                                                                           {:id "glm-5.2"}
+                                                                          {:id "glm-5.3"}
                                                                           {:id "some-other-model"}]}})]
-      (is (= {:models [{:id "glm-5.2" :display_name "GLM-5.2"}]}
+      (is (= {:models [{:id "glm-5.2" :display_name "GLM-5.2"}
+                       {:id "glm-5.3" :display_name "GLM-5.3"}]}
              (zai/list-models {:credentials byok-credentials}))))))
 
 (deftest list-models-prefers-catalog-display-name-test

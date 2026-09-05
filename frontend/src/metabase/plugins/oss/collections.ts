@@ -16,6 +16,8 @@ import type {
   CollectionId,
 } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
+
 // Types
 export type ItemWithCollection = { collection: CollectionEssentials };
 
@@ -98,7 +100,7 @@ const getDefaultPluginCollections = () => ({
   }) => JSX.Element | null,
 });
 
-export const PLUGIN_COLLECTIONS = getDefaultPluginCollections();
+export const PLUGIN_COLLECTIONS = definePluginSlot(getDefaultPluginCollections);
 
 const getDefaultPluginCollectionComponents = () => ({
   CollectionAuthorityLevelIcon:
@@ -115,16 +117,6 @@ const getDefaultPluginCollectionComponents = () => ({
     PluginPlaceholder as ComponentType<CollectionAuthorityLevelDisplayProps>,
 });
 
-export const PLUGIN_COLLECTION_COMPONENTS =
-  getDefaultPluginCollectionComponents();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_COLLECTIONS, getDefaultPluginCollections());
-  Object.assign(
-    PLUGIN_COLLECTION_COMPONENTS,
-    getDefaultPluginCollectionComponents(),
-  );
-}
+export const PLUGIN_COLLECTION_COMPONENTS = definePluginSlot(
+  getDefaultPluginCollectionComponents,
+);
