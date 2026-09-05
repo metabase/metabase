@@ -7,11 +7,14 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.walk :as lib.walk]
+   ^{:clj-kondo/ignore [:metabase/modules]}
+   [metabase.query-processor.middleware.add-remaps :as-alias add-remaps]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [mapv select-keys some not-empty]]))
@@ -194,3 +197,50 @@
      (when (and (stage-has-window-aggregation? stage)
                 (stage-has-breakout? stage))
        (nest-breakouts-in-stage query path stage)))))
+
+(def ^:private remap-keep-opts
+  "Add-remap option keys that must be preserved on breakout refs so the pivot compiler can still detect
+  remap pairs after nesting rewrites the refs."
+  [::add-remaps/original-field-dimension-id
+   ::add-remaps/new-field-dimension-id])
+
+(defn- reattach-remap-keys
+  "Positionally copy `remap-keep-opts` from `old-breakouts` onto `new-breakouts` so a nested pivot stage's
+  rewritten breakout refs still expose the `::add-remaps/*` dimension IDs the pivot compiler pairs on."
+  [new-breakouts old-breakouts]
+  (mapv (fn [new-b old-b]
+          (let [carried (select-keys (lib.options/options old-b) remap-keep-opts)]
+            (cond-> new-b
+              (seq carried) (lib.options/update-options merge carried))))
+        new-breakouts
+        old-breakouts))
+
+(mu/defn nest-pivot-joins :- ::lib.schema/query
+  "Split `query`'s last stage into two via [[nest-breakouts-in-stage]] when it carries `:pivot`, joins, and
+  breakouts; the first stage takes the source/joins/filters and projects the fields the second needs, and
+  the second keeps `:pivot`/`:breakout`/`:aggregation` with refs rewritten. Positionally rewrites the
+  `:pivot` clause's row/column UUIDs to match the second stage's regenerated breakout UUIDs, and copies
+  add-remap dimension-id options ([[remap-keep-opts]]) forward so the pivot compiler still pairs remapped
+  columns correctly. Returns `query` unchanged when the last stage has no `:pivot`, no joins, or no
+  breakouts."
+  {:added "0.64.0"}
+  [query :- ::lib.schema/query]
+  (let [path       [:stages (dec (count (:stages query)))]
+        last-stage (get-in query path)]
+    (if (and (some? (:pivot last-stage))
+             (seq (:joins last-stage))
+             (stage-has-breakout? last-stage))
+      (let [[first-stage second-stage] (nest-breakouts-in-stage query path last-stage)
+            second-breakouts (reattach-remap-keys (:breakout second-stage) (:breakout last-stage))
+            uuid-map         (zipmap (mapv lib.options/uuid (:breakout last-stage))
+                                     (mapv lib.options/uuid second-breakouts))
+            rekey            (fn [uuids] (mapv #(get uuid-map % %) uuids))
+            second-stage'    (-> second-stage
+                                 (assoc :breakout second-breakouts)
+                                 (update-in [:pivot :rows]    rekey)
+                                 (update-in [:pivot :columns] rekey))]
+        (update query :stages
+                (fn [stages]
+                  (-> (subvec stages 0 (dec (count stages)))
+                      (conj first-stage second-stage')))))
+      query)))

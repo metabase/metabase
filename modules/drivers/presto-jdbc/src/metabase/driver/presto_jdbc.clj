@@ -138,6 +138,10 @@
   (when-let [presto-type (base-type->presto-cast-type (or (:effective-type opts) (:base-type opts)))]
     (h2x/cast presto-type nil)))
 
+(defmethod sql.pivot/apply-cte-hoist? :presto-jdbc
+  [_driver]
+  true)
+
 (defn- describe-catalog-sql
   "The SHOW SCHEMAS statement that will list all schemas for the given `catalog`."
   {:added "0.39.0"}
