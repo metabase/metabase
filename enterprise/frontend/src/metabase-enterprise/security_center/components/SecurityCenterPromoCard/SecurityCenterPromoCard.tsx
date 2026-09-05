@@ -2,16 +2,14 @@ import { skipToken } from "@reduxjs/toolkit/query/react";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import {
-  useGetChannelInfoQuery,
-  useListSecurityAdvisoriesQuery,
-} from "metabase/api";
+import { useGetChannelInfoQuery } from "metabase/api";
 import { getUserIsAdmin } from "metabase/current-user";
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
 import { useSelector } from "metabase/redux";
 import { getPlan, useSetting } from "metabase/settings";
 import { Icon } from "metabase/ui";
 
+import { useListSecurityAdvisoriesQuery } from "../../api";
 import { isAffected } from "../../utils";
 
 const DISMISSED_KEY = "security-center-promo-dismissed";

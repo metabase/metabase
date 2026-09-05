@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { securityCenterApi, subscriptionApi } from "metabase/api";
+import { subscriptionApi } from "metabase/api";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { Advisory } from "metabase-types/api";
@@ -13,6 +13,8 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createAdvisory } from "metabase-types/api/mocks/security-center";
+
+import { securityCenterApi } from "../../api";
 
 import { SecurityCenterPromoCard } from "./SecurityCenterPromoCard";
 
@@ -68,30 +70,37 @@ function setup({
 
 type SetupResult = ReturnType<typeof setup>;
 
-async function waitForAdminQueriesToFinish({ store }: SetupResult) {
+type EnterpriseApiState = Parameters<
+  ReturnType<typeof securityCenterApi.endpoints.listSecurityAdvisories.select>
+>[0];
+
+function selectListSecurityAdvisories({ store }: SetupResult) {
+  return securityCenterApi.endpoints.listSecurityAdvisories.select()(
+    // The EnterpriseApi selectors are typed against the enterprise tag union,
+    // while the test store is typed with the OSS State.
+    // The runtime state shape is the same.
+    store.getState() as unknown as EnterpriseApiState,
+  );
+}
+
+async function waitForAdminQueriesToFinish(result: SetupResult) {
+  const { store } = result;
   await waitFor(() => {
     expect(
       subscriptionApi.endpoints.getChannelInfo.select()(store.getState())
         .isSuccess,
     ).toBe(true);
-    expect(
-      securityCenterApi.endpoints.listSecurityAdvisories.select()(
-        store.getState(),
-      ).isSuccess,
-    ).toBe(true);
+    expect(selectListSecurityAdvisories(result).isSuccess).toBe(true);
   });
 }
 
-function expectAdminQueriesToBeSkipped({ store }: SetupResult) {
+function expectAdminQueriesToBeSkipped(result: SetupResult) {
+  const { store } = result;
   expect(
     subscriptionApi.endpoints.getChannelInfo.select()(store.getState())
       .isUninitialized,
   ).toBe(true);
-  expect(
-    securityCenterApi.endpoints.listSecurityAdvisories.select()(
-      store.getState(),
-    ).isUninitialized,
-  ).toBe(true);
+  expect(selectListSecurityAdvisories(result).isUninitialized).toBe(true);
 }
 
 describe("SecurityCenterPromoCard", () => {
