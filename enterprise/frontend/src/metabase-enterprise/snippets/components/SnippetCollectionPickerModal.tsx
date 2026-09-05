@@ -29,7 +29,7 @@ export function SnippetCollectionPickerModal({
       value={undefined}
       onChange={handleChange}
       onClose={onClose}
-      title={t`Select a folder for your snippet`}
+      title={t`Select a collection for your snippet`}
       namespaces={["snippets"]}
       options={{
         hasPersonalCollections: false,

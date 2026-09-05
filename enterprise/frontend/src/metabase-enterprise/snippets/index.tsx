@@ -29,7 +29,7 @@ export function initializePlugin() {
     PLUGIN_SNIPPET_FOLDERS.MoveSnippetModal = MoveSnippetModal;
     PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push((snippetSidebar) => ({
       icon: "folder",
-      name: t`New folder`,
+      name: t`New collection`,
       onClick: () => {
         snippetSidebar.props.dispatch(
           setOpenModalWithProps({
