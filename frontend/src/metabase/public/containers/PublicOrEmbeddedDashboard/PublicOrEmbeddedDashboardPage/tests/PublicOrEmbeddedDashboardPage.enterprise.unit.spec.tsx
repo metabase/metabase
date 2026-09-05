@@ -1,11 +1,24 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
 
 import { type SetupOpts, setup } from "./setup";
+
+// The catalogue is imported rather than fetched, so the load is observed through
+// `loadLocalization` instead of through a request.
+const loadLocalizationSpy = jest.fn();
+jest.mock("metabase/utils/localization", () => {
+  const actual = jest.requireActual("metabase/utils/localization");
+  return {
+    ...actual,
+    loadLocalization: (locale: string) => {
+      loadLocalizationSpy(locale);
+      return actual.loadLocalization(locale);
+    },
+  };
+});
 
 const DASHBOARD_TITLE = '"My test dash"';
 
@@ -18,6 +31,7 @@ const setupEnterprise = async (opts?: Partial<SetupOpts>) => {
 
 describe("PublicOrEmbeddedDashboardPage", () => {
   beforeEach(() => {
+    loadLocalizationSpy.mockClear();
     setupLastDownloadFormatEndpoints();
   });
 
@@ -72,9 +86,7 @@ describe("PublicOrEmbeddedDashboardPage", () => {
       const expectedLocale = "ko";
       await setupEnterprise({ hash: { locale: expectedLocale } });
 
-      expect(
-        fetchMock.callHistory.calls(`path:/app/locales/${expectedLocale}.json`),
-      ).toHaveLength(0);
+      expect(loadLocalizationSpy).not.toHaveBeenCalled();
     });
   });
 });

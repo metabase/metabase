@@ -7,7 +7,7 @@ import {
 } from "react";
 
 import { setLocaleHeader } from "metabase/api/client";
-import { loadLocalization } from "metabase/api/localization";
+import { loadLocalization } from "metabase/utils/localization";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSetting } from "metabase/settings";
 import { DatesProvider } from "metabase/ui/components/theme/DatesProvider/DatesProvider";

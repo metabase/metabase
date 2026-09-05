@@ -1,10 +1,23 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { getIcon, screen, within } from "__support__/ui";
 
 import { type SetupOpts, setup } from "./setup";
+
+// The catalogue is imported rather than fetched, so the load is observed through
+// `loadLocalization` instead of through a request.
+const loadLocalizationSpy = jest.fn();
+jest.mock("metabase/utils/localization", () => {
+  const actual = jest.requireActual("metabase/utils/localization");
+  return {
+    ...actual,
+    loadLocalization: (locale: string) => {
+      loadLocalizationSpy(locale);
+      return actual.loadLocalization(locale);
+    },
+  };
+});
 
 const FAKE_UUID = "123456";
 
@@ -20,6 +33,7 @@ function setupEnterprise(opts?: Partial<SetupOpts>) {
 
 describe("PublicOrEmbeddedQuestion", () => {
   beforeEach(() => {
+    loadLocalizationSpy.mockClear();
     setupLastDownloadFormatEndpoints();
   });
 
@@ -58,9 +72,7 @@ describe("PublicOrEmbeddedQuestion", () => {
 
       await userEvent.hover(getIcon("download"));
 
-      expect(
-        fetchMock.callHistory.calls(`path:/app/locales/${expectedLocale}.json`),
-      ).toHaveLength(0);
+      expect(loadLocalizationSpy).not.toHaveBeenCalled();
     });
   });
 });

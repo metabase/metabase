@@ -30,6 +30,38 @@
     (is (not (req.util/cacheable? {:request-method :get :uri "/api/dashboard/1"})))
     (is (not (req.util/cacheable? {:request-method :get :uri "/app/dist/main.js"})))))
 
+(deftest ^:parallel cacheable?-locale-catalogue-test
+  (testing "a catalogue is cacheable when the caller names the build it wants"
+    (is (req.util/cacheable? {:request-method :get
+                              :uri           "/app/locales/fr.json"
+                              :query-string  "v=v0.56.1"}))
+    (testing "and when `v` is not the first parameter"
+      (is (req.util/cacheable? {:request-method :get
+                                :uri           "/app/locales/zh_CN.json"
+                                :query-string  "x=1&v=abc1234"}))))
+
+  (testing "without a build it stays uncacheable, so a stale catalogue cannot be pinned"
+    (is (not (req.util/cacheable? {:request-method :get
+                                   :uri           "/app/locales/fr.json"})))
+    (is (not (req.util/cacheable? {:request-method :get
+                                   :uri           "/app/locales/fr.json"
+                                   :query-string  ""})))
+    (is (not (req.util/cacheable? {:request-method :get
+                                   :uri           "/app/locales/fr.json"
+                                   :query-string  "v="})))
+    (testing "and a parameter merely ending in v does not count"
+      (is (not (req.util/cacheable? {:request-method :get
+                                     :uri           "/app/locales/fr.json"
+                                     :query-string  "rev=abc1234"})))))
+
+  (testing "the rule is scoped to catalogues"
+    (is (not (req.util/cacheable? {:request-method :get
+                                   :uri           "/app/locales/manifest.txt"
+                                   :query-string  "v=v0.56.1"})))
+    (is (not (req.util/cacheable? {:request-method :post
+                                   :uri           "/app/locales/fr.json"
+                                   :query-string  "v=v0.56.1"})))))
+
 (deftest ^:parallel https-state-test
   (doseq [[headers expected] {{"x-forwarded-proto" "https"}    :https
                               {"x-forwarded-proto" "http"}     :http

@@ -5,7 +5,7 @@ import {
 } from "@reduxjs/toolkit";
 
 import { Api } from "metabase/api";
-import { loadLocalization } from "metabase/api/localization";
+import { loadLocalization } from "metabase/utils/localization";
 import {
   type MfaChallengeResponse,
   isMfaChallenge,
