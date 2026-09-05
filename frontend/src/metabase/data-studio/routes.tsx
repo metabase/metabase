@@ -1,9 +1,8 @@
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useUserKeyValue } from "metabase/current-user";
+import { canAccessDataModel, useUserKeyValue } from "metabase/current-user";
 import {
   PLUGIN_DEPENDENCIES,
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
   PLUGIN_SCHEMA_VIEWER,
 } from "metabase/plugins";
@@ -171,7 +170,7 @@ export function DataStudioIndexRedirect() {
 }
 
 function getIndexPath(state: State) {
-  if (PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)) {
+  if (canAccessDataModel(state)) {
     return Urls.dataStudioData();
   }
   if (canAccessTransforms(state)) {
