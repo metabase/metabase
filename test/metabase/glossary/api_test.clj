@@ -129,3 +129,19 @@
                     (mt/user-http-request analyst-id :put 200 (str "glossary/" gid)
                                           {:term "Analyst" :definition "Edited by analyst"})))
             (is (nil? (mt/user-http-request analyst-id :delete 204 (str "glossary/" gid))))))))))
+
+(deftest glossary-search-escapes-like-wildcards-test
+  (testing "GET /api/glossary?search= matches % and _ literally rather than as LIKE wildcards"
+    (mt/with-temp [:model/Glossary _ {:term "g1" :definition "a literal % sign"}
+                   :model/Glossary _ {:term "g2" :definition "a literal _ underscore"}
+                   :model/Glossary _ {:term "g3" :definition "no metacharacters here"}]
+      (are [search expected-terms] (= expected-terms
+                                      (->> (mt/user-http-request :rasta :get 200 "glossary" :search search)
+                                           :data
+                                           (map :term)
+                                           set))
+        "%"     #{"g1"}
+        "_"     #{"g2"}
+        "l%s"   #{}
+        "a%a%a" #{}
+        "literal" #{"g1" "g2"}))))

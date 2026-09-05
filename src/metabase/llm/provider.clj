@@ -542,6 +542,21 @@
                  :settings {:base-url {:setting :llm-vllm-api-base-url :credential? true}
                             :api-key  {:setting :llm-vllm-api-key}}}})
 
+(defn connection-env-vars
+  "The environment variables that configure a connection of `type-name`, as `{config-field \"MB_LLM_...\"}`.
+
+  Returns nil for a type no per-provider variable configures — the managed provider, which holds no credentials of
+  its own, is the only one today. Setting these is the supported way to configure a single connection without writing
+  JSON into [[metabase.llm.settings/llm-providers]]."
+  [type-name]
+  (when-let [{:keys [settings]} (get single-provider-settings type-name)]
+    (not-empty
+     (into {}
+           (keep (fn [{field-key :key}]
+                   (when-let [setting-kw (get-in settings [field-key :setting])]
+                     [field-key (setting/env-var-name setting-kw)])))
+           (:fields (provider-type type-name))))))
+
 (defn- env-supplied-fields
   "The `:config` fields the environment supplies for one [[single-provider-settings]] group:
   `{:config {field value} :vars {field \"MB_...\"} :credential-set? bool}`."

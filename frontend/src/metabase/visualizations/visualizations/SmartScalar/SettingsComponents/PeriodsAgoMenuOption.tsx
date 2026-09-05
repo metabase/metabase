@@ -93,7 +93,7 @@ export function PeriodsAgoMenuOption({
   );
 
   return (
-    <MenuItemStyled py="xs" aria-selected={isSelected}>
+    <MenuItemStyled py="xxs" aria-selected={isSelected}>
       <Box px="sm" onClick={() => onChange({ type, value }, true)}>
         <Group gap="sm">
           <NumberInputStyled
@@ -110,7 +110,7 @@ export function PeriodsAgoMenuOption({
           <Text fw="bold">{name}</Text>
         </Group>
         {!!message && (
-          <Text size="xs" color="text-disabled" mt="xs">
+          <Text size="xs" color="text-disabled" mt="xxs">
             {message}
           </Text>
         )}

@@ -34,10 +34,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "oxlint src/",
-    "release": "bun run build && np",
+    "release": "bun run type-check && bun run build && np",
     "test": "vitest run",
     "test:watch": "vitest",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.fixtures.json"
   },
   "dependencies": {
     "commander": "^13.1.0",

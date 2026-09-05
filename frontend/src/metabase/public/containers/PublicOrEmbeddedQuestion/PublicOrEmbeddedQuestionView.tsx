@@ -6,7 +6,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import type { DisplayTheme } from "metabase/embedding/types";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { PublicMode } from "metabase/public/PublicMode";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -22,6 +21,8 @@ import type {
   RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { publicClickActionMode } from "../../PublicMode";
 
 export interface PublicOrEmbeddedQuestionViewProps {
   initialized: boolean;
@@ -125,11 +126,12 @@ export function PublicOrEmbeddedQuestionView({
             }}
             gridUnit={12}
             showTitle={false}
-            mode={PublicMode}
+            mode={publicClickActionMode}
             // Why do we need `isDashboard` when this is a standalone question?
             // `isDashboard` is used by Visualization to change some visual behaviors
             // including the "No results" message
             isDashboard
+            isStandaloneQuestion
             metadata={metadata}
             onChangeCardAndRun={() => {}}
             tableFooterExtraButtons={

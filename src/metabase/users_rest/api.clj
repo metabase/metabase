@@ -2,7 +2,6 @@
   "/api/user endpoints"
   (:require
    [clojure.set :as set]
-   [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -18,6 +17,7 @@
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.tenants.core :as tenants]
+   [metabase.users-rest.db :as users-rest.db]
    [metabase.users.core :as users]
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
@@ -52,7 +52,7 @@
       (let [{email :email} user-before-update
             new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
         (when-not (= new-collection-name (:name collection))
-          (t2/update! :model/Collection (:id collection) {:name new-collection-name}))))))
+          (users-rest.db/rename-collection! (:id collection) new-collection-name))))))
 
 ;;; ------------ Serialize User Attribute Provenance ------------------
 
@@ -194,26 +194,25 @@
     (do
       (api/check-400 (not (every? #(contains? params %) [:tenant_id :tenancy]))
                      (tru "You cannot specify both `tenancy` and `tenant_id`"))
-      (let [clauses (let [clauses (user/filter-clauses {:status                  status
-                                                        :query                   query
-                                                        :group-ids               (when group_id [group_id])
-                                                        :include-deactivated     include_deactivated
-                                                        :is-data-analyst?        is_data_analyst
-                                                        :can-access-data-studio? can_access_data_studio
-                                                        :limit                   (request/limit)
-                                                        :offset                  (request/offset)})]
-                      (cond
-                        (not api/*is-superuser?*) (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])
-                        (contains? params :tenant_id) (sql.helpers/where clauses [:= :tenant_id tenant_id])
-                        (= tenancy :all) clauses
-                        (= tenancy :external) (sql.helpers/where clauses [:not= :tenant_id nil])
-                        :else (sql.helpers/where clauses [:= :tenant_id nil])))]
-        {:data   (cond-> (t2/select
-                          (vec (cons :model/User (user-visible-columns)))
-                          (sql.helpers/order-by clauses
-                                                [:%lower.first_name :asc]
-                                                [:%lower.last_name :asc]
-                                                [:id :asc]))
+      (let [tenant-filter (cond
+                            (not api/*is-superuser?*)     (:tenant_id @api/*current-user*)
+                            (contains? params :tenant_id) tenant_id
+                            (= tenancy :all)               :all
+                            (= tenancy :external)           :external
+                            :else                           nil)
+            clauses (user/filter-clauses {:status                  status
+                                          :query                   query
+                                          :group-ids               (when group_id [group_id])
+                                          :include-deactivated     include_deactivated
+                                          :is-data-analyst?        is_data_analyst
+                                          :can-access-data-studio? can_access_data_studio
+                                          :tenant-filter           tenant-filter
+                                          :sort                    :first-name
+                                          :limit                   (request/limit)
+                                          :offset                  (request/offset)})]
+        {:data   (cond-> (users-rest.db/users-with-columns
+                          (user-visible-columns)
+                          clauses)
                    ;; For admins also include the IDs of Users' Personal Collections
                    api/*is-superuser?*
                    (t2/hydrate :personal_collection_id :tenant_collection_id)
@@ -225,10 +224,7 @@
                    ;; multiple groups
                    group_id
                    distinct)
-         :total  (-> (t2/query
-                      (merge {:select [[[:count [:distinct :core_user.id]] :count]]
-                              :from   :core_user}
-                             (users/filter-clauses-without-paging clauses)))
+         :total  (-> (users-rest.db/distinct-user-count (users/filter-clauses-without-paging clauses))
                      first
                      :count)
          :limit  (request/limit)
@@ -246,23 +242,22 @@
    - If user-visibility is :none or the user is sandboxed, include only themselves."
   []
   ;; defining these functions so the branching logic below can be as clear as possible
-  (letfn [(all [] (let [clauses (cond-> (user/filter-clauses {})
-                                  (not api/*is-superuser?*) (sql.helpers/where
-                                                             [:= :tenant_id (:tenant_id @api/*current-user*)])
-                                  (not (perms/use-tenants)) (sql.helpers/where [:= :tenant_id nil])
-                                  true                      (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
-                    {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
-                     :total  (t2/count :model/User (users/filter-clauses-without-paging clauses))
+  (letfn [(recipient-tenant-filter [] (cond
+                                        (not api/*is-superuser?*) (:tenant_id @api/*current-user*)
+                                        (not (perms/use-tenants)) nil
+                                        :else                     :all))
+          (all [] (let [clauses (user/filter-clauses {:tenant-filter (recipient-tenant-filter)
+                                                      :sort          :last-name})]
+                    {:data   (users-rest.db/users-with-columns (user-visible-columns) clauses)
+                     :total  (users-rest.db/user-count (users/filter-clauses-without-paging clauses))
                      :limit  (request/limit)
                      :offset (request/offset)}))
           (within-group [] (let [user-ids (user/same-groups-user-ids api/*current-user-id*)
-                                 clauses  (cond-> (user/filter-clauses {})
-                                            (not api/*is-superuser?*) (sql.helpers/where [:= :tenant_id (:tenant_id @api/*current-user*)])
-                                            (not (perms/use-tenants)) (sql.helpers/where [:= :tenant_id nil])
-                                            (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
-                                            true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
-                             {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
-                              :total  (t2/count :model/User (users/filter-clauses-without-paging clauses))
+                                 clauses  (user/filter-clauses {:tenant-filter (recipient-tenant-filter)
+                                                                :user-ids      user-ids
+                                                                :sort          :last-name})]
+                             {:data   (users-rest.db/users-with-columns (user-visible-columns) clauses)
+                              :total  (users-rest.db/user-count (users/filter-clauses-without-paging clauses))
                               :limit  (request/limit)
                               :offset (request/offset)}))]
     (cond
@@ -305,32 +300,24 @@
   "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
   [{:keys [id] :as user}]
   (if (premium-features/enable-any-sso?)
-    (assoc user :sso_source (t2/select-one-fn :sso_source :model/User :id id))
+    (assoc user :sso_source (users-rest.db/user-sso-source id))
     user))
 
 (defn- add-has-question-and-dashboard
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard, excluding
   internal/automatically-loaded content."
   [user]
-  (let [collection-filter (collection/visible-collection-filter-clause)
-        entity-exists? (fn [model & additional-clauses] (t2/exists? model
-                                                                    {:where (into [:and
-                                                                                   [:= :archived false]
-                                                                                   collection-filter
-                                                                                   (mi/exclude-internal-content-hsql model)]
-                                                                                  additional-clauses)}))]
-    (-> user
-        (assoc :has_question_and_dashboard
-               (and (entity-exists? :model/Card)
-                    (entity-exists? :model/Dashboard)))
-        (assoc :has_model (entity-exists? :model/Card [:= :type "model"])))))
+  (-> user
+      (assoc :has_question_and_dashboard
+             (and (users-rest.db/has-visible-card? nil)
+                  (users-rest.db/has-visible-dashboard?)))
+      (assoc :has_model (users-rest.db/has-visible-card? "model"))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
   [{:keys [id] :as user}]
   (let [ts (or
-            (:timestamp (t2/select-one [:model/LoginHistory :timestamp] :user_id id
-                                       {:order-by [[:timestamp :asc]]}))
+            (:timestamp (users-rest.db/first-login id))
             (t/offset-date-time))]
     (assoc user :first_login ts)))
 
@@ -339,7 +326,7 @@
   [user]
   (let [enabled? (appearance/custom-homepage)
         id       (appearance/custom-homepage-dashboard)
-        dash     (t2/select-one :model/Dashboard :id id)
+        dash     (users-rest.db/dashboard id)
         valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
@@ -351,11 +338,7 @@
   [user]
   (assoc user :can_write_any_collection
          (or (:is_superuser user)
-             (t2/exists? :model/Collection {:where (collection/visible-collection-filter-clause
-                                                    :id
-                                                    {:include-trash-collection? false
-                                                     :include-archived-items :exclude
-                                                     :permission-level :write})}))))
+             (users-rest.db/writable-collection-exists?))))
 
 (mr/def ::user-permissions
   "Permission flags for the current user, used by the FE to decide which UI elements to show. The `can_access_*`,
@@ -549,7 +532,7 @@
                   "last_name" (tru "Editing last name is not allowed for SSO users.")))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
     (when email
-      (api/checkp (not (t2/exists? :model/User, :%lower.email (u/lower-case-en email), :id [:not= id]))
+      (api/checkp (not (users-rest.db/other-user-with-email-exists? email id))
                   "email" (tru "Email address already associated to another user.")))
     (t2/with-transaction [_conn]
       ;; only superuser or self can update user info
@@ -562,12 +545,12 @@
                                                            api/*is-superuser?* (conj :login_attributes :tenant_id))
                                                 :non-nil (cond-> #{:email}
                                                            api/*is-superuser?* (conj :is_superuser))))]
-          (t2/update! :model/User id changes)
+          (users-rest.db/update-user! id changes)
           (when (contains? changes :tenant_id)
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
                            "Superusers cannot be tenant users")
             (reset-magic-group-membership! id (:tenant_id changes)))
-          (events/publish-event! :event/user-update {:object (t2/select-one :model/User :id id)
+          (events/publish-event! :event/user-update {:object (users-rest.db/user id)
                                                      :previous-object user-before-update
                                                      :user-id api/*current-user-id*}))
         (maybe-update-user-personal-collection-name! user-before-update body)
@@ -586,15 +569,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- reactivate-user! [existing-user]
-  (t2/update! :model/User (u/the-id existing-user)
-              {:is_active     true
-               :is_superuser  false
-               ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
-               ;; (see metabase#3323)
-               :sso_source   (case (:sso_source existing-user)
-                               :google (when (sso/google-auth-enabled) :google)
-                               :ldap   (when (sso/ldap-enabled) :ldap)
-                               (:sso_source existing-user))})
+  (users-rest.db/update-user! (u/the-id existing-user)
+                              {:is_active     true
+                               :is_superuser  false
+                               ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
+                               ;; (see metabase#3323)
+                               :sso_source   (case (:sso_source existing-user)
+                                               :google (when (sso/google-auth-enabled) :google)
+                                               :ldap   (when (sso/ldap-enabled) :ldap)
+                                               (:sso_source existing-user))})
   ;; now return the existing user whether they were originally active or not
   (users/fetch-user :id (u/the-id existing-user)))
 
@@ -608,9 +591,7 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-not-internal-user id)
-  (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source :tenant_id]
-                            :type :personal
-                            :id id)]
+  (let [user (users-rest.db/personal-user-columns id)]
     (api/check-404 user)
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))
@@ -641,10 +622,7 @@
                                        [:old_password {:optional true} [:maybe :string]]]
    request]
   (users/check-self-or-superuser id)
-  (api/let-404 [user (t2/select-one [:model/User :id :email :last_login],
-                                    :id id,
-                                    :type :personal,
-                                    :is_active true)]
+  (api/let-404 [user (users-rest.db/active-personal-user-login-columns id)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
@@ -673,7 +651,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [user (api/check-404 (t2/select-one [:model/User :id :is_active :type] :id id))]
+  (let [user (api/check-404 (users-rest.db/user-active-and-type id))]
     (api/check-404 (:is_active user))
     (api/check-404 (= :personal (:type user)))
     (let [reset-token        (auth-identity/create-password-reset! id)
@@ -697,9 +675,9 @@
   (api/check-superuser)
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
-  (api/check-404 (t2/exists? :model/User :id id))
-  (t2/update! :model/User id {:type :personal} {:is_active false})
-  (events/publish-event! :event/user-deactivated {:object (t2/select-one :model/User :id id) :user-id api/*current-user-id*})
+  (api/check-404 (users-rest.db/user-exists? id))
+  (users-rest.db/update-personal-user! id {:is_active false})
+  (events/publish-event! :event/user-deactivated {:object (users-rest.db/user id) :user-id api/*current-user-id*})
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -725,5 +703,5 @@
               (throw (ex-info (tru "Unrecognized modal: {0}" modal)
                               {:modal modal
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
-    (api/check-500 (pos? (t2/update! :model/User id {:type :personal} {k false}))))
+    (api/check-500 (pos? (users-rest.db/update-personal-user! id {k false}))))
   {:success true})

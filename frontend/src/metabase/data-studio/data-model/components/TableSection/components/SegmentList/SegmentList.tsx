@@ -30,9 +30,9 @@ export function SegmentList({ table }: SegmentListProps) {
   );
 
   return (
-    <Stack gap="md" data-testid="table-segments-page">
+    <Stack gap="lg" data-testid="table-segments-page">
       {canCreateSegment && (
-        <Group gap="md" justify="flex-start" wrap="nowrap">
+        <Group gap="lg" justify="flex-start" wrap="nowrap">
           <Button
             component={ForwardRefLink}
             to={Urls.newDataStudioDataModelSegment({
@@ -42,7 +42,7 @@ export function SegmentList({ table }: SegmentListProps) {
             })}
             h={32}
             px="sm"
-            py="xs"
+            py="xxs"
             size="xs"
             leftSection={<Icon name="add" />}
             onClick={() =>

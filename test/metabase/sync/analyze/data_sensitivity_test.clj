@@ -1,0 +1,285 @@
+(ns metabase.sync.analyze.data-sensitivity-test
+  (:require
+   [clojure.test :refer :all]
+   [metabase.analyze.core :as analyze]
+   [metabase.sync.analyze.data-sensitivity :as sync.data-sensitivity]
+   [metabase.sync.core :as sync]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [toucan2.core :as t2]))
+
+(defn- label [field-or-id]
+  (t2/select-one-fn :data_sensitivity :model/Field :id (u/the-id field-or-id)))
+
+(defn- mirror-label [field-or-id]
+  (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id (u/the-id field-or-id)))
+
+(defn- selected-names [table force?]
+  (set (map :name (#'sync.data-sensitivity/fields-to-scan table force?))))
+
+(deftest ^:parallel fields-to-scan-test
+  (mt/with-temp [:model/Database db    {}
+                 :model/Table    table {:db_id (:id db) :name "app_users"}
+                 :model/Field    _     {:table_id (:id table) :name "unscanned"  :base_type :type/Text}
+                 :model/Field    _     {:table_id (:id table) :name "public"     :base_type :type/Text :data_sensitivity :PUBLIC}
+                 :model/Field    _     {:table_id (:id table) :name "labeled"    :base_type :type/Text :data_sensitivity :PII}
+                 :model/Field    _     {:table_id (:id table) :name "retired"    :base_type :type/Text :visibility_type :retired}
+                 :model/Field    _     {:table_id (:id table) :name "sensitive"  :base_type :type/Text :visibility_type :sensitive}
+                 :model/Field    _     {:table_id (:id table) :name "hidden"     :base_type :type/Text :visibility_type :hidden}
+                 :model/Field    _     {:table_id (:id table) :name "details"    :base_type :type/Text :visibility_type :details-only}
+                 :model/Field    _     {:table_id (:id table) :name "inactive"   :base_type :type/Text :active false}]
+    (testing "a scheduled scan selects NULL fields of any visibility except retired, never inactive or labeled ones"
+      (is (= #{"unscanned" "sensitive" "hidden" "details"}
+             (selected-names table false))))
+    (testing "a forced scan also reselects PUBLIC fields but never categorized ones"
+      (is (= #{"unscanned" "sensitive" "hidden" "details" "public"}
+             (selected-names table true))))))
+
+(deftest ^:parallel table-ids-with-unscanned-fields-test
+  (mt/with-temp [:model/Database db       {}
+                 :model/Database other-db {}
+                 :model/Table    hidden   {:db_id (:id db) :name "hidden_t" :visibility_type :hidden}
+                 :model/Table    cruft    {:db_id (:id db) :name "cruft_t" :visibility_type :cruft}
+                 :model/Table    done     {:db_id (:id db) :name "done_t"}
+                 :model/Table    inactive {:db_id (:id db) :name "inactive_t" :active false}
+                 :model/Table    foreign  {:db_id (:id other-db) :name "foreign_t"}
+                 :model/Field    _        {:table_id (:id hidden)   :name "a" :base_type :type/Text}
+                 :model/Field    _        {:table_id (:id cruft)    :name "b" :base_type :type/Text}
+                 :model/Field    _        {:table_id (:id done)     :name "c" :base_type :type/Text :data_sensitivity :PUBLIC}
+                 :model/Field    _        {:table_id (:id done)     :name "d" :base_type :type/Text :data_sensitivity :PII}
+                 :model/Field    _        {:table_id (:id inactive) :name "e" :base_type :type/Text}
+                 :model/Field    _        {:table_id (:id foreign)  :name "f" :base_type :type/Text}]
+    (testing "hidden and cruft tables with unscanned fields are selected; converged, inactive, and foreign tables are not"
+      (is (= #{(:id hidden) (:id cruft)}
+             (#'sync.data-sensitivity/table-ids-with-unscanned-fields db false))))
+    (testing "force reselects the table whose only unlabeled field is PUBLIC"
+      (is (= #{(:id hidden) (:id cruft) (:id done)}
+             (#'sync.data-sensitivity/table-ids-with-unscanned-fields db true))))))
+
+(deftest scan-fields-for-db-converges-test
+  (mt/with-temporary-setting-values [data-sensitivity-scan-enabled true]
+    (mt/with-temp [:model/Database db    {}
+                   :model/Table    table {:db_id (:id db) :name "app_users" :entity_type :entity/UserTable}
+                   :model/Field    ssn   {:table_id (:id table) :name "ssn" :base_type :type/Text}
+                   :model/Field    foo   {:table_id (:id table) :name "foo" :base_type :type/Text}]
+      (testing "the first scan labels every unscanned field, PUBLIC when nothing matches, without creating mirror rows"
+        (is (= {:fields-scanned 2 :fields-labeled 1 :fields-failed 0}
+               (sync.data-sensitivity/scan-fields-for-db! db nil)))
+        (is (= :PII (label ssn)))
+        (is (= :PUBLIC (label foo)))
+        (is (nil? (mirror-label ssn)))
+        (is (nil? (mirror-label foo))))
+      (testing "a second scan selects nothing"
+        (is (= {:fields-scanned 0 :fields-labeled 0 :fields-failed 0}
+               (sync.data-sensitivity/scan-fields-for-db! db nil)))))))
+
+(deftest setting-gates-scans-test
+  (mt/with-temporary-setting-values [data-sensitivity-scan-enabled false]
+    (mt/with-temp [:model/Database db    {}
+                   :model/Table    table {:db_id (:id db) :name "app_users"}
+                   :model/Field    ssn   {:table_id (:id table) :name "ssn" :base_type :type/Text}]
+      (testing "with the setting off both entry points return zero stats and write nothing"
+        (is (= {:fields-scanned 0 :fields-labeled 0 :fields-failed 0}
+               (sync.data-sensitivity/scan-fields-for-db! db nil)))
+        (is (= {:fields-scanned 0 :fields-labeled 0 :fields-failed 0}
+               (sync.data-sensitivity/scan-table! table)))
+        (is (nil? (label ssn))))
+      (testing "the REPL entry point ignores the setting"
+        (is (= {:fields-scanned 1 :fields-labeled 1 :fields-failed 0}
+               (sync.data-sensitivity/scan-data-sensitivity! db)))
+        (is (= :PII (label ssn)))))))
+
+(deftest force-rescans-public-only-test
+  (mt/with-temporary-setting-values [data-sensitivity-scan-enabled true]
+    (mt/with-temp [:model/Database db    {}
+                   :model/Table    table {:db_id (:id db) :name "app_users"}
+                   :model/Field    ssn   {:table_id (:id table) :name "ssn" :base_type :type/Text}
+                   :model/Field    foo   {:table_id (:id table) :name "foo" :base_type :type/Text}]
+      (sync.data-sensitivity/scan-fields-for-db! db nil)
+      (is (= :PUBLIC (label foo)))
+      (with-redefs [analyze/infer-data-sensitivity (constantly :PHI)]
+        (testing "a scheduled scan does not revisit PUBLIC fields even when the rules would now match"
+          (is (= {:fields-scanned 0 :fields-labeled 0 :fields-failed 0}
+                 (sync.data-sensitivity/scan-fields-for-db! db nil)))
+          (is (= :PUBLIC (label foo))))
+        (testing "a forced scan revisits PUBLIC fields and leaves categorized fields alone"
+          (is (= {:fields-scanned 1 :fields-labeled 1 :fields-failed 0}
+                 (sync.data-sensitivity/scan-data-sensitivity! db :force? true)))
+          (is (= :PHI (label foo)))
+          (is (= :PII (label ssn))))))))
+
+(deftest user-label-in-mirror-wins-test
+  (testing "a mirror-only user label is what the field reads after the classifier writes"
+    (mt/with-temp [:model/Database db     {}
+                   :model/Table    table  {:db_id (:id db) :name "app_users"}
+                   :model/Field    ssn    {:table_id (:id table) :name "ssn" :base_type :type/Text}
+                   :model/Field    notes  {:table_id (:id table) :name "notes" :base_type :type/Text}]
+      (field-user-settings/upsert-user-settings ssn {:data_sensitivity :PUBLIC})
+      (field-user-settings/upsert-user-settings notes {:data_sensitivity :PHI})
+      (is (nil? (label ssn)))
+      (is (nil? (label notes)))
+      (testing "stats count the rule result, the overlay decides what is stored"
+        (is (= {:fields-scanned 2 :fields-labeled 1 :fields-failed 0}
+               (sync.data-sensitivity/scan-data-sensitivity! db))))
+      (is (= :PUBLIC (label ssn)))
+      (is (= :PUBLIC (mirror-label ssn)))
+      (is (= :PHI (label notes)))
+      (is (= :PHI (mirror-label notes)))
+      (testing "a forced rescan still cannot override the user's PUBLIC"
+        (sync.data-sensitivity/scan-data-sensitivity! db :force? true)
+        (is (= :PUBLIC (label ssn)))))))
+
+(deftest reset-data-sensitivity-test
+  (mt/with-temp [:model/Database db       {}
+                 :model/Database other-db {}
+                 :model/Table    users    {:db_id (:id db) :name "app_users"}
+                 :model/Table    orders   {:db_id (:id db) :name "orders"}
+                 :model/Table    foreign  {:db_id (:id other-db) :name "app_users"}
+                 :model/Field    ssn      {:table_id (:id users) :name "ssn" :base_type :type/Text}
+                 :model/Field    foo      {:table_id (:id users) :name "foo" :base_type :type/Text}
+                 :model/Field    notes    {:table_id (:id users) :name "notes" :base_type :type/Text}
+                 :model/Field    email    {:table_id (:id users) :name "email" :base_type :type/Text}
+                 :model/Field    total    {:table_id (:id orders) :name "total" :base_type :type/Float}
+                 :model/Field    far      {:table_id (:id foreign) :name "ssn" :base_type :type/Text}]
+    (field-user-settings/upsert-user-settings notes {:data_sensitivity :PHI})
+    (t2/insert! :model/FieldUserSettings {:field_id (:id email)})
+    (sync.data-sensitivity/scan-data-sensitivity! db)
+    (sync.data-sensitivity/scan-data-sensitivity! other-db)
+    (is (= [:PII :PUBLIC :PHI :PII :PUBLIC :PII]
+           (map label [ssn foo notes email total far])))
+    (testing "a table scope clears only that table's classifier labels"
+      (is (= 1 (sync.data-sensitivity/reset-data-sensitivity! orders)))
+      (is (nil? (label total)))
+      (is (= :PII (label ssn))))
+    (testing "a database scope clears categories and PUBLIC alike, including fields with a label-less mirror row"
+      (is (= 3 (sync.data-sensitivity/reset-data-sensitivity! db)))
+      (is (= [nil nil nil] (map label [ssn foo email]))))
+    (testing "a label backed by the mirror is human-set and survives"
+      (is (= :PHI (label notes)))
+      (is (= :PHI (mirror-label notes))))
+    (testing "other databases are untouched"
+      (is (= :PII (label far))))
+    (testing "a second reset finds nothing"
+      (is (zero? (sync.data-sensitivity/reset-data-sensitivity! db))))))
+
+(deftest scan-with-reset-relabels-categorized-fields-test
+  (mt/with-temp [:model/Database db    {}
+                 :model/Table    table {:db_id (:id db) :name "app_users"}
+                 :model/Field    ssn   {:table_id (:id table) :name "ssn" :base_type :type/Text}
+                 :model/Field    notes {:table_id (:id table) :name "notes" :base_type :type/Text}]
+    (field-user-settings/upsert-user-settings notes {:data_sensitivity :PHI})
+    (sync.data-sensitivity/scan-data-sensitivity! db)
+    (is (= :PII (label ssn)))
+    (with-redefs [analyze/infer-data-sensitivity (constantly :SEC_KEY)]
+      (testing "a forced scan leaves a categorized field on its old label"
+        (sync.data-sensitivity/scan-data-sensitivity! db :force? true)
+        (is (= :PII (label ssn))))
+      (testing "a reset scan recomputes it under the current rules and reports the reset count"
+        (is (= {:fields-scanned 1 :fields-labeled 1 :fields-failed 0 :fields-reset 1}
+               (sync.data-sensitivity/scan-data-sensitivity! db :reset? true)))
+        (is (= :SEC_KEY (label ssn))))
+      (testing "the user's label is neither reset nor rescanned"
+        (is (= :PHI (label notes)))
+        (is (= :PHI (mirror-label notes)))))))
+
+(deftest classification-failure-is-counted-and-retried-test
+  (mt/with-temp [:model/Database db    {}
+                 :model/Table    table {:db_id (:id db) :name "app_users"}
+                 :model/Field    ssn   {:table_id (:id table) :name "ssn" :base_type :type/Text}]
+    (let [calls (atom 0)]
+      (with-redefs [analyze/infer-data-sensitivity (fn [& _] (swap! calls inc) (throw (ex-info "boom" {})))]
+        (testing "a throwing rule counts as scanned and failed and leaves the field unscanned"
+          (is (= {:fields-scanned 1 :fields-labeled 0 :fields-failed 1}
+                 (sync.data-sensitivity/scan-data-sensitivity! db)))
+          (is (nil? (label ssn))))
+        (testing "the next scan retries the field"
+          (sync.data-sensitivity/scan-data-sensitivity! db)
+          (is (= 2 @calls)))))))
+
+(deftest sync-database-end-to-end-test
+  (testing "a full sync with the setting on labels every field of every table using this run's inferred table context"
+    (mt/with-temp-test-data [["app_users"
+                              [{:field-name "ssn", :base-type :type/Text}
+                               {:field-name "email", :base-type :type/Text}
+                               {:field-name "card_number", :base-type :type/Text}
+                               {:field-name "city", :base-type :type/Text}
+                               {:field-name "notes", :base-type :type/Text}
+                               {:field-name "foo", :base-type :type/Text}]
+                              [["123-45-6789" "a@b.com" "4111111111111111" "Berlin" "called back twice" "x"]]]
+                             ["products"
+                              [{:field-name "title", :base-type :type/Text}
+                               {:field-name "city", :base-type :type/Text}
+                               {:field-name "price", :base-type :type/Float}]
+                              [["Widget" "Berlin" 9.99]]]]
+      (mt/with-temporary-setting-values [data-sensitivity-scan-enabled true]
+        (sync/sync-database! (mt/db)))
+      (let [labels (fn [table]
+                     (into {} (map (juxt (comp u/lower-case-en :name) :data_sensitivity))
+                           (t2/select [:model/Field :name :data_sensitivity] :table_id (mt/id table))))]
+        (testing "app_users is a UserTable, so the gated city rule fires alongside the explicit name rules"
+          (is (= :entity/UserTable (t2/select-one-fn :entity_type :model/Table :id (mt/id :app_users))))
+          (is (= {"id"          :PUBLIC
+                  "ssn"         :PII
+                  "email"       :PII
+                  "card_number" :PCI_FIN
+                  "city"        :PII
+                  "notes"       :PUBLIC
+                  "foo"         :PUBLIC}
+                 (labels :app_users))))
+        (testing "products is not a UserTable, so city stays PUBLIC"
+          (is (= {"id" :PUBLIC "title" :PUBLIC "city" :PUBLIC "price" :PUBLIC}
+                 (labels :products))))
+        (testing "no mirror rows were created"
+          (is (zero? (t2/count :model/FieldUserSettings
+                               :field_id [:in (t2/select-pks-set :model/Field :table_id [:in [(mt/id :app_users) (mt/id :products)]])]))))
+        (testing "the analyze step recorded its counts in task_history"
+          (is (=? {:status       :success
+                   :task_details {:fields-scanned 11 :fields-labeled 4 :fields-failed 0}}
+                  (t2/select-one :model/TaskHistory :db_id (mt/id) :task "classify-data-sensitivity"
+                                 {:order-by [[:id :desc]]}))))))))
+
+(mt/defdataset inet-columns
+  [["connections"
+    [{:field-name "client_ip", :base-type {:native "inet"}, :effective-type :type/IPAddress}
+     {:field-name "addr", :base-type {:native "inet"}, :effective-type :type/IPAddress}]
+    [[[:raw "'192.168.1.1'::inet"] [:raw "'10.4.4.15'::inet"]]]]])
+
+(deftest scan-postgres-inet-columns-test
+  (mt/test-driver :postgres
+    (testing "inet columns sync as :type/IPAddress base and semantic type and are labeled SYS_TELEMETRY whatever their name"
+      (mt/dataset inet-columns
+        (let [field-ids (t2/select-pks-set :model/Field :table_id (mt/id :connections) :name [:in ["client_ip" "addr"]])]
+          (t2/update! :model/Field :id [:in field-ids] {:data_sensitivity nil})
+          (is (= #{[:type/IPAddress :type/IPAddress]}
+                 (t2/select-fn-set (juxt :base_type :semantic_type) :model/Field :id [:in field-ids])))
+          (sync/scan-data-sensitivity! (mt/db))
+          (is (= {"client_ip" :SYS_TELEMETRY "addr" :SYS_TELEMETRY}
+                 (t2/select-fn->fn :name :data_sensitivity :model/Field :id [:in field-ids]))))))))
+
+(deftest scan-non-text-base-types-test
+  (testing "IPAddress and JSON base types with no semantic type, as ClickHouse and MySQL sync them, are labeled from the base type"
+    (mt/with-temp [:model/Database db    {}
+                   :model/Table    table {:db_id (:id db) :name "connections"}
+                   :model/Field    ip    {:table_id (:id table) :name "client_ip" :base_type :type/IPAddress}
+                   :model/Field    addr  {:table_id (:id table) :name "addr" :base_type :type/IPAddress}
+                   :model/Field    creds {:table_id (:id table) :name "credentials" :base_type :type/JSON}
+                   :model/Field    meta  {:table_id (:id table) :name "metadata" :base_type :type/JSON}]
+      (is (= {:fields-scanned 4 :fields-labeled 3 :fields-failed 0}
+             (sync.data-sensitivity/scan-data-sensitivity! table)))
+      (is (= :SYS_TELEMETRY (label ip)))
+      (is (= :SYS_TELEMETRY (label addr)))
+      (is (= :SEC_KEY (label creds)))
+      (is (= :PUBLIC (label meta))))))
+
+(deftest scan-single-table-test
+  (mt/with-temp [:model/Database db     {}
+                 :model/Table    users  {:db_id (:id db) :name "app_users"}
+                 :model/Table    other  {:db_id (:id db) :name "other"}
+                 :model/Field    ssn    {:table_id (:id users) :name "ssn" :base_type :type/Text}
+                 :model/Field    email  {:table_id (:id other) :name "email" :base_type :type/Text}]
+    (testing "scanning a Table instance labels only that table's fields"
+      (is (= {:fields-scanned 1 :fields-labeled 1 :fields-failed 0}
+             (sync.data-sensitivity/scan-data-sensitivity! users)))
+      (is (= :PII (label ssn)))
+      (is (nil? (label email))))))

@@ -44,6 +44,8 @@
   "Resolves enterprise command by symbol and calls with args, or else throws error if not EE"
   [symb & args]
   (let [f (try
+            ;; Enterprise command symbols are fixed at the call sites below.
+            #_{:clj-kondo/ignore [:metabase/modules]}
             (classloader/require (symbol (namespace symb)))
             (or (resolve symb)
                 (throw (ex-info (trs "{0} does not exist" symb) {})))
@@ -164,6 +166,13 @@
   []
   (classloader/require 'metabase.cmd.config-file-gen)
   ((resolve 'metabase.cmd.config-file-gen/generate-config-file-doc!)))
+
+(defn ^:command ai-providers-documentation
+  "Generates a markdown file listing the AI providers Metabase can connect to, the credentials each one needs, and the
+  models each one offers. This is written to a file called `docs/ai/providers.md`."
+  []
+  (classloader/require 'metabase.cmd.ai-provider-dox)
+  ((resolve 'metabase.cmd.ai-provider-dox/generate-dox!)))
 
 (defn ^:command command-documentation
   "Generates a markdown file containing documentation for all CLI commands. This is written to a file called

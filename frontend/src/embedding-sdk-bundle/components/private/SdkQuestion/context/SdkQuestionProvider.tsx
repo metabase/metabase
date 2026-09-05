@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
   useState,
 } from "react";
@@ -20,10 +21,15 @@ import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/
 import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
 import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { EmbeddingSdkMode } from "embedding-sdk-bundle/lib/modes/EmbeddingSdkMode";
+import { getEmbeddingMode } from "embedding-sdk-bundle/lib/modes/getEmbeddingMode";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
+import {
+  clearGuestToken,
+  setInitialGuestToken,
+} from "embedding-sdk-bundle/store/guest-embed";
 import {
   getError,
+  getGuestTokenForMount,
   getIsGuestEmbed,
   getPlugins,
   getSessionTokenState,
@@ -39,8 +45,6 @@ import {
 } from "metabase/query_builder";
 import { useSaveQuestion } from "metabase/query_builder";
 import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
-import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -84,7 +88,7 @@ export const SdkQuestionProvider = ({
   withAlerts,
   targetDashboardId,
   backToDashboard,
-  getClickActionMode: userGetClickActionMode,
+  clickActionMode: userClickActionMode,
   navigateToNewCard: userNavigateToNewCard,
   onDrillThrough,
   onVisualizationChange,
@@ -94,8 +98,13 @@ export const SdkQuestionProvider = ({
   const dispatch = useSdkDispatch();
   const navigation = useSdkInternalNavigationOptional();
   const [isFirstRender, setIsFirstRender] = useState(true);
-  const { rawToken: tokenFromStore, error: tokenFetchError } =
-    useSdkSelector(getSessionTokenState);
+  // Stable per-mount id: keeps this mount's guest token isolated from any
+  // other guest StaticQuestion/StaticDashboard sharing the same MetabaseProvider.
+  const mountId = useId();
+  const { error: tokenFetchError } = useSdkSelector(getSessionTokenState);
+  const tokenFromStore = useSdkSelector((state) =>
+    getGuestTokenForMount(state, mountId),
+  );
 
   const effectiveInitialSqlParameters = getEffectiveParameterValues(
     sqlParameters,
@@ -105,9 +114,18 @@ export const SdkQuestionProvider = ({
   // Store token so the refresh handler can check expiry. No need to await — not used here.
   useEffect(() => {
     if (rawToken && isGuestEmbed) {
-      dispatch(setInitialGuestToken(rawToken));
+      dispatch(setInitialGuestToken({ mountId, token: rawToken }));
     }
-  }, [rawToken, isGuestEmbed, dispatch]);
+  }, [rawToken, isGuestEmbed, dispatch, mountId]);
+
+  // Own effect: folding this into the one above would clear the token on every
+  // rawToken change, leaving a window with no token for the refresh handler.
+  useEffect(
+    () => () => {
+      dispatch(clearGuestToken(mountId));
+    },
+    [dispatch, mountId],
+  );
 
   useEffect(() => {
     setIsFirstRender(false);
@@ -218,21 +236,16 @@ export const SdkQuestionProvider = ({
     return { ...globalPlugins, ...componentPlugins };
   }, [globalPlugins, componentPlugins]);
 
-  const getClickActionMode: ClickActionModeGetter =
-    userGetClickActionMode ??
-    (({ question }: { question: Question }) => {
-      return (
-        question &&
-        getEmbeddingMode({
-          question,
-          queryMode: EmbeddingSdkMode,
-          // Unjustified type cast. FIXME
-          plugins: plugins as InternalMetabasePluginsConfig,
-        })
-      );
-    });
-
-  const mode = (question && getClickActionMode({ question })) ?? null;
+  const mode = useMemo(
+    () =>
+      userClickActionMode ??
+      getEmbeddingMode({
+        queryMode: EmbeddingSdkMode,
+        // Unjustified type cast. FIXME
+        plugins: plugins as InternalMetabasePluginsConfig,
+      }),
+    [userClickActionMode, plugins],
+  );
 
   // Wrap navigateToNewCard to intercept navigation to new card
   const navigateToNewCardWithDrillThrough = useCallback(
