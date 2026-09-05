@@ -1,9 +1,33 @@
 <!DOCTYPE html>
-<html lang="{{{language}}}" translate="no">
+<html lang="{{{language}}}" translate="no" data-mb-color-scheme="{{{colorScheme}}}">
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!--
+      Paint the page background before the app bundle loads, so the user does not see
+      a flash of white. Keep the colors in sync with the `background_page-secondary`
+      token in frontend/src/metabase/ui/colors/constants/themes.
+    -->
+    <style nonce="{{{nonce}}}">
+      html {
+        background-color: hsl(240, 11%, 98%);
+        color-scheme: light;
+      }
+
+      html[data-mb-color-scheme="dark"] {
+        background-color: hsl(204, 66%, 8%);
+        color-scheme: dark;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        html[data-mb-color-scheme="auto"] {
+          background-color: hsl(204, 66%, 8%);
+          color-scheme: dark;
+        }
+      }
+    </style>
     <meta name="robots" content="noindex" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

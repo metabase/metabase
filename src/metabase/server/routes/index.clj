@@ -79,6 +79,17 @@
         (log/error message (ex-message e))
         (throw (Exception. message e))))))
 
+(def ^:private valid-color-schemes #{"light" "dark" "auto"})
+
+(defn- initial-color-scheme
+  "Color scheme used to paint the page background before the app bundle loads. Embeddable entrypoints always render
+  light, so they must not flash dark."
+  [embeddable?]
+  (let [scheme (users-settings/color-scheme)]
+    (if (and (not embeddable?) (valid-color-schemes scheme))
+      scheme
+      "light")))
+
 (defn- template-parameters
   [embeddable? {:keys [uri params nonce]}]
   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})
@@ -90,6 +101,8 @@
      :userLocalizationJSON   (escape-script (load-localization (when should-load-locale-params? (:locale params))))
      :siteLocalizationJSON   (escape-script (load-localization (system/site-locale)))
      :nonceJSON              (escape-script (json/encode nonce))
+     :nonce                  (hiccup.util/escape-html nonce)
+     :colorScheme            (initial-color-scheme embeddable?)
      :language               (hiccup.util/escape-html (or (i18n/user-locale-string) (system/site-locale)))
      :userColorScheme        (escape-script (json/encode (users-settings/color-scheme)))
      :favicon                (hiccup.util/escape-html (let [custom-favicon (appearance/application-favicon-url)]
