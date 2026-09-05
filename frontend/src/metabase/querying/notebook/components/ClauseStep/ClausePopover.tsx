@@ -23,6 +23,7 @@ export function ClausePopover({
 }: ClausePopoverProps) {
   const [isOpen, setIsOpen] = useState(isInitiallyOpen);
   const { active } = useDndContext();
+  const [hasSettled, setHasSettled] = useState(false);
 
   const handleOpen = useCallback(() => {
     setIsOpen(true);
@@ -42,6 +43,16 @@ export function ClausePopover({
     }
   }, [active]);
 
+  useLayoutEffect(() => {
+    if (isOpen) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setHasSettled(true));
+      });
+    } else {
+      setHasSettled(false);
+    }
+  }, [isOpen]);
+
   const content = renderPopover(handleClose);
   const hasPopover = content !== null && !disabled;
 
@@ -55,6 +66,7 @@ export function ClausePopover({
         onChange={handleChange}
         classNames={{ dropdown: S.dropdown }}
         disabled={!hasPopover}
+        preventPositionChangeWhenVisible={hasSettled}
       >
         <Popover.Target>
           {renderItem(disabled ? noop : handleOpen, hasPopover)}
