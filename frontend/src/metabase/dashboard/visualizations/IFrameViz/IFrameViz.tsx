@@ -98,7 +98,7 @@ function IFrameVizInner({
             </Text>{" "}
             <Box ml="auto">
               <Button
-                size="compact-md"
+                size="sm"
                 variant="filled"
                 style={{ pointerEvents: "all" }}
                 onClick={onTogglePreviewing}

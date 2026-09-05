@@ -222,18 +222,9 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
           )}
           <Flex py="sm" pr="sm" gap="sm">
             {onClose && !readOnly && (
-              <Button
-                onClick={onClose}
-                variant="subtle"
-                size="xs"
-              >{t`Cancel`}</Button>
+              <Button onClick={onClose} variant="subtle">{t`Cancel`}</Button>
             )}
-            <Button
-              variant="filled"
-              disabled={!isValid}
-              onClick={handleSubmit}
-              size="xs"
-            >
+            <Button variant="filled" disabled={!isValid} onClick={handleSubmit}>
               {(initialName || initialClause) && !readOnly
                 ? t`Update`
                 : t`Done`}

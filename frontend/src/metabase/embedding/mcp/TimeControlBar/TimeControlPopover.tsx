@@ -17,7 +17,6 @@ export function TimeControlPopover({
     <Popover opened={isOpen} onChange={setIsOpen}>
       <Popover.Target>
         <Button
-          size="xs"
           h={32}
           fw="normal"
           px="lg"

@@ -156,7 +156,6 @@ export const MetabotChat = ({
                       <Box key={index}>
                         <Button
                           fz="sm"
-                          size="xs"
                           onClick={() => metabot.submitInput(prompt)}
                           className={Styles.promptSuggestionButton}
                         >

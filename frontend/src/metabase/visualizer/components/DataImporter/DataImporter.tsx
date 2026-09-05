@@ -87,7 +87,6 @@ export const DataImporter = ({
       </Title>
       {dataSources.length > 0 && (
         <Button
-          size="xs"
           variant="transparent"
           ml="auto"
           onClick={() => {

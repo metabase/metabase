@@ -137,7 +137,6 @@ export function BreakoutColumnListItem({
           <Button
             className={BreakoutColumnListItemS.RemoveButton}
             variant="subtle"
-            size="xs"
             leftSection={<Icon name="close" />}
             onClick={handleRemoveColumn}
             aria-label={t`Remove dimension`}
@@ -149,7 +148,6 @@ export function BreakoutColumnListItem({
           <Button
             className={BreakoutColumnListItemS.AddButton}
             variant="subtle"
-            size="sm"
             leftSection={<Icon name="add" />}
             aria-label={t`Add dimension`}
             onClick={handleAddClick}

@@ -349,7 +349,7 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
                 {defaultSectionHeader}
               </Text>
               {showSeeAll && (
-                <Button onClick={handleSeeAll} p={0} size="xs" variant="subtle">
+                <Button onClick={handleSeeAll} p={0} variant="subtle">
                   {t`See all`}
                 </Button>
               )}

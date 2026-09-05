@@ -70,7 +70,7 @@ export const DashCardLoadingView = ({
                     <Button
                       mt={12}
                       variant="subtle"
-                      size="compact-md"
+                      size="sm"
                       rightSection={<Icon name="external" />}
                       component={ExternalLink}
                       href={url}

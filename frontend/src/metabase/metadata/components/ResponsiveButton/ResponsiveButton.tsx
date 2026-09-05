@@ -39,7 +39,6 @@ export const ResponsiveButton = ({
           }
           px={showLabel ? (showIconWithLabel ? "sm" : "lg") : "xxs"}
           py="xxs"
-          size="xs"
           w={showLabel ? undefined : 32}
           {...props}
         >
@@ -67,7 +66,6 @@ export const ResponsiveButton = ({
           px={showIconWithLabel ? "sm" : "lg"}
           py="xxs"
           ref={measureRef}
-          size="xs"
           {...props}
         >
           <Flex align="center" justify="center" h="100%" w="100%">

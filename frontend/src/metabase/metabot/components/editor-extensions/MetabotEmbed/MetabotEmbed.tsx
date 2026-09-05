@@ -287,7 +287,6 @@ export const MetabotComponent = memo(
                 variant="subtle"
                 p="sm"
                 m="sm"
-                size="sm"
                 onClick={() => deleteNode()}
               >
                 <Icon name="close" data-hide-on-print />
@@ -334,7 +333,6 @@ export const MetabotComponent = memo(
                 position="bottom"
               >
                 <Button
-                  size="sm"
                   disabled={!isMetabotEnabled}
                   onClick={() =>
                     isLoading ? handleStopMetabot() : handleRunMetabot()

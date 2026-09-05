@@ -94,7 +94,6 @@ export function ModelCacheManagementSection({ model }: Props) {
               variant="subtle"
               p="xxs"
               c="text-primary"
-              size="xs"
               onClick={() => onRefresh(model.id())}
             >
               {refreshButtonLabel}
