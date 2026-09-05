@@ -251,8 +251,7 @@ export const GitSyncControls = () => {
       >
         <Combobox.Target>
           <Button
-            p="sm"
-            size="compact-sm"
+            size="sm"
             bd="none"
             mr="xl"
             disabled={isLoading}
