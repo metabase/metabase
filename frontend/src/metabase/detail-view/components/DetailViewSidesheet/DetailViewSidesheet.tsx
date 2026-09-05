@@ -249,8 +249,8 @@ export function DetailViewSidesheet({
                     disabled={!onPreviousClick}
                     h={20}
                     leftSection={<Icon name="chevronup" />}
-                    p={0}
-                    variant="subtle"
+                    size="compact-md"
+                    variant="transparent"
                     style={{
                       opacity: onPreviousClick ? undefined : 0.5,
                     }}
@@ -266,8 +266,8 @@ export function DetailViewSidesheet({
                     disabled={!onNextClick}
                     h={20}
                     leftSection={<Icon name="chevrondown" />}
-                    p={0}
-                    variant="subtle"
+                    size="compact-md"
+                    variant="transparent"
                     style={{
                       opacity: onNextClick ? undefined : 0.5,
                     }}
@@ -294,8 +294,8 @@ export function DetailViewSidesheet({
                       data-testid="actions-menu"
                       h={20}
                       leftSection={<Icon name="ellipsis" />}
-                      p={0}
-                      variant="subtle"
+                      size="compact-md"
+                      variant="transparent"
                       w={20}
                     />
                   </Tooltip>
@@ -326,8 +326,8 @@ export function DetailViewSidesheet({
                     c="text-primary"
                     h={20}
                     leftSection={<Icon name="link" />}
-                    p={0}
-                    variant="subtle"
+                    size="compact-md"
+                    variant="transparent"
                     w={20}
                     onClick={handleCopyLink}
                   />
@@ -341,9 +341,9 @@ export function DetailViewSidesheet({
                       component={Link}
                       h={20}
                       leftSection={<Icon name="expand" />}
-                      p={0}
+                      size="compact-md"
+                      variant="transparent"
                       to={url}
-                      variant="subtle"
                       w={20}
                     />
                   </Box>
