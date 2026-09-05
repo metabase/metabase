@@ -216,6 +216,21 @@
   [_driver _breakout _breakout-expr]
   nil)
 
+(defmulti apply-cte-hoist?
+  "True iff a UNION ALL pivot compiled for `driver` should hoist the shared pre-pivot subquery into a
+  `WITH` binding referenced from every branch. Off by default; drivers opt in when their planner both
+  benefits from CTE deduplication (older Presto fans identical subqueries into per-branch tasks and
+  exhausts the coordinator heap on large joins) *and* correctly binds prepared-statement parameters
+  in a CTE referenced from multiple UNION branches (H2 mis-binds these and returns zero-count rows,
+  so it stays opted out)."
+  {:added "0.64.0", :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod apply-cte-hoist? :sql
+  [_driver]
+  false)
+
 (defn- compile-union-all-pivot
   "Compile the `:pivot` clause into a `UNION ALL` over one branch per grouping-set combination, wrapped in an outer
   `SELECT * FROM (...) AS __mb_pivot_result`. Used for drivers that lack `:native-pivot-tables` and for queries whose
@@ -338,9 +353,39 @@
                                    (into [[:pivot-grouping :asc]]
                                          cat
                                          [user-order-by-outer
-                                          (map (fn [alias] [alias :asc]) canonical-orig-bo-aliases)]))]
+                                          (map (fn [alias] [alias :asc]) canonical-orig-bo-aliases)]))
+        ;; Older planners (Presto 0.254) don't dedupe identical subqueries in `FROM`, so each UA branch
+        ;; scheduled its own copy of the pre-pivot subtree — enough tasks at CI data scale to blow the
+        ;; coordinator heap. If every branch shares the same one-entry `:from` (the nested source produced
+        ;; by [[qp.util.transformations.nest-breakouts/nest-pivot-joins]]), lift it into a `WITH` binding
+        ;; and rewrite each branch to reference the CTE by its original alias. Falls back to the flat
+        ;; shape when branches diverge (no joins, or heterogeneous per-branch filters).
+        cte-name                 :__mb_pivot_source
+        froms                    (mapv :from branches)
+        ;; A branch's `:from` is `[[<source-spec> <alias>]]` (or `[<source-spec>]` with no alias). We
+        ;; only lift when every branch's `:from` is identical AND `<source-spec>` is a subquery map — a
+        ;; bare table ref (keyword, identifier vector) has no per-branch fanout for the planner to
+        ;; duplicate, and CTE'ing a table would be invalid syntax. Gated on [[apply-cte-hoist?]].
+        [shared-src src-alias]   (when (and (apply-cte-hoist? driver)
+                                            (apply = froms)
+                                            (= 1 (count (first froms))))
+                                   (let [entry (ffirst froms)]
+                                     (cond
+                                       (map? entry)
+                                       [entry nil]
+                                       (and (vector? entry) (>= (count entry) 1) (map? (first entry)))
+                                       [(first entry) (second entry)])))
+        branches                 (cond-> branches
+                                   shared-src
+                                   (as-> $ (mapv (fn [b]
+                                                   (assoc b :from
+                                                          (if src-alias
+                                                            [[cte-name src-alias]]
+                                                            [[cte-name]])))
+                                                 $)))]
     (cond-> {:select [:*]
              :from   [[{:union-all branches} :__mb_pivot_result]]}
+      shared-src     (assoc :with [[cte-name shared-src]])
       outer-order-by (assoc :order-by outer-order-by))))
 
 (defmethod sql.qp/apply-top-level-clause [:sql :pivot]
