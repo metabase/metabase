@@ -93,7 +93,6 @@ export function PythonTransformTopBar({
             fz="sm"
             h="1.5rem"
             px="sm"
-            size="xs"
             transformId={transform.id}
           />
         </Flex>
