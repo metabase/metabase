@@ -5,6 +5,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clout.core :as clout]
    [hiccup.util]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
@@ -66,6 +67,43 @@
     [locale-override]
     (load-fn (or locale-override (i18n/user-locale-string)))))
 
+(defn- read-route-preloads []
+  (some->> (io/resource "frontend_client/app/dist/route-preloads.json")
+           slurp
+           json/decode
+           (mapv (fn [[pattern markup render-when-signed-out?]]
+                   [(clout/route-compile pattern) markup render-when-signed-out?]))))
+
+(def ^:private ^{:arglists '([])} route-preloads
+  "`[pattern markup render-when-signed-out?]` rows, in the order the patterns are to be tried.
+
+  Nil until a build has written a manifest. Read afresh in development, where
+  every frontend build rewrites it with new file names, and cached everywhere
+  else, where it never changes."
+  (cond-> read-route-preloads
+    (not config/is-dev?) memoize/memo))
+
+(defn- strip-base-path
+  "The request URI carries the path Metabase is mounted under; the manifest does not."
+  [uri]
+  (let [base (-> (base-href) (str/replace #"/$" ""))]
+    (cond-> uri
+      (str/starts-with? uri base) (subs (count base)))))
+
+(defn- route-preload-tags
+  "Preload hints for the page this URI renders, written by the build.
+
+  Nothing in the document points at the page's chunk, so without these the
+  browser only asks for it once the app has downloaded, parsed and run. See
+  `frontend/build/shared/rspack/route-preloads.js`."
+  [uri signed-in?]
+  (let [path (-> (or uri "/") strip-base-path)]
+    (->> (route-preloads)
+         (some (fn [[route markup render-when-signed-out?]]
+                 (and (or signed-in? render-when-signed-out?)
+                      (clout/route-matches route {:uri path})
+                      markup))))))
+
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
 
@@ -80,7 +118,7 @@
         (throw (Exception. message e))))))
 
 (defn- template-parameters
-  [embeddable? {:keys [uri params nonce]}]
+  [embeddable? {:keys [uri params nonce metabase-user-id]}]
   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})
         ;; We disable `locale` parameter on static embeds/public links (metabase#50313)
         should-load-locale-params? (not embeddable?)]
@@ -99,6 +137,8 @@
                                                           custom-favicon)))
      :applicationName        (hiccup.util/escape-html (appearance/application-name))
      :uri                    (hiccup.util/escape-html uri)
+     :routePreloads          (when-not embeddable?
+                               (route-preload-tags uri (boolean metabase-user-id)))
      :baseHref               (hiccup.util/escape-html (base-href))
      :embedCode              (when embeddable? (embed/head (system/site-url) uri))
      :enableGoogleAuth       (boolean google-auth-client-id)

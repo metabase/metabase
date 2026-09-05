@@ -31,6 +31,9 @@ const {
   RESOLVE_ALIASES,
 } = require("./frontend/build/shared/rspack/resolve-aliases");
 const {
+  RoutePreloadManifest,
+} = require("./frontend/build/shared/rspack/route-preloads");
+const {
   SIDE_EFFECT_FREE_RULE,
 } = require("./frontend/build/shared/rspack/side-effect-free-modules");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
@@ -359,6 +362,7 @@ const config = {
     }),
     new OnScriptError(),
     new PreloadAssetTags(),
+    new RoutePreloadManifest(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
