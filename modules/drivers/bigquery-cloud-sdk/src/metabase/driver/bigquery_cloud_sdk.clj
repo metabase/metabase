@@ -130,7 +130,8 @@
       (.setUniverseDomain bq-bldr universe-domain))
     (when-let [host (perf/not-empty (:host details))]
       (.setHost bq-bldr host))
-    (when-let [^String billing-project-id (not-empty (:billing-project-id details))]
+    (when-let [^String billing-project-id (perf/not-empty (:billing-project-id details))]
+      ;; Jobs are created and billed in this project; queried tables can live elsewhere.
       (.setProjectId bq-bldr billing-project-id))
     (.. bq-bldr build getService)))
 
