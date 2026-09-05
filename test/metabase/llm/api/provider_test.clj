@@ -110,7 +110,15 @@
                     (filter #(= "bedrock" (:type %)))
                     first
                     :fields
-                    (into {} (map (juxt :key :advanced))))))))))
+                    (into {} (map (juxt :key :advanced)))))))
+      (testing "each Bedrock key travels as requiring the other, which the form uses to gate half a pair"
+        (is (= {:access-key-id     ["secret-access-key"]
+                :secret-access-key ["access-key-id"]
+                :session-token     ["access-key-id" "secret-access-key"]}
+               (->> types
+                    (filter #(= "bedrock" (:type %)))
+                    first
+                    :requires)))))))
 
 (deftest provider-types-google-fields-test
   (testing "Google's credentials hang off the authentication method it is asked for, and its models are a fixed list"
@@ -148,6 +156,17 @@
       (testing "the alternative credential groups ride along so the form knows when the config is complete"
         (is (= [["service-account-key"] ["oauth-access-token" "project-id"]]
                (:required_any google)))))))
+
+(deftest provider-types-hosted-bedrock-test
+  (testing "the listed Bedrock entry carries hosted policy, so the form asks for the keys the backend will demand"
+    (mt/with-premium-features #{:hosting}
+      (let [bedrock (->> (mt/user-http-request :crowberto :get 200 "llm/provider-types")
+                         (filter #(= "bedrock" (:type %)))
+                         first)]
+        (is (= {"access-key-id" true "secret-access-key" true "region" false "session-token" false}
+               (->> bedrock :fields (into {} (map (juxt :key :required))))))
+        (is (= "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
+               (->> bedrock :fields (filter #(= "access-key-id" (:key %))) first :help)))))))
 
 (deftest provider-types-managed-availability-test
   (letfn [(managed [types] (->> types (filter #(= "metabase" (:type %))) first))]

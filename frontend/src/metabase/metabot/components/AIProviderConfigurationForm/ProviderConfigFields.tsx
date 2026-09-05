@@ -71,12 +71,19 @@ function ProviderConfigField({
 }) {
   const focusProps = autoFocus ? { autoFocus, "data-autofocus": true } : {};
   const externalDocsUrl = field.docs_url;
-  const description = externalDocsUrl ? (
-    <ExternalLink href={externalDocsUrl}>
-      {t`Where do I find this?`}
-    </ExternalLink>
-  ) : (
-    field.help && <Text size="sm">{field.help}</Text>
+  const description = (field.help || externalDocsUrl) && (
+    <>
+      {field.help && (
+        <Text component="span" display="block" size="sm">
+          {field.help}
+        </Text>
+      )}
+      {externalDocsUrl && (
+        <ExternalLink href={externalDocsUrl}>
+          {t`Where do I find this?`}
+        </ExternalLink>
+      )}
+    </>
   );
 
   if (field.type === "segmented") {

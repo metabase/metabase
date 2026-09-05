@@ -157,6 +157,10 @@
     (with-connections [(connection "bedrock" "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                                         :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"})]
       (with-selected-model "bedrock/anthropic.claude-haiku-4-5"
+        (is (true? (metabot.settings/llm-metabot-configured?))))))
+  (testing "returns true with no keys at all: requests sign with the AWS default credentials chain"
+    (with-connections [(connection "bedrock" "bedrock")]
+      (with-selected-model "bedrock/anthropic.claude-haiku-4-5"
         (is (true? (metabot.settings/llm-metabot-configured?)))))))
 
 (deftest metabot-configured-with-partial-bedrock-credentials-test

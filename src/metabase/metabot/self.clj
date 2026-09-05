@@ -157,7 +157,7 @@
 (defn list-models
   "List available models for a provider using its configured credentials, or `:credentials` in `opts`.
   The shape of the credentials map varies by provider: API-key providers take `{:api-key ...}`, while Bedrock takes
-  AWS key material and region (see [[bedrock/list-models]])."
+  optional AWS key material and region (see [[bedrock/list-models]])."
   ([provider]
    ((resolve-model-lister provider)))
   ([provider opts]
