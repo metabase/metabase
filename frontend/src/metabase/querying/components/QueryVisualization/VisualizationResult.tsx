@@ -8,6 +8,8 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 
+import { defaultClickActionMode } from "../../click-actions/lib/modes";
+
 import type { QueryVisualizationProps } from "./types";
 
 const ALLOWED_VISUALIZATION_PROPS = [
@@ -18,7 +20,7 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "tableHeaderHeight",
   "scrollToColumn",
   "renderTableHeader",
-  "mode",
+  "hasColumnReordering",
   "renderEmptyMessage",
   "zoomedRowIndex",
   // Legend
@@ -118,6 +120,7 @@ export function VisualizationResult(props: QueryVisualizationProps) {
       onHeaderColumnReorder={props.onHeaderColumnReorder}
       onUpdateVisualizationSettings={props.onUpdateVisualizationSettings}
       onVisualizationRendered={props.onVisualizationRendered}
+      mode={props.mode ?? defaultClickActionMode}
       {...vizSpecificProps}
     />
   );

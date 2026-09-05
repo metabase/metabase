@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useIsTrackingEnabled } from "embedding-sdk-bundle/analytics/component-events";
 import type { SdkAuthMethod } from "embedding-sdk-bundle/analytics/snowplow";
 import {
+  getHostReactVersion,
   getSdkAuthMethod,
   getSdkLocaleUsed,
   initSdkTracker,
@@ -71,6 +72,7 @@ export function useInitSdkTracker(
             auth_method: getSdkAuthMethod(),
             sdk_version: sdkVersion,
             locale_used: getSdkLocaleUsed(),
+            react_version: getHostReactVersion(),
           },
         }),
       });
