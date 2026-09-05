@@ -46,3 +46,31 @@
                  identity
                  identity)
         (is (= 42 (deref logged-user-id 1000 :timed-out)))))))
+
+(deftest log-api-call-includes-client-ip-when-allowlist-enabled-test
+  (testing "log-api-call includes client IP when allowed-ip-addresses is configured"
+    (mt/with-temporary-setting-values [allowed-ip-addresses "127.0.0.1"]
+      (let [logged-info (promise)
+            handler     (mw.log/log-api-call
+                         (fn [_request respond _raise]
+                           (respond {:status 200 :body "ok"})))]
+        (with-redefs [mw.log/log-info (fn [info] (deliver logged-info info))]
+          (handler {:request-method :get
+                    :uri            "/api/card/1"
+                    :remote-addr    "127.0.0.1"}
+                   identity
+                   identity)
+          (is (= "127.0.0.1" (:client-ip (deref logged-info 1000 nil))))))))
+  (testing "log-api-call does not include client IP when allowed-ip-addresses is empty"
+    (mt/with-temporary-setting-values [allowed-ip-addresses nil]
+      (let [logged-info (promise)
+            handler     (mw.log/log-api-call
+                         (fn [_request respond _raise]
+                           (respond {:status 200 :body "ok"})))]
+        (with-redefs [mw.log/log-info (fn [info] (deliver logged-info info))]
+          (handler {:request-method :get
+                    :uri            "/api/card/1"
+                    :remote-addr    "127.0.0.1"}
+                   identity
+                   identity)
+          (is (nil? (:client-ip (deref logged-info 1000 :timed-out)))))))))
