@@ -241,3 +241,31 @@
           (is (= (str "Attempted to remove the last admin during group sync! "
                       "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")
                  (:message (first (messages))))))))))
+
+(deftest sync-groups-data-analyst-without-advanced-permissions-test
+  (testing "a mapped add to the Data Analysts group is logged and skipped when :advanced-permissions is missing"
+    (mt/with-premium-features #{}
+      (mt/with-log-messages-for-level [messages :error]
+        (mt/with-user-in-groups [group {:name (str ::group)}
+                                 user  []]
+          (integrations.common/sync-group-memberships! user #{group (perms-group/data-analyst)})
+          (testing "the rest of the sync still happens"
+            (is (= #{"All Users" ":metabase.sso.common-test/group"}
+                   (group-memberships user))))
+          (testing "the user is not put in the Data Analysts group"
+            (is (not (t2/exists? :model/PermissionsGroupMembership
+                                 :user_id (u/the-id user)
+                                 :group_id (u/the-id (perms-group/data-analyst))))))
+          (testing "and the refusal is logged"
+            (is (some #(re-find #"Advanced Permissions" (str (:message %)))
+                      (messages)))))))))
+
+(deftest sync-groups-data-analyst-with-advanced-permissions-test
+  (testing "a mapped add to the Data Analysts group succeeds when :advanced-permissions is present"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-user-in-groups [user []]
+        (integrations.common/sync-group-memberships! user #{(perms-group/data-analyst)})
+        (is (t2/exists? :model/PermissionsGroupMembership
+                        :user_id (u/the-id user)
+                        :group_id (u/the-id (perms-group/data-analyst))))
+        (is (true? (boolean (t2/select-one-fn :is_data_analyst :model/User :id (u/the-id user)))))))))

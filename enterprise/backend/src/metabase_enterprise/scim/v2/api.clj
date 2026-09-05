@@ -4,6 +4,7 @@
 
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.scim.db :as scim.db]
    [metabase-enterprise.scim.settings :as scim.settings]
    [metabase.analytics-interface.core :as analytics]
@@ -439,15 +440,14 @@
         mb-group->scim)))
 
 (defn- update-group-membership
-  "Updates the membership of `group-id` to be the set of users in the collection `user-entity-ids`. Clears
-  any existing members."
+  "Updates the membership of `group-id` to be the set of users in the collection `user-entity-ids`."
   [group-id user-entity-ids]
-  (let [user-ids (scim.db/user-ids-by-entity-ids user-entity-ids)]
-    (when-let [memberships (not-empty (map
-                                       (fn [user-id] {:group group-id :user user-id})
-                                       user-ids))]
-      (perms/remove-all-users-from-group! group-id)
-      (perms/add-users-to-groups! memberships))))
+  (let [desired-ids (set (scim.db/user-ids-by-entity-ids user-entity-ids))
+        current-ids (set (scim.db/group-member-user-ids group-id))]
+    (doseq [user-id (set/difference current-ids desired-ids)]
+      (perms/remove-user-from-group! user-id group-id))
+    (perms/add-users-to-groups! (for [user-id (set/difference desired-ids current-ids)]
+                                  {:group group-id :user user-id}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

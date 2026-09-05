@@ -194,8 +194,8 @@
   "IDs of the permission groups holding a stored read (or read-write) grant on the collection of a shareable item (a
   `dashboard` or a `question`). The \"invite someone to view\" group picker lists all groups and uses these ids to mark
   the ones whose members can already see the item; the Administrators group has implicit access to everything and is
-  never included. The ids are otherwise unfiltered; system-managed groups like Data Analysts appear when they hold a
-  grant, and clients intersect the ids with the groups they display. Superuser-only, like the invite action itself."
+  never included. The Data Analysts group is omitted unless `advanced-permissions` is enabled. The ids are otherwise
+  unfiltered. Superuser-only, like the invite action itself."
   [_route-params
    {:keys [id] item-type :type} :- [:map
                                     [:type [:enum "dashboard" "question"]]
@@ -205,7 +205,9 @@
                 "dashboard" :model/Dashboard
                 "question"  :model/Card)
         item  (api/read-check model id)]
-    (vec (sort (perms/collection-read-access-group-ids (:collection_id item))))))
+    (vec (sort (cond-> (perms/collection-read-access-group-ids (:collection_id item))
+                 (not (premium-features/enable-advanced-permissions?))
+                 (disj (u/the-id (perms/data-analyst-group))))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -287,8 +289,6 @@
             (permissions-rest.db/group-memberships
              {:manager-user-id        (when (and (not api/*is-superuser?*) api/*is-group-manager?*)
                                         api/*current-user-id*)
-              :excluded-group-id      (when-not (premium-features/enable-advanced-permissions?)
-                                        (u/the-id (perms/data-analyst-group)))
               :exclude-tenant-groups? (not (setting/get :use-tenants))})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

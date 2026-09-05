@@ -1293,30 +1293,87 @@
 
 (deftest update-data-analyst-status-test
   (testing "PUT /api/user/:id"
-    (testing "Test that a superuser can set the :is_data_analyst flag (adds to Data Analysts group)"
-      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst@metabase.com"}]
-        (is (not (user-is-data-analyst? user-id)))
-        (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+    (mt/with-premium-features #{:advanced-permissions}
+      (testing "Test that a superuser can set the :is_data_analyst flag (adds to Data Analysts group)"
+        (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst@metabase.com"}]
+          (is (not (user-is-data-analyst? user-id)))
+          (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                {:is_data_analyst true})
+          (is (user-is-data-analyst? user-id))))
+      (testing "Test that a superuser can unset the :is_data_analyst flag (removes from Data Analysts group)"
+        (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst-unset@metabase.com"}]
+          (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                {:is_data_analyst true})
+          (is (user-is-data-analyst? user-id))
+          (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                {:is_data_analyst false})
+          (is (not (user-is-data-analyst? user-id)))))
+      (testing "Test that a normal user cannot change the :is_data_analyst flag for themselves"
+        (is (not (user-is-data-analyst? (mt/user->id :rasta))))
+        (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
                               {:is_data_analyst true})
-        (is (user-is-data-analyst? user-id))))
-    (testing "Test that a superuser can unset the :is_data_analyst flag (removes from Data Analysts group)"
-      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst-unset@metabase.com"}]
-        (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
-                              {:is_data_analyst true})
-        (is (user-is-data-analyst? user-id))
-        (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
-                              {:is_data_analyst false})
-        (is (not (user-is-data-analyst? user-id)))))
-    (testing "Test that a normal user cannot change the :is_data_analyst flag for themselves"
-      (is (not (user-is-data-analyst? (mt/user->id :rasta))))
-      (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
-                            {:is_data_analyst true})
-      (is (not (user-is-data-analyst? (mt/user->id :rasta)))))
-    (testing "Test that a normal user cannot change the :is_data_analyst flag for another user"
-      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst2@metabase.com"}]
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :put 403 (str "user/" user-id)
-                                     {:is_data_analyst true})))))))
+        (is (not (user-is-data-analyst? (mt/user->id :rasta)))))
+      (testing "Test that a normal user cannot change the :is_data_analyst flag for another user"
+        (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst2@metabase.com"}]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (str "user/" user-id)
+                                       {:is_data_analyst true}))))))))
+
+(deftest update-data-analyst-status-requires-advanced-permissions-test
+  (testing "PUT /api/user/:id with is_data_analyst"
+    (testing "is refused without the :advanced-permissions feature"
+      (mt/with-temp [:model/User {user-id :id} {:email "no-advanced-perms-analyst@metabase.com"}]
+        (mt/with-premium-features #{}
+          (is (= (str perms/fail-to-add-data-analyst-msg)
+                 (mt/user-http-request :crowberto :put 402 (str "user/" user-id)
+                                       {:is_data_analyst true})))
+          (testing "and neither the membership nor the flag is left behind"
+            (is (not (user-is-data-analyst? user-id)))
+            (is (not (t2/select-one-fn :is_data_analyst :model/User :id user-id)))))))
+    (testing "can still unset the flag without the :advanced-permissions feature"
+      (mt/with-temp [:model/User {user-id :id} {:email "downgraded-analyst@metabase.com"}]
+        (mt/with-premium-features #{:advanced-permissions}
+          (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:is_data_analyst true})
+          (is (user-is-data-analyst? user-id)))
+        (mt/with-premium-features #{}
+          (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:is_data_analyst false})
+          (is (not (user-is-data-analyst? user-id)))
+          (is (not (t2/select-one-fn :is_data_analyst :model/User :id user-id))))))))
+
+(deftest invite-user-into-data-analyst-group-requires-advanced-permissions-test
+  (testing "POST /api/user cannot put a new user in the Data Analysts group without :advanced-permissions"
+    (let [email    (format "invited-analyst-%s@metabase.com" (random-uuid))
+          group-id (:id (perms-group/data-analyst))]
+      (try
+        (mt/with-premium-features #{}
+          (is (= (str perms/fail-to-add-data-analyst-msg)
+                 (mt/user-http-request :crowberto :post 402 "user"
+                                       {:first_name             "Invited"
+                                        :last_name              "Analyst"
+                                        :email                  email
+                                        :user_group_memberships [{:id (:id (perms-group/all-users))}
+                                                                 {:id group-id}]})))
+          (testing "and no user is created at all, since the invite is transactional"
+            (is (not (t2/exists? :model/User :email email)))))
+        (finally
+          (t2/delete! :model/User :email email))))))
+
+(deftest invite-user-into-data-analyst-group-with-advanced-permissions-test
+  (testing "POST /api/user can put a new user in the Data Analysts group with :advanced-permissions"
+    (let [email    (format "invited-analyst-%s@metabase.com" (random-uuid))
+          group-id (:id (perms-group/data-analyst))]
+      (try
+        (mt/with-premium-features #{:advanced-permissions}
+          (let [{user-id :id} (mt/user-http-request :crowberto :post 200 "user"
+                                                    {:first_name             "Invited"
+                                                     :last_name              "Analyst"
+                                                     :email                  email
+                                                     :user_group_memberships [{:id (:id (perms-group/all-users))}
+                                                                              {:id group-id}]})]
+            (is (user-is-data-analyst? user-id))
+            (is (true? (boolean (t2/select-one-fn :is_data_analyst :model/User :id user-id))))))
+        (finally
+          (t2/delete! :model/User :email email))))))
 
 (deftest filter-by-data-analyst-test
   (testing "GET /api/user"
