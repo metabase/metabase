@@ -1,0 +1,5 @@
+{:paths ["src" "resources"]
+ ;; No external dependencies: the driver speaks the Quack binary RPC protocol
+ ;; over the JDK's built-in java.net.http.HttpClient. honey.sql, methodical,
+ ;; and metabase.util.log are provided transitively by the Metabase parent.
+ :deps {}}

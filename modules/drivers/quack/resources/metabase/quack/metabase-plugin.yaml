@@ -1,0 +1,68 @@
+info:
+  name: Metabase DuckDB Quack Driver
+  version: 1.0.0-SNAPSHOT
+  description: Connect Metabase to a DuckDB server speaking the Quack RPC protocol over HTTP.
+driver:
+  name: quack
+  display-name: DuckDB (Quack)
+  lazy-load: true
+  parent: sql
+  connection-properties:
+    - group:
+        container-style: ["grid", "3fr 1fr"]
+        fields:
+          - merge:
+              - host
+              - placeholder: quack.example.com
+                required: true
+          - merge:
+              - port
+              - placeholder: 9494
+                default: 9494
+    - name: token
+      display-name: Auth token
+      type: password
+      placeholder: ••••••••••••
+      required: true
+      helper-text: The shared secret returned by the DuckDB server's `quack_serve`. Required for authentication.
+    - name: use-ssl
+      display-name: Use a secure connection (HTTPS)
+      type: boolean
+      default: false
+      # Quack itself is always plain HTTP; this is meant for a TLS-terminating
+      # reverse proxy in front of the server. Default off for local dev.
+    - name: trust-store
+      display-name: Trust store (JKS) for HTTPS server certificate
+      type: string
+      required: false
+      placeholder: /etc/ssl/certs/quack.jks
+      helper-text: Path to a JKS trust store containing the CA that signed the reverse proxy's TLS cert. Java reads the JDK cacerts, NOT the OS trust store, so a reverse proxy using a private CA (e.g. Caddy's local CA) needs this. Leave blank to use the JDK default trust store.
+    - name: trust-store-password
+      display-name: Trust store password
+      type: password
+      placeholder: changeit
+      required: false
+    - name: insecure-tls
+      display-name: Skip TLS certificate validation (insecure — dev/test only)
+      type: boolean
+      default: false
+      helper-text: Trust every server certificate. ONLY for local testing behind a self-signed proxy. Never enable in production.
+    - name: schema-filters
+      type: schema-filters
+      display-name: Schemas
+    - cloud-ip-address-info
+    - group:
+        container-style: ["component", "backdrop"]
+        fields:
+        - ssh-tunnel
+    - advanced-options-start
+    - name: session-sql
+      display-name: Session SQL (run on each new connection)
+      type: text
+      required: false
+      placeholder: "SET threads = 8; SET memory_limit = '4GB';"
+      helper-text: Semicolon-separated DuckDB SET statements run once on each new server-side connection (e.g. threads, memory_limit, temp_directory, preserve_insertion_order). See the DuckDB performance guides. The driver pools connections, so these persist for the connection's lifetime.
+    - default-advanced-options
+init:
+  - step: load-namespace
+    namespace: metabase.driver.quack
