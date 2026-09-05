@@ -141,6 +141,8 @@
     :model/MetabotUsedTable
     :model/MetabotPrompt
     :model/OsiAiContext
+    ;; 61+, by table name: migrations create and seed it on every edition, but its model is EE-only
+    :metabot_permissions
     ;; 62+
     :model/Exploration
     :model/ExplorationThread
@@ -152,8 +154,7 @@
     ;; 63+
     :model/McpFeedback]
    (when config/ee-available?
-     [:model/MetabotPermissions
-      :model/MetabotGroupLimit
+     [:model/MetabotGroupLimit
       :model/MetabotInstanceLimit
       :model/Sandbox
       :model/Tenant

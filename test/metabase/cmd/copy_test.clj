@@ -1,11 +1,15 @@
 (ns metabase.cmd.copy-test
   (:require
    [clojure.java.classpath :as classpath]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.namespace.find :as ns.find]
+   [metabase.app-db.data-source :as mdb.data-source]
+   [metabase.app-db.setup :as mdb.setup]
    [metabase.classloader.core :as classloader]
-   [metabase.cmd.copy :as copy]))
+   [metabase.cmd.copy :as copy]
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel sql-for-selecting-instances-from-source-db-test
   (is (= "SELECT * FROM metabase_field ORDER BY id ASC"
@@ -22,6 +26,34 @@
                 (#'copy/model-results-xform :model/Database)
                 [{:id 1, :engine "h2", :details "{:db \"metabase.db\"}"}
                  {:id 2, :engine "postgres", :details "{:db \"metabase\"}"}])))))))
+
+(defn- h2-data-source []
+  (mdb.data-source/raw-connection-string->DataSource
+   (format "jdbc:h2:mem:%s;DB_CLOSE_DELAY=-1" (random-uuid))))
+
+(defn- shutdown! [data-source]
+  (jdbc/execute! {:datasource data-source} ["SHUTDOWN"] {:transaction? false}))
+
+(defn- metabot-permissions [data-source]
+  (jdbc/query {:datasource data-source} ["SELECT * FROM metabot_permissions ORDER BY group_id, perm_type"]))
+
+(deftest copy-metabot-permissions-test
+  (testing "metabot_permissions is copied on every edition, so the target's migration seeds never outlive their groups (#78414)"
+    (let [source (h2-data-source)
+          target (h2-data-source)]
+      (try
+        (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
+        ;; move the source's magic groups off the ids a freshly migrated target seeds
+        (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY FALSE"])
+        (jdbc/execute! {:datasource source} ["UPDATE permissions_group SET id = id + 10 WHERE id > 2"])
+        (doseq [table ["permissions" "data_permissions" "metabot_permissions"]]
+          (jdbc/execute! {:datasource source} [(format "UPDATE %s SET group_id = group_id + 10 WHERE group_id > 2" table)]))
+        (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY TRUE"])
+        (copy/copy! :h2 source :h2 target)
+        (is (= (metabot-permissions source)
+               (metabot-permissions target)))
+        (finally
+          (run! shutdown! [source target]))))))
 
 (def ^:private models-to-exclude
   "Models that should *not* be migrated in `load-from-h2`."
@@ -102,4 +134,5 @@
   (doseq [model (all-model-names)
           :let  [copy-models (set copy/entities)]]
     (is (contains? copy-models model)
-        (format "%s should be added to %s, or to %s" model `copy/entities `models-to-exclude))))
+        (format "%s should be added to %s, or to %s" model `copy/entities `models-to-exclude)))
+  (is (apply distinct? (map t2/table-name copy/entities))))
