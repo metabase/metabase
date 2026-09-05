@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import { definePluginSlot } from "metabase/plugins/slot";
+import { definePluginSlot } from "metabase/plugins";
 
 import type { DataReferenceLibraryItem, DataReferencePaneProps } from "./types";
 
