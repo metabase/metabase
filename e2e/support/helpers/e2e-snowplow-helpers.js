@@ -2,7 +2,11 @@ import { updateSetting } from "e2e/support/helpers";
 
 const SNOWPLOW_URL = "http://localhost:9090";
 const SNOWPLOW_INTERVAL = 100;
-const SNOWPLOW_TIMEOUT = 1000;
+// Snowplow events are POSTed asynchronously and then ingested by snowplow-micro, so a
+// matching event can take a moment to become queryable via `micro/good` — especially on
+// loaded CI runners or with network throttling. A short budget flakes the poll before the
+// event lands; this only affects how long a *failing* assertion waits (matches return early).
+const SNOWPLOW_TIMEOUT = 5000;
 
 export const enableTracking = () => {
   updateSetting("anon-tracking-enabled", true);
