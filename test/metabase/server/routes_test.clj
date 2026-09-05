@@ -25,3 +25,10 @@
                             :headers
                             (get "Location"))
                         "/api/embed/card/token-string/query/csv?"))))
+
+(deftest test-robots-txt
+  (testing "robots.txt disallows all crawlers, so public-facing instances aren't indexed (#73769)"
+    (binding [client/*url-prefix* ""]
+      (let [response (client/client-full-response :get 200 "robots.txt" {})]
+        (is (= "User-agent: *\nDisallow: /\n" (:body response)))
+        (is (str/starts-with? (get-in response [:headers "Content-Type"]) "text/plain"))))))
