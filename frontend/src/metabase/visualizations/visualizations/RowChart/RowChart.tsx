@@ -6,6 +6,7 @@ import { getFontFamilyValue } from "metabase/utils/fonts";
 import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { useCartesianSizeTier } from "metabase/visualizations/visualizations/CartesianChart/use-cartesian-size-tier";
 import {
   getClickData,
   getHoverData,
@@ -88,7 +89,9 @@ const RowChartVisualization = ({
   height: outerHeight,
   getHref,
   hideLegend,
+  sizeTier: sizeTierProp,
 }: VisualizationProps) => {
+  const sizeTier = useCartesianSizeTier(sizeTierProp);
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
   }, []);
@@ -253,7 +256,11 @@ const RowChartVisualization = ({
   const hasLegend = !hideLegend && (series.length > 1 || hasBreakout);
 
   return (
-    <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
+    <RowVisualizationRoot
+      className={className}
+      isQueryBuilder={isQueryBuilder}
+      sizeTier={sizeTier}
+    >
       {hasTitle && (
         <RowLegendCaption
           title={title}
@@ -263,6 +270,8 @@ const RowChartVisualization = ({
           onSelectTitle={canSelectTitle ? openQuestion : undefined}
           width={outerWidth}
           getHref={getHref}
+          sizeTier={sizeTier}
+          titleSize={sizeTier?.titleFontSize}
         />
       )}
       <RowChartLegendLayout

@@ -15,14 +15,23 @@ export const LegendCaptionRoot = styled.div`
 export const LEGEND_LABEL_FONT_SIZE = "0.875rem";
 export const LEGEND_LABEL_FONT_WEIGHT = 700;
 
-export const LegendLabel = styled(BaseLegendLabel)`
+const LEGEND_LABEL_FONT_SIZES = {
+  sm: "0.75rem",
+  md: LEGEND_LABEL_FONT_SIZE,
+} as const;
+
+export type LegendCaptionTitleSize = keyof typeof LEGEND_LABEL_FONT_SIZES;
+
+export const LegendLabel = styled(BaseLegendLabel)<{
+  titleSize?: LegendCaptionTitleSize;
+}>`
   overflow: hidden;
   margin-top: 2px;
   padding: 0.25rem 0 0;
   display: flex;
   flex-direction: row;
   align-items: center;
-  font-size: ${LEGEND_LABEL_FONT_SIZE};
+  font-size: ${({ titleSize = "md" }) => LEGEND_LABEL_FONT_SIZES[titleSize]};
   font-weight: ${LEGEND_LABEL_FONT_WEIGHT};
 `;
 

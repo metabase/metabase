@@ -25,6 +25,7 @@ import type { ColumnSettings, Series } from "metabase-types/api";
 export const LIST_DEFINITION: VisualizationDefinition = {
   identifier: "list",
   iconName: "list",
+  noSizeTier: true,
   getUiName: () => t`List`,
   hidden: true,
 

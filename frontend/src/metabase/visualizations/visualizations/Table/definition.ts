@@ -45,6 +45,7 @@ export const TABLE_DEFINITION = {
   identifier: "table",
   iconName: "table2",
   canSavePng: false,
+  noSizeTier: true,
 
   minSize: getMinSize("table"),
   defaultSize: getDefaultSize("table"),

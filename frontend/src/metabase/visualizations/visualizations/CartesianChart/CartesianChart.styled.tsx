@@ -2,11 +2,13 @@
 import styled from "@emotion/styled";
 
 import { LegendLayout } from "metabase/visualizations/components/legend/LegendLayout";
+import type { DashcardSizeTier } from "metabase/visualizations/lib/dashcard-sizing";
 
-import { getChartPadding } from "./padding";
+import { getChartGap, getChartPadding } from "./padding";
 
 type CartesianChartRootProps = {
   isQueryBuilder?: boolean;
+  sizeTier?: DashcardSizeTier;
 };
 
 export const CartesianChartRoot = styled.div<CartesianChartRootProps>`
@@ -14,7 +16,7 @@ export const CartesianChartRoot = styled.div<CartesianChartRootProps>`
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: ${({ isQueryBuilder }) => (isQueryBuilder ? "0" : "0.325rem")};
+  gap: ${getChartGap};
   overflow: hidden;
 `;
 

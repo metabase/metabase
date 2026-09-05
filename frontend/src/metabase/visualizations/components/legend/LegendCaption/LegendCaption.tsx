@@ -14,6 +14,7 @@ import { LegendActions } from "../LegendActions";
 
 import {
   LegendCaptionRoot,
+  type LegendCaptionTitleSize,
   LegendDescriptionIcon,
   LegendLabel,
   LegendLabelIcon,
@@ -42,6 +43,7 @@ interface LegendCaptionProps {
   hasInfoTooltip?: boolean;
   onSelectTitle?: () => void;
   titleMenuItems?: React.ReactNode;
+  titleSize?: LegendCaptionTitleSize;
   width?: number;
 }
 
@@ -56,6 +58,7 @@ export const LegendCaption = ({
   onSelectTitle,
   width,
   titleMenuItems,
+  titleSize,
 }: LegendCaptionProps) => {
   /*
    * Optimization: lazy computing the href on title focus & mouseenter only.
@@ -86,6 +89,7 @@ export const LegendCaption = ({
 
   const titleElement = (
     <LegendLabel
+      titleSize={titleSize}
       className={cx(
         DashboardS.fullscreenNormalText,
 

@@ -450,6 +450,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     <ChartWithLegend
       className={className}
       aspectRatio={aspectRatio}
+      padding={props.sizeTier ? 0 : undefined}
       legendTitles={legendTitles}
       legendColors={heatMapColors}
       gridSize={gridSize}

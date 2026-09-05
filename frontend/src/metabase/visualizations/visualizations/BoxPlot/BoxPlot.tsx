@@ -12,6 +12,7 @@ import {
   CartesianChartLegendLayout,
   CartesianChartRoot,
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
+import { useCartesianSizeTier } from "metabase/visualizations/visualizations/CartesianChart/use-cartesian-size-tier";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 import {
   extractRemappings,
@@ -40,6 +41,7 @@ function BoxPlotInner({
   isDashboard,
   isEditing,
   isQueryBuilder,
+  sizeTier: sizeTierProp,
   isFullscreen,
   hovered,
   clicked,
@@ -187,9 +189,10 @@ function BoxPlotInner({
   useClickedStateTooltipSync(chartRef.current, clicked);
 
   const hasValidOption = option !== null;
+  const sizeTier = useCartesianSizeTier(sizeTierProp);
 
   return (
-    <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
+    <CartesianChartRoot isQueryBuilder={isQueryBuilder} sizeTier={sizeTier}>
       {showTitle && (
         <LegendCaption
           title={settings["card.title"] ?? card.name}
@@ -205,6 +208,7 @@ function BoxPlotInner({
           }
           width={width}
           titleMenuItems={titleMenuItems}
+          titleSize={sizeTier?.titleFontSize}
         />
       )}
       <CartesianChartLegendLayout
