@@ -82,10 +82,15 @@ describe("scenarios > visualizations > treemap", () => {
 
     cy.log("Overview breadcrumb shows the grand total");
     treemapBreadcrumb().should("contain", "Total");
+    // Leaf labels ("Chickpeas") only render after the treemap finishes its
+    // post-render label-measurement pass and re-lays out its tiles. Waiting for
+    // one guarantees the chart has settled before we drill, so the click lands
+    // on the fully sized group tile instead of empty canvas mid-animation.
     H.echartsContainer()
       .should("contain", "Legumes")
       .and("contain", "Grains")
-      .and("contain", "Nuts");
+      .and("contain", "Nuts")
+      .and("contain", "Chickpeas");
 
     cy.log("Clicking a group drills into it");
     H.ensureChartIsActive();
