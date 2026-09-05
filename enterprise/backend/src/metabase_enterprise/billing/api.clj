@@ -65,6 +65,7 @@
   "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,
    using the embedding token and signed in user's email to fetch the billing information."
   []
+  (api/check-superuser)
   (let [token    (premium-features/premium-embedding-token)
         email    (billing.db/user-email api/*current-user-id*)
         language (i18n/user-locale-string)]
