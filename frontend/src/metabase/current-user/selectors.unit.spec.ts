@@ -1,10 +1,8 @@
+import { reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import {
-  PLUGIN_APPLICATION_PERMISSIONS_SELECTORS,
-  reinitialize,
-} from "./plugin";
+import { PLUGIN_APPLICATION_PERMISSIONS_SELECTORS } from "./plugins";
 import {
   canAccessDataModel,
   getUserAttributes,

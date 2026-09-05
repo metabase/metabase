@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 
-import { reinitializePlugins } from "__support__/plugins";
 import { screen, within } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 
 import type { SetupOpts } from "./constants.spec";
 
@@ -14,7 +14,7 @@ export function addAlertsButtonTests(
   // eslint-disable-next-line metabase/no-literal-metabase-strings -- test description
   describe("alerts button with different Metabase version configurations", () => {
     beforeEach(() => {
-      reinitializePlugins();
+      reinitialize();
     });
 
     // Fix this in EMB-1184, when we can test SDK with API keys

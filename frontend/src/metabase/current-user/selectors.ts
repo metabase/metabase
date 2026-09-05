@@ -4,7 +4,7 @@ import type { State } from "metabase/redux/store";
 import type { User } from "metabase-types/api";
 
 import { currentUserApi } from "./api/current-user";
-import { PLUGIN_APPLICATION_PERMISSIONS_SELECTORS } from "./plugin";
+import { PLUGIN_APPLICATION_PERMISSIONS_SELECTORS } from "./plugins";
 
 const selectCurrentUser: (state: State) => { data?: User } =
   currentUserApi.endpoints.getCurrentUser.select();
