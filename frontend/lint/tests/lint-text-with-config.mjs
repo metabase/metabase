@@ -1,4 +1,3 @@
-// Lints a batch of source snippets with one of the repo's real eslint configs.
 // ESLint's flat-config loader reads the config file with a dynamic import,
 // which jest's module registry cannot service, so the spec runs this as a child process.
 

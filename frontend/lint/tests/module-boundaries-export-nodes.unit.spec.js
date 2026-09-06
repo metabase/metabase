@@ -4,8 +4,6 @@ const path = require("path");
 const REPO_ROOT = path.resolve(__dirname, "../../..");
 const RUNNER = path.join(__dirname, "lint-text-with-config.mjs");
 
-// Both configs are linted as shipped,
-// so removing "export" from either `boundaries/dependency-nodes` fails these tests.
 const CONFIG_FILES = [
   "eslint.config.mjs",
   "eslint.config.module-boundaries.mjs",
