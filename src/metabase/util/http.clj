@@ -175,6 +175,16 @@
             (throw (ex-info "Refusing to connect to a non-permitted network address"
                             {:blocked-address true :policy policy :host host}))))))))
 
+(defn blocked-address-ex?
+  "Whether `e`, or anything that caused it, is [[network-policy-dns-resolver]] refusing an address. The refusal is
+  thrown from inside the connection, so callers may catch it already wrapped -- hence the walk up the cause chain."
+  [e]
+  (loop [^Throwable t e]
+    (cond
+      (nil? t)                       false
+      (:blocked-address (ex-data t)) true
+      :else                          (recur (.getCause t)))))
+
 (def default-network-policy-fn
   "Returns the policy [[request]] applies when a caller names none: the `outbound-allowed-networks` setting.
   Dependency-injected by `metabase.premium-features.settings`, because `util` sits below `premium-features` in the
@@ -336,13 +346,13 @@
    (when (fetchable-url? url network-policy)
      (try
        (let [resp              (get url {:as                 :stream
-                                         ;; the URL is untrusted, so this does not take the deployment default
-                                         :network-policy     :external-only
                                          :redirect-strategy  :none
                                          :socket-timeout     timeout-ms
                                          :connection-timeout timeout-ms
                                          :throw-exceptions   false
                                          :headers            {"User-Agent" user-agent}
+                                         ;; the URL is untrusted, so this defaults to `:external-only` rather than
+                                         ;; to the deployment default; a caller may still name a looser policy
                                          :network-policy     network-policy})
              ctype             (response-content-type resp)
              ^InputStream body (:body resp)]

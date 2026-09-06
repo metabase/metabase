@@ -31,7 +31,7 @@
                                    :connection-timeout connection-timeout-ms
                                    :throw-exceptions   false})
                   (catch Throwable e
-                    (if (:blocked-address (ex-data e))
+                    (if (u.http/blocked-address-ex? e)
                       (throw (ex-info (geojson.settings/invalid-location-msg) {:status-code 400} e))
                       (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400})))))
         ;; only 2xx is a real success — a 3xx redirect isn't followed (`:redirect-strategy :none`), so its

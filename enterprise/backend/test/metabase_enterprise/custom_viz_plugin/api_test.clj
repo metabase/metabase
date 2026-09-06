@@ -1,6 +1,5 @@
 (ns ^:synchronized metabase-enterprise.custom-viz-plugin.api-test
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
@@ -10,6 +9,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -788,7 +788,7 @@
                          (str (mt/user-http-request :crowberto :get 404 (str "ee/custom-viz-plugin/" id "/dev-sse")))))))
         (testing "GET /:id/dev-sse forwards Server-Sent Events from the dev server"
           (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly "http://localhost:5199")
-                                      http/get (fn [_url _opts]
+                                      u.http/get (fn [_url _opts]
                                                  {:headers {:content-type "text/event-stream"}
                                                   :body    (java.io.ByteArrayInputStream.
                                                             (.getBytes "data: hello\n\n" "UTF-8"))})]
@@ -800,7 +800,7 @@
                 (is (str/includes? (str (:body resp)) "data: hello"))))))
         (testing "GET /:id/dev-sse refuses an upstream response that is not an event stream"
           (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly "http://localhost:5199")
-                                      http/get (fn [_url _opts]
+                                      u.http/get (fn [_url _opts]
                                                  {:headers {:content-type "text/html"}
                                                   :body    (java.io.ByteArrayInputStream.
                                                             (.getBytes "<html>internal secrets</html>" "UTF-8"))})]

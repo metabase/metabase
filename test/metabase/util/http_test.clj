@@ -275,14 +275,9 @@
 
 ;;; ------------------------------------------------ request ------------------------------------------------
 
-(defn- blocked-address-ex?
+(def ^:private blocked-address-ex?
   "Whether `e`, or anything that caused it, is the policy resolver's refusal."
-  [e]
-  (loop [^Throwable t e]
-    (cond
-      (nil? t)                       false
-      (:blocked-address (ex-data t)) true
-      :else                          (recur (.getCause t)))))
+  http/blocked-address-ex?)
 
 (defn- addresses [& ips]
   (into-array InetAddress (map #(InetAddress/getByName %) ips)))

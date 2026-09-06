@@ -222,7 +222,7 @@
   [claims config]
   (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
                               (fn [_issuer] test-discovery-doc)
-                              http/post
+                              u.http/post
                               (fn [_url _opts]
                                 {:status 200
                                  :body {:id_token "valid-token"
