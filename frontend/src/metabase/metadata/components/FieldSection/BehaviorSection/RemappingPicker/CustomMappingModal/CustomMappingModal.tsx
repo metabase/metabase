@@ -145,7 +145,7 @@ export const CustomMappingModal = ({
               <Button
                 disabled={hasEmptyValues}
                 type="submit"
-                variant="primary"
+                variant="filled"
               >{t`Save`}</Button>
             </Group>
           </form>
