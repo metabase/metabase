@@ -19,7 +19,6 @@ function transformComputedSettingsForSdk(
   const shouldKeepInternalClickBehavior = extra.enableEntityNavigation;
 
   return _.compose(
-    // remove internal click behaviors unless internal navigation is enabled
     shouldKeepInternalClickBehavior ? _.identity : removeInternalClickBehaviors,
     convertLinkColumnToClickBehavior,
   )(computedSettings);
