@@ -1,0 +1,16 @@
+{
+  "name": "metabase-e2e-playwright",
+  "private": true,
+  "description": "Spike: Playwright port of the Cypress e2e suite. Runs against the same backend, snapshots, and sample instance data as e2e/.",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0",
+    "xlsx": "^0.18.5"
+  }
+}
