@@ -23,7 +23,7 @@ describe("memoize", () => {
     const foo = memoizeClass<fooInner>("bar")(fooInner);
     const f = new foo();
     const x = f.bar();
-    expect(f.bar()).toEqual(x);
+    expect(f.bar()).toBe(x);
   });
 
   it("should use args in cache key", () => {

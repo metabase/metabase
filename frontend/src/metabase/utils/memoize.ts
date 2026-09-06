@@ -1,3 +1,5 @@
+import { weakMapMemoize } from "@reduxjs/toolkit";
+
 type Constructor<T> = new (...args: any[]) => T;
 
 /**
@@ -10,32 +12,14 @@ type Constructor<T> = new (...args: any[]) => T;
  * not build one of these at module scope, where it lives for the life of the
  * tab. See the no-module-level-memoize lint rule.
  */
-export { weakMapMemoize as memoize } from "@reduxjs/toolkit";
-
-function getWithFallback(
-  map: Map<string, any>,
-  key: string,
-  fallback: () => void,
-) {
-  if (map.has(key)) {
-    return map.get(key);
-  } else {
-    const value = fallback();
-    map.set(key, value);
-    return value;
-  }
-}
-
-const memoized = new WeakMap();
-
-const createMap = () => new Map();
+export { weakMapMemoize as memoize };
 
 /**
- * This method implements memoization for class methods
- * It creates a map where class itself, method and all the parameters are used as keys for a nested map
- * map<class, map<method, map<param1, map<param2, map<param3...>>>>>
+ * Memoizes the named methods of a class, per instance.
  *
- * If you use objects as parameters, make sure their references are stable as they will be used as keys
+ * Each method gets its own cache, keyed on the instance first and then on the
+ * arguments. The instance is an object, so its entries are released along with
+ * it. Object arguments are compared by reference, so keep those stable.
  *
  * @param keys - class methods to memoize
  * @returns the same class with memoized methods
@@ -44,39 +28,33 @@ export function memoizeClass<T>(
   ...keys: string[]
 ): (Class: Constructor<T>) => Constructor<T> {
   return (Class: Constructor<T>): Constructor<T> => {
-    const descriptors = Object.getOwnPropertyDescriptors(Class.prototype);
+    for (const key of keys) {
+      const descriptor = Object.getOwnPropertyDescriptor(Class.prototype, key);
 
-    keys.forEach((key) => {
-      // Is targeted method present in Class?
-      if (!(key in descriptors)) {
+      if (descriptor == null) {
         throw new TypeError(`${key} is not a member of class`);
       }
 
-      const descriptor = descriptors[key];
-      const method = descriptor.value;
-      // If we don't get a descriptor.value, it must have a getter (i.e., ES6 class properties)
-      if (!method) {
+      // A getter or an ES6 class property has no descriptor.value.
+      const method: unknown = descriptor.value;
+      if (method == null) {
         throw new TypeError(`Class properties cannot be memoized`);
       }
-      // Method should be a function/method
-      else if (typeof method !== "function") {
+      if (typeof method !== "function") {
         throw new TypeError(`${key} is not a method and cannot be memoized`);
       }
 
-      // Memoize
+      const memoizedMethod = weakMapMemoize((instance: T, ...args: unknown[]) =>
+        method.apply(instance, args),
+      );
+
       Object.defineProperty(Class.prototype, key, {
         ...descriptor,
-        value: function (...args: any[]) {
-          const path = [this, method, args.length, ...args];
-          const last = path.pop();
-          const map = path.reduce(
-            (map, key) => getWithFallback(map, key, createMap),
-            memoized,
-          );
-          return getWithFallback(map, last, () => method.apply(this, args));
+        value: function (this: T, ...args: unknown[]) {
+          return memoizedMethod(this, ...args);
         },
       });
-    });
+    }
 
     return Class;
   };
