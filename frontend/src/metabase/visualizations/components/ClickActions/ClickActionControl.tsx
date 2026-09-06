@@ -4,8 +4,8 @@ import {
   type ClickAction,
   isCustomClickAction,
   isCustomClickActionWithView,
+  isRegularClickAction,
 } from "metabase/visualizations/types";
-import { isRegularClickAction } from "metabase/visualizations/types";
 
 import S from "./ClickActionControl.module.css";
 
@@ -112,7 +112,8 @@ export const ClickActionControl = ({
         <Button
           p="0.5rem"
           mx="-0.5rem"
-          variant="inverse"
+          variant="subtle"
+          color="text-primary"
           classNames={{
             root: S.horizontalButton,
             label: S.label,

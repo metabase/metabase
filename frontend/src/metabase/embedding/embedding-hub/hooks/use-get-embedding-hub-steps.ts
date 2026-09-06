@@ -38,7 +38,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           onClick: () => {
             openEmbedModal({ initialState: {} });
           },
-          variant: "outline",
+          variant: "default",
         },
       ],
     };
@@ -51,7 +51,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           title: t`Connect a database`,
           description: t`Connect your own database or upload a CSV and start working with your real data.`,
           modal: { type: "add-data", initialTab: "db" },
-          variant: "outline",
+          variant: "default",
         },
       ],
     };
@@ -64,7 +64,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           title: t`Create a dashboard`,
           description: t`Automatically generate a dashboard from your data using x-rays.`,
           modal: { type: "xray-dashboard" },
-          variant: "outline",
+          variant: "default",
         },
       ],
     };
@@ -77,7 +77,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           title: t`Configure data permissions and enable tenants`,
           description: t`Set granular permissions for multi-tenancy to control data access. Share dashboards, questions, and models with external users and allow them to create content, while restricting access to internal or other tenants' data.`,
           to: "/admin/embedding/setup-guide/permissions",
-          variant: "outline",
+          variant: "default",
           stepId: "data-permissions-and-enable-tenants",
         },
       ],
@@ -91,7 +91,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           title: t`Configure SSO`,
           description: t`Configure JWT authentication to ensure only authorized users can access your embeds.`,
           to: "/admin/embedding/setup-guide/sso",
-          variant: "outline",
+          variant: "default",
           stepId: "sso-configured",
         },
       ],
@@ -112,7 +112,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
               },
             });
           },
-          variant: "outline",
+          variant: "default",
         },
       ],
     };

@@ -9,7 +9,7 @@ import {
   StorySection,
 } from "metabase/ui/stories/showcase";
 
-import { Button, type ButtonProps } from "./";
+import { Button, type ButtonProps, type ButtonVariant } from "./";
 
 const args = {
   variant: "default",
@@ -23,15 +23,7 @@ const args = {
 
 const argTypes = {
   variant: {
-    options: [
-      "default",
-      "filled",
-      "light",
-      "subtle",
-      "transparent",
-      "outline",
-      "inverse",
-    ],
+    options: ["default", "filled", "light", "subtle", "transparent"],
     control: { type: "inline-radio" },
   },
   color: {
@@ -113,10 +105,8 @@ const GridRowGroup = (args: ButtonProps) => (
 const GridTemplate = (args: ButtonProps) => (
   <Stack>
     <GridRowGroup {...args} variant="filled" />
-    <GridRowGroup {...args} variant="outline" />
     <GridRowGroup {...args} variant="default" />
     <GridRow {...args} variant="subtle" />
-    <GridRow {...args} variant="inverse" />
   </Stack>
 );
 
@@ -138,10 +128,8 @@ const LoadingGridRowGroup = (args: ButtonProps) => (
 const LoadingGridTemplate = (args: ButtonProps) => (
   <Stack>
     <LoadingGridRowGroup {...args} variant="filled" />
-    <LoadingGridRowGroup {...args} variant="outline" />
     <LoadingGridRowGroup {...args} variant="default" />
     <LoadingGridRow {...args} variant="subtle" />
-    <LoadingGridRow {...args} variant="inverse" />
   </Stack>
 );
 
@@ -335,10 +323,13 @@ const matrixStateProps = (
   return {};
 };
 
-const matrixCell = (variant: string, color: MatrixColor, size: MatrixSize) =>
-  `${color === "brand" ? variant : `${variant}-${color}`}/${size}`;
+const matrixCell = (
+  variant: ButtonVariant,
+  color: MatrixColor,
+  size: MatrixSize,
+) => `${color === "brand" ? variant : `${variant}-${color}`}/${size}`;
 
-const matrixJsx = (variant: string, color: MatrixColor) =>
+const matrixJsx = (variant: ButtonVariant, color: MatrixColor) =>
   color === "brand"
     ? `<Button variant="${variant}" />`
     : `<Button variant="${variant}" color="${MATRIX_COLORS[color]}" />`;
@@ -357,7 +348,7 @@ const matrixGridStyle = (columns: number, columnGap = "2rem") =>
 
 interface MatrixSectionProps {
   title: string;
-  variant: string;
+  variant: ButtonVariant;
   color: MatrixColor;
   sizes: readonly MatrixSize[];
 }
@@ -401,7 +392,7 @@ const MatrixSection = ({
 type GroupItemKind = "text" | "icon";
 
 const groupItemCell = (
-  variant: string,
+  variant: ButtonVariant,
   kind: GroupItemKind,
   color: MatrixColor,
   size: MatrixSize,
@@ -409,7 +400,7 @@ const groupItemCell = (
 ) =>
   `${matrixCell(variant, color, size).split("/")[0]}-group-${kind}/${size}/${state}`;
 
-const groupJsx = (variant: string, color: MatrixColor) => {
+const groupJsx = (variant: ButtonVariant, color: MatrixColor) => {
   const props =
     color === "brand"
       ? `variant="${variant}"`
@@ -431,7 +422,7 @@ const GroupSection = ({
   variant,
   color,
 }: {
-  variant: string;
+  variant: ButtonVariant;
   color: MatrixColor;
 }) => (
   <StorySection
@@ -487,7 +478,7 @@ const GroupSection = ({
 
 interface VariantMatrixProps {
   title: string;
-  variant: string;
+  variant: ButtonVariant;
   colors: readonly MatrixColor[];
   sizes?: readonly MatrixSize[];
   groups?: readonly MatrixColor[];
@@ -614,7 +605,7 @@ export const MatrixOnDark = {
 
 interface SectionColumn {
   key: string;
-  variant: string;
+  variant: ButtonVariant;
   size: MatrixSize;
   colors: readonly MatrixColor[];
 }

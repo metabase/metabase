@@ -24,6 +24,7 @@ import {
   getStorageNotProvisionedSubtitle,
 } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/AddDataModalEmptyStates";
 import { useSelector } from "metabase/redux";
+import type { ButtonProps } from "metabase/ui";
 import {
   Alert,
   Anchor,
@@ -288,7 +289,7 @@ const ConnectionDetailsButton = ({
 }: {
   label: string;
   onClick: () => void;
-  variant?: string;
+  variant?: ButtonProps["variant"];
   w?: string | number;
 }) => (
   <Button

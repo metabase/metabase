@@ -10,8 +10,19 @@ export { buttonOverrides } from "./Button.config";
 
 export type ButtonSize = "sm" | "md" | "lg" | "compact-sm" | "compact-md";
 
-export type ButtonProps = Omit<MantineButtonProps, "size"> & {
+export type ButtonVariant =
+  | "default"
+  | "filled"
+  | "light"
+  | "subtle"
+  | "transparent"
+  | "on-dark-primary"
+  | "on-dark-secondary"
+  | "visualizer";
+
+export type ButtonProps = Omit<MantineButtonProps, "size" | "variant"> & {
   size?: ButtonSize;
+  variant?: ButtonVariant;
   animate?: boolean;
   highlightOnHover?: boolean;
   type?: "button" | "submit" | "reset";
