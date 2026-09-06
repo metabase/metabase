@@ -16,7 +16,7 @@ import {
   SEGMENT_LABEL_MARGIN,
   START_ANGLE,
 } from "./constants";
-import type { Card, Data, GaugeLabelData, Position } from "./types";
+import type { Card, Data, GaugeLabelData, GaugeSegment, Position } from "./types";
 import {
   calculateRelativeValueAngle,
   calculateSegmentLabelPosition,
@@ -26,6 +26,15 @@ import {
   populateDefaultColumnSettings,
   removeDuplicateElements,
 } from "./utils";
+
+function getDefaultSegments(value: number, getColor: ColorGetter): GaugeSegment[] {
+  const v = value !== 0 ? value : 100;
+  return [
+    { min: 0, max: v / 2, color: getColor("error"), label: "" },
+    { min: v / 2, max: v, color: getColor("warning"), label: "" },
+    { min: v, max: v * 2, color: getColor("success"), label: "" },
+  ];
+}
 
 export interface GaugeContainerProps {
   card: Card;
@@ -45,7 +54,15 @@ export default function GaugeContainer({
   const columnSettings =
     settings.column_settings &&
     populateDefaultColumnSettings(Object.values(settings.column_settings)[0]);
-  const segments = [...settings["gauge.segments"]]
+
+  const value = data.rows[0][0];
+
+  const rawSegments = settings["gauge.segments"];
+  const segments = (
+    rawSegments && rawSegments.length > 0
+      ? [...rawSegments]
+      : getDefaultSegments(typeof value === "number" ? value : 100, getColor)
+  )
     .sort(gaugeSorter)
     .map(fixSwappedMinMax);
 
@@ -56,8 +73,6 @@ export default function GaugeContainer({
     CHART_WIDTH / 2,
     GAUGE_OUTER_RADIUS + CHART_VERTICAL_MARGIN,
   ];
-
-  const value = data.rows[0][0];
 
   const valueFormatter = (value: number) => {
     return formatNumber(value, columnSettings);
