@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupParameterValuesEndpoints } from "__support__/server-mocks";
+import {
+  setupParameterSearchValuesEndpoint,
+  setupParameterValuesEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockParameter,
@@ -11,7 +14,7 @@ import {
   FieldValuesWidget,
   type IFieldValuesWidgetProps,
 } from "./FieldValuesWidget";
-import { state } from "./testMocks.spec";
+import { SEARCHABLE_FK_FIELD_ID, metadata, state } from "./testMocks.spec";
 
 const setup = (props: Partial<IFieldValuesWidgetProps> = {}) => {
   const onChange = jest.fn();
@@ -127,6 +130,52 @@ describe("FieldValuesWidget", () => {
       await userEvent.keyboard("{enter}");
 
       expect(onChange).toHaveBeenLastCalledWith(["Gadget"]);
+    });
+  });
+
+  describe("search", () => {
+    it("restores the full list instead of leaving it empty when the search box is cleared (metabase#78096)", async () => {
+      setupParameterValuesEndpoints(
+        createMockParameterValues({
+          values: [["Gadget"], ["Gizmo"], ["Widget"]],
+          has_more_values: true,
+        }),
+      );
+      setupParameterSearchValuesEndpoint(
+        "Gi",
+        createMockParameterValues({
+          values: [["Gizmo"]],
+          has_more_values: true,
+        }),
+      );
+
+      const searchableField = metadata.field(SEARCHABLE_FK_FIELD_ID);
+      const fields = searchableField ? [searchableField] : [];
+
+      setup({
+        multi: true,
+        placeholder: "Value",
+        fields,
+        // canSearchParameterValues resolves its field list from
+        // `parameter.fields` (a UiParameter concept), not from the widget's
+        // own `fields` prop -- both need to point at the searchable field.
+        parameter: {
+          ...createMockParameter({ values_query_type: "search" }),
+          fields,
+        } as IFieldValuesWidgetProps["parameter"],
+      });
+
+      const input = await screen.findByRole("combobox");
+      await userEvent.click(input);
+      await userEvent.type(input, "Gi");
+
+      expect(await screen.findByText("Gizmo")).toBeInTheDocument();
+      expect(screen.queryByText("Gadget")).not.toBeInTheDocument();
+
+      await userEvent.clear(input);
+
+      expect(await screen.findByText("Gadget")).toBeInTheDocument();
+      expect(await screen.findByText("Widget")).toBeInTheDocument();
     });
   });
 
