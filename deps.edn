@@ -662,6 +662,7 @@
                                  :implicit-dependencies
                                  ;; too many false positives for now
                                  :unused-ret-vals
+                                 :unused-ret-vals-in-try
                                  ;; hard to clear on for metabase.util.match macros, and disabling the linter just
                                  ;; there doesn't seem to work
                                  :unused-meta-on-macro
