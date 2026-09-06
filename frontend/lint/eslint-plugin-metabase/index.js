@@ -26,5 +26,6 @@ module.exports = {
     "no-unjustified-type-casts": require("./rules/no-unjustified-type-casts"),
     "valid-theme-tokens": require("./rules/valid-theme-tokens"),
     "no-module-level-memoize": require("./rules/no-module-level-memoize"),
+    "no-direct-memoize-import": require("./rules/no-direct-memoize-import"),
   },
 };

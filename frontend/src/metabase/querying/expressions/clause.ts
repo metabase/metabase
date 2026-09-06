@@ -1,6 +1,5 @@
-import _ from "underscore";
-
 import { hasRequiredFeature } from "metabase/databases";
+import { memoize } from "metabase/utils/memoize";
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import {
@@ -63,25 +62,22 @@ export function getMBQLName(
 // The cache is keyed on the expression mode, of which there are four, so it
 // cannot grow with anything the user does.
 // eslint-disable-next-line metabase/no-module-level-memoize
-export const clausesForMode = _.memoize(
-  (expressionMode: Lib.ExpressionMode) => {
-    const base =
-      expressionMode === "aggregation"
-        ? AGGREGATION_FUNCTIONS
-        : EXPRESSION_FUNCTIONS;
+export const clausesForMode = memoize((expressionMode: Lib.ExpressionMode) => {
+  const base =
+    expressionMode === "aggregation"
+      ? AGGREGATION_FUNCTIONS
+      : EXPRESSION_FUNCTIONS;
 
-    return Object.keys(base)
-      .map(getClauseDefinition)
-      .filter(isNotNull)
-      .filter(function excludeOffsetInFilterExpressions(clause) {
-        const isOffset = clause.name === "offset";
-        const isFilterExpression = expressionMode === "filter";
-        return !isOffset || !isFilterExpression;
-      })
-      .sort((a, b) => a.name.localeCompare(b.name));
-  },
-  (expressionMode) => expressionMode,
-);
+  return Object.keys(base)
+    .map(getClauseDefinition)
+    .filter(isNotNull)
+    .filter(function excludeOffsetInFilterExpressions(clause) {
+      const isOffset = clause.name === "offset";
+      const isFilterExpression = expressionMode === "filter";
+      return !isOffset || !isFilterExpression;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+});
 
 export function getSupportedClauses({
   expressionMode,

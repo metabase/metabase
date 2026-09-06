@@ -3,33 +3,23 @@
  * lives for the life of the tab.
  */
 
-const UNDERSCORE_MESSAGE = [
-  "underscore's memoize never evicts and never releases: its cache is a plain",
-  "object on the returned function. At module scope that cache lives for the",
-  "life of the tab, and the key strings are retained with it.",
-  "Give the cache a lifetime that matches the work: a Map created per call, a",
-  "WeakMap keyed on a long-lived object, or a cache built inside the component",
-  "or instance that uses it.",
+const HOUSE_MEMOIZE = "metabase/utils/memoize";
+
+const MESSAGE = [
+  "A memoize built at module scope lives for the life of the tab.",
+  "It releases an entry once that entry's object arguments are gone, so a cache",
+  "keyed only on strings or numbers never releases at all.",
+  "Give the cache a lifetime that matches the work: build it inside the",
+  "function, component or instance that uses it, or key a WeakMap on the",
+  "long-lived object the result belongs to.",
 ].join(" ");
 
-const UTIL_MESSAGE = [
-  "memoize from metabase/utils/memoize roots its WeakMap on the function it",
-  "wraps, so it only releases once that function does. At module scope the",
-  "function lives for the life of the tab, and the nested Maps hold every",
-  "argument ever passed.",
-  "It is safe inside a function, a component render, or a constructor, where a",
-  "fresh wrapper is created and released with its owner.",
-].join(" ");
-
-const UNDERSCORE = "underscore";
-const MEMOIZE_UTIL = "metabase/utils/memoize";
-
-function isMemoizeUtil(source, filename) {
-  if (source === MEMOIZE_UTIL) {
+function isHouseMemoize(source, filename) {
+  if (source === HOUSE_MEMOIZE) {
     return true;
   }
 
-  // The util's own neighbours import it relatively.
+  // The helper's own neighbours import it relatively.
   return (
     /^\.{1,2}\/memoize$/.test(source) &&
     filename.split("\\").join("/").includes("/metabase/utils/")
@@ -56,68 +46,34 @@ module.exports = {
     },
     schema: [],
     messages: {
-      noModuleLevelUnderscoreMemoize: UNDERSCORE_MESSAGE,
-      noModuleLevelUtilMemoize: UTIL_MESSAGE,
+      noModuleLevelMemoize: MESSAGE,
     },
   },
   create(context) {
-    // Local names bound to a memoize we care about, mapped to the messageId
-    // that explains why that one is a problem.
-    const memoizeNames = new Map();
-    // Names bound to the underscore namespace, usually `_`.
-    const namespaceImports = new Set();
-
-    function reportIfModuleLevel(node, messageId) {
-      if (runsAtModuleScope(context.sourceCode.getScope(node))) {
-        context.report({ node, messageId });
-      }
-    }
+    const memoizeNames = new Set();
 
     return {
       ImportDeclaration(node) {
-        const source = node.source.value;
-        const isUnderscore = source === UNDERSCORE;
-        const isUtil = isMemoizeUtil(source, context.filename);
-
-        if (!isUnderscore && !isUtil) {
+        if (!isHouseMemoize(node.source.value, context.filename)) {
           return;
         }
-
-        const messageId = isUnderscore
-          ? "noModuleLevelUnderscoreMemoize"
-          : "noModuleLevelUtilMemoize";
 
         for (const specifier of node.specifiers) {
           if (
             specifier.type === "ImportSpecifier" &&
             specifier.imported.name === "memoize"
           ) {
-            memoizeNames.set(specifier.local.name, messageId);
-          } else if (
-            isUnderscore &&
-            (specifier.type === "ImportDefaultSpecifier" ||
-              specifier.type === "ImportNamespaceSpecifier")
-          ) {
-            namespaceImports.add(specifier.local.name);
+            memoizeNames.add(specifier.local.name);
           }
         }
       },
 
       "CallExpression > Identifier.callee"(node) {
-        const messageId = memoizeNames.get(node.name);
-        if (messageId != null) {
-          reportIfModuleLevel(node, messageId);
-        }
-      },
-
-      "CallExpression > MemberExpression.callee"(node) {
         if (
-          node.object.type === "Identifier" &&
-          namespaceImports.has(node.object.name) &&
-          node.property.type === "Identifier" &&
-          node.property.name === "memoize"
+          memoizeNames.has(node.name) &&
+          runsAtModuleScope(context.sourceCode.getScope(node))
         ) {
-          reportIfModuleLevel(node, "noModuleLevelUnderscoreMemoize");
+          context.report({ node, messageId: "noModuleLevelMemoize" });
         }
       },
     };

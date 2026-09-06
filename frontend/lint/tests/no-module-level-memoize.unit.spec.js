@@ -3,17 +3,14 @@ import { RuleTester } from "eslint";
 import rule from "../eslint-plugin-metabase/rules/no-module-level-memoize";
 
 const ruleTester = new RuleTester({
-  languageOptions: {
-    ecmaVersion: 2022,
-    sourceType: "module",
-    parserOptions: { ecmaFeatures: { jsx: false } },
-  },
+  languageOptions: { ecmaVersion: 2022, sourceType: "module" },
 });
 
-const error = { messageId: "noModuleLevelUnderscoreMemoize" };
-const utilError = { messageId: "noModuleLevelUtilMemoize" };
-const UTIL_FILE = "/repo/frontend/src/metabase/utils/thing.ts";
+const error = { messageId: "noModuleLevelMemoize" };
 const FILE = "/repo/frontend/src/metabase/thing/new-file.ts";
+const UTIL_NEIGHBOUR = "/repo/frontend/src/metabase/utils/thing.ts";
+
+const IMPORT = 'import { memoize } from "metabase/utils/memoize";';
 
 ruleTester.run("no-module-level-memoize", rule, {
   valid: [
@@ -21,9 +18,9 @@ ruleTester.run("no-module-level-memoize", rule, {
       name: "inside a plain function",
       filename: FILE,
       code: `
-        import _ from "underscore";
+        ${IMPORT}
         export function build(rows) {
-          const format = _.memoize((value) => String(value));
+          const format = memoize((value) => String(value));
           return rows.map(format);
         }
       `,
@@ -32,10 +29,10 @@ ruleTester.run("no-module-level-memoize", rule, {
       name: "inside a useMemo callback",
       filename: FILE,
       code: `
-        import _ from "underscore";
+        ${IMPORT}
         import { useMemo } from "react";
         export function useThing(validate) {
-          return useMemo(() => ({ validate: _.memoize(validate) }), [validate]);
+          return useMemo(() => ({ validate: memoize(validate) }), [validate]);
         }
       `,
     },
@@ -43,9 +40,9 @@ ruleTester.run("no-module-level-memoize", rule, {
       name: "a class field initializer is per instance",
       filename: FILE,
       code: `
-        import _ from "underscore";
+        ${IMPORT}
         export class Question {
-          getParameters = _.memoize(() => []);
+          getParameters = memoize(() => []);
         }
       `,
     },
@@ -53,10 +50,10 @@ ruleTester.run("no-module-level-memoize", rule, {
       name: "inside a constructor",
       filename: FILE,
       code: `
-        import _ from "underscore";
+        ${IMPORT}
         export class Table {
           constructor() {
-            this.fieldsLookup = _.memoize(this.fieldsLookup);
+            this.fieldsLookup = memoize(this.fieldsLookup);
           }
         }
       `,
@@ -65,18 +62,8 @@ ruleTester.run("no-module-level-memoize", rule, {
       name: "inside an arrow returned by a factory",
       filename: FILE,
       code: `
-        import { memoize } from "underscore";
+        ${IMPORT}
         export const createFormatter = () => memoize((value) => String(value));
-      `,
-    },
-    {
-      name: "our own util inside a function",
-      filename: FILE,
-      code: `
-        import { memoize } from "metabase/utils/memoize";
-        export function build() {
-          return memoize((x) => x);
-        }
       `,
     },
     {
@@ -96,14 +83,6 @@ ruleTester.run("no-module-level-memoize", rule, {
       `,
     },
     {
-      name: "other underscore helpers at module scope",
-      filename: FILE,
-      code: `
-        import _ from "underscore";
-        export const picked = _.pick({ a: 1 }, "a");
-      `,
-    },
-    {
       name: "an unrelated local named memoize",
       filename: FILE,
       code: `
@@ -114,67 +93,20 @@ ruleTester.run("no-module-level-memoize", rule, {
   ],
   invalid: [
     {
-      name: "our own util at module scope",
+      name: "module scope",
       filename: FILE,
       code: `
-        import { memoize } from "metabase/utils/memoize";
-        export const f = memoize((x) => x);
-      `,
-      errors: [utilError],
-    },
-    {
-      name: "our own util imported relatively from inside utils",
-      filename: UTIL_FILE,
-      code: `
-        import { memoize } from "./memoize";
-        export const f = memoize((x) => x);
-      `,
-      errors: [utilError],
-    },
-    {
-      name: "both sources in one file",
-      filename: FILE,
-      code: `
-        import _ from "underscore";
-        import { memoize } from "metabase/utils/memoize";
-        export const f = _.memoize((x) => x);
-        export const g = memoize((y) => y);
-      `,
-      errors: [error, utilError],
-    },
-    {
-      name: "module scope namespace call",
-      filename: FILE,
-      code: `
-        import _ from "underscore";
-        export const f = _.memoize((x) => x);
-      `,
-      errors: [error],
-    },
-    {
-      name: "module scope named import",
-      filename: FILE,
-      code: `
-        import { memoize } from "underscore";
+        ${IMPORT}
         export const f = memoize((x) => x);
       `,
       errors: [error],
     },
     {
-      name: "module scope renamed named import",
+      name: "module scope with a renamed import",
       filename: FILE,
       code: `
-        import { memoize as underscoreMemoize } from "underscore";
-        export const f = underscoreMemoize((x) => x);
-      `,
-      errors: [error],
-    },
-    {
-      name: "module scope renamed namespace import",
-      filename: FILE,
-      code: `
-        import underscore from "underscore";
-        export const f = underscore.memoize((x) => x);
+        import { memoize as cache } from "metabase/utils/memoize";
+        export const f = cache((x) => x);
       `,
       errors: [error],
     },
@@ -182,10 +114,19 @@ ruleTester.run("no-module-level-memoize", rule, {
       name: "module scope inside an object literal",
       filename: FILE,
       code: `
-        import _ from "underscore";
+        ${IMPORT}
         export const definition = {
-          getValue: _.memoize((series) => series),
+          getValue: memoize((series) => series),
         };
+      `,
+      errors: [error],
+    },
+    {
+      name: "imported relatively from inside utils",
+      filename: UTIL_NEIGHBOUR,
+      code: `
+        import { memoize } from "./memoize";
+        export const f = memoize((x) => x);
       `,
       errors: [error],
     },
@@ -193,9 +134,9 @@ ruleTester.run("no-module-level-memoize", rule, {
       name: "every module scope call is reported",
       filename: FILE,
       code: `
-        import _ from "underscore";
-        export const f = _.memoize((x) => x);
-        export const g = _.memoize((y) => y);
+        ${IMPORT}
+        export const f = memoize((x) => x);
+        export const g = memoize((y) => y);
       `,
       errors: [error, error],
     },

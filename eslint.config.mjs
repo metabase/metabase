@@ -333,6 +333,7 @@ const configs = [
       "metabase/no-oss-reinitialize-import": "error",
       "metabase/no-analytics-import-outside-analytics-files": "error",
       "metabase/no-module-level-memoize": "error",
+      "metabase/no-direct-memoize-import": "error",
 
       "depend/ban-dependencies": [
         "error",
