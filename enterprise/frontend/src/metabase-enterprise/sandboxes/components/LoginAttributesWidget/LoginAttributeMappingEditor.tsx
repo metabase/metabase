@@ -176,7 +176,6 @@ export const LoginAttributeMappingEditor = ({
       })}
       <Button
         variant="light"
-        size="sm"
         leftSection={<Icon name="add" />}
         onClick={() => {
           handleChange(addEntry(entries));
