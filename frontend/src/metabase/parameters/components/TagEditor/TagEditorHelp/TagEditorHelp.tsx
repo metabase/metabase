@@ -208,6 +208,7 @@ const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
       {setDatasetQuery && (
         <Button
           className={CS.mt1}
+          size="sm"
           onClick={() => setDatasetQuery(datasetQuery, true)}
         >
           {t`Try it`}

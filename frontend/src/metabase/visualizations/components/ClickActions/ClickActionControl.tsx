@@ -99,7 +99,7 @@ export const ClickActionControl = ({
     case "formatting":
       return (
         <Tooltip label={action.tooltip}>
-          <Button variant="outline" onClick={handleClick}>
+          <Button variant="outline" size="sm" onClick={handleClick}>
             {typeof action.icon === "string" && (
               <Icon size={16} name={action.icon} />
             )}
