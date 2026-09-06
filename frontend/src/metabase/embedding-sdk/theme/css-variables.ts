@@ -43,8 +43,8 @@ export function getMetabaseSdkCssVariables({
   `;
 }
 
-// `--mb-color-bg-sdk-question-toolbar` is declared by both halves.
-// The dynamic colors come last, so its value is the one derived from the palette.
+// getThemeSpecificCssVariables and getDynamicCssVariables both declare --mb-color-bg-sdk-question-toolbar,
+// and the later declaration wins, so this order takes the value derived from the palette.
 export const getMetabaseThemeCssVariables = (theme: MantineTheme) => css`
   ${getThemeSpecificCssVariables(theme)}
   ${getDynamicCssVariables(theme)}

@@ -33,11 +33,11 @@ const createTheme = (
 
 const TOOLBAR_CSS_VARIABLE = "--mb-color-bg-sdk-question-toolbar";
 
-// The color the light dynamic config derives from a white background.
+// getDynamicCssVariables darkens the white background from LIGHT_COLORS to get this.
 const DERIVED_TOOLBAR_COLOR = "rgb(245, 245, 245)";
 
 describe("getThemeSpecificCssVariables", () => {
-  it("returns the correct CSS variables", () => {
+  it("returns a CSS variable for each theme option that is set", () => {
     const theme = createTheme(LIGHT_COLORS, {
       dashboard: {
         backgroundColor: "red",
