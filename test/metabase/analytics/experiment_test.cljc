@@ -16,7 +16,9 @@
     (-observe! [_ metric labels amount]
       (swap! calls conj {:op :observe! :metric metric :labels labels :amount amount}))
     (-clear! [_ metric]
-      (swap! calls conj {:op :clear! :metric metric}))))
+      (swap! calls conj {:op :clear! :metric metric}))
+    (-remove-series! [_ metric labels]
+      (swap! calls conj {:op :remove-series! :metric metric :labels labels}))))
 
 (defn- do-with-test-reporter! [f]
   (let [calls             (atom [])
