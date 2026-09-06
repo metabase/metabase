@@ -122,9 +122,7 @@ export const BugReportModal = ({
                 <Text>{t`Diagnostic info may contain sensitive data.`}</Text>
               </Box>
               <FormSubmitButton
-                variant="outline"
                 label={c("This is a verb, not a noun").t`Download`}
-                color="text-primary"
                 my="sm"
               />
             </Flex>

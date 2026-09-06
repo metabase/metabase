@@ -44,7 +44,7 @@ export const TestJwtStep = () => {
       </Text>
 
       <Group justify="flex-end">
-        <Button variant="outline" onClick={() => setShowTroubleshooting(true)}>
+        <Button onClick={() => setShowTroubleshooting(true)}>
           {t`No, I couldn't log in`}
         </Button>
 
@@ -113,7 +113,7 @@ const SsoTroubleshootingView = ({ onDone }: { onDone: () => void }) => {
       </Stack>
 
       <Group justify="flex-end">
-        <Button component="a" href={helpUrl} target="_blank" variant="outline">
+        <Button component="a" href={helpUrl} target="_blank">
           {t`Contact customer support`}
         </Button>
 
