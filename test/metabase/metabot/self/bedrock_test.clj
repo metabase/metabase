@@ -21,6 +21,8 @@
    {:id "openai.gpt-5.5" :object "model" :status "available"}
    {:id "anthropic.claude-haiku-4-5" :object "model" :status "available"}
    {:id "openai.gpt-oss-120b" :object "model" :status "available"}
+   {:id "openai.gpt-5.999-example" :object "model" :status "available"}
+   {:id "anthropic.claude-example-future" :object "model" :status "available"}
    {:id "deepseek.v3.2" :object "model" :status "available"}
    {:id "anthropic.claude-opus-4-8" :object "model" :status "available"}
    {:id "anthropic.claude-fable-5" :object "model" :status "available"}
@@ -210,6 +212,24 @@
             body))
     (testing "temperature is omitted for openai.-prefixed reasoning models"
       (is (not (contains? body :temperature))))))
+
+(deftest non-whitelisted-model-dispatch-test
+  (doseq [[model path] [["openai.gpt-5.999-example" "/openai/v1/responses"]
+                        ["anthropic.claude-example-future" "/anthropic/v1/messages"]]]
+    (testing model
+      (is (not (contains? bedrock/supported-models model)))
+      (let [req  (captured-raw-request! {:model       model
+                                       :input       [{:role :user :content "hi"}]
+                                       :temperature 0.3
+                                       :reasoning?  true
+                                       :fast?       true})
+            body (json/decode+kw (:body req))]
+        (is (= (str "https://bedrock-mantle.us-east-1.api.aws" path) (:url req)))
+        (is (= model (:model body)))
+        (is (true? (:stream body)))
+        (is (not-any? #(contains? body %) [:cache_control :thinking :reasoning :include :speed]))
+        (when (str/starts-with? model "openai.")
+          (is (not (contains? body :temperature))))))))
 
 (defn- captured-body!
   "The decoded request body `bedrock-raw` would send for `opts`, with a stock user message."
