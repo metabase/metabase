@@ -1,23 +1,10 @@
 import type { ComponentType } from "react";
-import _ from "underscore";
 
 import {
-  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
-  isEmbeddingSdk,
-} from "metabase/embedding-sdk/config";
-import {
-  convertLinkColumnToClickBehavior,
-  removeInternalClickBehaviors,
-} from "metabase/embedding-sdk/lib/links";
-import {
   type ChartSettingColorRangeProps,
-  type ComputedVisualizationSettings,
-  type SettingsExtra,
   registerSettingWidgets,
   registerVisualization,
-  setComputedSettingsTransform,
   setDefaultVisualization,
-  setTooltipRootProvider,
 } from "metabase/viz-core";
 
 import { ChartNestedSettingColumns } from "./components/settings/ChartNestedSettingColumns";
@@ -224,35 +211,8 @@ function registerVisualizationSettingWidgets() {
   });
 }
 
-function transformComputedSettingsForSdk(
-  computedSettings: ComputedVisualizationSettings,
-  extra: SettingsExtra,
-): ComputedVisualizationSettings {
-  if (!isEmbeddingSdk()) {
-    return computedSettings;
-  }
-
-  const shouldKeepInternalClickBehavior = extra.enableEntityNavigation;
-
-  return _.compose(
-    // remove internal click behaviors unless internal navigation is enabled
-    shouldKeepInternalClickBehavior ? _.identity : removeInternalClickBehaviors,
-    convertLinkColumnToClickBehavior,
-  )(computedSettings);
-}
-
-function registerSdkAwareBehaviors() {
-  setComputedSettingsTransform(transformComputedSettingsForSdk);
-  setTooltipRootProvider(() =>
-    isEmbeddingSdk()
-      ? document.getElementById(EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID)
-      : document.body,
-  );
-}
-
 export function registerVisualizations() {
   registerVisualizationComponents();
   registerVisualizationSettingWidgets();
   registerJsxFormatting();
-  registerSdkAwareBehaviors();
 }

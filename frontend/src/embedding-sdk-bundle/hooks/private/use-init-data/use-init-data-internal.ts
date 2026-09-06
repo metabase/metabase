@@ -6,6 +6,7 @@ import {
   ensureMetabaseProviderPropsStore,
   useMetabaseProviderPropsStore,
 } from "embedding-sdk-bundle/lib/provider-props-store";
+import { registerSdkVisualizationBehaviors } from "embedding-sdk-bundle/lib/register-sdk-visualization-behaviors";
 import { initAuth } from "embedding-sdk-bundle/store/auth";
 import { initGuestEmbed } from "embedding-sdk-bundle/store/guest-embed";
 import {
@@ -49,6 +50,9 @@ const sdkResponseErrorHandler = ({
 const registerVisualizationsOnce = _.once(registerVisualizations);
 const registerDashboardVisualizationsOnce = _.once(
   registerDashboardVisualizations,
+);
+const registerSdkVisualizationBehaviorsOnce = _.once(
+  registerSdkVisualizationBehaviors,
 );
 
 // Install the SDK's request-client header strategy once; re-renders keep the
@@ -168,5 +172,6 @@ export const useInitDataInternal = ({
   useMount(function registerVisualizations() {
     registerVisualizationsOnce();
     registerDashboardVisualizationsOnce();
+    registerSdkVisualizationBehaviorsOnce();
   });
 };
