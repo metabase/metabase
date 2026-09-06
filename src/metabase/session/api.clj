@@ -382,7 +382,16 @@
                       [:provider/support-access-grant
                        :provider/emailed-secret-password-reset]
                       {:token token})]
-    {:valid (:success? auth-result)}))
+    ;; A deactivated user must not be shown the password-reset form even with an
+    ;; otherwise-valid token. `authenticate` only validates the token; the
+    ;; active-user check happens later in the login flow (see `create-session!`
+    ;; in metabase.auth-identity.provider), so `reset_password` would reject them
+    ;; with a misleading "Invalid reset token". Report the token as invalid up
+    ;; front when it belongs to a deactivated account -- this reveals no account
+    ;; state, since the response is identical to that for any invalid token.
+    {:valid (boolean (and (:success? auth-result)
+                          (when-let [user-id (:user-id auth-result)]
+                            (t2/select-one-fn :is_active [:model/User :is_active] :id user-id))))}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

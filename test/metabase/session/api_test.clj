@@ -539,7 +539,16 @@
         (t2/update! :model/AuthIdentity (:id ai)
                     {:credentials (assoc (:credentials ai) :expires_at (java.time.Instant/ofEpochMilli 0))})
         (is (= {:valid false}
-               (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
+               (mt/client :get 200 "session/password_reset_token_valid", :token token)))))
+    (testing "Check that a valid, unexpired token for a deactivated user returns false (#77560)"
+      ;; A deactivated user should never be offered the reset form: reset_password
+      ;; would later fail in the login flow and report a misleading "Invalid reset
+      ;; token", so the token-validity endpoint must report invalid up front.
+      (mt/with-temp [:model/User {user-id :id} {:is_active false}]
+        (let [token (str user-id "_" (random-uuid))]
+          (t2/update! :model/User user-id {:reset_token token, :reset_triggered (dec (System/currentTimeMillis))})
+          (is (= {:valid false}
+                 (mt/client :get 200 "session/password_reset_token_valid", :token token))))))))
 
 (deftest reset-token-ttl-hours-test
   (testing "Test reset-token-ttl-hours-test"
