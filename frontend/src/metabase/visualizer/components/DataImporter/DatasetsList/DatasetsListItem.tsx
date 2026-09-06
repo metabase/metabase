@@ -56,7 +56,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
           )}
         </Box>
       }
-      style={{ flex: 0, paddingLeft: 8, paddingRight: 8 }}
+      style={{ flex: 0, minHeight: 32, paddingLeft: 8, paddingRight: 8 }}
     >
       <Ellipsified style={{ height: 17 }}>{item.name}</Ellipsified>
     </Button>

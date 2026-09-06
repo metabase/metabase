@@ -93,6 +93,7 @@ export const BugReportModal = ({
                 <Button
                   variant="transparent"
                   size="compact-md"
+                  miw="fit-content"
                   onClick={() => setIsDetailsVisible(!isDetailsVisible)}
                 >
                   {isDetailsVisible ? t`Done` : t`Edit`}
