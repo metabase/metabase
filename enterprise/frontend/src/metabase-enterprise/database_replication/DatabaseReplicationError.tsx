@@ -25,7 +25,6 @@ export const DatabaseReplicationError = ({
           {showMetabaseLinks && (
             <Button
               component={ExternalLink}
-              variant="outline"
               rightSection={<Icon name="external" />}
               role="link"
               href="https://www.metabase.com/docs/latest/"

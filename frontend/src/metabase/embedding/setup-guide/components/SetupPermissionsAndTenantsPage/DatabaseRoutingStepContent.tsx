@@ -31,7 +31,6 @@ export const DatabaseRoutingStepContent = () => {
             <Button
               component={ExternalLink}
               href={docsUrl}
-              variant="outline"
               rightSection={<Icon name="external" size={16} />}
               mt="sm"
             >

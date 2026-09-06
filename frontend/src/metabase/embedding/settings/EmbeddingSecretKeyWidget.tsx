@@ -58,7 +58,6 @@ export const EmbeddingSecretKeyWidget = () => {
           {embeddingSecretKey ? (
             <>
               <Button
-                variant="outline"
                 size="lg"
                 onClick={openModal}
                 style={{ flexShrink: 0 }}
