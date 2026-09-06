@@ -93,8 +93,6 @@ export const BugReportModal = ({
                 <Button
                   variant="transparent"
                   size="compact-md"
-                  fz="lg"
-                  miw="fit-content"
                   onClick={() => setIsDetailsVisible(!isDetailsVisible)}
                 >
                   {isDetailsVisible ? t`Done` : t`Edit`}
@@ -127,8 +125,6 @@ export const BugReportModal = ({
                 label={c("This is a verb, not a noun").t`Download`}
                 color="text-primary"
                 my="sm"
-                px="xl"
-                radius="sm"
               />
             </Flex>
           </Form>

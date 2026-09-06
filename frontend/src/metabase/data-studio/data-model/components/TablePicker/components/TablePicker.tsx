@@ -125,6 +125,7 @@ export function TablePicker({
                     )}
                   </Box>
                 }
+                size="lg"
                 onClick={toggle}
               />
             </Tooltip>

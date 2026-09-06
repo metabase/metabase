@@ -55,9 +55,10 @@ export const DashCardLoadingView = ({
           <Box style={styles} className={CS.absolute} left={12} bottom={12}>
             <HoverCard width={288} offset={4} position="bottom-start">
               <HoverCard.Target>
-                <Button w={24} h={24} p={0} classNames={{ label: cx(CS.flex) }}>
-                  <Icon name="snail" size={12} d="flex" />
-                </Button>
+                <Button
+                  size="sm"
+                  leftSection={<Icon name="snail" size={12} />}
+                />
               </HoverCard.Target>
               <HoverCard.Dropdown ml={-8}>
                 <div className={cx(CS.p2, CS.textCentered)}>

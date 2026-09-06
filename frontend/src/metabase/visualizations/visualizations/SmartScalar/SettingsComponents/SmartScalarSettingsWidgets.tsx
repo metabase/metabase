@@ -121,6 +121,8 @@ export function SmartScalarComparisonWidget({
         </SortableContext>
       </DndContext>
       <AddComparisonButton
+        variant="transparent"
+        size="compact-md"
         disabled={!canAddComparison}
         onClick={handleAddComparison}
       >{t`Add comparison`}</AddComparisonButton>

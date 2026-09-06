@@ -33,12 +33,10 @@ export const ResponsiveButton = ({
       <Tooltip disabled={showLabel} label={children}>
         <Button
           aria-label={children}
-          h={32}
           leftSection={
             showLabel && showIconWithLabel ? <Icon name={icon} /> : undefined
           }
           px={showLabel ? (showIconWithLabel ? "sm" : "lg") : "xxs"}
-          py="xxs"
           w={showLabel ? undefined : 32}
           {...props}
         >
@@ -60,11 +58,9 @@ export const ResponsiveButton = ({
       >
         <Button
           disabled
-          h={32}
           hidden
           leftSection={showIconWithLabel ? <Icon name={icon} /> : undefined}
           px={showIconWithLabel ? "sm" : "lg"}
-          py="xxs"
           ref={measureRef}
           {...props}
         >

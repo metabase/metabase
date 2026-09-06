@@ -219,6 +219,7 @@ export const UserProvisioning = () => {
                       <Flex gap="sm">
                         <Box style={{ flexGrow: 1 }}>{children}</Box>
                         <Button
+                          size="lg"
                           disabled={isLoadingToken || !isScimEnabled}
                           variant="filled"
                           onClick={

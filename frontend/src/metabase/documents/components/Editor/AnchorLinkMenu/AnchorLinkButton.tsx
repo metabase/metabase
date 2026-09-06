@@ -45,7 +45,6 @@ export const AnchorLinkButton = <C extends ElementType = "button">({
         aria-label={t`Copy link`}
         bd={0}
         leftSection={<Icon name="link" />}
-        px="sm"
         onClick={handleCopy}
         onKeyDown={handleKeyDown}
       />

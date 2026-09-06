@@ -34,6 +34,7 @@ export function TemporalUnitSettings({
     <Popover width="target">
       <Popover.Target>
         <Button
+          size="lg"
           fw="normal"
           rightSection={<Icon name="chevrondown" />}
           fullWidth

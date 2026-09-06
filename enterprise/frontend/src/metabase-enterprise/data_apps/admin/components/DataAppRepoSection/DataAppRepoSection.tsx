@@ -43,7 +43,7 @@ export const DataAppRepoSection = ({ isConfigured, url }: Props) => (
         </Text>
       </Group>
 
-      <Button component={Link} to={REMOTE_SYNC_SETTINGS_PATH}>
+      <Button component={Link} to={REMOTE_SYNC_SETTINGS_PATH} size="lg">
         {t`Go to Git sync settings`}
       </Button>
     </Group>

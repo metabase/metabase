@@ -17,7 +17,6 @@ import {
   Icon,
   Loader,
   Stack,
-  rem,
 } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isSyncCompleted } from "metabase/utils/syncing";
@@ -246,12 +245,7 @@ export function SearchResult({
       )}
       {showXRayButton && (
         <Box className={S.xraySection} pos="relative">
-          <Button
-            w={rem(32)}
-            h={rem(32)}
-            leftSection={<Icon name="bolt" />}
-            onClick={onXRayClick}
-          />
+          <Button leftSection={<Icon name="bolt" />} onClick={onXRayClick} />
         </Box>
       )}
     </SearchResultContainer>

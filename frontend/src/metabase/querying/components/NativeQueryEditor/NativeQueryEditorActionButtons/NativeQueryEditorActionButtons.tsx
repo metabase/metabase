@@ -104,7 +104,7 @@ export const NativeQueryEditorActionButtons = (
             size="compact-md"
             className={S.button}
             aria-label={t`Auto-format`}
-            leftSection={<Icon name="format_code" size={ICON_SIZE} />}
+            leftSection={<Icon name="format_code" size={16} />}
             onClick={onFormatQuery}
           />
         </Tooltip>

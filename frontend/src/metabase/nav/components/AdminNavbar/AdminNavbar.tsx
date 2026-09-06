@@ -138,9 +138,8 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
       <Button
         onClick={() => setMobileNavOpen((prev) => !prev)}
         variant="subtle"
-        p="0.25rem"
         leftSection={
-          <Icon name="burger" size={32} color="text-primary-inverse" />
+          <Icon name="burger" size={16} color="text-primary-inverse" />
         }
       />
 

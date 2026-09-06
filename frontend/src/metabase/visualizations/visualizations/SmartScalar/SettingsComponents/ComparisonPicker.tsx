@@ -171,7 +171,7 @@ export function ComparisonPicker({
               </IconButtonWrapper>
             )
           }
-          px="1rem"
+          size="lg"
           fullWidth
           data-testid="comparisons-widget-button"
           styles={{

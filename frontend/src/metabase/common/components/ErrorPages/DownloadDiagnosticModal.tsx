@@ -76,7 +76,6 @@ export const DownloadDiagnosticModal = ({
           color="core-brand"
           mt="xl"
           mb="sm"
-          px="xl"
           radius="sm"
         />
         <Text>{t`Diagnostic info may contain sensitive data.`}</Text>

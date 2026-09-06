@@ -196,6 +196,7 @@ export const ResourceCard = () => {
             onClick={openPicker}
             data-testid="embed-browse-entity-button"
             aria-label={label}
+            size="lg"
             fullWidth
             styles={{ label: { flex: 1, textAlign: "left" } }}
           >

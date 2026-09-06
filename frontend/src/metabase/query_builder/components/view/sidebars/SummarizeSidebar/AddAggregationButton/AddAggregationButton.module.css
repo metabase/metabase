@@ -1,6 +1,6 @@
 .AddAggregationButtonRoot {
   &[data-variant="subtle"] {
-    padding: 0.625rem;
+    padding-inline: 0.625rem;
     color: var(--mb-color-core-summarize);
     background-color: var(--mb-color-background_page-secondary);
 

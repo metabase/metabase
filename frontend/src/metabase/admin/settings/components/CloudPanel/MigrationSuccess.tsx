@@ -54,10 +54,10 @@ export const MigrationSuccess = ({
       </MigrationCard>
 
       <Button
-        variant="subtle"
+        variant="transparent"
+        size="compact-md"
         onClick={restartMigration}
         disabled={isRestarting}
-        px="0"
         mt="1rem"
       >{t`Restart the process`}</Button>
     </>

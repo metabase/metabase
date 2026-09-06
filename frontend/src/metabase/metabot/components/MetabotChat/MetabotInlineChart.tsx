@@ -252,8 +252,8 @@ function SaveChartAction({
         .with({ readonly: true }, () => null)
         .with({ savedCardId: P.nullish, readonly: false }, () => (
           <Button
-            variant="subtle"
-            size="sm"
+            variant="transparent"
+            size="compact-md"
             onClick={() => setIsSaveModalOpen(true)}
           >
             {t`Save`}

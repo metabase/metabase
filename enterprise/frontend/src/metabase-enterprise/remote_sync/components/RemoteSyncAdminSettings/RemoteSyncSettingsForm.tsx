@@ -120,7 +120,6 @@ export const RemoteSyncSettingsForm = ({
                       <Button
                         c="feedback-negative"
                         variant="subtle"
-                        w="12rem"
                         leftSection={<Icon name="close" />}
                         onClick={handleDisable}
                       >

@@ -159,7 +159,7 @@ export function DimensionSettingsPanel({
     >
       <Group
         align="center"
-        flex="0 0 2.25rem"
+        flex="0 0 2rem"
         justify="space-between"
         wrap="nowrap"
       >

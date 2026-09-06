@@ -82,6 +82,7 @@ export const PurchaseAdvancedTransforms = ({
         <div>
           <Button
             variant="filled"
+            size="lg"
             onClick={handleCloudPurchase}
             loading={isPurchasing}
             px="3rem"

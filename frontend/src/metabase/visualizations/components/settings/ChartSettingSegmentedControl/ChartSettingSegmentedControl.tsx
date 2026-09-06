@@ -13,7 +13,6 @@ export const ChartSettingSegmentedControl = ({
     {options.map((elem) => (
       <Button
         className={cx(CS.borderBrand, CS.flexGrow1)}
-        py="sm"
         px="xxs"
         variant={value === elem.value ? "filled" : "default"}
         key={elem.value}

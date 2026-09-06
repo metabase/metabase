@@ -142,12 +142,12 @@ export const CreateTenantsOnboardingStep = ({
                 {tenants.length > 1 && (
                   <Button
                     variant="transparent"
+                    color="text-secondary"
                     size="compact-md"
+                    leftSection={<Icon name="close" />}
                     onClick={() => removeTenantCard(index)}
                     aria-label={t`Remove tenant`}
-                  >
-                    <Icon name="close" />
-                  </Button>
+                  />
                 )}
               </Group>
 
@@ -194,7 +194,6 @@ export const CreateTenantsOnboardingStep = ({
           size="compact-md"
           leftSection={<Icon name="add" size={16} />}
           onClick={addTenantCard}
-          fw="bold"
         >
           {t`New tenant`}
         </Button>

@@ -128,6 +128,7 @@ export function TransformsUpsellPage() {
                       <Button
                         loading={isPurchasing}
                         variant="primary"
+                        size="lg"
                         onClick={handlePurchase}
                       >{t`Agree and continue`}</Button>
                       <Text c="text-secondary" lh={1.4}>
