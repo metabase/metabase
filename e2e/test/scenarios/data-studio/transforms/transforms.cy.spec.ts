@@ -50,6 +50,7 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
     cy.intercept("POST", "/api/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
+    cy.intercept("POST", "/api/collection").as("createCollection");
   });
 
   afterEach(() => {
@@ -2270,6 +2271,8 @@ LIMIT
         cy.button("Create").click();
       });
 
+      cy.wait("@createCollection");
+
       getTransformsList().within(() => {
         cy.findByText("Marketing Transforms").should("be.visible");
       });
@@ -2289,6 +2292,8 @@ LIMIT
       });
 
       H.modal().findByRole("button", { name: "Create" }).click();
+
+      cy.wait("@createCollection");
 
       getTransformsList().within(() => {
         // The list refetches its collection tree after the create, and the
