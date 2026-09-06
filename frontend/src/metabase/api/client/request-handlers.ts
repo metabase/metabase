@@ -1,5 +1,4 @@
 /* eslint-disable metabase/no-literal-metabase-strings -- request header names */
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isWithinIframe } from "metabase/utils/iframe";
 
 import type { RequestMethod } from "./method";
@@ -25,10 +24,10 @@ export type OnBeforeRequestHandler = (
 
 const noop: OnBeforeRequestHandler = async () => {};
 
-// Tag requests from a non-SDK app running inside an iframe (interactive /
-// static / public embedding) so the backend knows it's embedded.
+// Tag requests from an app running inside an iframe (interactive / static /
+// public embedding) so the backend knows it's embedded.
 const setEmbeddedHeader: OnBeforeRequestHandler = async () => {
-  if (isWithinIframe() && !isEmbeddingSdk()) {
+  if (isWithinIframe()) {
     return { headers: { "X-Metabase-Embedded": "true" } };
   }
 };

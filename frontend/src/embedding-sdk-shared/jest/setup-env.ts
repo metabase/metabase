@@ -1,5 +1,5 @@
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { setIsEmbeddingSdk } from "metabase/embedding-sdk/lib/set-is-embedding-sdk";
 
 process.env.IS_EMBEDDING_SDK = "true";
 
-EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+setIsEmbeddingSdk();

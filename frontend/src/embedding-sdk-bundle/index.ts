@@ -4,11 +4,11 @@
 // on-demand chunks load from the Metabase-hosted SDK asset directory.
 import "./lib/sdk-public-path";
 
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { setIsEmbeddingSdk } from "metabase/embedding-sdk/lib/set-is-embedding-sdk";
 
 // Enable SDK mode as we are in the SDK bundle
 // This applies to SDK derivatives such as new iframe embedding.
-EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+setIsEmbeddingSdk();
 
 // Import the embedding SDK vendors side-effects
 import "metabase/embedding-sdk/vendors-side-effects";
