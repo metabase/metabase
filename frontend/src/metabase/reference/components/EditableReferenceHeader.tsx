@@ -104,7 +104,6 @@ const EditableReferenceHeader = ({
                 key="2"
                 variant="filled"
                 className={cx(CS.flex, CS.flexAlignRight, CS.mr2)}
-                style={{ fontSize: 14 }}
               >
                 <Link to={headerLink}>{t`See this ${type}`}</Link>
               </Button>
@@ -114,7 +113,6 @@ const EditableReferenceHeader = ({
         {user && user.is_superuser && !isEditing && (
           <Button
             leftSection={<Icon name="pencil" />}
-            style={{ fontSize: 14 }}
             type="button"
             onClick={startEditing}
           >

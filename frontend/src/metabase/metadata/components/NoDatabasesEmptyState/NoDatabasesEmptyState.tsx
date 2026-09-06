@@ -21,6 +21,7 @@ export const NoDatabasesEmptyState = () => {
         component={Link}
         to="/admin/databases/create"
         variant="primary"
+        size="lg"
       >{t`Connect a database`}</Button>
     </Stack>
   );

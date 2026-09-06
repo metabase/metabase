@@ -104,8 +104,8 @@ export const LicenseTokenForm = ({
           <Box>
             <Button
               onClick={onSkip}
-              variant="subtle"
-              px={0}
+              variant="transparent"
+              size="compact-md"
               fw="normal"
             >{t`I'll activate later`}</Button>
             <Text c="text-disabled" size="sm">

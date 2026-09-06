@@ -57,9 +57,8 @@ export const MetabotLongChatNotice = ({
       </Text>
       <Button
         variant="subtle"
-        size="sm"
+        size="compact-md"
         onClick={onNewChat}
-        fw="bold"
         data-testid="metabot-long-chat-new-chat"
       >{t`New chat`}</Button>
       {variant === "warning" && (

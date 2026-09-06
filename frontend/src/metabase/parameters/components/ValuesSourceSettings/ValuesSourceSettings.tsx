@@ -119,7 +119,6 @@ function RadioContainer({
               disabled={disableEdit}
               variant="transparent"
               size="compact-md"
-              h="100%"
             >
               <Box
                 component="span"

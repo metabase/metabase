@@ -383,6 +383,8 @@ export const ListViewConfiguration = ({
                           [S.selected]: color === iconConfig.selectedIconColor,
                         })}
                         variant="subtle"
+                        size="compact-md"
+                        p={0}
                         bg={color}
                         onClick={() => {
                           handleConfigurationChange({

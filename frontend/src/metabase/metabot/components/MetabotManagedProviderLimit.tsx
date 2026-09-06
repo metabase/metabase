@@ -69,10 +69,8 @@ export const MetabotManagedProviderLimitActions = ({
     return (
       <Flex align="center" gap="sm" wrap="wrap" {...rest}>
         <Button
-          h="1rem"
           variant="transparent"
           size="compact-md"
-          fz="sm"
           onClick={handleConfigure}
         >
           {t`Use a different AI provider`}
@@ -81,13 +79,11 @@ export const MetabotManagedProviderLimitActions = ({
           •
         </Text>
         <Button
-          h="1rem"
           component={ExternalLink}
           href={storeUrl}
           target="_blank"
           variant="transparent"
           size="compact-md"
-          fz="sm"
         >
           {t`Start paid subscription`}
         </Button>

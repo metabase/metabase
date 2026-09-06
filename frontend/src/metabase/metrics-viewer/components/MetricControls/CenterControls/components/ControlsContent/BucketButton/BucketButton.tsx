@@ -58,9 +58,7 @@ export function BucketButton({
         <Button
           className={S.controlButton}
           justify="space-between"
-          h="2rem"
           fw={400}
-          py={0}
           px="lg"
           bdrs="sm"
           variant="subtle"

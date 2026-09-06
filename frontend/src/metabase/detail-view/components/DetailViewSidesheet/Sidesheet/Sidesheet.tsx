@@ -46,11 +46,9 @@ export function Sidesheet({
               <Button
                 aria-label={t`Close`}
                 c="text-primary"
-                h={20}
                 leftSection={<Icon name="close" />}
                 size="compact-md"
                 variant="transparent"
-                w={20}
                 onClick={onClose}
               />
             </Tooltip>

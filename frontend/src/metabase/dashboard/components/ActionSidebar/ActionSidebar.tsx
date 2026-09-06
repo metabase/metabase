@@ -117,7 +117,7 @@ export function ActionSidebar() {
             <Flex justify="space-between" py="xxs">
               <Ellipsified fw="bold">{dashcard.action.name}</Ellipsified>
               <Button
-                h="auto"
+                size="compact-md"
                 variant="transparent"
                 onClick={openActionModal}
                 flex="0 0 auto"

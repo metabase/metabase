@@ -252,7 +252,6 @@ export function IllustrationWidget({
                       variant="light"
                       c="text-primary"
                       ml="lg"
-                      size="sm"
                       onClick={handleRemoveCustomIllustration}
                       aria-label={t`Remove custom illustration`}
                     />

@@ -203,7 +203,6 @@ export function Editor(props: EditorProps) {
               onClick={toggleFunctionBrowser}
               variant={isFunctionBrowserOpen ? "filled" : "subtle"}
               className={S.toolbarButton}
-              p="x"
               leftSection={<Icon name="function" />}
             />
           </ButtonTooltip>
@@ -214,7 +213,6 @@ export function Editor(props: EditorProps) {
                 onClick={formatExpression}
                 className={S.toolbarButton}
                 variant="subtle"
-                p="xxs"
                 disabled={isFormatting || error != null}
                 leftSection={<Icon name="format_code" />}
               />

@@ -265,6 +265,7 @@ const ValueInput = ({
           label={t`Revert to "${valueOpts?.revert?.value}" value from ${valueOpts?.revert?.source}`}
         >
           <Button
+            size="lg"
             leftSection={<Icon name="refresh" />}
             onClick={onRevert}
             data-testid="revert-mapping"

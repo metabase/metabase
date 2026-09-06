@@ -283,8 +283,6 @@ export function MetricSearchInput({
         <Button
           variant="light"
           color="core-brand"
-          py="sm"
-          px="sm"
           leftSection={<Icon size="0.75rem" name="enter_or_return" />}
           disabled={!!validationError}
           data-testid="run-expression-button"

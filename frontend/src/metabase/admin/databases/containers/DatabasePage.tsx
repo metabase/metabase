@@ -76,7 +76,6 @@ export function DatabasePage() {
               <Text>
                 {t`Need a hand?`}{" "}
                 <Button
-                  h="auto"
                   onClick={onHelpButtonClick}
                   style={{ verticalAlign: "baseline" }}
                   variant="transparent"

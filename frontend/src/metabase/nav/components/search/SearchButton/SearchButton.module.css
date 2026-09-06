@@ -12,7 +12,6 @@
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  font-weight: bold;
   gap: 0.25rem;
 
   &:hover {

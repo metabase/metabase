@@ -161,9 +161,6 @@
   display: block;
   height: auto;
   text-align: start;
-  line-height: 1.4;
-  padding-top: 0.4rem;
-  padding-bottom: 0.4rem;
 
   span {
     text-wrap-mode: wrap;

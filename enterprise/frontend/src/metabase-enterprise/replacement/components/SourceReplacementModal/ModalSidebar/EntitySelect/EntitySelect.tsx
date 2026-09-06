@@ -65,6 +65,7 @@ export function EntitySelect({
     <Input.Wrapper label={label} description={description}>
       <Button
         className={S.button}
+        size="lg"
         rightSection={<Icon name="chevrondown" />}
         fw="normal"
         maw="100%"

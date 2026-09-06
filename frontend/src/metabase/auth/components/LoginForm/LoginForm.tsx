@@ -79,7 +79,12 @@ export const LoginForm = ({
         {!hasSessionCookies && (
           <FormCheckbox name="remember" label={t`Remember me`} mb="1.25rem" />
         )}
-        <FormSubmitButton label={t`Sign in`} variant="filled" w="100%" />
+        <FormSubmitButton
+          label={t`Sign in`}
+          variant="filled"
+          size="lg"
+          w="100%"
+        />
         <FormErrorMessage mt="1rem" />
       </Form>
     </FormProvider>

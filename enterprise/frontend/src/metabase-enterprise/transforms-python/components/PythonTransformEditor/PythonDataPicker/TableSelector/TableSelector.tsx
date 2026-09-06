@@ -76,7 +76,8 @@ export function TableSelector({
           disabled={disabled}
           classNames={{ inner: S.tableSelectorButtonInner }}
           px="sm"
-          py="xl"
+          py="sm"
+          h="auto"
           variant="subtle"
         >
           <Stack gap="xxs">

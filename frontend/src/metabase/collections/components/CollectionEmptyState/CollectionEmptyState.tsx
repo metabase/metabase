@@ -88,6 +88,7 @@ const DefaultCollectionEmptyState = ({
           trigger={
             <Button
               variant="outline"
+              size="lg"
               leftSection={<Icon name="add" />}
               w="12.5rem"
               onClick={() => trackCollectionNewButtonClicked()}

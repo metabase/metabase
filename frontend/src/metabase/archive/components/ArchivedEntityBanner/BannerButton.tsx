@@ -13,11 +13,9 @@ export const BannerButton = ({
   onClick,
 }: BannerButtonProps) => (
   <Button
-    size="sm"
+    size="md"
     variant="outline"
     color="text-primary-inverse"
-    miw="2rem"
-    h="2rem"
     onClick={onClick}
   >
     <Flex align="center" gap="sm">

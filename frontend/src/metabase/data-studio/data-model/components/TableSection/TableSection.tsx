@@ -188,8 +188,6 @@ const TableSectionBase = ({
                       to={dependencyGraph({
                         entry: { id: Number(table.id), type: "table" },
                       })}
-                      p="sm"
-                      w="2.5rem"
                       flex="0 1 auto"
                       leftSection={<Icon name="dependencies" />}
                       aria-label={t`Dependency graph`}
@@ -199,7 +197,7 @@ const TableSectionBase = ({
                   </Tooltip>
                 )}
 
-                <Box style={{ flexGrow: 0, width: 40 }}>
+                <Box style={{ flexGrow: 0 }}>
                   <TableLink table={table} />
                 </Box>
                 <TableActionsMenu table={table} />
@@ -333,9 +331,6 @@ function TableLink({ table }: { table: Table }) {
         to={url}
         aria-label={t`Go to this table`}
         leftSection={<Icon name="external" size={16} />}
-        style={{
-          width: "100%",
-        }}
       />
     </Tooltip>
   );

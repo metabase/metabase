@@ -142,9 +142,8 @@ const AddFilterButton = forwardRef(function AddFilterButton(
     <Button
       ref={ref}
       c="text-disabled"
-      p={compact ? undefined : 0}
-      variant={compact ? "default" : "subtle"}
-      size={compact ? "compact-md" : "md"}
+      variant={compact ? "default" : "transparent"}
+      size={compact ? "sm" : "compact-md"}
       disabled={disabled}
       rightSection={<Icon name="add" />}
       aria-label={compact ? t`Add filters` : undefined}

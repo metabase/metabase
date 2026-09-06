@@ -105,8 +105,6 @@ export function PythonEditorBody({
                   data-testid="accept-proposed-changes-button"
                   variant="filled"
                   bg="feedback-positive"
-                  px="0"
-                  w="2.5rem"
                   onClick={onAcceptProposed}
                 >
                   <Icon name="check" />
@@ -115,8 +113,6 @@ export function PythonEditorBody({
               <Tooltip label={t`Reject proposed changes`} position="left">
                 <Button
                   data-testid="reject-proposed-changes-button"
-                  w="2.5rem"
-                  px="0"
                   variant="filled"
                   bg="feedback-negative"
                   onClick={onRejectProposed}

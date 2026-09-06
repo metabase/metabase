@@ -18,7 +18,8 @@ export const AlertListItemActionButton = ({
       color="core-brand"
       aria-label={label}
       leftSection={<Icon name={iconName} />}
-      variant="subtle"
+      variant="light"
+      size="sm"
       onClick={onClick}
     />
   </Tooltip>

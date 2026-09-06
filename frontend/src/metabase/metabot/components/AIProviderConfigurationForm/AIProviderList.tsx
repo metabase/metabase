@@ -152,8 +152,8 @@ export function AIProviderList() {
         )}
 
         <Button
-          variant={hasConnections ? "subtle" : "filled"}
-          p={hasConnections ? 0 : undefined}
+          variant={hasConnections ? "transparent" : "filled"}
+          size={hasConnections ? "compact-md" : "md"}
           w="fit-content"
           leftSection={<Icon name="add" />}
           onClick={startAdding}

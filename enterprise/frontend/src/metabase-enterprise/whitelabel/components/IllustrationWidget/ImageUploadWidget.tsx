@@ -138,7 +138,6 @@ export function ImageUploadWidget({
                     variant="light"
                     c="text-primary"
                     ml="lg"
-                    size="sm"
                     onClick={handleRemove}
                     aria-label={t`Remove custom illustration`}
                   />
