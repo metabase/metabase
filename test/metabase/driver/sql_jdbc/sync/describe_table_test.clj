@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.sql :as driver.sql]
@@ -216,6 +217,33 @@
             :first
             (map (juxt :database-position (comp boolean :pk?))
                  (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))))))))
+
+(deftest describe-table-fields-xf-uses-explicit-database-test
+  (testing "callers that already have a Database can avoid reloading it from the Table"
+    (let [table {:name "venues"}
+          db    {:engine :h2}
+          cols  [{:name "ID" :type_name "BIGINT"}
+                 {:name "NAME" :type_name "CHARACTER VARYING"}]]
+      (with-redefs [driver-api/table->database (fn [_]
+                                                 (throw (ex-info "table->database should not be called" {})))]
+        (is (= ["ID" "NAME"]
+               (->> cols
+                    (into [] (sql-jdbc.describe-table/describe-table-fields-xf :h2 db table))
+                    (map :name))))))))
+
+(deftest describe-table-field-set-uses-explicit-database-test
+  (testing "the current sync path can reuse an already-loaded Database"
+    (let [table {:name "venues"}
+          db    {:engine :h2}
+          cols  [{:name "ID" :type_name "BIGINT"}
+                 {:name "NAME" :type_name "CHARACTER VARYING"}]]
+      (with-redefs [driver-api/table->database (fn [_]
+                                                 (throw (ex-info "table->database should not be called" {})))
+                    sql-jdbc.describe-table/fields-metadata (fn [_ _ _ _] cols)]
+        (is (= ["ID" "NAME"]
+               (->> (#'sql-jdbc.describe-table/describe-table-field-set :h2 db nil table nil)
+                    (sort-by :database-position)
+                    (map :name))))))))
 
 (deftest database-types-fallback-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
