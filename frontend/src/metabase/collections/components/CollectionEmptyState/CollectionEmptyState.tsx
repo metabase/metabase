@@ -87,7 +87,7 @@ const DefaultCollectionEmptyState = ({
         <NewItemMenu
           trigger={
             <Button
-              variant="outline"
+              variant="filled"
               size="lg"
               leftSection={<Icon name="add" />}
               w="12.5rem"

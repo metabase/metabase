@@ -202,7 +202,7 @@ function EditingGroupRow({
         <Button variant="subtle" onClick={onCancelClicked}>{t`Cancel`}</Button>
         <Button
           ml="1rem"
-          variant={textIsValid && textHasChanged ? "filled" : "outline"}
+          variant={textIsValid && textHasChanged ? "filled" : "default"}
           disabled={!textIsValid || !textHasChanged}
           onClick={onDoneClicked}
         >

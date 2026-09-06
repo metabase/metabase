@@ -12,12 +12,7 @@ export const BannerButton = ({
   children,
   onClick,
 }: BannerButtonProps) => (
-  <Button
-    size="md"
-    variant="outline"
-    color="text-primary-inverse"
-    onClick={onClick}
-  >
+  <Button size="md" variant="on-dark-secondary" onClick={onClick}>
     <Flex align="center" gap="sm">
       <FixedSizeIcon size={12} name={iconName} />
       <Text

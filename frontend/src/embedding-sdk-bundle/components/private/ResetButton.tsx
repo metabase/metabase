@@ -11,7 +11,6 @@ const sizeOverrideStyles = {
 export const ResetButton = (buttonProps: ButtonProps): React.JSX.Element => (
   <Tooltip label={t`Reset view`}>
     <Button
-      variant="outline"
       radius="xl"
       leftSection={<Icon name="revert" />}
       style={sizeOverrideStyles}

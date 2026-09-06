@@ -211,9 +211,6 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       <Group justify="space-between" align="center" flex="none">
         <Title order={3} fs="1rem" lh={1.4}>{t`Research plan`}</Title>
         <Button
-          variant="outline"
-          color="text-primary"
-          bd="1px solid text-tertiary"
           disabled={isManualDataPickingDisabled}
           onClick={() => setActiveModal("metrics")}
         >
