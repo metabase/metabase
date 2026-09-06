@@ -99,11 +99,19 @@ export const AddEditSlackSidebar = ({
 
   // Whether to share a server-rendered PDF of the whole dashboard to the channel.
   const includePdf = !!allowDownload && !!channel.details?.include_pdf;
+  const includeText = !!channel.details?.include_text;
 
   const handleToggleIncludePdf = (checked: boolean) => {
     onChannelPropertyChange("details", {
       ...channel.details,
       include_pdf: checked,
+    });
+  };
+
+  const handleToggleIncludeText = (checked: boolean) => {
+    onChannelPropertyChange("details", {
+      ...channel.details,
+      include_text: checked,
     });
   };
 
@@ -199,6 +207,20 @@ export const AddEditSlackSidebar = ({
               input: S.SwitchInput,
             }}
             label={<Text fw="bold">{t`Send dashboard as PDF`}</Text>}
+          />
+
+          <Switch
+            aria-label={t`Send data as text`}
+            checked={includeText}
+            onChange={(e) => handleToggleIncludeText(e.target.checked)}
+            labelPosition="left"
+            classNames={{
+              body: S.SwitchBody,
+              input: S.SwitchInput,
+            }}
+            label={
+              <Text fw="bold">{t`Send data as text instead of images`}</Text>
+            }
           />
         </Stack>
         {pulse.id != null && (

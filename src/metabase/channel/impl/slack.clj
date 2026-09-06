@@ -104,11 +104,76 @@
   many columns) is truncated."
   1200)
 
+(defn- slack-code-block
+  "Wrap `s` in a Slack mrkdwn fenced code block so fixed-width tables keep their alignment."
+  [s]
+  (str "```\n" s "\n```"))
+
+(defn- chunk-text
+  "Split `s` into chunks of at most `limit` characters, preferring newline boundaries."
+  [s limit]
+  (if (<= (count s) limit)
+    [s]
+    (loop [remaining s
+           acc       []]
+      (cond
+        (str/blank? remaining)
+        acc
+
+        (<= (count remaining) limit)
+        (conj acc remaining)
+
+        :else
+        (let [window (subs remaining 0 limit)
+              cut    (or (str/last-index-of window "\n") limit)
+              chunk    (str/trimr (subs remaining 0 cut))
+              leftover (str/triml (subs remaining cut))]
+          (recur leftover (conj acc (if (str/blank? chunk)
+                                      (subs remaining 0 limit)
+                                      chunk))))))))
+
+(defn- text->mrkdwn-sections
+  "Turn table (or other) text into one or more Slack section blocks, staying under the 3000-char limit."
+  [text]
+  (let [fence-overhead 8
+        budget         (- block-text-length-limit fence-overhead)]
+    (mapv (fn [chunk]
+            {:type "section"
+             :text {:type "mrkdwn"
+                    :text (truncate (slack-code-block chunk) block-text-length-limit)}})
+          (chunk-text text budget))))
+
+(defn- card-result-blocks
+  "Slack blocks for a rendered card body. Table text is only used when `include-text?` is true; otherwise the
+  historical path is preserved (scalars as plain_text, tables as images)."
+  [rendered-info title include-text?]
+  (let [text      (:render/text rendered-info)
+        table?    (= :table (:render/text-kind rendered-info))]
+    (cond
+      (and include-text? text)
+      (text->mrkdwn-sections text)
+
+      (and text (not table?))
+      [{:type "section"
+        :text {:type "plain_text"
+               :text text}}]
+
+      :else
+      [{:type       "image"
+        :slack_file {:id (-> rendered-info
+                             (channel.render/png-from-render-info slack-width)
+                             (slack/upload-file! (format "%s.png" title))
+                             :id)}
+        :alt_text   title}])))
+
 (defn- part->sections!
-  "Converts a notification part directly into Slack Block Kit blocks."
+  "Converts a notification part directly into Slack Block Kit blocks.
+  `include-text?` opts table/scalar results into mrkdwn code blocks instead of PNG images."
   ([part]
    (part->sections! {} part))
   ([all-params part]
+   (part->sections! all-params part false))
+  ([all-params part include-text?]
    (let [part (channel.shared/maybe-realize-data-rows part)]
      (case (:type part)
        :card
@@ -122,22 +187,13 @@
                                                         (urls/dashcard-url dashcard)
                                                         (when-not (= :table-editable (:display card))
                                                           (urls/card-url card-id)))]
-           (conj (maybe-append-params-block
+           (into (maybe-append-params-block
                   [{:type "section"
                     :text {:type     "mrkdwn"
                            :text     (mkdwn-link-text title-link title)
                            :verbatim true}}]
                   (-> dashcard  :visualization_settings :inline_parameters))
-                 (if (:render/text rendered-info)
-                   {:type "section"
-                    :text {:type "plain_text"
-                           :text (:render/text rendered-info)}}
-                   {:type       "image"
-                    :slack_file {:id (-> rendered-info
-                                         (channel.render/png-from-render-info slack-width)
-                                         (slack/upload-file! (format "%s.png" title))
-                                         :id)}
-                    :alt_text   title}))))
+                 (card-result-blocks rendered-info title include-text?))))
 
        :heading
        [(maybe-append-params-block (text->markdown-section (format "## %s" (:text part))) (:inline_parameters part))]
@@ -284,7 +340,7 @@
       nil)))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload creator creator_id]} {:keys [recipients include_pdf]}]
+  [_channel-type {:keys [payload creator creator_id]} {:keys [recipients include_pdf include_text]}]
   (let [all-params       (:parameters payload)
         top-level-params (impl.util/remove-inline-parameters all-params (:dashboard_parts payload))
         dashboard        (:dashboard payload)
@@ -301,7 +357,7 @@
                                  ;; placeholder block so the remaining cards still deliver (#74007).
                                  (mapcat (fn [part]
                                            (try
-                                             (part->sections! all-params part)
+                                             (part->sections! all-params part include_text)
                                              (catch Throwable e
                                                (log/errorf "Error rendering dashboard subscription part for Slack; substituting error placeholder: %s" (ex-message e))
                                                [(text->markdown-section (str (tru "An error occurred while displaying this card.")))])))

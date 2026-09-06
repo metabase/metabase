@@ -188,7 +188,8 @@
   [:map
    [:attachments {:optional true} [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
    [:content                      [:sequential :any]]
-   [:render/text {:optional true} [:maybe :string]]])
+   [:render/text {:optional true} [:maybe :string]]
+   [:render/text-kind {:optional true} [:maybe [:enum :table]]]])
 
 (defmulti render
   "Render a Part as `chart-type` (e.g. `:bar`, `:scalar`, etc.) and `render-type` (either `:inline` or `:attachment`)."
@@ -222,6 +223,65 @@
                                    ::mb.viz/show-mini-bar]))
    cols))
 
+(def ^:private max-text-column-width 28)
+(def ^:private max-text-columns 8)
+
+(defn- cell->str
+  "Plain string for a formatter wrapper or raw cell, with whitespace collapsed and fence-breaking chars stripped."
+  [cell]
+  (-> (if (nil? cell) "" (str cell))
+      (str/replace #"[\r\n\t]+" " ")
+      (str/replace #"\s+" " ")
+      (str/replace "`" "'")
+      (str/replace "|" "/")
+      str/trim))
+
+(defn- truncate-cell-text [s]
+  (if (> (count s) max-text-column-width)
+    (str (subs s 0 (dec max-text-column-width)) "…")
+    s))
+
+(defn- pad-cell [s width numeric?]
+  (let [spaces (apply str (repeat (max 0 (- width (count s))) " "))]
+    (if numeric?
+      (str spaces s)
+      (str s spaces))))
+
+(defn- table-rows->text
+  "Format prepared table rows (`{:row [...]}` maps from [[prep-for-html-rendering]]) as a fixed-width text table."
+  [prepared-rows row-count]
+  (let [raw-rows   (mapv :row prepared-rows)
+        col-count  (min max-text-columns (count (or (first raw-rows) [])))
+        extra-cols (max 0 (- (count (or (first raw-rows) [])) col-count))]
+    (if (zero? col-count)
+      ""
+      (let [cells (mapv (fn [row]
+                          (mapv (fn [cell]
+                                  {:text     (truncate-cell-text (cell->str cell))
+                                   :numeric? (formatter/NumericWrapper? cell)})
+                                (take col-count row)))
+                        raw-rows)
+            widths (vec (for [i (range col-count)]
+                          (apply max 1 (map #(count (:text (nth % i))) cells))))
+            format-row (fn [row-cells]
+                         (str/join " | "
+                                   (map (fn [cell width]
+                                          (pad-cell (:text cell) width (:numeric? cell)))
+                                        row-cells
+                                        widths)))
+            header (format-row (first cells))
+            sep    (str/join "-|-" (map #(apply str (repeat % "-")) widths))
+            body   (map format-row (rest cells))
+            row-limit (channel.settings/attachment-table-row-limit)
+            notes  (cond-> []
+                     (pos? extra-cols)
+                     (conj (format "and %d more column%s"
+                                   extra-cols
+                                   (if (= 1 extra-cols) "" "s")))
+                     (> row-count row-limit)
+                     (conj (format "Showing %d of %d rows." row-limit row-count)))]
+        (str/join "\n" (concat [header sep] body notes))))))
+
 (mu/defmethod render :table :- ::RenderedPartCard
   [_chart-type
    _render-type
@@ -235,18 +295,21 @@
                                         (assoc :cols ordered-cols))
         filtered-cols               (filter table-data/show-in-table? ordered-cols)
         minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
+        prepared                    (prep-for-html-rendering timezone-id card data)
         table-body                  [:div
                                      (table/render-table
                                       (select-keys unordered-data [:cols :rows])
                                       {:cols-for-color-lookup (mapv :name filtered-cols)
                                        :col-names             (streaming.common/column-titles filtered-cols viz-settings format-rows?)}
-                                      (prep-for-html-rendering timezone-id card data)
+                                      prepared
                                       filtered-cols
                                       viz-settings
                                       minibar-cols)
                                      (render-truncation-warning (channel.settings/attachment-table-row-limit) (count rows))]]
-    {:content     table-body
-     :attachments nil}))
+    {:content          table-body
+     :attachments      nil
+     :render/text      (table-rows->text prepared (count rows))
+     :render/text-kind :table}))
 
 (defn- blank-cell-value?
   "True when a raw cell value should render as an empty placeholder (nil, or a blank string)."

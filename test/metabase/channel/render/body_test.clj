@@ -1530,3 +1530,25 @@
           "a nil alongside a number contributes nothing to the sum")
       (is (nil? (get by-bin [40.0 -74.0]))
           "all-nil stays nil; a 0 would drag the low end of the color scale down"))))
+
+(deftest ^:parallel render-table-text-test
+  (testing "table renderer produces a fixed-width :render/text representation"
+    (let [cols [{:name "name" :display_name "Name" :base_type :type/Text :visibility_type :normal}
+                {:name "amt" :display_name "Amt" :base_type :type/Integer :visibility_type :normal}]
+          rows [["Acme" 1200] ["Widget" 800]]
+          part (body/render :table :inline "UTC" {} nil {:cols cols :rows rows :viz-settings {}})
+          text (:render/text part)]
+      (is (= :table (:render/text-kind part)))
+      (is (string? text))
+      (is (str/includes? text "Name"))
+      (is (str/includes? text "Amt"))
+      (is (str/includes? text "Acme"))
+      (is (str/includes? text "Widget"))
+      (is (str/includes? text "|"))))
+  (testing "backticks and pipes in cells are sanitized so Slack code fences stay intact"
+    (let [cell (str "see " (char 96) "code" (char 96) " | more")
+          cols [{:name "note" :display_name "Note" :base_type :type/Text :visibility_type :normal}]
+          rows [[cell]]
+          text (:render/text (body/render :table :inline "UTC" {} nil {:cols cols :rows rows :viz-settings {}}))]
+      (is (not (str/includes? text "`")))
+      (is (str/includes? text "see 'code' / more")))))
