@@ -215,13 +215,15 @@
       (coll? value) not-empty)))
 
 (defn value-string
-  "Returns the value(s) of a dashboard filter, formatted appropriately."
+  "Returns the value(s) of a dashboard filter, formatted appropriately.
+  Returns nil when the parameter has no value (e.g. its default was removed)."
   [parameter locale]
   (let [tyype  (:type parameter)
         values (param-val-or-default parameter)]
-    (try (formatted-value tyype values locale)
-         (catch #?(:clj Throwable :cljs js/Error) _
-           (formatted-list (u/one-or-many values))))))
+    (when (if (sequential? values) (seq values) (some? values))
+      (try (formatted-value tyype values locale)
+           (catch #?(:clj Throwable :cljs js/Error) _
+             (formatted-list (u/one-or-many values)))))))
 
 (def ^:private template-tag-regex
   "A regex to find template tags in a text card on a dashboard. This should mirror the regex used to find template
