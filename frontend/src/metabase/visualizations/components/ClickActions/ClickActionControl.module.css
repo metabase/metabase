@@ -1,4 +1,11 @@
-.horizontalButton[data-variant="inverse"] {
+.horizontalButton {
+  display: flex;
+  justify-content: flex-start;
+
+  [data-position] {
+    color: var(--mb-color-core-brand);
+  }
+
   &:hover {
     color: var(--mb-color-text-primary-inverse);
     background-color: var(--mb-color-core-brand);
