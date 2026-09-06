@@ -440,7 +440,7 @@ export const CreateOrEditQuestionAlertModal = ({
         className={CS.borderTop}
       >
         <Button
-          variant="outline"
+          variant="subtle"
           color="core-brand"
           disabled={!hasValidTarget}
           loading={isLoading}

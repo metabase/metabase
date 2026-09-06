@@ -49,7 +49,7 @@ export const ClickActionControl = ({
     case "token-filter":
       return (
         <Button
-          variant="outline"
+          variant="subtle"
           size="sm"
           onClick={handleClick}
           className={S.tokenFilterActionButton}
@@ -70,7 +70,7 @@ export const ClickActionControl = ({
     case "token":
       return (
         <Button
-          variant="outline"
+          variant="subtle"
           size="sm"
           className={S.tokenFilterActionTokenButton}
           onClick={handleClick}
@@ -83,7 +83,7 @@ export const ClickActionControl = ({
       return (
         <Tooltip label={action.tooltip}>
           <Button
-            variant="outline"
+            variant="subtle"
             size="sm"
             className={S.tokenFilterActionButton}
             data-testid={`click-actions-sort-control-${action.name}`}
@@ -99,7 +99,7 @@ export const ClickActionControl = ({
     case "formatting":
       return (
         <Tooltip label={action.tooltip}>
-          <Button variant="outline" size="sm" onClick={handleClick}>
+          <Button size="sm" onClick={handleClick}>
             {typeof action.icon === "string" && (
               <Icon size={16} name={action.icon} />
             )}
