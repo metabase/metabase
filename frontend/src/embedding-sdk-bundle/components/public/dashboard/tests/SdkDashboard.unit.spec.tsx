@@ -183,6 +183,44 @@ describe("SdkDashboard", () => {
     expect(onClickCustomAction).toHaveBeenCalled();
   });
 
+  it("should pass a MetabaseQuestion to a custom dashcard menu item builder", async () => {
+    const buildCustomItem = jest.fn(() => ({
+      iconName: "chevronright" as const,
+      label: "Custom Action",
+      onClick: jest.fn(),
+    }));
+
+    await setup({
+      props: {
+        withDownloads: true,
+        plugins: {
+          dashboard: {
+            dashboardCardMenu: {
+              customItems: [buildCustomItem],
+            },
+          },
+        },
+      },
+    });
+
+    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+
+    const dashcard = screen.getAllByTestId("dashcard").at(0);
+    await userEvent.click(within(dashcard!).getByTestId("dashcard-menu"));
+
+    expect(
+      within(await screen.findByRole("menu")).getByText("Custom Action"),
+    ).toBeInTheDocument();
+
+    expect(buildCustomItem).toHaveBeenCalledWith({
+      question: expect.objectContaining({
+        id: expect.any(Number),
+        name: expect.any(String),
+        isSavedQuestion: expect.any(Boolean),
+      }),
+    });
+  });
+
   it("should render a custom dashcard menu if one is provided globally via MetabaseProvider (metabase#EMB-2049)", async () => {
     const onClickCustomAction = jest.fn();
     await setup({
