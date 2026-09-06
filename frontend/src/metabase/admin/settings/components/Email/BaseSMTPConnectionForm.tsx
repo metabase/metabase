@@ -306,7 +306,7 @@ export const BaseSMTPConnectionForm = ({
                     label={t`Save changes`}
                     disabled={!dirty || !isValid || isSubmitting}
                     loading={isSubmitting}
-                    variant="brand"
+                    variant="filled"
                   />
                 </Flex>
               </Stack>

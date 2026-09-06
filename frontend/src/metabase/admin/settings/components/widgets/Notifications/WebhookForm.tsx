@@ -359,7 +359,7 @@ export const WebhookForm = ({
               <FormSubmitButton
                 disabled={!dirty}
                 label={submitLabel}
-                variant="brand"
+                variant="filled"
               />
             </Group>
           </Flex>

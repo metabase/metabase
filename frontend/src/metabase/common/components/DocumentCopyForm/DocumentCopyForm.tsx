@@ -74,7 +74,7 @@ export const DocumentCopyForm = ({
             )}
             <FormSubmitButton
               label={c(`A verb, not a noun`).t`Duplicate`}
-              variant="primary"
+              variant="filled"
             />
           </FormFooter>
         </Form>
