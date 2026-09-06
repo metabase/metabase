@@ -7,7 +7,8 @@ import { render, screen } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
-import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
+import { installSdkHostLinkHandler } from "metabase/embedding-sdk/install-host-link-handler";
+import { resetHostLinkHandler } from "metabase/urls";
 import { formatValue } from "metabase/value-formatting";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { ColumnSettings } from "metabase-types/api";
@@ -176,16 +177,17 @@ describe("registered JSX url formatting", () => {
   });
 
   afterEach(() => {
+    resetHostLinkHandler();
     ensureMetabaseProviderPropsStore().cleanup();
     jest.restoreAllMocks();
   });
 
-  it("calls handleLinkSdkPlugin and prevents default in SDK", async () => {
+  it("should call the host link handler and prevent default when one is installed", async () => {
     mockSettings({
       "token-features": createMockTokenFeatures({ embedding_sdk: true }),
     });
     setupSdkPlugins();
-    await mockIsEmbeddingSdk(true);
+    installSdkHostLinkHandler();
 
     const url = "https://example.com/dashboard/1";
     const handleLink = jest.fn().mockReturnValue({ handled: true });
@@ -212,9 +214,7 @@ describe("registered JSX url formatting", () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
-  it("does not call handleLinkSdkPlugin in core app", async () => {
-    await mockIsEmbeddingSdk(false);
-
+  it("should not call the host link handler when none is installed", async () => {
     const url = "https://example.com/dashboard/2";
     const handleLink = jest.fn();
 
@@ -238,6 +238,19 @@ describe("registered JSX url formatting", () => {
 
     expect(handleLink).not.toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("should return an ExternalLink for same origin links when a host link handler is installed", () => {
+    mockSettings({ "site-url": SITE_URL });
+    installSdkHostLinkHandler();
+
+    expect(
+      isElementOfType(
+        // Unjustified type cast. FIXME
+        formatValue(SITE_URL, { jsx: true, rich: true }) as ReactElement,
+        ExternalLink,
+      ),
+    ).toBe(true);
   });
 
   it("should return a component for http:, https:, and mailto: links in jsx mode", () => {

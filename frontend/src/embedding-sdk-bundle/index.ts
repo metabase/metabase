@@ -5,10 +5,12 @@
 import "./lib/sdk-public-path";
 
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { installSdkHostLinkHandler } from "metabase/embedding-sdk/install-host-link-handler";
 
 // Enable SDK mode as we are in the SDK bundle
 // This applies to SDK derivatives such as new iframe embedding.
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+installSdkHostLinkHandler();
 
 // Import the embedding SDK vendors side-effects
 import "metabase/embedding-sdk/vendors-side-effects";

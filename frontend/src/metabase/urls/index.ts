@@ -11,6 +11,13 @@ export * from "./data-studio";
 export * from "./dependencies";
 export * from "./documents";
 export * from "./explorations";
+export {
+  type HostLinkHandler,
+  getHostLinkHandler,
+  hostOwnsNavigation,
+  resetHostLinkHandler,
+  setHostLinkHandler,
+} from "./host-navigation";
 export * from "./indexed-entities";
 export * from "./metabase-protocol";
 export * from "./metabot";
