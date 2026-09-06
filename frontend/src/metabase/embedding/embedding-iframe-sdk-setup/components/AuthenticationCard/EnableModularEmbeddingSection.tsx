@@ -89,6 +89,7 @@ export const EnableModularEmbeddingSection = ({
       <Group justify="flex-start" mt="xxs">
         <Button
           variant={isAccepted ? "default" : "filled"}
+          size="sm"
           onClick={handleEnable}
           disabled={isAccepted}
           leftSection={isAccepted && <Icon name="check" />}
