@@ -147,7 +147,7 @@
 (deftest fetch-dev-manifest-test
   (testing "returns a well-formed manifest"
     (with-redefs [u.http/get (constantly {:headers {:content-type "application/json"}
-                                        :body    (json/encode {:name "dev-viz"})})]
+                                          :body    (json/encode {:name "dev-viz"})})]
       (is (= {:name "dev-viz"}
              (cache/fetch-dev-manifest "http://localhost:5174")))))
   (testing "returns nil when the manifest cannot be fetched"
@@ -155,7 +155,7 @@
       (is (nil? (cache/fetch-dev-manifest "http://localhost:5174")))))
   (testing "rejects a structurally invalid manifest, same as the upload path"
     (with-redefs [u.http/get (constantly {:headers {:content-type "application/json"}
-                                        :body    (json/encode {:name 123})})]
+                                          :body    (json/encode {:name 123})})]
       (is (thrown-with-msg? Exception #"is invalid"
                             (cache/fetch-dev-manifest "http://localhost:5174"))))))
 
@@ -199,14 +199,14 @@
                                ["a response with no content type" nil "{\"name\":\"x\"}"]]]
       (testing what
         (with-redefs [u.http/get (constantly {:headers (when ctype {:content-type ctype})
-                                            :body    body})]
+                                              :body    body})]
           (is (thrown-with-msg? Exception #"Dev bundle URL returned"
                                 (cache/fetch-dev-manifest "http://localhost:5174")))
           (is (thrown-with-msg? Exception #"Dev bundle URL returned"
                                 (cache/fetch-dev-bundle "http://localhost:5174")))))))
   (testing "the content types the CLI's own dev server serves are accepted"
     (with-redefs [u.http/get (constantly {:headers {:content-type "application/javascript; charset=utf-8"}
-                                        :body    "export default {}"})]
+                                          :body    "export default {}"})]
       (is (= "export default {}" (:content (cache/fetch-dev-bundle "http://localhost:5174")))
           "a charset parameter on the header is stripped before comparison"))))
 

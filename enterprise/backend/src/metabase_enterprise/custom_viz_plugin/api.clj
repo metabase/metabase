@@ -360,9 +360,9 @@
           ;; the SSE stream is long-lived and idle between events, so override the 5s read timeout
           ;; from dev-http-opts (0 = no read timeout)
           (let [resp (u.http/get sse-url (merge cache/dev-http-opts
-                                              {:as             :stream
-                                               :socket-timeout 0
-                                               :headers        {"Accept" "text/event-stream"}}))]
+                                                {:as             :stream
+                                                 :socket-timeout 0
+                                                 :headers        {"Accept" "text/event-stream"}}))]
             (with-open [^InputStream is (:body resp)
                         rdr (BufferedReader. (InputStreamReader. is "UTF-8"))]
               (if-not (= "text/event-stream" (u.http/response-content-type resp))

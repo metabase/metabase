@@ -532,10 +532,10 @@
                            :headers {"Content-Type" "application/json"}
                            :body    (json/encode response)}))
         embed!        #(embedding/get-embedding {:provider          "ai-service"
-                                                :model-name        "test-model"
-                                                :vector-dimensions 4}
-                                               "test text"
-                                               {:record-tokens? false})]
+                                                 :model-name        "test-model"
+                                                 :vector-dimensions 4}
+                                                "test text"
+                                                {:record-tokens? false})]
     (testing "the managed AI service is reached with :allow-private -- on Cloud it answers on a private address"
       (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
                                   llm.settings/ai-service-base-url                (constantly "http://mock-ai-service")

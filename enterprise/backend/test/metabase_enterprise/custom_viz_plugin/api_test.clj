@@ -789,9 +789,9 @@
         (testing "GET /:id/dev-sse forwards Server-Sent Events from the dev server"
           (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly "http://localhost:5199")
                                       u.http/get (fn [_url _opts]
-                                                 {:headers {:content-type "text/event-stream"}
-                                                  :body    (java.io.ByteArrayInputStream.
-                                                            (.getBytes "data: hello\n\n" "UTF-8"))})]
+                                                   {:headers {:content-type "text/event-stream"}
+                                                    :body    (java.io.ByteArrayInputStream.
+                                                              (.getBytes "data: hello\n\n" "UTF-8"))})]
             (let [resp (mt/user-http-request-full-response
                         :crowberto :get 200 (str "ee/custom-viz-plugin/" id "/dev-sse"))]
               (testing "response is served as an event stream"
@@ -801,9 +801,9 @@
         (testing "GET /:id/dev-sse refuses an upstream response that is not an event stream"
           (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly "http://localhost:5199")
                                       u.http/get (fn [_url _opts]
-                                                 {:headers {:content-type "text/html"}
-                                                  :body    (java.io.ByteArrayInputStream.
-                                                            (.getBytes "<html>internal secrets</html>" "UTF-8"))})]
+                                                   {:headers {:content-type "text/html"}
+                                                    :body    (java.io.ByteArrayInputStream.
+                                                              (.getBytes "<html>internal secrets</html>" "UTF-8"))})]
             (let [resp (mt/user-http-request-full-response
                         :crowberto :get 400 (str "ee/custom-viz-plugin/" id "/dev-sse"))]
               (testing "the internal service's body is never relayed to the browser"

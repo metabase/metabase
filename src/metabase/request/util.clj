@@ -153,8 +153,8 @@
       (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]
         (try
           (let [response (-> (u.http/get url {:headers            {"User-Agent" config/mb-app-id-string}
-                                            :socket-timeout     gecode-ip-address-timeout-ms
-                                            :connection-timeout gecode-ip-address-timeout-ms})
+                                              :socket-timeout     gecode-ip-address-timeout-ms
+                                              :connection-timeout gecode-ip-address-timeout-ms})
                              :body
                              json/decode+kw)
                 result (into {} (for [info response]
