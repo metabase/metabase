@@ -183,7 +183,7 @@ describe("SdkDashboard", () => {
     expect(onClickCustomAction).toHaveBeenCalled();
   });
 
-  it("should pass a MetabaseQuestion to a custom dashcard menu item builder", async () => {
+  it("should call a customItems function with a MetabaseQuestion", async () => {
     const buildCustomItem = jest.fn(() => ({
       iconName: "chevronright" as const,
       label: "Custom Action",
