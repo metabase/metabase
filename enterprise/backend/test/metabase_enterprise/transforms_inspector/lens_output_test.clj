@@ -2,6 +2,8 @@
   "Tests for lens card output validation and trigger flow."
   (:require
    [clojure.test :refer :all]
+   ;; for side effects: registers the lens implementations that `make-lens` dispatches to
+   [metabase-enterprise.transforms-inspector.core]
    [metabase-enterprise.transforms-inspector.lens.core :as lens.core]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

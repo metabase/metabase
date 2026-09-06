@@ -7,6 +7,9 @@
    [metabase.lib-be.json-schema :as js]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
+   ;; for side effects: registers the JSON encoders, including the Object fallback that renders the
+   ;; regex Patterns in the schema. Loaded in production via metabase.core.init -> metabase.server.init.
+   [metabase.server.middleware.json]
    [metabase.util.json :as json-util])
   (:import
    (com.github.erosb.jsonsKema FormatValidationPolicy JsonParser SchemaLoader Validator ValidatorConfig)))

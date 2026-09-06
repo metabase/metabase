@@ -5,6 +5,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   ;; for side effects: derives :event/setting-update, which writing a setting publishes.
+   ;; Loaded in production via metabase.core.init -> metabase.audit-app.init.
+   [metabase.audit-app.events.audit-log]
    [metabase.channel.api.email :as api.email]
    [metabase.channel.email :as email]
    [metabase.channel.settings :as channel.settings]
