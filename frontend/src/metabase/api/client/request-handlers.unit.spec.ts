@@ -28,7 +28,7 @@ describe("setEmbeddedHeader", () => {
     expect(await runEmbeddedHeaderHandler()).toBeUndefined();
   });
 
-  it("should tag the request again after a handler installed in the slot is reset", async () => {
+  it("should tag the request again after the request handlers are reinitialized", async () => {
     window.overrideIsWithinIframe = true;
     PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader = async () => {};
 

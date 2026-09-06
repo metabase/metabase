@@ -74,7 +74,7 @@ describe("setDataApp", () => {
     ).toEqual({ headers: { "X-Metabase-Client": "data-app" } });
   });
 
-  it("does not tag the request as embedded, even though a data app is always iframed", async () => {
+  it("does not tag the request as embedded when the data app is inside an iframe", async () => {
     iframeState.withinIframe = true;
     setDataApp("sales");
 

@@ -24,8 +24,7 @@ export type OnBeforeRequestHandler = (
 
 const noop: OnBeforeRequestHandler = async () => {};
 
-// Tag requests from an app running inside an iframe (interactive / static /
-// public embedding) so the backend knows it's embedded.
+// Tag requests from an app running inside an iframe so the backend knows it's embedded.
 const setEmbeddedHeader: OnBeforeRequestHandler = async () => {
   if (isWithinIframe()) {
     return { headers: { "X-Metabase-Embedded": "true" } };
