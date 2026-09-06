@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-restricted-imports
-import { Global, css } from "@emotion/react";
+import { Global, type SerializedStyles, css } from "@emotion/react";
 import { useMemo } from "react";
 
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
@@ -12,14 +12,20 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
-import { useMantineTheme } from "metabase/ui";
+import { type MantineTheme, useMantineTheme } from "metabase/ui";
 import { getSitePath } from "metabase/utils/dom";
 import { getFontFamilyValue } from "metabase/utils/fonts";
 import { getSaveDomImageStyles } from "metabase/viz-core";
 
 import { getFont, getFontFiles } from "../../selectors";
 
-export const GlobalStyles = (): JSX.Element => {
+interface GlobalStylesProps {
+  getThemeCssVariables: (theme: MantineTheme) => SerializedStyles;
+}
+
+export const GlobalStyles = ({
+  getThemeCssVariables,
+}: GlobalStylesProps): JSX.Element => {
   const font = useSelector(getFont);
   const fontFiles = useSelector(getFontFiles);
   const whitelabelColors = useSetting("application-colors");
@@ -30,8 +36,12 @@ export const GlobalStyles = (): JSX.Element => {
 
   // This can get expensive so we should memoize it separately
   const cssVariables = useMemo(() => {
-    return getMetabaseCssVariables({ theme, whitelabelColors });
-  }, [theme, whitelabelColors]);
+    return getMetabaseCssVariables({
+      theme,
+      whitelabelColors,
+      themeCssVariables: getThemeCssVariables(theme),
+    });
+  }, [theme, whitelabelColors, getThemeCssVariables]);
 
   const styles = useMemo(() => {
     return css`

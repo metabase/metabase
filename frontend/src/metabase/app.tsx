@@ -33,6 +33,7 @@ import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend"
 import { getUserId } from "metabase/current-user";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
+import { getMetabaseThemeCssVariables } from "metabase/embedding-sdk/theme/css-variables";
 import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { MetabaseReduxProvider } from "metabase/redux";
@@ -119,7 +120,9 @@ function _init(
         <DragDropContextProvider backend={ModifiedBackend} context={{ window }}>
           <OverlayStackProvider>
             <AppThemeProvider>
-              <GlobalStyles />
+              <GlobalStyles
+                getThemeCssVariables={getMetabaseThemeCssVariables}
+              />
               {createPortal(<PortalContainer />, document.body)}
               <MetabotProvider>
                 <RouterProvider

@@ -10,10 +10,10 @@ import {
   type MetabaseEmbeddingTheme,
   isEmbeddingThemeV1,
 } from "metabase/embedding-sdk/theme";
+import { getMetabaseSdkCssVariables } from "metabase/embedding-sdk/theme/css-variables";
 import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
-import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";

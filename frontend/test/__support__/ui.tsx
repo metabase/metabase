@@ -33,6 +33,7 @@ import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
+import { getMetabaseThemeCssVariables } from "metabase/embedding-sdk/theme/css-variables";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider, useDispatch } from "metabase/redux";
@@ -278,7 +279,10 @@ const GlobalStylesForTest = () => {
   const theme = useMantineTheme();
 
   const cssVariables = useMemo(() => {
-    return getMetabaseCssVariables({ theme });
+    return getMetabaseCssVariables({
+      theme,
+      themeCssVariables: getMetabaseThemeCssVariables(theme),
+    });
   }, [theme]);
 
   return <Global styles={[baseStyle, cssVariables]} />;
