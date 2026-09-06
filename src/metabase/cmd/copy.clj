@@ -228,8 +228,15 @@
     (remove (fn [{k :key}] (= k "read-only-mode")))
 
     :model/Table
-    ;; unique_table_helper is a computed/generated column
-    (map #(dissoc % :unique_table_helper))
+    (map (fn [table]
+           (cond-> table
+             ;; unique_table_helper is a computed/generated column
+             true (dissoc :unique_table_helper)
+             ;; transform is deliberately excluded from `entities` -- serialization for transforms isn't
+             ;; supported yet (see models-to-exclude in metabase.cmd.copy-test) -- so a transform_id here
+             ;; would point at a row that will never exist in the target and trip
+             ;; fk_metabase_table_transform_id at commit (metabase#78704)
+             (:transform_id table) (assoc :transform_id nil))))
 
     :model/Field
     ;; unique_field_helper is a computed/generated column
