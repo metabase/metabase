@@ -52,7 +52,7 @@ export type ChartSettingGoalInputProps = {
 export type ChartSettingGoalValueProps = {
   id: string;
   value: GoalValue | null | undefined;
-  onChange: (value: GoalValue | null | undefined) => void;
+  onChange: (value: GoalValue | undefined) => void;
   data?: DatasetData;
   datasetQuery?: DatasetQuery;
   // false keeps the plain numeric input of displays that don't resolve references yet

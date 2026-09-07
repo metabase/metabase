@@ -97,6 +97,15 @@ describe("ChartSettingGoalValue", () => {
       expect(onChange).toHaveBeenCalledWith(12.5);
     });
 
+    it("unsets the goal when the input is cleared", () => {
+      const { input, onChange } = setup({ isDynamic: true });
+
+      fireEvent.change(input, { target: { value: "" } });
+      fireEvent.blur(input);
+
+      expect(onChange).toHaveBeenLastCalledWith(undefined);
+    });
+
     it("offers dynamic values", async () => {
       setup({ isDynamic: true });
 

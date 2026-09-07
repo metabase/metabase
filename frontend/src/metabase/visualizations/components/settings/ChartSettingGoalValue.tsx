@@ -2,6 +2,7 @@ import {
   type ChartSettingGoalValueProps,
   getUnansweredGoalEntitiesForValues,
 } from "metabase/viz-core";
+import type { GoalValue } from "metabase-types/api";
 
 import { ChartSettingInputNumeric } from "./ChartSettingInputNumeric";
 import { GoalValueInput, StaticGoalValueInput } from "./GoalValueInput";
@@ -16,6 +17,10 @@ export const ChartSettingGoalValue = ({
   placeholder,
   showSelfColumns = true,
 }: ChartSettingGoalValueProps) => {
+  // Clearing unsets the goal so the default applies, like the numeric input does.
+  const handleChange = (newValue: GoalValue | null) =>
+    onChange(newValue ?? undefined);
+
   if (!isDynamic) {
     return (
       <ChartSettingInputNumeric
@@ -33,7 +38,7 @@ export const ChartSettingGoalValue = ({
         id={id}
         placeholder={placeholder}
         value={value ?? null}
-        onChange={onChange}
+        onChange={handleChange}
       />
     );
   }
@@ -47,7 +52,7 @@ export const ChartSettingGoalValue = ({
       referencedEntities={getUnansweredGoalEntitiesForValues(data, [value])}
       showSelfColumns={showSelfColumns}
       value={value ?? null}
-      onChange={onChange}
+      onChange={handleChange}
     />
   );
 };
