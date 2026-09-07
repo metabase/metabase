@@ -513,5 +513,6 @@
         payload  (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                                     (case op
                                       :create (create! a)
-                                      :update (update! a b)))]
+                                      :update (update! a b))
+                                    nil)]
     (common/success-content payload)))

@@ -317,14 +317,22 @@
                                  :edits [{:old_str "ls" :new_str "*em*"}]})]
               (is (= "plain *em* here" (:content_markdown updated))))))))))
 
+(defn- error-text
+  "The error text a `call-tool` outcome carries, whichever way it refused: the registry rejects a
+   schema violation before dispatch as `{:error …}`, while a handler's teaching error comes back
+   from an executed call as `{:result {:isError true}}`. `nil` when the call succeeded, so a call
+   that went through can never satisfy an assertion about a refusal."
+  [{:keys [result error]}]
+  (cond
+    error             (:message error)
+    (:isError result) (-> result :content first :text)))
+
 (defn- write-error
   "The error text `document_write` returns for `args`, called through the registry rather than the
    handler directly — the tool's own Malli schema is only applied at that seam, and these are
-   arguments the schema is meant to reject. `nil` when the call succeeded."
+   arguments the schema is meant to reject."
   [args]
-  (let [result (registry/call-tool nil "test-session" "document_write" args)]
-    (when (:isError result)
-      (-> result :content first :text))))
+  (error-text (registry/call-tool nil "test-session" "document_write" args)))
 
 (deftest markdown-tables-are-rejected-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -628,7 +636,7 @@
               call!    (fn [scopes]
                          (-> (registry/call-tool scopes nil "document_write"
                                                  {:method "update" :id (:id existing) :edits []})
-                             :content first :text))]
+                             :result :content first :text))]
           (testing "without the read scope the body is withheld, leaving the minimal ack"
             (let [txt (call! #{"agent:content:write"})]
               (is (not (re-find #"PRE-EXISTING SECRET" txt)))
@@ -662,7 +670,7 @@
             (call! {:edits [] :clear ["collection_position"]})
             (is (nil? (t2/select-one-fn :collection_position :model/Document :id (:id doc)))))
           (testing "a property outside the clearable set is refused at the boundary"
-            (let [txt (-> (call! {:edits [] :clear ["name"]}) :content first :text)]
+            (let [txt (error-text (call! {:edits [] :clear ["name"]}))]
               (is (re-find #"clear" txt))
               (is (= "pinned doc" (t2/select-one-fn :name :model/Document :id (:id doc)))))))))))
 
