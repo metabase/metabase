@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* eslint-env node */
-/* eslint-disable import/order */
+/* eslint-disable import-js/order */
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");

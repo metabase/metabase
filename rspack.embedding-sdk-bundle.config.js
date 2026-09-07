@@ -1,6 +1,6 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
-/* eslint-disable import/order */
+/* eslint-disable import-js/order */
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const rspack = require("@rspack/core");
 const BundleAnalyzerPlugin =

@@ -1,4 +1,4 @@
-/* eslint-disable import/order */
+/* eslint-disable import-js/order */
 
 import type { MetabaseEmbeddingSdkBundleExports } from "./types/sdk-bundle";
 

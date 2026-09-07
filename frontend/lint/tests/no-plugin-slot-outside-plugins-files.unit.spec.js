@@ -1,11 +1,9 @@
-import { RuleTester } from "eslint";
-import tseslint from "typescript-eslint";
+import { RuleTester } from "oxlint/plugins-dev";
 
 import rule from "../eslint-plugin-metabase/rules/no-plugin-slot-outside-plugins-files";
 
 const ruleTester = new RuleTester({
   languageOptions: {
-    parser: tseslint.parser,
     sourceType: "module",
   },
 });

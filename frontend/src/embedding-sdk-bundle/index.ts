@@ -1,4 +1,4 @@
-/* eslint-disable import/order */
+/* eslint-disable import-js/order */
 
 // Must run before any dynamic import(): sets webpack's runtime publicPath so
 // on-demand chunks load from the Metabase-hosted SDK asset directory.

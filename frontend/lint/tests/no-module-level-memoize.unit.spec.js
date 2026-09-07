@@ -1,9 +1,9 @@
-import { RuleTester } from "eslint";
+import { RuleTester } from "oxlint/plugins-dev";
 
 import rule from "../eslint-plugin-metabase/rules/no-module-level-memoize";
 
 const ruleTester = new RuleTester({
-  languageOptions: { ecmaVersion: 2022, sourceType: "module" },
+  languageOptions: { sourceType: "module" },
 });
 
 const error = { messageId: "noModuleLevelMemoize" };

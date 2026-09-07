@@ -1,13 +1,11 @@
 import path from "path";
 
-import { RuleTester } from "eslint";
-import tseslint from "typescript-eslint";
+import { RuleTester } from "oxlint/plugins-dev";
 
 import rule from "../eslint-plugin-metabase/rules/no-module-side-effects";
 
 const ruleTester = new RuleTester({
   languageOptions: {
-    parser: tseslint.parser,
     parserOptions: { ecmaFeatures: { jsx: true } },
     sourceType: "module",
   },
@@ -758,6 +756,6 @@ const INVALID_CASES = [
 ];
 
 ruleTester.run("no-module-side-effects", rule, {
-  valid: VALID_CASES,
-  invalid: INVALID_CASES,
+  valid: VALID_CASES.map((test) => ({ filename: FILENAME, ...test })),
+  invalid: INVALID_CASES.map((test) => ({ filename: FILENAME, ...test })),
 });
