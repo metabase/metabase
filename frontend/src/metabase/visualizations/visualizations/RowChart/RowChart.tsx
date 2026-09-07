@@ -5,10 +5,7 @@ import CS from "metabase/css/core/index.css";
 import { getFontFamilyValue } from "metabase/utils/fonts";
 import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
-import {
-  GoalFailedState,
-  GoalResolvingState,
-} from "metabase/visualizations/components/GoalResolutionState";
+import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
 import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -30,7 +27,6 @@ import {
   getGroupedDataset,
   getStackOffset,
   getTwoDimensionalChartSeries,
-  getUnresolvedGoalMessage,
   trimData,
 } from "metabase/viz-core";
 
@@ -116,18 +112,9 @@ const RowChartVisualization = ({
     () => getGroupedDataset(data, chartColumns, settings, formatColumnValue),
     [chartColumns, data, settings, formatColumnValue],
   );
-  const goalSettings = useResolvedGoalSettings(
-    card,
-    chartSeries.data,
-    settings,
-  );
-  const goal = useMemo(
-    () =>
-      getChartGoal(
-        goalSettings.status === "resolved" ? goalSettings.settings : settings,
-      ),
-    [goalSettings, settings],
-  );
+  const { status: goalStatus, settings: goalSettings } =
+    useResolvedGoalSettings(card, chartSeries.data, settings);
+  const goal = useMemo(() => getChartGoal(goalSettings), [goalSettings]);
   const stackOffset = getStackOffset(settings);
   const theme = useRowChartTheme(getFontFamilyValue(fontFamily), isDashboard);
 
@@ -269,16 +256,12 @@ const RowChartVisualization = ({
     settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
   const hasLegend = !hideLegend && (series.length > 1 || hasBreakout);
 
-  if (goalSettings.status === "resolving") {
-    return <GoalResolvingState className={className} height={outerHeight} />;
-  }
-
-  if (goalSettings.status === "failed") {
+  if (goalStatus !== "resolved") {
     return (
-      <GoalFailedState
+      <GoalResolutionState
         className={className}
         height={outerHeight}
-        message={getUnresolvedGoalMessage()}
+        status={goalStatus}
       />
     );
   }

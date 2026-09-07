@@ -63,9 +63,7 @@ describe("useResolvedGoalSettings", () => {
     const { result } = setup(createMockCard({ display: "line" }), settings);
 
     expect(result.current).toEqual({ status: "resolved", settings });
-    expect(
-      result.current.status === "resolved" && result.current.settings,
-    ).toBe(settings);
+    expect(result.current.settings).toBe(settings);
   });
 
   it("leaves a reference alone for a display that does not resolve graph goals", () => {
@@ -131,7 +129,10 @@ describe("useResolvedGoalSettings", () => {
       });
 
       const { result } = setup(card, REFERENCED_SETTINGS);
-      expect(result.current).toEqual({ status: "resolving" });
+      expect(result.current).toEqual({
+        status: "resolving",
+        settings: { ...REFERENCED_SETTINGS, "graph.goal_value": null },
+      });
 
       await waitFor(() =>
         expect(result.current).toEqual({
@@ -146,7 +147,12 @@ describe("useResolvedGoalSettings", () => {
 
       const { result } = setup(card, REFERENCED_SETTINGS);
 
-      await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
+      await waitFor(() =>
+        expect(result.current).toEqual({
+          status: "failed",
+          settings: { ...REFERENCED_SETTINGS, "graph.goal_value": null },
+        }),
+      );
     });
   });
 });

@@ -8,6 +8,8 @@ import type {
 
 import { useReferencedEntitiesQuery } from "./use-referenced-entities-query";
 
+export type GoalResolutionStatus = "resolving" | "failed" | "resolved";
+
 export type GoalResolution<T> =
   | { status: "resolving" }
   | { status: "failed" }

@@ -4,12 +4,14 @@ import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import { isGraphGoalReference } from "metabase/viz-core";
 import type { Card, DatasetData } from "metabase-types/api";
 
-import type { GoalResolution } from "./use-answered-goal-data";
+import type { GoalResolutionStatus } from "./use-answered-goal-data";
 import { useResolvedGoal } from "./use-resolved-goal";
 
-export type GoalSettingsResolution = GoalResolution<{
+export type GoalSettingsResolution = {
+  status: GoalResolutionStatus;
+  // `graph.goal_value` is a number, or null until resolved
   settings: ComputedVisualizationSettings;
-}>;
+};
 
 /**
  * Resolves `graph.goal_value` to a number so the chart model only ever sees
@@ -38,9 +40,8 @@ export function useResolvedGoalSettings(
     [settings, needsResolving, goalValue],
   );
 
-  if (needsResolving && goal.status !== "resolved") {
-    return goal;
-  }
-
-  return { status: "resolved", settings: resolvedSettings };
+  return {
+    status: needsResolving ? goal.status : "resolved",
+    settings: resolvedSettings,
+  };
 }
