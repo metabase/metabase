@@ -36,27 +36,35 @@
 (defn- shutdown! [data-source]
   (jdbc/execute! {:datasource data-source} ["SHUTDOWN"] {:transaction? false}))
 
-(defn- metabot-permissions [data-source]
-  (jdbc/query {:datasource data-source} ["SELECT * FROM metabot_permissions ORDER BY group_id, perm_type"]))
+(defn- metabot-permissions-by-group-type
+  "{magic_group_type {perm_type perm_value}}, with rows of groups the target doesn't have under nil."
+  [data-source]
+  (reduce (fn [m {:keys [magic_group_type perm_type perm_value]}]
+            (assoc-in m [magic_group_type perm_type] perm_value))
+          {}
+          (jdbc/query {:datasource data-source}
+                      ["SELECT pg.magic_group_type, mp.perm_type, mp.perm_value
+                        FROM metabot_permissions mp
+                        LEFT JOIN permissions_group pg ON pg.id = mp.group_id"])))
 
 (deftest copy-metabot-permissions-test
-  (testing "metabot_permissions is copied on every edition, so the target's migration seeds never outlive their groups (#78414)"
+  (testing "a dump made by an OSS build before metabot_permissions was copied restores like a fresh install (#78414)"
     (let [source (h2-data-source)
           target (h2-data-source)]
       (try
         (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
-        ;; move the source's magic groups off the ids a freshly migrated target seeds
-        (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY FALSE"])
-        (jdbc/execute! {:datasource source} ["UPDATE permissions_group SET id = id + 10 WHERE id > 2"])
-        (doseq [table ["permissions" "data_permissions" "metabot_permissions"]]
-          (jdbc/execute! {:datasource source} [(format "UPDATE %s SET group_id = group_id + 10 WHERE group_id > 2" table)]))
-        ;; and leave one of those seeds behind, as a dump made before the fix would
-        (jdbc/execute! {:datasource source} ["INSERT INTO metabot_permissions (group_id, perm_type, perm_value) VALUES (3, 'permission/metabot', 'yes')"])
-        (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY TRUE"])
-        (copy/copy! :h2 source :h2 target)
-        (is (= (remove #(= 3 (:group_id %)) (metabot-permissions source))
-               (metabot-permissions target))
-            "the row pointing at a group the source doesn't have stays behind")
+        (let [fresh (metabot-permissions-by-group-type source)]
+          ;; such a dump holds the dumping build's seed rows under its own group ids, while the source's magic groups
+          ;; sit elsewhere with none
+          (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY FALSE"])
+          (jdbc/execute! {:datasource source} ["UPDATE permissions_group SET id = id + 10 WHERE id > 2"])
+          (doseq [table ["permissions" "data_permissions"]]
+            (jdbc/execute! {:datasource source} [(format "UPDATE %s SET group_id = group_id + 10 WHERE group_id > 2" table)]))
+          (jdbc/execute! {:datasource source} ["UPDATE metabot_permissions SET perm_value = 'no' WHERE group_id = 1 AND perm_type = 'permission/metabot'"])
+          (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY TRUE"])
+          (copy/copy! :h2 source :h2 target)
+          (is (= (assoc-in fresh ["all-internal-users" "permission/metabot"] "no")
+                 (metabot-permissions-by-group-type target))))
         (finally
           (run! shutdown! [source target]))))))
 
