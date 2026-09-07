@@ -134,6 +134,13 @@ const configs = [
   },
   { rules: presets.javascript },
   {
+    // Moved from this file's /* global console */ directive, which oxlint ignores.
+    files: [
+      "enterprise/frontend/src/custom-viz/fixtures/build-example-custom-viz.mjs",
+    ],
+    languageOptions: { globals: { console: "readonly" } },
+  },
+  {
     files: ["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx"],
     languageOptions: {
       ecmaVersion: 2020,

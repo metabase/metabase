@@ -1,4 +1,5 @@
 import path from "node:path";
+import { createRequire } from "node:module";
 
 import micromatch from "micromatch";
 
@@ -36,11 +37,17 @@ function options(name, value) {
 // Settings overrides are not supported by oxlint yet. Match the shared policy
 // directly instead of recording the files present when the config was generated.
 const settingsEntries = policy
-  .filter((entry) => entry.settings || entry.languageOptions?.parserOptions)
+  .filter(
+    (entry) =>
+      entry.settings ||
+      entry.languageOptions?.parserOptions ||
+      entry.languageOptions?.sourceType,
+  )
   .map((entry) => ({
     matches: entry.files
       ? micromatch.matcher(entry.files, { dot: true })
       : () => true,
+    sourceType: entry.languageOptions?.sourceType,
     settings: entry.settings ?? {},
     parserOptions: entry.languageOptions?.parserOptions ?? {},
   }));
@@ -60,6 +67,7 @@ export function settingsForFile(filename) {
       key,
       matched.reduce(
         (result, index) => ({
+          sourceType: settingsEntries[index].sourceType ?? result.sourceType,
           settings: merge(result.settings, settingsEntries[index].settings),
           parserOptions: merge(
             result.parserOptions,
@@ -85,6 +93,7 @@ const jsNamespaces = new Set([
   "no-only-tests",
   "depend",
   "jest-dom",
+  "jest-js",
   "testing-library",
   "typescript-js",
   "ttag",
@@ -105,6 +114,20 @@ export const jsRules = Object.fromEntries(
     ],
   ]),
 );
+
+// Match the existing optional CSS-module hook without loading an absent plugin.
+const require = createRequire(import.meta.url);
+function hasCssModulesPlugin() {
+  if (!(process.env.CI || process.env.LINT_CSS_MODULES === "true"))
+    return false;
+  try {
+    require.resolve("eslint-plugin-postcss-modules");
+    return true;
+  } catch {
+    return false;
+  }
+}
+jsRules["postcss-modules"] = ["no-undef-class"];
 
 function glob(pattern) {
   // globset's brace alternatives are equivalent to these simple extglobs.
@@ -134,6 +157,15 @@ export function createConfig() {
           `Map the new lint rule to oxlint or a JS plugin: ${name}`,
         );
       }
+      // TS extension rules disable their ESLint base rule. When both map to
+      // one native rule, that base-rule "off" must not overwrite the TS rule.
+      const extension = `@typescript-eslint/${name}`;
+      if (
+        normalized === "off" &&
+        ruleMap[extension] === mapped &&
+        Object.hasOwn(entry.rules, extension)
+      )
+        continue;
       rules[mapped] = normalized;
     }
     const globals = Object.fromEntries(
@@ -151,13 +183,21 @@ export function createConfig() {
       rules,
     });
   }
+  const namespaces = [...jsNamespaces];
+  if (hasCssModulesPlugin()) {
+    namespaces.push("postcss-modules");
+    overrides.push({
+      files: ["**/*.{js,jsx,ts,tsx}"],
+      rules: { "postcss-modules/no-undef-class": "error" },
+    });
+  }
   return {
     categories: { correctness: "off" },
     plugins: ["typescript", "react", "import", "jest"],
     settings: { react: { version: "18.2.0" } },
     ignorePatterns,
     overrides,
-    jsPlugins: [...jsNamespaces].map((name) => ({
+    jsPlugins: namespaces.map((name) => ({
       name,
       specifier: path.join(import.meta.dirname, "plugins", `${name}.mjs`),
     })),

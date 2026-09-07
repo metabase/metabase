@@ -174,11 +174,11 @@ const output = c("{0} and {2} are people's names, and {1} is a place")
 
 The first rule of frontend style, is we want to avoid talking about frontend style. Wherever possible, style-level considerations should be encapsulated in lint rules.
 
-### oxfmt + ESlint
+### oxfmt + oxlint
 
 We use [oxfmt](https://oxc.rs/) to format our JavaScript and TypeScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `bun run format`, and verify it has been formatted correctly using `bun run lint-format-pure`.
 
-We use ESLint to enforce additional rules. It is integrated into the Webpack build, or you can manually run `bun run lint-eslint` to check. Nitpicky things like import order, spacing, etc. are all enforced by eslint.
+We use oxlint to enforce JavaScript and TypeScript rules, including module boundaries and the existing import order. Run `bun run lint-oxlint`, or `bun run lint-oxlint-fix` to apply lint fixes. Formatting remains a separate oxfmt responsibility; this migration does not change import sorting. ESLint remains available as a reference for the previous policy and as a dependency of retained rules. Its diagnostics intentionally differ for unused variables, duplicate imports and React display names. The optimized resolver supports fresh CLI invocations; editor/watch invalidation is separate work.
 
 ### Miscellaneous notes on coding style
 

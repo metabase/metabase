@@ -1,4 +1,7 @@
 // @ts-check
+import { builtinRules } from "eslint/use-at-your-own-risk";
+import { aliasRules } from "./frontend/lint/oxlint/rule-aliases.mjs";
+
 import { fixupPluginRules } from "@eslint/compat";
 import tseslint from "typescript-eslint";
 import * as babelParser from "@babel/eslint-parser";
@@ -44,6 +47,11 @@ const configs = [
       "chai-friendly": chaiFriendlyPlugin,
       "@typescript-eslint": tseslint.plugin,
       storybook: storybookPlugin,
+      "eslint-js": { rules: Object.fromEntries(builtinRules) },
+      "import-js": importXPlugin,
+      "react-js": reactPlugin,
+      "jest-js": jestPlugin,
+      "typescript-js": tseslint.plugin,
     },
   },
   { files: ["**/*.js", "**/*.jsx"], languageOptions: { parser: babelParser } },
@@ -51,7 +59,10 @@ const configs = [
     files: ["**/*.ts", "**/*.tsx"],
     languageOptions: { parser: tseslint.parser },
   },
-  ...policy,
+  ...policy.map((entry) => ({
+    ...entry,
+    ...(entry.rules && { rules: aliasRules(entry.rules) }),
+  })),
 ];
 if (shouldLintCssModules) {
   try {

@@ -39,6 +39,8 @@ frontend_configs: &frontend_configs
   - "package.json"
   - "babel.config.json"
   - "eslint.config.mjs"
+  - "oxlint.config.ts"
+  - "frontend/lint/**"
   - "postcss.config.js"
   - "rspack.config.js"
   - "rspack.main.config.js"

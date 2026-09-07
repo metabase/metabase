@@ -70,3 +70,12 @@ test("native overrides retain inherited prefer-const and console options", () =>
     "errorBuffer",
   ]);
 });
+
+test("TS base-rule disables do not overwrite native extension rules", () => {
+  const config = createConfig();
+  const ts = config.overrides.findLast(
+    (entry) => entry.files.includes("**/*.ts") && entry.rules["no-unused-vars"],
+  );
+  assert.equal(ts.rules["no-unused-vars"][0], "error");
+  assert.equal(ts.rules["no-unused-vars"][1].varsIgnorePattern, "^_.+$");
+});
