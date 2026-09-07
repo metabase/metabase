@@ -225,6 +225,7 @@ export {
   getSegmentColor,
   getUnansweredGoalEntities,
   getUnansweredGoalEntitiesForValues,
+  getUnresolvedGoalMessage,
   hasFailedGoalReferences,
   hasFailedGoalReferencesForValues,
   hasUnansweredGoalReferences,
@@ -338,7 +339,6 @@ export {
 export {
   getChartGoal,
   getNumericGoalValue,
-  getUnresolvedGoalMessage,
   GRAPH_GOAL_SETTINGS,
 } from "./lib/settings/goal";
 export {

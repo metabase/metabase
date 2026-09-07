@@ -11,6 +11,7 @@ import type {
 } from "metabase-types/api";
 
 import {
+  getUnresolvedGoalMessage,
   hasFailedGoalReferencesForValues,
   isGraphGoalReference,
 } from "../dynamic-goals";
@@ -18,8 +19,6 @@ import { ChartSettingsError, MinRowsError } from "../errors";
 import { getCartesianChartColumns } from "../graph/columns";
 import { getRawSeries } from "../series";
 import { MAX_SERIES } from "../utils";
-
-import { getUnresolvedGoalMessage } from "./goal";
 
 export const validateDatasetRows = (series: Series) => {
   const singleSeriesHasNoRows = ({ data: { rows } }: SingleSeries) => {

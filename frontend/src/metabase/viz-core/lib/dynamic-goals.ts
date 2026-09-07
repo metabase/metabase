@@ -203,6 +203,9 @@ export function isDynamicGoalSetting(
 
 export type GoalReference = Exclude<GoalValue, GoalStaticValue>;
 
+export const getUnresolvedGoalMessage = () =>
+  t`Couldn't load the value this chart's goal line depends on.`;
+
 // A `graph.goal_value` the chart has to resolve before rendering.
 export function isGraphGoalReference(
   display: VisualizationDisplay | undefined,
