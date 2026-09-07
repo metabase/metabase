@@ -13,7 +13,9 @@
 
 (deftest ^:parallel sql-for-selecting-instances-from-source-db-test
   (is (= "SELECT * FROM metabase_field ORDER BY id ASC"
-         (#'copy/sql-for-selecting-instances-from-source-db :model/Field))))
+         (#'copy/sql-for-selecting-instances-from-source-db :model/Field)))
+  (is (= "SELECT * FROM metabot_permissions WHERE group_id IN (SELECT id FROM permissions_group)"
+         (#'copy/sql-for-selecting-instances-from-source-db :metabot_permissions))))
 
 (deftest ^:parallel copy-h2-database-details-test
   (doseq [copy-h2-database-details? [true false]]
@@ -48,10 +50,13 @@
         (jdbc/execute! {:datasource source} ["UPDATE permissions_group SET id = id + 10 WHERE id > 2"])
         (doseq [table ["permissions" "data_permissions" "metabot_permissions"]]
           (jdbc/execute! {:datasource source} [(format "UPDATE %s SET group_id = group_id + 10 WHERE group_id > 2" table)]))
+        ;; and leave one of those seeds behind, as a dump made before the fix would
+        (jdbc/execute! {:datasource source} ["INSERT INTO metabot_permissions (group_id, perm_type, perm_value) VALUES (3, 'permission/metabot', 'yes')"])
         (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY TRUE"])
         (copy/copy! :h2 source :h2 target)
-        (is (= (metabot-permissions source)
-               (metabot-permissions target)))
+        (is (= (remove #(= 3 (:group_id %)) (metabot-permissions source))
+               (metabot-permissions target))
+            "the row pointing at a group the source doesn't have stays behind")
         (finally
           (run! shutdown! [source target]))))))
 

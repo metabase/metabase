@@ -199,6 +199,9 @@
   [model]
   (case model
     :model/Field {:order-by [[:id :asc]]}
+    ;; dumps made by an OSS build before this table was copied still hold the rows the target's own migrations seeded,
+    ;; which can point at group ids the source never had
+    :metabot_permissions {:where [:in :group_id {:select [:id] :from [:permissions_group]}]}
     nil))
 
 (defn- sql-for-selecting-instances-from-source-db [model]
