@@ -22,7 +22,7 @@ describe("scenarios - setup guide", () => {
         .should("exist")
         .click();
 
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByRole("heading", { name: "Get started with Metabase Embedding" })
         .should("exist");
     });
@@ -31,9 +31,7 @@ describe("scenarios - setup guide", () => {
       cy.visit("/embedding/get-started");
 
       cy.log("Find and click on 'Create a dashboard' card");
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Create a dashboard")
-        .click();
+      cy.findByRole("main").findByText("Create a dashboard").click();
 
       cy.log("Select a table to generate dashboard from");
       H.modal().within(() => {
@@ -57,9 +55,7 @@ describe("scenarios - setup guide", () => {
       cy.visit("/embedding/get-started");
 
       cy.log("Find and click on 'Connect a database' card");
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Connect a database")
-        .click();
+      cy.findByRole("main").findByText("Connect a database").click();
 
       cy.log("Add data modal should open");
       cy.findByRole("dialog").within(() => {
@@ -89,15 +85,13 @@ describe("scenarios - setup guide", () => {
       cy.visit("/embedding/get-started");
 
       cy.log("'Connect a database' should not be marked as done");
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByText("Connect a database")
         .closest('[data-testid="embedding-hub-checklist-card"]')
         .findByLabelText(/^Step \d+ complete$/)
         .should("not.exist");
 
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Connect a database")
-        .click();
+      cy.findByRole("main").findByText("Connect a database").click();
 
       H.modal().within(() => {
         cy.findByText("CSV").click();
@@ -122,7 +116,7 @@ describe("scenarios - setup guide", () => {
       cy.wait("@getChecklist");
 
       cy.log("'Connect a database' should be marked as done");
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByText("Connect a database")
         .closest('[data-testid="embedding-hub-checklist-card"]')
         .scrollIntoView()
@@ -133,9 +127,7 @@ describe("scenarios - setup guide", () => {
     it('"Get embed snippet" card should take you to the embed flow', () => {
       cy.visit("/embedding/get-started");
 
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Get embed snippet")
-        .click();
+      cy.findByRole("main").findByText("Get embed snippet").click();
 
       H.modal()
         .first()
@@ -151,16 +143,14 @@ describe("scenarios - setup guide", () => {
       cy.visit("/embedding/get-started");
 
       cy.log("step should not be marked as done at first");
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByText("Get embed snippet")
         .closest('[data-testid="embedding-hub-checklist-card"]')
         .findByLabelText(/^Step \d+ complete$/)
         .should("not.exist");
 
       cy.log("open embed wizard");
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Get embed snippet")
-        .click();
+      cy.findByRole("main").findByText("Get embed snippet").click();
 
       H.modal()
         .first()
@@ -189,7 +179,7 @@ describe("scenarios - setup guide", () => {
       H.modal().first().findByLabelText("Close").click();
 
       cy.log("step should be marked as done");
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByText("Get embed snippet")
         .closest('[data-testid="embedding-hub-checklist-card"]')
         .findByLabelText(/^Step \d+ complete$/, { timeout: 10_000 })
@@ -274,7 +264,7 @@ describe("scenarios - setup guide", () => {
     it('"Configure data permissions and tenants" card should navigate to permissions onboarding page', () => {
       cy.visit("/embedding/get-started");
 
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByText("Configure data permissions and tenants")
         .click();
 
@@ -354,9 +344,7 @@ describe("scenarios - setup guide", () => {
       cy.log("create an x-ray dashboard via the embedding setup guide");
       cy.visit("/embedding/get-started");
 
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Create a dashboard")
-        .click();
+      cy.findByRole("main").findByText("Create a dashboard").click();
 
       cy.log("select Orders table from the modal");
       H.modal().within(() => {
@@ -668,7 +656,7 @@ describe("scenarios - setup guide", () => {
         });
 
         cy.log("Configure data permissions step should be done");
-        cy.findByTestId("embedding-hub-main")
+        cy.findByRole("main")
           .findByText("Configure data permissions and tenants")
           .closest('[data-testid="embedding-hub-checklist-card"]')
           .scrollIntoView()
@@ -1368,7 +1356,7 @@ describe("scenarios - setup guide", () => {
         expect(body["jwt-enabled"]).to.equal(false);
       });
 
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByText("Embed in production with SSO")
         .scrollIntoView()
         .should("be.visible")
@@ -1842,7 +1830,7 @@ describe("scenarios - setup guide", () => {
       cy.url().should("not.include", "/sso");
 
       cy.log("'Configure SSO' card should be marked as done");
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByText("Set up SSO")
         .closest('[data-testid="embedding-hub-checklist-card"]')
         .scrollIntoView()
@@ -1850,7 +1838,7 @@ describe("scenarios - setup guide", () => {
         .should("be.visible");
 
       cy.log("'Embed in production with SSO' should now be unlocked");
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByText("Embed in production with SSO")
         .scrollIntoView()
         .should("be.visible")

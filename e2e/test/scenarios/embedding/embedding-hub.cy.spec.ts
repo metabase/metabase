@@ -101,7 +101,7 @@ describe("scenarios > embedding > embedding hub > get started", () => {
         "page",
       );
 
-      cy.findByTestId("embedding-hub-main").within(() => {
+      cy.findByRole("main").within(() => {
         cy.findByRole("heading", {
           name: "Get started with Metabase Embedding",
         }).should("be.visible");
@@ -113,7 +113,7 @@ describe("scenarios > embedding > embedding hub > get started", () => {
     it("returns to Get started from the permissions wizard", () => {
       cy.visit("/embedding/get-started");
 
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByRole("link", { name: "Configure data permissions and tenants" })
         .click();
 
@@ -160,7 +160,7 @@ describe("scenarios > embedding > embedding hub > get started", () => {
       cy.findByRole("button", { name: "Done" }).click();
 
       cy.location("pathname").should("eq", "/embedding/get-started");
-      cy.findByTestId("embedding-hub-main").should("be.visible");
+      cy.findByRole("main").should("be.visible");
     });
 
     it("finishes the SSO wizard and lands back on Get started", () => {
@@ -177,7 +177,7 @@ describe("scenarios > embedding > embedding hub > get started", () => {
       cy.findByRole("link", { name: "Log in works, I'm done" }).click();
 
       cy.location("pathname").should("eq", "/embedding/get-started");
-      cy.findByTestId("embedding-hub-main").should("be.visible");
+      cy.findByRole("main").should("be.visible");
     });
   });
 
@@ -190,7 +190,7 @@ describe("scenarios > embedding > embedding hub > get started", () => {
     it("promotes AI into the first section and locks the Fine-tune steps", () => {
       cy.visit("/embedding/get-started");
 
-      cy.findByTestId("embedding-hub-main").within(() => {
+      cy.findByRole("main").within(() => {
         assertStepOrder(UNLICENSED_STEP_ORDER);
 
         cy.log(
@@ -214,7 +214,7 @@ describe("scenarios > embedding > embedding hub > get started", () => {
     it("marks the embed step complete once a guest embed is published", () => {
       cy.visit("/embedding/get-started");
 
-      cy.findByTestId("embedding-hub-main").within(() => {
+      cy.findByRole("main").within(() => {
         cy.findByText("Get embed snippet")
           .closest(`[data-testid=${CARD}]`)
           .findByLabelText("Step 3 complete")
@@ -235,7 +235,7 @@ describe("scenarios > embedding > embedding hub > get started", () => {
       );
       cy.visit("/embedding/get-started");
 
-      cy.findByTestId("embedding-hub-main").within(() => {
+      cy.findByRole("main").within(() => {
         cy.findByText("Get embed snippet")
           .closest(`[data-testid=${CARD}]`)
           .findByLabelText("Step 3 complete")
@@ -264,7 +264,7 @@ describe("scenarios > embedding > embedding hub > security", () => {
       cy.visit("/embedding/security");
 
       cy.log("The first enable goes through the terms modal");
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByText("Modular embedding and SDK for React")
         .should("be.visible");
 
@@ -326,7 +326,7 @@ describe("scenarios > embedding > embedding hub > security", () => {
     it("shows the Pro upsell banner and the CORS setting", () => {
       cy.visit("/embedding/security");
 
-      cy.findByTestId("embedding-hub-main").within(() => {
+      cy.findByRole("main").within(() => {
         cy.findByText(
           "Upgrade to Metabase Pro to access the SDK for React and more advanced options.",
         ).should("be.visible");
@@ -359,7 +359,7 @@ describe("scenarios > embedding > embedding hub > security", () => {
     it("shows the Pro upsell banner and the CORS setting", () => {
       cy.visit("/embedding/security");
 
-      cy.findByTestId("embedding-hub-main").within(() => {
+      cy.findByRole("main").within(() => {
         // Starter is below Pro too -- SDK access is still gated.
         cy.findByRole("button", { name: "Try Metabase Pro" }).should(
           "be.visible",
@@ -554,7 +554,7 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
 
       cy.url().should("include", "/embedding/tenancy");
 
-      cy.findByTestId("embedding-hub-main").within(() => {
+      cy.findByRole("main").within(() => {
         cy.findByText("Enable multi-tenant user strategy").should("be.visible");
         cy.findByRole("tab", { name: "Tenants" }).should("not.exist");
       });
@@ -566,7 +566,7 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
       cy.visit("/embedding/tenancy");
 
       cy.log("Enable multi-tenancy from the enable card, not the API");
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByRole("button", { name: "Enable multi-tenancy" })
         .click();
 
@@ -579,11 +579,11 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
       // The empty state's copy is interpolated with anchor links, so no
       // single node's text content matches the sentence exactly -- a regex
       // matches the substring instead.
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByText(/Create your first tenant to start adding/)
         .should("be.visible");
 
-      cy.findByTestId("embedding-hub-main").within(() => {
+      cy.findByRole("main").within(() => {
         cy.findByRole("tab", { name: "Tenants" }).should("be.visible");
         cy.findByRole("tab", { name: "Tenant users" }).click();
       });
@@ -605,7 +605,7 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
 
       // Card copy is unit-tested next to the component; this just confirms
       // the upsell renders in place of the real tenants surfaces.
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByText("Use a multi-tenant user strategy")
         .should("be.visible");
     });
@@ -629,7 +629,7 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
 
       cy.url().should("include", "/embedding/appearance");
 
-      cy.findByTestId("embedding-hub-main").within(() => {
+      cy.findByRole("main").within(() => {
         cy.findByRole("heading", { name: "Appearance" }).should("be.visible");
         cy.findByRole("heading", { name: "Themes" }).should("be.visible");
         cy.findByRole("heading", { name: "Branding elements" }).should(
@@ -646,7 +646,7 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
     it("opens the theme editor inside the hub", () => {
       cy.visit("/embedding/appearance");
 
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByRole("button", { name: /New theme/ })
         .click();
 
@@ -658,9 +658,7 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
       createThemeViaApi("Existing theme");
       cy.visit("/embedding/appearance");
 
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Existing theme")
-        .click();
+      cy.findByRole("main").findByText("Existing theme").click();
 
       // The listing is the admin one, mounted with the hub's basePath: card
       // clicks have to land here rather than on the admin route.
@@ -671,7 +669,7 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
     it("creates a theme from the hub and shows it in the listing", () => {
       cy.visit("/embedding/appearance");
 
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByRole("button", { name: /New theme/ })
         .click();
 
@@ -681,9 +679,7 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
       H.undoToastList().contains("Theme saved").should("be.visible");
 
       cy.url().should("eq", Cypress.config().baseUrl + "/embedding/appearance");
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Hub theme")
-        .should("be.visible");
+      cy.findByRole("main").findByText("Hub theme").should("be.visible");
     });
   });
 
@@ -696,7 +692,7 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
     it("upsells rather than hiding the tab", () => {
       cy.visit("/embedding/appearance");
 
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByText("Create custom themes")
         .should("be.visible");
     });
@@ -707,7 +703,7 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
       cy.visit("/embedding/appearance/theme/new");
 
       cy.url().should("eq", Cypress.config().baseUrl + "/embedding/appearance");
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByText("Create custom themes")
         .should("be.visible");
     });
@@ -725,7 +721,7 @@ describe("scenarios > embedding > embedding hub > localization", () => {
     it("mounts the dictionary configuration", () => {
       cy.visit("/embedding/localization");
 
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByTestId("content-translation-configuration")
         .findByText("Translate embedded dashboards and questions")
         .should("be.visible");
@@ -743,7 +739,7 @@ describe("scenarios > embedding > embedding hub > localization", () => {
 
       // Card copy is unit-tested next to the component; this just confirms
       // the upsell renders in place of the real dictionary configuration.
-      cy.findByTestId("embedding-hub-main")
+      cy.findByRole("main")
         .findByText("Translate your embedded content")
         .should("be.visible");
     });
@@ -764,7 +760,7 @@ function configureSaml() {
 }
 
 function assertPublishedDashboardIsListed() {
-  cy.findByTestId("embedding-hub-main").within(() => {
+  cy.findByRole("main").within(() => {
     // The hub clips its content and scrolls it internally, so this card sits
     // below the fold on a CI-sized viewport and Cypress reads it as hidden
     // until it is scrolled in.

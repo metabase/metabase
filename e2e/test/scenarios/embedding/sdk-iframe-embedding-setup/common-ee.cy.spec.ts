@@ -44,7 +44,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       });
 
     H.modal().should("not.exist");
-    cy.findByTestId("embedding-hub-main")
+    cy.findByRole("main")
       .findByRole("heading", { name: "Security" })
       .should("be.visible");
   });
@@ -65,7 +65,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
     });
 
     H.modal().should("not.exist");
-    cy.findByTestId("embedding-hub-main")
+    cy.findByRole("main")
       .findByRole("heading", { name: "Security" })
       .should("be.visible");
   });
@@ -77,7 +77,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       .should("be.visible");
 
     cy.visit("/embedding/security");
-    cy.findByTestId("embedding-hub-main")
+    cy.findByRole("main")
       .findByRole("heading", { name: "Security" })
       .should("be.visible");
 
