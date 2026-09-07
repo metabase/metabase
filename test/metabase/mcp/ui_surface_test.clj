@@ -103,7 +103,12 @@
   (testing "GHY-4400: a route on the surface is refused unless the minting session's signed scopes cover it"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id)
-          query      (mt/mbql-query venues {:limit 1})
+          ;; spelled out rather than via `mt/mbql-query`, which is deprecated: this test needs
+          ;; nothing from that macro beyond a valid non-native query, so that the only thing
+          ;; separating the two statuses below is the scope gate
+          query      {:database (mt/id)
+                      :type     :query
+                      :query    {:source-table (mt/id :venues), :limit 1}}
           post!      (fn [credential expected-status]
                        (client/client-full-response
                         :post expected-status "dataset"
