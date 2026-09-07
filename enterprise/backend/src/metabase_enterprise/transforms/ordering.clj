@@ -129,11 +129,10 @@
   ```
 "
   [{transform-id :id :as to-check}]
-  (let [transforms       (map (fn [{:keys [id] :as transform}]
-                                (if (= id transform-id)
-                                  to-check
-                                  transform))
-                              (t2/select :model/Transform))
+  (let [;; `to-check` goes last so that, when its target collides with another transform's, it wins in
+        ;; `output-table-map` regardless of select order.
+        transforms       (conj (vec (t2/select :model/Transform :id [:not= transform-id]))
+                               to-check)
         transforms-by-id (into {}
                                (map (juxt :id identity))
                                transforms)
