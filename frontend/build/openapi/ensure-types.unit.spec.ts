@@ -377,6 +377,30 @@ describe("ensure-types", () => {
     expect(readEvents(root)).toContain("types");
   });
 
+  it("regenerates when the generated spec file is modified on disk", () => {
+    expect(runEnsure(root).status).toBe(0);
+    clearEvents(root);
+
+    writeFileSync(join(root, ".tmp/openapi/openapi.json"), "{}\n");
+    const result = runEnsure(root);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("generated spec changed on disk");
+    // Regenerating the spec from source restores the expected hash, so the
+    // unchanged declarations are reused without invoking the type generator.
+    expect(readEvents(root)).toEqual(["local"]);
+  });
+
+  it("regenerates when the generated spec file is missing", () => {
+    expect(runEnsure(root).status).toBe(0);
+    clearEvents(root);
+
+    rmSync(join(root, ".tmp/openapi/openapi.json"), { force: true });
+    const result = runEnsure(root);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("generated spec changed on disk");
+    expect(readEvents(root)).toEqual(["local"]);
+  });
+
   it("worker exits zero with a stderr warning when generation fails", () => {
     const result = runEnsure(root, ["--postinstall-worker"], {
       FAIL_GENERATE: "1",
@@ -386,15 +410,11 @@ describe("ensure-types", () => {
   });
 
   it("reports the lock path and holder age while waiting", async () => {
-    mkdirSync(join(root, ".tmp/openapi"), { recursive: true });
-    writeFileSync(
-      join(root, LOCK_PATH),
-      JSON.stringify({ pid: 99999, token: "someone-else" }),
-    );
+    mkdirSync(join(root, LOCK_PATH), { recursive: true });
 
     const pending = runEnsureAsync(root);
     await new Promise((resolve) => setTimeout(resolve, 600));
-    rmSync(join(root, LOCK_PATH), { force: true });
+    rmSync(join(root, LOCK_PATH), { recursive: true, force: true });
     const result = await pending;
 
     expect(result.status).toBe(0);
@@ -439,11 +459,7 @@ describe("ensure-types", () => {
     });
 
     it("worker exits quietly when the lock is held", () => {
-      mkdirSync(join(root, ".tmp/openapi"), { recursive: true });
-      writeFileSync(
-        join(root, LOCK_PATH),
-        JSON.stringify({ pid: 99999, token: "someone-else" }),
-      );
+      mkdirSync(join(root, LOCK_PATH), { recursive: true });
       const now = new Date();
       utimesSync(join(root, LOCK_PATH), now, now);
 

@@ -1,13 +1,11 @@
-import { randomUUID } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
   mkdtempSync,
-  readFileSync,
   rmSync,
+  statSync,
   symlinkSync,
   utimesSync,
-  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -19,8 +17,7 @@ function sleep(milliseconds: number): Promise<void> {
 }
 
 function writeForeignLock(lockPath: string, ageMs = 0): void {
-  mkdirSync(join(lockPath, ".."), { recursive: true });
-  writeFileSync(lockPath, JSON.stringify({ pid: 99999, token: randomUUID() }));
+  mkdirSync(lockPath, { recursive: true });
   if (ageMs > 0) {
     const past = new Date(Date.now() - ageMs);
     utimesSync(lockPath, past, past);
@@ -45,7 +42,7 @@ describe("withGenerationLock", () => {
       lockPath,
       { wait: true },
       async () => {
-        expect(existsSync(lockPath)).toBe(true);
+        expect(statSync(lockPath).isDirectory()).toBe(true);
         return "done";
       },
     );
@@ -84,52 +81,27 @@ describe("withGenerationLock", () => {
     expect(existsSync(lockPath)).toBe(false);
   });
 
-  it("takes over a stale lock", async () => {
+  it("takes over a stale lock directory", async () => {
     writeForeignLock(lockPath, 60_000);
     const outcome = await withGenerationLock(
       lockPath,
-      { wait: false, staleMs: 1_000 },
+      { wait: false, staleMs: 5_000 },
       async () => "recovered",
     );
     expect(outcome).toEqual({ executed: true, result: "recovered" });
     expect(existsSync(lockPath)).toBe(false);
   });
 
-  it("takes over a stale directory at the lock path", async () => {
-    mkdirSync(lockPath, { recursive: true });
-    const past = new Date(Date.now() - 60_000);
-    utimesSync(lockPath, past, past);
-
-    const outcome = await withGenerationLock(
+  it("refreshes the lock directory while the action runs", async () => {
+    await withGenerationLock(
       lockPath,
-      { wait: false, staleMs: 1_000 },
-      async () => "recovered",
-    );
-    expect(outcome).toEqual({ executed: true, result: "recovered" });
-    expect(existsSync(lockPath)).toBe(false);
-  });
-
-  it("heartbeats so a live holder is never treated as stale", async () => {
-    const events: string[] = [];
-    const holder = withGenerationLock(
-      lockPath,
-      { wait: true, staleMs: 150, heartbeatMs: 25 },
+      { wait: true, staleMs: 5_000, heartbeatMs: 1_000 },
       async () => {
-        events.push("holder-start");
-        await sleep(500);
-        events.push("holder-end");
+        const initialMtime = statSync(lockPath).mtimeMs;
+        await sleep(1_200);
+        expect(statSync(lockPath).mtimeMs).toBeGreaterThan(initialMtime);
       },
     );
-    await sleep(50);
-    const contender = withGenerationLock(
-      lockPath,
-      { wait: true, staleMs: 150, pollMs: 25 },
-      async () => {
-        events.push("contender-start");
-      },
-    );
-    await Promise.all([holder, contender]);
-    expect(events).toEqual(["holder-start", "holder-end", "contender-start"]);
   });
 
   it("reports waiting once with the lock path and holder age", async () => {
@@ -141,7 +113,7 @@ describe("withGenerationLock", () => {
       async () => "ran",
     );
     await sleep(120);
-    rmSync(lockPath, { force: true });
+    rmSync(lockPath, { recursive: true, force: true });
     const outcome = await waiter;
     expect(outcome).toEqual({ executed: true, result: "ran" });
     expect(waits).toHaveLength(1);
@@ -187,12 +159,18 @@ describe("withGenerationLock", () => {
     expect(existsSync(lockPath)).toBe(true);
   });
 
-  it("does not remove a lock that another owner replaced during the action", async () => {
-    await withGenerationLock(lockPath, { wait: true }, async () => {
-      rmSync(lockPath, { force: true });
-      writeForeignLock(lockPath);
-    });
-    expect(existsSync(lockPath)).toBe(true);
+  it("finishes the action when the lock is compromised", async () => {
+    const outcome = await withGenerationLock(
+      lockPath,
+      { wait: true, staleMs: 5_000, heartbeatMs: 1_000 },
+      async () => {
+        rmSync(lockPath, { recursive: true, force: true });
+        await sleep(1_200);
+        return "done";
+      },
+    );
+
+    expect(outcome).toEqual({ executed: true, result: "done" });
   });
 
   it("releases the lock when the action throws", async () => {
@@ -202,12 +180,5 @@ describe("withGenerationLock", () => {
       }),
     ).rejects.toThrow("boom");
     expect(existsSync(lockPath)).toBe(false);
-  });
-
-  it("stores the owner pid in the lock record", async () => {
-    await withGenerationLock(lockPath, { wait: true }, async () => {
-      const record: unknown = JSON.parse(readFileSync(lockPath, "utf8"));
-      expect(record).toMatchObject({ pid: process.pid });
-    });
   });
 });

@@ -1,7 +1,9 @@
 # Generate OpenAPI types
 
 Metabase generates Enterprise API types from backend source. The OpenAPI spec
-and TypeScript declarations are derived files and aren't committed.
+and TypeScript declarations are derived files and aren't committed. See
+[OpenAPI generation internals](./ARCHITECTURE.md) for the supporting components
+and their responsibilities.
 
 ## Use the generation commands
 
@@ -30,7 +32,8 @@ needed. Background output goes to `.tmp/openapi/types-ensure.log`.
 
 `.tmp/openapi/generation.json` records hashes for the backend source, type
 generator, OpenAPI spec, and generated declarations. `types:ensure` compares
-those hashes with the current files before deciding whether to regenerate.
+each hash with the current files — a missing or modified spec file counts as
+stale — before deciding whether to regenerate.
 
 For speed, a stale run may fetch the spec from the running Enterprise backend
 at `localhost:${MB_JETTY_PORT:-3000}`. Backend-generated types aren't marked as
@@ -41,6 +44,9 @@ CI also uses `--force-local` before linting and type-checking.
 Local generation compares source hashes before and after running Clojure and
 retries when it detects an edit. Run generation while source files are stable;
 an exact edit and revert during generation is outside the freshness guarantee.
+The spec read back after Clojure exits isn't re-verified against the generator
+itself, so don't run generation while another process writes the spec (for
+example a backend with `MB_ENABLE_OPENAPI_AUTO_REGEN` enabled).
 
 ## Recover from interrupted generation
 
@@ -52,12 +58,12 @@ The lock is only an optimization. Declarations are staged before publication,
 the changing declaration file is replaced atomically, and generation state
 records the staged hash. Correctness doesn't depend on holding the lock.
 
-The lock holder refreshes its timestamp every 5 seconds. A lock with no refresh
-for 30 seconds is removed automatically. Regular commands wait up to 60
-seconds, then continue without the lock. Postinstall workers don't wait when
-another generator is already running.
+`proper-lockfile` creates the lock as a directory and refreshes its timestamp
+every 5 seconds. A lock with no refresh for 30 seconds is removed automatically.
+Regular commands wait up to 60 seconds, then continue without the lock.
+Postinstall workers don't wait when another generator is already running.
 
-If a process appears stuck, remove the lock:
+If a process appears stuck, remove the lock directory:
 
 ```sh
 rm -rf .tmp/openapi/types-ensure.lock

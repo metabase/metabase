@@ -217,6 +217,7 @@ type StalenessReason =
   | "previous types came from a running backend"
   | "backend source changed"
   | "type generator inputs changed"
+  | "generated spec changed on disk"
   | "generated outputs changed on disk";
 
 /** Returns why regeneration is needed, or nothing when types are fresh. */
@@ -237,10 +238,22 @@ function stalenessReason(
   if (state.generatorDigest !== generatorDigest) {
     return "type generator inputs changed";
   }
+  if (readSpecFileHash() !== state.specHash) {
+    return "generated spec changed on disk";
+  }
   if (createOutputsHash() !== state.outputsHash) {
     return "generated outputs changed on disk";
   }
   return undefined;
+}
+
+/** Hash of the published spec file, or undefined when it is missing/unreadable. */
+function readSpecFileHash(): string | undefined {
+  try {
+    return createContentHash(readFileSync(SPEC_PATH, "utf8"));
+  } catch {
+    return undefined;
+  }
 }
 
 function freshBeforePostinstall(): boolean {
