@@ -12,7 +12,7 @@ const matchers = new WeakMap();
 function matcherFor(globs) {
   let matcher = matchers.get(globs);
   if (!matcher) {
-    // `dot: true` so a checkout under a dotted directory still matches `**`
+    // Checkouts under dotted directories must match `**`.
     matcher = micromatch.matcher(globs, { dot: true });
     matchers.set(globs, matcher);
   }

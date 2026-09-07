@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { createRequire } from "node:module";
-import { spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+
+import { ResolverFactory } from "oxc-resolver";
 
 import { relative as originalImportX } from "eslint-plugin-import-x/utils/resolve";
 
@@ -12,9 +14,6 @@ import { createImportResolverService } from "../oxlint-import-resolver.mjs";
 
 const require = createRequire(import.meta.url);
 const { relative: originalLegacy } = require("eslint-module-utils/resolve");
-const { ResolverFactory } = await import(
-  process.env.METABASE_OXC_RESOLVER_MODULE ?? "oxc-resolver"
-);
 
 function fixture(run) {
   const root = fs.realpathSync(
@@ -28,8 +27,7 @@ function fixture(run) {
   }
   try {
     write("package.json", JSON.stringify({ name: "resolver-fixture" }));
-    // Give the upstream webpack resolver the same enhanced-resolve version it
-    // uses in this repo; otherwise /tmp falls back to its bundled webpack 1 API.
+    // The webpack resolver chooses enhanced-resolve through the fixture's webpack installation.
     fs.mkdirSync(path.join(root, "node_modules"));
     fs.symlinkSync(
       path.dirname(require.resolve("webpack/package.json")),
@@ -96,7 +94,7 @@ function compare({ file, settings, service }, sources) {
   }
 }
 
-test("matches aliases, extensions, loaders, externals, missing paths, and builtins", () => {
+test("should match upstream aliases, extensions, loaders, externals and builtins", () => {
   fixture((data) => {
     compare(data, [
       "node:fs",
@@ -127,7 +125,7 @@ test("matches aliases, extensions, loaders, externals, missing paths, and builti
   });
 });
 
-test("retains package exports, jsnext:main fallback, and symlink behavior", () => {
+test("should match upstream package entries and symlink paths", () => {
   fixture((data) => {
     const { write, root } = data;
     write(
@@ -177,7 +175,7 @@ test("retains package exports, jsnext:main fallback, and symlink behavior", () =
   });
 });
 
-test("keeps source directories and resolver configurations separate", () => {
+test("should distinguish source directories and resolver configurations", () => {
   fixture((data) => {
     const otherFile = path.join(data.root, "other/importer.ts");
     compare({ ...data, file: otherFile }, ["./sibling", "app/sibling"]);
@@ -195,7 +193,7 @@ test("keeps source directories and resolver configurations separate", () => {
   });
 });
 
-test("shares bare resolutions per package root and keeps the rest per directory", () => {
+test("should reuse bare imports within each package root", () => {
   fixture((data) => {
     const { root, settings, service, write } = data;
     write(
@@ -212,7 +210,6 @@ test("shares bare resolutions per package root and keeps the rest per directory"
       JSON.stringify({ name: "fixture-shared", main: "./inner.js" }),
     );
     write("nested/node_modules/fixture-shared/inner.js");
-    // The repository's own nested package.json files come without node_modules.
     write("plain/package.json", JSON.stringify({ name: "plain-fixture" }));
     write("plain/importer.ts");
 
@@ -284,7 +281,7 @@ test("shares bare resolutions per package root and keeps the rest per directory"
   });
 });
 
-test("a fresh service observes files created after a cached resolution miss", () => {
+test("should find newly created files through a fresh service", () => {
   fixture((data) => {
     const before = data.service.forSettings(data.settings);
     assert.equal(before.resolve("app/created", data.file).found, false);
@@ -297,7 +294,7 @@ test("a fresh service observes files created after a cached resolution miss", ()
   });
 });
 
-test("rejects unsupported resolver policies instead of silently ignoring them", () => {
+test("should reject unsupported resolver policies", () => {
   const service = createImportResolverService({ ResolverFactory });
   for (const settings of [
     { "import-x/resolver-next": [] },
@@ -337,26 +334,20 @@ test("rejects unsupported resolver policies instead of silently ignoring them", 
   });
 });
 
-// Changing a bundler setting must also update what lint resolves, in each build mode.
-test("lightweight resolver settings match the app and SDK builds", () => {
-  const root = path.resolve(import.meta.dirname, "../../..");
-  const parity = path.join(
-    import.meta.dirname,
-    "fixtures/resolve-config-parity.js",
-  );
-  for (const WEBPACK_BUNDLE of ["development", "production"]) {
-    for (const MB_EDITION of ["oss", "ee"]) {
-      const result = spawnSync(process.execPath, [parity], {
-        cwd: root,
-        env: { ...process.env, WEBPACK_BUNDLE, MB_EDITION },
-        encoding: "utf8",
-      });
-      assert.ifError(result.error);
-      assert.equal(
-        result.status,
-        0,
-        `${WEBPACK_BUNDLE}/${MB_EDITION}: ${result.stdout}${result.stderr}`,
+for (const WEBPACK_BUNDLE of ["development", "production"]) {
+  for (const MB_EDITION of ["oss", "ee"]) {
+    test(`should match build aliases in ${WEBPACK_BUNDLE}/${MB_EDITION}`, () => {
+      // Build settings are evaluated at module load, so each environment needs a fresh process.
+      execFileSync(
+        process.execPath,
+        [path.join(import.meta.dirname, "fixtures/resolve-config-parity.js")],
+        {
+          cwd: path.resolve(import.meta.dirname, "../../.."),
+          env: { ...process.env, WEBPACK_BUNDLE, MB_EDITION },
+          encoding: "utf8",
+          timeout: 60_000,
+        },
       );
-    }
+    });
   }
-});
+}

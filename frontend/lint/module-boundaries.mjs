@@ -573,7 +573,6 @@ export {
   getPublicApiModules,
 };
 
-// Shared options for the enforced boundary checks in both lint engines.
 export const boundarySettings = {
   "boundaries/elements": elements,
   "boundaries/ignore": ["**/e2e/**", "test/**"],

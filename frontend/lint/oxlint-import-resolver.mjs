@@ -31,7 +31,6 @@ function memoize(resolve, packageRoot) {
     const directory = path.dirname(file);
     const key = `${isBare(source) ? packageRoot(directory) : directory}\0${source}`;
     if (!cache.has(key)) {
-      // Bound memory for exceptionally large one-shot lint invocations.
       if (cache.size >= 50_000) {
         cache.clear();
       }
@@ -41,20 +40,14 @@ function memoize(resolve, packageRoot) {
   };
 }
 
-/**
- * Shared resolver service for a single CLI invocation over a fixed tree.
- * Construct a fresh service after filesystem, dependency, or config changes.
- * This is not a persistent cache or an editor/watch-mode integration.
- */
+// Construct a fresh service after filesystem, dependency or configuration changes.
 export function createImportResolverService({ ResolverFactory }) {
   const settingsCache = new WeakMap();
   const resolverSettingsCache = new WeakMap();
   const webpackResolvers = new Map();
   const resolvers = new Map();
   const packageRoots = new Map();
-  // A bare specifier resolves the same way from every directory under one package root.
-  // Alias and fallback entries are absolute paths,
-  // and the node_modules walk from a directory below the root reaches that root first.
+  // Absolute aliases and a shared node_modules ancestor make bare imports independent of subdirectory.
   function packageRoot(directory) {
     if (!packageRoots.has(directory)) {
       const parent = path.dirname(directory);
@@ -72,8 +65,7 @@ export function createImportResolverService({ ResolverFactory }) {
     mainFields: ["module", "main"],
     symlinks: false,
   });
-  // Match the legacy resolver's package entry precedence and symlink paths.
-  // Keep this separate from import-x's exports-aware first resolution attempt.
+  // eslint-import-resolver-node ignores exports and prioritizes module, jsnext:main, then main.
   const legacyNative = new ResolverFactory({
     extensions: [".mjs", ".js", ".json", ".node"],
     exportsFields: [],
@@ -82,8 +74,7 @@ export function createImportResolverService({ ResolverFactory }) {
     symlinks: false,
   });
   const resolveLegacyNode = memoize((source, file) => {
-    // Oxc understands URL queries/fragments; the old node resolver treats them
-    // as filename characters before webpack strips resource queries/loaders.
+    // eslint-import-resolver-node treats queries and fragments as filename characters.
     if (/[?#!]/.test(source)) {
       return legacyNode.resolve(source, file);
     }
@@ -123,7 +114,6 @@ export function createImportResolverService({ ResolverFactory }) {
       fallback: aliases(config.resolve?.fallback),
     });
     const resolve = (source, file) => {
-      // The original webpack resolver strips loaders and the final query.
       source = source.slice(source.lastIndexOf("!") + 1);
       const query = source.lastIndexOf("?");
       if (query >= 0) {
@@ -192,7 +182,7 @@ export function createImportResolverService({ ResolverFactory }) {
           ? { found: true, path: result.path }
           : resolveFallback(source, file);
       };
-      // import-x tries the exports-aware node resolver first; legacy starts at the fallback.
+      // import-x tries the exports-aware resolver before the node/webpack chain.
       const resolve = memoize(
         mode === "import-x" ? resolveImportX : resolveFallback,
         packageRoot,

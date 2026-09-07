@@ -13,7 +13,7 @@ import ruleMap from "../oxlint/rule-map.json" with { type: "json" };
 
 const binary = path.join(root, "node_modules/oxlint/bin/oxlint");
 
-test("each mapped rule has its native or JS plugin loaded", () => {
+test("should load every mapped rule", () => {
   const config = createConfig();
   const loaded = new Set([
     "eslint",
@@ -28,7 +28,7 @@ test("each mapped rule has its native or JS plugin loaded", () => {
   }
 });
 
-test("JSX text decoding matches the existing TypeScript parser", () => {
+test("should decode JSX text like the TypeScript parser", () => {
   for (const value of [
     "Hello",
     "&nbsp;",
@@ -54,9 +54,275 @@ test("JSX text decoding matches the existing TypeScript parser", () => {
   }
 });
 
-test("real configuration preserves retained rules and documents accepted differences", async (t) => {
-  // These locations exercise the actual frontend/e2e overrides. Unique folders
-  // avoid colliding with user files or another test invocation.
+const compatibilityCases = [
+  {
+    filename: "jsx-unused.tsx",
+    code: 'import {Used,Unused} from "components"; import * as UI from "components"; export const Example=()=> <><Used/><UI.Button/></>;',
+    rule: "no-unused-vars",
+    eslintRule: "@typescript-eslint/no-unused-vars",
+    oxlint: 1,
+  },
+  {
+    filename: "depend.ts",
+    code: 'import isNumber from "is-number"; export const check = isNumber;',
+    rule: "depend/ban-dependencies",
+    oxlint: 1,
+  },
+  {
+    filename: "depend-subpath.ts",
+    code: 'import isNumber from "is-number/index.js"; export const check = isNumber;',
+    rule: "depend/ban-dependencies",
+    oxlint: 1,
+  },
+  {
+    filename: "testing-debug.unit.spec.tsx",
+    code: 'import {screen} from "@testing-library/react"; test("example",()=>screen.debug());',
+    rule: "testing-library/no-debugging-utils",
+    oxlint: 1,
+  },
+  {
+    filename: "testing-act.unit.spec.tsx",
+    code: 'import {act,render} from "@testing-library/react"; test("example",()=>act(()=>render(<div/>)));',
+    rule: "testing-library/no-unnecessary-act",
+    oxlint: 1,
+  },
+  {
+    filename: "testing-screen.unit.spec.tsx",
+    code: 'import {render} from "@testing-library/react"; test("example",()=>{const {getByText}=render(<div/>);getByText("Hello");});',
+    rule: "testing-library/prefer-screen-queries",
+    oxlint: 1,
+  },
+  {
+    filename: "focused-test.ts",
+    code: 'test.concurrent.only("example", () => {});',
+    rule: "no-only-tests/no-only-tests",
+    oxlint: 1,
+  },
+  {
+    filename: "focused-test-disabled.ts",
+    code: '// eslint-disable-next-line no-only-tests/no-only-tests\ntest.concurrent.only("example", () => {});',
+    rule: "no-only-tests/no-only-tests",
+    oxlint: 0,
+  },
+  {
+    filename: "ordinary-test.ts",
+    code: 'test("example", () => {}); const value = { only: true };',
+    rule: "no-only-tests/no-only-tests",
+    oxlint: 0,
+  },
+  {
+    filename: "complexity-limit.ts",
+    code: "export function f(a){" + "if(a)a();".repeat(54) + "}",
+    rule: "complexity",
+    oxlint: 0,
+  },
+  {
+    filename: "complexity-over-limit.ts",
+    code: "export function f(a){" + "if(a)a();".repeat(55) + "}",
+    rule: "complexity",
+    oxlint: 1,
+  },
+  {
+    filename: "complexity-disabled.ts",
+    code:
+      "export const f=\n/* eslint-disable complexity */\n({a}\n)=>{\n/* eslint-enable complexity */\n" +
+      "if(a)a();".repeat(55) +
+      "};",
+    rule: "complexity",
+    oxlint: 0,
+  },
+  {
+    filename: "module-global.js",
+    directory: "e2e/support",
+    code: 'const process = require("process");',
+    rule: "eslint-js/no-redeclare",
+    oxlint: 0,
+  },
+  {
+    filename: "duplicate.js",
+    directory: "e2e/support",
+    code: "var process; var process;",
+    rule: "eslint-js/no-redeclare",
+    oxlint: 1,
+  },
+  {
+    filename: "nested.js",
+    directory: "e2e/support",
+    code: "function f(){let name=1;return name;}",
+    rule: "eslint-js/no-redeclare",
+    oxlint: 0,
+  },
+  {
+    filename: "translation.tsx",
+    code: "export function Example(){return <div>Hello world</div>;}",
+    rule: "i18next/no-literal-string",
+    oxlint: 1,
+  },
+  {
+    filename: "translated.tsx",
+    code: "export function Example(){return <div>{t`Hello world`}</div>;}",
+    rule: "i18next/no-literal-string",
+    oxlint: 0,
+  },
+  {
+    filename: "entities.tsx",
+    code: "export function Example(){return <div>&nbsp;</div>;}",
+    rule: "i18next/no-literal-string",
+    oxlint: 0,
+  },
+  {
+    filename: "encoded-translation.tsx",
+    code: "export function Example(){return <div>&#72;&#101;&#108;&#108;&#111;</div>;}",
+    rule: "i18next/no-literal-string",
+    oxlint: 1,
+  },
+  {
+    filename: "translation-exceptions.tsx",
+    code: "export function Example(){return <><div>OK</div><Trans>Hello world</Trans></>;}",
+    rule: "i18next/no-literal-string",
+    oxlint: 0,
+  },
+  {
+    filename: "translation-disable.tsx",
+    code: "export function Example(){return <>\n{/* eslint-disable i18next/no-literal-string */}\n<div>Billing address</div>\n{/* eslint-enable i18next/no-literal-string */}\n</>;}",
+    rule: "i18next/no-literal-string",
+    oxlint: 0,
+  },
+  {
+    filename: "conditional.unit.spec.tsx",
+    code: 'it("example",()=>{if(value){expect(value).toBe(true);}});',
+    rule: "jest-js/no-conditional-expect",
+    oxlint: 1,
+  },
+  {
+    filename: "helper.unit.spec.tsx",
+    code: "export function helper(){if(value){expect(value).toBe(true);}}",
+    rule: "jest-js/no-conditional-expect",
+    oxlint: 0,
+  },
+  {
+    filename: "conditional-disabled.unit.spec.tsx",
+    code: 'it("example",()=>{if(value){\n// eslint-disable-next-line jest-js/no-conditional-expect\nexpect(value).toBe(true);}});',
+    rule: "jest-js/no-conditional-expect",
+    oxlint: 0,
+  },
+  {
+    filename: "type-only.ts",
+    code: 'const token="value"; export type Token=typeof token;',
+    rule: "no-unused-vars",
+    oxlint: 0,
+    eslint: 1,
+    eslintRule: "@typescript-eslint/no-unused-vars",
+  },
+  {
+    filename: "unused-disabled.ts",
+    code: '// eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentional unused fixture\nconst token="value";',
+    rule: "no-unused-vars",
+    oxlint: 0,
+    eslint: 0,
+    eslintRule: "@typescript-eslint/no-unused-vars",
+  },
+  {
+    filename: "unused.ts",
+    code: "const token=1;",
+    rule: "no-unused-vars",
+    oxlint: 1,
+    eslint: 1,
+    eslintRule: "@typescript-eslint/no-unused-vars",
+  },
+  {
+    filename: "augmentation.ts",
+    code: 'declare module "fake" { interface ColumnMeta<TData,TValue> {wrap?:boolean;} }',
+    rule: "no-unused-vars",
+    oxlint: 0,
+    eslint: 2,
+    eslintRule: "@typescript-eslint/no-unused-vars",
+  },
+  {
+    filename: "mixed-imports.ts",
+    code: 'import {type Props,a} from "example-module"; import {b} from "example-module"; export {a,b}; export type X=Props;',
+    rule: "import/no-duplicates",
+    oxlint: 1,
+    eslint: 0,
+  },
+  {
+    filename: "combined-imports.ts",
+    code: 'import {type Props,a,b} from "example-module"; export {a,b}; export type X=Props;',
+    rule: "import/no-duplicates",
+    oxlint: 0,
+  },
+  {
+    filename: "separate-types.ts",
+    code: 'import type {Props} from "example-module"; import {a,b} from "example-module"; export {a,b}; export type X=Props;',
+    rule: "import/no-duplicates",
+    oxlint: 0,
+  },
+  {
+    filename: "unnamed-mock.unit.spec.tsx",
+    code: 'const {forwardRef}=jest.requireActual("react");export const Mock=forwardRef((props,ref)=><div ref={ref}/>);',
+    rule: "react/display-name",
+    oxlint: 1,
+    eslint: 0,
+  },
+  {
+    filename: "named-mock.unit.spec.tsx",
+    code: 'const {forwardRef}=jest.requireActual("react");export const Mock=forwardRef((props,ref)=><div ref={ref}/>);Mock.displayName="Mock";',
+    rule: "react/display-name",
+    oxlint: 0,
+  },
+  {
+    filename: "anonymous-hoc.tsx",
+    code: 'import React from "react";export const hoc=C=>class extends React.Component{render(){return <C/>}};',
+    rule: "react/display-name",
+    oxlint: 0,
+    eslint: 1,
+  },
+  {
+    filename: "restricted-type.ts",
+    code: 'import type {ConfigType} from "dayjs"; export type Value=ConfigType;',
+    rule: "eslint-js/no-restricted-imports",
+    oxlint: 1,
+  },
+  {
+    filename: "order.ts",
+    code: 'import z from "z";\nimport a from "a";\nexport {z,a};',
+    rule: "import-js/order",
+    oxlint: 1,
+  },
+  {
+    filename: "order-disabled.ts",
+    code: '/* eslint-disable import-js/order */\nimport z from "z";\nimport a from "a";\nexport {z,a};',
+    rule: "import-js/order",
+    oxlint: 0,
+  },
+  {
+    filename: "ttag.ts",
+    code: "export const text=t`Hello`;",
+    rule: "ttag/no-module-declaration",
+    oxlint: 1,
+  },
+  {
+    filename: "ttag-block.ts",
+    code: "for(let i=0;i<1;i++) t`Hello`;",
+    rule: "ttag/no-module-declaration",
+    oxlint: 0,
+  },
+  {
+    filename: "plain-class.tsx",
+    code: "export class Utility {componentWillMount(){}}",
+    rule: "react-js/no-deprecated",
+    oxlint: 0,
+  },
+  {
+    filename: "react-class.tsx",
+    code: 'import React from "react"; export class Example extends React.Component{componentWillMount(){} render(){return null;}}',
+    rule: "react-js/no-deprecated",
+    oxlint: 1,
+  },
+];
+
+test("should apply the configured rules and suppressions", async (t) => {
+  // Fixture paths must match the frontend and e2e policy overrides.
   const directories = new Map();
   const directoryFor = (parent) => {
     if (!directories.has(parent))
@@ -70,267 +336,17 @@ test("real configuration preserves retained rules and documents accepted differe
     for (const directory of directories.values())
       fs.rmSync(directory, { recursive: true, force: true });
   });
-  const cases = [
-    {
-      filename: "depend.ts",
-      code: 'import isNumber from "is-number"; export const check = isNumber;',
-      rule: "depend/ban-dependencies",
-      oxlint: 1,
-    },
-    {
-      filename: "depend-subpath.ts",
-      code: 'import isNumber from "is-number/index.js"; export const check = isNumber;',
-      rule: "depend/ban-dependencies",
-      oxlint: 1,
-    },
-    {
-      filename: "testing-debug.unit.spec.tsx",
-      code: 'import {screen} from "@testing-library/react"; test("example",()=>screen.debug());',
-      rule: "testing-library/no-debugging-utils",
-      oxlint: 1,
-    },
-    {
-      filename: "testing-act.unit.spec.tsx",
-      code: 'import {act,render} from "@testing-library/react"; test("example",()=>act(()=>render(<div/>)));',
-      rule: "testing-library/no-unnecessary-act",
-      oxlint: 1,
-    },
-    {
-      filename: "testing-screen.unit.spec.tsx",
-      code: 'import {render} from "@testing-library/react"; test("example",()=>{const {getByText}=render(<div/>);getByText("Hello");});',
-      rule: "testing-library/prefer-screen-queries",
-      oxlint: 1,
-    },
-    {
-      filename: "focused-test.ts",
-      code: 'test.concurrent.only("example", () => {});',
-      rule: "no-only-tests/no-only-tests",
-      oxlint: 1,
-    },
-    {
-      filename: "focused-test-disabled.ts",
-      code: '// eslint-disable-next-line no-only-tests/no-only-tests\ntest.concurrent.only("example", () => {});',
-      rule: "no-only-tests/no-only-tests",
-      oxlint: 0,
-    },
-    {
-      filename: "ordinary-test.ts",
-      code: 'test("example", () => {}); const value = { only: true };',
-      rule: "no-only-tests/no-only-tests",
-      oxlint: 0,
-    },
-    {
-      filename: "complexity-limit.ts",
-      code: "export function f(a){" + "if(a)a();".repeat(54) + "}",
-      rule: "complexity",
-      oxlint: 0,
-    },
-    {
-      filename: "complexity-over-limit.ts",
-      code: "export function f(a){" + "if(a)a();".repeat(55) + "}",
-      rule: "complexity",
-      oxlint: 1,
-    },
-    {
-      filename: "complexity-disabled.ts",
-      code:
-        "export const f=\n/* eslint-disable complexity */\n({a}\n)=>{\n/* eslint-enable complexity */\n" +
-        "if(a)a();".repeat(55) +
-        "};",
-      rule: "complexity",
-      oxlint: 0,
-    },
-    {
-      filename: "module-global.js",
-      code: 'const process = require("process");',
-      rule: "eslint-js/no-redeclare",
-      oxlint: 0,
-    },
-    {
-      filename: "duplicate.js",
-      code: "var process; var process;",
-      rule: "eslint-js/no-redeclare",
-      oxlint: 1,
-    },
-    {
-      filename: "nested.js",
-      code: "function f(){let name=1;return name;}",
-      rule: "eslint-js/no-redeclare",
-      oxlint: 0,
-    },
-    {
-      filename: "translation.tsx",
-      code: "export function Example(){return <div>Hello world</div>;}",
-      rule: "i18next/no-literal-string",
-      oxlint: 1,
-    },
-    {
-      filename: "translated.tsx",
-      code: "export function Example(){return <div>{t`Hello world`}</div>;}",
-      rule: "i18next/no-literal-string",
-      oxlint: 0,
-    },
-    {
-      filename: "entities.tsx",
-      code: "export function Example(){return <div>&nbsp;</div>;}",
-      rule: "i18next/no-literal-string",
-      oxlint: 0,
-    },
-    {
-      filename: "encoded-translation.tsx",
-      code: "export function Example(){return <div>&#72;&#101;&#108;&#108;&#111;</div>;}",
-      rule: "i18next/no-literal-string",
-      oxlint: 1,
-    },
-    {
-      filename: "translation-exceptions.tsx",
-      code: "export function Example(){return <><div>OK</div><Trans>Hello world</Trans></>;}",
-      rule: "i18next/no-literal-string",
-      oxlint: 0,
-    },
-    {
-      filename: "translation-disable.tsx",
-      code: "export function Example(){return <>\n{/* eslint-disable i18next/no-literal-string */}\n<div>Billing address</div>\n{/* eslint-enable i18next/no-literal-string */}\n</>;}",
-      rule: "i18next/no-literal-string",
-      oxlint: 0,
-    },
-    {
-      filename: "conditional.unit.spec.tsx",
-      code: 'it("example",()=>{if(value){expect(value).toBe(true);}});',
-      rule: "jest-js/no-conditional-expect",
-      oxlint: 1,
-    },
-    {
-      filename: "helper.unit.spec.tsx",
-      code: "export function helper(){if(value){expect(value).toBe(true);}}",
-      rule: "jest-js/no-conditional-expect",
-      oxlint: 0,
-    },
-    {
-      filename: "conditional-disabled.unit.spec.tsx",
-      code: 'it("example",()=>{if(value){\n// eslint-disable-next-line jest-js/no-conditional-expect\nexpect(value).toBe(true);}});',
-      rule: "jest-js/no-conditional-expect",
-      oxlint: 0,
-    },
-    {
-      filename: "type-only.ts",
-      code: 'const token="value"; export type Token=typeof token;',
-      rule: "no-unused-vars",
-      oxlint: 0,
-      eslint: 1,
-      eslintRule: "@typescript-eslint/no-unused-vars",
-    },
-    {
-      filename: "unused-disabled.ts",
-      code: '// eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentional unused fixture\nconst token="value";',
-      rule: "no-unused-vars",
-      oxlint: 0,
-      eslint: 0,
-      eslintRule: "@typescript-eslint/no-unused-vars",
-    },
-    {
-      filename: "unused.ts",
-      code: "const token=1;",
-      rule: "no-unused-vars",
-      oxlint: 1,
-      eslint: 1,
-      eslintRule: "@typescript-eslint/no-unused-vars",
-    },
-    {
-      filename: "augmentation.ts",
-      code: 'declare module "fake" { interface ColumnMeta<TData,TValue> {wrap?:boolean;} }',
-      rule: "no-unused-vars",
-      oxlint: 0,
-      eslint: 2,
-      eslintRule: "@typescript-eslint/no-unused-vars",
-    },
-    {
-      filename: "mixed-imports.ts",
-      code: 'import {type Props,a} from "example-module"; import {b} from "example-module"; export {a,b}; export type X=Props;',
-      rule: "import/no-duplicates",
-      oxlint: 1,
-      eslint: 0,
-    },
-    {
-      filename: "combined-imports.ts",
-      code: 'import {type Props,a,b} from "example-module"; export {a,b}; export type X=Props;',
-      rule: "import/no-duplicates",
-      oxlint: 0,
-    },
-    {
-      filename: "separate-types.ts",
-      code: 'import type {Props} from "example-module"; import {a,b} from "example-module"; export {a,b}; export type X=Props;',
-      rule: "import/no-duplicates",
-      oxlint: 0,
-    },
-    {
-      filename: "unnamed-mock.unit.spec.tsx",
-      code: 'const {forwardRef}=jest.requireActual("react");export const Mock=forwardRef((props,ref)=><div ref={ref}/>);',
-      rule: "react/display-name",
-      oxlint: 1,
-      eslint: 0,
-    },
-    {
-      filename: "named-mock.unit.spec.tsx",
-      code: 'const {forwardRef}=jest.requireActual("react");export const Mock=forwardRef((props,ref)=><div ref={ref}/>);Mock.displayName="Mock";',
-      rule: "react/display-name",
-      oxlint: 0,
-    },
-    {
-      filename: "anonymous-hoc.tsx",
-      code: 'import React from "react";export const hoc=C=>class extends React.Component{render(){return <C/>}};',
-      rule: "react/display-name",
-      oxlint: 0,
-      eslint: 1,
-    },
-    {
-      filename: "restricted-type.ts",
-      code: 'import type {ConfigType} from "dayjs"; export type Value=ConfigType;',
-      rule: "eslint-js/no-restricted-imports",
-      oxlint: 1,
-    },
-    {
-      filename: "order.ts",
-      code: 'import z from "z";\nimport a from "a";\nexport {z,a};',
-      rule: "import-js/order",
-      oxlint: 1,
-    },
-    {
-      filename: "order-disabled.ts",
-      code: '/* eslint-disable import-js/order */\nimport z from "z";\nimport a from "a";\nexport {z,a};',
-      rule: "import-js/order",
-      oxlint: 0,
-    },
-    {
-      filename: "ttag.ts",
-      code: "export const text=t`Hello`;",
-      rule: "ttag/no-module-declaration",
-      oxlint: 1,
-    },
-    {
-      filename: "ttag-block.ts",
-      code: "for(let i=0;i<1;i++) t`Hello`;",
-      rule: "ttag/no-module-declaration",
-      oxlint: 0,
-    },
-    {
-      filename: "plain-class.tsx",
-      code: "export class Utility {componentWillMount(){}}",
-      rule: "react-js/no-deprecated",
-      oxlint: 0,
-    },
-    {
-      filename: "react-class.tsx",
-      code: 'import React from "react"; export class Example extends React.Component{componentWillMount(){} render(){return null;}}',
-      rule: "react-js/no-deprecated",
-      oxlint: 1,
-    },
-  ].map(
-    ({ filename, code, rule, oxlint, eslint = oxlint, eslintRule = rule }) => {
-      const parent = filename.endsWith(".js")
-        ? "e2e/support"
-        : "frontend/src/metabase/utils";
-      const absolute = path.join(directoryFor(parent), filename);
+  const cases = compatibilityCases.map(
+    ({
+      filename,
+      code,
+      directory = "frontend/src/metabase/utils",
+      rule,
+      oxlint,
+      eslint = oxlint,
+      eslintRule = rule,
+    }) => {
+      const absolute = path.join(directoryFor(directory), filename);
       fs.writeFileSync(absolute, code);
       return { filename: absolute, rule, oxlint, eslint, eslintRule };
     },
@@ -347,7 +363,12 @@ test("real configuration preserves retained rules and documents accepted differe
       "json",
       ...cases.map((c) => c.filename),
     ],
-    { cwd: root, encoding: "utf8", maxBuffer: 4 * 1024 * 1024 },
+    {
+      cwd: root,
+      encoding: "utf8",
+      maxBuffer: 4 * 1024 * 1024,
+      timeout: 60_000,
+    },
   );
   assert.ifError(result.error);
   assert.ok(result.status === 0 || result.status === 1, result.stderr);
@@ -360,30 +381,35 @@ test("real configuration preserves retained rules and documents accepted differe
   const eslint = new ESLint({ cwd: root });
   const legacy = await eslint.lintFiles(cases.map((c) => c.filename));
   for (const fixture of cases) {
-    const separator = fixture.rule.lastIndexOf("/");
-    const code =
-      separator === -1
-        ? `eslint(${fixture.rule})`
-        : `${fixture.rule.slice(0, separator)}(${fixture.rule.slice(separator + 1)})`;
-    const findings = native.diagnostics.filter(
-      (d) => path.resolve(root, d.filename) === fixture.filename,
-    );
-    assert.equal(
-      legacy
-        .find((result) => result.filePath === fixture.filename)
-        .messages.filter((d) => d.ruleId === fixture.eslintRule).length,
-      fixture.eslint,
-      `ESLint ${fixture.filename}`,
-    );
-    assert.equal(
-      findings.filter((d) => d.code === code).length,
-      fixture.oxlint,
-      `Oxlint ${fixture.filename}`,
-    );
-    assert.equal(
-      findings.filter((d) => !d.code).length,
-      0,
-      `Unused suppression: ${fixture.filename}`,
+    await t.test(
+      `should apply ${fixture.rule} to ${path.basename(fixture.filename)}`,
+      () => {
+        const separator = fixture.rule.lastIndexOf("/");
+        const code =
+          separator === -1
+            ? `eslint(${fixture.rule})`
+            : `${fixture.rule.slice(0, separator)}(${fixture.rule.slice(separator + 1)})`;
+        const findings = native.diagnostics.filter(
+          (d) => path.resolve(root, d.filename) === fixture.filename,
+        );
+        assert.equal(
+          legacy
+            .find((result) => result.filePath === fixture.filename)
+            .messages.filter((d) => d.ruleId === fixture.eslintRule).length,
+          fixture.eslint,
+          `ESLint ${fixture.filename}`,
+        );
+        assert.equal(
+          findings.filter((d) => d.code === code).length,
+          fixture.oxlint,
+          `Oxlint ${fixture.filename}`,
+        );
+        assert.equal(
+          findings.filter((d) => !d.code).length,
+          0,
+          `Unused suppression: ${fixture.filename}`,
+        );
+      },
     );
   }
 });

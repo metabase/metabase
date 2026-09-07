@@ -1,4 +1,3 @@
-// Refresh preset rules only when intentionally reviewing dependency upgrades.
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import { builtinRules } from "eslint/use-at-your-own-risk";

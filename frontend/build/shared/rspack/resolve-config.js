@@ -1,4 +1,3 @@
-// Shared by the app build and lint's import resolver.
 const { RESOLVE_ALIASES } = require("./resolve-aliases");
 
 module.exports = {
