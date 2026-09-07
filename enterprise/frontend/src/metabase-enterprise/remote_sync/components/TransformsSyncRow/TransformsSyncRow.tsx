@@ -21,7 +21,7 @@ export const TransformsSyncRow = ({ isReadOnly }: TransformsSyncRowProps) => {
   };
 
   return (
-    <Box p="md" className={CS.borderRowDivider}>
+    <Box p="lg" className={CS.borderRowDivider}>
       <Flex justify="space-between" align="center">
         <Flex align="center" gap="sm">
           <Icon name="transform" c="text-secondary" />

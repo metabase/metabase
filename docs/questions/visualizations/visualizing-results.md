@@ -66,7 +66,7 @@ Each visualization type has its own advanced options. To change the settings for
 
 ## Combo charts
 
-[Combo charts](./combo-chart.md) let you combine bars and lines (or areas) on the same chart.
+[Combo charts](./line-bar-and-area-charts.md#combo-charts) let you combine bars and lines (or areas) on the same chart.
 
 ![Line + bar](../images/combo-chart.png)
 
@@ -90,7 +90,7 @@ The [Detail](./detail.md) visualization shows a single result record (row) in an
 
 ## Line charts
 
-[Line charts](./line-bar-and-area-charts.md) are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/line-charts) and [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series) tutorials.
+[Line charts](./line-bar-and-area-charts.md) are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series) tutorial.
 
 ![Trend lines](../images/trend-lines.png)
 

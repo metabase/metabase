@@ -1,0 +1,166 @@
+name: Shrink ratchets
+
+# Lowers the budgets in .clj-kondo/ratchets.edn to match master and delivers the result through one
+# automation PR, because the rulesets require a pull request for every change to master. The PR is
+# approved by github-actions[bot] and merges itself once the ratchet check passes. A merge of that PR
+# touches only ratchets.edn, which matches `.clj-kondo/**` below, so it triggers one more run that finds
+# nothing to lower and stops: a single no-op, not a loop.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "**.clj"
+      - "**.cljc"
+      - "**.cljs"
+      - ".clj-kondo/**"
+      - "bb.edn"
+  workflow_dispatch:
+
+permissions:
+  # checkout and the fetch of the automation branch
+  contents: read
+  # the compare step reads whether the automation PR is still open, and the approve step reviews it as
+  # github-actions[bot]; pushes and the PR itself use the automation user's token
+  pull-requests: write
+
+# When master is pushed again, the newest run cancels the older one, checks out the latest master it can
+# see, and force-updates the automation branch. The PR therefore contains one commit on top of master.
+concurrency:
+  group: kondo-ratchets-shrink
+  cancel-in-progress: true
+
+env:
+  AUTOMATION_BRANCH: automation/shrink-ratchets
+  RATCHETS_FILE: .clj-kondo/ratchets.edn
+
+jobs:
+  shrink:
+    name: Shrink ratchets
+    # A fork with Actions enabled has no automation token, so this would only ever fail at the push.
+    if: github.repository == 'metabase/metabase'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    steps:
+      # `ref: master` checks out the branch head at checkout time rather than the pushed commit, so a run
+      # that queued behind another one starts from the newest master it can see.
+      - uses: actions/checkout@v6
+        with:
+          ref: master
+          # The persisted GITHUB_TOKEN header would override the automation token in the push URL and
+          # get the force-push rejected. Nothing here needs it: the repo is public, so the fetch of the
+          # automation branch is anonymous, and every gh call carries its own token.
+          persist-credentials: false
+      - name: Set up Java for cold dependency resolution
+        uses: actions/setup-java@v5.2.0
+        with:
+          distribution: temurin
+          java-version: 25
+      - name: Shrink ignore limits
+        run: |
+          cp "$RATCHETS_FILE" "$RUNNER_TEMP/ratchets-before.edn"
+          ./bin/mage kondo-ratchets-shrink
+      # Two independent outputs: `push` says the branch needs a new commit, `pr` names the open automation
+      # PR if there is one. Approval and auto-merge key on `pr` alone, so a run that failed after opening
+      # the PR is repaired by the next run instead of leaving the PR stranded.
+      - name: Compare with master and the automation PR
+        id: compare
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The REST `head=owner:branch` filter is applied server-side and only matches this repository's
+          # branch, so a fork carrying a branch of the same name can never hand its PR number to the
+          # approval and auto-merge steps, however many such forks exist. Only an open PR counts; a branch
+          # left behind by a PR closed without merging is overwritten below and gets a new PR, so a closed
+          # one never stops the budgets from being lowered.
+          open_pr=$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&base=master&head=${GITHUB_REPOSITORY_OWNER}:${AUTOMATION_BRANCH}" \
+            --jq '.[0].number // empty')
+          echo "pr=$open_pr" >> "$GITHUB_OUTPUT"
+
+          if git diff --quiet -- "$RATCHETS_FILE"; then
+            echo "Ratchet budgets already match master $(git rev-parse --short HEAD)"
+            [ -z "$open_pr" ] || echo "The open automation PR #$open_pr is re-approved below"
+            echo "push=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # The ratchet file is the whole payload, so an open PR that already carries this result is left
+          # alone. Rebasing it onto every master push would restart its CI and churn the diff without
+          # changing what it delivers. Compare the open PR with the working tree, which contains the
+          # shrunk ratchets file produced above, to determine whether the PR would deliver the same file.
+          #
+          # A conflicted PR is the exception: only a fresh commit clears it. Mergeability is computed
+          # lazily, so a pending UNKNOWN reads as not conflicted and the next run settles it.
+          if [ -n "$open_pr" ] \
+             && git fetch --quiet --depth=1 origin "refs/heads/$AUTOMATION_BRANCH" 2>/dev/null \
+             && git diff --quiet FETCH_HEAD -- "$RATCHETS_FILE" \
+             && [ "$(gh pr view "$open_pr" --repo "$GITHUB_REPOSITORY" \
+                       --json mergeable --jq .mergeable)" != CONFLICTING ]; then
+            echo "The automation PR #$open_pr already carries this result"
+            echo "push=false" >> "$GITHUB_OUTPUT"
+            echo "head=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git diff --stat -- "$RATCHETS_FILE"
+          echo "push=true" >> "$GITHUB_OUTPUT"
+      - name: Update the automation PR
+        id: deliver
+        if: steps.compare.outputs.push == 'true'
+        # The automation user's token pushes the branch and owns the PR: a branch pushed with
+        # GITHUB_TOKEN starts no pull_request workflows, so the PR would never get its checks. The commit
+        # identity is the docs generator's, which merges with one approval under the unattributed-changes
+        # rule. Nothing raises a budget.
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          OPEN_PR: ${{ steps.compare.outputs.pr }}
+        run: |
+          ./bin/mage -kondo-ratchets-pr-body \
+            "$RUNNER_TEMP/ratchets-before.edn" \
+            "$RATCHETS_FILE" \
+            "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            > "$RUNNER_TEMP/ratchets-pr-body.md"
+
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add -- "$RATCHETS_FILE"
+          git commit --quiet -m "Tighten ratchets"
+          git push --force --quiet \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:refs/heads/$AUTOMATION_BRANCH"
+          echo "head=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$OPEN_PR" ]; then
+            gh pr edit "$OPEN_PR" --body-file "$RUNNER_TEMP/ratchets-pr-body.md"
+            echo "Updated the automation PR #$OPEN_PR"
+            echo "pr=$OPEN_PR" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          url=$(gh pr create \
+            --base master \
+            --head "$AUTOMATION_BRANCH" \
+            --title "Tighten ratchets" \
+            --label "no-backport" \
+            --body-file "$RUNNER_TEMP/ratchets-pr-body.md")
+          echo "Opened the automation PR $url"
+          echo "pr=${url##*/}" >> "$GITHUB_OUTPUT"
+      - name: Approve the automation PR
+        if: (steps.deliver.outputs.pr || steps.compare.outputs.pr) != ''
+        # GITHUB_TOKEN reviews as github-actions[bot], a different identity from the automation user that
+        # owns the PR, so the approval counts; a user cannot approve their own PR. Reviews survive a push,
+        # so approving an already-open PR again is harmless and keeps a reopened one covered.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.deliver.outputs.pr || steps.compare.outputs.pr }}
+        run: gh pr review --approve "$PR_NUMBER"
+      # Armed only against the commit this run pushed or compared: the branch name is fixed, and anyone
+      # with push access could otherwise collect this run's approval for their own commit.
+      - name: Enable auto-merge
+        if: (steps.deliver.outputs.pr || steps.compare.outputs.pr) != ''
+          && (steps.deliver.outputs.head || steps.compare.outputs.head) != ''
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          PR_NUMBER: ${{ steps.deliver.outputs.pr || steps.compare.outputs.pr }}
+          HEAD_SHA: ${{ steps.deliver.outputs.head || steps.compare.outputs.head }}
+        run: gh pr merge --squash --auto --match-head-commit "$HEAD_SHA" "$PR_NUMBER"

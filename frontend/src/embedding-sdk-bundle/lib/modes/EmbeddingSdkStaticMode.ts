@@ -1,5 +1,5 @@
 import { DashboardClickAction } from "metabase/dashboard/click-behavior/DashboardClickAction";
-import type { QueryClickActionsMode } from "metabase/visualizations/types";
+import type { QueryClickActionsMode } from "metabase/querying/click-actions/types";
 
 export const EmbeddingSdkStaticMode: QueryClickActionsMode = {
   name: "embedding-sdk-static",

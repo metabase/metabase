@@ -6,11 +6,10 @@ import {
   parseHash,
 } from "metabase/common/utils/card";
 import { canUserCreateQueries, getUser } from "metabase/current-user";
-import { getMetadata } from "metabase/metadata-store";
+import { getMetadata, paramFieldsFetched } from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
-import { updateMetadata } from "metabase/redux/metadata";
 import { INITIALIZE_QB } from "metabase/redux/query-builder";
 import type {
   Dispatch,
@@ -20,7 +19,6 @@ import type {
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import type { Location } from "metabase/router";
 import { navigate } from "metabase/router";
-import { FieldSchema } from "metabase/schema";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { isNotNull } from "metabase/utils/types";
@@ -29,7 +27,12 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
-import type { Card, SegmentId, UnsavedCard } from "metabase-types/api";
+import type {
+  Card,
+  SegmentId,
+  SeriesCard,
+  UnsavedCard,
+} from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
 
@@ -150,7 +153,7 @@ async function fetchAndPrepareSavedQuestionCards(
 }
 
 async function fetchAndPrepareAdHocQuestionCards(
-  deserializedCard: Card,
+  deserializedCard: SeriesCard,
   dispatch: Dispatch,
   getState: GetState,
 ) {
@@ -183,7 +186,7 @@ async function fetchAndPrepareAdHocQuestionCards(
 }
 
 type ResolveCardsResult = {
-  card: Card;
+  card: SeriesCard;
   originalCard?: Card | null;
 };
 
@@ -216,12 +219,7 @@ export async function resolveCards({
   }
   return cardId
     ? fetchAndPrepareSavedQuestionCards({ cardId, token }, dispatch, getState)
-    : fetchAndPrepareAdHocQuestionCards(
-        // Unjustified type cast. FIXME
-        deserializedCard as Card,
-        dispatch,
-        getState,
-      );
+    : fetchAndPrepareAdHocQuestionCards(deserializedCard!, dispatch, getState);
 }
 
 /**
@@ -404,9 +402,7 @@ async function handleQBInit(
   // This ensures field filter widgets have has_field_values even when the user
   // lacks create-queries permission on the underlying table (GHY-1605).
   if (card.param_fields) {
-    await dispatch(
-      updateMetadata(Object.values(card.param_fields).flat(), [FieldSchema]),
-    );
+    await dispatch(paramFieldsFetched(card.param_fields));
   }
 
   const metadata = getMetadata(getState());

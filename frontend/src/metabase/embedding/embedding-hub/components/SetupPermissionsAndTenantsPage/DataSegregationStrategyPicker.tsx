@@ -53,13 +53,13 @@ export const DataSegregationStrategyPicker = ({
     options.find((option) => option.id === value) ?? options[0];
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Radio.Group
         value={value}
         // Unjustified type cast. FIXME
         onChange={(nextValue) => onChange(nextValue as DataSegregationStrategy)}
       >
-        <Stack gap="md">
+        <Stack gap="lg">
           {options.map((strategy) => (
             <Radio.Card
               key={strategy.id}

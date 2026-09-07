@@ -44,7 +44,7 @@ export function IndexEditorForm({
 
   return (
     <Form>
-      <Stack gap="lg" mt="sm">
+      <Stack gap="xl" mt="sm">
         {firstField && (
           <IndexFieldInput
             key={firstField.name}

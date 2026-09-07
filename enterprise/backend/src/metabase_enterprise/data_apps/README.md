@@ -106,7 +106,7 @@ assets (`metabase.server.routes/static-files-handler`).
 
 Responses are field-filtered by role: superusers get full metadata, everyone else gets `name` and
 `display_name` only. The bundle blob is never serialized into JSON, and metadata reads go through
-`select-non-blob` helpers so listing apps doesn't drag the bundles out of the DB.
+`data-apps.db`'s non-blob helpers so listing apps doesn't drag the bundles out of the DB.
 
 `csp.clj` exposes an app's `allowed_hosts` to the core security middleware through a `defenterprise`
 hook, which drives the `connect-src` of the iframe document's CSP. It's a separate namespace so the

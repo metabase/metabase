@@ -25,7 +25,6 @@ import type { Dispatch, GetState } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
 import { isNotNull } from "metabase/utils/types";
-import { shouldOpenInBlankWindow } from "metabase/visualizations/lib/open-url";
 import {
   getCardAfterVisualizationClick,
   getRegisteredDefaultSize,
@@ -180,7 +179,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
           previousCard,
         );
         const url = Urls.serializedQuestion(cardAfterClick);
-        if (shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
+        if (Urls.shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
           dispatch(openUrl(url));
         } else {
           dispatch(onCloseSidebars());

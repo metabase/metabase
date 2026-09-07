@@ -5,10 +5,11 @@
    [clojure.core :as core]
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.setting :as mdb.setting]
+   [metabase.settings.db :as settings.db]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.encryption :as encryption]
+   [metabase.util.log :as log])
   (:import
    (java.util.concurrent.atomic AtomicLong)
    (java.util.concurrent.locks ReentrantLock)))
@@ -72,18 +73,18 @@
   "Update the value of `settings-last-updated` in the DB; if the row does not exist, insert one."
   []
   (log/debug "Updating value of settings-last-updated in DB...")
-  ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
-  (let [current-timestamp-as-string-honeysql (h2x/cast (if (= (mdb/db-type) :mysql) :char :text)
-                                                       (h2x/current-datetime-honeysql-form (mdb/db-type)))]
+  ;; Written raw, not through `:model/Setting`, so that `value` gets the plaintext timestamp a version predating
+  ;; `value_with_aad` compares in SQL. `value_with_aad` is encrypted under the marker's AAD like any other setting's.
+  (let [value          (mdb/current-timestamp-string (mdb/db-type))
+        value-with-aad (encryption/maybe-encrypt value {:aad (mdb.setting/setting-aad settings-last-updated-key)})]
     ;; attempt to UPDATE the existing row. If no row exists, `t2/update!` will return 0...
-    (or (pos? (t2/update! :setting  {:key settings-last-updated-key} {:value current-timestamp-as-string-honeysql}))
+    (or (pos? (settings.db/update-raw-setting-row! settings-last-updated-key value value-with-aad))
         ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both
         ;; try to INSERT it at the same time; one instance would fail because it would violate the PK constraint on
         ;; `key`, and throw a SQLException. As long as one instance updates the value, we are fine, so we can go ahead
         ;; and ignore that Exception if one is thrown.
         (try
-          ;; Use `simple-insert!` because we do *not* want to trigger pre-insert behavior, such as encrypting `:value`
-          (t2/insert! (t2/table-name (t2/resolve-model :model/Setting)) :key settings-last-updated-key, :value current-timestamp-as-string-honeysql)
+          (settings.db/insert-raw-setting-row! settings-last-updated-key value value-with-aad)
           (catch java.sql.SQLException e
             ;; go ahead and log the whole SQLException message chain anyway on the off chance that it *wasn't* just a
             ;; race condition issue
@@ -91,7 +92,7 @@
                         (str/join "; " (keep ex-message (take-while some? (iterate #(.getNextException ^java.sql.SQLException %) e)))))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
   ;; changes
-  (swap! (cache*) assoc settings-last-updated-key (t2/select-one-fn :value :model/Setting :key settings-last-updated-key)))
+  (swap! (cache*) assoc settings-last-updated-key (settings.db/setting-value settings-last-updated-key)))
 
 (defn cache-last-updated-at
   "Fetch the value of `settings-last-updated`, indicating the timestamp of the settings cache. Possibly null."
@@ -118,10 +119,10 @@
       (when-let [last-known-update (cache-last-updated-at)]
         ;; compare it to the value in the DB. This is done be seeing whether a row exists
         ;; WHERE value > <local-value>
-        (u/prog1 (t2/select-one-fn :value :model/Setting
-                                   {:where [:and
-                                            [:= :key settings-last-updated-key]
-                                            [:> :value last-known-update]]})
+        ;; compared here rather than in SQL: what is stored is ciphertext, so only the decrypted timestamps can be ordered
+        (u/prog1 (when-let [db-value (settings.db/setting-value settings-last-updated-key)]
+                   (when (pos? (compare db-value last-known-update))
+                     db-value))
           (log/trace "last known Settings update: " (pr-str last-known-update))
           (log/trace "actual last Settings update:" (pr-str <>))
           (when <>
@@ -143,7 +144,7 @@
   "Populate cache with the latest hotness from the db"
   []
   (log/debug "Refreshing Settings cache...")
-  (reset! (cache*) (t2/select-fn->fn :key :value :model/Setting)))
+  (reset! (cache*) (settings.db/setting-values-by-key)))
 
 (defonce ^:private ^ReentrantLock restore-cache-lock (ReentrantLock.))
 

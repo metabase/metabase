@@ -105,7 +105,7 @@ export function SearchSettingsWidget({
           )}
 
           {!response.error && isIndexing && (
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <Progress
                 size="md"
                 value={progress}

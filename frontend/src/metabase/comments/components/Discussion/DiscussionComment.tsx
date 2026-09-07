@@ -149,7 +149,7 @@ export function DiscussionComment({
         </Tooltip>
       </Group>
 
-      <Box mt={isEditing ? "sm" : "xs"}>
+      <Box mt={isEditing ? "sm" : "xxs"}>
         <CommentEditor
           autoFocus
           data-testid="comment-editor"

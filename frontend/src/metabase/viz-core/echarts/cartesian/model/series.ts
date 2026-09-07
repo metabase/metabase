@@ -200,7 +200,7 @@ export const getCardSeriesModels = (
   isFirstCard: boolean,
   settings: ComputedVisualizationSettings,
 ): SeriesModel[] => {
-  const cardId = card.id ?? null;
+  const cardId = card.id;
   const hasBreakout = "breakout" in columns;
   // TODO: separate scatter plot and combo charts into separate models
   const hasBubbleSize = "bubbleSize" in columns;
@@ -339,15 +339,17 @@ export const getDimensionModel = (
   return {
     column: cardsColumns[0].dimension.column,
     columnIndex: cardsColumns[0].dimension.index,
-    columnByCardId: rawSeries.reduce(
+    columnByCardId: rawSeries.reduce<Record<CardId, DatasetColumn>>(
       (columnByCardId, series, index) => {
         const cardColumns = cardsColumns[index];
-        columnByCardId[series.card.id] = cardColumns.dimension.column;
+        if (series.card.id) {
+          columnByCardId[series.card.id] = cardColumns.dimension.column;
+        }
         return columnByCardId;
       },
-      // Unjustified type cast. FIXME
-      {} as Record<CardId, DatasetColumn>,
+      {},
     ),
+    columns: cardsColumns.map((cardColumns) => cardColumns.dimension.column),
   };
 };
 

@@ -3,11 +3,14 @@ import _ from "underscore";
 
 import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
 import type {
+  GetScheduleDefaults,
   ScheduleBuilderValue,
   ScheduleValue,
-} from "metabase/common/components/Schedule/types";
-import { isScheduleCronValue } from "metabase/common/components/Schedule/types";
-import { getScheduleDefaultsWithoutHour } from "metabase/common/components/Schedule/utils";
+} from "metabase/common/components/Schedule/domain";
+import {
+  getScheduleDefaults,
+  isScheduleCronValue,
+} from "metabase/common/components/Schedule/domain";
 import type { NotificationListItem } from "metabase/notifications/types";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { getEmailDomain, isEmail } from "metabase/utils/email";
@@ -34,6 +37,7 @@ import type {
   NotificationHandlerSlack,
   NotificationRecipient,
   NotificationRecipientRawValue,
+  ScheduleSettings,
   UpdateAlertNotificationRequest,
   User,
   UserId,
@@ -42,9 +46,22 @@ import type {
 
 import type { NotificationTriggerOption } from "./modals/CreateOrEditQuestionAlertModal/types";
 
+export const getScheduleDefaultsWithoutHour: GetScheduleDefaults = (
+  scheduleType,
+) => ({ ...getScheduleDefaults(scheduleType), schedule_hour: null });
+
 export const DEFAULT_ALERT_SCHEDULE: ScheduleBuilderValue = {
   schedule_type: "daily",
   ...getScheduleDefaultsWithoutHour("daily"),
+};
+
+export const toScheduleSettings = (value: ScheduleValue): ScheduleSettings => {
+  if (isScheduleCronValue(value) || value.schedule_type === "every_n_minutes") {
+    throw new Error(
+      `A ${value.schedule_type} schedule cannot be stored as a schedule map`,
+    );
+  }
+  return { ...value, schedule_type: value.schedule_type };
 };
 
 const getDefaultChannelConfig = ({

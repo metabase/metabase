@@ -1,6 +1,7 @@
 (ns metabase.content-verification.models.moderation-review
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.content-verification.db :as content-verification.db]
    [metabase.content-verification.impl :as moderation]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
@@ -61,7 +62,7 @@
                                  ;; and insert a new one to arrive at 10 again, our invariant.
                                  :order-by [[:id :desc]]}))]
     (when (seq ids)
-      (t2/delete! :model/ModerationReview :id [:in ids]))))
+      (content-verification.db/delete-moderation-reviews! ids))))
 
 (mu/defn create-review!
   "Create a new ModerationReview"
@@ -74,7 +75,6 @@
     [:text                {:optional true} [:maybe :string]]]]
   (t2/with-transaction [_conn]
     (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
-    (t2/update! :model/ModerationReview {:moderated_item_id   (:moderated_item_id params)
-                                         :moderated_item_type (:moderated_item_type params)}
-                {:most_recent false})
-    (first (t2/insert-returning-instances! :model/ModerationReview (assoc params :most_recent true)))))
+    (content-verification.db/unmark-most-recent-moderation-reviews! (:moderated_item_id params)
+                                                                    (:moderated_item_type params))
+    (content-verification.db/insert-moderation-review! (assoc params :most_recent true))))

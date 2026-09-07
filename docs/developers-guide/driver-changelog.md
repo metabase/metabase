@@ -6,6 +6,15 @@ title: Driver interface changelog
 
 ## Metabase 0.64.0
 
+- `metabase.driver.sql-jdbc.execute/cancelation-poisons-connection?` `[driver]` -- whether canceling a `Statement`
+  leaves the `Connection` unfit for the next query, so that it must be discarded rather than returned to the
+  connection pool. The query processor cancels a `Statement` whenever reduction stops before the `ResultSet` runs out
+  of rows, which abandons a result set the server is still producing. Defaults to `false`, because most drivers
+  recover on their own; `:sqlserver` overrides it to `true`.
+
+- `metabase.driver/validate-impersonated-query` `[driver query]` now has a `:sql-jdbc` implementation that
+  enforces, for every JDBC driver, that a connection-impersonated native query is a single statement.
+
 - `metabase.driver/workspace-isolation-details` `[driver database workspace]` -- new workspace-isolation
   multimethod. Computes the isolation identifiers (`:schema`, and driver-specific `:database_details` such as
   user/password) for a workspace *before* any warehouse work happens; `init-workspace-isolation!`,

@@ -66,7 +66,7 @@ export const InsightsLink = ({
       role="link"
       {...linkProps}
     >
-      <Flex gap="xs" className={SidesheetS.TabSibling}>
+      <Flex gap="xxs" className={SidesheetS.TabSibling}>
         <Icon name="external" />
         {t`Insights`}
       </Flex>

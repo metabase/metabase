@@ -93,8 +93,8 @@ runs:
 
         if ${{ inputs.maildev }}; then
           echo -e "${Y}checking maildev container..." &&
-          while ! nc -z localhost 1080; do sleep 1; done &&
-          while ! nc -z localhost 1025; do sleep 1; done &&
+          while ! nc -z localhost 1180; do sleep 1; done &&
+          while ! nc -z localhost 1125; do sleep 1; done &&
           echo -e "${G}Maildev is up and running!"
 
           echo -e "${Y}checking maildev-ssl container..." &&
