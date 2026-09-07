@@ -102,9 +102,9 @@
   "Take an `attr-value` with a desired `target-type` and coerce to that type if need be. If not type is given or it's
   already correct, return the original `attr-value`.
 
-  Throws if a string `attr-value` cannot be coerced to the column's type: an unparseable value would otherwise become
+  Throws if a string `attr-value` cannot be coerced to the column's type. An unparseable value would otherwise become
   a `nil` parameter value, which parameter expansion silently drops - removing the sandbox filter entirely and
-  exposing ALL rows (#81821). Sandboxes must always fail closed."
+  exposing all rows (#81821)."
   [target-type attr-value]
   (let [attr-string? (string? attr-value)]
     (cond

@@ -2251,9 +2251,7 @@
 (deftest e2e-uncomparable-attribute-fails-closed-test
   (mt/test-drivers (e2e-test-drivers)
     (testing (str "When a user attribute cannot be coerced to the type of the column it is compared against, the "
-                  "sandbox must fail closed (#81821): previously the unparseable value became a `nil` parameter "
-                  "value, parameter expansion silently dropped it, and the sandbox filter disappeared entirely - "
-                  "returning ALL rows")
+                  "sandbox fails closed (#81821).")
       (testing "integer column, non-numeric attribute value"
         (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" "a"}}
           (is (thrown-with-msg?
