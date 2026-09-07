@@ -245,6 +245,9 @@ snowplow: &snowplow
   - "bin/lint-snowplow-schemas.bb"
   - "bin/lint-snowplow-schemas-test.bb"
 
+# e2e harness/support code (commands, support file, runner). Not in the
+# instrumented bundle, so it maps to no covered module — a change here forces a
+# full e2e run (see create-test-plan / e2eInfraTouched).
 e2e_infra: &e2e_infra
   - *default
   - *e2e_ci

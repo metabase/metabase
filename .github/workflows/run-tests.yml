@@ -336,6 +336,8 @@ jobs:
       skip: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.e2e_all != 'true' }}
+      # Only narrow specs on pull requests that haven't been forced to run everything.
+      # Push and merge-queue runs always use the full suite.
       spec-files: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         github.event_name == 'pull_request' &&
