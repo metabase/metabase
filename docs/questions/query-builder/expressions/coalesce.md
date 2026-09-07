@@ -149,7 +149,7 @@ is equivalent to the Metabase `coalesce` expression:
 coalesce([Notes], [Comments] "No notes or comments.")
 ```
 
-Alternatively, you may be used to working with a INDEX and MATCH in an array formula if you’re “coalescing” data across three or more columns in a spreadsheet.
+Alternatively, you may be used to working with INDEX and MATCH in an array formula if you’re “coalescing” data across three or more columns in a spreadsheet.
 
 ### Python
 
@@ -160,7 +160,7 @@ df['custom_column'] = df['notes'].combine_first(df['comments'])\
                                  .fillna('No notes or comments.')
 ```
 
-are equivalent to the Metabase `coalesce` expression:
+is equivalent to the Metabase `coalesce` expression:
 
 ```
 coalesce([Notes], [Comments] "No notes or comments.")
