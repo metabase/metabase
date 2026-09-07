@@ -63,10 +63,6 @@ frontend_specs: &frontend_specs
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
   - "enterprise/frontend/**/*.unit.*"
-  - ".github/**/*.unit.spec.*"
-  # file-paths.unit.spec.ts asserts what this file's own patterns match, so a change to it has to
-  # run the specs that guard it.
-  - ".github/file-paths.yaml"
   - "jest.config.js"
   - "jest.tz.unit.conf.json"
 
@@ -95,6 +91,23 @@ frontend_loki_infra: &frontend_loki_infra
   - *frontend_configs
   - *shared_ci
   - *frontend_loki_ci
+
+# Everything the ci-scripts jest project runs or depends on.
+# test-unit ignores that project, so this filter is the only thing that reruns it.
+ci_scripts:
+  - *frontend_ci
+  # file-paths.unit.spec.ts asserts what this file's own patterns match, so a change to it has to
+  # run the specs that guard it.
+  - ".github/file-paths.yaml"
+  - ".github/scripts/**"
+  - ".github/actions/**"
+  - "frontend/lint/module-boundaries.mjs"
+  - "frontend/lint/shared-tiers.mjs"
+  - ".dependency-cruiser.cjs"
+  - "jest.config.js"
+  - "jest.esm-packages.js"
+  - "package.json"
+  - "bun.lock"
 
 # e2e harness/support code (commands, support file, runner). Not in the
 # instrumented bundle, so it maps to no covered module — a change here forces a

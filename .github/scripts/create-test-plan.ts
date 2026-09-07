@@ -1,8 +1,8 @@
-// I/O entrypoint: gather inputs (env vars, the cruise graph, the test-file
-// lists) and hand them to createTestPlan, which does the computing.
+// I/O entrypoint: gather inputs (env vars, the test-file lists, the cruise graph on request),
+// hand them to createTestPlan, which does the computing, and write its GITHUB_OUTPUT entries.
 
-import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { appendFileSync, existsSync, readFileSync } from "node:fs";
 
 import micromatch from "micromatch";
 
@@ -12,10 +12,13 @@ import { type FileDependency, parseCruiseModules } from "./affected-modules";
 import { createTestPlan } from "./affected-tests";
 import { listSpecFiles } from "./e2e-spec-globs.mjs";
 
-const UNIT_ROOTS = ["frontend/src", "enterprise/frontend/src"];
+// The specs `bun run test-unit` runs.
+const UNIT_ROOTS = ["."];
 const UNIT_GLOBS = [
-  "frontend/src/**/*.unit.spec.{js,jsx,ts,tsx}",
-  "enterprise/frontend/src/**/*.unit.spec.{js,jsx,ts,tsx}",
+  "**/*.unit.spec.{js,jsx,ts,tsx}",
+  "!.github/**", // the ci-scripts project, which test-unit ignores
+  "!release/**", // has its own jest config
+  "!enterprise/frontend/src/custom-viz/**", // modulePathIgnorePatterns in jest.config.js
 ];
 
 const STORY_ROOTS = ["frontend", "enterprise/frontend"];
@@ -32,12 +35,11 @@ const LS_FILES_MAX_BUFFER = 64 * 1024 * 1024;
 // Returns the tracked files under `roots` that match `globs`. The `dot: true`
 // option means files inside dot-directories such as `.storybook` are included.
 function listFiles(roots: string[], globs: string[]): string[] {
-  const tracked = execFileSync("git", ["ls-files", "--", ...roots], {
+  const tracked = execFileSync("git", ["ls-files", "-z", "--", ...roots], {
     encoding: "utf8",
     maxBuffer: LS_FILES_MAX_BUFFER,
   })
-    .split("\n")
-    .map((line) => line.trim())
+    .split("\0")
     .filter(Boolean);
   return micromatch(tracked, globs, { dot: true });
 }
@@ -49,26 +51,42 @@ const csvToList = (csv: string | undefined) =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-// Reads the dependency-cruiser graph (DEP_GRAPH_JSON). Null falls back to the
-// rules graph, so a missing or unparseable file never breaks the plan.
-function readFileDependencies(): FileDependency[] | null {
-  const path = process.env.DEP_GRAPH_JSON;
-  if (path && existsSync(path)) {
-    try {
-      const { modules } = JSON.parse(readFileSync(path, "utf8"));
-      process.stderr.write(`Using usage graph from ${path}.\n`);
-      return parseCruiseModules(modules);
-    } catch (error) {
-      process.stderr.write(
-        `Failed to read ${path}; falling back to rules graph: ${error}\n`,
-      );
-    }
-  } else {
-    process.stderr.write(
-      "No DEP_GRAPH_JSON found; falling back to rules graph.\n",
+// Runs dependency-cruiser over the frontend sources and parses its edges.
+// Null falls back to the rules graph, so a failed cruise never breaks the plan.
+function loadFileDependencies(): FileDependency[] | null {
+  const output = "dependency-graph.json";
+  process.stderr.write("Building usage graph with dependency-cruiser.\n");
+  try {
+    // stdout is the plan JSON, so the cruise's own output goes to stderr.
+    const result = spawnSync(
+      "bunx",
+      [
+        "depcruise",
+        "frontend/src",
+        "enterprise/frontend/src",
+        "--config",
+        ".dependency-cruiser.cjs",
+        "--output-type",
+        "json",
+        "--output-to",
+        output,
+      ],
+      { stdio: ["ignore", 2, 2] },
     );
+    if (result.error) {
+      throw result.error;
+    }
+    if (result.status !== 0) {
+      throw new Error(`depcruise exited with status ${result.status}`);
+    }
+    const { modules } = JSON.parse(readFileSync(output, "utf8"));
+    return parseCruiseModules(modules);
+  } catch (error) {
+    process.stderr.write(
+      `Failed to build usage graph; falling back to rules graph: ${error}\n`,
+    );
+    return null;
   }
-  return null;
 }
 
 // Reads the nightly coverage manifest (E2E_SPEC_MANIFEST): { builtAt, specs:
@@ -98,7 +116,7 @@ const testPlan = createTestPlan({
   elements,
   rules,
   changedFiles: csvToList(process.env.CHANGED_FILES),
-  fileDependencies: readFileDependencies(),
+  loadFileDependencies,
   testFilesBySuite: {
     unit: listFiles(UNIT_ROOTS, UNIT_GLOBS),
     loki: listFiles(STORY_ROOTS, STORY_GLOBS),
@@ -116,3 +134,12 @@ const testPlan = createTestPlan({
 });
 
 process.stdout.write(JSON.stringify(testPlan) + "\n");
+
+if (process.env.GITHUB_OUTPUT) {
+  appendFileSync(
+    process.env.GITHUB_OUTPUT,
+    Object.entries(testPlan)
+      .map(([name, value]) => `${name}=${JSON.stringify(value)}\n`)
+      .join(""),
+  );
+}
