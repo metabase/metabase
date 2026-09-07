@@ -1,6 +1,6 @@
 ## Linting and Formatting
 
-- **Lint:** `bun run lint-eslint-pure`
+- **Lint:** `bun run lint-oxlint-pure`
   - Run ESLint on the codebase
 - **Format:** `bun run format`
   - Format code with oxfmt (`oxfmt --write`); use `bun run lint-format-pure` to check without writing

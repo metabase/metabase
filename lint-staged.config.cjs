@@ -1,3 +1,6 @@
+const lintFix =
+  "oxlint --threads 4 --disable-nested-config --no-error-on-unmatched-pattern --max-warnings 0 --report-unused-disable-directives --fix";
+
 module.exports = {
   "+(frontend|enterprise)/**/*.styled.tsx": [
     "stylelint --customSyntax postcss-styled-syntax --fix",
@@ -7,12 +10,12 @@ module.exports = {
     "oxfmt --write",
   ],
   "+(frontend|enterprise/frontend)/**/*.{js,jsx,ts,tsx}": [
-    "cross-env LINT_CSS_MODULES=true oxlint --threads 4 --disable-nested-config --no-error-on-unmatched-pattern --max-warnings 0 --report-unused-disable-directives --fix",
+    `cross-env LINT_CSS_MODULES=true ${lintFix}`,
     "oxfmt --write",
     "node ./bin/verify-doc-links",
   ],
   "e2e/**/!(cypress_sample_instance_data).{js,jsx,ts,tsx}": [
-    "oxlint --threads 4 --disable-nested-config --no-error-on-unmatched-pattern --max-warnings 0 --report-unused-disable-directives --fix",
+    lintFix,
     "oxfmt --write",
   ],
   "**/*.{clj,cljc,cljs,bb}": [

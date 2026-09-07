@@ -15,10 +15,16 @@ export function wrap(
         const rule = plugin.rules[name];
         if (!rule)
           throw new Error(`Missing JS lint rule: ${namespace}/${name}`);
+        if (typeof rule.create !== "function") {
+          throw new Error(`Wrapped rule requires create: ${namespace}/${name}`);
+        }
+        // Oxlint runs createOnce instead of create whenever the property is present.
+        // The getters below read context.filename, which throws inside createOnce.
+        const { createOnce: _createOnce, ...legacyRule } = rule;
         return [
           name,
           {
-            ...rule,
+            ...legacyRule,
             create(context) {
               let wrapped = contexts.get(context);
               if (!wrapped) {

@@ -4,7 +4,12 @@ import { createRequire } from "node:module";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { elements, enforcedRules } from "../module-boundaries.mjs";
+import {
+  elements,
+  enforcedRules,
+  boundaryOptions,
+  boundarySettings,
+} from "../module-boundaries.mjs";
 import {
   createBoundaryChecker,
   createBoundaryPlugin,
@@ -55,16 +60,14 @@ test("matches the upstream policy evaluator for every declared module pair", (t)
   );
   const settings = getSettings({
     settings: {
-      "boundaries/elements": elements,
+      ...boundarySettings,
       "boundaries/root-path": rootPath,
-      "boundaries/ignore": ["**/e2e/**", "test/**"],
     },
   });
-  const options = {
-    default: "disallow",
-    rules: enforcedRules,
-    message: "${file.type} cannot import from ${dependency.type}",
-  };
+  const options = boundaryOptions;
+  assert.deepEqual(checker.types, [
+    ...new Set(elements.map((element) => element.type)),
+  ]);
   const element = (type) => ({
     type,
     origin: "local",

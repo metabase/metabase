@@ -1,10 +1,11 @@
-# Oxlint migration
+# JavaScript and TypeScript linting
 
-Oxlint is the JavaScript/TypeScript linter used by `bun run lint`, staged-file
-checks and frontend CI, including module boundaries. Oxfmt retains formatting;
-import ordering retains the existing import-x policy. ESLint stays installed as
-a dependency of retained rules and as a reference for the previous policy.
-Its full-tree diagnostics intentionally differ for the three rules below.
+Oxlint runs the JavaScript/TypeScript checks in `bun run lint`, staged-file checks
+and frontend CI, including module boundaries. Oxfmt owns formatting. Import
+ordering uses the existing import-x policy. ESLint remains installed for retained
+plugins and compatibility tests.
+
+## Commands
 
 ```sh
 bun install --frozen-lockfile
@@ -14,193 +15,79 @@ bun run lint-oxlint-fix
 bun run test-oxlint
 ```
 
-The entry point is `oxlint.config.mts`, avoiding Node's ambiguous-module warning.
-Oxlint is pinned to 1.81.0. The command uses one process with four native threads,
-no persistent lint cache and no custom native build. The frontend CI ESLint
-result cache is removed; CLJS generation is retained for resolution/build inputs.
+`oxlint.config.mts` is the entry point. Production commands use one process with
+four native threads. The pure command excludes formatting, type checking and
+CLJS compilation. Generated CLJS is still needed for filesystem resolution.
 
 ## Accepted rule differences
 
-These three native rules replace expensive upstream JS checks. The choice is
-explicit; the migration does not claim identical ESLint semantics everywhere.
+These native rules replace expensive JS checks with explicit policy tradeoffs.
 
-| Rule | Difference and reason for accepting it |
-| --- | --- |
-| TypeScript `no-unused-vars` | Native considers a value used through TypeScript `typeof` to be used and accepts the tested unused generic parameters in ambient interface augmentations. Those declarations are useful to this TS codebase; requiring suppressions adds noise. Eight redundant suppressions are removed. Ordinary unused values still report. |
-| `import/no-duplicates` | Native requires a mixed type/value import and a second value import from the same module to be combined. This is a modest style change with measurable savings. Imports are consolidated without changing import-order policy. Pure named `import type` plus value imports remain allowed; redundant namespace aliases are consolidated too. |
-| React `display-name` | Native recognizes some mocked `forwardRef` calls upstream skips, but misses some anonymous class HOCs upstream checks. We accept that tradeoff for measurable savings and reduced legacy class-component checking. The affected mock gets a display name; the existing named HOC receives a narrow exception for a native false positive. |
+| Rule                        | Difference and reason                                                                                                                                                                                                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| TypeScript `no-unused-vars` | Values referenced through `typeof` count as used. The tested ambient interface augmentations also accept unused generic parameters. This avoids suppressions for useful TS declarations. Removing the two file-wide suppressions restores unused-variable checking throughout those files. |
+| `import/no-duplicates`      | A mixed type/value import and a second value import from the same module must be combined. Separate pure named type and value imports remain allowed in the tested case. We accept this style change for the native rule's speed.                                                          |
+| React `display-name`        | Native checks some mocked `forwardRef` calls upstream skips, but misses some anonymous class HOCs. We accept the legacy-class tradeoff for speed. `ExplicitSize` has a narrow exception because it already names the wrapped component.                                                    |
 
-Native `complexity` retains the maximum of 55. Its report starts at the arrow
-function's opening parameters, whereas ESLint reports at the arrow token. The
-CardEmbed exception now brackets just that header so both engines honor it;
-the Visualization exception uses the native rule name. Threshold fixtures pass
-in both engines. A broader 174-case probe found only an ambient-declaration
-report at a maximum of zero, which is outside our configuration.
+Native `complexity` keeps the limit of 55. ESLint and oxlint report different
+positions in multiline arrow headers, so the CardEmbed suppression brackets
+only the header. Two JSX suppressions also use bounded comments for differing
+report locations. Retained JS checks use the same aliases in both engines so
+suppression comments target the same rules.
 
-Behavioral fixtures assert both the retained rules and the intended differences.
-A config regression test ensures disabling an ESLint base rule cannot disable
-its TypeScript extension when both map to one native rule. Earlier exploratory
-unused-vars timings predated that fix and must not be treated as equivalent
-coverage; use the final measurements below.
+## Configuration
 
-Low-cost upstream fallbacks stay in place for `no-redeclare`, unsafe optional
-chaining, array constructors, empty object types, export checking,
-import restrictions and the two differing Jest checks. Native optional-chain
-checking and some array/export diagnostics may be useful future policy changes,
-but semantic changes without demonstrated savings are outside this migration.
-Custom OSS/analytics/H restrictions and focused-test checks retain their rules
-and fixes.
+- `config.mjs` holds shared rule options, file scopes, globals and settings.
+- `eslint.config.mjs` supplies the reference parsers and plugins.
+- `oxlint/config.mjs` maps the policy through `oxlint/rule-map.json` to native
+  rules and selected JS adapters. Native namespaces are declared explicitly.
+- `recommended-rules.json` and `oxlint/rule-defaults.json` snapshot plugin presets
+  and defaults, avoiding full ESLint configuration loading during normal lint.
 
-## Configuration and compatibility
+After dependency upgrades, run `bun run lint-config-update`, review snapshot
+changes and map any newly enabled rules. Configuration rejects unmapped rules.
+Wrapped plugins must provide `create`: `createOnce` is omitted to preserve the
+wrapper's per-file settings and context handling. The no-only-tests plugin loads
+directly and uses its published `createOnce` API.
 
-`config.mjs` holds shared rule options, file globs, globals and settings.
-`eslint.config.mjs` supplies the legacy parsers/plugins; `oxlint/config.mjs` maps
-that policy to native rules and selected JS plugins. New files use glob matching,
-not a benchmark file inventory. JS settings are merged by matching policy scope.
+Files matching the same policy scopes share settings objects. Their identity
+allows the resolver's WeakMaps to reuse services. The last-file lookup avoids
+repeating file matching across rules. The import adapter supplies its parser
+lazily when export analysis requests it. JSX entity decoding and an import-free
+JS scope view preserve retained rules' behavior.
 
-Retained JS rules use matching names in ESLint and oxlint so suppressions keep
-targeting the intended check. Source comment renames are mechanical; they do
-not remove the original exceptions. The JSX translation adapter decodes entities
-as the existing parser does, and two JSX exceptions use bounded comments because
-diagnostic locations differ. A small scope view preserves module-local bindings
-in import-free JS files. The existing console global for one custom-viz build
-script moves from its directive into the configuration.
+The optional postcss-modules check loads when installed and either CI or
+`LINT_CSS_MODULES=true` is set. It uses the same conditional hook as ESLint.
 
-The import adapter supplies the existing parser lazily when upstream export
-analysis needs to parse a dependency: oxlint's parser object is otherwise a stub.
-Its language-options view preserves oxlint's lazy getters rather than eagerly
-reading AST/global information. With the three accepted native rules enabled,
-this avoids unnecessary global decoding without changing the rule policy.
+## Boundary and resolver contracts
 
-Published upgrades: i18next 6.1.4 removes its compatibility wrapper while retaining
-JSX decoding; import-x is 4.17.1 and depend is 1.5.0. The i18next 6.1.5 matching
-changes are deferred. Testing Library remains 7.15.4: the tested 7.16.2 upgrade
-stops reporting `element.children[2]`, with no established performance benefit.
-The import-x resolver-reuse fix does not replace our distinct legacy resolution
-path, so the adapter remains.
-
-`eslint-plugin-no-only-tests` 3.4.0 now loads directly, using its published
-`createOnce` API without our wrapper. An old/new probe compared 355 combinations
-of sources/options with identical diagnostics and fixes; actual-config fixtures
-also check chained focused tests, suppressions and ordinary calls.
-`eslint-plugin-jest-formatting` is removed along with its registration and empty
-preset: no formatting rules were enabled through that preset.
-
-The successor `@e18e/eslint-plugin` 0.8.0 was tried with the existing `depend`
-namespace and `ban-dependencies` options, then deferred. Its expanded replacement
-catalogue produced 105 new repository findings (including `yup` and `querystring`)
-and took 20.19s versus 15.57s for depend 1.5.0 in one unpatched comparison.
-This is a policy migration, not an equivalent dependency rename; no successor
-package or related suppressions are added here.
-
-`recommended-rules.json` and `oxlint/rule-defaults.json` snapshot dependency
-presets/defaults without importing the entire ESLint setup at CLI startup.
-After lint dependency upgrades, run `bun run lint-config-update`, review policy
-changes and update `oxlint/rule-map.json` for new enabled rules. Tests detect
-snapshot drift; loading rejects an enabled rule without a mapping.
-
-The optional postcss-modules plugin is loaded only under CI or
-`LINT_CSS_MODULES=true` when installed, matching the old hook. This checkout does
-not install it; its plugin execution is not part of the measured/tested baseline.
-
-## Boundary and resolver adapter
-
-`oxlint-boundaries.mjs` implements our two boundary checks, compiling the module
-policy once. Tests compare all 10,000 declared module pairs against upstream,
-including ordered rules and transitional exceptions. Unsupported features throw.
+`module-boundaries.mjs` supplies elements, enforced rules, options and settings
+to both engines. `oxlint-boundaries.mjs` compiles the supported policy subset.
+Configuration rejects differing boundary options and unsupported settings;
+compilation rejects unsupported selectors and descriptors. The parity test
+compares every declared module pair with the upstream evaluator.
 
 `oxlint-import-resolver.mjs` shares published `oxc-resolver` between boundary and
-import checks. This is a JS adapter around a published native resolver, not a
-custom Rust lint plugin. It retains the different legacy/import-x precedence,
-aliases, extensions, entry fields, externals, loader/query handling and symlink
-behavior. Tests compare both existing resolvers. Rspack resolver changes need
-adapter review; unsupported options throw.
+import checks. It preserves separate import-x and legacy resolution precedence,
+aliases, extensions, entry fields, externals, loaders, queries and symlink paths.
+Unsupported resolver policies throw. Alias and fallback targets must be absolute
+so bare imports can reuse resolution across directories within a package root.
 
-The build and lint resolver share lightweight `resolve-config.js` modules for
-the app and SDK. Lint no longer imports either complete Rspack configuration.
-Integration checks cover development/production and OSS/EE settings.
+The app and SDK share lightweight build-resolution modules. The SDK owns a
+separate alias object: its three enterprise overrides apply in every edition.
+Integration tests snapshot lightweight settings before loading full build
+configs and check development/production and OSS/EE combinations.
 
-Resolution results are reused within a fresh CLI invocation over a fixed tree.
-Bare imports share a key at the nearest package.json/node_modules ancestor;
-relative, loader and query specifiers retain directory-specific keys. Configured
-aliases/fallbacks must be absolute for that reuse; unsupported values throw.
-Derived plugin contexts are reused with current-file getters, boundary imports
-use direct listeners, glob matchers are compiled once, and missing source-file
-probes avoid constructing exceptions.
-Editor/watch invalidation is not implemented. Existing ESLint editor diagnostics
-can differ under the accepted policy changes; this PR does not claim editor
-parity or remove all ESLint dependencies.
+Resolution reuse belongs to one CLI invocation over a fixed tree. Bare imports
+use the nearest package.json/node_modules ancestor; relative, loader and query
+specifiers retain directory-specific keys. Construct a fresh resolver service
+after filesystem, dependency or configuration changes. Persistent caching and
+editor/watch invalidation are not implemented.
 
-## Validation and performance
+## Validation
 
-Paired, sequential measurements on macOS ARM64, Node 24.14.0 and Bun 1.3.14,
-one lint process, four native threads, no persistent lint cache:
-
-| Comparison | Control mean | Candidate mean | Interpretation |
-| --- | --- | --- | --- |
-| All four published upgrades | 18.152 s | 18.145 s | No established speed change; Testing Library had a coverage difference. |
-| Retained three upgrades | 17.921 s | 17.730 s | Small difference within desktop variation; keep the wrapper simplification. |
-| Native complexity, after upgrades and `.mts` rename | 17.596 s | 17.466 s | Small measured difference; removes the JS fallback. |
-| Shared lightweight resolve configuration | 17.342 s | 16.739 s | About 0.60 s faster. |
-| Resolver/context/glob/listener reuse | 16.721 s | 15.700 s | About 1.02 s faster. |
-
-The September 8 measurements below supersede the absolute timings in those
-individual experiments. They measured base `c31059bff221` and patched
-`e4a80ccd3a1e`, before the focused-test upgrade and unused formatting dependency
-cleanup described above.
-
-macOS ARM64, Node 24.14.0, one fresh lint process per run, four native threads, no
-persistent lint cache, generated CLJS already present. Dependency files are warm in the
-OS cache; these are not cold-filesystem benchmarks. Times exclude CLJS compilation,
-formatting, and type-checking.
-
-| Configuration | Six runs (s) | Median | Mean | Range | Files |
-| --- | --- | --- | --- | --- | --- |
-| Base, no optional patches | 15.128 / 14.453 / 14.620 / 15.169 / 15.475 / 15.992 | 15.15s | 15.14s | 14.45–15.99s | 11,980 |
-| Stacked PR, six patches | 10.607 / 10.067 / 10.511 / 10.162 / 10.792 / 10.512 | 10.51s | 10.44s | 10.07–10.79s | 11,981 |
-
-September 8 repeat: six sequential pairs, alternating which PR runs first (base/patched,
-then patched/base). One initial warm-up per PR was excluded by design: **15.390s base /
-10.997s patched**. All twelve measured runs and both warm-ups exited 0 with zero
-findings; no measured run was discarded. The extra patched file is its dependency-parity
-test.
-
-The six patches save **4.70s (31.0%)** on the mean in this batch. The same
-implementation previously averaged **17.702s base / 12.240s patched** under different
-desktop activity. The faster absolute results here are a repeated measurement of
-unchanged lint code, not an additional implementation speedup or a guarantee for other
-machines.
-
-All 21 base compatibility tests pass (including the build-resolution integration
-check), and all 490 custom-rule cases pass. Published-plugin fixtures compare
-160 cases, including 67 violations, with identical diagnostics and autofixes;
-the separate full-tree check caught the Testing Library regression above.
-The stacked PR records its corresponding patched measurements.
-
-### Focused-test upgrade comparison
-
-Three sequential old/new pairs per state, ordered old/new, new/old, old/new,
-using the same four-thread pure-lint command. The control loads a copy of
-no-only-tests 3.3.0 through the old wrapper; the candidate loads 3.4.0 directly.
-The base and patched batches were run separately, so use each row to assess
-this upgrade, not to estimate the patch layer's speedup. All twelve runs exited
-0 with zero findings (11,980 base files; 11,981 patched); no runs were discarded.
-
-| State | 3.3.0 + wrapper runs (s) | 3.4.0 direct runs (s) | Mean before → after |
-| --- | --- | --- | --- |
-| Base | 15.756 / 14.657 / 14.320 | 14.878 / 14.976 / 15.166 | 14.91s → 15.01s |
-| Patched | 10.859 / 10.280 / 10.225 | 10.334 / 10.227 / 10.353 | 10.45s → 10.30s |
-
-The observed changes do not establish a speedup. Keep the published API upgrade
-for the simpler adapter. Removing jest-formatting changes no enabled rules and
-is not expected to improve normal oxlint runtime because it was already unloaded.
-
-Run candidates sequentially under comparable CPU load with generated assets
-present, checking exit status, file count and diagnostics alongside timing:
-
-```sh
-/usr/bin/time -p bun run lint-oxlint-pure --format json > /tmp/oxlint-result.json
-```
-
-The stacked follow-up isolates six version-specific dependency patches. This
-base PR adds none; existing unrelated project patches remain unchanged.
+`bun run test-oxlint` checks policy mapping, real-engine violations and
+suppressions, boundary parity, resolver behavior and build integration. Custom
+rules use oxlint's RuleTester through the `lint-rules` Jest project. Timings and
+migration experiments are recorded in the draft PR descriptions rather than
+maintained as configuration documentation.

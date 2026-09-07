@@ -14,7 +14,9 @@ function aliases(values = {}) {
           (entry) => typeof entry !== "string" || !path.isAbsolute(entry),
         )
       ) {
-        throw new Error(`Unsupported resolver alias: ${key}`);
+        throw new Error(
+          `Unsupported resolver alias: ${key} must contain absolute paths for reuse across package directories`,
+        );
       }
       return [key, entries];
     }),
@@ -177,21 +179,24 @@ export function createImportResolverService({ ResolverFactory }) {
     const key = `${mode}\0${configPath ?? ""}`;
     if (!resolvers.has(key)) {
       const webpack = configPath ? webpackResolver(configPath) : undefined;
-      const resolve = memoize((source, file) => {
-        // import-x uses its Rust node resolver BEFORE the legacy node fallback.
-        // eslint-module-utils (boundaries/custom rules) starts at the fallback.
-        if (mode === "import-x") {
-          if (isBuiltin(source) || source.startsWith("data:")) {
-            return { found: true, path: null };
-          }
-          const result = node.sync(path.dirname(file), source);
-          if (result.path) {
-            return { found: true, path: result.path };
-          }
-        }
+      const resolveFallback = (source, file) => {
         const result = resolveLegacyNode(source, file);
         return result.found ? result : (webpack?.(source, file) ?? result);
-      }, packageRoot);
+      };
+      const resolveImportX = (source, file) => {
+        if (isBuiltin(source) || source.startsWith("data:")) {
+          return { found: true, path: null };
+        }
+        const result = node.sync(path.dirname(file), source);
+        return result.path
+          ? { found: true, path: result.path }
+          : resolveFallback(source, file);
+      };
+      // import-x tries the exports-aware node resolver first; legacy starts at the fallback.
+      const resolve = memoize(
+        mode === "import-x" ? resolveImportX : resolveFallback,
+        packageRoot,
+      );
       resolvers.set(key, {
         interfaceVersion: 3,
         name: `metabase-oxc-${mode}`,

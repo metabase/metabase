@@ -3,6 +3,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { ESLint } from "eslint";
+import policy from "../config.mjs";
 
 import {
   createConfig,
@@ -107,6 +108,29 @@ test("a wrapped rule reads settings for the file oxlint is currently linting", (
   );
 });
 
+test("wrapping drops createOnce and rejects rules it cannot serve", () => {
+  const namespace = "metabase";
+  const fakePlugin = (rule) => ({
+    rules: Object.fromEntries(jsRules[namespace].map((name) => [name, rule])),
+  });
+  const wrapped = wrap(
+    namespace,
+    fakePlugin({
+      create: () => ({}),
+      createOnce: () => ({}),
+    }),
+  ).rules;
+  for (const [name, rule] of Object.entries(wrapped)) {
+    assert.equal(Object.hasOwn(rule, "createOnce"), false, name);
+  }
+  for (const rule of [{ createOnce: () => ({}) }, { meta: {} }]) {
+    assert.throws(
+      () => wrap(namespace, fakePlugin(rule)),
+      new RegExp(`Wrapped rule requires create: ${namespace}/`),
+    );
+  }
+});
+
 test("native overrides retain inherited prefer-const and console options", () => {
   const config = createConfig();
   const ts = config.overrides.filter((entry) =>
@@ -131,4 +155,19 @@ test("TS base-rule disables do not overwrite native extension rules", () => {
   );
   assert.equal(ts.rules["no-unused-vars"][0], "error");
   assert.equal(ts.rules["no-unused-vars"][1].varsIgnorePattern, "^_.+$");
+});
+
+test("configuration rejects boundary settings and policy overrides the checker cannot enforce", () => {
+  for (const entry of [
+    { settings: { "boundaries/root-path": "/elsewhere" } },
+    { settings: { "boundaries/dependency-nodes": ["require"] } },
+    { rules: { "boundaries/element-types": ["error", { default: "allow" }] } },
+  ]) {
+    policy.push(entry);
+    try {
+      assert.throws(() => createConfig(), /boundary checker/);
+    } finally {
+      policy.pop();
+    }
+  }
 });
