@@ -7,17 +7,18 @@ on:
         required: false
         type: number
         default: 30
-      specs:
+      spec-files:
+        description: "JSON array of spec files to run, '' to run the full suite."
         required: false
         type: string
-        default: "./e2e/test/scenarios/**/*.cy.spec.*"
+        default: ""
     outputs:
       matrix:
         value: ${{ jobs.build-matrix.outputs.matrix }}
       regularChunks:
         value: ${{ jobs.build-matrix.outputs.regularChunks }}
-      isDefaultSpecPattern:
-        value: ${{ jobs.build-matrix.outputs.isDefaultSpecPattern }}
+      hasTests:
+        value: ${{ jobs.build-matrix.outputs.hasTests }}
 
 jobs:
   build-matrix:
@@ -26,25 +27,33 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.config }}
       regularChunks: ${{ steps.matrix.outputs.regularChunks }}
-      isDefaultSpecPattern: ${{ steps.matrix.outputs.isDefaultSpecPattern }}
+      hasTests: ${{ steps.matrix.outputs.hasTests }}
     steps:
       - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             .github
+            e2e/runner/read-spec-plan.js
           sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v6.4.0
         with:
           node-version: lts/Jod # 22.x.x
+      - name: Write spec plan
+        run: |
+          cat > e2e-spec-files.json <<'EOF'
+          ${{ inputs.spec-files }}
+          EOF
       - name: Build e2e matrix
         uses: actions/github-script@v9
         id: matrix
         env:
           chunks: ${{ inputs.chunks }}
+          E2E_SPEC_PATHS_FILE: ${{ inputs.spec-files && format('{0}/e2e-spec-files.json', github.workspace) || '' }}
         with:
           script: | # js
             const { buildMatrix } = require('${{ github.workspace }}/.github/scripts/build-e2e-matrix.js');
-            const inputSpecs = "${{ inputs.specs }}";
+            const { readSpecPlan } = require('${{ github.workspace }}/e2e/runner/read-spec-plan.js');
+            const specFiles = readSpecPlan(process.env.E2E_SPEC_PATHS_FILE);
             const inputChunks = Number(process.env.chunks);
             const java = 25;
             const defaultRunner = "${{ vars.DEFAULT_RUNNER_KEY }}";
@@ -52,12 +61,11 @@ jobs:
               java,
               defaultRunner,
             };
-            const { config, regularChunks, isDefaultSpecPattern } = buildMatrix(options, inputSpecs, inputChunks);
+            const { config, regularChunks } = buildMatrix(options, specFiles, inputChunks);
 
             core.setOutput("regularChunks", JSON.stringify(regularChunks));
             core.setOutput("config", JSON.stringify({ include: config }));
-            core.setOutput("isDefaultSpecPattern", JSON.stringify(isDefaultSpecPattern));
+            core.setOutput("hasTests", config.length > 0);
 
             console.log({ regularChunks });
             console.log("matrix config", config);
-            console.log("isDefaultSpecPattern", isDefaultSpecPattern);

@@ -6,7 +6,8 @@ on:
       skip:
         type: boolean
         default: false
-      specs:
+      spec-files:
+        description: "JSON array of spec files to run, '' to run the full suite."
         type: string
         required: false
         default: ""
@@ -17,10 +18,11 @@ concurrency:
 
 jobs:
   e2e-matrix-builder:
+    if: ${{ !inputs.skip }}
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
       chunks: 50
-      specs: ${{ inputs.specs }}
+      spec-files: ${{ inputs.spec-files }}
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
@@ -59,7 +61,9 @@ jobs:
     needs:
       - e2e-matrix-builder
     if: |
-      !cancelled() && !inputs.skip
+      !cancelled() && !inputs.skip &&
+      needs.e2e-matrix-builder.result == 'success' &&
+      needs.e2e-matrix-builder.outputs.hasTests == 'true'
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -68,6 +72,7 @@ jobs:
       name: ${{ matrix.name }}
       edition: ${{ matrix.edition }}
       specs: ${{ matrix.specs }}
+      spec-files: ${{ inputs.spec-files }}
       total_chunks: ${{ fromJson(needs.e2e-matrix-builder.outputs.regularChunks) }}
       split_index: ${{ strategy.job-index }}
       tags: ${{ matrix.tags }}
@@ -137,6 +142,7 @@ jobs:
 
   e2e-tests-result:
     needs:
+      - e2e-matrix-builder
       - e2e-tests
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
@@ -144,17 +150,22 @@ jobs:
     if: always() && !cancelled()
     env:
       E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
+      MATRIX_RESULT: ${{ needs.e2e-matrix-builder.result }}
+      HAS_TESTS: ${{ needs.e2e-matrix-builder.outputs.hasTests }}
+      SKIP: ${{ inputs.skip }}
     steps:
-      - name: Stub
-        if: ${{ needs.e2e-tests.result == 'skipped' }}
-        run: |
-          echo "Didn't run due to conditional filtering"
       - name: Test results
-        if: ${{ needs.e2e-tests.result != 'skipped' }}
         run: | # sh
-          echo "E2E Tests: ${{ needs.e2e-tests.result }}"
-
-          if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
+          if [ "$SKIP" = "true" ]; then
+            echo "Didn't run due to conditional filtering"
+          elif [ "$MATRIX_RESULT" != "success" ]; then
+            echo "E2E matrix builder failed"
+            exit 1
+          elif [ "$HAS_TESTS" = "false" ]; then
+            echo "The plan selected no E2E specs"
+          elif [ "$E2E_TESTS_RESULT" != "success" ]; then
             echo "E2E Tests failed"
             exit 1
+          else
+            echo "E2E Tests passed"
           fi
