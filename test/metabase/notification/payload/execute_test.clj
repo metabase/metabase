@@ -4,7 +4,8 @@
    [clojure.test :refer :all]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as temp-storage]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.visualization-settings.ui-logic :as ui-logic]))
 
 (set! *warn-on-reflection* true)
 
@@ -88,6 +89,20 @@
                    :data   {:cols [{:name "count"}]
                             :rows [[1000]]}}
                   (referenced-goal-result part goal-id))))))))
+
+(deftest execute-card-goal-resolves-at-render-time-test
+  (testing "the kept values are the ones the renderer resolves against, not just a surviving key"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
+                                              :display       :scalar}
+                   :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]
+                                                                                    :breakout    [$price]})
+                                              :display       :line
+                                              :visualization_settings
+                                              {:graph.goal_value {:id     goal-id
+                                                                  :type   "card"
+                                                                  :column "count"}}}]
+      (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)]
+        (is (= 100 (ui-logic/find-goal-value part)))))))
 
 (defn- card-parts [parts]
   (filter #(= :card (:type %)) parts))

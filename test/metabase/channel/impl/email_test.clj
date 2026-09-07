@@ -144,6 +144,31 @@
             (testing "the failed card degrades to the error placeholder"
               (is (str/includes? content "An error occurred while displaying this card.")))))))))
 
+(deftest card-notification-survives-an-unresolvable-goal-test
+  (testing "a has_result alert whose goal reference can't resolve still sends (the body already
+            shows the error box, so the whole email must not be discarded)"
+    (let [card         {:id      1
+                        :name    "Has Result Alert"
+                        :display :line
+                        :visualization_settings {:graph.goal_value {:id 999 :type "card" :column "count"}}}
+          ;; no :referenced_entities under :result, so resolving the goal throws :never-ran
+          card-part    {:type   :card
+                        :card   card
+                        :result {:data {:cols [{:name "count" :base_type :type/Integer}]
+                                        :rows [[7]]}}}
+          notification {:payload_type :notification/card
+                        :creator_id   (mt/user->id :rasta)
+                        :payload      {:card              card
+                                       :card_part         card-part
+                                       :notification_card {:send_condition :has_result}
+                                       :subscriptions     []}}
+          recipients   [{:type :notification-recipient/user :user {:email "test@example.com"}}]]
+      (mt/with-dynamic-fn-redefs [email.impl/render-part (fn [_timezone _part _options]
+                                                           {:content [:div "CARD-BODY"]})]
+        (let [result (channel/render-notification :channel/email notification {:recipients recipients})]
+          (is (= 1 (count result)))
+          (is (str/includes? (-> result first :message first :content) "CARD-BODY")))))))
+
 (deftest render-body-prometheus-metric-test
   (testing "rendering a user-provided template increments the template-render counter"
     (mt/with-prometheus-system! [_ system]

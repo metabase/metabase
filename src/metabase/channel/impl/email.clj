@@ -255,8 +255,13 @@
                             creator_id)
         attachments        (concat [icon-attachment] card-attachments result-attachments)
         html-content       (html (:content rendered-card))
-        ;; card_part, not payload: find-goal-value reads [:result :data ...], which only card_part has
-        goal               (ui-logic/find-goal-value card_part)
+        ;; card_part, not payload: find-goal-value reads [:result :data ...], which only card_part has.
+        ;; an unresolvable goal already renders as an error box in the body, so it must not sink the email
+        goal               (try
+                             (ui-logic/find-goal-value card_part)
+                             (catch Throwable e
+                               (log/warn e "Could not resolve the goal value for this alert")
+                               nil))
         message-context-fn (fn [non-user-email]
                              (assoc notification-payload
                                     :computed {:subject         (case (keyword (:send_condition notification_card))
