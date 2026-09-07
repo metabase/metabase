@@ -34,7 +34,6 @@ export function applyDefaultVisualizationProps(
   settings: {
     identifier: VisualizationDisplay;
     plugin: CustomVizPluginRuntime;
-    getUiName: () => string;
     iconUrl?: string | undefined;
     isDev?: boolean;
   },
@@ -57,6 +56,7 @@ export function applyDefaultVisualizationProps(
     defaultSize: vizDef.defaultSize,
     isDev: settings.isDev,
     pluginId: plugin.id,
+    getUiName: () => vizDef.getName?.() ?? plugin.display_name,
     ...componentSettings,
   });
 }

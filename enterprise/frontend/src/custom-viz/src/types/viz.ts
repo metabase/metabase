@@ -31,14 +31,10 @@ export type CreateCustomVisualizationProps<
 
 export type CustomVisualization<TSettings extends BaseVisualizationSettings> = {
   /**
-   * A unique visualization identifier. It's not shown in the UI.
-   */
-  id: string;
-
-  /**
    * Returns visualization name to be shown in the UI.
+   * Defaults to the plugin name from the manifest.
    */
-  getName(): string;
+  getName?(): string;
 
   /**
    * Set to false to disable saving the question as PNG.
