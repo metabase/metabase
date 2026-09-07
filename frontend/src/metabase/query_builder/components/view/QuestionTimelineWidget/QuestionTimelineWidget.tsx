@@ -2,7 +2,8 @@ import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/redux";
 
-import { onCloseTimelines, onOpenTimelines } from "../../../store/actions";
+import { openTimelines } from "../../../actions/timelines";
+import { onCloseTimelines } from "../../../store/actions";
 import { getUiControls } from "../../../store/selectors";
 import { ViewFooterButton } from "../ViewFooterButton";
 
@@ -16,7 +17,7 @@ export const QuestionTimelineWidget = ({
   const { isShowingTimelineSidebar } = useSelector(getUiControls);
 
   const dispatch = useDispatch();
-  const handleOpenTimelines = () => dispatch(onOpenTimelines());
+  const handleOpenTimelines = () => dispatch(openTimelines("footer"));
   const handleCloseTimelines = () => dispatch(onCloseTimelines());
 
   function handleClick(isShowingTimelineSidebar: boolean) {
