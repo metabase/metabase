@@ -440,24 +440,23 @@
 
   ([query :- :map
     already-preprocessed? :- :boolean]
-   (try
-     (can-run-query? query already-preprocessed? false)
-     (catch clojure.lang.ExceptionInfo _e
-       false)))
+   (can-run-query? query already-preprocessed? false))
 
   ([{database-id :database :as query} :- :map
     already-preprocessed?             :- :boolean
     throw-calculation-errors?         :- :boolean]
-   (let [required-perms (required-perms-for-query query
-                                                  :already-preprocessed? already-preprocessed?
-                                                  :throw-exceptions? throw-calculation-errors?)]
-     (try
+   (try
+     (let [required-perms (required-perms-for-query query
+                                                    :already-preprocessed? already-preprocessed?
+                                                    :throw-exceptions? throw-calculation-errors?)]
        (check-data-perms query required-perms)
        ;; Check card read permissions for any cards referenced in subqueries!
        (doseq [card-id (:card-ids required-perms)]
          (check-card-read-perms database-id card-id))
-       true
-       (catch clojure.lang.ExceptionInfo _e
+       true)
+     (catch clojure.lang.ExceptionInfo e
+       (if (and throw-calculation-errors? (not (:permissions-error? (ex-data e))))
+         (throw e)
          false)))))
 
 (mu/defn can-query-table?

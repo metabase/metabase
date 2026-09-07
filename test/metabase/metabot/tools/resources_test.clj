@@ -351,7 +351,7 @@
                                              :query    {:source-table (mt/id :orders)}})]
           (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
             (let [result (read-resource/read-resource {:uris [uri]})]
-              (is (=? {:resources [{:error string?}]} result))
+              (is (=? {:resources [{:error "You don't have permissions to do that."}]} result))
               (is (not (str/includes? (:output result) "ORDERS"))))))))))
 
 (deftest read-conversation-source-card-query-resource-test
@@ -387,7 +387,7 @@
                                                :query    {:source-table (str "card__" card-id)}})]
             (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
               (let [result (read-resource/read-resource {:uris [uri]})]
-                (is (=? {:resources [{:error string?}]} result))
+                (is (=? {:resources [{:error "You don't have permissions to do that."}]} result))
                 (is (not (str/includes? (:output result) "ORDERS")))))))))))
 
 (deftest read-transform-resource-test
