@@ -19,7 +19,10 @@ import {
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
-import { updateTimelineEventsVisibility } from "../actions/timelines";
+import {
+  openTimelines,
+  updateTimelineEventsVisibility,
+} from "../actions/timelines";
 import { onOpenTimelines } from "../store/actions";
 import {
   getIsDirty,
@@ -28,9 +31,16 @@ import {
   getVisibleTimelineEventIds,
 } from "../store/selectors";
 
-import { TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD, setup } from "./test-utils";
+import {
+  TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
+  saveQuestion,
+  setup,
+  triggerVisualizationQueryChange,
+} from "./test-utils";
 
 registerVisualizations();
+
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
 const CARD = createMockCard({
   ...TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
@@ -89,6 +99,10 @@ const setupWithTimelines = async (visibility?: TimelineEventsVisibility) => {
 };
 
 describe("QueryBuilder > timeline events", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   it("shows the collection's events for a question that never recorded any", async () => {
     const store = await setupWithTimelines();
 
@@ -186,6 +200,68 @@ describe("QueryBuilder > timeline events", () => {
         "timeline.excluded_timeline_event_ids": [],
       }),
     );
+  });
+
+  it("opening the events panel from the chart tracks where it was opened from", async () => {
+    const store = await setupWithTimelines();
+
+    await act(async () => {
+      store.dispatch(openTimelines("chart", [RC1.id]));
+    });
+
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "question_events_panel_opened",
+      triggered_from: "chart",
+    });
+  });
+
+  it("focusing events while the panel is already open does not track another opening", async () => {
+    const store = await setupWithTimelines();
+    await act(async () => {
+      store.dispatch(openTimelines("footer"));
+    });
+    trackSimpleEvent.mockClear();
+
+    await act(async () => {
+      store.dispatch(openTimelines("chart", [RC1.id]));
+    });
+
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
+  });
+
+  it("saving a question with a recorded selection tracks it", async () => {
+    const store = await setupWithTimelines();
+
+    await updateVisibility(store, (visibility, timelines) =>
+      hideTimelines(visibility, [TIMELINE.id], timelines),
+    );
+    await saveQuestion();
+
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "question_timeline_events_saved",
+      target_id: CARD.id,
+    });
+  });
+
+  it("saving other changes to a question with a recorded selection tracks nothing", async () => {
+    await setupWithTimelines({
+      "timeline.selected_timeline_ids": [TIMELINE.id],
+      "timeline.excluded_timeline_event_ids": [RC1.id],
+    });
+
+    await triggerVisualizationQueryChange();
+    await saveQuestion();
+
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
+  });
+
+  it("saving a question that never recorded a selection tracks nothing", async () => {
+    await setupWithTimelines();
+
+    await triggerVisualizationQueryChange();
+    await saveQuestion();
+
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
   });
 
   it("re-showing a timeline keeps events outside the chart's range", async () => {
