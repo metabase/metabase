@@ -16,7 +16,7 @@ That difference matters when you're setting up monitoring. An endpoint like `GET
 3. Set **relative** (baseline-based) alerts on the warehouse endpoints. Their latency depends on your databases, not on Metabase.
 4. Skip alerting on latency for third-party endpoints. Alert on their error rate instead.
 
-The endpoint lists below describe how endpoints behave as of this release. The API surface changes over time, so re-check after a major upgrade. You can list every endpoint your instance serves at `GET /api/docs` (Swagger UI), or download the full machine-readable spec at `GET /api/docs/openapi.json`.
+The endpoint lists below describe how endpoints behave as of this release. The API surface changes over time, so re-check after a major upgrade. You can list every endpoint in the API docs.
 
 ## The two data paths
 
@@ -58,7 +58,7 @@ Every endpoint below runs queries against the databases you've connected. Most o
 - **Ad-hoc query execution:** `POST /api/dataset`. Downloads are `POST /api/dataset/:export-format`, where `:export-format` is `api`, `csv`, `json`, or `xlsx`. Pivots are `POST /api/dataset/pivot`.
 - **Saved card queries:** `POST /api/card/:id/query` and `POST /api/card/:id/query/:export-format`, plus `POST /api/card/pivot/:card-id/query`.
 - **Dashboard card queries:** `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query`, its `/:export-format` variant, and the matching `POST /api/dashboard/pivot/.../query`.
-- **Filter dropdown values:** any `.../params/:param-key/values`, `.../params/:param-key/search/:query`, or `.../params/:param-key/remapping` endpoint on cards, dashboards, public links, and embeds. These run field-value queries against the warehouse. Exception: parameters backed by a static list of values, or served from cached, internally-remapped field values, answer from the application database.
+- **Filter dropdown values:** any `.../params/:param-key/values`, `.../params/:param-key/search/:query`, or `.../params/:param-key/remapping` endpoint on cards, dashboards, public links, and embeds. These run field-value queries against the warehouse with a few exceptions: parameters backed by a static list of values, or served from cached, internally-remapped field values, answer from the application database.
 - **Dashboard PDF export:** `POST /api/dashboard/:id/pdf` runs every card on the dashboard synchronously, then streams a PDF. Expect it to take as long as the slowest cards combined.
 - **Map tiles:** `GET /api/tiles/...` runs a filtered query per tile.
 - **Table browser:** `GET /api/table/:table-id/data`.
