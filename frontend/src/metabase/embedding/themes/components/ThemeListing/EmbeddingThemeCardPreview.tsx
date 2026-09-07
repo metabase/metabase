@@ -101,7 +101,6 @@ export const EmbeddingThemeCardPreview = ({
           <text
             x="113"
             y="44"
-            // eslint-disable-next-line metabase/no-color-literals -- decorative theme-preview SVG mockup, not real UI chrome
             fill="#FFFFFF"
             fontSize="11"
             fontWeight="600"
@@ -127,16 +126,13 @@ export const EmbeddingThemeCardPreview = ({
           width="434"
           height="268"
           rx="5.5"
-          // eslint-disable-next-line metabase/no-color-literals -- decorative theme-preview SVG mockup, not real UI chrome
           stroke="#071722"
           strokeOpacity="0.14"
         />
 
-        {/* eslint-disable metabase/no-color-literals -- decorative theme-preview SVG mockup, not real UI chrome */}
         <line x1="97" y1="142.5" x2="437" y2="142.5" stroke="#EEECEC" />
         <line x1="97" y1="188.5" x2="437" y2="188.5" stroke="#EEECEC" />
         <line x1="97" y1="235.5" x2="437" y2="235.5" stroke="#EEECEC" />
-        {/* eslint-enable metabase/no-color-literals */}
 
         <text
           x="60"

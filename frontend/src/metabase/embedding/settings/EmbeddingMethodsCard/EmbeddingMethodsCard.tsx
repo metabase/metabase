@@ -37,21 +37,18 @@ export function EmbeddingMethodsCard() {
 
   const modularEmbedding: EmbeddingMethod = {
     title: t`Modular embedding and SDK for React`,
-    // eslint-disable-next-line metabase/no-literal-metabase-strings -- this settings card only shows for admins
     description: t`Embed the full power of Metabase into your application with modular embedding and the React SDK to build custom analytics experiences and programmatically manage dashboards and data.`,
     settingKey: "enable-embedding-modular",
   };
 
   const guestEmbeds: EmbeddingMethod = {
     title: t`Enable embedding`,
-    // eslint-disable-next-line metabase/no-literal-metabase-strings -- this settings card only shows for admins
     description: t`Embed Metabase dashboards and questions into your application with modular embedding.`,
     settingKey: "enable-embedding-modular",
   };
 
   const fullAppEmbedding: EmbeddingMethod = {
     title: t`Full-app embedding`,
-    // eslint-disable-next-line metabase/no-literal-metabase-strings -- this settings card only shows for admins
     description: t`A way to embed the entire Metabase app in an iframe. This involves hard trade-off and is generally not recommended unless you know exactly what you are doing.`,
     settingKey: "enable-embedding-interactive",
   };
