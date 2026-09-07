@@ -19,19 +19,17 @@ const DYNAMIC_TRIGGER = { name: "Pick a dynamic value" };
 
 function setup({
   isDynamic,
-  withData = true,
   showSelfColumns,
   value = 5,
 }: {
   isDynamic?: boolean;
-  withData?: boolean;
   showSelfColumns?: boolean;
   value?: GoalValue | null;
 }) {
   const onChange = jest.fn();
   renderWithProviders(
     <ChartSettingGoalValue
-      data={withData ? DATA : undefined}
+      data={DATA}
       datasetQuery={createMockStructuredDatasetQuery()}
       id="goal"
       isDynamic={isDynamic}
@@ -85,18 +83,6 @@ describe("ChartSettingGoalValue", () => {
   });
 
   describe("with dynamic goals", () => {
-    it("falls back to a static input when there is no data", () => {
-      const { input, onChange } = setup({ isDynamic: true, withData: false });
-
-      expect(
-        screen.queryByRole("button", DYNAMIC_TRIGGER),
-      ).not.toBeInTheDocument();
-
-      fireEvent.change(input, { target: { value: "12.5" } });
-      fireEvent.blur(input);
-      expect(onChange).toHaveBeenCalledWith(12.5);
-    });
-
     it("unsets the goal when the input is cleared", () => {
       const { input, onChange } = setup({ isDynamic: true });
 

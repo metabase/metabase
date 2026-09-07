@@ -6,7 +6,7 @@ import type { GoalValue } from "metabase-types/api";
 import { isGoalStaticValue } from "metabase-types/guards";
 
 import { ChartSettingInputNumeric } from "./ChartSettingInputNumeric";
-import { GoalValueInput, StaticGoalValueInput } from "./GoalValueInput";
+import { GoalValueInput } from "./GoalValueInput";
 
 export const ChartSettingGoalValue = ({
   id,
@@ -29,17 +29,6 @@ export const ChartSettingGoalValue = ({
         placeholder={placeholder}
         value={isGoalStaticValue(value) ? value : undefined}
         onChange={onChange}
-      />
-    );
-  }
-
-  if (data == null) {
-    return (
-      <StaticGoalValueInput
-        id={id}
-        placeholder={placeholder}
-        value={value ?? null}
-        onChange={handleChange}
       />
     );
   }
