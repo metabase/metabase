@@ -1,14 +1,12 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
-import { spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { createRequire } from "node:module";
-// Reverse the installed patches in temporary copies to obtain the exact
-// upstream versions. This also fails if installation omitted a patch.
-function unpatchedPackages(root, t) {
+
+function setupUpstreamPackages(root, t) {
   const directory = fs.mkdtempSync(
     path.join(os.tmpdir(), "metabase-lint-parity-"),
   );
@@ -35,7 +33,7 @@ function unpatchedPackages(root, t) {
         "dir",
       );
     }
-    const result = spawnSync(
+    execFileSync(
       "patch",
       [
         "--batch",
@@ -46,44 +44,36 @@ function unpatchedPackages(root, t) {
         "-i",
         path.join(root, "patches", `${name}+${version}.patch`),
       ],
-      { encoding: "utf8" },
-    );
-    assert.ifError(result.error);
-    assert.equal(
-      result.status,
-      0,
-      `Cannot reverse ${name}: ${result.stdout}${result.stderr}`,
+      { encoding: "utf8", timeout: 60_000 },
     );
   }
   return directory;
 }
 
-test("optimized plugins preserve diagnostics and fixes", async (t) => {
-  const root = path.resolve(
-    path.dirname(fileURLToPath(import.meta.url)),
-    "../../..",
-  );
-  const originalRoot = unpatchedPackages(root, t);
+test("should preserve diagnostics and fixes for patched rules", async (t) => {
+  const root = path.resolve(import.meta.dirname, "../../..");
+  const upstreamRoot = setupUpstreamPackages(root, t);
   const require = createRequire(root + "/package.json");
-  const originalRequire = createRequire(originalRoot + "/package.json");
+  const upstreamRequire = createRequire(upstreamRoot + "/package.json");
   const { Linter, ESLint } = require("eslint");
   const { parser } = require("typescript-eslint");
   const { fixupPluginRules } = require("@eslint/compat");
-  const originalTtag = fixupPluginRules(originalRequire("eslint-plugin-ttag"));
+  const upstreamTtag = fixupPluginRules(upstreamRequire("eslint-plugin-ttag"));
   const ttag = require("eslint-plugin-ttag");
-  const originalI18next = fixupPluginRules(
-    originalRequire("eslint-plugin-i18next"),
+  const upstreamI18next = fixupPluginRules(
+    upstreamRequire("eslint-plugin-i18next"),
   );
   const i18next = require("eslint-plugin-i18next");
-  const originalTesting = (
+  const upstreamTesting = (
     await import(
-      originalRoot +
+      upstreamRoot +
         "/node_modules/eslint-plugin-testing-library/dist/index.mjs"
     )
   ).default;
-  const scopeTesting = (await import("eslint-plugin-testing-library")).default;
-  const originalDepend = await import(
-    originalRoot + "/node_modules/eslint-plugin-depend/lib/main.js"
+  const testingLibrary = (await import("eslint-plugin-testing-library"))
+    .default;
+  const upstreamDepend = await import(
+    upstreamRoot + "/node_modules/eslint-plugin-depend/lib/main.js"
   );
   const depend = await import("eslint-plugin-depend");
   const eslint = new ESLint({ cwd: root });
@@ -176,13 +166,13 @@ test("optimized plugins preserve diagnostics and fixes", async (t) => {
   testingCases.push(
     'import userEvent from "@testing-library/user-event"; import {act} from "@testing-library/react"; function f(userEvent){ const user=userEvent.setup(); act(()=>user.click(null)); }',
   );
-  let cases = 0,
-    violations = 0;
+  let cases = 0;
+  let violations = 0;
   const counts = {};
   const violationsByPlugin = {};
-  function compare(name, original, patched, sources, rules, settings = {}) {
+  function compare(name, upstream, patched, sources, rules, settings = {}) {
     for (const source of sources) {
-      const results = [original, patched].map((plugin) => {
+      const results = [upstream, patched].map((plugin) => {
         const linter = new Linter();
         const cfg = [
           {
@@ -213,14 +203,18 @@ test("optimized plugins preserve diagnostics and fixes", async (t) => {
       counts[name] = (counts[name] ?? 0) + 1;
     }
   }
-  compare("ttag", originalTtag, ttag, ttagCases, {
-    "ttag/no-module-declaration": "error",
-  });
-  for (const mode of ["jsx-only", "jsx-text-only", "all"])
-    compare("i18next", originalI18next, i18next, translationCases, {
-      "i18next/no-literal-string": ["error", { mode }],
+  await t.test("should preserve ttag diagnostics and fixes", () => {
+    compare("ttag", upstreamTtag, ttag, ttagCases, {
+      "ttag/no-module-declaration": "error",
     });
-  for (const plugin of [scopeTesting])
+  });
+  await t.test("should preserve i18next diagnostics and fixes", () => {
+    for (const mode of ["jsx-only", "jsx-text-only", "all"])
+      compare("i18next", upstreamI18next, i18next, translationCases, {
+        "i18next/no-literal-string": ["error", { mode }],
+      });
+  });
+  await t.test("should preserve Testing Library diagnostics and fixes", () => {
     for (const settings of [
       {},
       { "testing-library/utils-module": "test-utils" },
@@ -231,100 +225,106 @@ test("optimized plugins preserve diagnostics and fixes", async (t) => {
     ])
       compare(
         "testing-library",
-        originalTesting,
-        plugin,
+        upstreamTesting,
+        testingLibrary,
         testingCases,
         testingRules,
         settings,
       );
-  compare(
-    "depend",
-    fixupPluginRules(originalDepend),
-    depend,
-    [
-      'import x from "is-number";',
-      'const x=require("is-number");',
-      'const x=import("is-number");',
-      'import x = require("is-number");',
-      'import x from "react";',
-    ],
-    { "depend/ban-dependencies": "error" },
-  );
-  for (const options of [
-    { presets: [], modules: ["fixture", "fixture/sub", "@scope/pkg"] },
-    { presets: [], modules: ["fixture/sub", "fixture", "@scope/pkg"] },
-    {
-      presets: [],
-      modules: ["fixture", "fixture/sub", "@scope/pkg"],
-      allowed: ["fixture"],
-    },
-    { allowed: ["is-number"] },
-  ]) {
+  });
+  await t.test("should preserve depend diagnostics and fixes", () => {
     compare(
       "depend",
-      originalDepend,
+      fixupPluginRules(upstreamDepend),
       depend,
       [
-        'import x from "fixture/sub/deep";',
-        'import x from "fixture-extra";',
-        'import x from "@scope/pkg/sub";',
-        'import x from "is-number/subpath";',
+        'import x from "is-number";',
+        'const x=require("is-number");',
+        'const x=import("is-number");',
+        'import x = require("is-number");',
+        'import x from "react";',
       ],
-      { "depend/ban-dependencies": ["error", options] },
+      { "depend/ban-dependencies": "error" },
     );
-  }
-  compare(
-    "react",
-    originalRequire("eslint-plugin-react"),
-    require("eslint-plugin-react"),
-    [
-      'import React from "react"; class C extends React.Component { componentWillMount() {} render(){return <div/>;} }',
-      'import React from "react"; class C extends React.PureComponent { componentWillReceiveProps() {} render(){return null;} }',
-      'import React from "react"; class C extends React.Component { componentWillUpdate() {} render(){return null;} }',
-      'import React from "react"; class C extends React.Component { componentDidMount() {} render(){return null;} }',
-      'import React from "react"; class C extends React.Component { UNSAFE_componentWillMount() {} render(){return null;} }',
-      'import React from "react"; const C=React.createClass({componentWillMount(){},render(){return null;}});',
-      'import createReactClass from "create-react-class"; const C=createReactClass({componentWillMount(){},render(){return null;}});',
-      "class Plain { componentWillMount() {} }",
-      "const obj={componentWillMount(){}};",
-      "const C=()=> <div/>;",
-      'import React from "react"; React.render(<div/>, target);',
-      'import React from "react"; class C extends React.Component { ["componentWillMount"]() {} render(){return null;} }',
-    ],
-    { "react/no-deprecated": "error" },
-    { react: { version: "18.2.0" } },
-  );
-  // Exercise the patched ESM entry point used by oxlint, including precedence
-  // between relative specifiers, internal-regex matches and configured builtins.
-  const originalImport = await import(
-    originalRoot + "/node_modules/eslint-plugin-import-x/lib/index.js"
-  );
-  const patchedImport = await import("eslint-plugin-import-x");
-  for (const settings of [
-    {},
-    { "import-x/internal-regex": "^\\." },
-    { "import-x/core-modules": [".", ".."] },
-  ]) {
-    compare(
-      "import-x",
-      originalImport.default,
-      patchedImport.default,
-      [
-        'import a from "../parent"; import fs from "node:fs"; import b from "./sibling";',
-        'import a from "./index"; import b from "react"; import c from "../missing";',
-        'import a from "/absolute/missing"; import b from "."; import c from "..";',
-        'import a from "@scope/missing"; import b from "./missing";',
-        'import a from "metabase/lib"; import b from "react";',
-      ],
+    for (const options of [
+      { presets: [], modules: ["fixture", "fixture/sub", "@scope/pkg"] },
+      { presets: [], modules: ["fixture/sub", "fixture", "@scope/pkg"] },
       {
-        "import-x/order": [
-          "error",
-          { "newlines-between": "always", alphabetize: { order: "asc" } },
-        ],
+        presets: [],
+        modules: ["fixture", "fixture/sub", "@scope/pkg"],
+        allowed: ["fixture"],
       },
-      settings,
+      { allowed: ["is-number"] },
+    ]) {
+      compare(
+        "depend",
+        upstreamDepend,
+        depend,
+        [
+          'import x from "fixture/sub/deep";',
+          'import x from "fixture-extra";',
+          'import x from "@scope/pkg/sub";',
+          'import x from "is-number/subpath";',
+        ],
+        { "depend/ban-dependencies": ["error", options] },
+      );
+    }
+  });
+  await t.test("should preserve React diagnostics and fixes", () => {
+    compare(
+      "react",
+      upstreamRequire("eslint-plugin-react"),
+      require("eslint-plugin-react"),
+      [
+        'import React from "react"; class C extends React.Component { componentWillMount() {} render(){return <div/>;} }',
+        'import React from "react"; class C extends React.PureComponent { componentWillReceiveProps() {} render(){return null;} }',
+        'import React from "react"; class C extends React.Component { componentWillUpdate() {} render(){return null;} }',
+        'import React from "react"; class C extends React.Component { componentDidMount() {} render(){return null;} }',
+        'import React from "react"; class C extends React.Component { UNSAFE_componentWillMount() {} render(){return null;} }',
+        'import React from "react"; const C=React.createClass({componentWillMount(){},render(){return null;}});',
+        'import createReactClass from "create-react-class"; const C=createReactClass({componentWillMount(){},render(){return null;}});',
+        "class Plain { componentWillMount() {} }",
+        "const obj={componentWillMount(){}};",
+        "const C=()=> <div/>;",
+        'import React from "react"; React.render(<div/>, target);',
+        'import React from "react"; class C extends React.Component { ["componentWillMount"]() {} render(){return null;} }',
+      ],
+      { "react/no-deprecated": "error" },
+      { react: { version: "18.2.0" } },
     );
-  }
+  });
+  await t.test("should preserve import-x diagnostics and fixes", async () => {
+    // Oxlint loads import-x's ESM entry point.
+    const upstreamImport = await import(
+      upstreamRoot + "/node_modules/eslint-plugin-import-x/lib/index.js"
+    );
+    const patchedImport = await import("eslint-plugin-import-x");
+    for (const settings of [
+      {},
+      { "import-x/internal-regex": "^\\." },
+      { "import-x/core-modules": [".", ".."] },
+    ]) {
+      compare(
+        "import-x",
+        upstreamImport.default,
+        patchedImport.default,
+        [
+          'import a from "../parent"; import fs from "node:fs"; import b from "./sibling";',
+          'import a from "./index"; import b from "react"; import c from "../missing";',
+          'import a from "/absolute/missing"; import b from "."; import c from "..";',
+          'import a from "@scope/missing"; import b from "./missing";',
+          'import a from "metabase/lib"; import b from "react";',
+        ],
+        {
+          "import-x/order": [
+            "error",
+            { "newlines-between": "always", alphabetize: { order: "asc" } },
+          ],
+        },
+        settings,
+      );
+    }
+  });
   for (const name of Object.keys(counts)) {
     assert.ok(
       violationsByPlugin[name] > 0,
@@ -334,7 +334,7 @@ test("optimized plugins preserve diagnostics and fixes", async (t) => {
   t.diagnostic(
     JSON.stringify({
       fixtureCases: cases,
-      originalViolations: violations,
+      upstreamViolations: violations,
       byPlugin: counts,
       violationsByPlugin,
       diagnosticsAndFixesIdentical: true,
