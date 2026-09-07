@@ -19,7 +19,7 @@ export const ChartSettingGoalValue = ({
   showSelfColumns = true,
 }: ChartSettingGoalValueProps) => {
   // Clearing unsets the goal so the default applies, like the numeric input does.
-  const handleChange = (newValue: GoalValue | null) =>
+  const handleChange = (newValue: GoalValue | null | undefined) =>
     onChange(newValue ?? undefined);
 
   if (!isDynamic) {
@@ -28,7 +28,7 @@ export const ChartSettingGoalValue = ({
         id={id}
         placeholder={placeholder}
         value={isGoalStaticValue(value) ? value : undefined}
-        onChange={onChange}
+        onChange={handleChange}
       />
     );
   }
