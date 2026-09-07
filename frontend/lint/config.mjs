@@ -11,8 +11,8 @@ import {
   NO_MODULE_SIDE_EFFECTS_OPTIONS,
 } from "./no-module-side-effects-options.js";
 import {
-  elements as boundaryElements,
-  enforcedRules as boundaryRules,
+  boundarySettings,
+  boundaryOptions,
   getPublicApiModules,
 } from "./module-boundaries.mjs";
 const __dirname = path.resolve(import.meta.dirname, "../..");
@@ -134,7 +134,7 @@ const configs = [
   },
   { rules: presets.javascript },
   {
-    // Moved from this file's /* global console */ directive, which oxlint ignores.
+    // The custom-viz build script's console global was declared in a file directive.
     files: [
       "enterprise/frontend/src/custom-viz/fixtures/build-example-custom-viz.mjs",
     ],
@@ -334,20 +334,9 @@ const configs = [
       "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
     ],
 
-    settings: {
-      "boundaries/elements": boundaryElements,
-      "boundaries/ignore": ["**/e2e/**", "test/**"],
-      "boundaries/dependency-nodes": ["import", "dynamic-import"],
-    },
+    settings: boundarySettings,
     rules: {
-      "boundaries/element-types": [
-        "error",
-        {
-          default: "disallow",
-          rules: boundaryRules,
-          message: "${file.type} cannot import from ${dependency.type}",
-        },
-      ],
+      "boundaries/element-types": ["error", boundaryOptions],
       // Modules flagged `enforcePublicApi` in module-boundaries.mjs must be imported through their index.
       // Their own files must import relatively.
       "metabase/enforce-module-public-api": [

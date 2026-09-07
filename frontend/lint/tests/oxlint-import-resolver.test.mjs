@@ -241,6 +241,30 @@ test("shares bare resolutions per package root and keeps the rest per directory"
       root,
       "nested/node_modules/fixture-shared/inner.js",
     );
+    let nativeCalls = 0;
+    class CountingResolver {
+      constructor(options) {
+        this.inner = new ResolverFactory(options);
+      }
+      sync(directory, source) {
+        nativeCalls++;
+        return this.inner.sync(directory, source);
+      }
+    }
+    const counted = createImportResolverService({
+      ResolverFactory: CountingResolver,
+    }).forSettings(settings);
+    for (const file of [
+      files.shallow,
+      files.deep,
+      files.nested,
+      files.plain,
+      files.shallow,
+    ]) {
+      counted.resolve("fixture-shared", file);
+    }
+    assert.equal(nativeCalls, 3, "one native resolution per package root");
+
     assert.equal(resolve("fixture-shared", files.shallow), outer);
     assert.equal(resolve("fixture-shared", files.deep), outer);
     assert.equal(resolve("fixture-shared", files.plain), outer);
@@ -316,28 +340,23 @@ test("rejects unsupported resolver policies instead of silently ignoring them", 
 // Changing a bundler setting must also update what lint resolves, in each build mode.
 test("lightweight resolver settings match the app and SDK builds", () => {
   const root = path.resolve(import.meta.dirname, "../../..");
-  const script = `
-    const assert = require("node:assert/strict");
-    const app = require("./frontend/build/shared/rspack/resolve-config");
-    const sdk = require("./frontend/build/embedding-sdk/rspack/resolve-config");
-    assert.ok(!Object.keys(require.cache).some(file => file.includes("/node_modules/")));
-    for (const [light, full] of [
-      [app, require("./rspack.main.config")],
-      [sdk, require("./rspack.embedding-sdk-bundle.config")],
-    ]) {
-      assert.deepEqual(light.resolve, full.resolve);
-      assert.deepEqual(light.externals, full.externals);
-    }
-  `;
+  const parity = path.join(
+    import.meta.dirname,
+    "fixtures/resolve-config-parity.js",
+  );
   for (const WEBPACK_BUNDLE of ["development", "production"]) {
     for (const MB_EDITION of ["oss", "ee"]) {
-      const result = spawnSync(process.execPath, ["-e", script], {
+      const result = spawnSync(process.execPath, [parity], {
         cwd: root,
         env: { ...process.env, WEBPACK_BUNDLE, MB_EDITION },
         encoding: "utf8",
       });
       assert.ifError(result.error);
-      assert.equal(result.status, 0, result.stdout + result.stderr);
+      assert.equal(
+        result.status,
+        0,
+        `${WEBPACK_BUNDLE}/${MB_EDITION}: ${result.stdout}${result.stderr}`,
+      );
     }
   }
 });

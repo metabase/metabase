@@ -230,7 +230,7 @@ export const CardEmbed: Node<{
 });
 
 export const CardEmbedComponent = memo(
-  /* eslint-disable complexity */
+  /* eslint-disable complexity -- ESLint and oxlint report different positions within this function header. */
   ({
     node,
     updateAttributes,

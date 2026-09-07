@@ -1,18 +1,20 @@
 // Specialized implementation of the two boundary rules used by Metabase.
 // Shares the existing policy; see OXLINT.md for supported features and tests.
 import path from "node:path";
-import { createRequire } from "node:module";
-import { isDeepStrictEqual } from "node:util";
 
 import micromatch from "micromatch";
 
-import { elements, enforcedRules } from "./module-boundaries.mjs";
+import {
+  elements,
+  enforcedRules,
+  boundarySettings,
+  boundaryOptions,
+} from "./module-boundaries.mjs";
 
-const require = createRequire(import.meta.url);
-const resolveImport = require("eslint-module-utils/resolve").default;
 const rootPath = path.resolve(import.meta.dirname, "../..");
-const defaultMessage = "${file.type} cannot import from ${dependency.type}";
-const ignorePatterns = ["**/e2e/**", "test/**"];
+const ignorePatterns = boundarySettings["boundaries/ignore"];
+const defaultPolicy = boundaryOptions.default;
+const message = boundaryOptions.message;
 
 const normalize = (value) => value.replaceAll("\\", "/");
 
@@ -20,17 +22,7 @@ const normalize = (value) => value.replaceAll("\\", "/");
  * Compile the subset of boundary configuration that this repository uses.
  * Unsupported selectors throw rather than silently weakening enforcement.
  */
-export function createBoundaryChecker({
-  elements,
-  rules,
-  rootPath,
-  ignorePatterns = ["**/e2e/**", "test/**"],
-  defaultPolicy = "disallow",
-  message = defaultMessage,
-}) {
-  if (!["allow", "disallow"].includes(defaultPolicy)) {
-    throw new Error("Unsupported default boundary policy");
-  }
+export function createBoundaryChecker({ elements, rules, rootPath }) {
   const regexes = new Map();
   const compile = (pattern) => {
     if (typeof pattern !== "string") {
@@ -151,56 +143,13 @@ const checker = createBoundaryChecker({
   rules: enforcedRules,
   rootPath,
 });
-const checkedOptions = new WeakSet();
-const checkedSettings = new WeakSet();
-
-// This checker is deliberately tied to module-boundaries.mjs. Reject a
-// differing configuration rather than applying this snapshot to another policy.
-function validateContext(context) {
-  const options = context.options[0];
-  if (options && !checkedOptions.has(options)) {
-    if (
-      !isDeepStrictEqual(options, {
-        default: "disallow",
-        rules: enforcedRules,
-        message: defaultMessage,
-      })
-    ) {
-      throw new Error(
-        "The boundary checker requires the current enforced policy",
-      );
-    }
-    checkedOptions.add(options);
-  }
-  const settings = context.settings;
-  if (settings && !checkedSettings.has(settings)) {
-    const supported = {
-      "boundaries/elements": elements,
-      "boundaries/ignore": ignorePatterns,
-      "boundaries/dependency-nodes": ["import", "dynamic-import"],
-    };
-    for (const key of Object.keys(settings).filter((key) =>
-      key.startsWith("boundaries/"),
-    )) {
-      if (
-        !(key in supported) ||
-        !isDeepStrictEqual(settings[key], supported[key])
-      ) {
-        throw new Error(`Unsupported boundary checker setting: ${key}`);
-      }
-    }
-    checkedSettings.add(settings);
-  }
-}
-
-export function createBoundaryPlugin({ resolve = resolveImport } = {}) {
+export function createBoundaryPlugin({ resolve }) {
   return {
     meta: { name: "boundaries", version: "0.0.0-experimental" },
     rules: {
       "no-unknown-files": {
         meta: { type: "problem", schema: [] },
         create(context) {
-          validateContext(context);
           if (!checker.classify(context.filename).isUnknown) {
             return {};
           }
@@ -217,7 +166,6 @@ export function createBoundaryPlugin({ resolve = resolveImport } = {}) {
       "element-types": {
         meta: { type: "problem", schema: [{ type: "object" }] },
         create(context) {
-          validateContext(context);
           const from = checker.classify(context.filename);
           if (!from.type || from.isIgnored) {
             return {};
@@ -257,6 +205,3 @@ export function createBoundaryPlugin({ resolve = resolveImport } = {}) {
     },
   };
 }
-
-export const boundaryPlugin = createBoundaryPlugin();
-export default boundaryPlugin;
