@@ -75,6 +75,7 @@
     :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
+    :model/ApiKeyUsageLog
     :model/CacheConfig
     :model/CardFavorite
     :model/CloudMigration
