@@ -63,6 +63,7 @@ import {
   onUpdateVisualizationSettings,
   openDataReferenceAtQuestion,
   openSnippetModalWithSelectedText,
+  openTimelinesFromChart,
   popDataReferenceStack,
   pushDataReferenceStack,
   queryCompleted,
@@ -113,7 +114,6 @@ import {
   onOpenChartType,
   onOpenQuestionInfo,
   onOpenQuestionSettings,
-  onOpenTimelines,
   setParameterValue,
 } from "../store/actions";
 import { getIsObjectDetail } from "../store/mode-selectors";
@@ -249,7 +249,7 @@ const mapDispatchToProps = {
   onOpenChartType,
   onOpenQuestionInfo,
   onOpenQuestionSettings,
-  onOpenTimelines,
+  onOpenTimelines: openTimelinesFromChart,
   setIsNativeEditorOpen,
   setParameterValue,
   setUIControls,
