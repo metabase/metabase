@@ -27,7 +27,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as resolve]
@@ -267,24 +266,37 @@
             (is (some? (shared.content-store/query-if-database-readable (query-on (mt/id :orders)) audited?)))
             (is (nil? (shared.content-store/query-if-database-readable (query-on (mt/id :venues)) audited?)))))))))
 
-(deftest native-analysis-failure-fails-closed-test
-  (testing "a native query is withheld when its SQL cannot be analyzed, not waved through"
+(deftest native-query-needs-database-wide-native-access-test
+  (testing "a native query is withheld unless the user may write native queries against the whole database"
     (mt/with-no-data-perms-for-all-users!
       (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
       (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
-      (mt/with-test-user :rasta
-        (let [native-query {:database (mt/id)
-                            :type     :native
-                            :native   {:query "SELECT * FROM venues"}}]
-          (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native
-                                      (fn [& _] (throw (ex-info "boom" {})))]
+      (let [native-query {:database (mt/id)
+                          :type     :native
+                          :native   {:query "SELECT * FROM orders"}}]
+        (mt/with-test-user :rasta
+          (doseq [audited? [true false]]
+            (is (nil? (shared.content-store/query-if-database-readable native-query audited?)))))
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+        (mt/with-test-user :rasta
+          (doseq [audited? [true false]]
+            (is (some? (shared.content-store/query-if-database-readable native-query audited?)))))))))
+
+(deftest saved-question-source-authorizes-through-its-collection-test
+  (testing "a query on a saved question the user can read is exported without query access to its database"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/manage-table-metadata :yes)
+        (mt/with-test-user :rasta
+          (let [query {:database (mt/id)
+                       :type     :query
+                       :query    {:source-table (str "card__" card-id)}}]
+            (is (mi/can-read? :model/Database (mt/id))
+                "precondition: metadata access makes the database readable")
+            (is (not (mi/can-query? :model/Database (mt/id)))
+                "precondition: nothing grants query access to the database")
             (doseq [audited? [true false]]
-              (is (nil? (shared.content-store/query-if-database-readable native-query audited?)))))
-          (testing "while a native query the analyzer finds no tables in still passes"
-            (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native
-                                        (fn [& _] {:tables []})]
-              (doseq [audited? [true false]]
-                (is (some? (shared.content-store/query-if-database-readable native-query audited?)))))))))))
+              (is (some? (shared.content-store/query-if-database-readable query audited?))))))))))
 
 ;;; ============================================================
 ;;; default-store integration shape

@@ -353,12 +353,14 @@
             chart (fn [id] {:chart_id id
                             :queries  [(query)]
                             :visualization_settings {:chart_type "line"}})
-            ;; The database check is recorded but let through, so the refusal comes from the store.
+            ;; The database check is recorded but let through, so the refusal comes from the card check.
             audited-checks (fn [uri]
                              (let [checked (atom [])]
                                (mt/with-dynamic-fn-redefs
                                  [api/read-check (fn [model-or-row & _]
-                                                   (swap! checked conj model-or-row)
+                                                   (swap! checked conj (if (keyword? model-or-row)
+                                                                         model-or-row
+                                                                         (t2/model model-or-row)))
                                                    (if (= model-or-row :model/Database)
                                                      model-or-row
                                                      (throw (ex-info "Forbidden" {:status-code 403}))))]
@@ -376,7 +378,7 @@
               (doseq [uri ["metabase://chart/seeded-chart" "metabase://query/seeded-q"]
                       :let [checked (audited-checks uri)]]
                 (is (some #{:model/Database} checked))
-                (is (some #(= :model/Card (t2/model %)) checked))))
+                (is (some #{:model/Card} checked))))
             (testing "a tool-written chart refuses the card without an audit trail"
               (is (empty? (audited-checks "metabase://chart/tool-chart"))))))))))
 
