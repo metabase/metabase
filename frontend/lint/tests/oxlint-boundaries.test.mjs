@@ -5,7 +5,10 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { elements, enforcedRules } from "../module-boundaries.mjs";
-import { createBoundaryChecker } from "../oxlint-boundaries.mjs";
+import {
+  createBoundaryChecker,
+  createBoundaryPlugin,
+} from "../oxlint-boundaries.mjs";
 
 const require = createRequire(import.meta.url);
 const rootPath = path.resolve(
@@ -123,6 +126,62 @@ test("preserves shared-tier restrictions and transitional exceptions", () => {
   for (const type of checker.types) {
     assert.equal(checker.decision(type, type).allowed, true, type);
   }
+});
+
+function elementTypes(from, to) {
+  const reports = [];
+  const plugin = createBoundaryPlugin({
+    resolve: () => path.join(rootPath, to),
+  });
+  const visitor = plugin.rules["element-types"].create({
+    filename: path.join(rootPath, from),
+    options: [],
+    report: (report) => reports.push(report),
+  });
+  return { visitor, reports };
+}
+
+test("element-types checks both import forms and ignores non-string sources", () => {
+  const from = "frontend/src/metabase/dayjs/index.ts";
+  const to = "frontend/src/metabase/query_builder/index.ts";
+  const source = { type: "Literal", value: "metabase/query_builder" };
+  const message = "lib/dayjs cannot import from feature/query_builder";
+
+  const statik = elementTypes(from, to);
+  statik.visitor.ImportDeclaration({ source });
+  assert.deepEqual(statik.reports, [{ node: source, message }]);
+
+  const dynamic = elementTypes(from, to);
+  dynamic.visitor.ImportExpression({ source, options: null });
+  assert.deepEqual(dynamic.reports, [{ node: source, message }]);
+
+  const attributes = elementTypes(from, to);
+  attributes.visitor.ImportExpression({
+    source,
+    options: { type: "ObjectExpression", properties: [] },
+  });
+  assert.deepEqual(attributes.reports, [{ node: source, message }]);
+
+  const stringOptions = elementTypes(from, to);
+  const options = { type: "Literal", value: "metabase/query_builder" };
+  stringOptions.visitor.ImportExpression({ source, options });
+  assert.deepEqual(stringOptions.reports, [
+    { node: source, message },
+    { node: options, message },
+  ]);
+
+  const template = elementTypes(from, to);
+  template.visitor.ImportExpression({
+    source: { type: "TemplateLiteral", quasis: [], expressions: [] },
+    options: null,
+  });
+  assert.deepEqual(template.reports, []);
+
+  const allowed = elementTypes(to, from);
+  allowed.visitor.ImportDeclaration({
+    source: { type: "Literal", value: "metabase/dayjs" },
+  });
+  assert.deepEqual(allowed.reports, []);
 });
 
 test("rejects unsupported policy features instead of ignoring them", () => {

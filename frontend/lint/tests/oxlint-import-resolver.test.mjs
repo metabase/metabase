@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { createRequire } from "node:module";
+import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -194,6 +195,71 @@ test("keeps source directories and resolver configurations separate", () => {
   });
 });
 
+test("shares bare resolutions per package root and keeps the rest per directory", () => {
+  fixture((data) => {
+    const { root, settings, service, write } = data;
+    write(
+      "node_modules/fixture-shared/package.json",
+      JSON.stringify({ name: "fixture-shared", main: "./outer.js" }),
+    );
+    write("node_modules/fixture-shared/outer.js");
+    write("src/deep/importer.ts");
+    // A nested node_modules gives the same bare specifier a different target.
+    write("nested/package.json", JSON.stringify({ name: "nested-fixture" }));
+    write("nested/importer.ts");
+    write(
+      "nested/node_modules/fixture-shared/package.json",
+      JSON.stringify({ name: "fixture-shared", main: "./inner.js" }),
+    );
+    write("nested/node_modules/fixture-shared/inner.js");
+    // The repository's own nested package.json files come without node_modules.
+    write("plain/package.json", JSON.stringify({ name: "plain-fixture" }));
+    write("plain/importer.ts");
+
+    const sources = [
+      "fixture-shared",
+      "fixture-shared?raw",
+      "fixture-shared/inner.js",
+      "./sibling",
+      "app/sibling",
+      "fixture-loader!./sibling.ts",
+    ];
+    const files = {
+      shallow: data.file,
+      deep: path.join(root, "src/deep/importer.ts"),
+      nested: path.join(root, "nested/importer.ts"),
+      plain: path.join(root, "plain/importer.ts"),
+    };
+    for (const file of Object.values(files)) {
+      compare({ ...data, file }, sources);
+    }
+
+    const resolve = (source, file) =>
+      service.forSettings(settings).resolve(source, file).path;
+    const outer = path.join(root, "node_modules/fixture-shared/outer.js");
+    const inner = path.join(
+      root,
+      "nested/node_modules/fixture-shared/inner.js",
+    );
+    assert.equal(resolve("fixture-shared", files.shallow), outer);
+    assert.equal(resolve("fixture-shared", files.deep), outer);
+    assert.equal(resolve("fixture-shared", files.plain), outer);
+    assert.equal(resolve("fixture-shared", files.nested), inner);
+    assert.equal(resolve("fixture-shared?raw", files.shallow), `${outer}?raw`);
+    assert.equal(resolve("fixture-shared?raw", files.nested), `${inner}?raw`);
+    assert.equal(
+      resolve("./sibling", files.shallow),
+      path.join(root, "src/sibling.ts"),
+    );
+    assert.equal(resolve("./sibling", files.deep), undefined);
+    assert.equal(
+      resolve("fixture-loader!./sibling.ts", files.shallow),
+      path.join(root, "src/sibling.ts"),
+    );
+    assert.equal(resolve("fixture-loader!./sibling.ts", files.deep), undefined);
+  });
+});
+
 test("a fresh service observes files created after a cached resolution miss", () => {
   fixture((data) => {
     const before = data.service.forSettings(data.settings);
@@ -218,6 +284,20 @@ test("rejects unsupported resolver policies instead of silently ignoring them", 
     assert.throws(() => service.forSettings(settings), /Unsupported resolver/);
   }
   fixture(({ service, settings, write }) => {
+    for (const key of ["alias", "fallback"]) {
+      const config = write(
+        `relative-${key}.config.cjs`,
+        `module.exports = { resolve: { ${key}: { app: "./src" } } };`,
+      );
+      assert.throws(
+        () =>
+          service.forSettings({
+            ...settings,
+            "import-x/resolver": { node: true, webpack: { config } },
+          }),
+        /Unsupported resolver alias/,
+      );
+    }
     const config = write(
       "unsupported.config.cjs",
       "module.exports = { resolve: { plugins: [{}] } };",
@@ -231,4 +311,33 @@ test("rejects unsupported resolver policies instead of silently ignoring them", 
       /Unsupported Rspack resolve option/,
     );
   });
+});
+
+// Changing a bundler setting must also update what lint resolves, in each build mode.
+test("lightweight resolver settings match the app and SDK builds", () => {
+  const root = path.resolve(import.meta.dirname, "../../..");
+  const script = `
+    const assert = require("node:assert/strict");
+    const app = require("./frontend/build/shared/rspack/resolve-config");
+    const sdk = require("./frontend/build/embedding-sdk/rspack/resolve-config");
+    assert.ok(!Object.keys(require.cache).some(file => file.includes("/node_modules/")));
+    for (const [light, full] of [
+      [app, require("./rspack.main.config")],
+      [sdk, require("./rspack.embedding-sdk-bundle.config")],
+    ]) {
+      assert.deepEqual(light.resolve, full.resolve);
+      assert.deepEqual(light.externals, full.externals);
+    }
+  `;
+  for (const WEBPACK_BUNDLE of ["development", "production"]) {
+    for (const MB_EDITION of ["oss", "ee"]) {
+      const result = spawnSync(process.execPath, ["-e", script], {
+        cwd: root,
+        env: { ...process.env, WEBPACK_BUNDLE, MB_EDITION },
+        encoding: "utf8",
+      });
+      assert.ifError(result.error);
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+    }
+  }
 });

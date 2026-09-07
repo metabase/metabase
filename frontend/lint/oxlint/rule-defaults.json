@@ -111,6 +111,7 @@
       "memberSyntaxSortOrder": ["none", "all", "multiple", "single"]
     }
   ],
+  "depend/ban-dependencies": [{}],
   "no-console": [{}],
   "@typescript-eslint/no-unused-expressions": [
     {

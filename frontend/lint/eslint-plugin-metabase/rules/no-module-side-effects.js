@@ -578,7 +578,7 @@ function resolveSourceFile(base) {
   return (
     candidates.find((candidate) => {
       try {
-        return fs.statSync(candidate).isFile();
+        return fs.statSync(candidate, { throwIfNoEntry: false })?.isFile();
       } catch {
         return false;
       }

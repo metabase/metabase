@@ -25,7 +25,8 @@ export default wrap("import-js", plugin, resolver.importSettings, (context) =>
       // Preserve lazy AST/global getters; only dependency parsing needs a shim.
       value: Object.create(context.languageOptions, {
         parser: {
-          value: /\.[cm]?tsx?$/.test(context.filename) ? tsParser : jsParser,
+          get: () =>
+            /\.[cm]?tsx?$/.test(context.filename) ? tsParser : jsParser,
         },
       }),
     },
