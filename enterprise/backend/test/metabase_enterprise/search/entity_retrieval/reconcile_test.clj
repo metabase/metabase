@@ -14,6 +14,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2])
@@ -416,6 +417,52 @@
                 (is (= 1 (:degraded (reconcile/reconcile! ds (constantly model)))))
                 (is (not= converged (reconciled-at! ds))
                     "the run converged on everything it could, so freshness advances")))))))))
+
+(deftest ^:synchronized unexpected-ai-context-failure-aborts-reconciliation-test
+  (mt/with-premium-features #{:library :library-retrieval}
+    (with-isolated-index [ds]
+      (collections.tu/with-library [{data :data}]
+        (mt/with-temp [:model/Database {db-id :id} {}
+                       :model/Table {table-id :id} {:db_id         db-id
+                                                    :collection_id (:id data)
+                                                    :is_published  true
+                                                    :active        true
+                                                    :name          "orders"
+                                                    :display_name  "Orders"}
+                       :model/OsiAiContext _ {:entity_type     "table"
+                                              :entity_local_id table-id
+                                              :ai_context      {:synonyms ["sales"]}}]
+          (let [model    semantic.tu/mock-embedding-model
+                context  {:synonyms ["sales"]}
+                decode   json/decode+kw
+                validate mr/validate]
+            (reconcile/reconcile! ds (constantly model))
+            (let [converged (reconciled-at! ds)
+                  docs      (set (docs-for ds "table" table-id))]
+              (is (some? converged))
+              (is (contains? (set (map :doc_text docs)) "sales"))
+              (doseq [stage [:decoder :validator]
+                      failure [(AssertionError. "unexpected AI context failure")
+                               (ex-info "unexpected AI context failure" {})]]
+                (testing (str stage " throwing " (class failure))
+                  (mt/with-dynamic-fn-redefs
+                    [json/decode+kw (fn [& args]
+                                      (let [decoded (apply decode args)]
+                                        (when (and (= stage :decoder) (= decoded context))
+                                          (throw failure))
+                                        decoded))
+                     mr/validate (fn [schema value]
+                                   (when (and (= stage :validator) (= value context))
+                                     (throw failure))
+                                   (validate schema value))]
+                    (is (identical? failure
+                                    (try
+                                      (reconcile/reconcile! ds (constantly model))
+                                      (catch Throwable e e)))))
+                  (is (= docs (set (docs-for ds "table" table-id)))
+                      "unexpected failures must retain enrichment")
+                  (is (= converged (reconciled-at! ds))
+                      "unexpected failures must not advance freshness"))))))))))
 
 (deftest ^:synchronized unforeseen-projection-failure-blocks-the-watermark-test
   (testing "an unforeseen projection error may well be gone next run and leaves the entity's stale docs in
