@@ -42,20 +42,26 @@ Keep the semantic layer and presentation layer separate.
 
 If the schema file already exists, use it. If it is missing or stale, treat schema generation as semantic-layer curation for this data app, not a mechanical export.
 
-Before generating, make sure the user has explicitly chosen the library scope the app needs:
+Choose the export scope before generating:
+
+1. Honor an explicit scope. Otherwise infer the required content types from the app's purpose: tables, curated metrics, saved questions, or actions. For example, "show orders" needs tables; row counts and sums can also use table aggregations.
+2. Choose the narrowest supported scope that covers those needs, using collection IDs and database names or IDs from the request or project context. When the library type is clear but a narrower collection is unknown, use that library's whole tree.
+3. Ask only for context needed to select a scope, such as the normal collection containing a requested saved question. Once the scope is determined, state it briefly and generate without waiting for confirmation.
+
+Scope parameters:
 
 - `include-data-library=true` for the whole `Library / Data` tree.
 - `include-metric-library=true` for the whole `Library / metrics` tree.
 - `library-collections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data or metrics library subcollections.
 - `question-collections=<id-or-entity-id>[,<id-or-entity-id>]` for specific normal collections that contain saved questions.
 - `include-models=true` for readable models that have actions. When combined with `database=<name-or-id>`, it includes models with actions for that database only.
-- `database=<name-or-id>` when the app should use tables from one database.
+- `database=<name-or-id>` when the app should use tables from one database. Use it separately from library or question collection scopes; the API rejects that combination.
+
+Combine library scopes when the app needs both tables and curated metrics.
 
 Use `question-collections` when the app needs `schema.questions.*` to be generated. Use `include-models=true` when the app needs any saved action under `schema.models.<model>.actions`; it includes all readable models with executable actions, unless `database` scopes them to one database. Models without executable actions are omitted to keep generated schemas compact. It can be combined with `library-collections`, `include-data-library`, `include-metric-library`, or `question-collections` so one schema can include selected tables/metrics/questions plus all readable actions.
 
 If the user asks for any mutation-like flow, such as creating, updating, deleting, submitting, approving, executing an action, or running a write operation, include `include-models=true` in the typed-schema URL. Do this even when the user names one specific model/action, because actions are only discoverable through generated model entries.
-
-If the user did not already choose a library scope, stop and ask what they want. Warn before exporting the whole instance: including everything is noisy, bloats context, and makes agents more likely to pick irrelevant entities.
 
 The Metabase URL and API key live in the **repo-root** `.env.local` as
 `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` (one file per repo, usually two levels up
@@ -71,7 +77,8 @@ or handle the credentials yourself.
 > the user to add real values themselves, then continue.
 
 Source the credentials from the repo-root `.env.local` and generate the scoped
-schema:
+schema. The example below exports table data from the Data library; replace its
+query parameters with the scope chosen above:
 
 ```bash
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
@@ -92,11 +99,11 @@ fi
     -o src/metabase.data.ts \
     -H "x-api-key: $DATA_APP_MB_API_KEY" \
     -H "Accept: text/typescript" \
-    "$DATA_APP_MB_URL/api/typed-schemas/v1/typescript?include-data-library=true&include-metric-library=true"
+    "$DATA_APP_MB_URL/api/typed-schemas/v1/typescript?include-data-library=true"
 )
 ```
 
-When the app needs saved questions, include `question-collections=<id-or-entity-id>[,<id-or-entity-id>]` in the typed-schema URL. When the app needs models or actions, include `include-models=true`.
+After a successful export, verify that the schema contains every entity needed for the requested app. If any are missing, revise the scope using available context or ask for the missing context before building the UI.
 
 If schema generation fails while building a selected saved question, model, or model action, do not hide, paraphrase away, or retry past the error. Surface the typed-schema error to the user, including the failing `card-id` / `card-name` / `card-type`, `model-id` / `model-name`, dropped action ids, and message when present. This usually means a selected model/question/action was readable enough to select, but its details could not be built, often because its source table, source card, or action details are not published, accessible, valid, or resolvable in the fetch context. The schema would otherwise omit the entire `schema.models.<model>` or `schema.questions.<question>` entry, or return a model whose `actions` map silently omits an action, so the user needs to curate or publish the missing dependency before regenerating.
 
