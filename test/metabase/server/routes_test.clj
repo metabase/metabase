@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.server.routes :as routes]
    [metabase.server.routes.index :as index]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]))
@@ -30,21 +29,17 @@
                         "/api/embed/card/token-string/query/csv?"))))
 
 (deftest data-app-entrypoint-is-gated-by-the-data-apps-feature-test
-  (testing "the /embed/apps/:name shell is served only with :data-apps-preview; without it the
-            request falls through to the generic embed handler — exactly as if data apps did not exist"
-    ;; stub the entrypoints so the test doesn't depend on the built frontend HTML templates
-    (with-redefs [index/data-app (fn [_req respond _raise] (respond {:status 200 :body "DATA-APP"}))
-                  index/embed    (fn [_req respond _raise] (respond {:status 200 :body "EMBED"}))]
-      (let [serve (fn [uri]
+  (testing "the /embed/apps/:name entrypoint is served only with :data-apps-preview; without it it
+            responds nil so routing falls through to the generic embed handler — exactly as if data
+            apps did not exist"
+    ;; Stub the raw shell so the test needs no built frontend HTML; the feature gate lives in
+    ;; `index/data-app` itself, which is what we're exercising here.
+    (with-redefs [index/data-app-shell (fn [_req respond _raise] (respond {:status 200 :body "DATA-APP"}))]
+      (let [serve (fn []
                     (let [p (promise)]
-                      (#'routes/embed-routes {:request-method :get :uri uri}
-                                             (fn [response] (deliver p response))
-                                             (fn [e] (deliver p e)))
+                      (index/data-app {} #(deliver p %) #(deliver p %))
                       @p))]
         (mt/with-premium-features #{:data-apps-preview}
-          (is (= "DATA-APP" (:body (serve "/apps/orders"))))
-          (is (= "DATA-APP" (:body (serve "/apps/orders/some/inner/route")))))
+          (is (= "DATA-APP" (:body (serve))) "with the feature, serves the data-app shell"))
         (mt/with-premium-features #{}
-          (is (= "EMBED" (:body (serve "/apps/orders")))
-              "falls through to the generic embed shell")
-          (is (= "EMBED" (:body (serve "/apps/orders/some/inner/route")))))))))
+          (is (nil? (serve)) "without the feature, responds nil so routing falls through"))))))
