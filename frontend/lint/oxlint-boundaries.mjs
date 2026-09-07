@@ -242,8 +242,15 @@ export function createBoundaryPlugin({ resolve = resolveImport } = {}) {
           // Match the current dependency-nodes configuration, including type-only
           // imports and dynamic imports, but excluding requires and re-exports.
           return {
-            "ImportDeclaration > Literal": check,
-            "ImportExpression > Literal": check,
+            ImportDeclaration(node) {
+              check(node.source);
+            },
+            ImportExpression(node) {
+              check(node.source);
+              if (node.options) {
+                check(node.options);
+              }
+            },
           };
         },
       },

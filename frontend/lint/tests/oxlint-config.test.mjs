@@ -4,7 +4,13 @@ import test from "node:test";
 
 import { ESLint } from "eslint";
 
-import { createConfig, root, settingsForFile } from "../oxlint/config.mjs";
+import {
+  createConfig,
+  jsRules,
+  root,
+  settingsForFile,
+} from "../oxlint/config.mjs";
+import { wrap } from "../oxlint/plugin.mjs";
 import defaults from "../oxlint/rule-defaults.json" with { type: "json" };
 import presets from "../recommended-rules.json" with { type: "json" };
 import {
@@ -52,6 +58,53 @@ test("JS plugin settings match ESLint for existing and newly added paths", async
       `${relative}: parser options`,
     );
   }
+});
+
+test("a wrapped rule reads settings for the file oxlint is currently linting", () => {
+  const namespace = "metabase";
+  const [ruleName] = jsRules[namespace];
+  const seen = [];
+  const rules = Object.fromEntries(
+    jsRules[namespace].map((name) => [
+      name,
+      {
+        create(context) {
+          seen.push(context);
+          return {};
+        },
+      },
+    ]),
+  );
+  const rule = wrap(namespace, { rules }).rules[ruleName];
+  // Oxlint hands a rule one context object for every file, changing only the filename.
+  let filename;
+  const context = {
+    get filename() {
+      return filename;
+    },
+  };
+  const files = [
+    "e2e/test/scenarios/new-module/example.cy.spec.ts",
+    "frontend/src/metabase/new-module/Example.js",
+    "frontend/lint/oxlint/config.mjs",
+  ];
+  for (const relative of files) {
+    filename = path.join(root, relative);
+    rule.create(context);
+    const expected = settingsForFile(filename);
+    const [current] = seen.slice(-1);
+    assert.deepEqual(current.settings, expected.settings, relative);
+    assert.deepEqual(current.parserOptions, expected.parserOptions, relative);
+  }
+  assert.equal(new Set(seen).size, 1, "one derived context serves every file");
+  assert.notDeepEqual(
+    settingsForFile(path.join(root, files[0])).settings,
+    settingsForFile(path.join(root, files[1])).settings,
+  );
+  assert.notDeepEqual(
+    settingsForFile(path.join(root, files[1])).parserOptions,
+    settingsForFile(path.join(root, files[2])).parserOptions,
+  );
 });
 
 test("native overrides retain inherited prefer-const and console options", () => {

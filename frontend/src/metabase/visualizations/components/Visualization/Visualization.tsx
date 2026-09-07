@@ -1,4 +1,4 @@
-/* eslint-disable eslint-js/complexity */
+/* eslint-disable complexity */
 import cx from "classnames";
 import React, {
   type CSSProperties,

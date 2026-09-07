@@ -72,6 +72,26 @@ test("real configuration preserves retained rules and documents accepted differe
   });
   const cases = [
     [
+      "complexity-limit.ts",
+      "export function f(a){" + "if(a)a();".repeat(54) + "}",
+      "complexity",
+      0,
+    ],
+    [
+      "complexity-over-limit.ts",
+      "export function f(a){" + "if(a)a();".repeat(55) + "}",
+      "complexity",
+      1,
+    ],
+    [
+      "complexity-disabled.ts",
+      "export const f=\n/* eslint-disable complexity */\n({a}\n)=>{\n/* eslint-enable complexity */\n" +
+        "if(a)a();".repeat(55) +
+        "};",
+      "complexity",
+      0,
+    ],
+    [
       "module-global.js",
       'const process = require("process");',
       "eslint-js/no-redeclare",
