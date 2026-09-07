@@ -60,8 +60,9 @@ script moves from its directive into the configuration.
 
 The import adapter supplies the existing parser lazily when upstream export
 analysis needs to parse a dependency: oxlint's parser object is otherwise a stub.
-The tested alternative that deferred more context getters did not demonstrate a
-speedup and was not adopted.
+Its language-options view preserves oxlint's lazy getters rather than eagerly
+reading AST/global information. With the three accepted native rules enabled,
+this avoids unnecessary global decoding without changing the rule policy.
 
 `recommended-rules.json` and `oxlint/rule-defaults.json` snapshot dependency
 presets/defaults without importing the entire ESLint setup at CLI startup.
@@ -99,7 +100,13 @@ runs with unresolved diagnostics or different effective rule coverage.
 
 | Candidate | Runs | Mean | Files | Findings |
 | --- | --- | --- | --- | --- |
-| Base, without the six performance patches | 17.702 / 18.085 s | 17.894 s | 11,978 | 0 |
+| Base, without the six performance patches | 16.997 / 17.983 / 16.646 s | 17.209 s | 11,978 | 0 |
+
+The eager adapter measured 18.267 / 18.058 / 18.008 s (18.111 s mean) in the
+same comparison. Preserving lazy getters saves about 0.90 s / 5%. Earlier lazy
+experiments retained JS unused-variable checking and did not show this gain.
+All 17 oxlint tests pass; ten additional JS/TS export-analysis fixtures match
+ESLint's diagnostics and messages with either adapter.
 
 The stacked PR records its corresponding patched measurements.
 
@@ -138,11 +145,14 @@ review them on dependency upgrades and prefer upstream fixes where possible.
 
 | Candidate | Runs | Mean | Files | Findings |
 | --- | --- | --- | --- | --- |
-| Base without these patches | 17.702 / 18.085 s | 17.894 s | 11,978 | 0 |
-| Same policy with all six patches | 13.389 / 13.121 s | 13.255 s | 11,979 | 0 |
+| Base before lazy adapter | 17.702 / 18.085 s | 17.894 s | 11,978 | 0 |
+| All six patches before lazy adapter | 13.389 / 13.121 s | 13.255 s | 11,979 | 0 |
 
-The patch layer saves about 4.64 s (26%) in these sequential full-directory runs.
-Its one additional file is the patch-parity test. Both candidates include the
+Before the lazy-adapter change, the patch layer saved about 4.64 s (26%) in
+these sequential full-directory runs. Both PRs now include the lazy adapter;
+the base measures 17.209 s above, but the patched combination has not yet been
+remeasured. Do not subtract the adapter saving from these historical timings.
+The one additional file is the patch-parity test. Both candidates include the
 three accepted native rules and the base/extension configuration fix above.
 
 The patch test reconstructs upstream dependencies in temporary directories by
