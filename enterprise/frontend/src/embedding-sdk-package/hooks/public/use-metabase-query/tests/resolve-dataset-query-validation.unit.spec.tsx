@@ -1,4 +1,4 @@
-/* eslint-disable import/order */
+/* eslint-disable import-js/order */
 
 import { createMockStore, resetTestState } from "./setup";
 import { TEST_SCHEMA } from "./fixtures";

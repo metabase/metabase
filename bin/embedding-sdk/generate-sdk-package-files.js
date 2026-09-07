@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* eslint-env node */
-/* eslint-disable import/no-commonjs, import/order, no-console */
+/* eslint-disable import/no-commonjs, import-js/order, no-console */
 const fs = require("fs");
 const path = require("path");
 

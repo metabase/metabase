@@ -291,6 +291,7 @@
         "get-nonce": "^1.0.1",
         "glob": "^7.1.1",
         "globals": "^15.14.0",
+        "html-entities": "2.3.2",
         "html-webpack-plugin": "5.5.0",
         "husky": "^9.1.7",
         "inquirer-file-selector": "^0.2.1",

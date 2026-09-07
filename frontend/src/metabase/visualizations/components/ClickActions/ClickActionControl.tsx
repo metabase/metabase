@@ -4,8 +4,8 @@ import {
   type ClickAction,
   isCustomClickAction,
   isCustomClickActionWithView,
+  isRegularClickAction,
 } from "metabase/visualizations/types";
-import { isRegularClickAction } from "metabase/visualizations/types";
 
 import S from "./ClickActionControl.module.css";
 

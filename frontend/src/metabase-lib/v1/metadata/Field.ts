@@ -39,7 +39,7 @@ import { getIconForField, getUniqueFieldId } from "./utils/fields";
 // so merging an interface with the class is how instances inherit the API
 // field's properties without re-declaring them. The class declares the rest.
 //
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+// eslint-disable-next-line typescript-js/no-empty-object-type
 interface Field extends Omit<
   ApiField,
   "table" | "target" | "name_field" | "fingerprint"
