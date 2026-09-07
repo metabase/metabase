@@ -36,7 +36,9 @@
    whose message was written for the user, pass through; raw driver and JDBC errors
    can name hosts or accounts, so they get a generic line and stay in the logs. A 4xx
    whose message contains its cause's text is a relabeled raw error, not an authored
-   one. A relabel that drops its cause entirely reads as authored and passes through."
+   one. A relabel that drops its cause entirely reads as authored and passes through.
+   The generic line has to say that this file was not saved: handed a bare internal-error
+   note, the model told the user no file had been attached."
   [e]
   (let [{:keys [status-code]} (ex-data e)
         cause-message         (some-> (ex-cause e) ex-message)]
@@ -45,7 +47,7 @@
              (not (and (seq cause-message)
                        (str/includes? (str (ex-message e)) cause-message))))
       (ex-message e)
-      "the upload failed with an internal error on the Metabase server; details are in the server logs")))
+      "Metabase hit an internal error while saving the file, so nothing was uploaded. Ask a Metabase admin to check the server logs.")))
 
 (defn- upload-settings
   "Get upload settings map. Returns nil if uploads are not enabled."
