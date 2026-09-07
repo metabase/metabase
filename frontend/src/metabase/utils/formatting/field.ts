@@ -1,6 +1,10 @@
-import type { Field } from "metabase-types/api/field";
-
-type FormattableField = Pick<Field, "name" | "display_name"> & {
+/**
+ * The three names `formatField` chooses between, in order of preference. Both
+ * the API field and the v1 `Field` wrapper match it.
+ */
+type FormattableField = {
+  name: string;
+  display_name: string;
   dimensions?: { name: string }[];
 };
 

@@ -15,6 +15,14 @@ import type {
  * The API field and the v1 `Field` wrapper both match it, and the type
  * parameter keeps a caller in its own world: give it API fields and it returns
  * an API field.
+ *
+ * A field answers this on its own, so it has to carry its remap target rather
+ * than an id to look up. The metadata store hydrates all three, so a store
+ * field always does. An API field does only where its endpoint nests them:
+ * `param_fields` nests all three, while `GET /api/field/:id` and a table's
+ * `query_metadata` send `human_readable_field_id` without the field. Give those
+ * to `getExternalRemappedField` and an externally remapped field reports no
+ * remapping, so pass a store field until those endpoints nest it too.
  */
 export interface RemappableField<T> extends FieldTypeInfo {
   id: FieldId | FieldReference;
