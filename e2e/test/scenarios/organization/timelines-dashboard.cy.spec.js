@@ -75,15 +75,64 @@ describe("scenarios > organization > timelines > dashboard", () => {
     H.timelineEventChip("RC1").should("be.visible");
     H.timelineEventChip("RC2").should("be.visible");
   });
+
+  describe("analytics", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should track a dashboard showing events once per load", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
+      }).then(({ timeline }) => {
+        visitDashboardWithTimeSeries({
+          "timeline.selected_timeline_ids": [timeline.id],
+          "timeline.excluded_timeline_event_ids": [],
+        });
+      });
+      H.timelineEventChip("RC1").should("be.visible");
+      expectEventsShownOnce();
+
+      openEventsSidebar();
+      toggleEventVisibility("RC1");
+      H.timelineEventChip("RC1").should("not.exist");
+      toggleEventVisibility("RC1");
+      H.timelineEventChip("RC1").should("be.visible");
+      expectEventsShownOnce();
+    });
+  });
 });
 
-function visitDashboardWithTimeSeries() {
-  H.createQuestionAndDashboard({ questionDetails }).then(
-    ({ body: { dashboard_id } }) => {
-      H.visitDashboard(dashboard_id);
+function visitDashboardWithTimeSeries(visualizationSettings = {}) {
+  H.createQuestionAndDashboard({
+    questionDetails: {
+      ...questionDetails,
+      visualization_settings: visualizationSettings,
     },
-  );
+  }).then(({ body: { dashboard_id } }) => {
+    cy.wrap(dashboard_id).as("dashboardId");
+    H.visitDashboard(dashboard_id);
+  });
   H.getDashboardCard().findByText("Created At: Month").should("be.visible");
+}
+
+function expectEventsShownOnce() {
+  cy.get("@dashboardId").then((dashboardId) => {
+    H.expectUnstructuredSnowplowEvent(
+      { event: "dashboard_events_shown", target_id: dashboardId },
+      1,
+    );
+  });
+}
+
+function toggleEventVisibility(eventName) {
+  eventsSidebar().within(() => H.timelineEventVisibility(eventName).click());
 }
 
 function openEventsSidebar() {
