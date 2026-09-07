@@ -72,6 +72,24 @@ test("real configuration preserves retained rules and documents accepted differe
   });
   const cases = [
     [
+      "focused-test.ts",
+      'test.concurrent.only("example", () => {});',
+      "no-only-tests/no-only-tests",
+      1,
+    ],
+    [
+      "focused-test-disabled.ts",
+      '// eslint-disable-next-line no-only-tests/no-only-tests\ntest.concurrent.only("example", () => {});',
+      "no-only-tests/no-only-tests",
+      0,
+    ],
+    [
+      "ordinary-test.ts",
+      'test("example", () => {}); const value = { only: true };',
+      "no-only-tests/no-only-tests",
+      0,
+    ],
+    [
       "complexity-limit.ts",
       "export function f(a){" + "if(a)a();".repeat(54) + "}",
       "complexity",

@@ -79,6 +79,20 @@ stops reporting `element.children[2]`, with no established performance benefit.
 The import-x resolver-reuse fix does not replace our distinct legacy resolution
 path, so the adapter remains.
 
+`eslint-plugin-no-only-tests` 3.4.0 now loads directly, using its published
+`createOnce` API without our wrapper. An old/new probe compared 355 combinations
+of sources/options with identical diagnostics and fixes; actual-config fixtures
+also check chained focused tests, suppressions and ordinary calls.
+`eslint-plugin-jest-formatting` is removed along with its registration and empty
+preset: no formatting rules were enabled through that preset.
+
+The successor `@e18e/eslint-plugin` 0.8.0 was tried with the existing `depend`
+namespace and `ban-dependencies` options, then deferred. Its expanded replacement
+catalogue produced 105 new repository findings (including `yup` and `querystring`)
+and took 20.19s versus 15.57s for depend 1.5.0 in one unpatched comparison.
+This is a policy migration, not an equivalent dependency rename; no successor
+package or related suppressions are added here.
+
 `recommended-rules.json` and `oxlint/rule-defaults.json` snapshot dependency
 presets/defaults without importing the entire ESLint setup at CLI startup.
 After lint dependency upgrades, run `bun run lint-config-update`, review policy
@@ -130,10 +144,10 @@ one lint process, four native threads, no persistent lint cache:
 | Shared lightweight resolve configuration | 17.342 s | 16.739 s | About 0.60 s faster. |
 | Resolver/context/glob/listener reuse | 16.721 s | 15.700 s | About 1.02 s faster. |
 
-Latest repeated measurements (September 8) supersede the absolute timings in
-those individual experiments. The published lint implementations are unchanged:
-base `c31059bff221` and patched `e4a80ccd3a1e`; subsequent edits only update this
-documentation.
+The September 8 measurements below supersede the absolute timings in those
+individual experiments. They measured base `c31059bff221` and patched
+`e4a80ccd3a1e`, before the focused-test upgrade and unused formatting dependency
+cleanup described above.
 
 macOS ARM64, Node 24.14.0, one fresh lint process per run, four native threads, no
 persistent lint cache, generated CLJS already present. Dependency files are warm in the
