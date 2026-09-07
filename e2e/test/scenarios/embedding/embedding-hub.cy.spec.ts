@@ -71,13 +71,15 @@ function assertStepOrder(titles: string[]) {
 
 function assertHubTabs(tabs: { label: string; hasGem: boolean }[]) {
   cy.findByRole("navigation", { name: "Embedding hub" }).within(() => {
+    // Every tab is a link and nothing else in the nav is, so the count makes
+    // the list exhaustive -- a tab the hub should not have fails here.
+    cy.findAllByRole("link").should("have.length", tabs.length);
+
     for (const { label, hasGem } of tabs) {
       cy.findByRole("link", { name: label })
         .findByTestId("upsell-gem")
         .should(hasGem ? "exist" : "not.exist");
     }
-
-    cy.findByRole("link", { name: "Guest embeds" }).should("not.exist");
   });
 }
 

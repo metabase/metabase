@@ -1373,7 +1373,10 @@ describe("scenarios - setup guide", () => {
         .scrollIntoView()
         .should("be.visible")
         .closest('[data-testid="embedding-hub-checklist-card"]')
-        .should("have.attr", "aria-disabled", "true");
+        .should("have.attr", "aria-disabled", "true")
+        .realHover();
+
+      cy.findByRole("tooltip").should("have.text", "Set up SSO to unlock");
     });
   });
 
