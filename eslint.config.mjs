@@ -10,7 +10,6 @@ import * as reactHooksPlugin from "eslint-plugin-react-hooks";
 import importXPlugin from "eslint-plugin-import-x";
 import jestPlugin from "eslint-plugin-jest";
 import jestDomPlugin from "eslint-plugin-jest-dom";
-import * as jestFormattingPlugin from "eslint-plugin-jest-formatting";
 import testingLibraryPlugin from "eslint-plugin-testing-library";
 import cypressPlugin from "eslint-plugin-cypress";
 import chaiFriendlyPlugin from "eslint-plugin-chai-friendly";
@@ -42,7 +41,6 @@ const configs = [
       jest: jestPlugin,
       "jest-dom": jestDomPlugin,
       "testing-library": testingLibraryPlugin,
-      "jest-formatting": fixupPluginRules(jestFormattingPlugin),
       cypress: cypressPlugin,
       "chai-friendly": chaiFriendlyPlugin,
       "@typescript-eslint": tseslint.plugin,
