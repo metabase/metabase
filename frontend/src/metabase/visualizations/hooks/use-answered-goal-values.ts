@@ -1,7 +1,7 @@
 import {
   type GoalValues,
   getUnansweredGoalEntitiesForValues,
-  hasFailedGoalReferencesForValues,
+  hasUnresolvedGoalValues,
 } from "metabase/viz-core";
 import type { DatasetData, DatasetQuery } from "metabase-types/api";
 
@@ -30,10 +30,7 @@ export function useAnsweredGoalValues(
   }
 
   // No further fetch happens past this point, so an unanswered reference counts as failed.
-  if (
-    getUnansweredGoalEntitiesForValues(answered.data, values).length > 0 ||
-    hasFailedGoalReferencesForValues(answered.data, values)
-  ) {
+  if (hasUnresolvedGoalValues(answered.data, values)) {
     return { status: "failed" };
   }
 

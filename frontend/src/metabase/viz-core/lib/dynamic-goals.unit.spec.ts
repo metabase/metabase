@@ -16,6 +16,7 @@ import {
   hasFailedGoalReferencesForValues,
   hasUnansweredGoalReferences,
   hasUnresolvedGoalReferences,
+  hasUnresolvedGoalValues,
   isDynamicGoalSetting,
   isGraphGoalReference,
   resolveGoalSegments,
@@ -930,5 +931,30 @@ describe("goal value references", () => {
       ]),
     ).toBe(true);
     expect(hasFailedGoalReferencesForValues(data, ["missing"])).toBe(true);
+  });
+
+  it("reports unanswered and failed references alike as unresolved", () => {
+    expect(
+      hasUnresolvedGoalValues(data, [
+        100,
+        "value",
+        { type: "card", id: 1, column: "sum" },
+        null,
+      ]),
+    ).toBe(false);
+    expect(
+      hasUnresolvedGoalValues(data, [
+        { type: "measure", id: 3, column: "avg" },
+      ]),
+    ).toBe(true);
+    expect(
+      hasUnresolvedGoalValues(data, [{ type: "card", id: 2, column: "sum" }]),
+    ).toBe(true);
+    expect(
+      hasUnresolvedGoalValues(data, [
+        { type: "card", id: 1, column: "missing" },
+      ]),
+    ).toBe(true);
+    expect(hasUnresolvedGoalValues(data, ["missing"])).toBe(true);
   });
 });

@@ -1,8 +1,7 @@
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import {
-  getUnansweredGoalEntitiesForValues,
   getUnresolvedGoalMessage,
-  hasFailedGoalReferencesForValues,
+  hasUnresolvedGoalValues,
   isGraphGoalReference,
   resolveGoalValue,
 } from "metabase/viz-core";
@@ -19,10 +18,7 @@ export function resolveGoalSettingsForStaticViz(
     return settings;
   }
 
-  if (
-    getUnansweredGoalEntitiesForValues(data, [goal]).length > 0 ||
-    hasFailedGoalReferencesForValues(data, [goal])
-  ) {
+  if (hasUnresolvedGoalValues(data, [goal])) {
     throw new Error(getUnresolvedGoalMessage());
   }
 

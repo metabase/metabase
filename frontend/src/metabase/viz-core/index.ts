@@ -230,6 +230,7 @@ export {
   hasFailedGoalReferencesForValues,
   hasUnansweredGoalReferences,
   hasUnresolvedGoalReferences,
+  hasUnresolvedGoalValues,
   isDynamicGoalSetting,
   isGraphGoalReference,
   needsAnswer,

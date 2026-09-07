@@ -283,6 +283,14 @@ export function hasFailedGoalReferencesForValues(
   return values.some((value) => isFailed(value, resolveGoalValue(data, value)));
 }
 
+// Unanswered or failed. Once no further fetch will happen, either means the goal can't be resolved.
+export function hasUnresolvedGoalValues(
+  data: GoalData,
+  values: GoalValues,
+): boolean {
+  return values.some((value) => isUnresolved(resolveGoalValue(data, value)));
+}
+
 export function hasFailedGoalReferences(
   data: GoalData,
   segments: GoalSegment[] | undefined,
