@@ -6,8 +6,6 @@ import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/visualizations/lib/save-d
 
 import { type SetupOpts, setup } from "./setup";
 
-// The catalogue is imported rather than fetched, so the load is observed through
-// `loadLocalization` instead of through a request.
 const loadLocalizationSpy = jest.fn();
 jest.mock("metabase/utils/localization", () => {
   const actual = jest.requireActual("metabase/utils/localization");

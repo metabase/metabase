@@ -6,8 +6,6 @@ import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { type SetupOpts, setup } from "./setup";
 
-// The catalogue is imported rather than fetched, so the load is observed through
-// `loadLocalization` instead of through a request.
 const loadLocalizationSpy = jest.fn();
 jest.mock("metabase/utils/localization", () => {
   const actual = jest.requireActual("metabase/utils/localization");

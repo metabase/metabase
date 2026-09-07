@@ -111,8 +111,6 @@ describe("LocaleProvider", () => {
       </LocaleProvider>,
     );
 
-    // The catalogue is imported rather than fetched, so this waits for it to load
-    // and be applied, not just for a re-render.
     await waitFor(() => {
       expect(screen.getByText("Januar 2020")).toBeInTheDocument();
     });
@@ -130,8 +128,6 @@ describe("LocaleProvider", () => {
       </LocaleProvider>,
     );
 
-    // The catalogue is imported rather than fetched, so this waits for it to load
-    // and be applied, not just for a re-render.
     await waitFor(() => {
       expect(screen.getByText("de")).toBeInTheDocument();
     });

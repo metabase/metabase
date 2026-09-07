@@ -25,12 +25,11 @@ const SDK_RUNTIME_RE = /embedding-sdk-chunk-runtime\./;
 const notRuntime = name => !SDK_RUNTIME_RE.test(name);
 
 // One locale catalogue per chunk, named by the `webpackChunkName: "locale-[request]"`
-// comment in load-locale-catalog.ts. They are mutually exclusive: a session loads
-// exactly one, and an English session loads none. Counting all 36 in a reachable
-// total overstates it by 35x -- it put 8.5 MB gzip against the SDK's 3.1 MB and
-// tripped the gate by 275%. Their size also tracks the translation process rather
-// than any code change, so leaving them in makes every catalogue update look like
-// a bundle regression.
+// comment in localization.ts. A session loads exactly one and an English session
+// loads none, so counting all 36 in a reachable total overstates it by 35x: 8.5 MB
+// gzip against the SDK's 3.1 MB. Their size also tracks the translation process
+// rather than any code change, so counting them makes every catalogue update look
+// like a bundle regression.
 const LOCALE_CHUNK_RE = /(^|\/)locale-/;
 const notLocale = name => !LOCALE_CHUNK_RE.test(name);
 
