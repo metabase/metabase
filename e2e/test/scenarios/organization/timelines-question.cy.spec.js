@@ -829,6 +829,43 @@ describe("scenarios > organization > timelines > question", () => {
       H.rightSidebar().icon("ellipsis").should("not.exist");
     });
   });
+
+  describe("analytics", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should track opening the events panel and saving a question with a recorded selection", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
+      });
+
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.timelineEventChip("RC1").should("be.visible");
+
+      cy.icon("calendar").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "question_events_panel_opened",
+        triggered_from: "footer",
+      });
+
+      toggleEventVisibility("RC1");
+      H.timelineEventChip("RC1").should("not.exist");
+      H.saveSavedQuestion();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "question_timeline_events_saved",
+        target_id: ORDERS_BY_YEAR_QUESTION_ID,
+      });
+    });
+  });
 });
 
 function toggleEventVisibility(eventName) {

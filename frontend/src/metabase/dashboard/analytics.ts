@@ -167,3 +167,10 @@ export const trackDashboardBookmarked = () => {
     triggered_from: "dashboard_header",
   });
 };
+
+export const trackDashboardEventsShown = (dashboardId: DashboardId) => {
+  trackSimpleEvent({
+    event: "dashboard_events_shown",
+    target_id: getDashboardId(dashboardId),
+  });
+};
