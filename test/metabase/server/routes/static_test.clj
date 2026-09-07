@@ -143,7 +143,6 @@
           response (get-static "/index_template.html" modified)]
       (is (= 304 (:status response)))
       (is (nil? (:body response)))))
-
   (testing "a client holding an older copy is sent the resource"
     (let [response (get-static "/index_template.html" "Tue, 03 Jul 2001 06:00:00 GMT")]
       (is (= 200 (:status response)))
