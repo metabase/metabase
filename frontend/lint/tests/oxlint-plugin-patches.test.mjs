@@ -14,11 +14,11 @@ function unpatchedPackages(root, t) {
   );
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   for (const [name, version] of [
-    ["eslint-plugin-import-x", "4.16.1"],
+    ["eslint-plugin-import-x", "4.17.1"],
     ["eslint-plugin-react", "7.37.5"],
-    ["eslint-plugin-depend", "1.4.0"],
+    ["eslint-plugin-depend", "1.5.0"],
     ["eslint-plugin-ttag", "1.1.0"],
-    ["eslint-plugin-i18next", "6.1.3"],
+    ["eslint-plugin-i18next", "6.1.4"],
     ["eslint-plugin-testing-library", "7.15.4"],
   ]) {
     const source = fs.realpathSync(path.join(root, "node_modules", name));

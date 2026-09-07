@@ -1,0 +1,15 @@
+diff --git a/node_modules/eslint-plugin-i18next/lib/helper/matchPatterns.js b/node_modules/eslint-plugin-i18next/lib/helper/matchPatterns.js
+--- a/node_modules/eslint-plugin-i18next/lib/helper/matchPatterns.js
++++ b/node_modules/eslint-plugin-i18next/lib/helper/matchPatterns.js
+@@ -7,9 +7,8 @@
+   if (handler) {
+     return handler(text);
+   }
+-  handler = str => {
+-    return patterns.map(generateFullMatchRegExp).some(item => item.test(str));
+-  };
++  const expressions = patterns.map(generateFullMatchRegExp);
++  handler = str => expressions.some(item => item.test(str));
+   cache.set(patterns, handler);
+   return handler(text);
+ };

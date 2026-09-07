@@ -168,7 +168,10 @@ const configs = [
       "import-x/resolver": {
         node: true,
         webpack: {
-          config: path.resolve(__dirname, "./rspack.main.config.js"),
+          config: path.resolve(
+            __dirname,
+            "./frontend/build/shared/rspack/resolve-config.js",
+          ),
           typescript: true,
         },
       },
@@ -176,7 +179,10 @@ const configs = [
       "import/resolver": {
         node: true,
         webpack: {
-          config: path.resolve(__dirname, "./rspack.main.config.js"),
+          config: path.resolve(
+            __dirname,
+            "./frontend/build/shared/rspack/resolve-config.js",
+          ),
           typescript: true,
         },
       },
@@ -863,7 +869,7 @@ const configs = [
         webpack: {
           config: path.resolve(
             __dirname,
-            "./rspack.embedding-sdk-bundle.config.js",
+            "./frontend/build/embedding-sdk/rspack/resolve-config.js",
           ),
           typescript: true,
         },
@@ -874,7 +880,7 @@ const configs = [
         webpack: {
           config: path.resolve(
             __dirname,
-            "./rspack.embedding-sdk-bundle.config.js",
+            "./frontend/build/embedding-sdk/rspack/resolve-config.js",
           ),
           typescript: true,
         },

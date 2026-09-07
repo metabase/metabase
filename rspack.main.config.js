@@ -27,9 +27,7 @@ const {
 const {
   CssVarsDeclarationPlugin,
 } = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
-const {
-  RESOLVE_ALIASES,
-} = require("./frontend/build/shared/rspack/resolve-aliases");
+const resolveConfig = require("./frontend/build/shared/rspack/resolve-config");
 const {
   SIDE_EFFECT_FREE_RULE,
 } = require("./frontend/build/shared/rspack/side-effect-free-modules");
@@ -192,9 +190,7 @@ const config = {
   // we override it for dev mode below
   devtool: "source-map",
 
-  externals: {
-    canvg: "canvg",
-  },
+  ...resolveConfig,
 
   // output to "dist"
   output: {
@@ -280,16 +276,6 @@ const config = {
         ],
       },
     ],
-  },
-  resolve: {
-    extensions: [".js", ".jsx", ".ts", ".tsx", ".css", ".svg"],
-    alias: RESOLVE_ALIASES,
-    fallback: {
-      buffer: require.resolve("buffer/"),
-      url: require.resolve("url/"),
-      events: require.resolve("events/"),
-      querystring: require.resolve("querystring-es3"),
-    },
   },
   optimization: {
     runtimeChunk: "single",

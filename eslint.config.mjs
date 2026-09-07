@@ -36,7 +36,7 @@ const configs = [
       import: importXPlugin,
       "no-only-tests": noOnlyTestsPlugin,
       ttag: fixupPluginRules(ttagPlugin),
-      i18next: fixupPluginRules(i18nextPlugin),
+      i18next: i18nextPlugin,
       depend: fixupPluginRules(dependPlugin),
       boundaries,
       jest: jestPlugin,

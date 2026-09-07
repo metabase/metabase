@@ -14,6 +14,7 @@ bun run lint-oxlint-fix
 bun run test-oxlint
 ```
 
+The entry point is `oxlint.config.mts`, avoiding Node's ambiguous-module warning.
 Oxlint is pinned to 1.81.0. The command uses one process with four native threads,
 no persistent lint cache and no custom native build. The frontend CI ESLint
 result cache is removed; CLJS generation is retained for resolution/build inputs.
@@ -29,6 +30,13 @@ explicit; the migration does not claim identical ESLint semantics everywhere.
 | `import/no-duplicates` | Native requires a mixed type/value import and a second value import from the same module to be combined. This is a modest style change with measurable savings. Imports are consolidated without changing import-order policy. Pure named `import type` plus value imports remain allowed; redundant namespace aliases are consolidated too. |
 | React `display-name` | Native recognizes some mocked `forwardRef` calls upstream skips, but misses some anonymous class HOCs upstream checks. We accept that tradeoff for measurable savings and reduced legacy class-component checking. The affected mock gets a display name; the existing named HOC receives a narrow exception for a native false positive. |
 
+Native `complexity` retains the maximum of 55. Its report starts at the arrow
+function's opening parameters, whereas ESLint reports at the arrow token. The
+CardEmbed exception now brackets just that header so both engines honor it;
+the Visualization exception uses the native rule name. Threshold fixtures pass
+in both engines. A broader 174-case probe found only an ambient-declaration
+report at a maximum of zero, which is outside our configuration.
+
 Behavioral fixtures assert both the retained rules and the intended differences.
 A config regression test ensures disabling an ESLint base rule cannot disable
 its TypeScript extension when both map to one native rule. Earlier exploratory
@@ -36,7 +44,7 @@ unused-vars timings predated that fix and must not be treated as equivalent
 coverage; use the final measurements below.
 
 Low-cost upstream fallbacks stay in place for `no-redeclare`, unsafe optional
-chaining, array constructors, empty object types, complexity, export checking,
+chaining, array constructors, empty object types, export checking,
 import restrictions and the two differing Jest checks. Native optional-chain
 checking and some array/export diagnostics may be useful future policy changes,
 but semantic changes without demonstrated savings are outside this migration.
@@ -64,6 +72,13 @@ Its language-options view preserves oxlint's lazy getters rather than eagerly
 reading AST/global information. With the three accepted native rules enabled,
 this avoids unnecessary global decoding without changing the rule policy.
 
+Published upgrades: i18next 6.1.4 removes its compatibility wrapper while retaining
+JSX decoding; import-x is 4.17.1 and depend is 1.5.0. The i18next 6.1.5 matching
+changes are deferred. Testing Library remains 7.15.4: the tested 7.16.2 upgrade
+stops reporting `element.children[2]`, with no established performance benefit.
+The import-x resolver-reuse fix does not replace our distinct legacy resolution
+path, so the adapter remains.
+
 `recommended-rules.json` and `oxlint/rule-defaults.json` snapshot dependency
 presets/defaults without importing the entire ESLint setup at CLI startup.
 After lint dependency upgrades, run `bun run lint-config-update`, review policy
@@ -87,40 +102,53 @@ aliases, extensions, entry fields, externals, loader/query handling and symlink
 behavior. Tests compare both existing resolvers. Rspack resolver changes need
 adapter review; unsupported options throw.
 
+The build and lint resolver share lightweight `resolve-config.js` modules for
+the app and SDK. Lint no longer imports either complete Rspack configuration.
+Integration checks cover development/production and OSS/EE settings.
+
 Resolution results are reused within a fresh CLI invocation over a fixed tree.
+Bare imports share a key at the nearest package.json/node_modules ancestor;
+relative, loader and query specifiers retain directory-specific keys. Configured
+aliases/fallbacks must be absolute for that reuse; unsupported values throw.
+Derived plugin contexts are reused with current-file getters, boundary imports
+use direct listeners, glob matchers are compiled once, and missing source-file
+probes avoid constructing exceptions.
 Editor/watch invalidation is not implemented. Existing ESLint editor diagnostics
 can differ under the accepted policy changes; this PR does not claim editor
 parity or remove all ESLint dependencies.
 
 ## Validation and performance
 
-Final timings are recorded after the accepted native replacements, compatibility
-fixes and the base/extension rule configuration fix. They supersede exploratory
-runs with unresolved diagnostics or different effective rule coverage.
+Paired, sequential measurements on macOS ARM64, Node 24.14.0 and Bun 1.3.14,
+one lint process, four native threads, no persistent lint cache:
 
-| Candidate | Runs | Mean | Files | Findings |
-| --- | --- | --- | --- | --- |
-| Base, without the six performance patches | 16.997 / 17.983 / 16.646 s | 17.209 s | 11,978 | 0 |
+| Comparison | Control mean | Candidate mean | Interpretation |
+| --- | --- | --- | --- |
+| All four published upgrades | 18.152 s | 18.145 s | No established speed change; Testing Library had a coverage difference. |
+| Retained three upgrades | 17.921 s | 17.730 s | Small difference within desktop variation; keep the wrapper simplification. |
+| Native complexity, after upgrades and `.mts` rename | 17.596 s | 17.466 s | Small measured difference; removes the JS fallback. |
+| Shared lightweight resolve configuration | 17.342 s | 16.739 s | About 0.60 s faster. |
+| Resolver/context/glob/listener reuse | 16.721 s | 15.700 s | About 1.02 s faster. |
 
-The eager adapter measured 18.267 / 18.058 / 18.008 s (18.111 s mean) in the
-same comparison. Preserving lazy getters saves about 0.90 s / 5%. Earlier lazy
-experiments retained JS unused-variable checking and did not show this gain.
-All 17 oxlint tests pass; ten additional JS/TS export-analysis fixtures match
-ESLint's diagnostics and messages with either adapter.
+The final base runs were **15.157 / 15.311 / 16.631 s**, all exit 0, **11,980 files**,
+zero findings. The two additional files are the shared resolver configurations.
+Comparisons were collected separately under variable desktop activity: do not
+add their savings or compare absolute times across batches. These timings exclude
+CLJS compilation, formatting and type-checking. No CLJS build prerequisite was
+removed in this change.
 
+All 21 base compatibility tests pass (including the build-resolution integration
+check), and all 490 custom-rule cases pass. Published-plugin fixtures compare
+160 cases, including 67 violations, with identical diagnostics and autofixes;
+the separate full-tree check caught the Testing Library regression above.
 The stacked PR records its corresponding patched measurements.
 
-These are local measurements, not promises for other machines. Run candidates
-sequentially under comparable CPU load with generated assets present:
+Run candidates sequentially under comparable CPU load with generated assets
+present, checking exit status, file count and diagnostics alongside timing:
 
 ```sh
 /usr/bin/time -p bun run lint-oxlint-pure --format json > /tmp/oxlint-result.json
 ```
-
-Check exit status, file count and diagnostics alongside timing. `test-oxlint`
-checks config/defaults, accepted semantic differences, retained behavior,
-boundaries and resolver parity. The custom lint-rule suite uses oxlint's
-RuleTester and retains its 490 existing cases.
 
 The stacked follow-up isolates six version-specific dependency patches. This
 base PR adds none; existing unrelated project patches remain unchanged.
@@ -132,31 +160,34 @@ The stacked draft adds six dependency patches through the existing
 
 | Dependency | Optimization |
 | --- | --- |
-| import-x 4.16.1 | Classify deterministic import groups before resolution. |
+| import-x 4.17.1 | Classify deterministic import groups before resolution. |
 | React 7.37.5 | Check lifecycle method names before component detection. |
-| depend 1.4.0 | Reuse replacement lists and index module prefixes without changing precedence. |
+| depend 1.5.0 | Reuse replacement lists and index module prefixes without changing precedence. |
 | ttag 1.1.0 | Use current sourceCode APIs and avoid scope lookup inside function bodies. |
-| i18next 6.1.3 | Compile matching patterns once and use current sourceCode APIs. |
+| i18next 6.1.4 | Compile matching patterns once. Published API fixes shrink this patch from 54 to 15 lines. |
 | Testing Library 7.15.4 | Filter irrelevant AST shapes before scope/variable work in three checks. |
 
-The ttag/i18next adapters consequently omit compatibility wrappers. There is no
-oxlint runtime patch. These are version-specific published-artifact patches;
-review them on dependency upgrades and prefer upstream fixes where possible.
+The ttag adapter omits its compatibility wrapper; i18next already does so in the
+base. There is no oxlint runtime patch. Review these patches on dependency upgrades
+and prefer upstream fixes where possible. None of the tested releases replaces an
+entire optional patch.
 
-| Candidate | Runs | Mean | Files | Findings |
+Latest paired comparison of the updated stack (separate from the earlier batches
+above):
+
+| Configuration | Runs | Mean | Files | Findings |
 | --- | --- | --- | --- | --- |
-| Base before lazy adapter | 17.702 / 18.085 s | 17.894 s | 11,978 | 0 |
-| All six patches before lazy adapter | 13.389 / 13.121 s | 13.255 s | 11,979 | 0 |
+| Updated base | 17.661 / 17.918 / 17.526 s | 17.702 s | 11,980 | 0 |
+| Six optional patches | 12.336 / 12.081 / 12.304 s | 12.240 s | 11,981 | 0 |
 
-Before the lazy-adapter change, the patch layer saved about 4.64 s (26%) in
-these sequential full-directory runs. Both PRs now include the lazy adapter;
-the base measures 17.209 s above, but the patched combination has not yet been
-remeasured. Do not subtract the adapter saving from these historical timings.
-The one additional file is the patch-parity test. Both candidates include the
-three accepted native rules and the base/extension configuration fix above.
+The patch layer saves 5.46 s in this comparison.
+A subsequent paired check against the previously published base measured
+20.993 / 20.701 s (20.847 s mean) before and 18.203 / 17.959 s (18.081 s mean)
+after all base changes. This confirms an overall improvement despite the slower
+absolute times in later batches. Do not add savings across batches.
 
 The patch test reconstructs upstream dependencies in temporary directories by
 reversing the installed patches. It compares diagnostics and autofixes across
 160 fixtures (67 upstream violations), and fails for missing patches or version
-mismatches. All 18 oxlint tests and the 490 custom lint-rule cases pass on this
-layer. The patch layer adds no further intentional semantic differences.
+mismatches. All 22 compatibility tests pass. The shared custom-rule changes pass
+all 490 cases. This patch layer adds no further intentional policy differences.
