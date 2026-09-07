@@ -1,3 +1,7 @@
+// This script is used in .github/workflows/e2e-matrix-builder.yml
+// its aim is to split the e2e test matrix into multiple jobs
+// grouping some specific tests together, other tests are split into chunks
+
 const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
 
 const specialTestConfigs = [
