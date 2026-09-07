@@ -2,6 +2,7 @@ import { DatePicker } from "@mantine/dates";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { useLocale } from "metabase/common/hooks";
+import * as localization from "metabase/utils/localization";
 
 import { LocaleProvider, getLocaleToUse } from "./LocaleProvider";
 
@@ -104,6 +105,10 @@ describe("getLocaleToUse", () => {
 });
 
 describe("LocaleProvider", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("should make Mantine components use correct locale", async () => {
     renderWithProviders(
       <LocaleProvider locale="de">
@@ -113,6 +118,22 @@ describe("LocaleProvider", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Januar 2020")).toBeInTheDocument();
+    });
+  });
+
+  it("should still render its children when the catalogue fails to load", async () => {
+    jest
+      .spyOn(localization, "loadLocalization")
+      .mockRejectedValue(new Error("ChunkLoadError"));
+
+    renderWithProviders(
+      <LocaleProvider locale="de" shouldWaitForLocale>
+        <div>content</div>
+      </LocaleProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("content")).toBeInTheDocument();
     });
   });
 

@@ -5,7 +5,6 @@ import {
 } from "@reduxjs/toolkit";
 
 import { Api } from "metabase/api";
-import { loadLocalization } from "metabase/utils/localization";
 import {
   type MfaChallengeResponse,
   isMfaChallenge,
@@ -19,6 +18,7 @@ import { getSetting, refetchSiteSettings } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isSmallScreen, reload } from "metabase/utils/dom";
 import { isResourceNotFoundError } from "metabase/utils/errors";
+import { loadLocalization } from "metabase/utils/localization";
 import type { LoginData } from "metabase-types/api";
 
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
