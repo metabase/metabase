@@ -253,7 +253,7 @@
   the tables it references. The database refusal is audited for the same reason the query's card
   ids get the audited store: the id is the caller's own."
   [query]
-  (shared.content-store/query-if-database-readable query))
+  (shared.content-store/query-if-database-readable query true))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"

@@ -733,11 +733,11 @@
   ids that are the caller's own, so its refusals are audited; one the agent's tools wrote
   is routine presentation and stays quiet."
   [query-id query]
-  (if (contains? (shared/current-client-ids) query-id)
-    (some-> (shared.content-store/query-if-database-readable query)
-            (llm-shape/export-query-for-llm shared.content-store/audited-store))
-    (when (shared.content-store/query-database-readable? query)
-      (llm-shape/export-query-for-llm query shared.content-store/default-store))))
+  (let [audited? (contains? (shared/current-client-ids) query-id)]
+    (some-> (shared.content-store/query-if-database-readable query audited?)
+            (llm-shape/export-query-for-llm (if audited?
+                                              shared.content-store/audited-store
+                                              shared.content-store/default-store)))))
 
 (defn- fetch-conversation-query
   "Present a query stored in this conversation's agent state (created by tools or pasted

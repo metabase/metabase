@@ -162,38 +162,31 @@
       (log/debugf "Omitting a query that could not be permission-checked: %s" (ex-message e))
       false)))
 
-(defn query-database-readable?
-  "Whether the current user can read the database `query` is exported against and query every
-  table it references. Unaudited; for queries out of our own state. Audited counterpart:
-  [[query-if-database-readable]], same contract: a database that no longer exists passes (there
-  is no metadata behind it to leak), one we can't resolve does not."
-  [query]
-  (if-not (and (map? query) (:database query))
-    true
-    (let [resolved    (resolve-effective-database query)
-          database-id (:database resolved)]
-      (boolean
-       (and database-id
-            (or (not (t2/exists? :model/Database :id database-id))
-                (and (mi/can-read? :model/Database database-id)
-                     (tables-queryable? resolved))))))))
+(defn- database-readable?
+  "Whether the current user can read the database; with `audited?` a refusal leaves the
+  [[api/read-check]] audit trail."
+  [audited? database-id]
+  (if audited?
+    (try
+      (api/read-check :model/Database database-id)
+      true
+      (catch clojure.lang.ExceptionInfo e
+        (if (= 403 (:status-code (ex-data e)))
+          false
+          (throw e))))
+    (mi/can-read? :model/Database database-id)))
 
 (defn query-if-database-readable
   "`query` with its database resolved, when the current user can read that database and query
-  every table it references, else nil. The database refusal is audited; for client-supplied
-  queries, where the id is the caller's own. Quiet counterpart: [[query-database-readable?]].
-  A database that no longer exists passes, since there is no metadata behind it to leak; one
-  we can't resolve does not."
-  [query]
+  every table it references, else nil. With `audited?` the database refusal is audited; for
+  client-supplied queries, where the id is the caller's own. A database that no longer exists
+  passes, since there is no metadata behind it to leak; one we can't resolve does not."
+  [query audited?]
   (if-not (and (map? query) (:database query))
     query
     (when-let [resolved (resolve-effective-database query)]
-      (try
-        (api/read-check :model/Database (:database resolved))
-        (when (tables-queryable? resolved)
-          resolved)
-        (catch clojure.lang.ExceptionInfo e
-          (condp = (:status-code (ex-data e))
-            403 nil
-            404 resolved
-            (throw e)))))))
+      (let [database-id (:database resolved)]
+        (when (or (not (t2/exists? :model/Database :id database-id))
+                  (and (database-readable? audited? database-id)
+                       (tables-queryable? resolved)))
+          resolved)))))

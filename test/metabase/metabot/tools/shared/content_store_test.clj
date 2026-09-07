@@ -263,10 +263,9 @@
                           :query    {:source-table table-id}})]
           (is (mi/can-read? :model/Database (mt/id))
               "precondition: query access to one table makes the whole database readable")
-          (is (shared.content-store/query-database-readable? (query-on (mt/id :orders))))
-          (is (some? (shared.content-store/query-if-database-readable (query-on (mt/id :orders)))))
-          (is (not (shared.content-store/query-database-readable? (query-on (mt/id :venues)))))
-          (is (nil? (shared.content-store/query-if-database-readable (query-on (mt/id :venues))))))))))
+          (doseq [audited? [true false]]
+            (is (some? (shared.content-store/query-if-database-readable (query-on (mt/id :orders)) audited?)))
+            (is (nil? (shared.content-store/query-if-database-readable (query-on (mt/id :venues)) audited?)))))))))
 
 (deftest native-analysis-failure-fails-closed-test
   (testing "a native query is withheld when its SQL cannot be analyzed, not waved through"
@@ -279,13 +278,13 @@
                             :native   {:query "SELECT * FROM venues"}}]
           (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native
                                       (fn [& _] (throw (ex-info "boom" {})))]
-            (is (not (shared.content-store/query-database-readable? native-query)))
-            (is (nil? (shared.content-store/query-if-database-readable native-query))))
+            (doseq [audited? [true false]]
+              (is (nil? (shared.content-store/query-if-database-readable native-query audited?)))))
           (testing "while a native query the analyzer finds no tables in still passes"
             (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native
                                         (fn [& _] {:tables []})]
-              (is (shared.content-store/query-database-readable? native-query))
-              (is (some? (shared.content-store/query-if-database-readable native-query))))))))))
+              (doseq [audited? [true false]]
+                (is (some? (shared.content-store/query-if-database-readable native-query audited?)))))))))))
 
 ;;; ============================================================
 ;;; default-store integration shape

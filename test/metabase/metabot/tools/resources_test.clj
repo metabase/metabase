@@ -341,35 +341,44 @@
                   (read-resource/read-resource {:uris ["metabase://chart/nope"]}))))))))
 
 (deftest read-conversation-chart-provenance-picks-audit-test
-  (mt/with-temp [:model/Database {db-id :id} {}]
-    (mt/with-no-data-perms-for-all-users!
-      (let [query (fn [] {:database db-id
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card {card-id :id} {:collection_id coll-id
+                                              :dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (mt/id :venues)}}}]
+      (let [query (fn [] {:database (mt/id)
                           :type     "query"
-                          :query    {:source-table 1}})
+                          :query    {:source-table (str "card__" card-id)}})
             chart (fn [id] {:chart_id id
                             :queries  [(query)]
                             :visualization_settings {:chart_type "line"}})
-            denial-calls (fn [uri]
-                           (let [calls (atom 0)]
-                             (mt/with-dynamic-fn-redefs
-                               [api/read-check (fn [& _]
-                                                 (swap! calls inc)
-                                                 (throw (ex-info "Forbidden" {:status-code 403})))]
-                               (let [result (read-resource/read-resource {:uris [uri]})]
-                                 (is (str/includes? (:output result)
-                                                    "references content the user cannot read"))
-                                 @calls))))]
+            ;; The database check is recorded but let through, so the refusal comes from the store.
+            audited-checks (fn [uri]
+                             (let [checked (atom [])]
+                               (mt/with-dynamic-fn-redefs
+                                 [api/read-check (fn [model-or-row & _]
+                                                   (swap! checked conj model-or-row)
+                                                   (if (= model-or-row :model/Database)
+                                                     model-or-row
+                                                     (throw (ex-info "Forbidden" {:status-code 403}))))]
+                                 (let [result (read-resource/read-resource {:uris [uri]})]
+                                   (is (str/includes? (:output result)
+                                                      "references content the user cannot read"))
+                                   @checked))))]
         (binding [tools.shared/*memory-atom*
                   (atom {:state {:queries    {"seeded-q" (query)}
                                  :charts     {"seeded-chart" (chart "seeded-chart")
                                               "tool-chart"   (chart "tool-chart")}
                                  :client-ids #{"seeded-chart" "seeded-q"}}})]
           (mt/with-test-user :rasta
-            (testing "a denial on a client-seeded chart or query is audited"
-              (is (pos? (denial-calls "metabase://chart/seeded-chart")))
-              (is (pos? (denial-calls "metabase://query/seeded-q"))))
-            (testing "a denial on a tool-written chart stays quiet"
-              (is (zero? (denial-calls "metabase://chart/tool-chart"))))))))))
+            (testing "a client-seeded chart or query audits both the database check and the card refusal"
+              (doseq [uri ["metabase://chart/seeded-chart" "metabase://query/seeded-q"]
+                      :let [checked (audited-checks uri)]]
+                (is (some #{:model/Database} checked))
+                (is (some #(= :model/Card (t2/model %)) checked))))
+            (testing "a tool-written chart refuses the card without an audit trail"
+              (is (empty? (audited-checks "metabase://chart/tool-chart"))))))))))
 
 (deftest read-conversation-query-deleted-database-still-renders-test
   (testing "a state query whose database no longer exists renders its fallback instead of claiming a permission problem"
