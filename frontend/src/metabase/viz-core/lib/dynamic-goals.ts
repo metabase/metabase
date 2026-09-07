@@ -230,14 +230,11 @@ function validGoalSegments(segments: unknown): GoalSegment[] {
   return Array.isArray(segments) ? segments.filter(isGoalSegment) : [];
 }
 
-function getSegmentBounds(segments: GoalSegment[]): (GoalValue | null)[] {
-  return segments.flatMap((segment) => [segment.min, segment.max]);
-}
-
-export function getGoalSegmentBounds(
-  segments: GoalSegment[] | undefined,
-): (GoalValue | null)[] {
-  return getSegmentBounds(validGoalSegments(segments));
+export function getGoalSegmentBounds(segments: unknown): (GoalValue | null)[] {
+  return validGoalSegments(segments).flatMap((segment) => [
+    segment.min,
+    segment.max,
+  ]);
 }
 
 export function getGoalValuesFromVizSettings(
@@ -249,9 +246,7 @@ export function getGoalValuesFromVizSettings(
 
     return match(GOAL_SETTINGS[key])
       .with("value", () => (isGoalValue(setting) ? [setting] : []))
-      .with("segments", () =>
-        getSegmentBounds(validGoalSegments(setting)).filter(isGoalValue),
-      )
+      .with("segments", () => getGoalSegmentBounds(setting).filter(isGoalValue))
       .exhaustive();
   });
 }
