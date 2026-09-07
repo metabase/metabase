@@ -81,4 +81,43 @@ describe("file-paths.yaml", () => {
   it("runs CI-script tests when the story inventory changes", () => {
     expect(matches("ci_scripts", ".storybook/story-files.cjs")).toBe(true);
   });
+
+  it.each([
+    "e2e/support/cypress.config.js",
+    "e2e/test/scenarios/shared-helper.js",
+    "e2e/runner/read-spec-plan.js",
+    ".github/workflows/e2e-test.yml",
+    ".github/workflows/run-tests.yml",
+    ".github/actions/prepare-cypress/action.yml",
+    ".github/scripts/build-e2e-matrix.js",
+    ".github/file-paths.yaml",
+    "frontend/build/shared/esbuild/side-effect-free-modules-plugin.js",
+    "rspack.main.config.js",
+    "bun.lock",
+    "locales/fr.po",
+    "snowplow/events/event.yaml",
+    "patches/@cypress+grep+6.0.0.patch",
+  ])("runs all E2E specs when %s changes", (file) => {
+    expect(matches("e2e_all", file)).toBe(true);
+    expect(matches("e2e_infra", file)).toBe(true);
+  });
+
+  it.each(["js", "jsx", "ts", "tsx"])(
+    "allows changes to .cy.spec.%s files to narrow E2E",
+    (extension) => {
+      expect(
+        matches("e2e_infra", `e2e/test/scenarios/a.cy.spec.${extension}`),
+      ).toBe(false);
+    },
+  );
+
+  it.each([
+    ".github/workflows/e2e-test.yml",
+    ".github/workflows/e2e-tests.yml",
+    ".github/workflows/e2e-matrix-builder.yml",
+    "e2e/runner/read-spec-plan.js",
+    "e2e/support/cypress.config.js",
+  ])("runs CI-script tests when %s changes", (file) => {
+    expect(matches("ci_scripts", file)).toBe(true);
+  });
 });

@@ -316,7 +316,7 @@ jobs:
         needs.create-test-plan.outputs.loki_stories_to_run || '' }}
 
   e2e-tests:
-    needs: [should-run, files-changed, uberjar]
+    needs: [should-run, files-changed, uberjar, create-test-plan]
     # Skip e2e tests when the uberjar build failed or was cancelled — the
     # downstream tests can't fetch a missing artifact, and we don't want to
     # mask the uberjar failure with a wave of misleading e2e errors. We still
@@ -336,19 +336,13 @@ jobs:
       skip: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.e2e_all != 'true' }}
-      # here we pass the list of changed files
-      # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
-      # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
-      # list of changed specs files, then only specs are changed and we can run only those specs.
-      # Only narrow to changed specs on pull requests that haven't been forced to run everything.
-      # On push to master/release branches (and the merge queue) the paths-filter still computes
-      # these file lists, so without this guard a run that touched only specs would silently run a
-      # narrowed suite — we always want the full suite there.
-      specs: >-
+      # Only narrow specs on pull requests that haven't been forced to run everything.
+      # Push and merge-queue runs always use the full suite.
+      spec-files: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         github.event_name == 'pull_request' &&
-        needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files &&
-        needs.files-changed.outputs.e2e_specs_files || '' }}
+        needs.create-test-plan.result == 'success' &&
+        needs.create-test-plan.outputs.e2e_specs_to_run || '' }}
 
   embedding-sdk-package:
     needs: [should-run, files-changed]
