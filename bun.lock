@@ -278,8 +278,7 @@
         "eslint-plugin-import-x": "4.17.1",
         "eslint-plugin-jest": "29.12.1",
         "eslint-plugin-jest-dom": "^5.5.0",
-        "eslint-plugin-jest-formatting": "^3.1.0",
-        "eslint-plugin-no-only-tests": "^3.3.0",
+        "eslint-plugin-no-only-tests": "3.4.0",
         "eslint-plugin-react": "7.37.5",
         "eslint-plugin-react-hooks": "^5.1.0",
         "eslint-plugin-storybook": "9.1.17",
@@ -2990,9 +2989,7 @@
 
     "eslint-plugin-jest-dom": ["eslint-plugin-jest-dom@5.5.0", "", { "dependencies": { "@babel/runtime": "^7.16.3", "requireindex": "^1.2.0" }, "peerDependencies": { "@testing-library/dom": "^8.0.0 || ^9.0.0 || ^10.0.0", "eslint": "^6.8.0 || ^7.0.0 || ^8.0.0 || ^9.0.0" }, "optionalPeers": ["@testing-library/dom"] }, "sha512-CRlXfchTr7EgC3tDI7MGHY6QjdJU5Vv2RPaeeGtkXUHnKZf04kgzMPIJUXt4qKCvYWVVIEo9ut9Oq1vgXAykEA=="],
 
-    "eslint-plugin-jest-formatting": ["eslint-plugin-jest-formatting@3.1.0", "", {}, "sha512-XyysraZ1JSgGbLSDxjj5HzKKh0glgWf+7CkqxbTqb7zEhW7X2WHo5SBQ8cGhnszKN+2Lj3/oevBlHNbHezoc/A=="],
-
-    "eslint-plugin-no-only-tests": ["eslint-plugin-no-only-tests@3.3.0", "", {}, "sha512-brcKcxGnISN2CcVhXJ/kEQlNa0MEfGRtwKtWA16SkqXHKitaKIMrfemJKLKX1YqDU5C/5JY3PvZXd5jEW04e0Q=="],
+    "eslint-plugin-no-only-tests": ["eslint-plugin-no-only-tests@3.4.0", "", {}, "sha512-4S3/9Nb7A2tiMcpzEQE9bQSlpeOz6WJkgryBuou/SA8W2x2c8Zf4j0NvTKBjv6qNhF9T79tmkecm/0CHqV0UGg=="],
 
     "eslint-plugin-react": ["eslint-plugin-react@7.37.5", "", { "dependencies": { "array-includes": "^3.1.8", "array.prototype.findlast": "^1.2.5", "array.prototype.flatmap": "^1.3.3", "array.prototype.tosorted": "^1.1.4", "doctrine": "^2.1.0", "es-iterator-helpers": "^1.2.1", "estraverse": "^5.3.0", "hasown": "^2.0.2", "jsx-ast-utils": "^2.4.1 || ^3.0.0", "minimatch": "^3.1.2", "object.entries": "^1.1.9", "object.fromentries": "^2.0.8", "object.values": "^1.2.1", "prop-types": "^15.8.1", "resolve": "^2.0.0-next.5", "semver": "^6.3.1", "string.prototype.matchall": "^4.0.12", "string.prototype.repeat": "^1.0.0" }, "peerDependencies": { "eslint": "^3 || ^4 || ^5 || ^6 || ^7 || ^8 || ^9.7" } }, "sha512-Qteup0SqU15kdocexFNAJMvCJEfa2xUKNV4CC1xsVMrIIqEy3SQ/rqyxCWNzfrd3/ldy6HMlD2e0JDVpDg2qIA=="],
 

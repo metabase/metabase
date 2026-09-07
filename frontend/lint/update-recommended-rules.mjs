@@ -10,7 +10,6 @@ import reactPlugin from "eslint-plugin-react";
 import * as reactHooksPlugin from "eslint-plugin-react-hooks";
 import jestPlugin from "eslint-plugin-jest";
 import jestDomPlugin from "eslint-plugin-jest-dom";
-import * as jestFormattingPlugin from "eslint-plugin-jest-formatting";
 import testingLibraryPlugin from "eslint-plugin-testing-library";
 import storybookPlugin from "eslint-plugin-storybook";
 import i18nextPlugin from "eslint-plugin-i18next";
@@ -34,7 +33,6 @@ export const recommendedRules = {
   jest: jestPlugin.configs.recommended.rules,
   jestDom: jestDomPlugin.configs.recommended.rules,
   testingLibrary: testingLibraryPlugin.configs.react.rules,
-  jestFormatting: jestFormattingPlugin.configs.recommended.rules ?? {},
   storybook: storybookPlugin.configs["flat/recommended"].map(stripConfig),
 };
 const plugins = Object.assign({}, ...configs.map((config) => config.plugins));

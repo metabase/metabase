@@ -242,7 +242,6 @@
     "testing-library/prefer-screen-queries": "error",
     "testing-library/render-result-naming-convention": "error"
   },
-  "jestFormatting": {},
   "storybook": [
     {
       "name": "storybook:recommended:setup"
