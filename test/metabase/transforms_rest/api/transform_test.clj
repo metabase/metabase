@@ -2073,3 +2073,38 @@
                          :last_run :status)))
               (testing "cancelling a transform with no running run is a 404"
                 (mt/user-http-request :crowberto :post 404 (format "transform/%s/cancel" id))))))))))
+
+(deftest get-run-by-id-test
+  (testing "GET /api/transform/run/:run-id returns the run when the caller can read its transform"
+    (mt/with-premium-features #{}
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        ;; native access on the test DB makes the default (native-source) temp transform readable
+        (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/create-queries :query-builder-and-native}
+          (mt/with-temp [:model/Transform {transform-id :id} {:name "Readable Transform"}
+                         :model/TransformRun {run-id :id} {:transform_id transform-id}]
+            (let [response (mt/user-http-request :lucky :get 200 (str "transform/run/" run-id))]
+              (is (= run-id (:id response)))
+              (is (= transform-id (get-in response [:transform :id]))))))))))
+
+(deftest get-run-by-id-requires-transform-read-test
+  (testing "GET /api/transform/run/:run-id read-checks the run's transform (SEC-1180)"
+    (mt/with-premium-features #{}
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (mt/with-temp [:model/Database {db-id :id} {}
+                       :model/Transform {transform-id :id} {:name   "Hidden Transform"
+                                                            :source {:type  "query"
+                                                                     :query {:database db-id
+                                                                             :type     "native"
+                                                                             :native   {:query "SELECT 1"}}}}
+                       :model/TransformRun {run-id :id} {:transform_id   transform-id
+                                                         :transform_name "Hidden Transform"}]
+          ;; deleting the source database makes the transform unreadable to data analysts
+          (t2/delete! :model/Database db-id)
+          (testing "a data analyst who cannot read the transform gets a 403"
+            (mt/user-http-request :lucky :get 403 (str "transform/run/" run-id)))
+          (testing "a superuser still reads the run"
+            (is (= run-id (:id (mt/user-http-request :crowberto :get 200 (str "transform/run/" run-id))))))
+          (testing "an orphaned run (transform deleted, transform_id nulled) is superuser-only"
+            (t2/delete! :model/Transform transform-id)
+            (mt/user-http-request :lucky :get 403 (str "transform/run/" run-id))
+            (is (= run-id (:id (mt/user-http-request :crowberto :get 200 (str "transform/run/" run-id)))))))))))
