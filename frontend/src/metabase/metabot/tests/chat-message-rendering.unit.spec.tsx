@@ -33,7 +33,6 @@ import {
   thumbsDown,
   thumbsUp,
 } from "metabase/metabot/tests/utils";
-import type { FetchedChatMessage } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockCard,

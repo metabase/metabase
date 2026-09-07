@@ -1,8 +1,5 @@
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 import type { UnsavedCard } from "metabase-types/api";
