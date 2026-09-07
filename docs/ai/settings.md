@@ -27,8 +27,8 @@ _Admin > AI_
 
 You pick which AI providers Metabase can use:
 
-- If you're **self-hosting Metabase** and want to use Metabot, you'll need to [bring your own AI API key](#bring-your-own-api-key).
-- On **Metabase Cloud**, you can [bring your own AI API key](#bring-your-own-api-key), [use the Metabase AI service](#metabase-ai-service), or both.
+- If you're **self-hosting Metabase** and want to use Metabot, you'll need to [bring your own AI provider](#bring-your-own-ai-provider).
+- On **Metabase Cloud**, you can [bring your own AI provider](#bring-your-own-ai-provider), [use the Metabase AI service](#metabase-ai-service), or both.
 
 The providers you set up in AI settings power Metabase's built-in AI functionality, not the MCP server. With the MCP server, [your client provides the AI](mcp.md#with-the-mcp-server-your-client-provides-the-ai).
 
@@ -49,16 +49,16 @@ To use the Metabase AI service for Metabot:
 
 To remove the service: click the **...** next to **Metabase AI service** in the provider list, then click **Remove**.
 
-### Bring your own API key
+### Bring your own AI provider
 
-You can bring your own credentials for any [supported AI provider](./providers.md).
+You can bring your own credentials for any [supported AI provider](./providers.md). Most take an API key, but not all: Amazon Bedrock takes an AWS access key pair, and Google Gemini Enterprise a service account key file or an OAuth token.
 
-To connect a provider with your own API key:
+To connect a provider with your own credentials:
 
 1. Go to **Admin > AI**.
 2. Click **Add a provider**.
 3. Pick your provider.
-4. Enter your **API key**. The **Where do I find this?** link opens your provider's key management page in a new tab.
+4. Fill in its credentials. The **Where do I find this?** links open the provider's key management pages in a new tab.
 5. Click **Connect**.
 
 If you've already copied a key, one neat thing: just paste the key anywhere on the provider grid, and Metabase selects the matching provider and fills in the key for you. Check to make sure the provider matches.
@@ -233,7 +233,7 @@ If you're using the Metabase AI service, you can see how many Metabot requests p
 
 If you aren't logged into the [Metabase Store](../cloud/accounts-and-billing.md), you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
 
-If you're using your own API key, you can track usage and costs through your AI provider's dashboard.
+If you're using your own provider, you can track usage and costs through that provider's dashboard.
 
 On Metabase Pro/Enterprise, you also get access to detailed [AI usage auditing](usage-auditing.md) with detailed breakdown of AI usage by user, tool, feature etc.
 
