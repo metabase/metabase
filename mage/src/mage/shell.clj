@@ -22,12 +22,18 @@
         (.putAll (into {} (map (fn [[k v]] [(name k) (str v)])) env))))
     (.start builder)))
 
-(defn- read-lines [^BufferedReader reader {:keys [quiet?]}]
+(defn- read-lines
+  "Reads `reader` to the end and returns its lines, printing each one unless `quiet?` is true."
+  [^BufferedReader reader {:keys [quiet?]}]
   (loop [lines []]
     (if-let [line (.readLine reader)]
       (do
         (when-not quiet?
-          (println line))
+          ;; `println` writes the text and newline separately, so lock around both writes.
+          ;; The lock is the destination itself, so commands printing to the same place take turns
+          ;; and commands printing elsewhere do not wait on each other.
+          (locking *out*
+            (println line)))
         (recur (conj lines line)))
       lines)))
 
