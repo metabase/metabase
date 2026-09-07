@@ -16,7 +16,7 @@ jest.mock("metabase/viz-core/lib/dynamic-goal-settings", () => ({
   ),
 }));
 
-const getDynamicGoalSettingKeysMock: jest.Mock = jest.requireMock(
+const getDynamicGoalSettingKeysMock: jest.Mock<string[]> = jest.requireMock(
   "metabase/viz-core/lib/dynamic-goal-settings",
 ).getDynamicGoalSettingKeys;
 
