@@ -9,6 +9,7 @@ import {
 import { resolveGoalSettingsForStaticViz } from "./dynamic-goals";
 
 jest.mock("metabase/viz-core/lib/dynamic-goal-settings", () => ({
+  ...jest.requireActual("metabase/viz-core/lib/dynamic-goal-settings"),
   getDynamicGoalSettingKeys: jest.fn(
     jest.requireActual("metabase/viz-core/lib/dynamic-goal-settings")
       .getDynamicGoalSettingKeys,
