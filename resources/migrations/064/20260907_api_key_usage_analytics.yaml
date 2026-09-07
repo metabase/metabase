@@ -1,0 +1,162 @@
+## API Key usage analytics storage layer.
+##
+## Two pieces:
+##   - api_key.last_used_at — cheap liveness for "is this key still in use?", updated in place.
+##   - api_key_usage_log    — one row per API-key-authenticated request, modeled on
+##                            agent_api_call_log / mcp_tool_call_log.
+##
+## The log row carries the resolved user and tenant so the view needs no join back to api_key,
+## which lets rows outlive a deleted key. `route_template` is the reconstructed Compojure route
+## (e.g. /api/card/:id), never the raw URI or query string — those carry entity ids and filter
+## values. Route reconstruction is EMB-2150; row insertion and PII gating are later tickets.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/064_update_migrations.yaml
+
+  - changeSet:
+      id: v64.2026-09-07T00:00:00
+      author: sfragnaud
+      comment: Add api_key.last_used_at
+      changes:
+        - addColumn:
+            tableName: api_key
+            columns:
+              - column:
+                  name: last_used_at
+                  type: ${timestamp_type}
+                  remarks: When this API key was last used to authenticate a request; NULL until first use. Updated in place (throttled), not per request.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-09-07T00:00:01
+      author: sfragnaud
+      comment: Create api_key_usage_log table
+      changes:
+        - createTable:
+            tableName: api_key_usage_log
+            remarks: One row per API-key-authenticated request; user/tenant denormalized on so the view needs no api_key join (modeled on agent_api_call_log)
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  remarks: Autoincrement primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: api_key_id
+                  type: int
+                  remarks: The API key that authenticated the request. Deliberately not a foreign key so deleting a key does not cascade away its usage history.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: Metabase user resolved from the API key at request time; NULL when the key has no user. Not a foreign key, for the same reason as api_key_id. Non-PII.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: tenant_id
+                  type: int
+                  remarks: Snapshot of the resolved user's tenant at request time; NULL for non-tenant users. Non-PII.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: route_template
+                  type: varchar(255)
+                  remarks: Reconstructed route template of the request, e.g. /api/card/:id. Never the raw URI or query string. Non-PII.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: http_method
+                  type: varchar(10)
+                  remarks: HTTP method of the request, e.g. GET or POST. Non-PII.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: int
+                  remarks: HTTP status code of the response. Non-PII.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: duration_ms
+                  type: int
+                  remarks: Wall-clock duration of the request in milliseconds
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the request was made
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ip_address
+                  type: varchar(45)
+                  remarks: Client IP captured at request time, PII (gated by analytics-pii-retention-enabled).
+                  constraints:
+                    nullable: true
+              - column:
+                  name: user_agent
+                  type: varchar(512)
+                  remarks: Raw User-Agent header captured at request time, PII (gated by analytics-pii-retention-enabled).
+                  constraints:
+                    nullable: true
+              - column:
+                  name: client_name
+                  type: varchar(255)
+                  remarks: Caller classified from the raw User-Agent (metabase-cli, curl, postman, python-requests, r, node, or other). Non-PII, always recorded — distinct from the raw, PII-gated user_agent column.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: embedding_client
+                  type: varchar(255)
+                  remarks: Raw X-Metabase-Client header value, when present. Non-PII, same status as view_log/query_execution.embedding_client. Supplementary to client_name (the primary classification axis) — almost never set on API-key traffic, since the SDK/embed.js clients that send it authenticate via JWT/SSO, not API keys.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropTable:
+            tableName: api_key_usage_log
+
+  - changeSet:
+      id: v64.2026-09-07T00:00:02
+      author: sfragnaud
+      comment: Index on api_key_usage_log.api_key_id
+      changes:
+        - createIndex:
+            indexName: idx_api_key_usage_log_api_key_id
+            tableName: api_key_usage_log
+            columns:
+              - column:
+                  name: api_key_id
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v64.2026-09-07T00:00:03
+      author: sfragnaud
+      comment: Index on api_key_usage_log.user_id
+      changes:
+        - createIndex:
+            indexName: idx_api_key_usage_log_user_id
+            tableName: api_key_usage_log
+            columns:
+              - column:
+                  name: user_id
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v64.2026-09-07T00:00:04
+      author: sfragnaud
+      comment: Index on api_key_usage_log.created_at
+      changes:
+        - createIndex:
+            indexName: idx_api_key_usage_log_created_at
+            tableName: api_key_usage_log
+            columns:
+              - column:
+                  name: created_at
+      rollback: # dropped with table
