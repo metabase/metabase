@@ -28,6 +28,7 @@ module.exports = {
     "^Components/Navigation/NavLink Overview",
     "^Components/Data display/KeyboardShortcut Overview",
     "^Components/Table",
+    "^Components/Inputs/PasswordInput Overview",
     "^App/Palette",
     "^viz/GridMapPdfExport",
     "ParameterValueWidget",
