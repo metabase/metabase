@@ -1,10 +1,9 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import type { CSSProperties } from "react";
 
-import { Link } from "metabase/common/components/Link";
 import type { BoxProps } from "metabase/ui";
 import { Box, Icon } from "metabase/ui";
-import { alpha } from "metabase/ui/colors";
 
 export const UndoList = styled.ul`
   position: fixed;
@@ -16,9 +15,11 @@ export const UndoList = styled.ul`
   align-items: flex-start;
 `;
 
-export const CardContent = styled.div`
+export const CardContent = styled.div<{
+  alignItems?: CSSProperties["alignItems"];
+}>`
   display: flex;
-  align-items: flex-start;
+  align-items: ${({ alignItems = "flex-start" }) => alignItems};
   justify-content: space-between;
 `;
 
@@ -40,23 +41,6 @@ export const CardIcon = styled(Icon)`
   top: 1px;
   margin-right: var(--mantine-spacing-sm);
   flex-shrink: 0;
-`;
-
-export const DefaultText = styled.span`
-  font-weight: 700;
-`;
-
-export const UndoButton = styled(Link)`
-  font-weight: bold;
-  background-color: ${() => alpha("background_page-primary", 0.1)};
-  padding: 4px 12px;
-  margin-left: var(--mantine-spacing-sm);
-  border-radius: 8px;
-  white-space: nowrap; /* Prevents button from truncating message */
-
-  :hover {
-    background-color: ${() => alpha("background_page-primary", 0.3)};
-  }
 `;
 
 export const DismissIcon = styled(Icon)<{ color?: string }>`

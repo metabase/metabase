@@ -23,7 +23,7 @@ import {
   performUndo,
   resumeUndo,
 } from "metabase/redux/undo";
-import { Card, Ellipsified, Portal, Progress } from "metabase/ui";
+import { Button, Card, Ellipsified, Portal, Progress } from "metabase/ui";
 import { capitalize, inflect } from "metabase/utils/formatting";
 
 import CS from "./UndoListing.module.css";
@@ -32,9 +32,7 @@ import {
   CardContentSide,
   CardIcon,
   ControlsCardContent,
-  DefaultText,
   DismissIcon,
-  UndoButton,
   UndoList,
 } from "./UndoListing.styled";
 
@@ -42,24 +40,30 @@ const TOAST_TRANSITION_DURATION = 300;
 const MARGIN = 8;
 const TOAST_MESSAGE_MAX_LINES = 4;
 
-function DefaultMessage({
-  undo: { verb = t`modified`, count = 1, subject = t`item` },
-}: {
-  undo: Undo;
-}) {
-  return (
-    <DefaultText>
-      {count > 1
-        ? `${capitalize(verb)} ${count} ${inflect(subject, count)}`
-        : `${capitalize(verb)} ${subject}`}
-    </DefaultText>
-  );
+// The transparent action button's fixed height, padding, and tight line-height
+// offset it (and its sibling controls) from the toast text's vertical rhythm.
+// Counter-shift the whole controls group (pos="relative" + top) up or down based
+// on `contentAlignment` so the controls optically align with the message.
+// Tune these values visually.
+const CONTROLS_VERTICAL_OFFSET: Record<"center" | "flex-start", string> = {
+  center: "2px",
+  "flex-start": "-8px",
+};
+
+function defaultMessage({
+  verb = t`modified`,
+  count = 1,
+  subject = t`item`,
+}: Pick<Undo, "verb" | "count" | "subject">) {
+  return count > 1
+    ? `${capitalize(verb)} ${count} ${inflect(subject, count)}`
+    : `${capitalize(verb)} ${subject}`;
 }
 
 function renderMessage(undo: Undo) {
   const { message } = undo;
   if (!message) {
-    return <DefaultMessage undo={undo || {}} />;
+    return defaultMessage(undo);
   }
   return typeof message === "function" ? message(undo) : message;
 }
@@ -91,6 +95,34 @@ function UndoToast({
 
   const dark = undo.dark ?? true;
   const noBorder = undo.showProgress;
+
+  const contentRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const [contentAlignment, setContentAlignment] = useState<
+    "center" | "flex-start"
+  >("center");
+
+  const hasAction =
+    (undo.actions?.length ?? 0) > 0 || Boolean(undo.extraAction);
+  const controlsVerticalOffset = hasAction
+    ? CONTROLS_VERTICAL_OFFSET[contentAlignment]
+    : undefined;
+
+  /**
+   * When the text is shorter than the content wrapper, center align. This can happen
+   * when there is an undo button rendered (which is taller than a line of text).
+   *
+   * When the text is the same height or taller than the content wrapper, top align so
+   * that the icon/undo/close parts of the UI are all aligned at the top of the toast.
+   */
+  useLayoutEffect(() => {
+    const textHeight = textRef.current?.getBoundingClientRect().height ?? 0;
+    const contentHeight =
+      contentRef.current?.getBoundingClientRect().height ?? 0;
+    if (textHeight > 0 && contentHeight > 0) {
+      setContentAlignment(textHeight < contentHeight ? "center" : "flex-start");
+    }
+  }, [undo]);
 
   return (
     <Card
@@ -133,8 +165,8 @@ function UndoToast({
           }}
         />
       )}
-      <CardContent>
-        <CardContentSide maw="75ch">
+      <CardContent ref={contentRef} alignItems={contentAlignment}>
+        <CardContentSide maw="75ch" ref={textRef}>
           {undo.icon && (
             <CardIcon
               name={undo.icon}
@@ -149,25 +181,31 @@ function UndoToast({
             </Ellipsified>
           )}
         </CardContentSide>
-        <ControlsCardContent>
+        <ControlsCardContent pos="relative" top={controlsVerticalOffset}>
           {undo.actions && undo.actions.length > 0 && (
-            <UndoButton role="button" onClick={onUndo} to="">
+            <Button
+              variant="transparent"
+              color="text-secondary-inverse"
+              size="compact"
+              onClick={onUndo}
+            >
               {undo.actionLabel ?? t`Undo`}
-            </UndoButton>
+            </Button>
           )}
           {undo.extraAction && (
-            <UndoButton
-              role="button"
+            <Button
+              variant="transparent"
+              color="text-secondary-inverse"
+              size="compact"
               onClick={() => {
                 undo.extraAction?.action();
                 if (undo.canDismiss) {
                   onDismiss();
                 }
               }}
-              to=""
             >
               {undo.extraAction.label}
-            </UndoButton>
+            </Button>
           )}
           {undo.canDismiss && (
             <DismissIcon
