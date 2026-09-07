@@ -30,6 +30,24 @@
         same-instant (java.time.OffsetDateTime/parse "2026-01-02T02:00:00+02:00")]
     (is (= 3 (tier {:data_source :metabot, :basis {}, :basis_invalidated_at t1, :invalidated_at same-instant})))))
 
+(deftest selection-counts-already-approved-members-test
+  (let [entities [{:entity_type "table", :entity_local_id 1, :name "Approved"}
+                  {:entity_type "table", :entity_local_id 2, :name "Rewrite requested"}]
+        rows     [{:entity_type "table", :entity_local_id 1, :data_source :human
+                   :ai_context {}, :basis {}, :generated_at t1}
+                  {:entity_type "table", :entity_local_id 2, :data_source :human
+                   :ai_context {}, :basis {}, :generated_at t0, :rewrite_requested_at t1}]
+        selection (mt/with-dynamic-fn-redefs
+                    [spec/member-entities (fn [_] entities)
+                     spec/hydrate (fn [_ xs] xs)
+                     spec/entity-basis (fn [_ entity] (select-keys entity [:name]))
+                     spec/project (fn [_ entity] {:entity-type "table", :name (:name entity)})
+                     spec/basis-diff (fn [_ _] nil)
+                     t2/query (fn [& _] rows)]
+                    (candidates/selection nil))]
+    (is (= 1 (:already-approved selection)))
+    (is (= [2] (mapv (comp :entity_local_id :entity) (:candidates selection))))))
+
 (defn- select-candidates
   ([limit]
    (select-candidates limit 0 (fn [_ entity] {:entity-type "table", :name (:name entity)})))
