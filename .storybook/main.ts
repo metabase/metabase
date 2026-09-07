@@ -11,22 +11,13 @@ const {
   SIDE_EFFECT_FREE_RULE,
 } = require("../frontend/build/shared/rspack/side-effect-free-modules");
 const appConfig = require("../rspack.main.config.js");
-
-const mainAppStories = [
-  "../frontend/**/*.mdx",
-  "../frontend/*/!(embedding-sdk-bundle|embedding-sdk-shared)/**/*.stories.@(ts|tsx)",
-  "../enterprise/frontend/*/!(embedding-sdk-ee|embedding-sdk-package)/**/*.stories.@(ts|tsx)",
-];
-
-// Allow filtering to specific story files via env var (used by stress tests)
-// STORYBOOK_STORIES_FILTER: comma-separated file paths relative to repo root
-// e.g. "frontend/src/.../Button.stories.tsx,frontend/src/.../Alert.stories.tsx"
-const stories = process.env.STORYBOOK_STORIES_FILTER
-  ? process.env.STORYBOOK_STORIES_FILTER.split(",").map((f) => `../${f}`)
-  : mainAppStories;
+const { getStories } = require("./story-files.cjs");
 
 const config: StorybookConfig = {
-  stories,
+  stories: getStories({
+    pathsFile: process.env.STORYBOOK_STORY_PATHS_FILE,
+    filter: process.env.STORYBOOK_STORIES_FILTER,
+  }),
   staticDirs: [
     "../resources/frontend_client",
     "./msw-public",

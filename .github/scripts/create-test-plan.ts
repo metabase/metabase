@@ -6,6 +6,7 @@ import { appendFileSync, existsSync, readFileSync } from "node:fs";
 
 import micromatch from "micromatch";
 
+import { MAIN_APP_STORY_GLOBS } from "../../.storybook/story-files.cjs";
 import { elements, rules } from "../../frontend/lint/module-boundaries.mjs";
 
 import { type FileDependency, parseCruiseModules } from "./affected-modules";
@@ -22,10 +23,6 @@ const UNIT_GLOBS = [
 ];
 
 const STORY_ROOTS = ["frontend", "enterprise/frontend"];
-const STORY_GLOBS = [
-  "frontend/**/*.stories.{js,jsx,ts,tsx}",
-  "enterprise/frontend/**/*.stories.{js,jsx,ts,tsx}",
-];
 
 // `git ls-files -- frontend enterprise/frontend` already prints just over a
 // megabyte of paths, and node's default maxBuffer is exactly 1 MiB: past that
@@ -119,7 +116,7 @@ const testPlan = createTestPlan({
   loadFileDependencies,
   testFilesBySuite: {
     unit: listFiles(UNIT_ROOTS, UNIT_GLOBS),
-    loki: listFiles(STORY_ROOTS, STORY_GLOBS),
+    loki: listFiles(STORY_ROOTS, MAIN_APP_STORY_GLOBS),
     e2e: listSpecFiles(),
   },
   e2eSpecFiles: readE2eSpecFiles(),

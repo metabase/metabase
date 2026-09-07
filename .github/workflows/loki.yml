@@ -1,29 +1,19 @@
 name: Loki Visual Regression Testing
 
 on:
-  pull_request:
+  workflow_call:
+    inputs:
+      skip:
+        type: boolean
+        default: false
+      story-files:
+        description: "JSON array of story files to run, '' to run the full suite."
+        type: string
+        default: ""
 
 jobs:
-  files-changed:
-    name: Check which files changed
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 3
-    outputs:
-      frontend_ci: ${{ steps.changes.outputs.frontend_ci }}
-      frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
-      frontend_loki_ci: ${{ steps.changes.outputs.frontend_loki_ci }}
-    steps:
-      - uses: actions/checkout@v6
-      - name: Test which files changed
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: changes
-        with:
-          token: ${{ github.token }}
-          filters: .github/file-paths.yaml
-
   visual-test:
-    needs: files-changed
-    if: needs.files-changed.outputs.frontend_ci == 'true' || needs.files-changed.outputs.frontend_sources == 'true' || needs.files-changed.outputs.frontend_loki_ci == 'true'
+    if: ${{ !inputs.skip && inputs.story-files != '[]' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     services:
       docker:
@@ -50,8 +40,18 @@ jobs:
       - name: Compile CLJS
         run: NODE_ENV=development bun run build-pure:cljs
 
+      - name: Build Storybook
+        env:
+          STORYBOOK_STORY_PATHS_FILE: ${{ inputs.story-files && 'loki-story-files.json' || '' }}
+        run: |
+          cat > loki-story-files.json <<'EOF'
+          ${{ inputs.story-files }}
+          EOF
+          bun run build-storybook
+
       - name: Run Loki Visual Tests
-        run: bun run test-visual:loki:ci
+        # All selected stories can have parameters.loki.skip set.
+        run: bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer ${{ inputs.story-files && '--passWithNoStories' || '' }}
 
       - name: Generate Visual Report on Failure
         if: failure()
