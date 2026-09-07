@@ -8,7 +8,7 @@ import {
 import { getDynamicGoalSettingKeys } from "./dynamic-goal-displays";
 import type { GoalCard } from "./dynamic-goals";
 import {
-  getGoalValuesFromVizSettings,
+  getGoalValues,
   getReferencedEntities,
   getUnansweredGoalEntities,
   getUnansweredGoalEntitiesForValues,
@@ -840,7 +840,7 @@ describe("isGraphGoalReference", () => {
   });
 });
 
-describe("getGoalValuesFromVizSettings", () => {
+describe("getGoalValues", () => {
   const settings: VisualizationSettings = {
     "graph.goal_value": 7,
     "progress.goal": { type: "card", id: 1, column: "sum" },
@@ -853,22 +853,16 @@ describe("getGoalValuesFromVizSettings", () => {
 
   it("reads single-value settings, skipping absent ones", () => {
     expect(
-      getGoalValuesFromVizSettings(settings, [
-        "graph.goal_value",
-        "progress.goal",
-      ]),
+      getGoalValues(settings, ["graph.goal_value", "progress.goal"]),
     ).toEqual([7, { type: "card", id: 1, column: "sum" }]);
-    expect(
-      getGoalValuesFromVizSettings({}, ["graph.goal_value", "progress.goal"]),
-    ).toEqual([]);
+    expect(getGoalValues({}, ["graph.goal_value", "progress.goal"])).toEqual(
+      [],
+    );
   });
 
   it("reads the non-empty bounds of segment settings", () => {
     expect(
-      getGoalValuesFromVizSettings(settings, [
-        "gauge.segments",
-        "scalar.segments",
-      ]),
+      getGoalValues(settings, ["gauge.segments", "scalar.segments"]),
     ).toEqual([0, { type: "measure", id: 2, column: "avg" }, 50, 10]);
   });
 
@@ -880,7 +874,7 @@ describe("getGoalValuesFromVizSettings", () => {
     } as unknown as VisualizationSettings;
 
     expect(
-      getGoalValuesFromVizSettings(malformed, [
+      getGoalValues(malformed, [
         "graph.goal_value",
         "progress.goal",
         "scalar.segments",

@@ -235,7 +235,7 @@ export function getGoalSegmentBounds(segments: unknown): (GoalValue | null)[] {
   ]);
 }
 
-export function getGoalValuesFromVizSettings(
+export function getGoalValues(
   settings: VisualizationSettings,
   keys: GoalSettingKey[],
 ): GoalValue[] {
@@ -335,7 +335,7 @@ export type GoalCard = Pick<Card, "display" | "visualization_settings">;
 export function getGoalForeignColumnRefs(
   card: GoalCard,
 ): GoalForeignColumnRef[] {
-  return getGoalValuesFromVizSettings(
+  return getGoalValues(
     card.visualization_settings,
     getDynamicGoalSettingKeys(card.display),
   ).filter(isGoalForeignColumnRef);
