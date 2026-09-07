@@ -264,7 +264,11 @@ function createDashboard({
       [CATEGORY_DROPDOWN_FILTER.id]: [createProductsCategoryField()],
       [DATE_FILTER_ID]: [createProductsCreatedAtField()],
       [UNIT_OF_TIME_FILTER_ID]: [createProductsCreatedAtField()],
-      [NUMBER_FILTER_ID]: [createProductsRatingField()],
+      // the story types a value into this filter, so its field must not offer
+      // a list to pick from
+      [NUMBER_FILTER_ID]: [
+        createProductsRatingField({ has_field_values: "none" }),
+      ],
     },
     dashcards: [
       createMockDashboardCard({

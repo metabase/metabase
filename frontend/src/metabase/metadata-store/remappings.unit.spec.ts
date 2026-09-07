@@ -1,8 +1,8 @@
 import fetchMock from "fetch-mock";
 
 import { getMainStore } from "__support__/entities-store";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { ParameterField } from "metabase-lib/v1/parameters/types";
 import { createMockField, createMockParameter } from "metabase-types/api/mocks";
 import {

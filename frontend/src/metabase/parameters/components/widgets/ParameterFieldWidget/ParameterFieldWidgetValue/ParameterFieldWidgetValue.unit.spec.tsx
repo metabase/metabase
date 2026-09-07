@@ -1,6 +1,6 @@
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { render, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { createMockField } from "metabase-types/api/mocks";
 import { ORDERS, createSampleDatabase } from "metabase-types/api/mocks/presets";
 
