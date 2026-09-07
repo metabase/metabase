@@ -2,7 +2,6 @@
 // Shares the existing policy; see OXLINT.md for supported features and tests.
 import path from "node:path";
 import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 
 import micromatch from "micromatch";
@@ -11,10 +10,7 @@ import { elements, enforcedRules } from "./module-boundaries.mjs";
 
 const require = createRequire(import.meta.url);
 const resolveImport = require("eslint-module-utils/resolve").default;
-const rootPath = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../..",
-);
+const rootPath = path.resolve(import.meta.dirname, "../..");
 const defaultMessage = "${file.type} cannot import from ${dependency.type}";
 const ignorePatterns = ["**/e2e/**", "test/**"];
 

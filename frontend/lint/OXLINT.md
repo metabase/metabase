@@ -99,7 +99,7 @@ runs with unresolved diagnostics or different effective rule coverage.
 
 | Candidate | Runs | Mean | Files | Findings |
 | --- | --- | --- | --- | --- |
-| Base, without the six performance patches | 17.830 / 18.898 s | 18.364 s | 11,978 | 0 |
+| Base, without the six performance patches | 17.702 / 18.085 s | 17.894 s | 11,978 | 0 |
 
 The stacked PR records its corresponding patched measurements.
 
