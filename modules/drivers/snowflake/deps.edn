@@ -25,7 +25,7 @@
   org.bouncycastle/bcprov-jdk18on   {:mvn/version "1.85.2"}
   ;; pinned: snowflake-jdbc-thin 4.1.0 pulls jackson-core 2.18.4.1 which has resource exhaustion vulns
   ;; and jackson-databind 2.18.4 which has a deserialization vuln
-  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.5"}
+  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.22.2"}
   com.fasterxml.jackson.core/jackson-databind {:mvn/version "2.21.5"}
   ;; pinned: azure-core 1.57.0 (transitive via snowflake-jdbc-thin) pulls reactor-core 3.7.11
   io.projectreactor/reactor-core          {:mvn/version "3.8.7"}
