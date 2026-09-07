@@ -201,6 +201,7 @@ export function createMockMetabotConversationDetail(
     user_id: 1,
     forked_from_conversation_id: null,
     state: {},
+    saved_entities: [],
     messages: [],
     ...opts,
   };

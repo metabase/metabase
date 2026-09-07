@@ -48,10 +48,11 @@
   `:size_y` grid position. A tile with a `:card-id` places that existing saved
   question as-is; otherwise its `:name`, legacy `:dataset_query` and `:display`
   keyword become a new dashboard question, stamped with the conversation + chart
-  origin when `conversation-id` and `:chart-id` are known. Checks query/card and
+  origin when `conversation-id` and `:chart-id` are known; the dashboard itself is
+  stamped with `conversation-id` + `generated-id` (the id `create_dashboard` gave it). Checks query/card and
   collection permissions first, publishes the create events after the transaction
   commits, and returns `{:dashboard :cards}` (the newly created cards only)."
-  [{:keys [name description collection-id tiles conversation-id]}]
+  [{:keys [name description collection-id tiles conversation-id generated-id]}]
   (run! check-tile-permissions! tiles)
   (api/create-check :model/Dashboard {:collection_id collection-id})
   (let [[dash cards] (t2/with-transaction [_conn]
@@ -62,6 +63,8 @@
                                            :parameters    []
                                            :creator_id    api/*current-user-id*
                                            :collection_id collection-id}))]
+                         (when (and conversation-id generated-id)
+                           (metabot.db/link-dashboard-to-conversation! (:id dash) conversation-id generated-id))
                          [dash (vec (keep #(place-tile! (:id dash) conversation-id %) tiles))]))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
     (doseq [card cards]

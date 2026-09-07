@@ -661,7 +661,21 @@
             (is (= [{:row 0 :col 0 :size_x 12 :size_y 6} {:row 0 :col 12 :size_x 12 :size_y 6}]
                    (map #(t2/select-one [:model/DashboardCard :row :col :size_x :size_y]
                                         :dashboard_id (:id created) :card_id (:id %))
-                        cards))))))))
+                        cards)))
+            (testing "the dashboard records its origin and the conversation detail lists it as saved"
+              (is (= {:metabot_conversation_id convo-id :metabot_dashboard_id "d-1"}
+                     (t2/select-one [:model/Dashboard :metabot_conversation_id :metabot_dashboard_id]
+                                    :id (:id created))))
+              (is (some #{{:dashboard_id (:id created) :chart_id "d-1"}}
+                        (:saved_entities
+                         (mt/user-http-request :crowberto :get 200
+                                               (str "metabot/conversations/" convo-id))))))
+            (testing "archived dashboards drop out of saved_entities"
+              (t2/update! :model/Dashboard (:id created) {:archived true})
+              (is (not-any? :dashboard_id
+                            (:saved_entities
+                             (mt/user-http-request :crowberto :get 200
+                                                   (str "metabot/conversations/" convo-id)))))))))))
   (testing "a non-participant cannot save a dashboard into the conversation"
     (let [user-id (mt/user->id :crowberto)]
       (mt/with-model-cleanup [:model/Dashboard]

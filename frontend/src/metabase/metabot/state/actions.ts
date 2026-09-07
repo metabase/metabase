@@ -923,6 +923,7 @@ export const fetchConversationSnapshot = createAsyncThunk(
         contextWindowTokens: detail.context_window_tokens,
         messages: detail.messages,
         state: detail.state,
+        savedEntities: detail.saved_entities,
         activeToolCalls: [],
       }),
     );
@@ -982,6 +983,7 @@ export const forkConversation = createAsyncThunk(
         contextWindowTokens: conversation.context_window_tokens,
         messages: conversation.messages,
         state: conversation.state,
+        savedEntities: conversation.saved_entities,
         activeToolCalls: [],
       }),
     );

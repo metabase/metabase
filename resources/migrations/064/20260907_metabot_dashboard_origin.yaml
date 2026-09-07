@@ -1,0 +1,70 @@
+## Metabot origin columns for saved dashboards: which conversation a dashboard was
+## saved from and which generated dashboard it materializes, so a reloaded
+## conversation can mark its inline dashboard as saved. Mirrors the report_card
+## columns; the conversation FK is SET NULL on delete so trimming conversations
+## never deletes or blocks the dashboards saved from them.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v64.2026-09-07T00:00:00
+      author: undrfined
+      comment: Add metabot_conversation_id column to report_dashboard
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: metabot_conversation_id
+                  type: varchar(36)
+                  remarks: The Metabot conversation this dashboard was saved from; NULL when not AI-generated or after the conversation is trimmed
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: report_dashboard
+            columnName: metabot_conversation_id
+
+  - changeSet:
+      id: v64.2026-09-07T00:00:01
+      author: undrfined
+      comment: Add metabot_dashboard_id column to report_dashboard
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: metabot_dashboard_id
+                  type: varchar(36)
+                  remarks: The generated dashboard id within the Metabot conversation this dashboard was saved from; used to match it back to its inline card
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: report_dashboard
+            columnName: metabot_dashboard_id
+
+  - changeSet:
+      id: v64.2026-09-07T00:00:02
+      author: undrfined
+      comment: Add index for report_dashboard.metabot_conversation_id
+      changes:
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_metabot_conversation_id
+            columns:
+              - column:
+                  name: metabot_conversation_id
+
+  - changeSet:
+      id: v64.2026-09-07T00:00:03
+      author: undrfined
+      comment: Add foreign key on report_dashboard(metabot_conversation_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboard
+            baseColumnNames: metabot_conversation_id
+            referencedTableName: metabot_conversation
+            referencedColumnNames: id
+            constraintName: fk_report_dashboard_metabot_conversation_id
+            onDelete: SET NULL
