@@ -39,7 +39,10 @@
                     (let [p (promise)]
                       (index/data-app {} #(deliver p %) #(deliver p %))
                       @p))]
-        (mt/with-premium-features #{:data-apps-preview}
-          (is (= "DATA-APP" (:body (serve))) "with the feature, serves the data-app shell"))
+        ;; `enable-data-apps?` also requires the EE code to be present (`config/ee-available?`), so the
+        ;; served path exists only on EE; on OSS the entrypoint always falls through.
+        (mt/when-ee-evailable
+         (mt/with-premium-features #{:data-apps-preview}
+           (is (= "DATA-APP" (:body (serve))) "with the feature, serves the data-app shell")))
         (mt/with-premium-features #{}
           (is (nil? (serve)) "without the feature, responds nil so routing falls through"))))))
