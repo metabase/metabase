@@ -63,6 +63,7 @@ export const MetabotConversationPage = () => {
           contextWindowTokens: conversation.context_window_tokens,
           messages: conversation.messages,
           state: conversation.state,
+          savedEntities: conversation.saved_entities,
           activeToolCalls: [],
         }),
       );

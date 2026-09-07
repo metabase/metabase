@@ -311,6 +311,10 @@
         (let [memory  (doto (dashboard-memory) (swap! assoc :conversation-id convo-id))
               result  (save-dashboard! memory {:target_type "collection" :collection_id (:id coll)})
               dash-id (get-in result [:structured-output :dashboard-id])]
+          (testing "the dashboard records which conversation + generated dashboard it was saved from"
+            (is (= {:metabot_conversation_id convo-id :metabot_dashboard_id "d-1"}
+                   (t2/select-one [:model/Dashboard :metabot_conversation_id :metabot_dashboard_id]
+                                  :id dash-id))))
           (testing "chart-backed tiles record their conversation + chart origin; query tiles do not"
             (is (= [{:name "Venues by price" :metabot_conversation_id convo-id :metabot_chart_id "c-1"}
                     {:name "All venues" :metabot_conversation_id nil :metabot_chart_id nil}]

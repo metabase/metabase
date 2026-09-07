@@ -778,4 +778,23 @@ describe("metabot reducer", () => {
       expect(getConvo(store)?.messages).toEqual([]);
     });
   });
+
+  describe("setConversationSnapshot saved entities", () => {
+    it("marks charts and dashboards saved from the conversation detail", () => {
+      const state = metabotReducer(
+        getMetabotInitialState(),
+        metabotActions.setConversationSnapshot({
+          conversationId: "convo-1",
+          messages: [],
+          savedEntities: [
+            { chart_id: "chart-1", card_id: 99 },
+            { chart_id: "dash-1", dashboard_id: 7 },
+            { chart_id: null, card_id: 100 },
+          ],
+        }),
+      );
+
+      expect(state.savedEntityIds).toEqual({ "chart-1": 99, "dash-1": 7 });
+    });
+  });
 });

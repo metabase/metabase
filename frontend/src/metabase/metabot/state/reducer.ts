@@ -17,6 +17,7 @@ import type {
   SuggestedTransform,
 } from "metabase-types/api";
 
+import type { SavedEntity } from "../api";
 import type { MetabotProfileId } from "../constants";
 import { isContextWindowFull } from "../utils/context-usage";
 
@@ -441,6 +442,7 @@ export const metabot = createSlice({
         conversationId: string;
         title?: string;
         forkedFromConversationId?: string;
+        savedEntities?: SavedEntity[];
         contextWindowTokens?: number;
       }>,
     ) => {
@@ -451,8 +453,16 @@ export const metabot = createSlice({
         conversationId,
         title,
         forkedFromConversationId,
+        savedEntities = [],
         contextWindowTokens,
       } = action.payload;
+
+      savedEntities.forEach(({ chart_id, card_id, dashboard_id }) => {
+        const savedId = card_id ?? dashboard_id;
+        if (chart_id != null && savedId != null) {
+          state.savedEntityIds[chart_id] = savedId;
+        }
+      });
 
       const convo =
         state.conversations[conversationId] ??
