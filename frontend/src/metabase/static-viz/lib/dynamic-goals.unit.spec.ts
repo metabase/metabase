@@ -69,6 +69,14 @@ describe("resolveGoalSettingsForStaticViz", () => {
     beforeEach(resolveGraphGoals);
     afterEach(restoreDynamicGoalDisplays);
 
+    it("passes a hidden goal line through", () => {
+      const settings = { ...REFERENCED_SETTINGS, "graph.show_goal": false };
+
+      expect(resolveGoalSettingsForStaticViz(series(data({})), settings)).toBe(
+        settings,
+      );
+    });
+
     it("substitutes the referenced value", () => {
       const answered = data({
         card: {

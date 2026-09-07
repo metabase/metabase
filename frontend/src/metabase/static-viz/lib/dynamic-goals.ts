@@ -12,11 +12,11 @@ export function resolveGoalSettingsForStaticViz(
   { card, data }: SingleSeries,
   settings: ComputedVisualizationSettings,
 ): ComputedVisualizationSettings {
-  const goal = settings["graph.goal_value"];
-
-  if (!isGraphGoalReference(card.display, goal)) {
+  if (!isGraphGoalReference(card.display, settings)) {
     return settings;
   }
+
+  const goal = settings["graph.goal_value"];
 
   if (hasUnresolvedGoalValues(data, [goal])) {
     throw new Error(getUnresolvedGoalMessage());

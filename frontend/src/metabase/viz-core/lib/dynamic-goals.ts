@@ -10,7 +10,6 @@ import type {
   GoalForeignColumnRef,
   GoalForeignEntityRef,
   GoalSegment,
-  GoalStaticValue,
   GoalValue,
   MeasureId,
   ReferencedEntity,
@@ -201,17 +200,26 @@ export function isDynamicGoalSetting(
   return getDynamicGoalSettingKeys(display).includes(key);
 }
 
-export type GoalReference = Exclude<GoalValue, GoalStaticValue>;
-
 export const getUnresolvedGoalMessage = () =>
   t`Couldn't load the value this chart's goal line depends on.`;
+
+// A goal line that is switched off has nothing to resolve.
+function isGoalSettingActive(
+  settings: VisualizationSettings,
+  key: GoalSettingKey,
+): boolean {
+  return key !== "graph.goal_value" || settings["graph.show_goal"] === true;
+}
 
 // A `graph.goal_value` the chart has to resolve before rendering.
 export function isGraphGoalReference(
   display: VisualizationDisplay | undefined,
-  goal: GoalValue | null | undefined,
-): goal is GoalReference {
+  settings: VisualizationSettings,
+): boolean {
+  const goal = settings["graph.goal_value"];
+
   return (
+    isGoalSettingActive(settings, "graph.goal_value") &&
     goal != null &&
     !isGoalStaticValue(goal) &&
     isDynamicGoalSetting(display, "graph.goal_value")
@@ -234,6 +242,10 @@ export function getGoalValues(
   keys: GoalSettingKey[],
 ): GoalValue[] {
   return keys.flatMap((key) => {
+    if (!isGoalSettingActive(settings, key)) {
+      return [];
+    }
+
     const setting: unknown = settings[key];
 
     return match(GOAL_SETTINGS[key])

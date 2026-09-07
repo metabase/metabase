@@ -87,6 +87,15 @@ describe("useResolvedGoalSettings", () => {
     beforeEach(resolveGraphGoals);
     afterEach(restoreDynamicGoalDisplays);
 
+    it("leaves a hidden goal line alone", () => {
+      const settings = { ...REFERENCED_SETTINGS, "graph.show_goal": false };
+      const { result } = setup(card, settings);
+
+      expect(result.current).toEqual({ status: "resolved", settings });
+      expect(result.current.settings).toBe(settings);
+      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    });
+
     it("substitutes an answer the dataset already has", () => {
       const data = createMockDatasetData({
         ...DATA,

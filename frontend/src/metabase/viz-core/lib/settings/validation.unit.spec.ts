@@ -63,6 +63,15 @@ describe("validateGoalReferences", () => {
     beforeEach(resolveGraphGoals);
     afterEach(restoreDynamicGoalDisplays);
 
+    it("ignores a failed reference when the goal line is hidden", () => {
+      expect(() =>
+        validateGoalReferences(series(), {
+          ...REFERENCED_SETTINGS,
+          "graph.show_goal": false,
+        }),
+      ).not.toThrow();
+    });
+
     it("accepts a reference the data has not answered yet", () => {
       const data = createMockDatasetData({
         ...FAILED_DATA,

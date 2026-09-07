@@ -22,13 +22,12 @@ export function useResolvedGoalSettings(
   data: DatasetData,
   settings: ComputedVisualizationSettings,
 ): GoalSettingsResolution {
-  const storedGoal = settings["graph.goal_value"];
-  const needsResolving = isGraphGoalReference(card.display, storedGoal);
+  const needsResolving = isGraphGoalReference(card.display, settings);
 
   const goal = useResolvedGoal(
     card.dataset_query,
     data,
-    needsResolving ? storedGoal : null,
+    needsResolving ? settings["graph.goal_value"] : null,
   );
   const goalValue = goal.status === "resolved" ? goal.value : null;
 

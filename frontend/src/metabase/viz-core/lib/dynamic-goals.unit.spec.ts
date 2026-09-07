@@ -1,5 +1,9 @@
 import { color } from "metabase/ui/colors";
-import type { GoalSegment, VisualizationSettings } from "metabase-types/api";
+import type {
+  GoalSegment,
+  GoalValue,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -827,22 +831,41 @@ describe("dynamic goal settings per display", () => {
 describe("isGraphGoalReference", () => {
   const ref = { type: "card" as const, id: 1, column: "sum" };
 
+  function shownGoal(
+    goal: GoalValue | null | undefined,
+  ): VisualizationSettings {
+    return { "graph.show_goal": true, "graph.goal_value": goal };
+  }
+
   it("is false for unset and static goals", () => {
-    expect(isGraphGoalReference("gauge", null)).toBe(false);
-    expect(isGraphGoalReference("gauge", undefined)).toBe(false);
-    expect(isGraphGoalReference("gauge", 10)).toBe(false);
+    expect(isGraphGoalReference("gauge", shownGoal(null))).toBe(false);
+    expect(isGraphGoalReference("gauge", shownGoal(undefined))).toBe(false);
+    expect(isGraphGoalReference("gauge", shownGoal(10))).toBe(false);
   });
 
   it("is false for a reference on a display that does not resolve graph goals", () => {
-    expect(isGraphGoalReference("line", ref)).toBe(false);
-    expect(isGraphGoalReference("line", "count")).toBe(false);
-    expect(isGraphGoalReference("gauge", ref)).toBe(false);
-    expect(isGraphGoalReference(undefined, ref)).toBe(false);
+    expect(isGraphGoalReference("line", shownGoal(ref))).toBe(false);
+    expect(isGraphGoalReference("line", shownGoal("count"))).toBe(false);
+    expect(isGraphGoalReference("gauge", shownGoal(ref))).toBe(false);
+    expect(isGraphGoalReference(undefined, shownGoal(ref))).toBe(false);
+  });
+
+  it("is false when the goal line is hidden", () => {
+    expect(isGraphGoalReference("gauge", { "graph.goal_value": ref })).toBe(
+      false,
+    );
+    expect(
+      isGraphGoalReference("gauge", {
+        "graph.show_goal": false,
+        "graph.goal_value": ref,
+      }),
+    ).toBe(false);
   });
 });
 
 describe("getGoalValues", () => {
   const settings: VisualizationSettings = {
+    "graph.show_goal": true,
     "graph.goal_value": 7,
     "progress.goal": { type: "card", id: 1, column: "sum" },
     "gauge.segments": [
@@ -859,6 +882,15 @@ describe("getGoalValues", () => {
     expect(getGoalValues({}, ["graph.goal_value", "progress.goal"])).toEqual(
       [],
     );
+  });
+
+  it("skips the goal line value when the goal line is hidden", () => {
+    const hidden = { ...settings, "graph.show_goal": false };
+
+    expect(getGoalValues(hidden, ["graph.goal_value"])).toEqual([]);
+    expect(getGoalValues(hidden, ["progress.goal"])).toEqual([
+      { type: "card", id: 1, column: "sum" },
+    ]);
   });
 
   it("reads the non-empty bounds of segment settings", () => {

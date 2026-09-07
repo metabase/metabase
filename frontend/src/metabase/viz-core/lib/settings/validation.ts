@@ -109,11 +109,10 @@ export const validateGoalReferences = (
 ) => {
   // the transformed series drop `data.referenced_entities`
   const [{ card, data }] = getRawSeries(series);
-  const goal = settings["graph.goal_value"];
 
   if (
-    isGraphGoalReference(card.display, goal) &&
-    hasFailedGoalReferencesForValues(data, [goal])
+    isGraphGoalReference(card.display, settings) &&
+    hasFailedGoalReferencesForValues(data, [settings["graph.goal_value"]])
   ) {
     throw new Error(getUnresolvedGoalMessage());
   }
