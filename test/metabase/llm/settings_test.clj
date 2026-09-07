@@ -253,8 +253,8 @@
                     "or allow-all for one on this machine.")
                (llm.settings/llm-url-problem "http://10.0.0.1/v1"))))
       (mt/with-premium-features #{:hosting}
-        (is (= (str "The base URL host 10.0.0.1 is on a private network. "
-                    "Metabase Cloud can only connect to LLM providers on the public internet.")
+        (is (= (str "The base URL host 10.0.0.1 is not permitted by Metabase Cloud's LLM network policy. "
+                    "Use an LLM provider on the public internet.")
                (llm.settings/llm-url-problem "http://10.0.0.1/v1"))))))
   (testing "under :allow-private, private networks pass but loopback and link-local still do not"
     (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-private"]
@@ -337,6 +337,15 @@
           (is (=? {:status-code 400 :error-code :llm-host-not-allowed :llm-host "10.0.0.1"}
                   (try (llm.settings/llm-request-opts "http://10.0.0.1/v1")
                        (catch clojure.lang.ExceptionInfo e (ex-data e))))))
+        (testing "proxy-only DNS remains supported without following redirects"
+          (let [looked-up (atom [])]
+            (mt/with-dynamic-fn-redefs [u.http/host->inet-addresses
+                                        (fn [host]
+                                          (swap! looked-up conj host)
+                                          nil)]
+              (is (= {:redirect-strategy :none}
+                     (llm.settings/llm-request-opts "https://proxy-only.example/v1")))
+              (is (= ["proxy-only.example"] @looked-up)))))
         (testing "a floor loosens the target check for a deployment-controlled endpoint"
           (is (= {:redirect-strategy :none}
                  (llm.settings/llm-request-opts :allow-private "http://10.0.0.1/v1")))))

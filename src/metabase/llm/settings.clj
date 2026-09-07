@@ -72,7 +72,10 @@
   :export?    false
   :doc        (str "Set this when a self-hosted vLLM server is on your private network (allow-private) or on this "
                    "machine (allow-all). There is no admin UI for it, and a value stored in the application "
-                   "database is ignored.")
+                   "database is ignored. With a JVM-wide HTTP(S) proxy, Metabase checks destination addresses "
+                   "available through local DNS; the deployment proxy must enforce destination restrictions on "
+                   "its outbound connections. Proxy-only DNS is supported. Metabase enforces destination addresses "
+                   "at connection time for direct requests.")
   :getter     (fn []
                 (let [value (some-> (setting/env-var-value :llm-allowed-networks) keyword)]
                   (cond
@@ -102,11 +105,11 @@
   "Why a base URL on `host` is refused under `policy`, and what to do about it.
   `policy` is the one that actually refused, which a deployment-controlled endpoint's floor may have loosened past
   [[llm-allowed-networks]]: naming a value that is already in force would be advice that changes nothing.
-  On Cloud there is nothing to do: private networks are out of reach, and the policy is not the customer's to change."
+  On Cloud the policy is not the customer's to change."
   [policy host]
   (cond
     (premium-features/is-hosted?)
-    (tru "The base URL host {0} is on a private network. Metabase Cloud can only connect to LLM providers on the public internet." host)
+    (tru "The base URL host {0} is not permitted by Metabase Cloud''s LLM network policy. Use an LLM provider on the public internet." host)
 
     (= :allow-private policy)
     (tru "The base URL host {0} is on a network Metabase is not allowed to connect to. Set MB_LLM_ALLOWED_NETWORKS=allow-all for a server on this machine." host)
@@ -151,9 +154,8 @@
   "Why `url` may not be used as an LLM provider base URL, or nil when it may: [[llm-url-syntax-problem]], and every
   address the host resolves to must be permitted by the network policy. The one-argument form uses
   [[llm-allowed-networks]].
-  This is the set-time check. It resolves the host, so it is not run per request: the `:dns-resolver` from
-  [[llm-request-opts]] makes the same decision about the addresses the connection actually opens, which also
-  covers a host that rebinds after it was saved."
+  Used on write and before proxied requests. An unresolved host is permitted to allow proxy-only DNS.
+  Direct requests use the policy resolver from [[llm-request-opts]] to enforce the policy at connection time."
   ([url]
    (llm-url-problem (llm-allowed-networks) url))
   ([network-policy url]
@@ -181,8 +183,8 @@
        ;; An operator who configured a JVM proxy put it between Metabase and everything, deliberately, so it is
        ;; trusted rather than judged by the policy -- which is also what makes a private egress proxy usable under
        ;; `:external-only`. The proxy resolves the target on its own, so the target is checked here instead. That
-       ;; leaves a host that rebinds between this check and the proxy's own lookup unnoticed, which no check on our
-       ;; side of the proxy can close.
+       ;; leaves proxy-only DNS, differing DNS answers, and rebinding to the proxy's own destination policy;
+       ;; Metabase cannot enforce the addresses the proxy connects to.
        (do (when-let [problem (llm-url-problem policy url)]
              (throw (url-not-allowed-ex problem (u.http/->hostname url))))
            {:redirect-strategy :none})

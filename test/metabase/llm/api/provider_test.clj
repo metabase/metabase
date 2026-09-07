@@ -516,8 +516,8 @@
                         (create)))))
             (testing "on Cloud there is no setting to change, and the message says so"
               (mt/with-premium-features #{:hosting}
-                (is (=? {:message (str "The base URL host 127.0.0.1 is on a private network. "
-                                       "Metabase Cloud can only connect to LLM providers on the public internet.")
+                (is (=? {:message (str "The base URL host 127.0.0.1 is not permitted by Metabase Cloud's LLM network policy. "
+                                       "Use an LLM provider on the public internet.")
                          :field   "base-url"}
                         (create))))))
           (is (= [] (llm.provider/connections))))))))
