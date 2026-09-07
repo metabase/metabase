@@ -3405,7 +3405,12 @@
            search
            task
            util
-           enterprise/semantic-search}}
+           enterprise/semantic-search}
+   :model-imports #{:model/Card
+                    :model/Measure
+                    :model/OsiAiContext
+                    :model/Segment
+                    :model/Table}}
 
   enterprise/erd
   {:team "Gadget"

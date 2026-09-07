@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
