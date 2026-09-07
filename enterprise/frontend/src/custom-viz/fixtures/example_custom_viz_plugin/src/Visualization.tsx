@@ -1,14 +1,18 @@
 import type { MouseEvent } from "react";
 import { useState } from "react";
 import { type CustomVisualizationProps, formatValue } from "../../../src/index";
-import type { Settings } from "./types";
+
+type Settings = {
+  columns?: string[];
+  threshold?: number;
+};
 
 export const Visualization = (
   props: CustomVisualizationProps<Settings> & { locale: string },
 ) => {
   const { series, settings, renderingContext, onClick, onHover, locale } =
     props;
-  const { threshold, columns } = settings;
+  const { columns, threshold } = settings;
   const { cols, rows } = series[0].data;
   const value = rows[0][0];
 
