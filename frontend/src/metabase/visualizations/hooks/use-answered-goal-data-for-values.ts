@@ -1,9 +1,8 @@
 import {
-  type GoalValues,
   getUnansweredGoalEntitiesForValues,
   hasUnresolvedGoalValues,
 } from "metabase/viz-core";
-import type { DatasetData, DatasetQuery } from "metabase-types/api";
+import type { DatasetData, DatasetQuery, GoalValue } from "metabase-types/api";
 
 import {
   type GoalDataResolution,
@@ -14,10 +13,10 @@ import {
  * Like `useAnsweredGoalData`, for the references among `values`. Resolves only
  * once every one of them is answered without error.
  */
-export function useAnsweredGoalValues(
+export function useAnsweredGoalDataForValues(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
-  values: GoalValues,
+  values: ReadonlyArray<GoalValue | null | undefined>,
 ): GoalDataResolution {
   const answered = useAnsweredGoalData(
     datasetQuery,

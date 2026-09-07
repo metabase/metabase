@@ -10,7 +10,7 @@ import type {
 } from "metabase-types/api";
 
 import type { GoalResolution } from "./use-answered-goal-data";
-import { useAnsweredGoalValues } from "./use-answered-goal-values";
+import { useAnsweredGoalDataForValues } from "./use-answered-goal-data-for-values";
 
 export type GoalSegmentsResolution = GoalResolution<{
   segments: ResolvedGoalSegment[];
@@ -21,7 +21,7 @@ export function useResolvedGoalSegments(
   data: DatasetData,
   segments: GoalSegment[] | undefined,
 ): GoalSegmentsResolution {
-  const answered = useAnsweredGoalValues(
+  const answered = useAnsweredGoalDataForValues(
     datasetQuery,
     data,
     getGoalSegmentBounds(segments),

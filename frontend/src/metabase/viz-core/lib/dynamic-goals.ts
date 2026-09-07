@@ -286,11 +286,9 @@ export function getSegmentColor(
   return segment.color ?? getColor("text-secondary");
 }
 
-export type GoalValues = ReadonlyArray<GoalValue | null | undefined>;
-
 export function hasFailedGoalReferencesForValues(
   data: GoalData,
-  values: GoalValues,
+  values: ReadonlyArray<GoalValue | null | undefined>,
 ): boolean {
   return values.some((value) => isFailed(value, resolveGoalValue(data, value)));
 }
@@ -298,7 +296,7 @@ export function hasFailedGoalReferencesForValues(
 // Unanswered or failed. Once no further fetch will happen, either means the goal can't be resolved.
 export function hasUnresolvedGoalValues(
   data: GoalData,
-  values: GoalValues,
+  values: ReadonlyArray<GoalValue | null | undefined>,
 ): boolean {
   return values.some((value) => isUnresolved(resolveGoalValue(data, value)));
 }
@@ -312,7 +310,7 @@ export function hasFailedGoalReferences(
 
 export function getUnansweredGoalEntitiesForValues(
   data: GoalData,
-  values: GoalValues,
+  values: ReadonlyArray<GoalValue | null | undefined>,
 ): ReferencedEntity[] {
   const unansweredRefs = values
     .filter(isGoalForeignColumnRef)

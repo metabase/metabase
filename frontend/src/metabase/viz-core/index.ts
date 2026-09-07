@@ -242,7 +242,6 @@ export {
 export type {
   GoalData,
   GoalRefError,
-  GoalValues,
   ResolvedGoalSegment,
   ResolvedGoalValue,
 } from "./lib/dynamic-goals";
