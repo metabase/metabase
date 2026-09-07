@@ -76,13 +76,23 @@ jobs:
   fe-type-check:
     if: ${{ !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+      - name: Restore OpenAPI cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            .tmp/openapi/openapi.json
+            .tmp/openapi/generation.json
+            frontend/src/metabase-types/openapi
+          key: openapi-v3-${{ hashFiles('src/**', 'enterprise/backend/src/**', '**/deps.edn', 'resources/data_readers.clj', 'resources/locales.clj', 'resources/version.properties', 'package.json', 'bun.lock', 'frontend/build/openapi/**') }}
+      - name: Prepare OpenAPI types
+        run: bun run types:ensure
       - run: bun run build-pure:cljs
         name: Compile CLJS
       - run: bun run type-check-pure

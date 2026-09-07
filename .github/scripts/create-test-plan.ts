@@ -29,6 +29,8 @@ const STORY_GLOBS = [
 function listFiles(roots: string[], globs: string[]): string[] {
   const tracked = execFileSync("git", ["ls-files", "--", ...roots], {
     encoding: "utf8",
+    // The tracked frontend file list is close to Node's default 1 MiB buffer.
+    maxBuffer: 10 * 1024 * 1024,
   })
     .split("\n")
     .map((line) => line.trim())
