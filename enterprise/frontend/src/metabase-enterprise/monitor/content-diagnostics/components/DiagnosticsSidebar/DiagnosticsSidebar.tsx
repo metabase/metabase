@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
@@ -86,6 +87,12 @@ type SidebarHeaderProps = {
 function SidebarHeader({ finding, tab, onClose }: SidebarHeaderProps) {
   const entityUrl = getEntityUrl(finding);
   const viewLabel = getEntityViewLabel(finding);
+  const trackEntityOpened = () =>
+    trackContentDiagnosticsEntityOpened({
+      tab,
+      entityId: finding.entity_id,
+      entityType: finding.entity_type,
+    });
 
   return (
     <Group
@@ -97,9 +104,18 @@ function SidebarHeader({ finding, tab, onClose }: SidebarHeaderProps) {
     >
       <Group gap="sm" wrap="nowrap" align="center" miw={0}>
         <FixedSizeIcon name={getEntityIcon(finding)} />
-        <Box className={S.wrap} fz="h3" fw="bold" lh="h3">
+        <Anchor
+          className={cx(S.wrap, S.titleLink)}
+          component={ForwardRefLink}
+          fz="h3"
+          fw="bold"
+          lh="h3"
+          to={entityUrl}
+          target="_blank"
+          onClick={trackEntityOpened}
+        >
           {getEntityName(finding)}
-        </Box>
+        </Anchor>
       </Group>
       <Group gap="xs" wrap="nowrap">
         <Tooltip label={viewLabel} openDelay={TOOLTIP_OPEN_DELAY_MS}>
@@ -108,13 +124,7 @@ function SidebarHeader({ finding, tab, onClose }: SidebarHeaderProps) {
             to={entityUrl}
             target="_blank"
             aria-label={viewLabel}
-            onClick={() =>
-              trackContentDiagnosticsEntityOpened({
-                tab,
-                entityId: finding.entity_id,
-                entityType: finding.entity_type,
-              })
-            }
+            onClick={trackEntityOpened}
           >
             <FixedSizeIcon name="external" />
           </ActionIcon>

@@ -342,10 +342,10 @@ describe("StaleContentPage", () => {
     );
     expect(sidebarRegion).toHaveTextContent("Revenue by category");
     expect(
-      within(sidebarHeader).queryByRole("link", {
+      within(sidebarHeader).getByRole("link", {
         name: "Revenue by category",
       }),
-    ).not.toBeInTheDocument();
+    ).toHaveAttribute("href", "/question/42-revenue-by-category");
     const locationRegion = within(sidebarRegion).getByRole("region", {
       name: "Location",
     });

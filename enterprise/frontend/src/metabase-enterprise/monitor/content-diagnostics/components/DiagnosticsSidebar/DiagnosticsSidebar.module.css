@@ -13,3 +13,12 @@
 .section:not(:last-child) {
   border-bottom: 1px solid var(--mb-color-border-neutral);
 }
+
+.titleLink {
+  color: var(--mb-color-text-primary);
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+    text-decoration: none;
+  }
+}
