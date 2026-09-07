@@ -51,7 +51,6 @@ const {
 } = require("./frontend/build/embedding-sdk/lib/get-sdk-bundle-version-from-version-properties");
 
 const SDK_BUNDLE_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-bundle";
-const METABASE_SRC_PATH = __dirname + "/frontend/src/metabase";
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const SDK_OUTPUT_PATH = path.join(BUILD_PATH, SDK_BUNDLE_PATH);
@@ -101,7 +100,11 @@ const config = {
     // Split chunks and bootstrap go into chunks/ subfolder.
     // The legacy monolithic bundle goes into legacy/.
     // The backend serves chunks/ with far-future immutable cache headers.
-    chunkFilename: "chunks/[id].[contenthash:8].js",
+    // `[name]` falls back to the chunk id when a chunk has no name, so this
+    // only changes chunks named through a `webpackChunkName` comment. The
+    // locale catalogues need their name in the filename: the bundle-size gate
+    // recognises them by it.
+    chunkFilename: "chunks/[name].[contenthash:8].js",
     filename: (pathData) => {
       switch (pathData.chunk?.name) {
         case "embedding-sdk-bootstrap":
@@ -433,14 +436,6 @@ config.resolve.alias = {
   "sdk-iframe-embedding-ee-plugins":
     ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins",
   "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
-  // The SDK renders against whichever instance it is pointed at, so it takes
-  // catalogues from there rather than from its own bundle. This also keeps the
-  // locales context module, and so all 36 catalogues, out of the SDK.
-  //
-  // Keyed by resolved path so the importer can use a plain relative import and
-  // only this build has to know a swap happened.
-  [METABASE_SRC_PATH + "/utils/load-locale-catalog"]:
-    METABASE_SRC_PATH + "/utils/load-locale-catalog-from-instance",
 };
 
 if (config.cache) {
