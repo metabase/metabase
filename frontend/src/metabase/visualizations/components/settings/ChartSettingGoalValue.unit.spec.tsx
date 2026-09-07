@@ -72,13 +72,32 @@ describe("ChartSettingGoalValue", () => {
       expect(onChange).toHaveBeenLastCalledWith(undefined);
     });
 
-    it("shows a reference as an empty input", () => {
-      const { input } = setup({
+    it("shows a reference as an empty input and keeps it when the input is left untouched", () => {
+      const { input, onChange } = setup({
         isDynamic: false,
         value: { type: "card", id: 1, column: "sum" },
       });
 
       expect(input).toHaveDisplayValue("");
+
+      fireEvent.focus(input);
+      fireEvent.blur(input);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("replaces a reference when a number is typed over it", async () => {
+      const { input, onChange } = setup({
+        isDynamic: false,
+        value: { type: "card", id: 1, column: "sum" },
+      });
+      const user = userEvent.setup({
+        advanceTimers: jest.advanceTimersByTime,
+      });
+
+      await user.type(input, "3");
+      act(() => jest.runAllTimers());
+
+      expect(onChange).toHaveBeenLastCalledWith(3);
     });
   });
 

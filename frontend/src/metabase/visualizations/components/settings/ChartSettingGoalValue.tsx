@@ -23,12 +23,21 @@ export const ChartSettingGoalValue = ({
     onChange(newValue ?? undefined);
 
   if (!isDynamic) {
+    // The numeric input shows a reference as empty, so its blur must not erase it.
+    const hasReference = value != null && !isGoalStaticValue(value);
+    const handleNumericChange = (newValue: number | null | undefined) => {
+      if (newValue == null && hasReference) {
+        return;
+      }
+      handleChange(newValue);
+    };
+
     return (
       <ChartSettingInputNumeric
         id={id}
         placeholder={placeholder}
         value={isGoalStaticValue(value) ? value : undefined}
-        onChange={handleChange}
+        onChange={handleNumericChange}
       />
     );
   }
