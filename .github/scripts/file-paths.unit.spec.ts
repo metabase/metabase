@@ -54,4 +54,31 @@ describe("file-paths.yaml", () => {
       true,
     );
   });
+
+  it.each([
+    "loki.config.js",
+    ".storybook/story-files.cjs",
+    ".storybook/preview.tsx",
+    ".loki/reference/chrome.laptop-Button.png",
+    ".github/workflows/loki.yml",
+    ".github/workflows/frontend.yml",
+    ".github/workflows/run-tests.yml",
+    "frontend/build/shared/rspack/css-config.js",
+    "frontend/test/__support__/custom-viz-fixtures/calendar-heatmap/index.js",
+    "patches/@loki+browser+0.35.0.patch",
+  ])("runs all Loki stories when %s changes", (file) => {
+    expect(matches("frontend_loki_all", file)).toBe(true);
+    expect(matches("frontend_loki_infra", file)).toBe(true);
+  });
+
+  it("allows story changes to narrow the Loki run", () => {
+    const file = "frontend/src/metabase/ui/Button.stories.tsx";
+
+    expect(matches("frontend_loki_all", file)).toBe(true);
+    expect(matches("frontend_loki_infra", file)).toBe(false);
+  });
+
+  it("runs CI-script tests when the story inventory changes", () => {
+    expect(matches("ci_scripts", ".storybook/story-files.cjs")).toBe(true);
+  });
 });

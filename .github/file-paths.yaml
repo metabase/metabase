@@ -76,6 +76,7 @@ frontend_all: &frontend_all
 
 frontend_loki_ci: &frontend_loki_ci
   - ".github/workflows/loki.yml"
+  - "loki.config.js"
   - ".loki/**"
   - ".storybook/**"
 
@@ -89,8 +90,15 @@ frontend_unit_infra: &frontend_unit_infra
 
 frontend_loki_infra: &frontend_loki_infra
   - *frontend_configs
-  - *shared_ci
+  - *frontend_ci
   - *frontend_loki_ci
+  - "frontend/build/**"
+  - "frontend/test/**"
+  - "patches/**"
+
+frontend_loki_all:
+  - *frontend_sources
+  - *frontend_loki_infra
 
 # Everything the ci-scripts jest project runs or depends on.
 # test-unit ignores that project, so this filter is the only thing that reruns it.
@@ -101,6 +109,7 @@ ci_scripts:
   - ".github/file-paths.yaml"
   - ".github/scripts/**"
   - ".github/actions/**"
+  - ".storybook/story-files.cjs"
   - "frontend/lint/module-boundaries.mjs"
   - "frontend/lint/shared-tiers.mjs"
   - ".dependency-cruiser.cjs"
