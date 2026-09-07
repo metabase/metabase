@@ -69,9 +69,11 @@ export type CustomVisualization<TSettings extends BaseVisualizationSettings> = {
   >;
 
   /**
-   * This function should throw if the visualization cannot be rendered with given data and settings.
+   * Throw here if the visualization cannot be rendered with the given data and settings.
+   * Metabase shows the thrown message to the user.
+   * When omitted, the visualization is always considered renderable.
    */
-  checkRenderable: (
+  checkRenderable?: (
     series: Series,
     settings: CustomVisualizationSettings<TSettings>,
   ) => void | never;
@@ -120,9 +122,18 @@ export type CustomVisualizationProps<
   series: Series;
   settings: CustomVisualizationSettings<TSettings>;
   renderingContext: RenderingContext;
-  onClick: (
-    clickObject: ClickObject<CustomVisualizationSettings<TSettings>> | null,
-  ) => void;
+
+  /**
+   * Call with a {@link ClickObject} to open the drill-through popover for a data point.
+   * Call with `null` to close an open popover, e.g. when the same element is clicked again or the chart scrolls.
+   */
+  onClick: (clickObject: ClickObject | null) => void;
+
+  /**
+   * Call with a {@link HoverObject} to show a tooltip for a data point.
+   * Call with `null` or no argument to hide it, e.g. on mouse leave. Hiding is deferred until the next
+   * tick so moving between elements doesn't flicker.
+   */
   onHover: (hoverObject?: HoverObject | null) => void;
 };
 
@@ -146,7 +157,7 @@ export type CustomVisualizationMount = <P extends object>(
   initialProps: P,
 ) => CustomVisualizationMountHandle<P>;
 
-export type ClickObject<TSettings extends BaseVisualizationSettings> = {
+export type ClickObject = {
   /** The raw value of the clicked cell. */
   value?: RowValue;
 
@@ -166,9 +177,6 @@ export type ClickObject<TSettings extends BaseVisualizationSettings> = {
 
   /** The DOM element that was clicked. Used to anchor popovers. */
   element?: Element;
-
-  /** Visualization settings at the time of the click. */
-  settings?: CustomVisualizationSettings<TSettings>;
 
   /**
    * The full row of data and column metadata for the clicked data point.

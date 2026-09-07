@@ -3,6 +3,7 @@ import {
   newTracker,
   trackSelfDescribingEvent,
 } from "@snowplow/browser-tracker";
+import { version as reactVersion } from "react";
 
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { getSettings } from "metabase/settings";
@@ -102,6 +103,12 @@ export function getSdkAuthMethod(): SdkAuthMethod | undefined {
 
 export function getSdkLocaleUsed(): boolean {
   return sdkLocaleUsed;
+}
+
+export function getHostReactVersion(): string {
+  // `undefined` would get removed by the serialization,
+  // explicit `unknown` to differentiate old data from real unknown
+  return reactVersion ?? "unknown";
 }
 
 // Attaches the instance context to every SDK event. Omits userId — unlike the
