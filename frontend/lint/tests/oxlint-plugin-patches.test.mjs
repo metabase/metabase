@@ -179,6 +179,7 @@ test("optimized plugins preserve diagnostics and fixes", async (t) => {
   let cases = 0,
     violations = 0;
   const counts = {};
+  const violationsByPlugin = {};
   function compare(name, original, patched, sources, rules, settings = {}) {
     for (const source of sources) {
       const results = [original, patched].map((plugin) => {
@@ -207,6 +208,8 @@ test("optimized plugins preserve diagnostics and fixes", async (t) => {
       assert.deepEqual(results[1], results[0], name + " " + source);
       cases++;
       violations += results[0].messages.length;
+      violationsByPlugin[name] =
+        (violationsByPlugin[name] ?? 0) + results[0].messages.length;
       counts[name] = (counts[name] ?? 0) + 1;
     }
   }
@@ -239,14 +242,37 @@ test("optimized plugins preserve diagnostics and fixes", async (t) => {
     fixupPluginRules(originalDepend),
     depend,
     [
-      'import x from "is-array";',
-      'const x=require("is-array");',
-      'const x=import("is-array");',
-      'import x = require("is-array");',
+      'import x from "is-number";',
+      'const x=require("is-number");',
+      'const x=import("is-number");',
+      'import x = require("is-number");',
       'import x from "react";',
     ],
     { "depend/ban-dependencies": "error" },
   );
+  for (const options of [
+    { presets: [], modules: ["fixture", "fixture/sub", "@scope/pkg"] },
+    { presets: [], modules: ["fixture/sub", "fixture", "@scope/pkg"] },
+    {
+      presets: [],
+      modules: ["fixture", "fixture/sub", "@scope/pkg"],
+      allowed: ["fixture"],
+    },
+    { allowed: ["is-number"] },
+  ]) {
+    compare(
+      "depend",
+      originalDepend,
+      depend,
+      [
+        'import x from "fixture/sub/deep";',
+        'import x from "fixture-extra";',
+        'import x from "@scope/pkg/sub";',
+        'import x from "is-number/subpath";',
+      ],
+      { "depend/ban-dependencies": ["error", options] },
+    );
+  }
   compare(
     "react",
     originalRequire("eslint-plugin-react"),
@@ -299,12 +325,18 @@ test("optimized plugins preserve diagnostics and fixes", async (t) => {
       settings,
     );
   }
-  assert.ok(violations > 0);
+  for (const name of Object.keys(counts)) {
+    assert.ok(
+      violationsByPlugin[name] > 0,
+      `${name}: fixtures must exercise reporting paths`,
+    );
+  }
   t.diagnostic(
     JSON.stringify({
       fixtureCases: cases,
       originalViolations: violations,
       byPlugin: counts,
+      violationsByPlugin,
       diagnosticsAndFixesIdentical: true,
     }),
   );

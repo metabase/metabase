@@ -1,10 +1,11 @@
 diff --git a/node_modules/eslint-plugin-depend/lib/util/imports.js b/node_modules/eslint-plugin-depend/lib/util/imports.js
 --- a/node_modules/eslint-plugin-depend/lib/util/imports.js
 +++ b/node_modules/eslint-plugin-depend/lib/util/imports.js
-@@ -53,8 +53,25 @@
+@@ -53,8 +53,26 @@
   * @param {string} source Module being imported
   * @return {void}
   */
++// ban-dependencies: retain the first matching replacement across module prefixes.
 +const replacementIndexes = new WeakMap();
  function replacementListenerCallback(context, replacements, node, source) {
 -    const replacement = replacements.find((rep) => rep.moduleName === source || source.startsWith(`${rep.moduleName}/`));
@@ -31,15 +32,16 @@ diff --git a/node_modules/eslint-plugin-depend/lib/util/imports.js b/node_module
 diff --git a/node_modules/eslint-plugin-depend/lib/rules/ban-dependencies.js b/node_modules/eslint-plugin-depend/lib/rules/ban-dependencies.js
 --- a/node_modules/eslint-plugin-depend/lib/rules/ban-dependencies.js
 +++ b/node_modules/eslint-plugin-depend/lib/rules/ban-dependencies.js
-@@ -6,6 +6,7 @@
+@@ -6,6 +6,8 @@
      native: nativeReplacements.moduleReplacements,
      preferred: preferredReplacements.moduleReplacements
  };
++// Share equivalent ban-dependencies options even when their objects differ.
 +const replacementLists = new Map();
  const defaultPresets = ['microutilities', 'native', 'preferred'];
  export const rule = {
      meta: {
-@@ -56,6 +57,10 @@
+@@ -56,6 +58,10 @@
      },
      create: (context) => {
          const options = context.options[0];
@@ -50,7 +52,7 @@ diff --git a/node_modules/eslint-plugin-depend/lib/rules/ban-dependencies.js b/n
          const replacements = [];
          const presets = options?.presets ?? defaultPresets;
          const modules = options?.modules;
-@@ -80,6 +85,7 @@
+@@ -80,6 +86,7 @@
                  }
              }
          }

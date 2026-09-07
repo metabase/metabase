@@ -97,13 +97,13 @@ maintained as configuration documentation.
 The performance branch adds these patches through the existing patch-package
 installation flow. The base migration uses the unpatched dependencies.
 
-| Package | Optimization |
-| --- | --- |
-| eslint-plugin-import-x 4.17.1 | Classify import/order groups that do not depend on resolution. |
-| eslint-plugin-react 7.37.5 | Prefilter lifecycle names for no-deprecated. |
-| eslint-plugin-depend 1.5.0 | Reuse equivalent replacement lists and index module prefixes, preserving precedence. |
-| eslint-plugin-ttag 1.1.0 | Use sourceCode.getScope and skip function-scope work for no-module-declaration. |
-| eslint-plugin-i18next 6.1.4 | Compile no-literal-string matching expressions once. |
+| Package                              | Optimization                                                                              |
+| ------------------------------------ | ----------------------------------------------------------------------------------------- |
+| eslint-plugin-import-x 4.17.1        | Classify import/order groups that do not depend on resolution.                            |
+| eslint-plugin-react 7.37.5           | Prefilter lifecycle names for no-deprecated.                                              |
+| eslint-plugin-depend 1.5.0           | Reuse equivalent replacement lists and index module prefixes, preserving precedence.      |
+| eslint-plugin-ttag 1.1.0             | Use sourceCode.getScope and skip function-scope work for no-module-declaration.           |
+| eslint-plugin-i18next 6.1.4          | Compile no-literal-string matching expressions once.                                      |
 | eslint-plugin-testing-library 7.15.4 | Prefilter scope work in no-debugging-utils, no-unnecessary-act and prefer-screen-queries. |
 
 The ttag adapter relies on its API patch: removing that patch also requires

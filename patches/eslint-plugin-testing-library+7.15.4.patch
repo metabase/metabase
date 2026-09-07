@@ -1,21 +1,21 @@
 diff --git a/node_modules/eslint-plugin-testing-library/dist/index.mjs b/node_modules/eslint-plugin-testing-library/dist/index.mjs
 --- a/node_modules/eslint-plugin-testing-library/dist/index.mjs
 +++ b/node_modules/eslint-plugin-testing-library/dist/index.mjs
-@@ -1979,9 +1979,9 @@
- 				const isChainedReferenceDebug = suspiciousReferenceNodes.some((suspiciousReferenceIdentifier) => {
+@@ -1980,7 +1980,8 @@
  					return utilsToReport.includes(callExpressionIdentifier.name) && suspiciousReferenceIdentifier.name === referenceIdentifier.name;
  				});
 -				if (!builtInConsoleNodes.some((variableDeclarator) => {
++				// no-debugging-utils: scope lookup only matters for possible debug calls.
 +				if ((isDebugUtil || isDeclaredDebugVariable || isChainedReferenceDebug) && !builtInConsoleNodes.some((variableDeclarator) => {
  					return getDeclaredVariables(context, variableDeclarator).some(({ name }) => name === callExpressionIdentifier.name && isCallExpression(callExpressionIdentifier.parent));
 -				}) && (isDebugUtil || isDeclaredDebugVariable || isChainedReferenceDebug)) context.report({
 +				})) context.report({
  					node: callExpressionIdentifier,
  					messageId: "noDebug"
- 				});
-@@ -2529,10 +2529,11 @@
+@@ -2529,9 +2530,11 @@
  			});
  		}
++		// no-unnecessary-act: resolve only potential user-event setup assignments.
  		function registerUserEventInstance(node) {
 +			const deepestIdentifier = getDeepestIdentifierNode(node);
 +			if (deepestIdentifier?.name !== "setup" || !ASTUtils.isIdentifier(node.parent?.id)) return;
@@ -26,15 +26,13 @@ diff --git a/node_modules/eslint-plugin-testing-library/dist/index.mjs b/node_mo
 +			if (propertyIdentifier?.name === testingLibraryFn?.local) userEventInstanceNames.add(node.parent.id.name);
  		}
  		return {
- 			"VariableDeclarator > CallExpression": registerUserEventInstance,
-@@ -3471,8 +3472,9 @@
- 					reportInvalidUsage(identifierNode);
+@@ -3472,6 +3475,8 @@
  					return;
  				}
++				// prefer-screen-queries: skip receiver shapes and names already allowed.
 +				if (!ASTUtils.isIdentifier(memberExpressionNode.object) || isIdentifierAllowed(memberExpressionNode.object.name)) return;
  				const testingLibraryFn = resolveToTestingLibraryFn(node, context);
 -				if (ASTUtils.isIdentifier(memberExpressionNode.object) && !isIdentifierAllowed(memberExpressionNode.object.name) && !isIdentifierAllowed(testingLibraryFn?.original ?? "")) reportInvalidUsage(identifierNode);
 +				if (!isIdentifierAllowed(testingLibraryFn?.original ?? "")) reportInvalidUsage(identifierNode);
  			}
  		};
- 	}

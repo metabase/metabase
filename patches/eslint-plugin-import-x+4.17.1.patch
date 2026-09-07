@@ -1,21 +1,13 @@
 diff --git a/node_modules/eslint-plugin-import-x/lib/utils/import-type.js b/node_modules/eslint-plugin-import-x/lib/utils/import-type.js
 --- a/node_modules/eslint-plugin-import-x/lib/utils/import-type.js
 +++ b/node_modules/eslint-plugin-import-x/lib/utils/import-type.js
-@@ -123,6 +123,17 @@
+@@ -123,6 +123,9 @@
      return 'unknown';
  }
  export function importType(name, context) {
-+    // These groups are determined by the specifier regardless of resolution.
-+    if (typeof name === 'string') {
-+        if (isInternalRegexMatch(name, context.settings)) return 'internal';
-+        if (isAbsolute(name)) return 'absolute';
-+        // A configured core-module name can otherwise outrank relative groups.
-+        if (!isBuiltIn(name, context.settings, null)) {
-+            if (isRelativeToParent(name)) return 'parent';
-+            if (isIndex(name)) return 'index';
-+            if (isRelativeToSibling(name)) return 'sibling';
-+        }
-+    }
++    // import/order: only these groups are independent of the resolved path.
++    const group = typeTest(name, context, null);
++    if (['internal', 'absolute', 'parent', 'index', 'sibling'].includes(group)) return group;
      return typeTest(name, context, typeof name === 'string' ? resolve(name, context) : null);
  }
  //# sourceMappingURL=import-type.js.map
