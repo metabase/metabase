@@ -1598,8 +1598,8 @@
                   :first_name       "Metabase"
                   :last_name        "Internal"
                   :email            "internal@metabase.com"
-                  :password         some?
-                  :password_salt    some?
+                  :password         nil
+                  :password_salt    nil
                   :is_active        false
                   :is_superuser     false
                   :login_attributes nil
@@ -2845,6 +2845,22 @@
           (is (thrown? Exception
                        (perm! {:perm_type "perms/view-data" :perm_value "blocked"}))))))))
 
+(deftest delete-plaintext-encryption-check-marker-test
+  (testing "v58.2026-09-03T00:00:03: the plaintext \"unencrypted\" encryption-check marker is deleted"
+    (impl/test-migrations "v58.2026-09-03T00:00:03" [migrate!]
+      (t2/query {:delete-from :setting :where [:= :key "encryption-check"]})
+      (t2/query {:insert-into :setting :values [{:key "encryption-check" :value "unencrypted"}]})
+      (migrate!)
+      (is (nil? (t2/select-one :setting :key "encryption-check")))))
+  (testing "an encrypted sentinel is left alone"
+    (encryption-test/with-secret-key "encryption-check-marker-key-1234"
+      (impl/test-migrations "v58.2026-09-03T00:00:03" [migrate!]
+        (let [sentinel (encryption/encrypt (str (random-uuid)))]
+          (t2/query {:delete-from :setting :where [:= :key "encryption-check"]})
+          (t2/query {:insert-into :setting :values [{:key "encryption-check" :value sentinel}]})
+          (migrate!)
+          (is (= sentinel (t2/select-one-fn :value :setting :key "encryption-check"))))))))
+
 (deftest dependency-status-segment-handles-missing-column-migration-test
   (testing "The whole 20260402_dependency_status changeset run survives a missing
             segment.dependency_analysis_version column (issue #74443). Every changeset that
@@ -3313,3 +3329,36 @@
             "conversations without a blob are untouched")
         (is (thrown? Exception (t2/query "SELECT state FROM metabot_conversation"))
             "metabot_conversation.state is gone")))))
+
+(deftest add-field-data-sensitivity-test
+  (testing "v64.2026-09-01: data_sensitivity is added to metabase_field and metabase_field_user_settings as nullable columns"
+    (impl/test-migrations ["v64.2026-09-01T00:00:00" "v64.2026-09-01T00:00:01"] [migrate!]
+      (let [db-id    (t2/insert-returning-pk! :metabase_database {:name       "Sensitivity Test DB"
+                                                                  :engine     "h2"
+                                                                  :created_at :%now
+                                                                  :updated_at :%now
+                                                                  :details    "{}"})
+            table-id (t2/insert-returning-pk! :metabase_table {:active     true
+                                                               :db_id      db-id
+                                                               :name       "a table"
+                                                               :created_at :%now
+                                                               :updated_at :%now})
+            field-id (t2/insert-returning-pk! :metabase_field {:table_id      table-id
+                                                               :name          "email"
+                                                               :active        true
+                                                               :base_type     "type/Text"
+                                                               :database_type "TEXT"
+                                                               :created_at    :%now
+                                                               :updated_at    :%now})]
+        (migrate!)
+        (testing "an existing field reads NULL"
+          (is (nil? (t2/select-one-fn :data_sensitivity :metabase_field :id field-id))))
+        (testing "a value writes and reads back on metabase_field"
+          (t2/update! :metabase_field field-id {:data_sensitivity "PII"})
+          (is (= "PII" (t2/select-one-fn :data_sensitivity :metabase_field :id field-id))))
+        (testing "a value writes and reads back on the user-settings mirror"
+          (t2/insert! :metabase_field_user_settings {:field_id field-id :data_sensitivity "SYS_TELEMETRY"})
+          (is (= "SYS_TELEMETRY" (t2/select-one-fn :data_sensitivity :metabase_field_user_settings :field_id field-id))))
+        (testing "the mirror column is nullable"
+          (t2/update! :metabase_field_user_settings :field_id field-id {:data_sensitivity nil})
+          (is (nil? (t2/select-one-fn :data_sensitivity :metabase_field_user_settings :field_id field-id))))))))

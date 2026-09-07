@@ -1,6 +1,7 @@
 (ns metabase.channel.render.body
   (:require
    [clojure.string :as str]
+   [flatland.ordered.map :as ordered-map]
    [hiccup.core :refer [h]]
    [medley.core :as m]
    [metabase.appearance.core :as appearance]
@@ -583,6 +584,30 @@
                  seq
                  (apply min)))))
 
+(defn- sum-metrics
+  "Sum two cell metrics, skipping nils; nil only when both are nil. Mirrors the frontend's `sumMetric`."
+  [a b]
+  (if (and a b)
+    (+ a b)
+    (or a b)))
+
+(defn- fold-cells-by-bin
+  "Fold `cells` sharing a lat/long bin into one cell whose `:metric` is the sum, in first-occurrence order.
+  Mirrors the frontend's `aggregatePointsByCoordinates`."
+  [cells]
+  (->> cells
+       ;; a query can break out by more than the two coordinate columns (e.g. also by ID), so one bin can
+       ;; arrive on several rows; key on doubles so equal coordinates of different numeric types still fold
+       (reduce (fn [folded {:keys [lat lon] :as cell}]
+                 (update folded
+                         [(double lat) (double lon)]
+                         (fn [existing]
+                           (if existing
+                             (update existing :metric sum-metrics (:metric cell))
+                             cell))))
+               (ordered-map/ordered-map))
+       vals))
+
 (mu/defmethod render :pin_map :- ::RenderedPartCard
   [_chart-type render-type timezone-id card dashcard {:keys [cols rows] :as data}]
   (let [viz-settings      (render.util/merged-viz-settings card dashcard)
@@ -611,15 +636,16 @@
         lat-bin           (when lat-idx (column-bin-width (nth cols lat-idx) lat-idx rows))
         lon-bin           (when lon-idx (column-bin-width (nth cols lon-idx) lon-idx rows))
         cells             (when (and lat-idx lon-idx lat-bin lon-bin)
-                            (for [row   rows
-                                  :let  [lat (number-at row lat-idx)
-                                         lon (number-at row lon-idx)]
-                                  :when (and lat lon)]
-                              {:lat     lat
-                               :lon     lon
-                               :lat-bin lat-bin
-                               :lon-bin lon-bin
-                               :metric  (when metric-idx (number-at row metric-idx))}))]
+                            (fold-cells-by-bin
+                             (for [row   rows
+                                   :let  [lat (number-at row lat-idx)
+                                          lon (number-at row lon-idx)]
+                                   :when (and lat lon)]
+                               {:lat     lat
+                                :lon     lon
+                                :lat-bin lat-bin
+                                :lon-bin lon-bin
+                                :metric  (when metric-idx (number-at row metric-idx))})))]
     (if-let [png (when (seq cells)
                    (maps/render-grid-map cells {:tile-url (tiles.settings/map-tile-server-url)}))]
       (png->rendered-part render-type png)

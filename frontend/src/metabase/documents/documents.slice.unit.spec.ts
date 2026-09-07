@@ -35,7 +35,7 @@ describe("documents slice", () => {
         updateVizSettings({ cardId: 1, settings: { threshold: 43 } }),
       );
 
-      expect(state).toEqual(initial);
+      expect(state).toBe(initial);
     });
   });
 
@@ -61,7 +61,7 @@ describe("documents slice", () => {
         replaceVizSettings({ cardId: 1, settings: { threshold: 43 } }),
       );
 
-      expect(state).toEqual(initial);
+      expect(state).toBe(initial);
     });
   });
 });
