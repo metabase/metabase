@@ -1,5 +1,3 @@
-// Run by oxlint-import-resolver.test.mjs in a child process,
-// once per WEBPACK_BUNDLE and MB_EDITION pair.
 const assert = require("node:assert/strict");
 const path = require("node:path");
 

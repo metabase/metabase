@@ -1,4 +1,3 @@
-// Shared lint policy. Keep ESLint and oxlint file scopes and options together.
 import path from "node:path";
 import globals from "globals";
 import presets from "./recommended-rules.json" with { type: "json" };
@@ -18,8 +17,8 @@ import {
 const __dirname = path.resolve(import.meta.dirname, "../..");
 const TEST_FILES_NAME_PATTERN_ERROR_MESSAGE = `Please name your test setup and utils files with a ".spec.*" in the filename, or put them under "/tests", e.g. "setup.spec.ts", "MyComponent.setup.spec.ts", or "tests/setup.ts". This is to ensure they won't be imported in the SDK build.`;
 
-// ttag string extraction only understands contexts chained inline, e.g. c("...").t`...`;
-// a c() call stored in a variable silently drops its strings from the .pot file.
+// ttag extracts contextual strings from inline calls such as c("...").t`...`.
+// Storing c() in a variable drops those strings from the translation template.
 const unchainedTtagContextRestriction = {
   selector:
     "CallExpression[callee.name=c]:not(MemberExpression > CallExpression)",
@@ -119,9 +118,7 @@ const configs = [
       "e2e/tmp/**",
       "frontend/test/__support__/custom-viz-fixtures/**/*.js",
       "**/custom-viz/fixtures/example_custom_viz_plugin/**",
-      // The data-app dev entry is served verbatim to the consumer's Vite (it
-      // imports `@metabase/embedding-sdk-react/*` + a virtual config module), so
-      // it can't be resolved/linted in this repo.
+      // The consumer's Vite provides the data-app dev entry's virtual config module.
       "enterprise/frontend/src/embedding-sdk-package/data-app-dev-entry.tsx",
       "node_modules/**",
       "**/dist/**",
@@ -134,7 +131,6 @@ const configs = [
   },
   { rules: presets.javascript },
   {
-    // The custom-viz build script's console global was declared in a file directive.
     files: [
       "enterprise/frontend/src/custom-viz/fixtures/build-example-custom-viz.mjs",
     ],
@@ -175,7 +171,6 @@ const configs = [
           typescript: true,
         },
       },
-      // Also set import/resolver for eslint-module-utils (used by custom rules)
       "import/resolver": {
         node: true,
         webpack: {
@@ -192,7 +187,6 @@ const configs = [
       },
     },
     rules: {
-      // Base ESLint rules
       strict: ["error", "never"],
       "no-restricted-syntax": [
         "error",
@@ -208,7 +202,7 @@ const configs = [
           args: "none",
           varsIgnorePattern: "^_.+$",
           ignoreRestSiblings: true,
-          caughtErrors: "none", // Maintain v7 behavior
+          caughtErrors: "none",
         },
       ],
       "no-empty": ["warn", { allowEmptyCatch: true }],
@@ -220,7 +214,6 @@ const configs = [
       complexity: ["error", { max: 55 }],
       "no-console": ["error", { allow: ["warn", "error", "errorBuffer"] }],
 
-      // Import rules
       "import/export": "error",
       "import/no-duplicates": ["warn", { considerQueryString: true }],
       "import/no-default-export": "error",
@@ -253,7 +246,6 @@ const configs = [
         },
       ],
 
-      // React rules
       ...presets.react,
       ...presets.jsxRuntime,
       "react/no-is-mounted": "error",
@@ -270,7 +262,6 @@ const configs = [
       "react/jsx-key": "error",
       "react/forbid-component-props": ["error", { forbid: ["sx"] }],
 
-      // React Hooks rules
       ...presets.hooks,
       "react-hooks/exhaustive-deps": [
         "warn",
@@ -300,7 +291,6 @@ const configs = [
         },
       ],
 
-      // Custom metabase rules
       "metabase/jtag-missing-key": "error",
       "metabase/no-unconditional-metabase-links-render": "error",
       "metabase/no-color-literals": "error",
@@ -343,7 +333,6 @@ const configs = [
         "error",
         { modules: getPublicApiModules() },
       ],
-      // Every file frontend/src/ and enterprise/frontend/src/ must belong to a declared module.
       "boundaries/no-unknown-files": "error",
     },
   },
@@ -401,11 +390,10 @@ const configs = [
       "i18next/no-literal-string": "off",
     },
   },
-  // ts configs
   ...presets.typescript.map((config) => ({
     ...config,
     files: ["**/*.ts", "**/*.tsx"],
-    // ESLint inherits options for severity-only overrides; oxlint resets them.
+    // Oxlint resets options on severity-only overrides.
     ...(config.rules?.["prefer-const"] && {
       rules: {
         ...config.rules,
@@ -441,7 +429,7 @@ const configs = [
         },
       ],
       "@typescript-eslint/no-unsafe-declaration-merging": "off",
-      "no-unused-vars": "off", // Disable base rule for TS files
+      "no-unused-vars": "off",
     },
   },
   {
@@ -512,7 +500,6 @@ const configs = [
   {
     files: ["e2e/**/*.cy.spec.*"],
     rules: {
-      // Repeat inherited options for oxlint's override semantics.
       "no-console": ["error", { allow: ["warn", "error", "errorBuffer"] }],
     },
   },
@@ -526,7 +513,6 @@ const configs = [
         {
           patterns: [
             {
-              // There might be things that we might benefit from importing, like `defer`, in those cases we can change the regex here to allow them
               regex: "^metabase/(?!utils/promise$|embedding-sdk/test/).*",
               allowTypeImports: true,
               message:
@@ -600,8 +586,7 @@ const configs = [
     },
   },
   {
-    // MCP UI app is a standalone SDK consumer — allow embedding-sdk-package imports
-    // and raw hex color literals (used for MCP host theme fallback values).
+    // The MCP UI app consumes the SDK and uses hex literals as MCP host theme fallbacks.
     files: ["frontend/src/metabase/embedding/mcp/**/*"],
     rules: {
       "no-restricted-imports": "off",
@@ -626,16 +611,14 @@ const configs = [
     },
   },
   {
-    // The router facade is the single seam allowed to import `react-router`
-    // directly; every other file goes through `metabase/router`.
+    // Imports outside this directory use metabase/router.
     files: ["frontend/src/metabase/router/**/*"],
     rules: {
       "no-restricted-imports": "off",
     },
   },
   {
-    // The dayjs facade is the only place that imports `dayjs` and its plugins
-    // directly; every other file goes through `metabase/dayjs`.
+    // Imports outside this directory use metabase/dayjs.
     files: ["frontend/src/metabase/dayjs/**/*"],
     rules: {
       "no-restricted-imports": "off",
@@ -854,7 +837,6 @@ const configs = [
           typescript: true,
         },
       },
-      // Also set import/resolver for eslint-module-utils (used by custom rules)
       "import/resolver": {
         node: true,
         webpack: {
@@ -1137,23 +1119,15 @@ const configs = [
     },
   },
 
-  // ============================================
-  // STORYBOOK (uses native flat config from v9)
-  // ============================================
   ...presets.storybook,
   {
     files: ["**/*.stories.@(ts|tsx|js|jsx|mjs|cjs)"],
     rules: {
-      // Disable new v9 rule - fixing this is out of scope for eslint upgrade
       "storybook/no-renderer-packages": "off",
     },
   },
 
-  // ============================================
-  // SIDE-EFFECT-FREE MODULES
-  // ============================================
   {
-    // Run the lint on the directories rspack treats as side-effect-free
     files: SIDE_EFFECT_FREE_PATHS.map(
       (dir) => `${path.relative(__dirname, dir)}/**/*.{ts,tsx,js,jsx}`,
     ),
@@ -1173,37 +1147,26 @@ const configs = [
     },
   },
 
-  // ============================================
-  // BASE API OBJECT ACCESS
-  // ============================================
   {
-    // Endpoints are injected into the one `Api` object at import time by the
-    // file that owns them, so they exist only once that file has been
-    // evaluated. Reaching them by name through the base object works only while
-    // something else imports the owner, and a side-effect-free api module lets
-    // production shake the owner away. Consumers go through the owner's
-    // exports instead.
+    // Importing an endpoint from its owning module keeps that module in the production bundle.
     files: [
       "frontend/src/**/*.{ts,tsx,js,jsx}",
       "enterprise/frontend/src/**/*.{ts,tsx,js,jsx}",
     ],
     ignores: [
-      // TODO(no-base-api-access): createMockState composes the whole store, so redux/store/mocks belongs in test support.
-      // It moves there when the store roots are composed explicitly, and this ignore goes with it.
+      // createMockState seeds endpoints after importing the whole API index.
       "frontend/src/metabase/redux/store/mocks/api.ts",
     ],
     rules: {
       "metabase/no-base-api-access": [
         "error",
         {
-          // Where an endpoint is declared is a path question: the api module, or a module's `api/` folder or `api.ts`.
           allowInjectionIn: [
             `${__dirname}/frontend/src/metabase/api/**`,
             "**/api/**",
             "**/api.ts",
           ],
-          // Reaching an endpoint by name is never fine in product code, whatever the file is called.
-          // Test support seeds the cache by endpoint name, after importing the whole api index so every owner has run.
+          // Test support seeds the cache by endpoint name after importing the whole API index.
           allowReachIn: [
             `${__dirname}/frontend/src/metabase/api/**`,
             `${__dirname}/frontend/test/**`,

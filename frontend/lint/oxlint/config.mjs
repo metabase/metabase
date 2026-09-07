@@ -36,8 +36,7 @@ function options(name, value) {
   return [severity, ...result];
 }
 
-// Settings overrides are not supported by oxlint yet. Match the shared policy
-// directly instead of recording the files present when the config was generated.
+// Oxlint does not apply per-file settings overrides.
 const settingsEntries = policy
   .filter(
     (entry) =>
@@ -53,7 +52,7 @@ const settingsEntries = policy
     settings: entry.settings ?? {},
     parserOptions: entry.languageOptions?.parserOptions ?? {},
   }));
-// Files matching the same policy entries share settings identity for resolver WeakMaps.
+// The resolver keys its WeakMaps by settings identity.
 const combinations = new Map();
 let lastFile;
 let lastSettings;
@@ -110,7 +109,6 @@ export const jsRules = Object.fromEntries(
     ]),
 );
 
-// Match the existing optional CSS-module hook without loading an absent plugin.
 const require = createRequire(import.meta.url);
 function hasCssModulesPlugin() {
   if (!(process.env.CI || process.env.LINT_CSS_MODULES === "true"))
@@ -135,7 +133,6 @@ export function createConfig() {
   const overrides = [];
   const ignorePatterns = [];
   for (const entry of policy) {
-    // The compiled checker uses the shared policy, so reject differing overrides.
     for (const [name, value] of Object.entries(entry.settings ?? {})) {
       if (
         name.startsWith("boundaries/") &&
@@ -170,8 +167,7 @@ export function createConfig() {
           `Map the new lint rule to oxlint or a JS plugin: ${name}`,
         );
       }
-      // TS extension rules disable their ESLint base rule. When both map to
-      // one native rule, that base-rule "off" must not overwrite the TS rule.
+      // A TypeScript extension can share its native rule with the disabled ESLint base rule.
       const extension = `@typescript-eslint/${name}`;
       if (
         normalized === "off" &&

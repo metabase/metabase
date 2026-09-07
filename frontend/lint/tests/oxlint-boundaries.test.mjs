@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { createRequire } from "node:module";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
 
 import {
   elements,
@@ -16,17 +15,14 @@ import {
 } from "../oxlint-boundaries.mjs";
 
 const require = createRequire(import.meta.url);
-const rootPath = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../../..",
-);
+const rootPath = path.resolve(import.meta.dirname, "../../..");
 const checker = createBoundaryChecker({
   elements,
   rules: enforcedRules,
   rootPath,
 });
 
-test("preserves full-mode priority, ordered folder matches, and dot directories", () => {
+test("should classify full paths before folders, including dot directories", () => {
   const examples = [
     ["frontend/src/metabase/static-viz/index.tsx", "app/misc"],
     ["frontend/src/metabase/static-viz/other.tsx", "shared/static-viz"],
@@ -50,7 +46,7 @@ test("preserves full-mode priority, ordered folder matches, and dot directories"
   );
 });
 
-test("matches the upstream policy evaluator for every declared module pair", (t) => {
+test("should match upstream decisions for every declared module pair", () => {
   const pluginRoot = path.dirname(require.resolve("eslint-plugin-boundaries"));
   const { getSettings } = require(
     path.join(pluginRoot, "Settings/Validations.js"),
@@ -80,7 +76,6 @@ test("matches the upstream policy evaluator for every declared module pair", (t)
     isIgnored: false,
     isUnknown: false,
   });
-  let comparisons = 0;
   for (const from of checker.types) {
     for (const to of checker.types) {
       const dependency = {
@@ -103,15 +98,11 @@ test("matches the upstream policy evaluator for every declared module pair", (t)
         expected.result,
         `${from} -> ${to}`,
       );
-      comparisons++;
     }
   }
-  t.diagnostic(
-    `${comparisons} module pairs checked against the upstream evaluator`,
-  );
 });
 
-test("preserves shared-tier restrictions and transitional exceptions", () => {
+test("should enforce shared-tier restrictions and exceptions", () => {
   assert.equal(
     checker.decision("shared/current-user", "shared/metadata-store").allowed,
     false,
@@ -144,7 +135,7 @@ function elementTypes(from, to) {
   return { visitor, reports };
 }
 
-test("element-types checks both import forms and ignores non-string sources", () => {
+test("should check static and dynamic imports with string sources", () => {
   const from = "frontend/src/metabase/dayjs/index.ts";
   const to = "frontend/src/metabase/query_builder/index.ts";
   const source = { type: "Literal", value: "metabase/query_builder" };
@@ -187,7 +178,7 @@ test("element-types checks both import forms and ignores non-string sources", ()
   assert.deepEqual(allowed.reports, []);
 });
 
-test("rejects unsupported policy features instead of ignoring them", () => {
+test("should reject unsupported boundary policies", () => {
   assert.throws(
     () =>
       createBoundaryChecker({
