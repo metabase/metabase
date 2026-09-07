@@ -1,6 +1,7 @@
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import {
   getUnansweredGoalEntitiesForValues,
+  getUnresolvedGoalMessage,
   hasFailedGoalReferencesForValues,
   isDynamicGoalSetting,
   resolveGoalValue,
@@ -27,7 +28,7 @@ export function resolveGoalSettingsForStaticViz(
     getUnansweredGoalEntitiesForValues(data, [goal]).length > 0 ||
     hasFailedGoalReferencesForValues(data, [goal])
   ) {
-    throw new Error("Couldn't resolve this chart's goal line");
+    throw new Error(getUnresolvedGoalMessage());
   }
 
   return {

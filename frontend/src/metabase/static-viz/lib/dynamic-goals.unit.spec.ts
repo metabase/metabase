@@ -73,7 +73,7 @@ describe("resolveGoalSettingsForStaticViz", () => {
   it("throws for an unanswered reference", () => {
     expect(() =>
       resolveGoalSettingsForStaticViz(series(data({})), REFERENCED_SETTINGS),
-    ).toThrow("Couldn't resolve this chart's goal line");
+    ).toThrow("Couldn't load the value this chart's goal line depends on.");
   });
 
   it("throws for a failed reference", () => {
@@ -81,6 +81,6 @@ describe("resolveGoalSettingsForStaticViz", () => {
 
     expect(() =>
       resolveGoalSettingsForStaticViz(series(failed), REFERENCED_SETTINGS),
-    ).toThrow("Couldn't resolve this chart's goal line");
+    ).toThrow("Couldn't load the value this chart's goal line depends on.");
   });
 });
