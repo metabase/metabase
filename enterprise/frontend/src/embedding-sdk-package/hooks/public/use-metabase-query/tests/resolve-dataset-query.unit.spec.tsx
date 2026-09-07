@@ -12,7 +12,7 @@ import { TEST_METADATA, TEST_SCHEMA } from "./fixtures";
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 import { cardApi } from "metabase/api";
-import type { getMetadataUnfiltered } from "metabase/selectors/metadata";
+import type { getMetadataUnfiltered } from "metabase/metadata-store";
 
 import { avg, breakout, count, filter, orderBy, sum } from "..";
 
