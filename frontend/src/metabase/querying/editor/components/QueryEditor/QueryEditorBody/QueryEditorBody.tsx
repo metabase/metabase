@@ -39,6 +39,7 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
 
 type QueryEditorBodyProps = {
   extraButton?: ReactNode;
+  parametersList: ReactNode;
   question: Question;
   proposedQuestion: Question | undefined;
   modalSnippet?:
@@ -83,6 +84,7 @@ type QueryEditorBodyProps = {
 
 export function QueryEditorBody({
   extraButton,
+  parametersList,
   question,
   proposedQuestion,
   modalSnippet,
@@ -208,8 +210,7 @@ export function QueryEditorBody({
         onAcceptProposed={onAcceptProposed}
         onRejectProposed={onRejectProposed}
       >
-        <NativeQueryEditor.TopBar>
-          <NativeQueryEditor.ParametersList />
+        <NativeQueryEditor.TopBar leftContent={parametersList}>
           {topBarInnerContent}
           <NativeQueryEditor.Sidebar
             features={NATIVE_EDITOR_SIDEBAR_FEATURES}

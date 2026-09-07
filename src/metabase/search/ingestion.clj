@@ -224,7 +224,7 @@
     (let [spec      (search.spec/spec search-model)
           indexed?  (-> (spec-index-query-where search-model [:= :this.id id])
                         (assoc :select [[[:inline 1] :one]] :limit 1)
-                        search.db/rows
+                        search.db/spec-index-rows
                         seq
                         boolean)]
       (cond
@@ -276,7 +276,7 @@
   (->> (for [model search.spec/search-models]
          (-> (spec-index-query-where model nil)
              (assoc :select [[:%count.* :count]])
-             search.db/rows
+             search.db/spec-index-rows
              first
              :count))
        (filter some?)

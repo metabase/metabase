@@ -514,8 +514,13 @@
   [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr            (sql.qp/->honeysql driver arg)
         datetimeoffset? (or (sql.qp.u/field-with-tz? arg)
-                            (h2x/is-of-type? expr "datetimeoffset"))]
-    (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
+                            (h2x/is-of-type? expr "datetimeoffset"))
+        _               (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
+        ;; `AT TIME ZONE` rejects a `date` argument (error 8116), so cast dates to `datetime2` first (#27186).
+        expr            (if (or (instance? LocalDate expr)
+                                (h2x/is-of-type? expr "date"))
+                          (h2x/cast "datetime2" expr)
+                          expr)]
     (-> (if datetimeoffset?
           expr
           (h2x/at-time-zone expr (zone-id->windows-zone source-timezone)))
@@ -1041,6 +1046,13 @@
       (catch Throwable e
         (.close stmt)
         (throw e)))))
+
+(defmethod sql-jdbc.execute/cancelation-poisons-connection? :sqlserver
+  [_driver]
+  ;; `.cancel` sends an out-of-band TDS attention packet. Its acknowledgement is not drained before the Connection is
+  ;; checked back into the pool, and it surfaces later as `The result set is closed.` while an unrelated query is
+  ;; reading rows on the recycled Connection.
+  true)
 
 (defmethod sql.qp/inline-value [:sqlserver LocalDate]
   [_ ^LocalDate t]

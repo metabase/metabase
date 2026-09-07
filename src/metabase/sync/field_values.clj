@@ -2,7 +2,6 @@
   "Logic for updating FieldValues for fields in a database."
   (:require
    [java-time.api :as t]
-   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sync.db :as sync.db]
@@ -268,14 +267,10 @@
 (defn- delete-expired-advanced-field-values-for-field!
   [field]
   (sync-util/with-error-handling (format "Error deleting expired advanced field values for %s" (sync-util/name-for-logging field))
-    (let [types      field-values/advanced-field-values-types
-          cutoff     ((requiring-resolve 'metabase.util.honey-sql-2/add-interval-honeysql-form)
-                      (mdb/db-type)
-                      :%now
-                      (- (t/as field-values/advanced-field-values-max-age :days))
-                      :day)
-          rows-count (sync.db/advanced-field-values-count-before (:id field) types cutoff)]
-      (sync.db/delete-advanced-field-values-before! (:id field) types cutoff)
+    (let [types        field-values/advanced-field-values-types
+          max-age-days (t/as field-values/advanced-field-values-max-age :days)
+          rows-count   (sync.db/advanced-field-values-count-before (:id field) types max-age-days)]
+      (sync.db/delete-advanced-field-values-before! (:id field) types max-age-days)
       rows-count)))
 
 (mu/defn delete-expired-advanced-field-values-for-table!

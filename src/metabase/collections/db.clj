@@ -105,10 +105,24 @@
   [collection-ids]
   (t2/select [:model/Collection :name :id :personal_owner_id] :id [:in collection-ids] {:order-by [:location]}))
 
-(defn descendant-summaries-where
-  "The name, ID, location, and description of the Collections matching the Honey SQL `where`."
-  [where]
-  (t2/select [:model/Collection :name :id :location :description] {:where where}))
+(defn descendant-summaries
+  "The name, ID, location, and description of the descendant Collections of the Collection at
+  `children-location-prefix` (see `metabase.collections.models.collection/children-location`), excluding other
+  users' Personal Collections (Personal Collections owned by `current-user-id` are still included). When
+  `archived?` is given (true or false, not nil), further restricted to that archived status.
+  `additional-where-clauses` are ANDed in as-is; used by callers that need a permission-filter builder like
+  `visible-collection-filter-clause`, which lives in `metabase.collections.models.collection` and so can't be
+  called from here without a require cycle (that namespace already requires this one)."
+  [children-location-prefix current-user-id archived? additional-where-clauses]
+  (t2/select [:model/Collection :name :id :location :description]
+             {:where (into [:and
+                            [:like :location (str children-location-prefix "%")]
+                            [:or
+                             [:= :personal_owner_id nil]
+                             [:= :personal_owner_id current-user-id]]
+                            (when (some? archived?)
+                              [:= :archived archived?])]
+                           additional-where-clauses)}))
 
 (defn descendant-summaries-with-type
   "The name, ID, location, description, and type of the Collections directly under any of `location-prefixes`

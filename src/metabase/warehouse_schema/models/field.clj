@@ -32,6 +32,11 @@
 #_{:clj-kondo/ignore [:missing-docstring]} ; false positive
 (p/import-def metabase.lib.schema.metadata/column-visibility-types visibility-types)
 
+(def data-sensitivity-types
+  "Possible values for a Field's `:data_sensitivity`, most severe first. See
+  [[metabase.lib.schema.metadata/column-data-sensitivity-types]]."
+  metabase.lib.schema.metadata/column-data-sensitivity-types)
+
 (methodical/defmethod t2/table-name :model/Field [_model] :metabase_field)
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :destination]          [_model _k]  :model/Field)
@@ -108,6 +113,7 @@
    :semantic_type     transform-field-semantic-type
    :visibility_type   mi/transform-keyword
    :has_field_values  mi/transform-keyword
+   :data_sensitivity  mi/transform-keyword
    :fingerprint       transform-json-fingerprints
    :settings          mi/transform-json
    :nfc_path          mi/transform-json})
@@ -159,7 +165,7 @@
 (def field-user-settings
   "Set of user-settable values for a Field"
   #{:semantic_type :description :display_name :visibility_type :has_field_values :effective_type :coercion_strategy :fk_target_field_id
-    :caveats :points_of_interest :nfc_path :json_unfolding :settings})
+    :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity})
 
 (defn- ensure-field-user-settings-exist-for-fk-target-field [field]
   (warehouse-schema.db/insert-field-user-settings!
@@ -470,7 +476,7 @@
     #{[db-path]}))
 
 (defmethod serdes/make-spec "Field" [_model-name opts]
-  {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_default :database_indexed
+  {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :data_sensitivity :database_default :database_indexed
                :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
                :database_partitioned :database_position :database_required :database_type
                :description :display_name :effective_type :has_field_values :is_defective_duplicate
