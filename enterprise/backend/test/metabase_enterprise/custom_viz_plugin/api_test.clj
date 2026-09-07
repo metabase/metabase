@@ -477,7 +477,7 @@
               resp (multipart-upload! :crowberto 400
                                       (str "ee/custom-viz-plugin/" id "/bundle") zip
                                       :method :put)]
-          (is (re-find #"no longer supported" (or (:message resp) (str resp)))))))))
+          (is (re-find #"contains \":\", which is no longer allowed" (or (:message resp) (str resp)))))))))
 
 ;;; ------------------------------------------------ Update / Refresh ------------------------------------------------
 

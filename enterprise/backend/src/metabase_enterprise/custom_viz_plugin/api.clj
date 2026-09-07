@@ -257,8 +257,8 @@
    {:keys [file]} :- BundleUploadParts]
   (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
         _        (api/check-400 (nil? (manifest/identifier-error (:identifier existing)))
-                                (format (str "This plugin's identifier (\"%s\") is no longer supported. "
-                                             "Delete the plugin and upload the bundle under a new name.")
+                                (format (str "This plugin's identifier (\"%s\") contains \":\", which is no longer allowed. "
+                                             "Delete the plugin and upload the bundle under a name without \":\".")
                                         (:identifier existing)))
         tempfile (check-upload! file)]
     (try
