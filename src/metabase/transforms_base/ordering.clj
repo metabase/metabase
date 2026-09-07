@@ -247,15 +247,20 @@
 "
   [{transform-id :id :as to-check}]
   (let [db-id            (get-in to-check [:source :query :database])
-        ;; Recompute the transform under test live — its source may have just changed, so any stored
-        ;; deps are stale — and pin its source db. Every other transform uses its stored deps.
-        to-check         (-> to-check (assoc :source_database_id db-id) (dissoc :table_dependencies))
-        transforms       (map (fn [{:keys [id] :as transform}]
-                                (if (= id transform-id)
-                                  to-check
-                                  transform))
-                              (t2/select [:model/Transform :id :name :target :target_table_id
-                                          :source_database_id :table_dependencies]))
+        ;; Recompute the transform under test live — its source or target may have just changed, so the
+        ;; stored deps and `target_table_id` are stale — and pin its source db. Every other transform
+        ;; uses its stored values.
+        to-check         (-> to-check
+                             (assoc :source_database_id db-id
+                                    :target_table_id    (when-let [db-id (transforms-base.i/target-db-id to-check)]
+                                                          (let [{:keys [schema name]} (:target to-check)]
+                                                            (t2/select-one-fn :id :model/Table
+                                                                              :db_id db-id :schema schema :name name :active true))))
+                             (dissoc :table_dependencies))
+        transforms       (conj (vec (t2/select [:model/Transform :id :name :target :target_table_id
+                                                :source_database_id :table_dependencies]
+                                               :id [:not= transform-id]))
+                               to-check)
         transforms-by-id (into {}
                                (map (juxt :id identity))
                                transforms)
