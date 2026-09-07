@@ -28,13 +28,16 @@
                        [:name ms/NonBlankString]
                        [:slug Slug]
                        [:is_active ms/BooleanValue]
-                       [:member_count ms/Int]
-                       [:attributes [:maybe [:map-of :string :string]]]
+                       [:member_count {:optional true} ms/Int]
+                       [:attributes {:optional true} [:maybe [:map-of :string :string]]]
                        [:tenant_collection_id ms/PositiveInt]])
 
-(defn- present-tenants [tenants]
-  (->> (t2/hydrate tenants :member_count)
-       (map #(select-keys % [:id :name :slug :is_active :member_count :attributes :tenant_collection_id]))))
+(defn- present-tenants
+  [tenants]
+  (if api/*is-superuser?*
+    (->> (t2/hydrate tenants :member_count)
+         (map #(select-keys % [:id :name :slug :is_active :member_count :attributes :tenant_collection_id])))
+    (map #(select-keys % [:id :name :slug :is_active :tenant_collection_id]) tenants)))
 
 (defn- present-tenant [tenant]
   (first (present-tenants [tenant])))

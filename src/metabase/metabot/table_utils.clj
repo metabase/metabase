@@ -2,10 +2,8 @@
   "Shared table utilities for enterprise modules."
   (:require
    [clojure.set :as set]
-   [metabase.api.common :as api]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-analyzer :as query-analyzer]
-   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
@@ -40,18 +38,8 @@
                       priority-tables []
                       exclude-table-ids #{}}}]
    (let [priority-table-ids (set (map :id priority-tables))
-         {table-where-clause :clause table-cte :with} (mi/visible-filter-clause :model/Table
-                                                                                :id
-                                                                                {:user-id       api/*current-user-id*
-                                                                                 :is-superuser? api/*is-superuser?*}
-                                                                                {:perms/view-data      :unrestricted
-                                                                                 :perms/create-queries :query-builder-and-native})
          ;; Fetch most viewed tables, excluding priority tables and excluded tables
-         fill-tables (metabot.db/most-viewed-tables-where database-id
-                                                          (cond-> {:where    table-where-clause
-                                                                   :order-by [[:view_count :desc]]
-                                                                   :limit    all-tables-limit}
-                                                            table-cte (assoc :with table-cte)))
+         fill-tables (metabot.db/most-viewed-tables-visible-to-current-user database-id all-tables-limit)
          fill-tables (remove #(or (priority-table-ids (:id %))
                                   (exclude-table-ids (:id %))) fill-tables)
          fill-tables (t2/hydrate fill-tables :fields)
@@ -108,17 +96,6 @@
            (nil? tschema)
            (similar? uschema tschema))))
 
-(defn- visible-filter-clause
-  []
-  (let [{table-where-clause :clause table-cte :with} (mi/visible-filter-clause :model/Table
-                                                                               :id
-                                                                               {:user-id       api/*current-user-id*
-                                                                                :is-superuser? api/*is-superuser?*}
-                                                                               {:perms/view-data      :unrestricted
-                                                                                :perms/create-queries :query-builder-and-native})]
-    (cond-> {:where table-where-clause}
-      table-cte (assoc :with table-cte))))
-
 (defn find-matching-tables
   "Find tables in the database that are similar to the unrecognized tables using fuzzy matching.
 
@@ -139,12 +116,7 @@
         (keep (fn [table]
                 (when (some #(matching-tables? table % {:match-schema? false}) unrecognized-tables)
                   (t2.realize/realize table))))
-        (metabot.db/visible-tables-reducible database-id
-                                             (cond-> (assoc (visible-filter-clause)
-                                                            :limit 10000)
-                                               (seq used-ids) (update :where #(if %
-                                                                                [:and % [:not-in :id used-ids]]
-                                                                                [:not-in :id used-ids]))))))
+        (metabot.db/visible-tables-excluding database-id used-ids)))
 
 (defn used-tables-from-ids
   "Return table info for `table-ids` in the same shape as [[used-tables]].
@@ -153,7 +125,7 @@
   [database-id table-ids]
   (if-not (seq table-ids)
     []
-    (metabot.db/visible-table-summaries-where database-id table-ids (visible-filter-clause))))
+    (metabot.db/visible-table-summaries-for-current-user database-id table-ids)))
 
 (defn used-tables
   "Return all tables used in the query, including fuzzy-matched ones.
