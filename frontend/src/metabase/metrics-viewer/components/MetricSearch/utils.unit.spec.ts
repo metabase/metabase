@@ -1238,7 +1238,6 @@ function getExprTokenDefinitions(
 
 // oxlint treats `nextSlotIndex++` as a write even though its value is read as
 // the default for `slotIndex` below, so it wrongly reports this as unused.
-// oxlint-disable-next-line no-unused-vars
 let nextSlotIndex = 0;
 
 function identity(
