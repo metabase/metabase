@@ -14,8 +14,8 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.xrays.automagic-dashboards.schema :as ads]
-   [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [metabase.xrays.db :as xrays.db]
+   [ring.util.codec :as codec]))
 
 (mu/defn field-isa?
   "`isa?` on a field, checking semantic_type and then base_type"
@@ -84,7 +84,7 @@
     (or
      ;; Handle integer Field IDs.
      (when (integer? id-or-name)
-       (t2/select-one :model/Field :id id-or-name))
+       (xrays.db/field id-or-name))
      ;; handle field string names. Only if we have result metadata. (Not sure why)
      (when (string? id-or-name)
        (when-not result-metadata

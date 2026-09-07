@@ -28,16 +28,16 @@ export function ExplorationSummarySkeleton() {
         w="100%"
         bg="background-primary"
         bd="1px solid border"
-        bdrs="md"
-        p="lg"
+        bdrs="sm"
+        p="xl"
         gap={0}
       >
         <Box h="2.5rem" w="100%" maw="42.5rem" mx="auto">
-          <Skeleton h="1.5rem" w="45%" radius="sm" />
+          <Skeleton h="1.5rem" w="45%" radius="xs" />
         </Box>
-        <Stack w="100%" maw="42.5rem" mx="auto" mt="lg" gap="md">
+        <Stack w="100%" maw="42.5rem" mx="auto" mt="xl" gap="lg">
           {SKELETON_LINE_WIDTHS.map((width, index) => (
-            <Skeleton key={index} h="0.75rem" w={width} radius="sm" />
+            <Skeleton key={index} h="0.75rem" w={width} radius="xs" />
           ))}
         </Stack>
       </Stack>

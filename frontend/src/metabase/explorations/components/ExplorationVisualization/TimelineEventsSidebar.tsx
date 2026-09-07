@@ -26,8 +26,8 @@ export function TimelineEventsSidebar({
       <Group
         justify="space-between"
         align="center"
-        px="lg"
-        py="md"
+        px="xl"
+        py="lg"
         wrap="nowrap"
       >
         <Text fw="bold">
@@ -41,7 +41,7 @@ export function TimelineEventsSidebar({
           <Icon name="close" />
         </ActionIcon>
       </Group>
-      <ScrollArea flex={1} pb="lg">
+      <ScrollArea flex={1} pb="xl">
         <Stack gap="sm" data-testid="timeline-events-list">
           {events.map((event) => (
             <TimelineEventCard key={event.id} event={event} />

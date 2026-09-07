@@ -56,7 +56,7 @@
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [toucan2.core :as t2]))
+   [metabase.xrays.db :as xrays.db]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Code for creation of instantiated affinities
@@ -97,7 +97,7 @@
  `:metadata/column`s directly or use Metadata Providers."
   [{fk-target-field-id :fk_target_field_id, base-type :base_type, :keys [id link aggregation], :as field} :- (ms/InstanceOf :model/Field)]
   (let [col (if fk-target-field-id
-              (-> (t2/select-one :metadata/column :id fk-target-field-id)
+              (-> (xrays.db/metadata-column fk-target-field-id)
                   (assoc :fk-field-id id, :lib/source :source/implicitly-joinable))
               (lib-be/instance->metadata field :metadata/column))]
     (cond-> col
@@ -117,7 +117,7 @@
   (cond
     full-name full-name
     link (format "%s → %s"
-                 (-> (t2/select-one :model/Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
+                 (-> (xrays.db/field link) :display_name (str/replace #"(?i)\sid$" ""))
                  display_name)
     :else display_name))
 
@@ -363,7 +363,7 @@
 ;; TODO - Deduplicate from core
 (mu/defn- source->db :- (ms/InstanceOf :model/Database)
   [source :- (ms/InstanceOf #{:model/Table :model/Card})]
-  (t2/select-one :model/Database :id ((some-fn :db_id :database_id) source)))
+  (xrays.db/database ((some-fn :db_id :database_id) source)))
 
 (defn- enriched-field-with-sources [{:keys [tables source]} field]
   (assoc field

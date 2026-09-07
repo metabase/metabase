@@ -274,14 +274,14 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
   return (
     <>
-      <Stack flex={1} mih={0} gap="md" bg="background-secondary">
+      <Stack flex={1} mih={0} gap="lg" bg="background-secondary">
         {hasMessages ? (
           <Stack
             flex={1}
             mih={0}
             gap={0}
-            px="lg"
-            pt="lg"
+            px="xl"
+            pt="xl"
             className={S.messagesContainer}
           >
             <Messages
@@ -306,8 +306,8 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
         <Flex
           bg="background-primary"
           bd="1px solid border"
-          bdrs="md"
-          mx="lg"
+          bdrs="sm"
+          mx="xl"
           pr="0.75rem"
           flex="none"
           className={S.inputContainer}
@@ -331,7 +331,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
             />
           )}
         </Flex>
-        <Flex mb="lg" mx="lg" align="center" justify="center">
+        <Flex mb="xl" mx="xl" align="center" justify="center">
           <Text
             c="text-secondary"
             size="sm"

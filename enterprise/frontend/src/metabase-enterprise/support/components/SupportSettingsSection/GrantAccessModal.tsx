@@ -61,7 +61,7 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
       onClose={onClose}
       opened
       title={t`Grant Access?`}
-      padding="xl"
+      padding="xxl"
     >
       <Stack>
         <Box mt="sm">
@@ -76,7 +76,7 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
         <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
           {({ values }) => (
             <Form>
-              <Stack mt="md">
+              <Stack mt="lg">
                 <FormSelect
                   name="grant_duration_minutes"
                   label={t`Access duration`}
@@ -99,7 +99,7 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
                   name="notes"
                   placeholder={t`Add any important information we should know to help you better.`}
                 />
-                <Flex justify="end" mt="md" gap="md">
+                <Flex justify="end" mt="lg" gap="lg">
                   <FormErrorMessage />
                   <FormSubmitButton
                     disabled={!values.grant_duration_minutes}

@@ -6378,7 +6378,7 @@
         "required" : [ "metrics", "dimension_groups" ]
       },
       "metabase.explorations.api.ExplorationBlockNode" : {
-        "description" : "A block (the FE's sidebar group): a heading plus its pages. `:type` is whether the block is\n   anchored on its metric or its dimension; `:name` is the computed heading (the metric name, or\n   `By <dimension>`). `:position` is the block's 0-indexed authoring slot.",
+        "description" : "A block (the FE's sidebar group): a heading plus its pages. `:name` is the computed heading\n   (the metric name). `:position` is the block's 0-indexed authoring slot.",
         "type" : "object",
         "properties" : {
           "explore_filters" : {
@@ -6500,13 +6500,9 @@
             "description" : "value must be an integer greater or equal to than zero.",
             "type" : "integer",
             "minimum" : 0
-          },
-          "type" : {
-            "type" : "string",
-            "enum" : [ "metric", "dimension" ]
           }
         },
-        "required" : [ "id", "type", "name", "position", "pages" ]
+        "required" : [ "id", "name", "position", "pages" ]
       },
       "metabase.explorations.api.ExplorationDimensionGroup" : {
         "description" : "Schema for a dimension group in the /dimensions response. A group bundles together dimensions that\n   refer to the same underlying source (same field/binning) so the FE can show a single user-facing\n   entry while still tracking the actual per-metric dimensions needed by `start exploration`.",
@@ -9916,6 +9912,10 @@
         "type" : "string",
         "enum" : [ "question", "metric", "model" ]
       },
+      "metabase.lib.schema.metadata..column.data-sensitivity" : {
+        "type" : "string",
+        "enum" : [ "SEC_KEY", "SYS_TELEMETRY", "PHI", "BIO_GEN", "PCI_FIN", "SENS_PERS", "PII", "CORP_IP", "BIZ_CONF", "PUBLIC" ]
+      },
       "metabase.lib.schema.metadata..column.has-field-values" : {
         "type" : "string",
         "enum" : [ "auto-list", "list", "none", "search" ]
@@ -10116,6 +10116,13 @@
             "lib/source-uuid" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "data-sensitivity" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.data-sensitivity"
               }, {
                 "type" : "null"
               } ]
@@ -10688,6 +10695,13 @@
               "lib/source-uuid" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "data-sensitivity" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.data-sensitivity"
                 }, {
                   "type" : "null"
                 } ]
@@ -37362,14 +37376,6 @@
                             }, {
                               "type" : "null"
                             } ]
-                          },
-                          "type" : {
-                            "oneOf" : [ {
-                              "type" : "string",
-                              "enum" : [ "metric", "dimension" ]
-                            }, {
-                              "type" : "null"
-                            } ]
                           }
                         }
                       }
@@ -37457,7 +37463,7 @@
       "get" : {
         "operationId" : "get-api-exploration-mine",
         "summary" : "GET /api/exploration/mine",
-        "description" : "Explorations the current user created or edited, most-recently-touched first, paginated.\n\n  \"Touched\" composes the user's own edits to the exploration, to its Summary document, and its\n  creation — see [[my-explorations-honeysql]]. Explorations that were moved into a collection the\n  user can no longer read are excluded, as are archived ones. Returns the collection-items\n  envelope: `{:total :limit :offset :data}`.",
+        "description" : "Explorations the current user created or edited, most-recently-touched first, paginated.\n\n  \"Touched\" composes the user's own edits to the exploration, to its Summary document, and its\n  creation — see [[metabase.explorations.db/my-explorations]]. Explorations that were moved into a\n  collection the user can no longer read are excluded, as are archived ones. Returns the\n  collection-items envelope: `{:total :limit :offset :data}`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -38218,6 +38224,14 @@
                   "json_unfolding" : {
                     "oneOf" : [ {
                       "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "data_sensitivity" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "enum" : [ "SEC_KEY", "SYS_TELEMETRY", "PHI", "BIO_GEN", "PCI_FIN", "SENS_PERS", "PII", "CORP_IP", "BIZ_CONF", "PUBLIC" ]
                     }, {
                       "type" : "null"
                     } ]

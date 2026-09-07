@@ -122,7 +122,7 @@ export function CreateTransformModal({
     <Modal
       title={t`Save your transform`}
       opened
-      padding="xl"
+      padding="xxl"
       closeOnEscape={closeOnEscape}
       onClose={onClose}
     >
@@ -171,7 +171,7 @@ function CreateTransformForm({
 
   return (
     <Form>
-      <Stack gap="lg" mt="sm">
+      <Stack gap="xl" mt="sm">
         <FormTextInput
           name="name"
           label={t`Name`}

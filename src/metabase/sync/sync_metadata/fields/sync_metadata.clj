@@ -4,6 +4,7 @@
   Fields that were not newly created; newly created Fields are given appropriate metadata when first synced."
   (:require
    [clojure.string :as str]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.fields.common :as common]
@@ -12,8 +13,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]))
 
 (defn- normalize-nfc-path
   "Normalize a `nfc-path` to a vector of strings so a driver emitting keywords doesn't churn against the
@@ -243,7 +243,7 @@
            {:preview_display false}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
-             (pos? (t2/update! :model/Field (u/the-id metabase-field) updates)))
+             (pos? (sync.db/update-field! (u/the-id metabase-field) updates)))
       1
       0)))
 
