@@ -109,7 +109,10 @@ ci_scripts:
   - ".github/file-paths.yaml"
   - ".github/scripts/**"
   - ".github/actions/**"
+  - ".github/workflows/e2e-{test,tests,matrix-builder}.yml"
   - ".storybook/story-files.cjs"
+  - "e2e/runner/read-spec-plan.js"
+  - "e2e/support/cypress.config.js"
   - "frontend/lint/module-boundaries.mjs"
   - "frontend/lint/shared-tiers.mjs"
   - ".dependency-cruiser.cjs"
@@ -117,12 +120,6 @@ ci_scripts:
   - "jest.esm-packages.js"
   - "package.json"
   - "bun.lock"
-
-# e2e harness/support code (commands, support file, runner). Not in the
-# instrumented bundle, so it maps to no covered module — a change here forces a
-# full e2e run (see create-test-plan / e2eInfraTouched).
-e2e_infra: &e2e_infra
-  - *shared_e2e
 
 backend_ci: &backend_ci
   - *shared_ci
@@ -248,6 +245,18 @@ snowplow: &snowplow
   - "bin/lint-snowplow-schemas.bb"
   - "bin/lint-snowplow-schemas-test.bb"
 
+e2e_infra: &e2e_infra
+  - *default
+  - *e2e_ci
+  - *frontend_configs
+  - *shared_e2e
+  - *snowplow
+  - "e2e/**/!(*.cy.spec.@(js|jsx|ts|tsx))"
+  - "frontend/build/**"
+  - "patches/**"
+  - ".github/scripts/build-e2e-matrix.js"
+  - ".github/file-paths.yaml"
+
 e2e_all:
   - *default
   - *e2e_ci
@@ -255,6 +264,7 @@ e2e_all:
   - *e2e_specs
   - "e2e/**"
   - *snowplow
+  - *e2e_infra
 
 documentation:
   - "docs/**"
