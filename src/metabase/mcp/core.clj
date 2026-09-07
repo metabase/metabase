@@ -7,7 +7,8 @@
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.session :as mcp.session]
-   [metabase.mcp.settings :as mcp.settings]))
+   [metabase.mcp.settings :as mcp.settings]
+   [metabase.mcp.ui-surface :as mcp.ui-surface]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,6 +26,16 @@
   "Resolves a credential issued for an MCP UI resource."
   [credential]
   (mcp.session/resolve-ui-credential credential))
+
+(defn ui-credential-on-surface?
+  "Whether an MCP Apps UI credential may authenticate `method` + `uri` at all."
+  [method uri]
+  (mcp.ui-surface/on-surface? method uri))
+
+(defn ui-credential-scope-satisfied?
+  "Whether a UI credential with `claims` holds what `method` + `uri` costs."
+  [method uri claims]
+  (mcp.ui-surface/scope-satisfied? method uri claims))
 
 (defn vscode-webview-enabled?
   "Returns true if vscode/cursor is enabled in common MCP apps."

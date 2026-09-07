@@ -1,43 +1,134 @@
 import { renderHook, waitFor } from "@testing-library/react";
 
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
+import MetabaseSettings from "metabase/utils/settings";
+import type { McpAppsBootstrapResponse } from "metabase-types/api";
+
+import { fetchMcpBootstrap } from "../api";
 
 import { useMcpUserAndSettingsFetch } from "./useMcpUserAndSettingsFetch";
 
+jest.mock("../api", () => ({
+  fetchMcpBootstrap: jest.fn(),
+}));
+
 jest.mock("metabase/current-user", () => ({
-  refetchCurrentUser: jest.fn(() => ({ type: "refetch-current-user" })),
+  currentUserApi: {
+    util: {
+      upsertQueryData: jest.fn(() => ({ type: "upsert-current-user" })),
+    },
+  },
+  loadCurrentUser: jest.fn(() => ({ type: "load-current-user" })),
 }));
 
 jest.mock("metabase/settings", () => ({
-  refetchSiteSettings: jest.fn(() => ({ type: "refetch-site-settings" })),
+  settingsApi: {
+    util: {
+      upsertQueryData: jest.fn(() => ({ type: "upsert-session-properties" })),
+    },
+    endpoints: {
+      getSessionProperties: {
+        initiate: jest.fn(() => ({ type: "initiate-session-properties" })),
+      },
+    },
+  },
 }));
 
+jest.mock("metabase/utils/settings", () => ({
+  __esModule: true,
+  default: { setAll: jest.fn() },
+}));
+
+// The hook passes both halves straight through to `upsertQueryData` without reading
+// any field, so a stand-in is enough and spelling out a whole user and settings map
+// would only obscure what these tests assert.
+const BOOTSTRAP = {
+  user: { id: 1 },
+  settings: { "site-locale": "en" },
+} as unknown as McpAppsBootstrapResponse;
+
+const OPTIONS = {
+  instanceUrl: "http://localhost:3000",
+  uiCredential: "credential-1",
+  mcpSessionId: "session-1",
+};
+
+const setup = () => {
+  const dispatch = jest.fn();
+  // The hook only uses dispatch
+  const store = { dispatch } as unknown as SdkStore;
+
+  const { result, rerender } = renderHook(
+    (props: { uiCredential: string }) =>
+      useMcpUserAndSettingsFetch({ ...OPTIONS, ...props, store }),
+    { initialProps: { uiCredential: OPTIONS.uiCredential } },
+  );
+
+  return { dispatch, result, rerender };
+};
+
 describe("useMcpUserAndSettingsFetch", () => {
-  it("keeps settings ready state even when the ui credential changes", async () => {
-    const unwrap = jest.fn().mockResolvedValue(undefined);
-    const dispatch = jest.fn(() => ({ unwrap }));
+  beforeEach(() => {
+    jest.mocked(fetchMcpBootstrap).mockResolvedValue(BOOTSTRAP);
+  });
 
-    // The hook only uses dispatch
-    const store = { dispatch } as unknown as SdkStore;
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
-    const { result, rerender } = renderHook(
-      ({ uiCredential }) =>
-        useMcpUserAndSettingsFetch({
-          instanceUrl: "http://localhost:3000",
-          store,
-          uiCredential,
-        }),
-      { initialProps: { uiCredential: "credential-1" } },
-    );
+  it("seeds the user and settings caches from the MCP bootstrap endpoint", async () => {
+    const { dispatch, result } = setup();
 
     await waitFor(() => {
       expect(result.current.isSettingsReady).toBe(true);
     });
 
-    expect(dispatch).toHaveBeenCalledTimes(2);
+    expect(fetchMcpBootstrap).toHaveBeenCalledWith(OPTIONS);
+    expect(dispatch.mock.calls.flat()).toEqual([
+      { type: "upsert-current-user" },
+      { type: "upsert-session-properties" },
+      { type: "load-current-user" },
+      { type: "initiate-session-properties" },
+    ]);
+  });
+
+  it("publishes the settings to consumers that live outside the store", async () => {
+    const { result } = setup();
+
+    await waitFor(() => {
+      expect(result.current.isSettingsReady).toBe(true);
+    });
+
+    expect(MetabaseSettings.setAll).toHaveBeenCalledWith(BOOTSTRAP.settings);
+  });
+
+  it("keeps settings ready state even when the ui credential changes", async () => {
+    const { dispatch, result, rerender } = setup();
+
+    await waitFor(() => {
+      expect(result.current.isSettingsReady).toBe(true);
+    });
 
     rerender({ uiCredential: "credential-2" });
+
     expect(result.current.isSettingsReady).toBe(true);
-    expect(dispatch).toHaveBeenCalledTimes(2);
+    expect(fetchMcpBootstrap).toHaveBeenCalledTimes(1);
+    expect(dispatch).toHaveBeenCalledTimes(4);
+  });
+
+  it("reports a rejected credential as an auth failure", async () => {
+    jest
+      .mocked(fetchMcpBootstrap)
+      .mockRejectedValue(Object.assign(new Error("nope"), { status: 401 }));
+    jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const { result } = setup();
+
+    await waitFor(() => {
+      expect(result.current.userAndSettingsFetchError).toMatch(
+        /Authentication failed/,
+      );
+    });
+    expect(result.current.isSettingsReady).toBe(false);
   });
 });

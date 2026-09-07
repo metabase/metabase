@@ -149,18 +149,19 @@
 (defn- issue-legacy-ui-credential
   "v1-compat ONLY. Mint a UI credential with no scope claim, stamped `:legacy`.
 
-  A credential minted here is EXEMPT from the native-SQL scope gate
-  ([[metabase.agent-api.query-guards/check-mcp-ui-native-query!]]) — v1's iframe visualizes `execute_sql`
-  handles that legitimately hold raw SQL, and wiring that gate must not change v1's behavior. The marker is
+  A credential minted here is EXEMPT from both scope gates the claim feeds: the per-route one
+  ([[metabase.mcp.ui-surface/scope-satisfied?]]) and the native-SQL one
+  ([[metabase.agent-api.query-guards/check-mcp-ui-native-query!]]). v1's iframe visualizes `execute_sql`
+  handles that legitimately hold raw SQL, and neither gate may change v1's behavior. The marker is
   explicit rather than inferred from a missing claim, because absence has to keep meaning *fail closed*: a
-  rolling deploy can hand a node a credential minted before the claim existed, and the gate refuses those.
+  rolling deploy can hand a node a credential minted before the claim existed, and the gates refuse those.
 
   It carries the scary name on purpose. `(issue-ui-credential session-id user-id)` reads like a perfectly
-  reasonable call, and a v2 caller reaching for it would silently opt that surface out of the gate — the exact
-  hole the gate was added to close. Nothing on the v2 surface may call this or the 2-arity that forwards here;
-  `v2-credentials-are-never-legacy-test` is what holds that line.
+  reasonable call, and a v2 caller reaching for it would silently opt that surface out of both gates — the
+  exact hole they were added to close. Nothing on the v2 surface may call this or the 2-arity that forwards
+  here; `v2-credentials-are-never-legacy-test` is what holds that line.
 
-  Delete this fn, its 2-arity forwarder, and the guard's `:legacy` branch, with v1's retirement."
+  Delete this fn, its 2-arity forwarder, and the gates' `:legacy` branches, with v1's retirement."
   [session-id user-id]
   (sign-ui-credential session-id user-id {:legacy true}))
 
@@ -168,9 +169,10 @@
   "Create a short-lived credential for the MCP Apps UI. It authenticates only the narrow server-side UI request surface,
   never as a core Metabase session.
 
-  `token-scopes` is the minting MCP session's scope set. It rides along as a signed claim so gates further down the
-  iframe's request surface can ask what the client was actually granted — the credential itself is stamped
-  unrestricted, since the allowlisted routes declare no `:scope` and would otherwise 403 the iframe at bootstrap.
+  `token-scopes` is the minting MCP session's scope set. It rides along as a signed claim because it is the only
+  record of what the client was actually granted: the credential authenticates as `::scope/mcp-ui`, which
+  satisfies no endpoint's declared `:scope`. Both gates on the iframe's request surface spend this claim — see
+  [[metabase.mcp.ui-surface/request-surface]] and [[metabase.agent-api.query-guards/check-mcp-ui-native-query!]].
 
   Passing the caller's real scopes is what subjects the credential to the native-SQL gate. The 2-arity is the
   v1 surface's, and forwards to [[issue-legacy-ui-credential]] — read that docstring before calling it: it mints

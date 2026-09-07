@@ -177,3 +177,76 @@
         (mcp.session/get-or-create-embedding-session! owner-session (mt/user->id :crowberto))
         (is (=? {:status 404}
                 (post-mcp-feedback :rasta 404 body owner-session)))))))
+
+;;; ------------------------------------------------- Bootstrap --------------------------------------------------
+
+(defn- get-bootstrap
+  ([user expected-status session-id]
+   (client/client-full-response (test.users/username->token user)
+                                :get expected-status "embed-mcp/bootstrap"
+                                {:request-options {:headers {"mcp-session-id" session-id}}}))
+  ([user expected-status]
+   (client/client-full-response (test.users/username->token user)
+                                :get expected-status "embed-mcp/bootstrap")))
+
+(defn- get-bootstrap-with-ui-credential
+  [expected-status credential session-id]
+  (client/client-full-response :get expected-status "embed-mcp/bootstrap"
+                               {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
+                                                            "mcp-session-id" session-id}}}))
+
+(defn- bootstrap-for!
+  [user]
+  (:body (get-bootstrap user 200 (mcp.session/create! (mt/user->id user)))))
+
+(deftest bootstrap-user-projection-test
+  (testing "GHY-4400: the bootstrap user is a fixed projection, not whatever `GET /api/user/current` returns"
+    (doseq [username [:crowberto :rasta]]
+      (testing username
+        (let [user (:user (bootstrap-for! username))]
+          (is (= #{:id :locale :is_superuser :is_data_analyst :is_qbnewb
+                   :tenant_id :personal_collection_id :permissions}
+                 (set (keys user)))
+              "Adding a field here must be a deliberate edit to ::bootstrap-user, not an accident")
+          (is (= (mt/user->id username) (:id user)))
+          (is (some? (:personal_collection_id user))
+              "hydrated, not merely schema-optional — the iframe's collection picker reads it")
+          (is (= #{:can_create_queries :can_create_native_queries}
+                 (set (keys (:permissions user))))))))
+    (testing "the projection still reports who the user is"
+      (is (true? (:is_superuser (:user (bootstrap-for! :crowberto)))))
+      (is (false? (:is_superuser (:user (bootstrap-for! :rasta))))))))
+
+(deftest bootstrap-omits-admin-only-settings-test
+  (testing "GHY-4400: an admin's credential reads only the settings a non-admin would, so a narrow MCP scope cannot
+            widen into instance configuration"
+    (let [admin-settings (:settings (bootstrap-for! :crowberto))]
+      (is (contains? (mt/user-http-request :crowberto :get 200 "session/properties")
+                     :custom-geojson-enabled)
+          "`custom-geojson-enabled` is admin-visible, so it anchors this test only while it reaches admins")
+      (is (not (contains? admin-settings :custom-geojson-enabled)))
+      (is (contains? admin-settings :site-locale)
+          "Settings a non-admin may read are still served")
+      (is (= (set (keys (:settings (bootstrap-for! :rasta))))
+             (set (keys admin-settings)))
+          "the projection is the same whoever holds the credential"))))
+
+(deftest bootstrap-validates-session-header-test
+  (testing "bootstrap validates the MCP session header like the other callback routes"
+    (is (=? {:status 400} (get-bootstrap :rasta 400)))
+    (is (=? {:status 404} (get-bootstrap :rasta 404 "not-a-uuid")))
+    (testing "a session owned by another user is rejected"
+      (let [owner-session (mcp.session/create! (mt/user->id :crowberto))]
+        (mcp.session/get-or-create-embedding-session! owner-session (mt/user->id :crowberto))
+        (is (=? {:status 404} (get-bootstrap :rasta 404 owner-session)))))))
+
+(deftest bootstrap-accepts-ui-credential-test
+  (testing "the UI credential can bootstrap the iframe, and only for its own MCP session"
+    (let [user-id          (mt/user->id :crowberto)
+          credential-id    (mcp.session/create! user-id)
+          other-session-id (mcp.session/create! user-id)
+          credential       (mcp.session/issue-ui-credential credential-id user-id #{"agent:query:run"})]
+      (is (=? {:status 200 :body {:user {:id user-id}}}
+              (get-bootstrap-with-ui-credential 200 credential credential-id)))
+      (is (= 404 (:status (get-bootstrap-with-ui-credential 404 credential other-session-id))))
+      (is (= 401 (:status (get-bootstrap-with-ui-credential 401 "not-a-credential" credential-id)))))))
