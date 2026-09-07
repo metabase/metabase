@@ -8,10 +8,12 @@ import type {
 
 import { useReferencedEntitiesQuery } from "./use-referenced-entities-query";
 
-export type AnsweredGoalData =
+export type GoalResolution<T> =
   | { status: "resolving" }
   | { status: "failed" }
-  | { status: "answered"; data: DatasetData };
+  | ({ status: "resolved" } & T);
+
+export type GoalDataResolution = GoalResolution<{ data: DatasetData }>;
 
 /**
  * Answers the given goal references the dataset can't by re-running the
@@ -22,7 +24,7 @@ export function useAnsweredGoalData(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   unansweredEntities: ReferencedEntity[],
-): AnsweredGoalData {
+): GoalDataResolution {
   const { currentData: freshDataset, isError } = useReferencedEntitiesQuery(
     datasetQuery,
     unansweredEntities,
@@ -51,7 +53,7 @@ export function useAnsweredGoalData(
   }, [data, freshDataset]);
 
   if (unansweredEntities.length === 0) {
-    return { status: "answered", data };
+    return { status: "resolved", data };
   }
 
   // no query to re-run, so the references can never be answered
@@ -72,5 +74,5 @@ export function useAnsweredGoalData(
     return { status: "failed" };
   }
 
-  return { status: "answered", data: answeredData };
+  return { status: "resolved", data: answeredData };
 }

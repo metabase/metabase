@@ -10,36 +10,38 @@ import type {
   GoalSegment,
 } from "metabase-types/api";
 
-import { useAnsweredGoalData } from "./use-answered-goal-data";
+import {
+  type GoalResolution,
+  useAnsweredGoalData,
+} from "./use-answered-goal-data";
 
-export type GoalSegmentsState =
-  | { status: "resolving" }
-  | { status: "failed" }
-  | { status: "resolved"; segments: ResolvedGoalSegment[] };
+export type GoalSegmentsResolution = GoalResolution<{
+  segments: ResolvedGoalSegment[];
+}>;
 
 export function useResolvedGoalSegments(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   segments: GoalSegment[] | undefined,
-): GoalSegmentsState {
+): GoalSegmentsResolution {
   const answered = useAnsweredGoalData(
     datasetQuery,
     data,
     getUnansweredGoalEntities(data, segments),
   );
 
-  if (answered.status !== "answered") {
+  if (answered.status !== "resolved") {
     return answered;
   }
 
-  return getGoalSegmentsState(answered.data, segments);
+  return getGoalSegmentsResolution(answered.data, segments);
 }
 
 // No further fetch happens past this point, so an unanswered reference counts as failed.
-function getGoalSegmentsState(
+function getGoalSegmentsResolution(
   data: DatasetData,
   segments: GoalSegment[] | undefined,
-): GoalSegmentsState {
+): GoalSegmentsResolution {
   if (
     getUnansweredGoalEntities(data, segments).length > 0 ||
     hasFailedGoalReferences(data, segments)

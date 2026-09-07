@@ -50,7 +50,7 @@ export function useResolvedGoalValue(
     .with({ status: "failed" }, () =>
       resolved.error != null ? resolved : queryFailed(unansweredRef),
     )
-    .with({ status: "answered" }, ({ data: freshData }) => {
+    .with({ status: "resolved" }, ({ data: freshData }) => {
       const fresh = resolveGoalValue(freshData, unansweredRef);
       return fresh.isUnanswered === true ? queryFailed(unansweredRef) : fresh;
     })

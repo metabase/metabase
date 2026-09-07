@@ -5,25 +5,25 @@ import {
 } from "metabase/viz-core";
 import type { DatasetData, DatasetQuery, GoalValue } from "metabase-types/api";
 
-import { useAnsweredGoalData } from "./use-answered-goal-data";
+import {
+  type GoalResolution,
+  useAnsweredGoalData,
+} from "./use-answered-goal-data";
 
-export type GoalState =
-  | { status: "resolving" }
-  | { status: "failed" }
-  | { status: "resolved"; value: number | null };
+export type GoalValueResolution = GoalResolution<{ value: number | null }>;
 
 export function useResolvedGoal(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   value: GoalValue | null | undefined,
-): GoalState {
+): GoalValueResolution {
   const answered = useAnsweredGoalData(
     datasetQuery,
     data,
     getUnansweredGoalEntitiesForValues(data, [value]),
   );
 
-  if (answered.status !== "answered") {
+  if (answered.status !== "resolved") {
     return answered;
   }
 

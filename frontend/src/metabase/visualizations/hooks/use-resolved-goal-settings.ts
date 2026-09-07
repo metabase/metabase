@@ -4,12 +4,12 @@ import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import { isGraphGoalReference } from "metabase/viz-core";
 import type { Card, DatasetData } from "metabase-types/api";
 
+import type { GoalResolution } from "./use-answered-goal-data";
 import { useResolvedGoal } from "./use-resolved-goal";
 
-export type ResolvedGoalSettings =
-  | { status: "resolving" }
-  | { status: "failed" }
-  | { status: "resolved"; settings: ComputedVisualizationSettings };
+export type GoalSettingsResolution = GoalResolution<{
+  settings: ComputedVisualizationSettings;
+}>;
 
 /**
  * Resolves `graph.goal_value` to a number so the chart model only ever sees
@@ -19,7 +19,7 @@ export function useResolvedGoalSettings(
   card: Pick<Card, "display" | "dataset_query">,
   data: DatasetData,
   settings: ComputedVisualizationSettings,
-): ResolvedGoalSettings {
+): GoalSettingsResolution {
   const storedGoal = settings["graph.goal_value"];
   const needsResolving = isGraphGoalReference(card.display, storedGoal);
 
