@@ -1,9 +1,11 @@
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { createRequire } from "node:module";
 
 import micromatch from "micromatch";
 
 import policy from "../config.mjs";
+import { boundarySettings, boundaryOptions } from "../module-boundaries.mjs";
 
 import defaults from "./rule-defaults.json" with { type: "json" };
 import ruleMap from "./rule-map.json" with { type: "json" };
@@ -51,6 +53,7 @@ const settingsEntries = policy
     settings: entry.settings ?? {},
     parserOptions: entry.languageOptions?.parserOptions ?? {},
   }));
+// Files matching the same policy entries share settings identity for resolver WeakMaps.
 const combinations = new Map();
 let lastFile;
 let lastSettings;
@@ -83,36 +86,28 @@ export function settingsForFile(filename) {
   return lastSettings;
 }
 
-const jsNamespaces = new Set([
-  "eslint-js",
-  "metabase",
-  "cypress",
-  "chai-friendly",
-  "import-js",
-  "react-js",
-  "no-only-tests",
-  "depend",
-  "jest-dom",
-  "jest-js",
-  "testing-library",
-  "typescript-js",
-  "ttag",
-  "i18next",
-  "boundaries",
-  "storybook",
-]);
+const nativePlugins = ["typescript", "react", "import", "jest"];
+const jsNamespaces = [
+  ...new Set(
+    Object.values(ruleMap)
+      .filter((name) => name.includes("/"))
+      .map((name) => name.slice(0, name.indexOf("/"))),
+  ),
+].filter((name) => !nativePlugins.includes(name));
 
 export const jsRules = Object.fromEntries(
-  [...jsNamespaces].map((namespace) => [
-    namespace,
-    [
-      ...new Set(
-        Object.values(ruleMap)
-          .filter((name) => name.startsWith(`${namespace}/`))
-          .map((name) => name.slice(namespace.length + 1)),
-      ),
-    ],
-  ]),
+  jsNamespaces
+    .filter((name) => name !== "no-only-tests")
+    .map((namespace) => [
+      namespace,
+      [
+        ...new Set(
+          Object.values(ruleMap)
+            .filter((name) => name.startsWith(`${namespace}/`))
+            .map((name) => name.slice(namespace.length + 1)),
+        ),
+      ],
+    ]),
 );
 
 // Match the existing optional CSS-module hook without loading an absent plugin.
@@ -127,7 +122,6 @@ function hasCssModulesPlugin() {
     return false;
   }
 }
-jsRules["postcss-modules"] = ["no-undef-class"];
 
 function glob(pattern) {
   // globset's brace alternatives are equivalent to these simple extglobs.
@@ -141,6 +135,16 @@ export function createConfig() {
   const overrides = [];
   const ignorePatterns = [];
   for (const entry of policy) {
+    // The compiled checker uses the shared policy, so reject differing overrides.
+    for (const [name, value] of Object.entries(entry.settings ?? {})) {
+      if (
+        name.startsWith("boundaries/") &&
+        (!Object.hasOwn(boundarySettings, name) ||
+          !isDeepStrictEqual(value, boundarySettings[name]))
+      ) {
+        throw new Error(`Unsupported boundary checker setting: ${name}`);
+      }
+    }
     if (entry.ignores && !entry.files) {
       ignorePatterns.push(...entry.ignores);
       continue;
@@ -151,6 +155,15 @@ export function createConfig() {
       if (name === "react/jsx-uses-vars") continue;
       const mapped = ruleMap[name];
       const normalized = options(name, value);
+      if (
+        name === "boundaries/element-types" &&
+        normalized !== "off" &&
+        !isDeepStrictEqual(normalized.slice(1), [boundaryOptions])
+      ) {
+        throw new Error(
+          "The boundary checker requires the shared enforced policy",
+        );
+      }
       if (!mapped) {
         if (normalized === "off") continue;
         throw new Error(
@@ -185,6 +198,7 @@ export function createConfig() {
   }
   const namespaces = [...jsNamespaces];
   if (hasCssModulesPlugin()) {
+    jsRules["postcss-modules"] = ["no-undef-class"];
     namespaces.push("postcss-modules");
     overrides.push({
       files: ["**/*.{js,jsx,ts,tsx}"],
@@ -193,7 +207,7 @@ export function createConfig() {
   }
   return {
     categories: { correctness: "off" },
-    plugins: ["typescript", "react", "import", "jest"],
+    plugins: nativePlugins,
     settings: { react: { version: "18.2.0" } },
     ignorePatterns,
     overrides,
