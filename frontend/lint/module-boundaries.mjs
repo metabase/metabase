@@ -401,8 +401,7 @@ const elements = [
     }),
   ),
   // App tier only because a feature module may not import another feature
-  // module, and the hub still mounts feature/admin pages directly. EMB-2229
-  // removes those imports and makes this a feature module.
+  // module, and the hub mounts feature and admin pages directly.
   createElement({
     type: "app",
     name: "embedding-hub",

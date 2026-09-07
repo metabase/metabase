@@ -181,6 +181,9 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         cy.visit(standalonePath);
         cy.wait("@currentlyEmbeddedObject");
 
+        // The hub's Security tab renders this section only when published
+        // guest embeds exist, so unpublishing empties it rather than
+        // leaving a section with no rows.
         mainPage().findByTestId("embedded-resources").should("not.exist");
       });
     });
