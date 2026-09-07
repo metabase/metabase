@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
+   [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
    [metabase.oauth-server.api :as oauth-server.api]
    [metabase.query-processor.schema :as qp.schema]
@@ -101,6 +102,19 @@
       (respond {:status 503, :body "Metabase is still initializing. Please sit tight..."})
       (api-routes request respond raise))))
 
+(defn- pass-thru-handler
+  [_request respond _raise]
+  (respond nil))
+
+(defn- osi-generation-demo-routes
+  []
+  (if (and config/ee-available?
+           (or (and config/dev-available? (not *compile-files*))
+               (config/config-bool :mb-enable-osi-generation-demo)))
+    #_{:clj-kondo/ignore [:metabase/modules]}
+    (requiring-resolve 'metabase-enterprise.osi-generation.demo-page/routes)
+    pass-thru-handler))
+
 (mu/defn make-routes :- ::api.macros/handler
   "Create the top-level Ring route handler for Metabase."
   [api-routes :- ::api.macros/handler]
@@ -122,6 +136,9 @@
    ;; Handle CORS preflight requests for auth routes
    (OPTIONS "/auth/*" [] {:status 200 :body ""})
    (OPTIONS "/api/*" [] {:status 200 :body ""})
+   ;; This superuser-only demo is available on a development classpath or when a PR environment
+   ;; explicitly opts in. Production EE builds leave the route unmounted.
+   (context "/dev/osi-generation" [] (osi-generation-demo-routes))
    ;; ^/api/ -> All other API routes
    (context "/api" [] (api-handler api-routes))
    ;; ^/app/ -> static files under frontend_client/app
