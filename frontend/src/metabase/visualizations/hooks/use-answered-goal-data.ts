@@ -54,6 +54,11 @@ export function useAnsweredGoalData(
     return { status: "answered", data };
   }
 
+  // no query to re-run, so the references can never be answered
+  if (datasetQuery == null) {
+    return { status: "failed" };
+  }
+
   if (isError || freshDataset?.error != null) {
     return { status: "failed" };
   }

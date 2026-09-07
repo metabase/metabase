@@ -102,6 +102,16 @@ describe("useAnsweredGoalData", () => {
     );
   });
 
+  it("fails without fetching when there is no query to re-run", () => {
+    const { result } = renderHookWithProviders(
+      () => useAnsweredGoalData(undefined, DATA, [CARD_9]),
+      {},
+    );
+
+    expect(result.current).toEqual({ status: "failed" });
+    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+  });
+
   it("fails when the resolving query fails", async () => {
     setupCardDataset({ status: 500 });
 
