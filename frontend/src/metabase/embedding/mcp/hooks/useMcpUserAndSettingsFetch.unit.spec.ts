@@ -1,8 +1,10 @@
 import { renderHook, waitFor } from "@testing-library/react";
 
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
+import { currentUserApi } from "metabase/current-user";
+import { settingsApi } from "metabase/settings";
 import MetabaseSettings from "metabase/utils/settings";
-import type { McpAppsBootstrapResponse } from "metabase-types/api";
+import { createMockMcpAppsBootstrapResponse } from "metabase-types/api/mocks";
 
 import { fetchMcpBootstrap } from "../api";
 
@@ -39,13 +41,10 @@ jest.mock("metabase/utils/settings", () => ({
   default: { setAll: jest.fn() },
 }));
 
-// The hook passes both halves straight through to `upsertQueryData` without reading
-// any field, so a stand-in is enough and spelling out a whole user and settings map
-// would only obscure what these tests assert.
-const BOOTSTRAP = {
-  user: { id: 1 },
-  settings: { "site-locale": "en" },
-} as unknown as McpAppsBootstrapResponse;
+// The real payload, not a stand-in: the hook seeds the `getCurrentUser` cache with
+// whatever the endpoint returns, so the assertions below pin the seed to the actual
+// projection rather than to whatever shape this file happens to invent.
+const BOOTSTRAP = createMockMcpAppsBootstrapResponse();
 
 const OPTIONS = {
   instanceUrl: "http://localhost:3000",
@@ -90,6 +89,25 @@ describe("useMcpUserAndSettingsFetch", () => {
       { type: "load-current-user" },
       { type: "initiate-session-properties" },
     ]);
+  });
+
+  it("seeds the caches with the bootstrap payload verbatim, narrow user projection included", async () => {
+    const { result } = setup();
+
+    await waitFor(() => {
+      expect(result.current.isSettingsReady).toBe(true);
+    });
+
+    expect(currentUserApi.util.upsertQueryData).toHaveBeenCalledWith(
+      "getCurrentUser",
+      undefined,
+      BOOTSTRAP.user,
+    );
+    expect(settingsApi.util.upsertQueryData).toHaveBeenCalledWith(
+      "getSessionProperties",
+      undefined,
+      BOOTSTRAP.settings,
+    );
   });
 
   it("publishes the settings to consumers that live outside the store", async () => {
