@@ -67,6 +67,50 @@ describe("applyDefaultVisualizationProps", () => {
 
     expect(getUiName()).toBe("Manifest name");
   });
+
+  it("falls back to the manifest display name when getName returns a non-string", () => {
+    // plugin code is untyped at runtime
+    const vizDef = createVizDef({ getName: () => 42 as unknown as string });
+    const plugin = createMockCustomVizPluginRuntime({
+      display_name: "Manifest name",
+    });
+
+    const { getUiName } = applyDefaultVisualizationProps(COMPONENT, vizDef, {
+      identifier: "custom:demo-viz",
+      plugin,
+    });
+
+    expect(getUiName()).toBe("Manifest name");
+  });
+
+  it("falls back to the manifest display name when getName returns a blank string", () => {
+    const vizDef = createVizDef({ getName: () => "  " });
+    const plugin = createMockCustomVizPluginRuntime({
+      display_name: "Manifest name",
+    });
+
+    const { getUiName } = applyDefaultVisualizationProps(COMPONENT, vizDef, {
+      identifier: "custom:demo-viz",
+      plugin,
+    });
+
+    expect(getUiName()).toBe("Manifest name");
+  });
+
+  it("resolves the UI name once at load time so a throwing getName fails the plugin load", () => {
+    const getName = jest.fn(() => {
+      throw new Error("boom");
+    });
+    const vizDef = createVizDef({ getName });
+
+    expect(() =>
+      applyDefaultVisualizationProps(COMPONENT, vizDef, {
+        identifier: "custom:demo-viz",
+        plugin: PLUGIN,
+      }),
+    ).toThrow("boom");
+    expect(getName).toHaveBeenCalledTimes(1);
+  });
 });
 
 function createVizDef(

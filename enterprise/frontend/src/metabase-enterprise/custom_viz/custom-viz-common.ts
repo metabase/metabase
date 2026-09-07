@@ -39,6 +39,7 @@ export function applyDefaultVisualizationProps(
   },
 ): Visualization {
   const { plugin, ...componentSettings } = settings;
+  const uiName = resolveUiName(vizDef, plugin);
   return Object.assign(Component, {
     settings: {
       ...columnSettings({ getHidden: () => true }),
@@ -56,7 +57,17 @@ export function applyDefaultVisualizationProps(
     defaultSize: vizDef.defaultSize,
     isDev: settings.isDev,
     pluginId: plugin.id,
-    getUiName: () => vizDef.getName?.() ?? plugin.display_name,
+    getUiName: () => uiName,
     ...componentSettings,
   });
+}
+
+function resolveUiName(
+  vizDef: CustomVisualization<Record<string, unknown>>,
+  plugin: CustomVizPluginRuntime,
+): string {
+  const name = vizDef.getName?.();
+  return typeof name === "string" && name.trim() !== ""
+    ? name
+    : plugin.display_name;
 }
