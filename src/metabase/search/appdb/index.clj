@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [honey.sql.helpers :as sql.helpers]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
@@ -114,7 +113,7 @@
 (defn- drop-table! [table]
   (boolean
    (when table
-     (search.db/execute! (sql.helpers/drop-table :if-exists (keyword (table-name table)))))))
+     (search.db/drop-search-index-table-if-exists! (keyword (table-name table))))))
 
 (defn- orphan-indexes []
   (map (comp keyword u/lower-case-en :table_name)
@@ -127,7 +126,7 @@
   (let [dropped (volatile! [])]
     (doseq [table (orphan-indexes)]
       (try
-        (search.db/execute! (sql.helpers/drop-table table))
+        (search.db/drop-search-index-table! table)
         (vswap! dropped conj table)
         ;; Deletion could fail if it races with other instances
         (catch Exception e
@@ -178,12 +177,10 @@
   ;; Create with a separate transaction so that postgresql will complete the index creations before returning,
   ;; even when already running in a transaction
   (t2/with-transaction [_ (mdb/app-db)]
-    (-> (sql.helpers/create-table table-name)
-        (sql.helpers/with-columns (specialization/table-schema base-schema))
-        search.db/execute!)
+    (search.db/create-search-index-table! table-name (specialization/table-schema base-schema))
     (let [table-name (name table-name)]
       (doseq [stmt (specialization/post-create-statements table-name table-name)]
-        (search.db/execute! stmt)))))
+        (search.db/run-search-index-statement! stmt)))))
 
 (defn maybe-create-pending!
   "Create a search index table if one doesn't exist. Record and return the name of the table, regardless."
@@ -432,7 +429,7 @@
   "Use the index table to search for records."
   [search-term & [search-ctx]]
   (map (juxt :model :name)
-       (search.db/rows (search-query search-term search-ctx [:model :name]))))
+       (search.db/search-index-rows (search-query search-term search-ctx [:model :name]))))
 
 (defn reset-index!
   "Ensure we have a blank slate; in case the table schema or stored data format has changed."

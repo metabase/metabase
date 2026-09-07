@@ -3,8 +3,6 @@ import type {
   CustomVisualization,
   CustomVisualizationProps,
   CustomVisualizationSettingDefinition,
-  ClickObject as CustomVizClickObject,
-  HoverObject as CustomVizHoverObject,
 } from "custom-viz";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
@@ -39,8 +37,10 @@ import type {
 import { isObject } from "metabase-types/guards";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
+import { type PluginClickObject, toHostClickObject } from "./click-object";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
+import { type PluginHoverObject, toHostHoverObject } from "./hover-object";
 import type { SandboxMode } from "./sandbox";
 import { usePluginMount } from "./use-plugin-mount";
 import { reportUnavailableCustomVizPlugin } from "./utils/unavailable-toast";
@@ -609,6 +609,16 @@ function createCustomVizWrapper(
       [browserRenderingContext],
     );
 
+    const handleClick = (clickObject: PluginClickObject | null) =>
+      onVisualizationClick(
+        clickObject && toHostClickObject(clickObject, settings),
+      );
+
+    const handleHover = (hoverObject?: PluginHoverObject | null) =>
+      onHoverChange(
+        hoverObject ? toHostHoverObject(hoverObject, settings) : hoverObject,
+      );
+
     const pluginProps: GenericVizPluginProps = {
       width,
       height,
@@ -619,14 +629,8 @@ function createCustomVizWrapper(
       // unions); the runtime value is the host's computed settings.
       settings: settings as unknown as GenericVizPluginProps["settings"],
       renderingContext,
-      // Unjustified type cast. FIXME
-      onClick: onVisualizationClick as unknown as (
-        clickObject: CustomVizClickObject<Record<string, unknown>> | null,
-      ) => void,
-      // Unjustified type cast. FIXME
-      onHover: onHoverChange as unknown as (
-        hoverObject?: CustomVizHoverObject | null,
-      ) => void,
+      onClick: handleClick,
+      onHover: handleHover,
     };
 
     const containerRef = usePluginMount<GenericVizPluginProps>(

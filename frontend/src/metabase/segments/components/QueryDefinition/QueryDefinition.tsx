@@ -1,10 +1,11 @@
 import { getMetadata } from "metabase/metadata-store";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
-import { getSegmentQuery } from "metabase/querying/segments/utils";
 import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, TableId } from "metabase-types/api";
+
+import { getSegmentQuery } from "../../utils";
 
 const STAGE_INDEX = -1;
 

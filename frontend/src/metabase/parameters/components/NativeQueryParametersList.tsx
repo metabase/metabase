@@ -1,13 +1,13 @@
-import { ResponsiveParametersList } from "metabase/querying/components/ResponsiveParametersList";
+import { useNativeQueryEditorContext } from "metabase/querying/components/NativeQueryEditor/context/NativeQueryEditorContext";
 import type { ParameterId } from "metabase-types/api";
 
-import { useNativeQueryEditorContext } from "../context/NativeQueryEditorContext";
+import { ResponsiveParametersList } from "./ResponsiveParametersList";
 
 /**
- * The list of native query parameters (template tag values) shown in the top
- * bar. Renders nothing when the consumer did not provide `setParameterValue`.
+ * The list of native query parameters (template tag values). Renders nothing
+ * when the editor context has no `setParameterValue`.
  */
-export function ParametersList() {
+export function NativeQueryParametersList() {
   const { question, query, setDatasetQuery, setParameterValue } =
     useNativeQueryEditorContext();
 

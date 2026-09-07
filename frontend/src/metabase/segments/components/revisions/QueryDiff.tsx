@@ -1,6 +1,7 @@
 import CS from "metabase/css/core/index.css";
-import { QueryDefinition } from "metabase/querying/segments/components/QueryDefinition";
 import type { QueryDiff as QueryDiffType, TableId } from "metabase-types/api";
+
+import { QueryDefinition } from "../QueryDefinition";
 
 type Props = {
   diff: QueryDiffType;

@@ -173,7 +173,7 @@
             scorers (search.scoring/scorers search-ctx)
             query   (->> (base-filtered-query search-ctx search-string [:legacy_input])
                          (search.scoring/with-scores search-ctx scorers))]
-        (->> (search.db/rows query)
+        (->> (search.db/scored-search-rows query)
              (map (partial rehydrate weights (keys scorers)))))
       (catch Exception e
         ;; Rule out the error coming from stale index metadata.
@@ -197,7 +197,7 @@
                                  :search_index.model
                                  :search_index.source_type)))
          (search.filter/with-filters search-ctx)
-         search.db/rows
+         search.db/distinct-model-rows
          (into #{} (map :model)))))
 
 (defn- restrict-to-row [model id qry]
@@ -209,7 +209,7 @@
   (-> qry
       (assoc :select [[[:inline 1] :one]] :limit 1)
       (dissoc :order-by)
-      search.db/rows
+      search.db/search-index-probe-rows
       seq
       boolean))
 
