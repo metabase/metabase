@@ -1,4 +1,8 @@
-import type { Series, VisualizationSettings } from "metabase-types/api";
+import type {
+  Series,
+  VisualizationDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -42,8 +46,11 @@ const REFERENCED_SETTINGS: VisualizationSettings = {
   "graph.goal_value": { type: "card", id: 9, column: "goal" },
 };
 
-function series(data = FAILED_DATA): Series {
-  return [createMockSingleSeries({ display: "line" }, { data })];
+function series(
+  data = FAILED_DATA,
+  display: VisualizationDisplay = "line",
+): Series {
+  return [createMockSingleSeries({ display }, { data })];
 }
 
 describe("validateGoalReferences", () => {
@@ -55,7 +62,10 @@ describe("validateGoalReferences", () => {
 
   it("ignores references for a display that does not resolve graph goals", () => {
     expect(() =>
-      validateGoalReferences(series(), REFERENCED_SETTINGS),
+      validateGoalReferences(
+        series(FAILED_DATA, "scalar"),
+        REFERENCED_SETTINGS,
+      ),
     ).not.toThrow();
   });
 

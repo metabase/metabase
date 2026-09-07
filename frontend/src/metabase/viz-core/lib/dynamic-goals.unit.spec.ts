@@ -803,7 +803,7 @@ describe("dynamic goal settings per display", () => {
 
   it("ignores goal references of settings the display does not resolve", () => {
     const card: GoalCard = {
-      display: "progress",
+      display: "scalar",
       visualization_settings: {
         "progress.goal": { type: "card", id: 1, column: "sum" },
       },
@@ -812,19 +812,6 @@ describe("dynamic goal settings per display", () => {
     expect(getReferencedEntities(card)).toEqual([]);
     expect(hasUnansweredGoalReferences(card, undefined)).toBe(false);
     expect(hasUnresolvedGoalReferences(card, undefined)).toBe(false);
-  });
-
-  it("does not resolve graph goal values yet", () => {
-    const card: GoalCard = {
-      display: "line",
-      visualization_settings: {
-        "graph.show_goal": true,
-        "graph.goal_value": { type: "card", id: 1, column: "sum" },
-      },
-    };
-
-    expect(isDynamicGoalSetting("line", "graph.goal_value")).toBe(false);
-    expect(getReferencedEntities(card)).toEqual([]);
   });
 });
 
@@ -844,8 +831,8 @@ describe("isGraphGoalReference", () => {
   });
 
   it("is false for a reference on a display that does not resolve graph goals", () => {
-    expect(isGraphGoalReference("line", shownGoal(ref))).toBe(false);
-    expect(isGraphGoalReference("line", shownGoal("count"))).toBe(false);
+    expect(isGraphGoalReference("scalar", shownGoal(ref))).toBe(false);
+    expect(isGraphGoalReference("scalar", shownGoal("count"))).toBe(false);
     expect(isGraphGoalReference("gauge", shownGoal(ref))).toBe(false);
     expect(isGraphGoalReference(undefined, shownGoal(ref))).toBe(false);
   });

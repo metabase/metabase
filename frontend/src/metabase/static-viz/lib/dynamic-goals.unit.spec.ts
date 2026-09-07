@@ -1,5 +1,5 @@
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import type { DatasetData } from "metabase-types/api";
+import type { DatasetData, VisualizationDisplay } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -37,8 +37,8 @@ const REFERENCED_SETTINGS: ComputedVisualizationSettings = {
   "graph.goal_value": { type: "card", id: 9, column: "goal" },
 };
 
-function series(data: DatasetData) {
-  return createMockSingleSeries({ display: "line" }, { data });
+function series(data: DatasetData, display: VisualizationDisplay = "line") {
+  return createMockSingleSeries({ display }, { data });
 }
 
 function data(referenced_entities: DatasetData["referenced_entities"]) {
@@ -61,7 +61,10 @@ describe("resolveGoalSettingsForStaticViz", () => {
 
   it("passes references through for a display that does not resolve graph goals", () => {
     expect(
-      resolveGoalSettingsForStaticViz(series(data({})), REFERENCED_SETTINGS),
+      resolveGoalSettingsForStaticViz(
+        series(data({}), "scalar"),
+        REFERENCED_SETTINGS,
+      ),
     ).toBe(REFERENCED_SETTINGS);
   });
 

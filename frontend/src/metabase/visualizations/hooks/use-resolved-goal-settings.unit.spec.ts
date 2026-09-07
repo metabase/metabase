@@ -70,7 +70,7 @@ describe("useResolvedGoalSettings", () => {
 
   it("leaves a reference alone for a display that does not resolve graph goals", () => {
     const { result } = setup(
-      createMockCard({ display: "line" }),
+      createMockCard({ display: "scalar" }),
       REFERENCED_SETTINGS,
     );
 
