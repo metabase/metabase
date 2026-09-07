@@ -60,8 +60,9 @@ script moves from its directive into the configuration.
 
 The import adapter supplies the existing parser lazily when upstream export
 analysis needs to parse a dependency: oxlint's parser object is otherwise a stub.
-The tested alternative that deferred more context getters did not demonstrate a
-speedup and was not adopted.
+Its language-options view preserves oxlint's lazy getters rather than eagerly
+reading AST/global information. With the three accepted native rules enabled,
+this avoids unnecessary global decoding without changing the rule policy.
 
 `recommended-rules.json` and `oxlint/rule-defaults.json` snapshot dependency
 presets/defaults without importing the entire ESLint setup at CLI startup.
@@ -99,7 +100,13 @@ runs with unresolved diagnostics or different effective rule coverage.
 
 | Candidate | Runs | Mean | Files | Findings |
 | --- | --- | --- | --- | --- |
-| Base, without the six performance patches | 17.702 / 18.085 s | 17.894 s | 11,978 | 0 |
+| Base, without the six performance patches | 16.997 / 17.983 / 16.646 s | 17.209 s | 11,978 | 0 |
+
+The eager adapter measured 18.267 / 18.058 / 18.008 s (18.111 s mean) in the
+same comparison. Preserving lazy getters saves about 0.90 s / 5%. Earlier lazy
+experiments retained JS unused-variable checking and did not show this gain.
+All 17 oxlint tests pass; ten additional JS/TS export-analysis fixtures match
+ESLint's diagnostics and messages with either adapter.
 
 The stacked PR records its corresponding patched measurements.
 
