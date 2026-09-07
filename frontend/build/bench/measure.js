@@ -13,13 +13,7 @@
  * loads after that are the steady state a returning user sees. Both are
  * reported, because a chunk layout can help one and hurt the other.
  */
-const { spawn } = require("child_process");
-const fs = require("fs");
-const http = require("http");
-
-const CHROME =
-  process.env.CHROME_PATH ||
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const { Session, devtools, launchChrome, sleep } = require("./chrome");
 
 const url = process.argv[2];
 const runs = Number(process.argv[3] || 8);
@@ -40,54 +34,9 @@ if (!url) {
   process.exit(1);
 }
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 // Cleared by the first load that shows the build records no performance
 // marks, so the rest of the series skips waiting for them.
 let buildRecordsMarks = true;
-
-function devtools(path, method = "GET") {
-  return new Promise((resolve, reject) => {
-    http
-      .request({ host: "127.0.0.1", port, path, method }, (res) => {
-        let body = "";
-        res.on("data", (chunk) => (body += chunk));
-        res.on("end", () => {
-          try {
-            resolve(body ? JSON.parse(body) : {});
-          } catch {
-            resolve({});
-          }
-        });
-      })
-      .on("error", reject)
-      .end();
-  });
-}
-
-/** The slice of the DevTools protocol this needs, over the native WebSocket. */
-class Session {
-  constructor(socket) {
-    this.socket = socket;
-    this.lastId = 0;
-    this.pending = new Map();
-
-    socket.addEventListener("message", (event) => {
-      const message = JSON.parse(event.data);
-      const resolve = this.pending.get(message.id);
-      if (resolve) {
-        this.pending.delete(message.id);
-        resolve(message.result);
-      }
-    });
-  }
-
-  send(method, params = {}) {
-    const id = ++this.lastId;
-    this.socket.send(JSON.stringify({ id, method, params }));
-    return new Promise((resolve) => this.pending.set(id, resolve));
-  }
-}
 
 // Everything up to `load` comes from navigation timing, and the paint entries
 // say when the browser first drew. `mb:app-mounted` and `mb:page-ready` are the
@@ -122,34 +71,8 @@ const READ_METRICS = `JSON.stringify((() => {
   };
 })())`;
 
-async function launchChrome() {
-  const chrome = spawn(CHROME, [
-    "--headless=new",
-    // The harness only ever loads its own server on localhost, and a Chrome
-    // installed by CI has no SUID sandbox binary to use.
-    "--no-sandbox",
-    `--remote-debugging-port=${port}`,
-    `--user-data-dir=${fs.mkdtempSync("/tmp/metabase-bench-")}`,
-    "--no-first-run",
-    "--disable-extensions",
-    "--disable-background-networking",
-    "--window-size=1280,900",
-  ]);
-  chrome.stderr.on("data", () => {});
-
-  for (let attempt = 0; attempt < 60; attempt++) {
-    try {
-      await devtools("/json/version");
-      return chrome;
-    } catch {
-      await sleep(250);
-    }
-  }
-  throw new Error(`Chrome did not open a debugging port on ${port}`);
-}
-
 async function loadOnce() {
-  const target = await devtools("/json/new?about:blank", "PUT");
+  const target = await devtools(port, "/json/new?about:blank", "PUT");
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve) => socket.addEventListener("open", resolve));
   const session = new Session(socket);
@@ -224,7 +147,7 @@ async function loadOnce() {
   }
 
   socket.close();
-  await devtools(`/json/close/${target.id}`);
+  await devtools(port, `/json/close/${target.id}`);
   return metrics;
 }
 
@@ -234,7 +157,7 @@ function median(values) {
 }
 
 (async () => {
-  const chrome = await launchChrome();
+  const chrome = await launchChrome(port);
   const results = [];
 
   for (let run = 0; run < runs; run++) {
