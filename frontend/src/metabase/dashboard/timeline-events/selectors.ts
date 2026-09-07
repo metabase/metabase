@@ -14,8 +14,10 @@ import {
   getDashcardData,
   getDashcardDataMap,
   getDashcards,
+  getSelectedTabId,
   getSidebar,
 } from "metabase/dashboard/selectors";
+import { isDashCardOnTab } from "metabase/dashboard/utils";
 import type {
   DashboardState,
   DashboardTimelineEventsState,
@@ -27,6 +29,7 @@ import {
   getRecordedTimelineEventsVisibility,
   resolveVisibleTimelineEvents,
 } from "metabase/visualizations/lib/timeline-events-visibility";
+import { isTimelineEventInRange } from "metabase/viz-core";
 import type {
   DashCardId,
   TimelineEvent,
@@ -35,9 +38,9 @@ import type {
 } from "metabase-types/api";
 
 import {
-  canDashCardDisplayTimelineEvents,
   computeDashCardTimeseriesXAxis,
   isDashCardDataLoaded,
+  shouldDashCardDisplayTimelineEvents,
 } from "./utils";
 
 const NO_EVENTS: TimelineEvent[] = [];
@@ -84,7 +87,7 @@ export const getIsTimelineEventsDashCard = createCachedSelector(
   [getDashCardById, getDashCardTimeseriesXAxis],
   (dashcard, xAxis) =>
     dashcard != null &&
-    canDashCardDisplayTimelineEvents(dashcard) &&
+    shouldDashCardDisplayTimelineEvents(dashcard) &&
     xAxis != null,
 )((_state, dashcardId) => dashcardId);
 
@@ -113,17 +116,20 @@ export const getDashCardSelectedTimelineEventIds = (
     : NO_EVENT_IDS;
 };
 
-export const getTimelineEventsDashCardIds = createShallowEqualResultSelector(
+const getTimelineEventsDashCards = createShallowEqualResultSelector(
   [getCurrentDashcards, getDashcardDataMap, (state: State) => state],
   (dashcards, dashcardDataMap, state) =>
-    dashcards
-      .filter(
-        (dashcard) =>
-          canDashCardDisplayTimelineEvents(dashcard) &&
-          (!isDashCardDataLoaded(dashcard, dashcardDataMap[dashcard.id]) ||
-            getIsTimelineEventsDashCard(state, dashcard.id)),
-      )
-      .map((dashcard) => dashcard.id),
+    dashcards.filter(
+      (dashcard) =>
+        shouldDashCardDisplayTimelineEvents(dashcard) &&
+        (!isDashCardDataLoaded(dashcard, dashcardDataMap[dashcard.id]) ||
+          getIsTimelineEventsDashCard(state, dashcard.id)),
+    ),
+);
+
+export const getTimelineEventsDashCardIds = createShallowEqualResultSelector(
+  [getTimelineEventsDashCards],
+  (dashcards) => dashcards.map((dashcard) => dashcard.id),
 );
 
 export const getDashboardTimelineEventsAggregate = createSelector(
@@ -147,3 +153,19 @@ export const getDashboardTimelineEventsAggregate = createSelector(
       ),
     ),
 );
+
+export const getHasVisibleTimelineEvents = (state: State) => {
+  const selectedTabId = getSelectedTabId(state);
+  return getTimelineEventsDashCards(state)
+    .filter((dashcard) => isDashCardOnTab(dashcard, selectedTabId))
+    .some((dashcard) => {
+      const xAxis = getDashCardTimeseriesXAxis(state, dashcard.id);
+      if (xAxis?.domain == null) {
+        return false;
+      }
+      const { domain, interval } = xAxis;
+      return getDashCardVisibleTimelineEvents(state, dashcard.id).some(
+        (event) => isTimelineEventInRange(event, domain, interval),
+      );
+    });
+};
