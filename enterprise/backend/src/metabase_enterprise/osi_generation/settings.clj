@@ -24,7 +24,7 @@
 ;;; ------------------------------------------------- Settings --------------------------------------------------
 
 (defsetting osi-generation-enabled
-  (deferred-tru "Whether to automatically generate library metadata with AI.")
+  (deferred-tru "Whether to automatically generate library metadata with AI. Enable only after every node in the cluster has been upgraded.")
   :type       :boolean
   :default    false
   :getter     #(and (llm.settings/ai-features-enabled?)
