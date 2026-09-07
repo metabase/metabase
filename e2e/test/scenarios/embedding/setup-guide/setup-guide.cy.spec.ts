@@ -88,7 +88,7 @@ describe("scenarios - setup guide", () => {
       cy.findByRole("main")
         .findByText("Connect a database")
         .closest('[data-testid="embedding-hub-checklist-card"]')
-        .findByLabelText(/^Step \d+ complete$/)
+        .findByLabelText("Step 1 complete")
         .should("not.exist");
 
       cy.findByRole("main").findByText("Connect a database").click();
@@ -120,7 +120,7 @@ describe("scenarios - setup guide", () => {
         .findByText("Connect a database")
         .closest('[data-testid="embedding-hub-checklist-card"]')
         .scrollIntoView()
-        .findByLabelText(/^Step \d+ complete$/)
+        .findByLabelText("Step 1 complete")
         .should("be.visible");
     });
 
@@ -146,7 +146,7 @@ describe("scenarios - setup guide", () => {
       cy.findByRole("main")
         .findByText("Get embed snippet")
         .closest('[data-testid="embedding-hub-checklist-card"]')
-        .findByLabelText(/^Step \d+ complete$/)
+        .findByLabelText("Step 3 complete")
         .should("not.exist");
 
       cy.log("open embed wizard");
@@ -182,7 +182,7 @@ describe("scenarios - setup guide", () => {
       cy.findByRole("main")
         .findByText("Get embed snippet")
         .closest('[data-testid="embedding-hub-checklist-card"]')
-        .findByLabelText(/^Step \d+ complete$/, { timeout: 10_000 })
+        .findByLabelText("Step 3 complete", { timeout: 10_000 })
         .should("be.visible");
     });
 
@@ -660,7 +660,7 @@ describe("scenarios - setup guide", () => {
           .findByText("Configure data permissions and tenants")
           .closest('[data-testid="embedding-hub-checklist-card"]')
           .scrollIntoView()
-          .findByLabelText(/^Step \d+ complete$/)
+          .findByLabelText("Step 4 complete")
           .should("be.visible");
 
         cy.log("verify tenant_attributes are saved correctly via API");
@@ -1834,7 +1834,7 @@ describe("scenarios - setup guide", () => {
         .findByText("Set up SSO")
         .closest('[data-testid="embedding-hub-checklist-card"]')
         .scrollIntoView()
-        .findByLabelText(/^Step \d+ complete$/, { timeout: 10_000 })
+        .findByLabelText("Step 5 complete", { timeout: 10_000 })
         .should("be.visible");
 
       cy.log("'Embed in production with SSO' should now be unlocked");
