@@ -101,14 +101,26 @@
               "still a valid correlator — statelessness is deliberate")
           (is (false? (mcp.session/supports-mcp-ui? forged))
               "but an unsigned capability claim must not be believed")))
-      (testing "tampering with a signed payload invalidates the claim"
-        (let [[uuid _payload sig] (str/split minted #"\\.")
-              swapped (str uuid "." (@#'mcp.session/encode-session-payload {:v 1 :ui true}) "." sig)]
-          (is (false? (mcp.session/supports-mcp-ui? swapped)))))
+      (testing "upgrading a signed payload under its own signature invalidates the claim"
+        ;; Tamper by swapping a `ui false` payload for a `ui true` one while keeping the signature minted for
+        ;; the original — the escalation an attacker actually wants. Re-encoding the SAME payload proves
+        ;; nothing: the id rebuilds byte-identical and is believed for the right reason.
+        (let [plain (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? false})
+              [uuid _payload sig] (str/split plain #"\." -1)
+              upgraded (str uuid "." (@#'mcp.session/encode-session-payload {:v 1 :ui true}) "." sig)]
+          (is (some? sig)
+              "the split must reach the signature, or the assertion below passes for being malformed")
+          (is (false? (mcp.session/supports-mcp-ui? plain))
+              "control: the unmodified id claims nothing")
+          (is (false? (mcp.session/supports-mcp-ui? upgraded)))))
       (testing "a signature from a different session id does not transfer"
         (let [other (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true})
-              [uuid payload _] (str/split minted #"\\.")
-              [_ _ other-sig]  (str/split other #"\\.")]
+              [uuid payload minted-sig] (str/split minted #"\." -1)
+              [_ _ other-sig]  (str/split other #"\." -1)]
+          (is (some? other-sig)
+              "the split must reach the signature, or the assertion below passes for being malformed")
+          (is (not= minted-sig other-sig)
+              "the lifted signature has to differ from the original, or nothing is being tested")
           (is (false? (mcp.session/supports-mcp-ui? (str uuid "." payload "." other-sig)))))))))
 
 (deftest legacy-session-ui-capability-test
