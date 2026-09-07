@@ -468,7 +468,6 @@ const configs = [
       ...presets.jest,
       ...presets.jestDom,
       ...presets.testingLibrary,
-      ...presets.jestFormatting,
       "jest/valid-title": ["error", { ignoreTypeOfDescribeName: true }],
       "jest/expect-expect": [
         "error",
@@ -480,14 +479,6 @@ const configs = [
     },
   },
 
-  // Jest formatting for cypress tests
-  {
-    files: ["**/*.cy.spec.ts", "**/*.cy.spec.js"],
-
-    rules: {
-      ...presets.jestFormatting,
-    },
-  },
   {
     files: ["e2e/**/*"],
     languageOptions: {

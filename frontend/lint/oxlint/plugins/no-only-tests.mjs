@@ -1,3 +1,1 @@
-import plugin from "eslint-plugin-no-only-tests";
-import { wrap } from "../plugin.mjs";
-export default wrap("no-only-tests", plugin);
+export { default } from "eslint-plugin-no-only-tests";
