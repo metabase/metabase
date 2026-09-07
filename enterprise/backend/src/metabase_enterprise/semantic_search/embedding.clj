@@ -576,32 +576,40 @@
   ;; the floor and the token are granted per source, not per setting: a settings manager can write the stored
   ;; ee-embedding-service-base-url through the generic settings API, while a value the environment supplies bypasses
   ;; the vetting setter and is trusted instead
-  (cond (string? (not-empty (semantic-settings/ee-embedding-service-base-url)))
-        (let [env-url? (some? (setting/env-var-value :ee-embedding-service-base-url))
-              api-key  (semantic-settings/ee-embedding-service-api-key)]
-          (when-not (or env-url? (not-empty api-key))
-            (throw (ex-info (str "The embedding service base URL is set in the application database and has no API "
-                                 "key. Set " (setting/env-var-name :ee-embedding-service-base-url)
-                                 " to use the instance token, or configure "
-                                 (setting/env-var-name :ee-embedding-service-api-key) ".")
-                            {:settings ["ee-embedding-service-base-url"
-                                        "ee-embedding-service-api-key"]})))
-          (cond-> {:endpoint        (str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url))
-                                         "/v1/embeddings")
-                   :api-key         api-key
-                   :instance-token? env-url?}
-            env-url? (assoc :network-policy-floor :allow-private)))
+  (let [base-url (not-empty (semantic-settings/ee-embedding-service-base-url))]
+    (cond (string? base-url)
+          (let [env-url? (some? (setting/env-var-value :ee-embedding-service-base-url))
+                api-key  (semantic-settings/ee-embedding-service-api-key)]
+            ;; A key added at deployment time must not attach to a destination previously saved through the API.
+            (when (and (setting/env-var-value :ee-embedding-service-api-key) (not env-url?))
+              (throw (ex-info (str "Set " (setting/env-var-name :ee-embedding-service-base-url)
+                                   " alongside " (setting/env-var-name :ee-embedding-service-api-key)
+                                   "; an environment API key cannot use an embedding URL stored in the application database.")
+                              {:error-code :embedding-environment-key-requires-environment-url
+                               :settings   ["ee-embedding-service-base-url"
+                                            "ee-embedding-service-api-key"]})))
+            (when-not (or env-url? (not-empty api-key))
+              (throw (ex-info (str "The embedding service base URL is set in the application database and has no API "
+                                   "key. Set " (setting/env-var-name :ee-embedding-service-base-url)
+                                   " to use the instance token, or configure an API key in the application database.")
+                              {:settings ["ee-embedding-service-base-url"
+                                          "ee-embedding-service-api-key"]})))
+            (cond-> {:endpoint        (str (trim-trailing-slashes base-url)
+                                           "/v1/embeddings")
+                     :api-key         api-key
+                     :instance-token? env-url?}
+              env-url? (assoc :network-policy-floor :allow-private)))
 
-        (string? (not-empty (llm.settings/ai-service-base-url)))
-        (cond-> {:endpoint        (str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")
-                 :instance-token? true}
-          (setting/env-var-value :ai-service-base-url)
-          (assoc :network-policy-floor :allow-private))
+          (string? (not-empty (llm.settings/ai-service-base-url)))
+          (cond-> {:endpoint        (str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")
+                   :instance-token? true}
+            (setting/env-var-value :ai-service-base-url)
+            (assoc :network-policy-floor :allow-private))
 
-        :else
-        (throw (ex-info "Embedding service and ai service base URLs are not configured"
-                        {:settings ["ee-embedding-service-base-url"
-                                    "ai-service-base-url"]}))))
+          :else
+          (throw (ex-info "Embedding service and ai service base URLs are not configured"
+                          {:settings ["ee-embedding-service-base-url"
+                                      "ai-service-base-url"]})))))
 
 (defmethod embedder-circuit-endpoint "ai-service" [_]
   (:endpoint (embedding-service-resolve-config!)))
