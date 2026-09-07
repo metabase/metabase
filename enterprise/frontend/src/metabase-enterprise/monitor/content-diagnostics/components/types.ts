@@ -35,3 +35,21 @@ export type ContentDiagnosticsFilterDimension =
   | "entity_type"
   | "personal_collections"
   | "threshold";
+
+export type ContentDiagnosticsFilterPickerProps<TOptions> = {
+  filterOptions: TOptions;
+  isDisabled?: boolean;
+  hasDefaultOptions?: boolean;
+  canReset?: boolean;
+  onFilterOptionsChange: (filterOptions: TOptions) => void;
+  onReset: () => void;
+};
+
+export type ContentDiagnosticsFilterBarProps<TOptions> = {
+  query?: string;
+  filterOptions: TOptions;
+  isLoading: boolean;
+  onQueryChange: (query: string | undefined) => void;
+  onFilterOptionsChange: (filterOptions: TOptions) => void;
+  onReset: () => void;
+};

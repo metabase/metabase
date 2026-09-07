@@ -28,6 +28,7 @@ import { ImbalancedContentFilterBar } from "./ImbalancedContentFilterBar";
 import { ImbalancedContentSidebar } from "./ImbalancedContentSidebar";
 import { ImbalancedContentTable } from "./ImbalancedContentTable";
 import {
+  getImbalancedDefaultFilterOptions,
   getImbalancedEmptyStateLabel,
   getImbalancedEntityTypesParam,
   getImbalancedFilterOptions,
@@ -140,6 +141,19 @@ export function ImbalancedContent({
     );
   };
 
+  const handleReset = () => {
+    clearRowSelection();
+    onParamsChange(
+      {
+        ...params,
+        ...getImbalancedFilterParams(getImbalancedDefaultFilterOptions()),
+        query: undefined,
+        page: undefined,
+      },
+      { withSetLastUsedParams: true },
+    );
+  };
+
   const handlePageChange = (page: number) => {
     clearRowSelection();
     onParamsChange({ ...params, page });
@@ -177,6 +191,7 @@ export function ImbalancedContent({
             isLoading={isLoading}
             onQueryChange={handleQueryChange}
             onFilterOptionsChange={handleFilterOptionsChange}
+            onReset={handleReset}
           />
           {error != null ? (
             <Center flex={1}>

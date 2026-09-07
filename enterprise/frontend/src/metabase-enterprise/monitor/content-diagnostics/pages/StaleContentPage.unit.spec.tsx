@@ -506,6 +506,46 @@ describe("StaleContentPage", () => {
     ]);
   });
 
+  it("clears the filters and the search box from the Filter popover", async () => {
+    const { router } = setup({
+      findings: FINDINGS,
+      urlParams: { query: "revenue", entityTypes: ["dashboard"] },
+    });
+    await waitForListToLoad();
+
+    await userEvent.click(
+      screen.getByTestId("content-diagnostics-filter-button"),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Reset to defaults",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({});
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const searchParams = getLastRequestUrl().searchParams;
+    expect(searchParams.get("query")).toBeNull();
+    expect(searchParams.getAll("entity-types")).toEqual([]);
+  });
+
+  it("offers nothing to reset while the filters and search are untouched", async () => {
+    setup({ findings: FINDINGS });
+    await waitForListToLoad();
+
+    await userEvent.click(
+      screen.getByTestId("content-diagnostics-filter-button"),
+    );
+
+    expect(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Reset to defaults",
+      }),
+    ).toBeDisabled();
+  });
+
   it("filters by personal collections server-side via the Location toggle", async () => {
     const { router } = setup({ findings: FINDINGS });
     await waitForListToLoad();

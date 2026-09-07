@@ -25,6 +25,7 @@ import { StaleContentFilterBar } from "./StaleContentFilterBar";
 import { StaleContentSidebar } from "./StaleContentSidebar";
 import { StaleContentTable } from "./StaleContentTable";
 import {
+  getStaleDefaultFilterOptions,
   getStaleEntityTypesParam,
   getStaleFilterOptions,
   getStaleFilterParams,
@@ -129,6 +130,19 @@ export function StaleContent({
     );
   };
 
+  const handleReset = () => {
+    clearRowSelection();
+    onParamsChange(
+      {
+        ...params,
+        ...getStaleFilterParams(getStaleDefaultFilterOptions()),
+        query: undefined,
+        page: undefined,
+      },
+      { withSetLastUsedParams: true },
+    );
+  };
+
   const handlePageChange = (page: number) => {
     clearRowSelection();
     onParamsChange({ ...params, page });
@@ -166,6 +180,7 @@ export function StaleContent({
             isLoading={isLoading}
             onQueryChange={handleQueryChange}
             onFilterOptionsChange={handleFilterOptionsChange}
+            onReset={handleReset}
           />
           {error != null ? (
             <Center flex={1}>

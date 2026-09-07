@@ -8,15 +8,10 @@ import {
   areSlowFilterOptionsEqual,
   getSlowDefaultFilterOptions,
 } from "../slow-utils";
-import type { SlowContentFilterOptions } from "../types";
-
-type SlowContentFilterBarProps = {
-  query?: string;
-  filterOptions: SlowContentFilterOptions;
-  isLoading: boolean;
-  onQueryChange: (query: string | undefined) => void;
-  onFilterOptionsChange: (filterOptions: SlowContentFilterOptions) => void;
-};
+import type {
+  ContentDiagnosticsFilterBarProps,
+  SlowContentFilterOptions,
+} from "../types";
 
 export const SlowContentFilterBar = memo(function SlowContentFilterBar({
   query,
@@ -24,11 +19,13 @@ export const SlowContentFilterBar = memo(function SlowContentFilterBar({
   isLoading,
   onQueryChange,
   onFilterOptionsChange,
-}: SlowContentFilterBarProps) {
+  onReset,
+}: ContentDiagnosticsFilterBarProps<SlowContentFilterOptions>) {
   const hasDefaultFilterOptions = areSlowFilterOptionsEqual(
     filterOptions,
     getSlowDefaultFilterOptions(),
   );
+  const canReset = !hasDefaultFilterOptions || query !== undefined;
 
   return (
     <Group gap="md" align="center" wrap="nowrap">
@@ -37,7 +34,9 @@ export const SlowContentFilterBar = memo(function SlowContentFilterBar({
         filterOptions={filterOptions}
         isDisabled={isLoading}
         hasDefaultOptions={hasDefaultFilterOptions}
+        canReset={canReset}
         onFilterOptionsChange={onFilterOptionsChange}
+        onReset={onReset}
       />
     </Group>
   );

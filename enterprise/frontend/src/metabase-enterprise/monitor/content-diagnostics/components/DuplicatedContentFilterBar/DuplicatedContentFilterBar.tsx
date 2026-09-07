@@ -8,17 +8,10 @@ import {
   areDuplicatedFilterOptionsEqual,
   getDuplicatedDefaultFilterOptions,
 } from "../duplicated-utils";
-import type { DuplicatedContentFilterOptions } from "../types";
-
-type DuplicatedContentFilterBarProps = {
-  query?: string;
-  filterOptions: DuplicatedContentFilterOptions;
-  isLoading: boolean;
-  onQueryChange: (query: string | undefined) => void;
-  onFilterOptionsChange: (
-    filterOptions: DuplicatedContentFilterOptions,
-  ) => void;
-};
+import type {
+  ContentDiagnosticsFilterBarProps,
+  DuplicatedContentFilterOptions,
+} from "../types";
 
 export const DuplicatedContentFilterBar = memo(
   function DuplicatedContentFilterBar({
@@ -27,11 +20,13 @@ export const DuplicatedContentFilterBar = memo(
     isLoading,
     onQueryChange,
     onFilterOptionsChange,
-  }: DuplicatedContentFilterBarProps) {
+    onReset,
+  }: ContentDiagnosticsFilterBarProps<DuplicatedContentFilterOptions>) {
     const hasDefaultFilterOptions = areDuplicatedFilterOptionsEqual(
       filterOptions,
       getDuplicatedDefaultFilterOptions(),
     );
+    const canReset = !hasDefaultFilterOptions || query !== undefined;
 
     return (
       <Group gap="md" align="center" wrap="nowrap">
@@ -40,7 +35,9 @@ export const DuplicatedContentFilterBar = memo(
           filterOptions={filterOptions}
           isDisabled={isLoading}
           hasDefaultOptions={hasDefaultFilterOptions}
+          canReset={canReset}
           onFilterOptionsChange={onFilterOptionsChange}
+          onReset={onReset}
         />
       </Group>
     );
