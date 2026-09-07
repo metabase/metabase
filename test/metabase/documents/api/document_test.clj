@@ -143,16 +143,21 @@
         (is (some? (recent-view (mt/user->id :crowberto) document-id))
             "reading a document should record a recent view")))))
 
-(deftest post-document-does-not-record-view-test
-  (testing "POST /api/document should not record a view because creating is not reading"
+(deftest post-document-records-a-recent-view-test
+  (testing "POST /api/document should record a recent view so the creator finds the document in recents (UXW-1786)"
+    ;; The command palette surfaces a freshly created document only through recents, and the only thing that
+    ;; writes that row is the `:event/document-read` handler. Creating is arguably not reading, but the two are
+    ;; carried by one event: suppressing it to keep view counts honest silently drops the document out of the
+    ;; palette. Pinned here because the only other guard is an e2e spec (onboarding/command-palette.cy.spec.js),
+    ;; which reports an empty palette without saying why.
     (mt/with-temporary-setting-values [synchronous-batch-updates true]
       (mt/with-model-cleanup [:model/Document]
         (let [document (mt/user-http-request :crowberto
                                              :post 200 "document/"
                                              {:name "Test Document"
                                               :document (documents.test-util/text->prose-mirror-ast "Doc 1")})]
-          (is (nil? (recent-view (mt/user->id :crowberto) (:id document)))
-              "creating a document should not record a recent view"))))))
+          (is (some? (recent-view (mt/user->id :crowberto) (:id document)))
+              "creating a document should record a recent view"))))))
 
 (deftest put-document-does-not-record-view-test
   (testing "PUT /api/document/:id should not record a view (saving is not a read)"

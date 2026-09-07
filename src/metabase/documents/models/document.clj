@@ -340,12 +340,18 @@
                                                                {:document document
                                                                 :content_type prose-mirror/prose-mirror-content-type}
                                                                cards-to-update-in-ast)))
-                             ;; `read-check`, but not `get-document`: creating is not viewing, so no
-                             ;; `:event/document-read` fires here. The check itself still has to run —
-                             ;; `can-read?` on a Document is collection permissions *and* the content
-                             ;; gate, and the gate adjudicates the warehouse data the body embeds, so
-                             ;; a document the creator may not read must not come back rendered.
-                             (u/prog1 (api/read-check (hydrate-document document-id))
+                             ;; `get-document`, so `:event/document-read` fires: the creator has to find the
+                             ;; document they just made in their recents, and that row is written only by this
+                             ;; event's handler. Creating is arguably not viewing — but the view count and
+                             ;; `view_log` row it also writes are the cost of the recents entry until the two
+                             ;; are decoupled; suppressing the event silently drops the document out of the
+                             ;; command palette (UXW-1786).
+                             ;;
+                             ;; The read check inside it still has to run: `can-read?` on a Document is
+                             ;; collection permissions *and* the content gate, and the gate adjudicates the
+                             ;; warehouse data the body embeds, so a document the creator may not read must not
+                             ;; come back rendered.
+                             (u/prog1 (get-document document-id)
                                (when (collections/remote-synced-collection? (:collection_id <>))
                                  (collections/check-non-remote-synced-dependencies <>)))))]
     ;; Publish event after successful creation
