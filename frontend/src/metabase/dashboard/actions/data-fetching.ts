@@ -372,6 +372,14 @@ export const fetchCardDataAction = createAsyncThunk<
           ignore_cache: ignoreCache,
         }),
       )) as Dataset | { error: unknown };
+    } else if (dashboardType === "adhoc" && dashcard.card_id != null) {
+      // Unjustified type cast. FIXME
+      result = (await fetchDataOrError(
+        runQuery(cardApi.endpoints.getCardQuery, card, metadata, {
+          cardId: dashcard.card_id,
+          ignore_cache: ignoreCache,
+        }),
+      )) as Dataset | { error: unknown };
     } else if (
       dashboardType === "transient" ||
       dashboardType === "inline" ||

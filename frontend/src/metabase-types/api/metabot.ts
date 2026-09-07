@@ -19,6 +19,7 @@ import type {
   UnsavedCard,
   User,
   UserPermissions,
+  VisualizationSettings,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -374,6 +375,7 @@ export interface SaveMetabotDashboardTile {
   title: string;
   display: CardDisplayType;
   dataset_query: DatasetQuery;
+  visualization_settings?: VisualizationSettings;
   row: number;
   col: number;
   size_x: number;

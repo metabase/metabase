@@ -6,6 +6,7 @@ import type {
   DatasetQuery,
   MetabotCodeEdit,
   MetabotTodoItem,
+  SaveMetabotDashboardTile,
   SuggestedTransform,
 } from "metabase-types/api";
 
@@ -95,16 +96,11 @@ export type GeneratedCard = {
   display?: CardDisplayType;
 };
 
-export type GeneratedDashboardTile = {
-  title: string;
-  display: CardDisplayType;
+export type GeneratedDashboardTile = Omit<
+  SaveMetabotDashboardTile,
+  "dataset_query"
+> & {
   query: DatasetQuery;
-  chart_id?: string;
-  card_id?: number;
-  row: number;
-  col: number;
-  size_x: number;
-  size_y: number;
 };
 
 export type GeneratedXrayDashboard = {

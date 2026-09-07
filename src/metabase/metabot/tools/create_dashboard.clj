@@ -33,22 +33,22 @@
             card-id)))
     card))
 
-(defn- validate-tile! [{:keys [chart_id query_id card_id] :as tile}]
-  (when-not (= 1 (count (filter some? [chart_id query_id card_id])))
+(defn- validate-tile! [{chart-id :chart_id query-id :query_id card-id :card_id :as tile}]
+  (when-not (= 1 (count (filter some? [chart-id query-id card-id])))
     (agent-error!
      (tru "Each tile must reference exactly one of `chart_id`, `query_id`, or `card_id`. Tile `{0}` does not."
           (:title tile))))
-  (when card_id
-    (readable-card card_id))
-  (when (and chart_id (not (contains? (shared/current-charts-state) chart_id)))
+  (when card-id
+    (readable-card card-id))
+  (when (and chart-id (not (contains? (shared/current-charts-state) chart-id)))
     (agent-error!
      (tru "No generated chart found with id `{0}`. Available charts: [{1}]."
-          chart_id
+          chart-id
           (str/join ", " (keys (shared/current-charts-state))))))
-  (when (and query_id (not (contains? (shared/current-queries-state) query_id)))
+  (when (and query-id (not (contains? (shared/current-queries-state) query-id)))
     (agent-error!
      (tru "No query found with id `{0}`. Available queries: [{1}]."
-          query_id
+          query-id
           (str/join ", " (keys (shared/current-queries-state)))))))
 
 (def ^:private tile-schema
@@ -65,30 +65,35 @@
    [:description {:optional true} [:maybe :string]]
    [:tiles [:vector {:min 1} tile-schema]]])
 
+(defn- resolve-generated-chart [chart-id]
+  (or (shared/resolve-generated-chart chart-id)
+      (agent-error!
+       (tru "The chart `{0}` has no resolvable query; recreate it before adding it to a dashboard."
+            chart-id))))
+
 (defn- resolve-tile
-  [{:keys [chart_id query_id card_id title size]}]
-  (let [tile (if card_id
-               (let [card (readable-card card_id)]
-                 {:title   title
-                  :display (name (:display card))
-                  :query   (links/->legacy-mbql (:dataset_query card))
-                  :card_id card_id})
-               (let [chart (when chart_id (get (shared/current-charts-state) chart_id))
-                     query (if chart
-                             (or (first (:queries chart))
-                                 (get (shared/current-queries-state) (:query_id chart)))
-                             (get (shared/current-queries-state) query_id))]
-                 (when-not query
-                   (agent-error!
-                    (tru "The chart `{0}` has no resolvable query; recreate it before adding it to a dashboard."
-                         (or chart_id query_id))))
-                 (cond-> {:title   title
-                          :display (or (some-> (get-in chart [:visualization_settings :chart_type]) name)
-                                       (some-> (get-in chart [:chart_config :display_type]) name)
-                                       "table")
-                          :query   (links/->legacy-mbql query)}
-                   chart_id (assoc :chart_id chart_id)
-                   query_id (assoc :query_id query_id))))]
+  [{chart-id :chart_id query-id :query_id card-id :card_id :keys [title size]}]
+  (let [tile (cond
+               card-id
+               (let [card (readable-card card-id)]
+                 {:title                  title
+                  :display                (name (:display card))
+                  :query                  (links/->legacy-mbql (:dataset_query card))
+                  :visualization_settings (:visualization_settings card)
+                  :card_id                card-id})
+
+               chart-id
+               (let [{:keys [query display]} (resolve-generated-chart chart-id)]
+                 {:title    title
+                  :display  (name display)
+                  :query    (links/->legacy-mbql query)
+                  :chart_id chart-id})
+
+               :else
+               {:title    title
+                :display  "table"
+                :query    (links/->legacy-mbql (get (shared/current-queries-state) query-id))
+                :query_id query-id})]
     (assoc tile :size size)))
 
 (defn- place-tiles
@@ -103,11 +108,11 @@
            [[] []]
            tiles)))
 
-(defn- tile->state [{:keys [chart_id query_id card_id title row col size_x size_y]}]
-  (cond-> {:title title :row row :col col :size_x size_x :size_y size_y}
-    chart_id (assoc :chart_id chart_id)
-    query_id (assoc :query_id query_id)
-    card_id  (assoc :card_id card_id)))
+(defn- tile->state [{chart-id :chart_id query-id :query_id card-id :card_id :as tile}]
+  (cond-> (select-keys tile [:title :row :col :size_x :size_y])
+    chart-id (assoc :chart_id chart-id)
+    query-id (assoc :query_id query-id)
+    card-id  (assoc :card_id card-id)))
 
 (defn- tile->definition [tile]
   (dissoc tile :query_id))
