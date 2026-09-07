@@ -364,8 +364,7 @@
                            :status-code  400
                            :error        :unknown-card
                            :card-id      card-id})))
-        (when api/*current-user-id*
-          (api/read-check card))
+        (api/read-check card)
         (:database_id card))
 
       :else
