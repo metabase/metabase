@@ -64,9 +64,7 @@ export const SetupGuide = ({ returnTo }: { returnTo?: string } = {}) => {
         const clickAction: StepperCardClickAction | undefined = match(action)
           .with({ to: P.string }, ({ to }) => ({
             type: "link" as const,
-            to: returnTo
-              ? `${to}?${RETURN_TO_SETUP_GUIDE_PARAM}=${encodeURIComponent(returnTo)}`
-              : to,
+            to: returnTo ? withReturnTo(to, returnTo) : to,
           }))
           .with({ onClick: P.nonNullable }, ({ onClick }) => ({
             type: "click" as const,
@@ -107,3 +105,12 @@ export const SetupGuide = ({ returnTo }: { returnTo?: string } = {}) => {
     </>
   );
 };
+
+/** Keeps the caller's own query string intact -- a step's `to` may carry one. */
+function withReturnTo(to: string, returnTo: string) {
+  const [path, search] = to.split("?");
+  const params = new URLSearchParams(search);
+  params.set(RETURN_TO_SETUP_GUIDE_PARAM, returnTo);
+
+  return `${path}?${params}`;
+}
