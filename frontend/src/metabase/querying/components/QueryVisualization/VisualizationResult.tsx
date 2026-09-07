@@ -1,15 +1,14 @@
-import { useState } from "react";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal";
-import { ALERT_TYPE_ROWS, getAlertType } from "metabase/notifications/utils";
-import { Anchor, Button, Flex } from "metabase/ui";
+import { Button, Flex } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
+
+import { defaultClickActionMode } from "../../click-actions/lib/modes";
 
 import type { QueryVisualizationProps } from "./types";
 
@@ -21,7 +20,7 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "tableHeaderHeight",
   "scrollToColumn",
   "renderTableHeader",
-  "mode",
+  "hasColumnReordering",
   "renderEmptyMessage",
   "zoomedRowIndex",
   // Legend
@@ -31,7 +30,6 @@ const ALLOWED_VISUALIZATION_PROPS = [
 export function VisualizationResult(props: QueryVisualizationProps) {
   const {
     question,
-    isDirty,
     queryBuilderMode,
     navigateToNewCardInsideQB,
     result,
@@ -44,12 +42,12 @@ export function VisualizationResult(props: QueryVisualizationProps) {
     isShowingSummarySidebar,
     editSummary,
     renderEmptyMessage,
+    noResultsAction,
     isRawTable,
     scrollToLastColumn,
     onZoomRow,
     getExtraDataForClick,
   } = props;
-  const [isCreateAlertModalShown, setIsCreateAlertModalShown] = useState(false);
 
   if (!result) {
     return null;
@@ -57,9 +55,6 @@ export function VisualizationResult(props: QueryVisualizationProps) {
 
   const noResults = datasetContainsNoResults(result.data);
   if (noResults && !isRunning && !renderEmptyMessage) {
-    const supportsRowsPresentAlert =
-      !isEmbeddingSdk() && getAlertType(question) === ALERT_TYPE_ROWS;
-
     const supportsBackToPreviousResult =
       !isEmbeddingSdk() || Boolean(onNavigateBack);
 
@@ -72,18 +67,7 @@ export function VisualizationResult(props: QueryVisualizationProps) {
           message={t`This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific.`}
           action={
             <div>
-              {supportsRowsPresentAlert && !isDirty && (
-                <p>
-                  {jt`You can also ${(
-                    <Anchor
-                      key="link"
-                      onClick={() => setIsCreateAlertModalShown(true)}
-                    >
-                      {t`get an alert`}
-                    </Anchor>
-                  )} when there are some results.`}
-                </p>
-              )}
+              {noResultsAction}
 
               {supportsBackToPreviousResult && (
                 <Button
@@ -98,13 +82,6 @@ export function VisualizationResult(props: QueryVisualizationProps) {
             </div>
           }
         />
-        {isCreateAlertModalShown && (
-          <CreateOrEditQuestionAlertModal
-            question={question}
-            onClose={() => setIsCreateAlertModalShown(false)}
-            onAlertCreated={() => setIsCreateAlertModalShown(false)}
-          />
-        )}
       </Flex>
     );
   }
@@ -143,6 +120,7 @@ export function VisualizationResult(props: QueryVisualizationProps) {
       onHeaderColumnReorder={props.onHeaderColumnReorder}
       onUpdateVisualizationSettings={props.onUpdateVisualizationSettings}
       onVisualizationRendered={props.onVisualizationRendered}
+      mode={props.mode ?? defaultClickActionMode}
       {...vizSpecificProps}
     />
   );

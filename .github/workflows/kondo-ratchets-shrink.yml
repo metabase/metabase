@@ -57,7 +57,9 @@ jobs:
           distribution: temurin
           java-version: 25
       - name: Shrink ignore limits
-        run: ./bin/mage kondo-ratchets-shrink
+        run: |
+          cp "$RATCHETS_FILE" "$RUNNER_TEMP/ratchets-before.edn"
+          ./bin/mage kondo-ratchets-shrink
       # Two independent outputs: `push` says the branch needs a new commit, `pr` names the open automation
       # PR if there is one. Approval and auto-merge key on `pr` alone, so a run that failed after opening
       # the PR is repaired by the next run instead of leaving the PR stranded.
@@ -113,6 +115,12 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           OPEN_PR: ${{ steps.compare.outputs.pr }}
         run: |
+          ./bin/mage -kondo-ratchets-pr-body \
+            "$RUNNER_TEMP/ratchets-before.edn" \
+            "$RATCHETS_FILE" \
+            "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            > "$RUNNER_TEMP/ratchets-pr-body.md"
+
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add -- "$RATCHETS_FILE"
@@ -123,6 +131,7 @@ jobs:
           echo "head=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
           if [ -n "$OPEN_PR" ]; then
+            gh pr edit "$OPEN_PR" --body-file "$RUNNER_TEMP/ratchets-pr-body.md"
             echo "Updated the automation PR #$OPEN_PR"
             echo "pr=$OPEN_PR" >> "$GITHUB_OUTPUT"
             exit 0
@@ -133,10 +142,7 @@ jobs:
             --head "$AUTOMATION_BRANCH" \
             --title "Tighten ratchets" \
             --label "no-backport" \
-            --body "\`./bin/mage kondo-ratchets-shrink\` lowered \`$RATCHETS_FILE\` to match master.
-          The shrink workflow force-updates this branch from master whenever the result changes, so the
-          diff is always one commit on top of a recent master. It approves and merges itself once the
-          ratchet check passes; nothing is raised.")
+            --body-file "$RUNNER_TEMP/ratchets-pr-body.md")
           echo "Opened the automation PR $url"
           echo "pr=${url##*/}" >> "$GITHUB_OUTPUT"
       - name: Approve the automation PR

@@ -11,11 +11,6 @@
   []
   (t2/select-pk->fn identity :model/Transform))
 
-(defn transform-run
-  "The TransformRun with `run-id`, or nil."
-  [run-id]
-  (t2/select-one :model/TransformRun :id run-id))
-
 (defn reset-checkpoint!
   "Clear the stored checkpoint value of the Transform with `id`."
   [id]
