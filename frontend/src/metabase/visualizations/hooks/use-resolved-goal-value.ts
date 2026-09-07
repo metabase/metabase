@@ -6,7 +6,7 @@ import { useAnsweredGoalDataForValues } from "./use-answered-goal-data-for-value
 
 export type GoalValueResolution = GoalResolution<{ value: number | null }>;
 
-export function useResolvedGoal(
+export function useResolvedGoalValue(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   value: GoalValue | null | undefined,

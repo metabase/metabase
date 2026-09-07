@@ -40,8 +40,8 @@ import { StaticGoalValueInput } from "./StaticGoalValueInput";
 import { ICON_BUTTON_SIZE } from "./constants";
 import type { ColumnOption, PickedItem } from "./types";
 import { useEntityColumnValues } from "./use-entity-column-values";
+import { useGoalInputValue } from "./use-goal-input-value";
 import { useReferencedEntity } from "./use-referenced-entity";
-import { useResolvedGoalValue } from "./use-resolved-goal-value";
 import { getNumericColumnOptions } from "./utils";
 
 const ROOT_MENU_MIN_WIDTH = 225;
@@ -102,7 +102,7 @@ export const GoalValueInput = ({
     },
   );
 
-  const resolved = useResolvedGoalValue(
+  const resolved = useGoalInputValue(
     datasetQuery,
     data,
     value,

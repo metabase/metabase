@@ -25,7 +25,7 @@ const RESOLVING: ResolvedGoalValue = {
  * Like `resolveGoalValue`, but a foreign reference the query can't answer is
  * resolved by re-running the question's query with the references attached.
  */
-export function useResolvedGoalValue(
+export function useGoalInputValue(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   value: GoalValue | null,
