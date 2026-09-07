@@ -208,10 +208,9 @@ async function loadOnce() {
   // that records it. Wait a bounded while rather than missing them.
   //
   // They must not gate the reading itself. A jar built before the marks existed
-  // never fires either one, which is every older commit the backfill measures,
-  // and waiting on them there would turn each load into a 45s timeout and then
-  // report no reading at all. One load settles it for the whole series, so the
-  // rest do not pay the wait again.
+  // never fires either one, and waiting on them there would turn each load into
+  // a 45s timeout and then report no reading at all. One load settles it for the
+  // whole series, so the rest do not pay the wait again.
   for (
     let attempt = 0;
     buildRecordsMarks && metrics && !metrics.pageReady && attempt < 40;

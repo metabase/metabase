@@ -1,6 +1,5 @@
 // Turns the conditions matrix.js prints into rows for the "Bundle Load Times"
-// table, stamped with the commit they came from. The per-merge uploader and the
-// backfill both go through here so their rows cannot drift apart.
+// table, stamped with the commit they came from.
 
 /** One condition, as `frontend/build/bench/matrix.js` reports it. */
 export interface Condition {
@@ -26,12 +25,6 @@ export interface Condition {
 
 export interface CommitStamp {
   sha: string;
-  /**
-   * YYYY-MM-DD, or empty for today. A backfill measures an old commit today,
-   * so without it every backfilled row would claim today's date and the series
-   * would collapse onto one day.
-   */
-  date?: string;
   subject: string;
 }
 
@@ -39,10 +32,10 @@ export type LoadTimeRow = Record<string, string | number>;
 
 export function buildRows(
   conditions: Condition[],
-  { sha, date, subject }: CommitStamp,
+  { sha, subject }: CommitStamp,
 ): LoadTimeRow[] {
   return conditions.map((condition) => ({
-    Date: date || new Date().toISOString().slice(0, 10),
+    Date: new Date().toISOString().slice(0, 10),
     // Truncated the same way the bundle-size table does, so the two join.
     Commit: sha.slice(0, 12),
     // The stats table carries a free-text Description column. Populate it with

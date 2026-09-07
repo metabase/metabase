@@ -14,7 +14,6 @@ async function main() {
 
   const rows = buildRows(conditions, {
     sha: process.env.HEAD_SHA || "",
-    date: process.env.COMMIT_DATE,
     subject: process.env.COMMIT_MESSAGE || "",
   });
 
