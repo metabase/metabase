@@ -284,7 +284,9 @@
 
 (deftest saved-question-source-authorizes-through-its-collection-test
   (testing "a query on a saved question the user can read is exported without query access to its database"
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:dataset_query (lib/query (mt/metadata-provider)
+                                              (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
       (mt/with-no-data-perms-for-all-users!
         (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/manage-table-metadata :yes)
         (mt/with-test-user :rasta
