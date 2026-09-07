@@ -7,6 +7,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.events.core :as events]
+   [metabase.metabot.db :as metabot.db]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [toucan2.core :as t2]))
@@ -33,9 +34,7 @@
                  :size_x       size_x
                  :size_y       size_y})
     (when (and card conversation-id chart-id)
-      (t2/update! (t2/table-name :model/Card) (:id card)
-                  {:metabot_conversation_id conversation-id
-                   :metabot_chart_id        chart-id}))
+      (metabot.db/link-card-to-conversation! (:id card) conversation-id chart-id))
     card))
 
 (defn- check-tile-permissions! [{:keys [card-id dataset_query]}]
