@@ -99,7 +99,7 @@ runs with unresolved diagnostics or different effective rule coverage.
 
 | Candidate | Runs | Mean | Files | Findings |
 | --- | --- | --- | --- | --- |
-| Base, without the six performance patches | 17.830 / 18.898 s | 18.364 s | 11,978 | 0 |
+| Base, without the six performance patches | 17.702 / 18.085 s | 17.894 s | 11,978 | 0 |
 
 The stacked PR records its corresponding patched measurements.
 
@@ -138,10 +138,10 @@ review them on dependency upgrades and prefer upstream fixes where possible.
 
 | Candidate | Runs | Mean | Files | Findings |
 | --- | --- | --- | --- | --- |
-| Base without these patches | 17.830 / 18.898 s | 18.364 s | 11,978 | 0 |
-| Same policy with all six patches | 13.604 / 14.097 s | 13.851 s | 11,979 | 0 |
+| Base without these patches | 17.702 / 18.085 s | 17.894 s | 11,978 | 0 |
+| Same policy with all six patches | 13.389 / 13.121 s | 13.255 s | 11,979 | 0 |
 
-The patch layer saves about 4.51 s (25%) in these sequential full-directory runs.
+The patch layer saves about 4.64 s (26%) in these sequential full-directory runs.
 Its one additional file is the patch-parity test. Both candidates include the
 three accepted native rules and the base/extension configuration fix above.
 
