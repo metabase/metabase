@@ -2221,53 +2221,56 @@
 ;;; structured call usage extraction (the osi-generation seam)
 
 (deftest call-llm-structured+usage-test
-  (let [parts [{:type :tool-input :id "c1" :function "json" :arguments {:answer "yes"}}
-               {:type :usage :usage {:promptTokens 11 :completionTokens 7}}]]
-    (testing "the streamed usage is returned beside the parsed result"
-      (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                  (constantly (test-util/mock-llm-response parts))]
-        (is (= {:result {:answer "yes"}
-                :usage {:input-tokens 11, :output-tokens 7}}
-               (self/call-llm-structured+usage
-                "openrouter/test-model" [] {:type "object"} 0.3 1024 {:tag "osi-generation"})))))
-    (testing "a provider that omits usage produces explicit zero totals"
-      (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                  (constantly (test-util/mock-llm-response (butlast parts)))]
-        (is (= {:input-tokens 0, :output-tokens 0}
-               (:usage (self/call-llm-structured+usage
-                        "openrouter/test-model" [] {:type "object"} 0.3 1024
-                        {:tag "osi-generation"}))))))))
+  (llm.tu/with-default-connections
+    (let [parts [{:type :tool-input, :id "c1", :function "json", :arguments {:answer "yes"}}
+                 {:type :usage, :usage {:promptTokens 11, :completionTokens 7}}]]
+      (testing "the streamed usage is returned beside the parsed result"
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (constantly (test-util/mock-llm-response parts))]
+          (is (= {:result {:answer "yes"}
+                  :usage  {:input-tokens 11, :output-tokens 7}}
+                 (self/call-llm-structured+usage
+                  "openrouter/test-model" [] {:type "object"} 0.3 1024 {:tag "osi-generation"})))))
+      (testing "a provider that omits usage produces explicit zero totals"
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (constantly (test-util/mock-llm-response (butlast parts)))]
+          (is (= {:input-tokens 0, :output-tokens 0}
+                 (:usage (self/call-llm-structured+usage
+                          "openrouter/test-model" [] {:type "object"} 0.3 1024
+                          {:tag "osi-generation"})))))))))
 
 (deftest call-llm-structured-usage-survives-stream-failure-and-retry-test
-  (testing "usage emitted before a retryable stream failure is accumulated with the successful retry"
-    (let [calls         (atom 0)
-          failed-stream (reify clojure.lang.IReduceInit
-                          (reduce [_ rf init]
-                            (rf init {:type :usage :usage {:promptTokens 5 :completionTokens 2}})
-                            (throw (ex-info "retry me" {:status 429}))))]
-      (mt/with-dynamic-fn-redefs
-        [self/retry-delay-ms (constantly 0)
-         openrouter/openrouter
-         (fn [_]
-           (if (= 1 (swap! calls inc))
-             failed-stream
-             (test-util/mock-llm-response
-              [{:type :tool-input :id "c1" :function "json" :arguments {:answer "yes"}}
-               {:type :usage :usage {:promptTokens 11 :completionTokens 7}}])))]
-        (is (= {:result {:answer "yes"}
-                :usage  {:input-tokens 16, :output-tokens 9}}
-               (self/call-llm-structured+usage
-                "openrouter/test-model" [] {:type "object"} 0.3 1024 {:tag "osi-generation"})))))))
+  (llm.tu/with-default-connections
+    (testing "usage emitted before a retryable stream failure is accumulated with the successful retry"
+      (let [calls         (atom 0)
+            failed-stream (reify clojure.lang.IReduceInit
+                            (reduce [_ rf init]
+                              (rf init {:type :usage, :usage {:promptTokens 5, :completionTokens 2}})
+                              (throw (ex-info "retry me" {:status 429}))))]
+        (mt/with-dynamic-fn-redefs
+          [self/retry-delay-ms (constantly 0)
+           openrouter/openrouter
+           (fn [_]
+             (if (= 1 (swap! calls inc))
+               failed-stream
+               (test-util/mock-llm-response
+                [{:type :tool-input, :id "c1", :function "json", :arguments {:answer "yes"}}
+                 {:type :usage, :usage {:promptTokens 11, :completionTokens 7}}])))]
+          (is (= {:result {:answer "yes"}
+                  :usage  {:input-tokens 16, :output-tokens 9}}
+                 (self/call-llm-structured+usage
+                  "openrouter/test-model" [] {:type "object"} 0.3 1024 {:tag "osi-generation"}))))))))
 
 (deftest call-llm-structured-final-error-carries-streamed-usage-test
-  (testing "a final exception retains usage that arrived earlier in the failed stream"
-    (let [failed-stream (reify clojure.lang.IReduceInit
-                          (reduce [_ rf init]
-                            (rf init {:type :usage :usage {:promptTokens 5 :completionTokens 2}})
-                            (throw (ex-info "not retryable" {:status 400}))))]
-      (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly failed-stream)]
-        (let [e (is (thrown? clojure.lang.ExceptionInfo
-                             (self/call-llm-structured+usage
-                              "openrouter/test-model" [] {:type "object"} 0.3 1024
-                              {:tag "osi-generation"})))]
-          (is (= {:input-tokens 5, :output-tokens 2} (:usage (ex-data e)))))))))
+  (llm.tu/with-default-connections
+    (testing "a final exception retains usage that arrived earlier in the failed stream"
+      (let [failed-stream (reify clojure.lang.IReduceInit
+                            (reduce [_ rf init]
+                              (rf init {:type :usage, :usage {:promptTokens 5, :completionTokens 2}})
+                              (throw (ex-info "not retryable" {:status 400}))))]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly failed-stream)]
+          (let [e (is (thrown? clojure.lang.ExceptionInfo
+                               (self/call-llm-structured+usage
+                                "openrouter/test-model" [] {:type "object"} 0.3 1024
+                                {:tag "osi-generation"})))]
+            (is (= {:input-tokens 5, :output-tokens 2} (:usage (ex-data e))))))))))
