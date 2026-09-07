@@ -22,10 +22,12 @@ const jsParser = parser(false);
 export default wrap("import-js", plugin, resolver.importSettings, (context) =>
   Object.create(context, {
     languageOptions: {
-      value: {
-        ...context.languageOptions,
-        parser: /\.[cm]?tsx?$/.test(context.filename) ? tsParser : jsParser,
-      },
+      // Preserve lazy AST/global getters; only dependency parsing needs a shim.
+      value: Object.create(context.languageOptions, {
+        parser: {
+          value: /\.[cm]?tsx?$/.test(context.filename) ? tsParser : jsParser,
+        },
+      }),
     },
   }),
 );
