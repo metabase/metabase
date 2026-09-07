@@ -1,10 +1,9 @@
 import { color } from "metabase/ui/colors/palette";
-import type { DatasetQuery } from "metabase-types/api";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 
 import { toCountBreakoutRawSeries } from "./raw-series";
 
-// Unjustified type cast. FIXME
-const jsQuery = { database: 1, type: "query", query: {} } as DatasetQuery;
+const jsQuery = createMockStructuredDatasetQuery();
 
 const opts = {
   display: "row" as const,
