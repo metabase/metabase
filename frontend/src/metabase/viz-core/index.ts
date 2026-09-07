@@ -221,6 +221,7 @@ export { getColorScale } from "./lib/color-scales";
 export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
 export { getDynamicGoalSettingKeys } from "./lib/dynamic-goal-displays";
 export {
+  getGoalSegmentBounds,
   getReferencedEntities,
   getSegmentColor,
   getUnansweredGoalEntities,
@@ -240,6 +241,7 @@ export {
 export type {
   GoalData,
   GoalRefError,
+  GoalValues,
   ResolvedGoalSegment,
   ResolvedGoalValue,
 } from "./lib/dynamic-goals";

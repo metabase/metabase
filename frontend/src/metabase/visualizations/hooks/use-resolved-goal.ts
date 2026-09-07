@@ -1,14 +1,8 @@
-import {
-  getUnansweredGoalEntitiesForValues,
-  hasFailedGoalReferencesForValues,
-  resolveGoalValue,
-} from "metabase/viz-core";
+import { resolveGoalValue } from "metabase/viz-core";
 import type { DatasetData, DatasetQuery, GoalValue } from "metabase-types/api";
 
-import {
-  type GoalResolution,
-  useAnsweredGoalData,
-} from "./use-answered-goal-data";
+import type { GoalResolution } from "./use-answered-goal-data";
+import { useAnsweredGoalValues } from "./use-answered-goal-values";
 
 export type GoalValueResolution = GoalResolution<{ value: number | null }>;
 
@@ -17,22 +11,10 @@ export function useResolvedGoal(
   data: DatasetData,
   value: GoalValue | null | undefined,
 ): GoalValueResolution {
-  const answered = useAnsweredGoalData(
-    datasetQuery,
-    data,
-    getUnansweredGoalEntitiesForValues(data, [value]),
-  );
+  const answered = useAnsweredGoalValues(datasetQuery, data, [value]);
 
   if (answered.status !== "resolved") {
     return answered;
-  }
-
-  // No further fetch happens past this point, so an unanswered reference counts as failed.
-  if (
-    getUnansweredGoalEntitiesForValues(answered.data, [value]).length > 0 ||
-    hasFailedGoalReferencesForValues(answered.data, [value])
-  ) {
-    return { status: "failed" };
   }
 
   return {

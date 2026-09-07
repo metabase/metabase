@@ -1,7 +1,6 @@
 import {
   type ResolvedGoalSegment,
-  getUnansweredGoalEntities,
-  hasFailedGoalReferences,
+  getGoalSegmentBounds,
   resolveGoalSegments,
 } from "metabase/viz-core";
 import type {
@@ -10,10 +9,8 @@ import type {
   GoalSegment,
 } from "metabase-types/api";
 
-import {
-  type GoalResolution,
-  useAnsweredGoalData,
-} from "./use-answered-goal-data";
+import type { GoalResolution } from "./use-answered-goal-data";
+import { useAnsweredGoalValues } from "./use-answered-goal-values";
 
 export type GoalSegmentsResolution = GoalResolution<{
   segments: ResolvedGoalSegment[];
@@ -24,33 +21,18 @@ export function useResolvedGoalSegments(
   data: DatasetData,
   segments: GoalSegment[] | undefined,
 ): GoalSegmentsResolution {
-  const answered = useAnsweredGoalData(
+  const answered = useAnsweredGoalValues(
     datasetQuery,
     data,
-    getUnansweredGoalEntities(data, segments),
+    getGoalSegmentBounds(segments),
   );
 
   if (answered.status !== "resolved") {
     return answered;
   }
 
-  return getGoalSegmentsResolution(answered.data, segments);
-}
-
-// No further fetch happens past this point, so an unanswered reference counts as failed.
-function getGoalSegmentsResolution(
-  data: DatasetData,
-  segments: GoalSegment[] | undefined,
-): GoalSegmentsResolution {
-  if (
-    getUnansweredGoalEntities(data, segments).length > 0 ||
-    hasFailedGoalReferences(data, segments)
-  ) {
-    return { status: "failed" };
-  }
-
   return {
     status: "resolved",
-    segments: resolveGoalSegments(data, segments),
+    segments: resolveGoalSegments(answered.data, segments),
   };
 }
