@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [medley.core :as m]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting]
@@ -237,18 +238,16 @@
 (deftest provider-types-carry-hosted-policy-test
   (testing "enumeration applies hosted policy too, so the connection form sees the same requirements as validation"
     (mt/with-premium-features #{:hosting}
-      (let [bedrock (->> (llm.provider/provider-types) (filter #(= "bedrock" (:type %))) first)
-            key-field (->> bedrock :fields (filter #(= :access-key-id (:key %))) first)]
+      (let [bedrock   (m/find-first #(= "bedrock" (:type %)) (llm.provider/provider-types))
+            key-field (m/find-first #(= :access-key-id (:key %)) (:fields bedrock))]
         (is (true? (:required? key-field)))
         (is (= "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
                (str (:help key-field))))))
     (testing "and leaves the self-hosted entry alone"
       (let [key-field (->> (llm.provider/provider-types)
-                           (filter #(= "bedrock" (:type %)))
-                           first
+                           (m/find-first #(= "bedrock" (:type %)))
                            :fields
-                           (filter #(= :access-key-id (:key %)))
-                           first)]
+                           (m/find-first #(= :access-key-id (:key %))))]
         (is (nil? (:required? key-field)))
         (is (str/starts-with? (str (:help key-field)) "Leave the keys blank"))))))
 
