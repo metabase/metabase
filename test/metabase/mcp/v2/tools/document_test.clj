@@ -553,6 +553,46 @@
                 (is (not (str/includes? (:content_markdown out) "widget")))
                 (is (= 20 (count (re-seq #"gadget" (:content_markdown out)))))))))))))
 
+(deftest edit-budget-covers-the-whole-call-test
+  (testing "the rewriting ceiling bounds one document_write call, not one edit. `edits` is an
+           unbounded list, so an allowance handed fresh to each entry is no bound at all: edits
+           that each price under the ceiling still buy an unbounded multiple of it in one request."
+    (mt/with-current-user (mt/user->id :crowberto)
+      (with-tool-documents
+        (fn [created!]
+          ;; ~16KB. Each `replace_all` below matches 300 times, pricing at ~4,800 — well under the
+          ;; ceiling on its own, so every one of these edits is individually legal.
+          (let [doc-id (:id (created! (call {:method           "create"
+                                             :name             "Many edits"
+                                             :content_markdown (str/join "\n\n" (repeat 300 cost-model-line))})))
+                stored #(:markdown (documents/serialize
+                                    (t2/select-one-fn :document :model/Document :id doc-id)))
+                edit   (fn [old new] {:old_str old :new_str new :replace_all true})]
+            (testing "one such edit on its own is accepted"
+              (is (nil? (write-error {:method "update" :id doc-id
+                                      :edits [(edit "quick" "swift")]}))))
+            (let [before (stored)]
+              (testing "enough of them in a single call is refused, naming the call as the unit"
+                (let [timer   (u/start-timer)
+                      err     (write-error {:method "update" :id doc-id
+                                            :edits (mapv edit
+                                                         ["brown" "jumped" "over" "lazy" "sleeping" "dog"]
+                                                         ["red" "leapt" "above" "idle" "dozing" "fox"])})
+                      elapsed (u/since-ms timer)]
+                  (is (some? err) "should be refused, not carried out")
+                  (when err
+                    (is (re-find #"(?i)every edit in the call" err)
+                        "should say the ceiling is per call, so the agent splits rather than retries")
+                    (is (re-find #"content_markdown" err)
+                        "should point at the single-pass alternative"))
+                  ;; The budget caps work performed: the sweep stops once it is spent, so an
+                  ;; over-budget call costs about the ceiling (~600ms), never the whole request.
+                  (is (< elapsed 5000)
+                      (format "refusal should stop at the ceiling (took %.0fms)" (double elapsed)))))
+              (testing "a refused call leaves the stored body untouched — the reduce builds a new AST
+                       and the throw lands before update-document!, so no prefix of the edits persists"
+                (is (= before (stored)))))))))))
+
 (deftest method-shape-errors-test
   (mt/with-current-user (mt/user->id :crowberto)
     (with-tool-documents

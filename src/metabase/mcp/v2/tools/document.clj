@@ -279,24 +279,28 @@
   (let [s (str s)]
     (pr-str (if (> (count s) 80) (str (subs s 0 77) "…") s))))
 
-(def ^:private max-replace-all-work
-  "Ceiling on `matches × document-KB` for one `replace_all`, the product that sets its cost: each
-  occurrence is spliced separately and every splice re-serializes the whole document, so the work is
-  quadratic in a document's size once `old_str` is short enough to appear throughout it.
+(def ^:private max-edit-work
+  "Ceiling on `splices × document-KB` for one `document_write` call, the product that sets its cost:
+  every splice re-serializes the whole document, so the work is quadratic in a document's size once a
+  `replace_all`'s `old_str` is short enough to appear throughout it.
 
-  Measured at roughly 0.03ms per match·KB, so this caps a single call near 600ms. Real edits are
-  orders of magnitude under — renaming a term appearing 30 times in a 50KB document is 1,500 — while
-  the shape this exists to stop, a one-character `old_str` on a 64KB document, prices at ~460,000 and
-  took ~14s before the ceiling existed. Left unbounded it grows with document size: an 85-byte
-  request against a 1MB document buys about an hour of one thread."
+  Measured at roughly 0.03ms per splice·KB, so this caps a call near 600ms. Real edits are orders of
+  magnitude under — renaming a term appearing 30 times in a 50KB document is 1,500 — while the shape
+  this exists to stop, a one-character `old_str` on a 64KB document, prices at ~460,000 and took ~14s
+  before the ceiling existed. Left unbounded it grows with document size: an 85-byte request against a
+  1MB document buys about an hour of one thread.
+
+  Budgeted per call rather than per edit because `edits` is an unbounded list: an allowance handed
+  fresh to each entry is no bound at all, since 100 edits each just under it buy 100x the work in one
+  request."
   20000)
 
-(defn- replace-all-work
-  "`matches × document-KB` for `old_str` against `markdown` — the cost estimate
-  [[max-replace-all-work]] bounds. Sub-KB documents price at zero, which is correct: they are cheap
-  however many matches they hold."
-  [^String markdown matches]
-  (long (* (count matches) (/ (count markdown) 1024.0))))
+(defn- edit-work
+  "`splices × document-KB` against `markdown` — the cost estimate [[max-edit-work]] bounds. One splice
+  for a single edit, one per occurrence for a `replace_all`. Sub-KB documents price at zero, which is
+  correct: they are cheap however many splices they take."
+  [^String markdown ^long splices]
+  (long (* splices (/ (count markdown) 1024.0))))
 
 (defn- check-no-markdown-tables!
   [^String markdown]
@@ -312,29 +316,15 @@
   remains; an iteration cap turns any pathological non-convergence into a teaching error
   rather than a silent miss.
 
-  Refuses up front when the call prices past [[max-replace-all-work]]. Pricing it costs one
-  serialization rather than one per match, so an over-budget call is rejected without doing any of
-  the work being rejected."
-  [ast old_str new_str]
-  (let [self-matching? (str/includes? new_str old_str)
-        first-ser      (documents/serialize ast)
-        first-matches  (match-indexes (:markdown first-ser) old_str)
-        work           (replace-all-work (:markdown first-ser) first-matches)]
-    (when (> work max-replace-all-work)
-      (common/throw-teaching-error
-       (format (str "replace_all for old_str %s would rewrite %d matches across a %dKB document, which is more "
-                    "work than one call can do. Extend old_str with surrounding context so it matches fewer "
-                    "places and repeat, or replace the whole body with content_markdown, which rewrites it in "
-                    "a single pass — note that a full rewrite re-creates every block, so comment threads "
-                    "anchored to the body are orphaned.")
-               (snippet old_str)
-               (count first-matches)
-               (quot (count (:markdown first-ser)) 1024))))
-    ;; The pricing serialization above doubles as the first iteration's, so bounding the work costs
-    ;; nothing on an in-budget call. `splice` reuses a serialization only when it is of the very AST
-    ;; being spliced, so each recur re-serializes the AST it produced.
-    (loop [ast ast, ser first-ser, bound Long/MAX_VALUE, iterations 0]
-      (when (> iterations (+ 100 (* 2 (count first-matches))))
+  `ser` and `initial-matches` are [[apply-edit]]'s serialization of `ast` and the occurrences it
+  found there, already priced against [[max-edit-work]]. Taking them rather than recomputing them
+  keeps a `replace_all` to one serialization per splice, with none spent on pricing."
+  [ast ser initial-matches old_str new_str]
+  (let [self-matching? (str/includes? new_str old_str)]
+    ;; `splice` reuses a serialization only when it is of the very AST being spliced, so each recur
+    ;; re-serializes the AST it produced.
+    (loop [ast ast, ser ser, bound Long/MAX_VALUE, iterations 0]
+      (when (> iterations (+ 100 (* 2 (count initial-matches))))
         (common/throw-teaching-error
          (format (str "replace_all could not converge for old_str %s — the replacement keeps re-creating "
                       "text that matches. Use distinct old_str/new_str pairs or edit the surrounding "
@@ -354,8 +344,13 @@
 
 (defn- apply-edit
   "Apply one `{old_str, new_str, replace_all?}` edit to `ast`, locating `old_str` in a fresh
-  serialization of the current AST — never a client-supplied snapshot."
-  [ast {:keys [old_str new_str replace_all]}]
+  serialization of the current AST — never a client-supplied snapshot.
+
+  Takes and returns `{:ast :spent}`, where `spent` is the work the edits before it in this call have
+  already priced, so [[max-edit-work]] bounds the call rather than each entry. The budget is spent
+  down as the sweep goes rather than totalled up front because an edit's cost is only knowable once
+  its predecessors have run — its matches are counted against the text they produced."
+  [{:keys [ast spent]} {:keys [old_str new_str replace_all]}]
   (when (empty? old_str)
     (common/throw-teaching-error "old_str must be a non-empty string."))
   (let [{:keys [markdown] :as ser} (documents/serialize ast)
@@ -374,11 +369,25 @@
                     "it matches exactly once, or set replace_all: true.")
                (snippet old_str) (count matches)))
 
-      replace_all
-      (replace-all ast old_str new_str)
-
       :else
-      (documents/splice ast ser (first matches) (+ (first matches) (count old_str)) new_str))))
+      (let [splices (if replace_all (count matches) 1)
+            spent   (+ spent (edit-work markdown splices))]
+        (when (> spent max-edit-work)
+          (common/throw-teaching-error
+           (format (str "The edit for old_str %s would splice %d times across a %dKB document, putting this "
+                        "call past the rewriting work one call can do — the ceiling covers every edit in the "
+                        "call together, not each one on its own. Split the edits across several "
+                        "document_write calls, or, for a replace_all matching everywhere, extend old_str "
+                        "with surrounding context so it matches fewer places. Replacing the whole body with "
+                        "content_markdown rewrites it in a single pass instead — note that a full rewrite "
+                        "re-creates every block, so comment threads anchored to the body are orphaned.")
+                   (snippet old_str)
+                   splices
+                   (quot (count markdown) 1024))))
+        {:ast   (if replace_all
+                  (replace-all ast ser matches old_str new_str)
+                  (documents/splice ast ser (first matches) (+ (first matches) (count old_str)) new_str))
+         :spent spent}))))
 
 ;;; ------------------------------------------------------ Create --------------------------------------------------
 
@@ -431,7 +440,9 @@
                               ;; Full rewrite: everything re-parses, nothing keeps its node id, so
                               ;; every anchored comment thread is reported orphaned below.
                               content_markdown (documents/parse content_markdown)
-                              (seq edits)      (reduce apply-edit (:document existing) edits))
+                              (seq edits)      (:ast (reduce apply-edit
+                                                             {:ast (:document existing) :spent 0}
+                                                             edits)))
                             (resolve-smart-links! (:document existing)))
             _       (when new-ast
                       (check-card-embeds! new-ast (:id existing)))
