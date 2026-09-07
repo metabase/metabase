@@ -12,7 +12,7 @@ describe("scenarios > setup", () => {
   beforeEach(() => {
     H.restore("blank");
     H.resetSnowplow();
-    cy.intercept("GET", "/app/locales/*").as("getTranslations");
+    cy.intercept("GET", "**/locale-*-json*.js").as("getTranslations");
   });
 
   locales.forEach((locale) => {
