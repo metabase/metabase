@@ -6,8 +6,10 @@ import { getErrorMessage } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
-import { BasicAdminSettingInput } from "metabase/settings-components/AdminSettingInput";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import {
+  BasicAdminSettingInput,
+  SettingHeader,
+} from "metabase/settings-components";
 import { Stack, TextInput } from "metabase/ui";
 import type { HelpLinkSetting } from "metabase-types/api";
 

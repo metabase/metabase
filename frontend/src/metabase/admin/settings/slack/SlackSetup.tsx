@@ -10,7 +10,7 @@ import {
 import { Markdown } from "metabase/common/components/Markdown";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import { SettingsSection } from "metabase/settings-components";
 import {
   Badge,
   Box,

@@ -13,7 +13,7 @@ import { useUpdateMetabotMutation } from "metabase/metabot";
 import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useAdminSetting } from "metabase/settings";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import { SettingHeader } from "metabase/settings-components";
 import {
   Box,
   Button,

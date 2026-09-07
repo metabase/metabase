@@ -9,7 +9,7 @@ import { Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { ClientSortableTable } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import { SettingHeader } from "metabase/settings-components";
 import {
   Box,
   Button,

@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
-import { isSettingSetFromEnvVar } from "metabase/settings-components/is-setting-set-from-env-var";
 import {
   Box,
   type BoxProps,

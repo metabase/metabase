@@ -256,7 +256,11 @@ const elements = [
   // embedding alike. Not in shared/settings: that module is data only -- api,
   // selectors and hooks behind a private-by-default barrel -- and reading a
   // setting value should not drag React components in with it.
-  createElement({ type: "shared", name: "settings-components" }),
+  createElement({
+    type: "shared",
+    name: "settings-components",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "static-viz" }),
   createElement({ type: "shared", name: "status" }),

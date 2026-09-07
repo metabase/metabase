@@ -9,7 +9,7 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
 import { useSetting } from "metabase/settings";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import { SettingsSection } from "metabase/settings-components";
 import { Box, Button, Flex, Group, Tabs, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 

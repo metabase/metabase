@@ -4,11 +4,11 @@ import { UpsellHostingBanner } from "metabase/admin/upsells";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useGetSettingsQuery } from "metabase/settings";
-import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
 import {
+  AdminSettingInput,
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { Center } from "metabase/ui";
 
 import { SMTPConnectionCard } from "../Email/SMTPConnectionCard";

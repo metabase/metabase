@@ -5,11 +5,11 @@ import { CommunityLocalizationNotice } from "metabase/common/components/Communit
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
-import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
 import {
+  AdminSettingInput,
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { Stack } from "metabase/ui";
 
 import { FormattingWidget } from "../widgets/FormattingWidget";

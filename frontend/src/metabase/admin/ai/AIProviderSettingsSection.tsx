@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useListLlmProvidersQuery } from "metabase/api";
 import { AIProviderList } from "metabase/metabot";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import { SettingsSection } from "metabase/settings-components";
 
 export function AIProviderSettingsSection({ id }: { id?: string }) {
   const { data: connections = [] } = useListLlmProvidersQuery();

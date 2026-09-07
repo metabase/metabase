@@ -28,16 +28,16 @@ import {
   useGetSettingsQuery,
   useSetting,
 } from "metabase/settings";
-import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import {
+  AdminSettingInput,
   CollapsibleSettingsSection,
   SETTINGS_CARD_DESCRIPTION_PROPS,
   SETTINGS_CARD_STACK_PROPS,
   SETTINGS_CARD_TITLE_PROPS,
+  SettingHeader,
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import { useUpdateSamlMutation } from "metabase-enterprise/api";
 import { provisioningOptions } from "metabase-enterprise/auth/utils";

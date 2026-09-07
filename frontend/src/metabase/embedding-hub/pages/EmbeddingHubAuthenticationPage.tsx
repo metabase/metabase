@@ -8,7 +8,7 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import type { SettingsJWTFormProps } from "metabase/plugins";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
-import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import { Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
 import { AuthenticationUpsellPage } from "../upsells";

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import { useListAllCustomVizPluginsQuery } from "metabase-enterprise/api";
 
 import { AddDevCustomVizForm } from "./AddDevCustomVizForm";

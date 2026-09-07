@@ -5,7 +5,7 @@ import { findWhere } from "underscore";
 import { UpsellCacheConfig } from "metabase/admin/upsells";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import { Box, Flex } from "metabase/ui";
 
 import { rootId } from "../constants/simple";

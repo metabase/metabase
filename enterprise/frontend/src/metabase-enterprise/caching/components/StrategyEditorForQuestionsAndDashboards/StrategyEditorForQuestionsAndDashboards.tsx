@@ -18,7 +18,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import { Center, Flex, Text } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
 

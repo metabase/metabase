@@ -13,7 +13,7 @@ import { TenancyUpsellPage } from "metabase/embedding-hub/upsells";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Outlet, useLocation, useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
-import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import {
   Box,
   Button,

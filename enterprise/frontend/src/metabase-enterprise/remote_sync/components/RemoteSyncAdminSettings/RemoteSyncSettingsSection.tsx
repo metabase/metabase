@@ -1,6 +1,6 @@
 import { type ComponentProps, createContext, useContext } from "react";
 
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import { SettingsSection } from "metabase/settings-components";
 
 import type { RemoteSyncSettingsVariant } from "../../types";
 

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import { SettingHeader } from "metabase/settings-components";
 import { Box, Text, TextInput } from "metabase/ui";
 
 import { useUpdateSlackSettingsMutation } from "../api/slack";

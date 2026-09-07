@@ -25,7 +25,7 @@ import {
   SETTINGS_CARD_TITLE_PROPS,
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { Box, Flex, Group, Radio, Stack } from "metabase/ui";
 import type { EnterpriseSettings, Settings } from "metabase-types/api";
 

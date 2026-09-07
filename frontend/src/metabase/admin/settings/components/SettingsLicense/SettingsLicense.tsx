@@ -4,8 +4,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import { SettingHeader, SettingsSection } from "metabase/settings-components";
 import { Box, Button, Divider, Flex, Text } from "metabase/ui";
 
 import { ExplorePlansIllustration } from "./ExplorePlansIllustration";

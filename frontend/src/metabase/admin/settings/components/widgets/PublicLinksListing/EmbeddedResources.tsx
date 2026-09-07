@@ -4,7 +4,7 @@ import {
   useListEmbeddableCardsQuery,
   useListEmbeddableDashboardsQuery,
 } from "metabase/api";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import { SettingHeader } from "metabase/settings-components";
 import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {

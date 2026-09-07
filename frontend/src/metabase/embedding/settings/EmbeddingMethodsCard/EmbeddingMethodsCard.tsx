@@ -6,7 +6,7 @@ import {
   type EmbeddingSettingKey,
   EmbeddingToggle,
 } from "metabase/embedding/settings/EmbeddingToggle";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import { SettingsSection } from "metabase/settings-components";
 import { Box, Flex, Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 

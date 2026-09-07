@@ -9,7 +9,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import { SettingsSection } from "metabase/settings-components";
 import { Button, Group, Icon, Stack, Text } from "metabase/ui";
 import {
   useDeleteCustomVizPluginMutation,

@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
-import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
+import { AdminSettingInput } from "metabase/settings-components";
 
 const Description = () => {
   return jt`Enter the origins for the websites or web apps where you want to allow embedding, separated by a space. Here are the ${(

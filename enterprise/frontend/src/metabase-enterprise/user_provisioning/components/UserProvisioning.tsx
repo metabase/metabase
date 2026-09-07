@@ -15,11 +15,9 @@ import {
 import {
   AdminSettingInput,
   BasicAdminSettingInput,
-} from "metabase/settings-components/AdminSettingInput";
-import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import {
   Alert,
   Box,

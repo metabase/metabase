@@ -4,8 +4,10 @@ import { t } from "ttag";
 import { InputWithSelectPrefix } from "metabase/common/components/InputWithSelectPrefix";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useAdminSetting } from "metabase/settings";
-import { SetByEnvVarWrapper } from "metabase/settings-components/AdminSettingInput";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import {
+  SetByEnvVarWrapper,
+  SettingHeader,
+} from "metabase/settings-components";
 import { Box, Text } from "metabase/ui";
 import type { GenericErrorResponse } from "metabase/utils/errors";
 

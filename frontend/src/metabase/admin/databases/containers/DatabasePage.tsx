@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { useParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import { SettingsSection } from "metabase/settings-components";
 import {
   Box,
   Button,

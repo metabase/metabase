@@ -6,7 +6,7 @@ import { EmbeddingThemeListingApp } from "metabase/embedding/themes/components/T
 import { AppearanceUpsellPage } from "metabase/embedding-hub/upsells";
 import { PLUGIN_WHITELABEL } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
-import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import { Card, Icon, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 

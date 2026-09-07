@@ -23,7 +23,7 @@ import {
   FormSubmitButton,
   useFormContext,
 } from "metabase/forms";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import { SettingsSection } from "metabase/settings-components";
 import {
   Button,
   Group,

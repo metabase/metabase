@@ -20,15 +20,15 @@ import {
   useAdminSetting,
   useGetAdminSettingsDetailsQuery,
 } from "metabase/settings";
-import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
 import {
+  AdminSettingInput,
   CollapsibleSettingsSection,
   SETTINGS_CARD_DESCRIPTION_PROPS,
   SETTINGS_CARD_STACK_PROPS,
   SETTINGS_CARD_TITLE_PROPS,
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { Box, Flex, Stack } from "metabase/ui";
 import { provisioningOptions } from "metabase-enterprise/auth/utils";
 import type {

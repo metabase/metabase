@@ -8,11 +8,11 @@ import {
   type AuthSettingsPageProps,
   PLUGIN_AUTH_PROVIDERS,
 } from "metabase/plugins";
-import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
 import {
+  AdminSettingInput,
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { AdminAuthCard } from "metabase-enterprise/multi_factor_auth/components/AdminAuthCard";
 
 import { JwtAuthCard } from "../containers/JwtAuthCard";

@@ -17,7 +17,7 @@ import { useAdminSetting, useSetting } from "metabase/settings";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 
 import { AIModelSettingsSection } from "./AIModelSettingsSection";

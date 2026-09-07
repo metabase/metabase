@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import ApiKeysEmptyIllustration from "assets/img/api-keys-empty.svg?component";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import {
   ActionIcon,
   Box,

@@ -12,8 +12,10 @@ import {
   isProPlan,
   useAdminSetting,
 } from "metabase/settings";
-import { BasicAdminSettingInput } from "metabase/settings-components/AdminSettingInput";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import {
+  BasicAdminSettingInput,
+  SettingHeader,
+} from "metabase/settings-components";
 import { Box, Progress, Stack, Text, Tooltip } from "metabase/ui";
 import { useGetSemanticSearchStatusQuery } from "metabase-enterprise/api/search";
 

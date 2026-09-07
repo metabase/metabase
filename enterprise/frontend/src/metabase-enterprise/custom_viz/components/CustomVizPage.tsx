@@ -14,7 +14,7 @@ import { useNavigate } from "metabase/router";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import {
   Box,
   Button,

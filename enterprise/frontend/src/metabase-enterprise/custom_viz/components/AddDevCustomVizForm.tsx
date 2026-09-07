@@ -8,7 +8,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import { SettingsSection } from "metabase/settings-components";
 import { Group, Stack } from "metabase/ui";
 import { useCreateDevCustomVizPluginMutation } from "metabase-enterprise/api";
 

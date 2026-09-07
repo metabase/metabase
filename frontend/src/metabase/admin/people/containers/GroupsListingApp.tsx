@@ -16,7 +16,7 @@ import { useSetting } from "metabase/settings";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import type { Group } from "metabase-types/api";
 
 import { GroupsListing } from "../components/GroupsListing";

@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
 import {
+  AdminSettingInput,
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { Text } from "metabase/ui";
 
 import { HelpLinkSettings } from "./HelpLinkSettings";

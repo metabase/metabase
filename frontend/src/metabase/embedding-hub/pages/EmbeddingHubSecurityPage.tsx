@@ -15,11 +15,11 @@ import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { useSetting } from "metabase/settings";
-import { SettingTitle } from "metabase/settings-components/SettingHeader";
 import {
+  SettingTitle,
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { Box } from "metabase/ui";
 
 const UPSELL_CAMPAIGN = "embedding-hub";

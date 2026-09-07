@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import { SettingsSection } from "metabase/settings-components";
 import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import {
   getCurrencyOptions,

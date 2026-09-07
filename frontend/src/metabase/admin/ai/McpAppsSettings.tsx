@@ -4,9 +4,11 @@ import { jt, t } from "ttag";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useAdminSetting } from "metabase/settings";
-import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import {
+  AdminSettingInput,
+  SettingHeader,
+  SettingsSection,
+} from "metabase/settings-components";
 import { Box, Flex, Stack, Switch, Text } from "metabase/ui";
 
 import { CursorInstallLink } from "./CursorInstallLink";

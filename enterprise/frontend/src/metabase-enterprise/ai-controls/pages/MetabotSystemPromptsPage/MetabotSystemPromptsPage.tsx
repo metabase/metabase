@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import { Textarea } from "metabase/ui";
 import { useAdminSettingWithBlurInput } from "metabase-enterprise/ai-controls/hooks";
 

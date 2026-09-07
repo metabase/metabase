@@ -14,7 +14,7 @@ import {
   useRegenerateSuggestedMetabotPromptsMutation,
 } from "metabase/metabot";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import { SettingHeader } from "metabase/settings-components";
 import {
   ActionIcon,
   Box,

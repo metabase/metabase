@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/settings";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import { SettingHeader } from "metabase/settings-components";
 import { Box } from "metabase/ui";
 
 import { ImageToggle } from "../ImageToggle";

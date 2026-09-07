@@ -6,11 +6,11 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_EMBEDDING_SDK, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
-import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
 import {
+  AdminSettingInput,
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { Group, Icon, Text } from "metabase/ui";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";

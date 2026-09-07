@@ -6,7 +6,7 @@ import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import {
   Box,
   Card,

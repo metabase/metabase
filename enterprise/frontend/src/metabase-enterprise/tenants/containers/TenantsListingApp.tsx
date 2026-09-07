@@ -9,7 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import { SettingsSection } from "metabase/settings-components";
 import { Box, Group, Tabs, Title } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 

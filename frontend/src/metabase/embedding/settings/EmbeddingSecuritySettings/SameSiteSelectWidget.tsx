@@ -2,8 +2,10 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/settings";
-import { SetByEnvVarWrapper } from "metabase/settings-components/AdminSettingInput";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import {
+  SetByEnvVarWrapper,
+  SettingHeader,
+} from "metabase/settings-components";
 import { Box, Button, Group, Icon, Menu, Stack, Text } from "metabase/ui";
 import type { SessionCookieSameSite } from "metabase-types/api";
 

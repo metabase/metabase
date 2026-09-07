@@ -23,7 +23,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import { ActionIcon, Center, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 

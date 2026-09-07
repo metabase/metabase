@@ -18,7 +18,7 @@ import {
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import type { SettingDefinition, Settings } from "metabase-types/api";
 

@@ -17,7 +17,7 @@ import { useSetting } from "metabase/settings";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { Box, Code, Group } from "metabase/ui";
 import { getBasename } from "metabase/utils/basename";
 

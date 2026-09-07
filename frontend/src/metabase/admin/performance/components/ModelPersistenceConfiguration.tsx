@@ -21,7 +21,7 @@ import { useSetting } from "metabase/settings";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { Switch, Text } from "metabase/ui";
 
 import ModelPersistenceConfigurationS from "./ModelPersistenceConfiguration.module.css";

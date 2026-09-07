@@ -14,7 +14,7 @@ import {
 } from "metabase/common/hooks/use-url-state";
 import CS from "metabase/css/core/index.css";
 import { useLocation } from "metabase/router";
-import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import {
   Badge,
   type BadgeColor,

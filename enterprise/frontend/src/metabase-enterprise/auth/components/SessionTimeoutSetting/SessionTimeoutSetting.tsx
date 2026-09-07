@@ -4,8 +4,10 @@ import { t } from "ttag";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useAdminSetting } from "metabase/settings";
-import { BasicAdminSettingInput } from "metabase/settings-components/AdminSettingInput";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import {
+  BasicAdminSettingInput,
+  SettingHeader,
+} from "metabase/settings-components";
 import { Flex, Select, Stack, Text, TextInput } from "metabase/ui";
 import type { TimeoutValue } from "metabase-types/api";
 

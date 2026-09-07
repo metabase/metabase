@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/settings";
-import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import { Group, Stack, Title } from "metabase/ui";
 
 import { AiFeatureAccessTable } from "./components/AiFeatureAccessTable";

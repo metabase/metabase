@@ -2,7 +2,7 @@ import { jt, t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
-import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
+import { AdminSettingInput } from "metabase/settings-components";
 import { Box, Group, HoverCard, Icon, Text } from "metabase/ui";
 
 export const CorsInputWidget = () => {

@@ -17,12 +17,12 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { useAdminSetting, useAdminSettings } from "metabase/settings";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import {
+  SettingHeader,
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
-import { isSettingSetFromEnvVar } from "metabase/settings-components/is-setting-set-from-env-var";
+  isSettingSetFromEnvVar,
+} from "metabase/settings-components";
 import { Box, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { reload } from "metabase/utils/dom";

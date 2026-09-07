@@ -5,7 +5,7 @@ import { useListPermissionsGroupsQuery } from "metabase/api";
 import { isDefaultGroup } from "metabase/common/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import { SettingsSection } from "metabase/settings-components";
 import { Tabs } from "metabase/ui";
 import {
   useGetAIControlsGroupLimitsQuery,

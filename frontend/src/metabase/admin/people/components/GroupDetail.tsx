@@ -18,7 +18,7 @@ import {
 } from "metabase/common/utils/groups";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import { SettingsSection } from "metabase/settings-components";
 import { Box, Button, Text } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 

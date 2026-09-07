@@ -5,7 +5,7 @@ import { useListChannelsQuery } from "metabase/api/channel";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import {
   Button,
   Flex,

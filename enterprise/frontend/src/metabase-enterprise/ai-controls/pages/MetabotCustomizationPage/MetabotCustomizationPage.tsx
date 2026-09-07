@@ -5,7 +5,7 @@ import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { TextInput } from "metabase/ui";
 import { useAdminSettingWithDebouncedInput } from "metabase-enterprise/ai-controls/hooks";
 

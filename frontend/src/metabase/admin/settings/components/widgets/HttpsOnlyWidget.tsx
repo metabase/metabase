@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useAdminSetting } from "metabase/settings";
-import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
+import { AdminSettingInput } from "metabase/settings-components";
 import { fetchWithTimeout } from "metabase/utils/fetchWithTimeout";
 
 enum Status {

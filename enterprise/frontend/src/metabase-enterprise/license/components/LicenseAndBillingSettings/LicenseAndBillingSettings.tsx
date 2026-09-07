@@ -11,11 +11,11 @@ import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import {
+  SettingHeader,
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { Box, Divider, Flex, Stack } from "metabase/ui";
 import { useGetBillingInfoQuery } from "metabase-enterprise/api";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";

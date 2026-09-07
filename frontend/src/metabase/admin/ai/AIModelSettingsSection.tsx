@@ -2,8 +2,10 @@ import { t } from "ttag";
 
 import { LlmModelPicker } from "metabase/metabot";
 import { useSetting } from "metabase/settings";
-import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import {
+  AdminSettingInput,
+  SettingsSection,
+} from "metabase/settings-components";
 import { Stack } from "metabase/ui";
 
 export function AIModelSettingsSection({ id }: { id?: string }) {

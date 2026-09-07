@@ -5,7 +5,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/settings";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import { SettingHeader } from "metabase/settings-components";
 import { Box, Card, Flex, Icon, Text } from "metabase/ui";
 import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 

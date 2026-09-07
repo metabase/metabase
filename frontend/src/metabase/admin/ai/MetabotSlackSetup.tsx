@@ -20,8 +20,10 @@ import {
   useAdminSettings,
   useSetting,
 } from "metabase/settings";
-import { BasicAdminSettingInput } from "metabase/settings-components/AdminSettingInput";
-import { SettingsSection } from "metabase/settings-components/SettingsSection";
+import {
+  BasicAdminSettingInput,
+  SettingsSection,
+} from "metabase/settings-components";
 import { Accordion, Button, Flex, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { SlackAppInfo } from "metabase-types/api/slack";

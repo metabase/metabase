@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { useUpdateMetabotMutation } from "metabase/metabot";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import { SettingHeader } from "metabase/settings-components";
 import { Stack, Switch } from "metabase/ui";
 import type { MetabotInfo } from "metabase-types/api";
 

@@ -3,8 +3,10 @@ import _ from "underscore";
 
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
-import { BasicAdminSettingInput } from "metabase/settings-components/AdminSettingInput";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import {
+  BasicAdminSettingInput,
+  SettingHeader,
+} from "metabase/settings-components";
 import { Stack } from "metabase/ui";
 
 // The backend accepts a string array for multiple reply-to emails,

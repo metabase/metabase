@@ -5,7 +5,7 @@ import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { Box, Flex } from "metabase/ui";
 
 import { UploadSettingsForm } from "../UploadSettings/UploadSettingsForm";

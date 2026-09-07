@@ -2,11 +2,11 @@ import { t } from "ttag";
 
 import { ButtonLink } from "metabase/common/components/ExternalLink";
 import { useHasTokenFeature, useStoreUrl } from "metabase/common/hooks";
-import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import {
+  SettingHeader,
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components/SettingsSection";
+} from "metabase/settings-components";
 import { Box, Icon } from "metabase/ui";
 
 import { CloudPanel } from "../CloudPanel";
