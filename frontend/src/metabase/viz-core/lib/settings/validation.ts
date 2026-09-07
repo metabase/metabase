@@ -13,7 +13,7 @@ import { isObjectWithRaw } from "metabase-types/guards";
 
 import {
   hasFailedGoalReferencesForValues,
-  isDynamicGoalSetting,
+  isGraphGoalReference,
 } from "../dynamic-goals";
 import { ChartSettingsError, MinRowsError } from "../errors";
 import { getCartesianChartColumns } from "../graph/columns";
@@ -112,10 +112,11 @@ export const validateGoalReferences = (
   const rawSeries =
     isObjectWithRaw(series) && series._raw ? series._raw : series;
   const [{ card, data }] = rawSeries;
+  const goal = settings["graph.goal_value"];
 
   if (
-    isDynamicGoalSetting(card.display, "graph.goal_value") &&
-    hasFailedGoalReferencesForValues(data, [settings["graph.goal_value"]])
+    isGraphGoalReference(card.display, goal) &&
+    hasFailedGoalReferencesForValues(data, [goal])
   ) {
     throw new Error(getUnresolvedGoalMessage());
   }

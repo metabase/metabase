@@ -5,9 +5,9 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
+import { getDynamicGoalSettingKeys } from "./dynamic-goal-displays";
 import type { GoalCard } from "./dynamic-goals";
 import {
-  getDynamicGoalSettingKeys,
   getGoalValuesFromVizSettings,
   getReferencedEntities,
   getUnansweredGoalEntities,
@@ -17,6 +17,7 @@ import {
   hasUnansweredGoalReferences,
   hasUnresolvedGoalReferences,
   isDynamicGoalSetting,
+  isGraphGoalReference,
   resolveGoalSegments,
   resolveGoalValue,
   supportsDynamicGoals,
@@ -819,6 +820,23 @@ describe("dynamic goal settings per display", () => {
 
     expect(isDynamicGoalSetting("line", "graph.goal_value")).toBe(false);
     expect(getReferencedEntities(card)).toEqual([]);
+  });
+});
+
+describe("isGraphGoalReference", () => {
+  const ref = { type: "card" as const, id: 1, column: "sum" };
+
+  it("is false for unset and static goals", () => {
+    expect(isGraphGoalReference("gauge", null)).toBe(false);
+    expect(isGraphGoalReference("gauge", undefined)).toBe(false);
+    expect(isGraphGoalReference("gauge", 10)).toBe(false);
+  });
+
+  it("is false for a reference on a display that does not resolve graph goals", () => {
+    expect(isGraphGoalReference("line", ref)).toBe(false);
+    expect(isGraphGoalReference("line", "count")).toBe(false);
+    expect(isGraphGoalReference("gauge", ref)).toBe(false);
+    expect(isGraphGoalReference(undefined, ref)).toBe(false);
   });
 });
 

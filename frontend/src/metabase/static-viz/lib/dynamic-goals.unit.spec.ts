@@ -1,5 +1,5 @@
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import { isDynamicGoalSetting } from "metabase/viz-core";
+import { getDynamicGoalSettingKeys } from "metabase/viz-core";
 import type { DatasetData } from "metabase-types/api";
 import {
   createMockColumn,
@@ -9,12 +9,26 @@ import {
 
 import { resolveGoalSettingsForStaticViz } from "./dynamic-goals";
 
-jest.mock("metabase/viz-core", () => ({
-  ...jest.requireActual("metabase/viz-core"),
-  isDynamicGoalSetting: jest.fn(() => true),
+jest.mock("metabase/viz-core/lib/dynamic-goal-displays", () => ({
+  getDynamicGoalSettingKeys: jest.fn(
+    jest.requireActual("metabase/viz-core/lib/dynamic-goal-displays")
+      .getDynamicGoalSettingKeys,
+  ),
 }));
 
-const isDynamicGoalSettingMock = jest.mocked(isDynamicGoalSetting);
+const getDynamicGoalSettingKeysMock = jest.mocked(getDynamicGoalSettingKeys);
+
+function resolveGraphGoals() {
+  getDynamicGoalSettingKeysMock.mockReturnValue(["graph.goal_value"]);
+}
+
+function restoreDynamicGoalDisplays() {
+  getDynamicGoalSettingKeysMock.mockReset();
+  getDynamicGoalSettingKeysMock.mockImplementation(
+    jest.requireActual("metabase/viz-core/lib/dynamic-goal-displays")
+      .getDynamicGoalSettingKeys,
+  );
+}
 
 const REFERENCED_SETTINGS: ComputedVisualizationSettings = {
   "graph.show_goal": true,
@@ -34,10 +48,6 @@ function data(referenced_entities: DatasetData["referenced_entities"]) {
 }
 
 describe("resolveGoalSettingsForStaticViz", () => {
-  afterEach(() => {
-    isDynamicGoalSettingMock.mockReturnValue(true);
-  });
-
   it("passes static and unset goals through", () => {
     const settings = { "graph.goal_value": 10 };
 
@@ -47,40 +57,43 @@ describe("resolveGoalSettingsForStaticViz", () => {
     expect(resolveGoalSettingsForStaticViz(series(data({})), {})).toEqual({});
   });
 
-  it("passes references through for a display that does not resolve goals", () => {
-    isDynamicGoalSettingMock.mockReturnValue(false);
-
+  it("passes references through for a display that does not resolve graph goals", () => {
     expect(
       resolveGoalSettingsForStaticViz(series(data({})), REFERENCED_SETTINGS),
     ).toBe(REFERENCED_SETTINGS);
   });
 
-  it("substitutes the referenced value", () => {
-    const answered = data({
-      card: {
-        9: {
-          status: "completed",
-          data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
+  describe("for a display that resolves graph goals", () => {
+    beforeEach(resolveGraphGoals);
+    afterEach(restoreDynamicGoalDisplays);
+
+    it("substitutes the referenced value", () => {
+      const answered = data({
+        card: {
+          9: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
+          },
         },
-      },
+      });
+
+      expect(
+        resolveGoalSettingsForStaticViz(series(answered), REFERENCED_SETTINGS),
+      ).toEqual({ ...REFERENCED_SETTINGS, "graph.goal_value": 250 });
     });
 
-    expect(
-      resolveGoalSettingsForStaticViz(series(answered), REFERENCED_SETTINGS),
-    ).toEqual({ ...REFERENCED_SETTINGS, "graph.goal_value": 250 });
-  });
+    it("throws for an unanswered reference", () => {
+      expect(() =>
+        resolveGoalSettingsForStaticViz(series(data({})), REFERENCED_SETTINGS),
+      ).toThrow("Couldn't load the value this chart's goal line depends on.");
+    });
 
-  it("throws for an unanswered reference", () => {
-    expect(() =>
-      resolveGoalSettingsForStaticViz(series(data({})), REFERENCED_SETTINGS),
-    ).toThrow("Couldn't load the value this chart's goal line depends on.");
-  });
+    it("throws for a failed reference", () => {
+      const failed = data({ card: { 9: { status: "failed", error: "boom" } } });
 
-  it("throws for a failed reference", () => {
-    const failed = data({ card: { 9: { status: "failed", error: "boom" } } });
-
-    expect(() =>
-      resolveGoalSettingsForStaticViz(series(failed), REFERENCED_SETTINGS),
-    ).toThrow("Couldn't load the value this chart's goal line depends on.");
+      expect(() =>
+        resolveGoalSettingsForStaticViz(series(failed), REFERENCED_SETTINGS),
+      ).toThrow("Couldn't load the value this chart's goal line depends on.");
+    });
   });
 });

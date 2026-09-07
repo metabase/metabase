@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 import { setupCardDataset } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import { isDynamicGoalSetting } from "metabase/viz-core";
+import { getDynamicGoalSettingKeys } from "metabase/viz-core";
 import type { Card, DatasetData } from "metabase-types/api";
 import {
   createMockCard,
@@ -13,12 +13,26 @@ import {
 
 import { useResolvedGoalSettings } from "./use-resolved-goal-settings";
 
-jest.mock("metabase/viz-core", () => ({
-  ...jest.requireActual("metabase/viz-core"),
-  isDynamicGoalSetting: jest.fn(() => false),
+jest.mock("metabase/viz-core/lib/dynamic-goal-displays", () => ({
+  getDynamicGoalSettingKeys: jest.fn(
+    jest.requireActual("metabase/viz-core/lib/dynamic-goal-displays")
+      .getDynamicGoalSettingKeys,
+  ),
 }));
 
-const isDynamicGoalSettingMock = jest.mocked(isDynamicGoalSetting);
+const getDynamicGoalSettingKeysMock = jest.mocked(getDynamicGoalSettingKeys);
+
+function resolveGraphGoals() {
+  getDynamicGoalSettingKeysMock.mockReturnValue(["graph.goal_value"]);
+}
+
+function restoreDynamicGoalDisplays() {
+  getDynamicGoalSettingKeysMock.mockReset();
+  getDynamicGoalSettingKeysMock.mockImplementation(
+    jest.requireActual("metabase/viz-core/lib/dynamic-goal-displays")
+      .getDynamicGoalSettingKeys,
+  );
+}
 
 const DATA = createMockDatasetData({
   cols: [createMockColumn({ name: "count" })],
@@ -54,7 +68,7 @@ describe("useResolvedGoalSettings", () => {
     ).toBe(settings);
   });
 
-  it("leaves a reference alone for a display that does not resolve goals", () => {
+  it("leaves a reference alone for a display that does not resolve graph goals", () => {
     const { result } = setup(
       createMockCard({ display: "line" }),
       REFERENCED_SETTINGS,
@@ -67,16 +81,11 @@ describe("useResolvedGoalSettings", () => {
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 
-  describe("for a display that resolves goals", () => {
+  describe("for a display that resolves graph goals", () => {
     const card = createMockCard({ display: "line" });
 
-    beforeEach(() => {
-      isDynamicGoalSettingMock.mockReturnValue(true);
-    });
-
-    afterEach(() => {
-      isDynamicGoalSettingMock.mockReturnValue(false);
-    });
+    beforeEach(resolveGraphGoals);
+    afterEach(restoreDynamicGoalDisplays);
 
     it("substitutes an answer the dataset already has", () => {
       const data = createMockDatasetData({

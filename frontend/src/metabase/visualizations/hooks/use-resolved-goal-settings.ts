@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import { isDynamicGoalSetting } from "metabase/viz-core";
+import { isGraphGoalReference } from "metabase/viz-core";
 import type { Card, DatasetData } from "metabase-types/api";
-import { isGoalStaticValue } from "metabase-types/guards";
 
 import { useResolvedGoal } from "./use-resolved-goal";
 
@@ -22,10 +21,7 @@ export function useResolvedGoalSettings(
   settings: ComputedVisualizationSettings,
 ): ResolvedGoalSettings {
   const storedGoal = settings["graph.goal_value"];
-  const needsResolving =
-    storedGoal != null &&
-    !isGoalStaticValue(storedGoal) &&
-    isDynamicGoalSetting(card.display, "graph.goal_value");
+  const needsResolving = isGraphGoalReference(card.display, storedGoal);
 
   const goal = useResolvedGoal(
     card.dataset_query,

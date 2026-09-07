@@ -10,6 +10,7 @@ import type {
   GoalForeignColumnRef,
   GoalForeignEntityRef,
   GoalSegment,
+  GoalStaticValue,
   GoalValue,
   MeasureId,
   ReferencedEntity,
@@ -26,6 +27,10 @@ import {
   isGoalValue,
 } from "metabase-types/guards";
 
+import {
+  type GoalSettingKey,
+  getDynamicGoalSettingKeys,
+} from "./dynamic-goal-displays";
 import { segmentIsValid } from "./utils";
 
 export type GoalData = Pick<
@@ -182,12 +187,6 @@ function toNumberOrNull(raw: RowValue | undefined): number | null {
   return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
 }
 
-export type GoalSettingKey =
-  | "graph.goal_value"
-  | "progress.goal"
-  | "gauge.segments"
-  | "scalar.segments";
-
 type GoalSettingKind = "value" | "segments";
 
 // Mirrors `goal-settings` in metabase.visualization-settings.dynamic-goals
@@ -197,21 +196,6 @@ const GOAL_SETTINGS: Record<GoalSettingKey, GoalSettingKind> = {
   "gauge.segments": "segments",
   "scalar.segments": "segments",
 };
-
-// A display is listed once its renderers, interactive and static, resolve the setting.
-const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
-  Record<VisualizationDisplay, GoalSettingKey[]>
-> = {
-  gauge: ["gauge.segments"],
-};
-
-export function getDynamicGoalSettingKeys(
-  display: VisualizationDisplay | undefined,
-): GoalSettingKey[] {
-  return display != null
-    ? (DYNAMIC_GOAL_SETTINGS_BY_DISPLAY[display] ?? [])
-    : [];
-}
 
 export function supportsDynamicGoals(
   display: VisualizationDisplay | undefined,
@@ -224,6 +208,20 @@ export function isDynamicGoalSetting(
   key: GoalSettingKey,
 ): boolean {
   return getDynamicGoalSettingKeys(display).includes(key);
+}
+
+export type GoalReference = Exclude<GoalValue, GoalStaticValue>;
+
+// A `graph.goal_value` the chart has to resolve before rendering.
+export function isGraphGoalReference(
+  display: VisualizationDisplay | undefined,
+  goal: GoalValue | null | undefined,
+): goal is GoalReference {
+  return (
+    goal != null &&
+    !isGoalStaticValue(goal) &&
+    isDynamicGoalSetting(display, "graph.goal_value")
+  );
 }
 
 function validGoalSegments(segments: unknown): GoalSegment[] {

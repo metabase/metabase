@@ -3,11 +3,10 @@ import {
   getUnansweredGoalEntitiesForValues,
   getUnresolvedGoalMessage,
   hasFailedGoalReferencesForValues,
-  isDynamicGoalSetting,
+  isGraphGoalReference,
   resolveGoalValue,
 } from "metabase/viz-core";
 import type { SingleSeries } from "metabase-types/api";
-import { isGoalStaticValue } from "metabase-types/guards";
 
 // Static rendering can't fetch, so a goal the data doesn't answer is an error.
 export function resolveGoalSettingsForStaticViz(
@@ -16,11 +15,7 @@ export function resolveGoalSettingsForStaticViz(
 ): ComputedVisualizationSettings {
   const goal = settings["graph.goal_value"];
 
-  if (
-    goal == null ||
-    isGoalStaticValue(goal) ||
-    !isDynamicGoalSetting(card.display, "graph.goal_value")
-  ) {
+  if (!isGraphGoalReference(card.display, goal)) {
     return settings;
   }
 
