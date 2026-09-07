@@ -25,10 +25,11 @@
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.string :as u.str]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (com.fasterxml.jackson.core JsonProcessingException)))
 
 (set! *warn-on-reflection* true)
 
@@ -345,19 +346,27 @@
   forward-compatible row that would fail the write-side schema still hydrates. A malformed JSON value,
   a non-map, or structurally unusable `:synonyms`/`:examples` is returned as a Throwable under that
   entity's hydration key; [[project]] turns it into a contextual projection failure so callers can
-  retain that entity's existing documents and continue with the rest."
+  distinguish it from an unexpected failure. Reconciliation degrades corrupt rows to base documents;
+  unexpected decoder or validator failures escape hydration and abort the run before index writes."
   [entities]
   (into {}
         (map (fn [{:keys [entity_type entity_local_id ai_context]}]
-               [(entity-retrieval/entity-class entity_type entity_local_id)
-                (try
-                  (let [decoded (cond-> ai_context
-                                  (string? ai_context) json/decode+kw)]
-                    (mu/validate-throw IndexedAiContextSlice decoded))
-                  (catch Throwable e
-                    (ex-info "Invalid osi_ai_context.ai_context"
-                             {::data-defect true :entity-type entity_type :entity-local-id entity_local_id}
-                             e)))]))
+               (let [invalid (fn [cause]
+                               (ex-info "Invalid osi_ai_context.ai_context"
+                                        {::data-defect    true
+                                         :entity-type     entity_type
+                                         :entity-local-id entity_local_id}
+                                        cause))
+                     decoded (if (string? ai_context)
+                               (try
+                                 (json/decode+kw ai_context)
+                                 (catch JsonProcessingException e e))
+                               ai_context)]
+                 [(entity-retrieval/entity-class entity_type entity_local_id)
+                  (cond
+                    (instance? JsonProcessingException decoded) (invalid decoded)
+                    (mr/validate IndexedAiContextSlice decoded) decoded
+                    :else                                      (invalid nil))])))
         (raw-ai-context-rows entities)))
 
 (defn data-defect?
