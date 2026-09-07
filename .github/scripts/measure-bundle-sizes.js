@@ -24,6 +24,16 @@ const SDK_ROOT = "resources/frontend_client/app/embedding-sdk";
 const SDK_RUNTIME_RE = /embedding-sdk-chunk-runtime\./;
 const notRuntime = name => !SDK_RUNTIME_RE.test(name);
 
+// One locale catalogue per chunk, named by the `webpackChunkName: "locale-[request]"`
+// comment in load-locale-catalog.ts. They are mutually exclusive: a session loads
+// exactly one, and an English session loads none. Counting all 36 in a reachable
+// total overstates it by 35x -- it put 8.5 MB gzip against the SDK's 3.1 MB and
+// tripped the gate by 275%. Their size also tracks the translation process rather
+// than any code change, so leaving them in makes every catalogue update look like
+// a bundle regression.
+const LOCALE_CHUNK_RE = /(^|\/)locale-/;
+const notLocale = name => !LOCALE_CHUNK_RE.test(name);
+
 const assetFiles = (root, names) => names.map(name => path.join(root, name));
 const unique = files => [...new Set(files)];
 
@@ -116,7 +126,8 @@ function selectAppAssets(stats) {
   if (!initialAssets) {
     throw new Error('app: stats-main.json / "app-main" entrypoint missing');
   }
-  return { initialAssets, reachableAssets: entrypointJsAssets(stats, "app-main", "reachableAssets") };
+  const reachableAssets = entrypointJsAssets(stats, "app-main", "reachableAssets");
+  return { initialAssets, reachableAssets: reachableAssets && reachableAssets.filter(notLocale) };
 }
 
 /**
@@ -136,7 +147,9 @@ function selectLegacySdkAssets(stats, { sdkAsyncChunksLoadable }) {
   const initial = unique(initialNames).filter(notRuntime);
   return {
     initialNames: initial,
-    reachableNames: sdkAsyncChunksLoadable ? unique(reachableNames).filter(notRuntime) : initial,
+    reachableNames: sdkAsyncChunksLoadable
+      ? unique(reachableNames).filter(notRuntime).filter(notLocale)
+      : initial,
   };
 }
 
@@ -161,7 +174,9 @@ function selectChunkedSdkAssets(stats, { sdkAsyncChunksLoadable }) {
   const bootstrapReachable = entrypointJsAssets(stats, "embedding-sdk-bootstrap", "reachableAssets") || bootstrapInitial;
   return {
     initialNames: unique([...bootstrapInitial, ...chunkedInitial]).filter(notRuntime),
-    reachableNames: unique([...bootstrapReachable, ...chunkedReachable]).filter(notRuntime),
+    reachableNames: unique([...bootstrapReachable, ...chunkedReachable])
+      .filter(notRuntime)
+      .filter(notLocale),
     includesAsyncChunks: chunkedReachableAssets != null && sdkAsyncChunksLoadable,
   };
 }
