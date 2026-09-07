@@ -143,16 +143,18 @@
         (is (some? (recent-view (mt/user->id :crowberto) document-id))
             "reading a document should record a recent view")))))
 
-(deftest post-document-does-not-record-view-test
-  (testing "POST /api/document should not record a view because creating is not reading"
+(deftest post-document-records-recent-item-test
+  (testing "POST /api/document puts the new document in the creator's recents"
     (mt/with-temporary-setting-values [synchronous-batch-updates true]
       (mt/with-model-cleanup [:model/Document]
         (let [document (mt/user-http-request :crowberto
                                              :post 200 "document/"
                                              {:name "Test Document"
                                               :document (documents.test-util/text->prose-mirror-ast "Doc 1")})]
-          (is (nil? (recent-view (mt/user->id :crowberto) (:id document)))
-              "creating a document should not record a recent view"))))))
+          (is (some? (recent-view (mt/user->id :crowberto) (:id document)))
+              "creating a document should record a recent item")
+          (testing "without counting as a read: the view count stays at zero"
+            (is (zero? (:view_count (t2/select-one :model/Document :id (:id document)))))))))))
 
 (deftest put-document-does-not-record-view-test
   (testing "PUT /api/document/:id should not record a view (saving is not a read)"

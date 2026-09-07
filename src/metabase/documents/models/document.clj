@@ -1,6 +1,7 @@
 (ns metabase.documents.models.document
   (:require
    [clojure.string :as str]
+   [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
@@ -306,6 +307,22 @@
          distinct
          vec)))
 
+(defn- record-creation-in-recents!
+  "Put a just-created document in its creator's recent items.
+
+  Recents are otherwise populated only as a side effect of `:event/document-read`, which the create
+  path deliberately does not publish — creating is not viewing, and that event also increments the
+  view count and moves `last_viewed_at`. But a document you just made is exactly what you expect to
+  find at the top of recents, and before the create path stopped calling `get-document` it landed
+  there for free. This records the recent item on its own, without the rest of a read.
+
+  Exploration documents are skipped for the same reason [[metabase.documents.view-log]] skips them:
+  they are surfaced only through their owning Exploration and would crowd real documents out of the
+  per-model bucket cap."
+  [document-id]
+  (when (nil? (documents.db/document-exploration-id document-id))
+    (activity-feed/update-users-recent-views! api/*current-user-id* :model/Document document-id :view)))
+
 (mu/defn create-document!
   "Create a Document, clone any embedded cards the document doesn't own, publish
   `:event/document-create`, and return the created document. Permission checks
@@ -346,6 +363,7 @@
                              ;; gate, and the gate adjudicates the warehouse data the body embeds, so
                              ;; a document the creator may not read must not come back rendered.
                              (u/prog1 (api/read-check (hydrate-document document-id))
+                               (record-creation-in-recents! document-id)
                                (when (collections/remote-synced-collection? (:collection_id <>))
                                  (collections/check-non-remote-synced-dependencies <>)))))]
     ;; Publish event after successful creation
