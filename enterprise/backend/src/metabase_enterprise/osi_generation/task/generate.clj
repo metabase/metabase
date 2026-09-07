@@ -10,10 +10,16 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.osi-generation.core :as osi-generation]
    [metabase-enterprise.osi-generation.settings :as osi-generation.settings]
+   [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
+
+(def generation-task-history-name
+  "The task-history name used for every scheduled or manually triggered generation attempt."
+  "osi-generation")
 
 (defn- nonordinary-cause
   [e]
@@ -27,22 +33,25 @@
   []
   (cond
     (not (osi-generation.settings/osi-generation-enabled))
-    nil
+    {:outcome :skipped, :reason :disabled}
 
     (not (osi-generation/available?))
-    nil
+    {:outcome :skipped, :reason :unlicensed}
 
     ;; enabled and licensed but no reachable LLM: log which credential path failed to resolve, once
     ;; per run, so the provider fallback choice is observable.
     (not (osi-generation.settings/configured?))
-    (log/warn "OSI generation is enabled but no LLM is configured; skipping run"
-              {:credentials-source (osi-generation.settings/credentials-source
-                                    (osi-generation.settings/osi-generation-model))})
+    (let [credentials-source (osi-generation.settings/credentials-source
+                              (osi-generation.settings/osi-generation-model))]
+      (log/warn "OSI generation is enabled but no LLM is configured; skipping run"
+                {:credentials-source credentials-source})
+      {:outcome :skipped, :reason :llm-unconfigured, :credentials_source credentials-source})
 
     :else
     (try
-      (log/info "OSI generation run finished"
-                (osi-generation/run-generation!))
+      (let [summary (osi-generation/run-generation!)]
+        (log/info "OSI generation run finished" summary)
+        {:outcome :completed, :summary summary})
       (catch Exception e
         (if-let [cause (nonordinary-cause e)]
           (do
@@ -51,12 +60,50 @@
             (throw cause))
           ;; Log ordinary failures and move on: the next weekly firing (or a manual trigger) retries
           ;; from appdb state. Cancellation and fatal errors remain visible to Quartz.
-          (log/error e "OSI generation run failed"))))))
+          (do
+            (log/error e "OSI generation run failed")
+            {:outcome        :failed
+             :message        (ex-message e)
+             :exception_class (str (class e))}))))))
+
+(def ^:private task-detail-key-rank
+  (zipmap [:outcome :reason :credentials_source :message :exception_class :summary
+           :candidates :generated :already-approved :restamped :skipped :errors :pending
+           :usage :llm-calls :reconcile :entity-type :entity-local-id :duration-ms
+           :input-tokens :output-tokens :index :execution
+           :inserted :deleted :unchanged :waited_ms :ran_ms]
+          (range)))
+
+(defn- canonical-task-details
+  "Recursively order task details for stable stored JSON and predictable demo output. Known fields use
+  a semantic order; any future fields follow deterministically by key name."
+  [value]
+  (cond
+    (map? value)
+    (u/for-ordered-map [key (sort-by (juxt #(get task-detail-key-rank % Long/MAX_VALUE) str) (keys value))]
+                       [key (canonical-task-details (get value key))])
+
+    (sequential? value)
+    (mapv canonical-task-details value)
+
+    :else
+    value))
+
+(defn- history-update
+  [history result]
+  (assoc history
+         :status (if (= :failed (:outcome result)) :failed :success)
+         :task_details (canonical-task-details result)))
+
+(defn- run-with-history!
+  []
+  (task-history/with-task-history {:task generation-task-history-name, :on-success-info history-update}
+    (run!*)))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Generates OSI ai_context metadata for library entities."}
   OsiAiContextGeneration [_ctx]
-  (run!*))
+  (run-with-history!))
 
 (def ^:private generation-trigger-key
   (triggers/key "metabase-enterprise.osi-generation.generate.trigger"))

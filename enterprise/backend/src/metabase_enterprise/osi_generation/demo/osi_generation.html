@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OSI generation lab</title>
+    <link rel="stylesheet" href="app.css">
+  </head>
+  <body>
+    <main>
+      <header class="hero">
+        <div>
+          <div class="eyebrow">Developer tool · superusers only</div>
+          <h1>OSI generation lab</h1>
+          <p>Run the metadata pipeline and curate the AI context attached to Library items.</p>
+        </div>
+        <button class="secondary" id="refresh-all">Refresh</button>
+      </header>
+
+      <section class="panel" aria-labelledby="pipeline-heading">
+        <div class="section-heading">
+          <div>
+            <div class="eyebrow">Generation</div>
+            <h2 id="pipeline-heading">Pipeline readiness</h2>
+          </div>
+          <label class="switch-row">
+            <span>Automatic generation</span>
+            <input id="enabled-toggle" type="checkbox" role="switch">
+          </label>
+        </div>
+
+        <div class="pipeline" id="pipeline"></div>
+        <div class="status-note" id="status-note">Loading status…</div>
+
+        <div class="workflow-actions">
+          <div class="workflow-step">
+            <span class="step-number">1</span>
+            <span class="step-copy"><strong>Prepare</strong><small>Start the scheduler and register the job.</small></span>
+            <button id="ensure-job">Ensure job</button>
+          </div>
+          <div class="workflow-step featured">
+            <span class="step-number">2</span>
+            <span class="step-copy"><strong>Generate</strong><small>Prepare if needed, then queue a run.</small></span>
+            <button class="primary" id="run-generation">Run generation</button>
+          </div>
+        </div>
+
+        <details>
+          <summary>Run details</summary>
+          <pre id="run-details"></pre>
+        </details>
+      </section>
+
+      <div class="workspace-grid">
+        <section class="panel library-panel" aria-labelledby="library-heading">
+          <div class="section-heading library-heading">
+            <div>
+              <div class="eyebrow">Curation</div>
+              <h2 id="library-heading">Library AI context</h2>
+            </div>
+            <div class="library-actions">
+              <div class="counts" id="counts"></div>
+              <button class="danger secondary" id="delete-contexts">Delete all AI context</button>
+            </div>
+          </div>
+
+          <div class="filters">
+            <input id="search" type="search" placeholder="Search Library items…" aria-label="Search Library items">
+            <select id="status-filter" aria-label="Filter by context status">
+              <option value="all">All statuses</option>
+              <option value="missing">Missing</option>
+              <option value="generated">Generated</option>
+              <option value="invalidated">Source changed</option>
+              <option value="approved">Approved</option>
+              <option value="approved-invalidated">Approved · source changed</option>
+              <option value="rewrite-requested">Rewrite requested</option>
+            </select>
+            <select id="type-filter" aria-label="Filter by entity type">
+              <option value="all">All item types</option>
+            </select>
+          </div>
+
+          <div class="entity-list" id="entity-list" aria-live="polite"></div>
+        </section>
+
+        <section class="panel runs-panel" aria-labelledby="runs-heading">
+          <div class="section-heading runs-heading">
+            <div>
+              <div class="eyebrow">Job lifecycle</div>
+              <h2 id="runs-heading">Generation runs</h2>
+            </div>
+            <button class="danger secondary" id="delete-runs">Clear history</button>
+          </div>
+          <div class="muted runs-note">Newest first · refreshes while a run is active</div>
+          <div class="run-list" id="run-list" aria-live="polite"></div>
+        </section>
+      </div>
+
+      <section class="panel search-panel" aria-labelledby="search-comparison-heading">
+        <div class="section-heading search-heading">
+          <div>
+            <div class="eyebrow">Retrieval comparison</div>
+            <h2 id="search-comparison-heading">Search comparison</h2>
+          </div>
+          <span class="muted">Three real retrieval paths · first 10 results</span>
+        </div>
+        <div class="search-note">AppDB and semantic use the global product-search indexes; Library retrieval uses the separate AI-tool document index shown below.</div>
+        <div class="comparison-search-control" role="search">
+          <label for="comparison-search">
+            <strong>Compare one query</strong>
+            <small>Runs all three searches 350 ms after you stop typing</small>
+          </label>
+          <input id="comparison-search" type="search" placeholder="Try “orders”, “customers”, or a natural-language data request…" aria-label="Compare all search paths" autocomplete="off">
+        </div>
+
+        <div class="search-comparison">
+          <section class="search-card">
+            <div class="search-card-heading">
+              <div>
+                <strong>AppDB search</strong>
+                <small>Lexical matching and product ranking</small>
+              </div>
+              <span class="engine-tag">appdb</span>
+            </div>
+            <div class="search-summary muted" id="appdb-search-summary">Lexical results appear here.</div>
+            <div class="search-results" id="appdb-search-results" aria-live="polite"></div>
+          </section>
+
+          <section class="search-card">
+            <div class="search-card-heading">
+              <div>
+                <strong>Semantic search</strong>
+                <small>Vector relevance fused with AppDB results</small>
+              </div>
+              <span class="engine-tag semantic">semantic</span>
+            </div>
+            <div class="search-summary muted" id="semantic-search-summary">Hybrid semantic results appear here.</div>
+            <div class="search-results" id="semantic-search-results" aria-live="polite"></div>
+          </section>
+
+          <section class="search-card library-search">
+            <div class="search-card-heading">
+              <div>
+                <strong>Library retrieval</strong>
+                <small>The AI tool path over the Library documents shown below</small>
+              </div>
+              <span class="engine-tag library">retrieve_library_entities</span>
+            </div>
+            <div class="search-summary muted" id="library-search-summary">Matches can come from names, descriptions, synonyms, or example questions.</div>
+            <div class="search-results" id="library-search-results" aria-live="polite"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="panel index-panel" aria-labelledby="index-heading">
+        <div class="section-heading index-heading">
+          <div>
+            <div class="eyebrow">Search output</div>
+            <h2 id="index-heading">Library index</h2>
+          </div>
+          <div class="index-heading-controls">
+            <span class="muted" id="index-summary"></span>
+            <div class="index-actions">
+              <button class="secondary" id="reconcile">Reconcile</button>
+              <button class="danger secondary" id="clear-index">Clear</button>
+            </div>
+          </div>
+        </div>
+        <div class="muted index-note" id="index-step-copy">Synchronize approved context with search.</div>
+        <div class="index-list" id="index-list" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <dialog id="editor">
+      <form method="dialog" class="editor-shell">
+        <header class="editor-header">
+          <div>
+            <div class="eyebrow" id="editor-kind"></div>
+            <h2 id="editor-title"></h2>
+            <div class="muted" id="editor-meta"></div>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="Close editor">×</button>
+        </header>
+
+        <label class="editor-label" for="source-description">Library item description</label>
+        <textarea class="source-description" id="source-description" spellcheck="true"></textarea>
+        <div class="source-actions">
+          <div class="muted source-note">
+            <p>Changing generation input makes generated context eligible for regeneration.</p>
+            <p>Approved context stays protected.</p>
+          </div>
+          <button class="primary" id="save-description" type="button" disabled>Save changes</button>
+        </div>
+
+        <details class="prompt-disclosure" id="prompt-disclosure">
+          <summary>
+            <span>
+              <strong>Rendered generation prompt</strong>
+              <small>Exact messages this item would send to the configured model</small>
+            </span>
+            <span class="prompt-version" id="prompt-version"></span>
+          </summary>
+          <div class="prompt-body">
+            <label class="editor-label" for="prompt-system">System message</label>
+            <pre class="prompt-content" id="prompt-system">Expand to render the prompt.</pre>
+            <label class="editor-label" for="prompt-user">User message</label>
+            <pre class="prompt-content" id="prompt-user"></pre>
+          </div>
+        </details>
+
+        <label class="editor-label" for="context-json">AI context JSON</label>
+        <textarea id="context-json" spellcheck="false"></textarea>
+        <div class="validation" id="validation"></div>
+
+        <div class="editor-actions">
+          <button class="danger secondary" id="request-rewrite" type="button">Request regeneration</button>
+          <span class="spacer"></span>
+          <button class="primary" id="save" type="button">Save + approve</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="vector-tooltip" id="vector-tooltip" role="tooltip"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

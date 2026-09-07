@@ -30,6 +30,7 @@ jobs:
   deploy_pr:
     needs: [build]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 45
     name: PR Review ENV
     permissions:
       id-token: write
@@ -53,6 +54,11 @@ jobs:
           aws-region: us-east-1
       - name: Setup psql client
         run: |
+          # The hosted runner's Chrome repository can be mid-publication and fail
+          # apt with a hash mismatch. It is unrelated to the psql package.
+          if [[ -f /etc/apt/sources.list.d/google-chrome.list ]]; then
+            sudo sed -i '/dl.google.com/d' /etc/apt/sources.list.d/google-chrome.list
+          fi
           sudo apt-get update
           sudo apt-get install -y postgresql-client
       - name: Create app database if not exists
@@ -199,6 +205,12 @@ jobs:
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           MB_ANALYTICS_DEV_MODE: ${{ inputs.analytics_dev_mode && 'true' || 'false' }}
+      - name: Enable OSI generation demo for this PR environment
+        if: ${{ !inputs.self_hosting }}
+        run: |
+          yq -i 'select(.kind == "Metabase").spec.configuration.envVars += [
+                   {"name": "MB_ENABLE_OSI_GENERATION_DEMO", "value": "true"}
+                 ]' ./metabase.yml
       - name: Inject stats-dump env vars into Deployment YAML
         if: ${{ !inputs.self_hosting && inputs.stats_dump }}
         env:

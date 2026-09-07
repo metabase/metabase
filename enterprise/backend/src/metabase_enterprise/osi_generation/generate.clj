@@ -11,7 +11,8 @@
    [clojure.string :as str]
    [metabase-enterprise.osi-generation.prompt :as prompt]
    [metabase-enterprise.osi-generation.settings :as settings]
-   [metabase.metabot.self :as self]))
+   [metabase.metabot.self :as self]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -43,6 +44,31 @@
                          (and (sequential? value) (empty? value)))))
         response))
 
+(defn- elapsed-ms
+  [timer]
+  (Math/round ^double (u/since-ms timer)))
+
+(defn- call-llm
+  [model-ref messages source]
+  (let [timer (u/start-timer)]
+    (try
+      (assoc (self/call-llm-structured+usage
+              model-ref
+              messages
+              prompt/response-json-schema
+              temperature
+              max-tokens
+              {:request-id (str (random-uuid))
+               :source     source
+               :tag        "osi-generation"})
+             :duration-ms (elapsed-ms timer))
+      (catch Exception e
+        ;; Preserve the exact provider-call duration even when no token usage came back. The generation
+        ;; loop attaches it to this candidate's task-history detail before isolating the failure.
+        (throw (ex-info (or (ex-message e) "OSI generation LLM call failed")
+                        (assoc (or (ex-data e) {}) :duration-ms (elapsed-ms timer))
+                        e))))))
+
 (defn generate-context
   "Generate ai_context for one candidate.
 
@@ -54,7 +80,8 @@
 
   Returns `{:ai_context        {:instructions ... :synonyms [...] :examples [...]}
             :generator-version <the prompt+model identity stamped into the row>
-            :usage             {:input-tokens n :output-tokens n}}`
+            :usage             {:input-tokens n :output-tokens n}
+            :duration-ms       n}`
   Empty/blank output is returned as an empty `:ai_context` so the write path still stamps the basis
   and the paid call is not repeated on every run. `:usage` rides every return that reached a provider,
   and a throw after a billed call carries it in `ex-data`. Throws on LLM failure or an invalid
@@ -62,21 +89,16 @@
   [candidate]
   (let [{:keys [model-ref source]} (settings/llm-call-opts)
         messages (prompt/build-messages candidate)
-        {:keys [result usage]} (self/call-llm-structured+usage
-                                model-ref
-                                messages
-                                prompt/response-json-schema
-                                temperature
-                                max-tokens
-                                {:request-id (str (random-uuid))
-                                 :source     source
-                                 :tag        "osi-generation"})]
+        {:keys [result usage duration-ms]} (call-llm model-ref messages source)]
     (try
       (prompt/validate-response! result)
       {:ai_context        (normalized-response result)
        :generator-version (generator-version model-ref)
-       :usage             usage}
+       :usage             usage
+       :duration-ms       duration-ms}
       (catch Exception e
         ;; The provider has already returned and its per-call usage has already been logged. Preserve
         ;; that usage for the run budget even when local schema validation rejects the answer.
-        (throw (ex-info "Invalid OSI generation response" {:usage usage} e))))))
+        (throw (ex-info "Invalid OSI generation response"
+                        {:usage usage, :duration-ms duration-ms}
+                        e))))))

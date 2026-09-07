@@ -8,7 +8,8 @@
    [metabase-enterprise.osi-generation.settings :as settings]
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.self :as self]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,10 +26,12 @@
                                   (fn [& args]
                                     (reset! call args)
                                     {:result {:synonyms ["purchases"]}
-                                     :usage  {:input-tokens 11, :output-tokens 7}})]
-        (is (= {:ai_context {:synonyms ["purchases"]}
+                                     :usage  {:input-tokens 11, :output-tokens 7}})
+                                  u/since-ms (constantly 123.4)]
+        (is (= {:ai_context        {:synonyms ["purchases"]}
                 :generator-version (generate/generator-version "test/model")
-                :usage      {:input-tokens 11, :output-tokens 7}}
+                :usage             {:input-tokens 11, :output-tokens 7}
+                :duration-ms       123}
                (generate/generate-context candidate)))
         (is (= ["test/model" (prompt/build-messages candidate) prompt/response-json-schema 0.3 8192]
                (take 5 @call)))
@@ -40,10 +43,12 @@
       (mt/with-dynamic-fn-redefs [settings/llm-call-opts (constantly {:model-ref "test/model"})
                                   prompt/build-messages (constantly [])
                                   self/call-llm-structured+usage
-                                  (constantly {:result result, :usage {:input-tokens 1, :output-tokens 2}})]
-        (is (= {:ai_context {}
+                                  (constantly {:result result, :usage {:input-tokens 1, :output-tokens 2}})
+                                  u/since-ms (constantly 123.4)]
+        (is (= {:ai_context        {}
                 :generator-version (generate/generator-version "test/model")
-                :usage {:input-tokens 1, :output-tokens 2}}
+                :usage             {:input-tokens 1, :output-tokens 2}
+                :duration-ms       123}
                (generate/generate-context {})))))))
 
 (deftest generator-version-tracks-prompt-revisions-test
@@ -61,9 +66,26 @@
                                 prompt/build-messages (constantly [])
                                 self/call-llm-structured+usage
                                 (constantly {:result {:instructions (apply str (repeat (inc entity-retrieval/max-instructions-len) "x"))}
-                                             :usage  {:input-tokens 4, :output-tokens 5}})]
+                                             :usage  {:input-tokens 4, :output-tokens 5}})
+                                u/since-ms (constantly 123.4)]
       (try
         (generate/generate-context {})
         (is false "expected invalid response to throw")
         (catch clojure.lang.ExceptionInfo e
-          (is (= {:input-tokens 4, :output-tokens 5} (:usage (ex-data e)))))))))
+          (is (= {:input-tokens 4, :output-tokens 5} (:usage (ex-data e))))
+          (is (= 123 (:duration-ms (ex-data e)))))))))
+
+(deftest generate-context-provider-failure-keeps-duration-test
+  (testing "a provider failure carries the elapsed call duration even when no usage is available"
+    (mt/with-dynamic-fn-redefs [settings/llm-call-opts (constantly {:model-ref "test/model"})
+                                prompt/build-messages (constantly [])
+                                self/call-llm-structured+usage
+                                (fn [& _]
+                                  (throw (ex-info "provider unavailable" {:type :provider-error})))
+                                u/since-ms (constantly 456.7)]
+      (try
+        (generate/generate-context {})
+        (is false "expected provider failure to throw")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= :provider-error (:type (ex-data e))))
+          (is (= 457 (:duration-ms (ex-data e)))))))))

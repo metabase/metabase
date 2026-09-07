@@ -1,7 +1,9 @@
 (ns dev.api.routes
-  (:require [dev.api.preview]
-            [dev.api.prototype]
-            [metabase.api.util.handlers :as handlers]))
+  "Routes that are available only on a development classpath."
+  (:require
+   [dev.api.preview]
+   [dev.api.prototype]
+   [metabase.api.util.handlers :as handlers]))
 
 (comment
   dev.api.preview/keep-me
@@ -12,5 +14,5 @@
    "/prototype" 'dev.api.prototype})
 
 (def ^{:arglists '([request respond raise])} routes
-  ;; This map will be merged at the top level, so /dev/prototype is available.
+  "Top-level development API routes."
   (handlers/route-map-handler {"/dev" (handlers/route-map-handler dev-routes-map)}))

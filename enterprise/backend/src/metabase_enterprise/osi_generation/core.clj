@@ -153,6 +153,25 @@
   (keyword (or (:entity_type existing-context)
                (first (entity-retrieval/entity-class (:entity_type entity) (:entity_local_id entity))))))
 
+(defn- llm-call-summary
+  [candidate outcome {:keys [duration-ms usage]}]
+  (when (some? duration-ms)
+    (let [[entity-type entity-local-id] (entity-retrieval/entity-class
+                                         (get-in candidate [:entity :entity_type])
+                                         (get-in candidate [:entity :entity_local_id]))]
+      {:entity-type     entity-type
+       :entity-local-id entity-local-id
+       :outcome         outcome
+       :duration-ms     duration-ms
+       :input-tokens    (or (:input-tokens usage) 0)
+       :output-tokens   (or (:output-tokens usage) 0)})))
+
+(defn- record-llm-call
+  [totals candidate outcome result]
+  (if-let [call (llm-call-summary candidate outcome result)]
+    (update totals :llm-calls conj call)
+    totals))
+
 (defn- process-candidate
   "One loop step: restamp a converged tier-2 row, otherwise generate and write back. Records the
   candidate's terminal outcome to `metrics` and charges `tracker`, then returns `totals` with the
@@ -178,9 +197,13 @@
             (let [outcome (write-generated-context! candidate result)]
               (metrics/record-candidate! entity-type outcome)
               (throttle/consume! tracker (assoc usage :entities 1))
-              (update totals outcome inc))
+              (-> totals
+                  (update outcome inc)
+                  (record-llm-call candidate outcome result)))
             (catch Exception e
-              (throw (ex-info "OSI generation write-back failed" {:usage usage} e)))))
+              (throw (ex-info "OSI generation write-back failed"
+                              {:usage usage, :llm-call (llm-call-summary candidate :error result)}
+                              e)))))
         ;; nil means skip without writing — the shipped stub's only answer until the LLM seam lands.
         (do (metrics/record-candidate! entity-type :skipped)
             (throttle/consume! tracker {:entities 1})
@@ -191,8 +214,16 @@
   spent. `:pending` is unknown because selection deliberately did not run; metrics preserve the previous
   backlog gauge rather than replacing it with a false zero."
   [window]
-  {:candidates 0, :generated 0, :restamped 0, :skipped 0, :errors 0, :pending nil
-   :usage {:input-tokens 0, :output-tokens 0}, :reconcile nil, :window-quota-exhausted window})
+  {:candidates             0
+   :generated              0
+   :restamped              0
+   :skipped                0
+   :errors                 0
+   :pending                nil
+   :usage                  {:input-tokens 0, :output-tokens 0}
+   :llm-calls              []
+   :reconcile              nil
+   :window-quota-exhausted window})
 
 (def ^:private max-errors-per-run
   "Bound on errored candidates in one run, in addition to the entity cap. Candidate-construction errors
@@ -207,8 +238,12 @@
   reconcile iff at least one row was written. Each `osi_ai_context` write also nudges its entity's targeted
   reconcile through the model hook; both paths retain the OSI embedding-request source.
 
-  Returns `{:candidates n :generated n :restamped n :skipped n :errors n :pending n
-            :usage {:input-tokens n :output-tokens n} :reconcile <force-reconcile! result | nil>}`.
+  Returns `{:candidates n :generated n :already-approved n :restamped n :skipped n :errors n :pending n
+            :usage {:input-tokens n :output-tokens n} :llm-calls [...]
+            :reconcile <force-reconcile! result | nil>}`.
+  `:already-approved` counts Library members excluded because their human-owned context has no pending
+  rewrite request. `:skipped` remains the count of selected candidates whose generated result lost a
+  concurrent write race or produced no result.
   `:usage` is actual spend — each candidate's usage is summed as its call returns, whether or not the
   write-back after it succeeded. `:reconcile` nil means the trailing full reconcile was not requested —
   either nothing was written or entity-retrieval is unavailable.
@@ -247,7 +282,8 @@
                  ;; backlog metric (a lower bound of one, not a false zero).
                  select-cap (some-> cap (+ max-errors-per-run))
                  offset   (max 0 (or (settings/osi-generation-candidate-offset) 0))
-                 selected (candidates/candidates (some-> select-cap inc) offset)
+                 selection (candidates/selection (some-> select-cap inc) offset)
+                 selected  (:candidates selection)
                  more?    (boolean (and select-cap (> (count selected) select-cap)))
                  cands    (if select-cap (vec (take select-cap selected)) selected)
                  result   (reduce (fn [{:keys [totals processed attempted] :as acc} candidate]
@@ -283,7 +319,12 @@
                                           ;; from the entity cap. Every later failure consumes one attempt,
                                           ;; plus any provider usage it carried.
                                           (let [construction-error? (some? (:candidate-error candidate))
-                                                usage              (or (:usage (ex-data e)) {})]
+                                                error-data         (ex-data e)
+                                                usage              (or (:usage error-data) {})
+                                                llm-call           (when-not construction-error?
+                                                                     (or (:llm-call error-data)
+                                                                         (llm-call-summary candidate :error
+                                                                                           error-data)))]
                                             (log/error e "OSI generation failed for candidate"
                                                        (select-keys (:entity candidate) [:entity_type :entity_local_id]))
                                             (metrics/record-candidate! (candidate-entity-type candidate) :error)
@@ -294,12 +335,14 @@
                                                         (update-in [:totals :errors] inc)
                                                         (update-in [:totals :usage] #(merge-with + % usage))
                                                         (assoc :processed (inc processed)))
+                                              llm-call (update-in [:totals :llm-calls] conj llm-call)
                                               (not construction-error?) (update :attempted inc)))))))
                                   {:totals    {:generated 0
                                                :restamped 0
                                                :skipped   0
                                                :errors    0
-                                               :usage     {:input-tokens 0, :output-tokens 0}}
+                                               :usage     {:input-tokens 0, :output-tokens 0}
+                                               :llm-calls []}
                                    :processed 0
                                    :attempted 0}
                                   cands)
@@ -323,9 +366,10 @@
                              (entity-retrieval/force-reconcile!))]
              (metrics/record-run! (throttle/summary tracker) pending)
              (assoc totals
-                    :candidates (count cands)
-                    :pending    pending
-                    :reconcile  reconcile)))))
+                    :already-approved (:already-approved selection)
+                    :candidates       (count cands)
+                    :pending          pending
+                    :reconcile        reconcile)))))
      (catch Exception e
        (rethrow-nonordinary! e)
        ;; Cover quota evaluation, budget construction and selection too; failures before the old inner
