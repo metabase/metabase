@@ -67,7 +67,7 @@ if (shouldLintCssModules) {
     const postcssModulesPlugin =
       // @ts-expect-error - optional plugin, may not be installed
       await import("eslint-plugin-postcss-modules");
-    /** @type {any} */
+    /** @type {import("eslint").Linter.Config} */
     const postcssConfig = {
       files: ["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx"],
       plugins: {
@@ -84,7 +84,7 @@ if (shouldLintCssModules) {
     };
     configs.push(postcssConfig);
   } catch {
-    // eslint-plugin-postcss-modules not installed
+    // The CSS-module plugin is optional.
   }
 }
 

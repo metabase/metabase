@@ -1,9 +1,7 @@
 import { settingsForFile } from "./config.mjs";
 
-// Oxlint parses import-free .js files as scripts, while our ESLint policy treats
-// them as modules. A module's own bindings do not redeclare ambient globals.
-// Preserve syntax redeclarations by retaining every declared identifier; only
-// hide the ambient-global annotation on those module-local bindings.
+// Oxlint parses import-free JS files as scripts, where local bindings can appear to redeclare globals.
+// Our policy treats those bindings as module-local.
 export function moduleScopeContext(context) {
   const sourceCode = context.sourceCode;
   if (

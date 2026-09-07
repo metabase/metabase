@@ -1,7 +1,6 @@
 import { decode } from "html-entities";
 
-// JSX uses XML-style numeric references rather than HTML's Windows-1252
-// replacements, and accepts a lowercase x for hexadecimal references.
+// JSX uses XML numeric references and requires lowercase x for hexadecimal references.
 export function decodeJsxText(text) {
   return text.replace(
     /&(?:#(\d+)|#x([\da-fA-F]+)|([a-zA-Z][a-zA-Z0-9]*));/g,
@@ -16,8 +15,8 @@ export function decodeJsxText(text) {
   );
 }
 
-// ESLint's JSX parsers expose decoded text. Oxlint exposes the source spelling;
-// supply the upstream translation rule with the value it previously received.
+// Translation rules expect decoded JSX text.
+// Oxlint exposes the source spelling.
 export function withDecodedJsxText(plugin) {
   const rule = plugin.rules["no-literal-string"];
   return {
