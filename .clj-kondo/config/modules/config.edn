@@ -1003,7 +1003,9 @@
 
   entity-retrieval
   {:team "Metabot"
-   :api  #{metabase.entity-retrieval.core metabase.entity-retrieval.mirror metabase.entity-retrieval.spec}
+   :api  #{metabase.entity-retrieval.core
+           metabase.entity-retrieval.mirror
+           metabase.entity-retrieval.spec}
    :uses #{collections premium-features util}
    :model-imports #{:model/Card
                     :model/Measure
