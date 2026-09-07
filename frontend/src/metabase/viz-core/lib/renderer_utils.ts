@@ -14,9 +14,9 @@ import type {
   SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
-import { isObjectWithRaw } from "metabase-types/guards";
 
 import { dimensionIsNumeric } from "./numeric";
+import { getRawSeries } from "./series";
 import { dimensionIsExplicitTimeseries } from "./timeseries";
 import {
   type VisualizationWarning,
@@ -98,9 +98,7 @@ export function getXValues({
   series: Series;
   settings: VisualizationSettings;
 }) {
-  // if _raw isn't set then we already have the raw series
-  const rawSeries =
-    isObjectWithRaw(series) && series._raw ? series._raw : series;
+  const rawSeries = getRawSeries(series);
   const warn = () => undefined; // no op since warning in handled by getDatas
   const uniqueValues = new Set<Exclude<RowValue, null | undefined> | Dayjs>();
   let isAscending = true;

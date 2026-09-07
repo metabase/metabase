@@ -9,7 +9,6 @@ import type {
   SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
-import { isObjectWithRaw } from "metabase-types/guards";
 
 import {
   hasFailedGoalReferencesForValues,
@@ -17,6 +16,7 @@ import {
 } from "../dynamic-goals";
 import { ChartSettingsError, MinRowsError } from "../errors";
 import { getCartesianChartColumns } from "../graph/columns";
+import { getRawSeries } from "../series";
 import { MAX_SERIES } from "../utils";
 
 import { getUnresolvedGoalMessage } from "./goal";
@@ -109,9 +109,7 @@ export const validateGoalReferences = (
   settings: VisualizationSettings,
 ) => {
   // the transformed series drop `data.referenced_entities`
-  const rawSeries =
-    isObjectWithRaw(series) && series._raw ? series._raw : series;
-  const [{ card, data }] = rawSeries;
+  const [{ card, data }] = getRawSeries(series);
   const goal = settings["graph.goal_value"];
 
   if (

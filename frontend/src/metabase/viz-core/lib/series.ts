@@ -10,8 +10,14 @@ import type {
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isObjectWithRaw } from "metabase-types/guards";
 
 import { SERIES_SETTING_KEY } from "../shared/settings/series";
+
+// Transformed series keep the raw series they were derived from in `_raw`.
+export function getRawSeries(series: Series): Series {
+  return isObjectWithRaw(series) && series._raw ? series._raw : series;
+}
 
 export const updateSeriesColor = (
   settings: VisualizationSettings,
