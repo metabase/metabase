@@ -50,10 +50,10 @@
   the same finding twice, and no intra-scan duplicate may reach the DB. Also drops findings on
   document-owned cards, so every checker gets that rule for free."
   []
-  (common/remove-document-internal-card-findings
-   (into []
-         (m/distinct-by (juxt :entity-type :entity-id :finding-type))
-         (mapcat (fn [checker] ((:run checker))) checkers))))
+  (into []
+        (comp (m/distinct-by (juxt :entity-type :entity-id :finding-type))
+              (common/remove-document-internal-card-findings-xf))
+        (mapcat (fn [checker] ((:run checker))) checkers)))
 
 ;;; ----------------------------------------------- scan ------------------------------------------------
 

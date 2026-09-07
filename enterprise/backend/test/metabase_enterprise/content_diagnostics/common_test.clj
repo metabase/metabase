@@ -278,3 +278,20 @@
                [{:entity-type :card      :entity-id model-id}
                 {:entity-type :card      :entity-id q-id}
                 {:entity-type :dashboard :entity-id dash-id}]))))))
+
+(deftest remove-document-internal-card-findings-xf-test
+  (testing "the transducer drops card subjects a document owns, and only card subjects"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Document   {doc-id :id}  {:collection_id coll-id}
+                   :model/Card       {owned :id}   {:collection_id coll-id :document_id doc-id}
+                   :model/Card       {live :id}    {:collection_id coll-id}]
+      (is (= [{:entity-type :card :entity-id live}
+              ;; the entity-type guard: a non-card subject is kept even when its id collides with an
+              ;; owned card's - entity ids are only unique within a type
+              {:entity-type :document :entity-id owned}
+              {:entity-type :dashboard :entity-id owned}]
+             (into [] (common/remove-document-internal-card-findings-xf)
+                   [{:entity-type :card :entity-id owned}
+                    {:entity-type :card :entity-id live}
+                    {:entity-type :document :entity-id owned}
+                    {:entity-type :dashboard :entity-id owned}]))))))

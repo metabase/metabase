@@ -46,7 +46,7 @@
                       [:= :archived false]
                       ;; peers come from this row set, so a document-owned card has to go before
                       ;; clustering, not just from the emitted findings
-                      ;; (`common/remove-document-internal-card-findings`)
+                      ;; (`common/remove-document-internal-card-findings-xf`)
                       (when (= entity-type :card) [:= :document_id nil])
                       (common/eligible-container-clause :collection_id)]}))
 
