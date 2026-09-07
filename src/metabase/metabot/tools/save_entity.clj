@@ -58,24 +58,15 @@
 
 (defn- resolve-chart
   "Look up the generated chart from agent memory and return the pieces needed to
-  build a card: a legacy `dataset_query` and a `display` keyword. Mirrors the
-  lookup in `edit_chart` / `links/resolve-chart-link`."
+  build a card: a legacy `dataset-query` and a `display` keyword."
   [chart-id]
-  (let [chart (get (shared/current-charts-state) chart-id)
-        query (or (first (:queries chart))
-                  (get (shared/current-queries-state) (:query_id chart)))]
-    (when-not query
-      (agent-error!
-       (tru (str "No generated chart found with id `{0}`. Create a chart with "
-                 "`construct_notebook_query` first, then save it using the id it returns.")
-            chart-id)))
-    ;; agent-created charts carry the display in `:visualization_settings :chart_type`;
-    ;; charts seeded from the frontend viewing context (`seed-charts`) leave that nil
-    ;; and keep the raw config under `:chart_config` instead
-    {:dataset_query (links/->legacy-mbql query)
-     :display       (or (some-> (get-in chart [:visualization_settings :chart_type]) keyword)
-                        (some-> (get-in chart [:chart_config :display_type]) keyword)
-                        :table)}))
+  (let [{:keys [query display]} (or (shared/resolve-generated-chart chart-id)
+                                    (agent-error!
+                                     (tru (str "No generated chart found with id `{0}`. Create a chart with "
+                                               "`construct_notebook_query` first, then save it using the id it returns.")
+                                          chart-id)))]
+    {:dataset-query (links/->legacy-mbql query)
+     :display       display}))
 
 (defn- personal-collection-id []
   (or (:id (collection/user->personal-collection api/*current-user-id*))
@@ -160,17 +151,17 @@
        :link             (str "metabase://document/" document-id)})))
 
 (defn- resolve-tile
-  [{:keys [chart_id query_id card_id title row col size_x size_y]}]
-  (merge {:name title :row row :col col :size_x size_x :size_y size_y :chart-id chart_id}
+  [{chart-id :chart_id query-id :query_id card-id :card_id size-x :size_x size-y :size_y :keys [title row col]}]
+  (merge {:name title :row row :col col :size-x size-x :size-y size-y :chart-id chart-id}
          (cond
-           card_id  {:card-id card_id}
-           chart_id (resolve-chart chart_id)
-           :else    (let [query (get (shared/current-queries-state) query_id)]
+           card-id  {:card-id card-id}
+           chart-id (resolve-chart chart-id)
+           :else    (let [query (get (shared/current-queries-state) query-id)]
                       (when-not query
                         (agent-error!
                          (tru "The dashboard tile \"{0}\" references query `{1}`, which no longer exists in this conversation."
-                              title query_id)))
-                      {:dataset_query (links/->legacy-mbql query)
+                              title query-id)))
+                      {:dataset-query (links/->legacy-mbql query)
                        :display       :table}))))
 
 (defn- save-generated-dashboard!
@@ -267,10 +258,10 @@
   (try
     (if (contains? (shared/current-dashboards-state) chart_id)
       (save-dashboard-result chart_id question-name description destination)
-      (let [{:keys [dataset_query display]} (resolve-chart chart_id)
+      (let [{:keys [dataset-query display]} (resolve-chart chart_id)
             args {:name          question-name
                   :description    description
-                  :dataset_query  dataset_query
+                  :dataset_query  dataset-query
                   :display        display
                   :destination    destination}
             ;; Create the card and stamp which conversation + generated chart it came
