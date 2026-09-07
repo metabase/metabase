@@ -2,10 +2,7 @@
   "Analysis sub-step that takes a sample of values for a Field and saving a non-identifying fingerprint
    used for classification. This fingerprint is saved as a column on the Field it belongs to."
   (:require
-   [clojure.set :as set]
-   [honey.sql.helpers :as sql.helpers]
    [metabase.analyze.core :as analyze]
-   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
@@ -101,97 +98,10 @@
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Logic for building the somewhat-complicated query we use to determine which Fields need new Fingerprints
-;;
-;; This ends up giving us a SQL query that looks something like:
-;;
-;; SELECT *
-;; FROM metabase_field
-;; WHERE active = true
-;;   AND (semantic_type NOT IN ('type/PK') OR semantic_type IS NULL)
-;;   AND preview_display = true
-;;   AND visibility_type <> 'retired'
-;;   AND table_id = 1
-;;   AND ((fingerprint_version < 1 AND
-;;         base_type IN ("type/Longitude", "type/Latitude", "type/Integer"))
-;;        OR
-;;        (fingerprint_version < 2 AND
-;;         base_type IN ("type/Text", "type/SerializedJSON")))
-
-(mu/defn- base-types->descendants :- [:maybe [:set ms/FieldTypeKeywordOrString]]
-  "Given a set of `base-types` return an expanded set that includes those base types as well as all of their
-  descendants. These types are converted to strings so HoneySQL doesn't confuse them for columns."
-  [base-types :- [:set ms/FieldType]]
-  (into #{}
-        (comp (mapcat (fn [base-type]
-                        (cons base-type (descendants base-type))))
-              (map u/qualified-name))
-        base-types))
-
-;; It's even cooler if we could generate efficient SQL that looks at what types have already
-;; been marked for upgrade so we don't need to generate overly-complicated queries.
-;;
-;; e.g. instead of doing:
-;;
-;; WHERE ((version < 2 AND base_type IN ("type/Integer", "type/BigInteger", "type/Text")) OR
-;;        (version < 1 AND base_type IN ("type/Boolean", "type/Integer", "type/BigInteger")))
-;;
-;; we could do:
-;;
-;; WHERE ((version < 2 AND base_type IN ("type/Integer", "type/BigInteger", "type/Text")) OR
-;;        (version < 1 AND base_type IN ("type/Boolean")))
-;;
-;; (In the example above, something that is a `type/Integer` or `type/Text` would get upgraded
-;; as long as it's less than version 2; so no need to also check if those types are less than 1, which
-;; would always be the case.)
-;;
-;; This way we can also completely omit adding clauses for versions that have been "eclipsed" by others.
-;; This would keep the SQL query from growing boundlessly as new fingerprint versions are added
-(mu/defn- versions-clauses :- [:maybe [:sequential :any]]
-  []
-  ;; keep track of all the base types (including descendants) for each version, starting from most recent
-  (let [versions+base-types (reverse (sort-by first (seq i/*fingerprint-version->types-that-should-be-re-fingerprinted*)))
-        already-seen        (atom #{})]
-    (for [[version base-types] versions+base-types
-          :let  [descendants  (base-types->descendants base-types)
-                 not-yet-seen (set/difference descendants @already-seen)]
-          ;; if all the descendants of any given version have already been seen, we can skip this clause altogether
-          :when (seq not-yet-seen)]
-      ;; otherwise record the newly seen types and generate an appropriate clause
-      (do
-        (swap! already-seen set/union not-yet-seen)
-        [:and
-         [:< :fingerprint_version version]
-         [:in :base_type not-yet-seen]]))))
-
-(def ^:private fields-to-fingerprint-base-clause
-  "Base clause to get fields for fingerprinting. When refingerprinting, run as is. When fingerprinting in analysis, only
-  look for fields without a fingerprint or whose version can be updated. This clauses is added on
-  by [[versions-clauses]]."
-  [:and
-   [:= :active true]
-   [:or
-    [:not (app-db/isa :semantic_type :type/PK)]
-    [:= :semantic_type nil]]
-   [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not-in :base_type (conj (app-db/type-keyword->descendants :type/fingerprint-unsupported)
-                             (u/qualified-name :type/*))]])
-
 (def ^:dynamic *refingerprint?*
   "Whether we are refingerprinting or doing the normal fingerprinting. Refingerprinting should get fields that already
   are analyzed and have fingerprints."
   false)
-
-(mu/defn- honeysql-for-fields-that-need-fingerprint-updating :- [:map
-                                                                 [:where :any]]
-  "Return appropriate WHERE clause for all the Fields whose Fingerprint needs to be re-calculated."
-  ([]
-   {:where (cond-> fields-to-fingerprint-base-clause
-             (not *refingerprint?*) (conj (cons :or (versions-clauses))))})
-
-  ([table :- i/TableInstance]
-   (sql.helpers/where (honeysql-for-fields-that-need-fingerprint-updating)
-                      [:= :table_id (u/the-id table)])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      FINGERPRINTING ALL FIELDS IN A TABLE                                      |
@@ -202,7 +112,11 @@
   id so the selection is stable across syncs. This should include NEW fields that are active and visible."
   [table :- i/TableInstance
    limit :- ms/PositiveInt]
-  (seq (sync.db/fields-where (:where (honeysql-for-fields-that-need-fingerprint-updating table)) limit)))
+  (seq (sync.db/fields-needing-fingerprint-update
+        (u/the-id table)
+        *refingerprint?*
+        i/*fingerprint-version->types-that-should-be-re-fingerprinted*
+        limit)))
 
 (mu/defn- warn-too-many-fields!
   "Log that `table` has more fields to fingerprint than fingerprint-max-fields-per-table (`limit`), so only the first

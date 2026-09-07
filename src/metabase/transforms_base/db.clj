@@ -10,9 +10,11 @@
   (t2/select-one-fn :source [:model/Transform :id :source] transform-id))
 
 (defn transforms-for-ordering
-  "The id, name, target, target Table id, source Database id, and table dependencies of every Transform."
-  []
-  (t2/select [:model/Transform :id :name :target :target_table_id :source_database_id :table_dependencies]))
+  "The id, name, target, target Table id, source Database id, and table dependencies of every Transform
+   excluding [[transform-id]]."
+  [transform-id]
+  (t2/select [:model/Transform :id :name :target :target_table_id :source_database_id :table_dependencies]
+             :id [:not= transform-id]))
 
 (defn transform
   "The Transform with `transform-id`, or nil."

@@ -839,9 +839,10 @@
 
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
-  (let [descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-filter-clause
-                                                                         :id
-                                                                         {:include-archived-items :all}))
+  (let [descendant-collections (collection/descendants-flat parent-coll nil
+                                                            (collection/visible-collection-filter-clause
+                                                             :id
+                                                             {:include-archived-items :all}))
 
         descendant-collection-ids (mapv u/the-id descendant-collections)
 

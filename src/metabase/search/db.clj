@@ -2,17 +2,81 @@
   "Application database queries for the search module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (connection and transaction handling still use `toucan2.core`)."
   (:require
+   [honey.sql.helpers :as sql.helpers]
+   [metabase.search.appdb.specialization.api :as specialization]
    [toucan2.core :as t2]))
 
-(defn rows
-  "The rows returned by the Honey SQL or raw SQL `query`."
+(defn spec-index-rows
+  "The rows matching the Honey SQL `query` built from a search model's spec by `metabase.search.ingestion`."
   [query]
   (t2/query query))
 
-(defn execute!
-  "Run the Honey SQL or raw SQL `statement`."
+(defn scored-search-rows
+  "The rows matching the scored, filtered search Honey SQL `query` built by `metabase.search.appdb.core`."
+  [query]
+  (t2/query query))
+
+(defn distinct-model-rows
+  "The rows matching the Honey SQL `query` built by `metabase.search.appdb.core` to find the distinct search models
+  present in the results."
+  [query]
+  (t2/query query))
+
+(defn search-index-probe-rows
+  "The rows matching the Honey SQL `query` built by `metabase.search.appdb.core` to check whether a single row
+  survives a filter."
+  [query]
+  (t2/query query))
+
+(defn search-index-rows
+  "The rows matching the Honey SQL `query` built by `metabase.search.appdb.index/search-query`."
+  [query]
+  (t2/query query))
+
+(defn view-count-percentile-rows
+  "The Model to view-count-percentile rows for the search index table `index-table` at percentile `p-value`."
+  [index-table p-value]
+  (t2/query (specialization/view-count-percentile-query index-table p-value)))
+
+(defn drop-search-index-table-if-exists!
+  "Drop the search index table named `table-name`, if it exists."
+  [table-name]
+  (t2/query (sql.helpers/drop-table :if-exists table-name)))
+
+(defn drop-search-index-table!
+  "Drop the search index table named `table-name`."
+  [table-name]
+  (t2/query (sql.helpers/drop-table table-name)))
+
+(defn create-search-index-table!
+  "Create the search index table named `table-name` with `columns` (the Honey SQL column definitions built by the
+  active search engine specialization)."
+  [table-name columns]
+  (t2/query (-> (sql.helpers/create-table table-name)
+                (sql.helpers/with-columns columns))))
+
+(defn run-search-index-statement!
+  "Run a single post-creation SQL statement (e.g. an index creation) for a search index table."
   [statement]
   (t2/query statement))
+
+(defn analyze-search-index-table!
+  "Run `ANALYZE` on the search index table `table-name` (Postgres only)."
+  [table-name]
+  (t2/query (str "ANALYZE " (name table-name))))
+
+(defn postgres-batch-upsert!
+  "Upsert `entries` into the search index `table`, on conflict of `(model, model_id)` overwriting every other column
+  with the new value."
+  [table entries]
+  (when (seq entries)
+    (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
+          excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
+      (t2/query {:insert-into   table
+                 :values        entries
+                 :on-conflict   [:model :model_id]
+                 :do-update-set (with-meta (zipmap update-keys (map excluded-kw update-keys))
+                                           {:allow-subquery true})}))))
 
 (defn commit!
   "Commit the current transaction."
