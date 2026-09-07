@@ -22,12 +22,36 @@
    [mage.merge-yaml-migrations-test]
    [mage.modules-test]
    [mage.project-tests-test]
+   [mage.quick-test-runner-test]
    [mage.shell-test]
+   [mage.start-db-test]
    [mage.token-scan-test]
    [mage.util :as u]
    [mage.util-test]))
 
 (set! *warn-on-reflection* true)
+
+;; Documented in its own namespace as manual-only: it creates temporary git repositories and branches.
+(def ^:private not-run-by-mage-test
+  '#{mage.merge-yaml-migrations-integration-test})
+
+(defn- test-namespaces-on-disk []
+  (let [root (fs/path u/project-root-directory "mage" "test")]
+    (into #{}
+          (map (fn [path]
+                 (-> (str (fs/relativize root path))
+                     (str/replace #"\.clj$" "")
+                     (str/replace "_" "-")
+                     (str/replace "/" ".")
+                     symbol)))
+          (fs/glob root "**/*_test.clj"))))
+
+(deftest every-test-namespace-is-loaded-test
+  (testing "every mage test namespace is required, so `mage -test` actually runs it"
+    (let [missing (sort (remove find-ns (apply disj (test-namespaces-on-disk) not-run-by-mage-test)))]
+      (is (empty? missing)
+          (str "Add these to this namespace's :require. `mage -test` runs `run-all-tests`, which only sees "
+               "loaded namespaces, so nothing else reports them: " (str/join ", " missing))))))
 
 (deftest bin-mage-has-help-test
   (doseq [help-cmds [[] [" "] ["  "] ["-h"] ["--help"] [" -h"] [" --help"] ["  -h"] ["  --help"]]
