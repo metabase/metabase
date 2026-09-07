@@ -24,7 +24,6 @@
    [mage.project-tests-test]
    [mage.quick-test-runner-test]
    [mage.shell-test]
-   [mage.start-db-test]
    [mage.token-scan-test]
    [mage.util :as u]
    [mage.util-test]))
