@@ -25,16 +25,10 @@
 (defn- format-research-plan-group
   "Format one group of the draft Research plan as a single line the LLM can act on. The
   `block_id` is surfaced verbatim so the agent can echo it back to plan-editing tools, and each
-  member dimension/metric carries its id in parentheses."
-  [{:keys [block_id anchor metric dimensions dimension metrics]}]
-  (case anchor
-    "metric"
-    (str "- [" block_id "] " (:name metric)
-         ", broken out by: " (str/join ", " (map named-with-id dimensions)))
-    "dimension"
-    (str "- [" block_id "] by " (:name dimension)
-         ", slicing: " (str/join ", " (map named-with-id metrics)))
-    nil))
+  member dimension carries its id in parentheses."
+  [{:keys [block_id metric dimensions]}]
+  (str "- [" block_id "] " (:name metric)
+       ", broken out by: " (str/join ", " (map named-with-id dimensions))))
 
 (defn format-research-plan
   "Format the user's in-progress draft Research plan for injection into the system message.
@@ -57,7 +51,7 @@
          ""
          (te/field "Plan name" (not-empty name))
          (when (seq groups)
-           (te/lines "Groups:" (keep format-research-plan-group groups)))
+           (te/lines "Groups:" (map format-research-plan-group groups)))
          (when (seq timelines)
            (te/field "Selected timelines" (str/join ", " (map named-with-id timelines)))))))))
 
@@ -122,28 +116,19 @@
    [:groups
     [:sequential
      [:map {:closed true}
-      [:anchor [:enum "metric" "dimension"]]
-      [:metric_id {:optional true} :int]
-      [:dimension_id {:optional true} :string]
+      [:metric_id :int]
       [:dimension_ids {:optional true} [:sequential :string]]
-      [:metric_ids {:optional true} [:sequential :int]]
       [:replace_default_dimensions {:optional true} :boolean]]]]])
 
 (mu/defn ^{:tool-name "add_research_groups"
            :scope     scope/agent-explorations-write}
   add-research-groups-tool
-  "Add one or more groups to the research artifact. Each group is either:
-   - metric-anchored: `{\"anchor\": \"metric\", \"metric_id\": <id>, \"dimension_ids\": [<id>, ...]}`
-     — the metric sliced by the chosen dimensions. By default `dimension_ids` are added on top of
-     the automatically-selected interesting dimensions; omit it to use only the automatic
-     selection. To pin the metric to exactly the dimensions you list (no automatic ones), also
-     pass `\"replace_default_dimensions\": true` - then `dimension_ids` must be non-empty.
-   - dimension-anchored: `{\"anchor\": \"dimension\", \"dimension_id\": <id>}`, the dimension
-     slicing every related metric. To slice only a chosen few, pass
-     `\"metric_ids\": [<id>, ...]` and just those metrics are included. Prefer this (a single
-     dimension-anchored group with a curated `metric_ids`) when the user asks to look at a handful
-     of metrics by one dimension — it reads as one \"by <dimension>\" block rather than several
-     loose metrics."
+  "Add one or more groups to the research artifact. Each group is a metric sliced by chosen
+   dimensions: `{\"metric_id\": <id>, \"dimension_ids\": [<id>, ...]}`. By default
+   `dimension_ids` are added on top of the automatically-selected interesting dimensions; omit
+   it to use only the automatic selection. To pin the metric to exactly the dimensions you
+   list (no automatic ones), also pass `\"replace_default_dimensions\": true` - then
+   `dimension_ids` must be non-empty."
   [{:keys [groups]} :- add-research-groups-schema]
   {:output (json/encode (explorations/exploration-data->api
                          (explorations/research-groups {:groups groups})))})
@@ -155,23 +140,20 @@
     [:sequential
      [:map {:closed true}
       [:block_id :string]
-      [:metric_ids {:optional true} [:sequential :int]]
-      [:dimension_ids {:optional true} [:sequential :string]]]]]
+      [:dimension_ids [:sequential :string]]]]]
    [:timeline_ids {:optional true} [:sequential :int]]])
 
 (mu/defn ^{:tool-name "remove_from_research_plan"
            :scope     scope/agent-explorations-write}
   remove-from-research-plan-tool
-  "Remove groups, individual metrics/dimensions within a group, or timelines from the research
-   plan. Address groups by the `block_id` shown in brackets for each group in the current research
-   plan (e.g. `metric:42`, `dim:7`).
+  "Remove groups, individual dimensions within a group, or timelines from the research plan.
+   Address groups by the `block_id` shown in brackets for each group in the current research
+   plan (e.g. `metric:42`).
 
    - To drop whole groups, pass `block_ids`: `{\"block_ids\": [\"metric:42\"]}`. Use this when the
-     user no longer wants a metric or dimension area at all (e.g. \"actually I don't care about
-     revenue\").
-   - To prune within a group, pass `members`. For a metric-anchored group, list the
-     `dimension_ids` to stop slicing by; for a dimension-anchored group, list the `metric_ids` to
-     stop including: `{\"members\": [{\"block_id\": \"metric:42\", \"dimension_ids\": [\"d1\"]}]}`.
+     user no longer wants a metric at all (e.g. \"actually I don't care about revenue\").
+   - To prune within a group, pass `members` with the `dimension_ids` to stop slicing that
+     group's metric by: `{\"members\": [{\"block_id\": \"metric:42\", \"dimension_ids\": [\"d1\"]}]}`.
    - To drop timelines, pass `timeline_ids` (the ids shown in the current plan's selected
      timelines): `{\"timeline_ids\": [7]}`.
 

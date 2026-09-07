@@ -5,19 +5,26 @@ import {
   useGetAdhocPivotQueryQuery,
   useGetAdhocQueryQuery,
 } from "metabase/api/dataset";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import type { UseCardDataResult } from "metabase/rich_text_editing/tiptap/EditorHost";
-import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot-options";
-import type { Card, Dataset, RawSeries } from "metabase-types/api";
+import type {
+  Card,
+  Dataset,
+  RawSeries,
+  StoredResultSort,
+} from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import { getCardWithDraft } from "../selectors";
+import { getCardWithDraft, getDraftCardOriginalId } from "../selectors";
 
 interface UseCardDataProps {
   id: number;
   skip?: boolean;
+  storedResultId?: number; // When set, the embed renders in static mode: data is pulled from the cached `stored_result` snapshot
+  storedResultSort?: StoredResultSort; // Sort to apply in-memory when reading a static snapshot. Static-mode only
 }
 
 function buildAdhocQueryParams(card: Card) {
@@ -77,6 +84,8 @@ function selectIsLoadingDataset(
 export function useCardData({
   id,
   skip = false,
+  storedResultId,
+  storedResultSort,
 }: UseCardDataProps): UseCardDataResult {
   const isDraft = id < 0;
   const shouldSkipSavedCard = !id || isDraft || skip;
@@ -90,6 +99,9 @@ export function useCardData({
   const cardWithDraft = useSelector((state) =>
     getCardWithDraft(state, id, card),
   );
+  const originalCardId = useSelector((state) =>
+    getDraftCardOriginalId(state, id),
+  );
 
   const cardToUse = cardWithDraft ?? card;
 
@@ -97,8 +109,18 @@ export function useCardData({
 
   const isPivotTable = cardToUse?.display === "pivot";
 
+  const shouldUseDraftQuery = isDraft && storedResultId == null;
+  const queryCardId =
+    storedResultId != null && originalCardId != null ? originalCardId : id;
+  const shouldSkipRegularQuery =
+    !queryCardId || queryCardId < 0 || shouldUseDraftQuery || skip;
+  const canQueryDraftCard =
+    shouldUseDraftQuery && cardToUse?.dataset_query && !skip;
+  const shouldQueryDraftNonPivot = canQueryDraftCard && !isPivotTable;
+  const shouldQueryDraftPivot = canQueryDraftCard && isPivotTable && metadata;
+
   const pivotOptions = useMemo(() => {
-    if (!isDraft || !isPivotTable || !cardToUse || !metadata) {
+    if (!shouldUseDraftQuery || !isPivotTable || !cardToUse || !metadata) {
       return null;
     }
 
@@ -108,15 +130,18 @@ export function useCardData({
     } catch (error) {
       return null;
     }
-  }, [isDraft, isPivotTable, cardToUse, metadata]);
-
-  const shouldSkipRegularQuery = !id || isDraft || !card || skip;
-  const canQueryDraftCard = isDraft && cardToUse?.dataset_query && !skip;
-  const shouldQueryDraftNonPivot = canQueryDraftCard && !isPivotTable;
-  const shouldQueryDraftPivot = canQueryDraftCard && isPivotTable && metadata;
+  }, [shouldUseDraftQuery, isPivotTable, cardToUse, metadata]);
 
   const { data: regularDataset, isLoading: isLoadingRegularDataset } =
-    useGetCardQueryQuery({ cardId: id }, { skip: shouldSkipRegularQuery });
+    useGetCardQueryQuery(
+      {
+        cardId: queryCardId,
+        ...(storedResultId != null
+          ? { stored_result_id: storedResultId, sort: storedResultSort }
+          : {}),
+      },
+      { skip: shouldSkipRegularQuery },
+    );
 
   const { data: draftDataset, isLoading: isLoadingDraftDataset } =
     useGetAdhocQueryQuery(
@@ -134,7 +159,7 @@ export function useCardData({
     );
 
   const dataset = selectDataset(
-    isDraft,
+    shouldUseDraftQuery,
     isPivotTable,
     regularDataset,
     draftDataset,
@@ -142,7 +167,7 @@ export function useCardData({
   );
 
   const isLoadingDataset = selectIsLoadingDataset(
-    isDraft,
+    shouldUseDraftQuery,
     isPivotTable,
     isLoadingRegularDataset,
     isLoadingDraftDataset,

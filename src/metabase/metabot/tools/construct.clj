@@ -12,6 +12,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
@@ -26,8 +27,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -265,7 +265,7 @@
   (detect-metabase-uri-source-table! parsed-query)
   (if-let [table-fk (first-stage-source-table-fk parsed-query)]
     (let [db-name (nth table-fk 0)
-          ids     (t2/select-pks-vec :model/Database :name db-name)]
+          ids     (metabot.db/database-ids-by-name db-name)]
       (case (count ids)
         0 (throw (ex-info (tru (str "Unknown database: `{0}`. Use the exact database name as "
                                     "reported by search / `read_resource` (it appears "

@@ -3,29 +3,23 @@ import _ from "underscore";
 
 import { formatNullable } from "metabase/utils/formatting";
 import { isNotNull } from "metabase/utils/types";
-import { sumMetric } from "metabase/visualizations/lib/dataset";
-import type {
-  CartesianChartColumns,
-  ColumnDescriptor,
-} from "metabase/visualizations/lib/graph/columns";
-import { getColumnDescriptors } from "metabase/visualizations/lib/graph/columns";
-import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
-import type {
-  BarData,
-  Series,
-} from "metabase/visualizations/shared/components/RowChart/types";
-import type {
-  GroupedDataset,
-  GroupedDatum,
-  MetricDatum,
-  SeriesInfo,
-} from "metabase/visualizations/shared/types/data";
-import type {
-  DataPoint,
-  StackedTooltipModel,
-  TooltipRowModel,
-} from "metabase/visualizations/types";
+import {
+  type BarData,
+  type CartesianChartColumns,
+  type ColumnDescriptor,
+  type DataPoint,
+  type GroupedDataset,
+  type GroupedDatum,
+  type MetricDatum,
+  type Series,
+  type SeriesInfo,
+  type StackedTooltipModel,
+  type TooltipRowModel,
+  formatValueForTooltipWithoutScaling,
+  getColumnDescriptors,
+  getStackOffset,
+  sumMetric,
+} from "metabase/viz-core";
 import type {
   ClickObject,
   ClickObjectDimension,
@@ -244,7 +238,7 @@ export const getStackedTooltipRows = <TDatum>(
         value,
         formatter: (value: unknown) =>
           String(
-            formatValueForTooltip({
+            formatValueForTooltipWithoutScaling({
               value,
               settings,
               column: series.seriesInfo?.metricColumn,
@@ -265,7 +259,7 @@ export const getTooltipModel = <TDatum>(
   const dimensionValue = series.yAccessor(datum);
 
   const headerTitle = String(
-    formatValueForTooltip({
+    formatValueForTooltipWithoutScaling({
       value: dimensionValue,
       column: chartColumns.dimension.column,
       settings,
@@ -287,7 +281,7 @@ export const getTooltipModel = <TDatum>(
 
   const totalFormatter = (value: unknown) =>
     String(
-      formatValueForTooltip({
+      formatValueForTooltipWithoutScaling({
         value,
         settings,
         column: hasBreakout

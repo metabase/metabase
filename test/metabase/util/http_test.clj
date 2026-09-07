@@ -187,18 +187,21 @@
   (testing "allow-private still refuses loopback, link-local, any-local and multicast"
     (doseq [ip ["127.0.0.1" "::1" "169.254.169.254" "fe80::1" "0.0.0.0" "224.0.0.1" "ff02::1"]]
       (is (false? (http/address-allowed-for-network-policy? :allow-private (InetAddress/getByName ip))) ip)))
+  (testing "loopback-and-private admits loopback and the private ranges"
+    (doseq [ip ["127.0.0.1" "127.0.1.5" "::1" "10.1.2.3" "192.168.0.1" "100.64.0.1" "fc00::1"]]
+      (is (true? (http/address-allowed-for-network-policy? :loopback-and-private (InetAddress/getByName ip))) ip)))
+  (testing "loopback-and-private refuses public addresses"
+    (doseq [ip public-ips]
+      (is (false? (http/address-allowed-for-network-policy? :loopback-and-private (InetAddress/getByName ip))) ip)))
+  (testing "loopback-and-private still refuses link-local"
+    (doseq [ip ["169.254.169.254" "fe80::1" "0.0.0.0" "224.0.0.1" "ff02::1"]]
+      (is (false? (http/address-allowed-for-network-policy? :loopback-and-private (InetAddress/getByName ip))) ip)))
   (testing "allow-all admits everything"
     (doseq [ip (concat public-ips non-public-ips)]
       (is (true? (http/address-allowed-for-network-policy? :allow-all (InetAddress/getByName ip))) ip)))
   (testing "an unknown policy throws rather than silently allowing"
     (is (thrown? ExceptionInfo
                  (http/address-allowed-for-network-policy? :allow-everything (InetAddress/getByName "127.0.0.1"))))))
-
-(deftest ^:parallel ssrf-safe-dns-resolver-test
-  (testing "the validating resolver throws when a host resolves to a non-public address"
-    ;; `localhost` resolves to loopback (no network needed) -> must be refused
-    (is (thrown? ExceptionInfo
-                 (.resolve ^DnsResolver @#'http/ssrf-safe-dns-resolver "localhost")))))
 
 (deftest ^:parallel network-policy-dns-resolver-test
   (testing ":allow-all imposes no restriction, so there is no resolver (clj-http uses its default)"
@@ -227,6 +230,30 @@
                  "https://localhost/x.png"
                  "https://metadata.google.internal/x.png"]]
       (is (nil? (http/fetch-bytes url)) (str "should not fetch: " url)))))
+
+(deftest ^:parallel fetchable-url?-test
+  (let [fetchable-url? #'http/fetchable-url?]
+    (testing ":external-only (the default) is the strict untrusted-input check"
+      (doseq [url allowed-urls]
+        (is (true? (boolean (fetchable-url? url :external-only))) url))
+      (doseq [url blocked-urls]
+        (is (false? (boolean (fetchable-url? url :external-only))) url)))
+    (testing "a looser policy accepts the http and IP-literal hosts an admin-configured internal service uses"
+      (doseq [url ["http://tiles.internal/{z}.png"
+                   "http://10.0.0.5/x.png"
+                   "https://10.0.0.5/x.png"
+                   "http://127.0.0.1:8899/x.png"]]      ; still refused later, by the DNS resolver
+        (is (true? (boolean (fetchable-url? url :allow-private))) url)))
+    (testing "a looser policy is not no policy: non-http schemes, userinfo and hostless URLs stay out"
+      (doseq [url ["file:///etc/passwd"
+                   "ftp://example.com/a.png"
+                   "javascript:alert(1)"
+                   "http://user:pass@example.com/x.png"
+                   "https:///x.png"
+                   "not a url"
+                   ""]]
+        (doseq [policy [:allow-private :allow-all]]
+          (is (false? (boolean (fetchable-url? url policy))) (str policy " " url)))))))
 
 (deftest ^:parallel read-bounded-test
   (testing "reads the whole stream when under the cap"

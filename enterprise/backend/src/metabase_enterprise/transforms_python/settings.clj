@@ -12,7 +12,7 @@
   :feature    :transforms-python
   :doc        false
   :export?    false
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (setting/defsetting python-runner-api-token
@@ -35,7 +35,7 @@
   :feature    :transforms-python
   :doc        false
   :export?    false
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (setting/defsetting python-storage-s-3-region
@@ -80,7 +80,7 @@
   :sensitive? true
   :doc        false
   :export?    false
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (setting/defsetting python-storage-s-3-secret-key
@@ -103,7 +103,7 @@
   :feature    :transforms-python
   :doc        false
   :export?    false
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (setting/defsetting python-storage-s-3-path-style-access

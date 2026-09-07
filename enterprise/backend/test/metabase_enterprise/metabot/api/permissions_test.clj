@@ -87,17 +87,18 @@
                               (filter #(= (:group_id %) group-id)))]
             (is (= all-perm-types (set (map :perm_type perms))))))))))
 
-(deftest ^:parallel user-permissions-with-custom-group-test
+(deftest user-permissions-with-custom-group-test
   (mt/with-premium-features #{:ai-controls}
     (testing "GET /api/metabot/permissions/user-permissions"
-      (testing "user in group with custom permissions gets those values"
-        (mt/with-temp [:model/PermissionsGroup           {gid :id} {:name "Test Metabot Perms Group"}
-                       :model/PermissionsGroupMembership _         {:group_id gid :user_id (mt/user->id :rasta)}
-                       :model/MetabotPermissions         _         {:group_id   gid
-                                                                    :perm_type  :permission/metabot-sql-generation
-                                                                    :perm_value :yes}]
-          (let [perms (:permissions (mt/user-http-request :rasta :get 200 "metabot/permissions/user-permissions"))]
-            (is (= "yes" (:metabot-sql-generation perms)))))))))
+      (testing "in group-level mode a user in a group with custom permissions gets those values"
+        (mt/with-temporary-setting-values [metabot-advanced-permissions true]
+          (mt/with-temp [:model/PermissionsGroup           {gid :id} {:name "Test Metabot Perms Group"}
+                         :model/PermissionsGroupMembership _         {:group_id gid :user_id (mt/user->id :rasta)}
+                         :model/MetabotPermissions         _         {:group_id   gid
+                                                                      :perm_type  :permission/metabot-sql-generation
+                                                                      :perm_value :yes}]
+            (let [perms (:permissions (mt/user-http-request :rasta :get 200 "metabot/permissions/user-permissions"))]
+              (is (= "yes" (:metabot-sql-generation perms))))))))))
 
 (deftest ^:parallel admin-endpoints-require-ai-controls-feature-test
   (testing "admin endpoints return 402 without :ai-controls feature"
@@ -112,13 +113,11 @@
       (mt/assert-has-premium-feature-error "AI Controls"
                                            (mt/user-http-request :crowberto :delete 402 "ee/ai-controls/permissions/advanced")))))
 
-(defn- do-with-metabot-permissions-snapshot
+(defn- do-with-metabot-permissions-snapshot!
   "Snapshot all rows in `metabot_permissions` before `thunk`, and restore them afterwards.
 
-  The POST/DELETE `/advanced` endpoints delete rows outside any `with-temp` scope, which wipes the
-  migration-seeded rows for magic groups (all-internal-users, data-analyst, all-external-users) for
-  the rest of the test run. Other tests (e.g. `resolve-user-permissions-default-test`) depend on
-  those seed rows, so we snapshot and restore them here."
+  `DELETE /advanced` deletes rows outside any `with-temp` scope, which would wipe the migration-seeded rows
+  for the data-analyst magic group for the rest of the test run."
   [thunk]
   (let [snapshot (t2/select :model/MetabotPermissions)]
     (try
@@ -132,7 +131,14 @@
 (defmacro ^:private with-metabot-permissions-snapshot
   "Wrap `body` in a snapshot/restore of the `metabot_permissions` table."
   [& body]
-  `(do-with-metabot-permissions-snapshot (fn [] ~@body)))
+  `(do-with-metabot-permissions-snapshot! (fn [] ~@body)))
+
+(defn- group-perm-values
+  "The `perm_value`s a permissions response reports for `group-id`, as a perm_type → perm_value map."
+  [response group-id]
+  (into {} (comp (filter #(= (:group_id %) group-id))
+                 (map (juxt :perm_type :perm_value)))
+        (:permissions response)))
 
 (deftest enable-advanced-permissions-test
   (mt/with-premium-features #{:ai-controls}
@@ -140,34 +146,31 @@
       (testing "requires superuser"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "ee/ai-controls/permissions/advanced"))))
-      (testing "removes All Users group custom permissions and returns full permissions"
+      (testing "removes the rows of every group outside group-level mode and keeps the rest"
         (with-metabot-permissions-snapshot
-          (let [all-users-id (u/the-id (perms/all-users-group))]
-            ;; Pre-clean any leftover rows for the magic All Users group to avoid unique-constraint violations.
-            (t2/delete! :model/MetabotPermissions :group_id all-users-id)
+          (t2/delete! :model/MetabotPermissions)
+          (let [all-users-id    (u/the-id (perms/all-users-group))
+                all-external-id (u/the-id (perms/all-external-users-group))]
             (mt/with-temporary-setting-values [metabot-advanced-permissions false]
-              (mt/with-temp [:model/PermissionsGroup           {group-id :id} {:name "Other Group"}
-                             :model/MetabotPermissions         _              {:group_id   all-users-id
-                                                                               :perm_type  :permission/metabot-sql-generation
-                                                                               :perm_value :yes}
-                             :model/MetabotPermissions         _              {:group_id   group-id
-                                                                               :perm_type  :permission/metabot-nlq
-                                                                               :perm_value :yes}]
+              (mt/with-temp [:model/PermissionsGroup   {group-id :id} {:name "Other Group"}
+                             :model/MetabotPermissions _              {:group_id   all-users-id
+                                                                       :perm_type  :permission/metabot
+                                                                       :perm_value :yes}
+                             :model/MetabotPermissions _              {:group_id   all-external-id
+                                                                       :perm_type  :permission/metabot
+                                                                       :perm_value :yes}
+                             :model/MetabotPermissions _              {:group_id   group-id
+                                                                       :perm_type  :permission/metabot-nlq
+                                                                       :perm_value :yes}]
                 (let [response (mt/user-http-request :crowberto :post 200 "ee/ai-controls/permissions/advanced")]
-                  (is (map? response))
-                  (is (contains? response :permissions))
-                  (is (true? (:advanced response))
-                      "Response should reflect advanced=true after enabling")
-                  (is (true? (metabot-settings/metabot-advanced-permissions))
-                      "metabot-advanced-permissions setting should flip to true")
-                  (is (= 0 (t2/count :model/MetabotPermissions :group_id all-users-id))
-                      "All Users custom permissions should be removed")
-                  (is (= 1 (t2/count :model/MetabotPermissions :group_id group-id))
-                      "Other group permissions should be untouched")
-                  (let [all-users-perms (->> (:permissions response)
-                                             (filter #(= (:group_id %) all-users-id)))]
-                    (is (every? #(= "no" (:perm_value %)) all-users-perms)
-                        "All Users permissions in response should reflect defaults (no)")))))))))))
+                  (is (=? {:advanced true} response))
+                  (is (true? (metabot-settings/metabot-advanced-permissions)))
+                  (is (= {group-id :permission/metabot-nlq}
+                         (t2/select-fn->fn :group_id :perm_type :model/MetabotPermissions))
+                      "only the groups group-level mode shows keep their rows")
+                  (is (=? {"permission/metabot" "no"} (group-perm-values response all-users-id)))
+                  (is (=? {"permission/metabot" "no"} (group-perm-values response all-external-id)))
+                  (is (=? {"permission/metabot-nlq" "yes"} (group-perm-values response group-id))))))))))))
 
 (deftest disable-advanced-permissions-test
   (mt/with-premium-features #{:ai-controls}
@@ -175,27 +178,66 @@
       (testing "requires superuser"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :delete 403 "ee/ai-controls/permissions/advanced"))))
-      (testing "removes custom permissions from specific groups only, preserving All Users"
+      (testing "removes the rows of every group outside simple mode and keeps the rest"
         (with-metabot-permissions-snapshot
-          (let [all-users-id (u/the-id (perms/all-users-group))]
-            ;; Pre-clean any leftover rows for the magic All Users group to avoid unique-constraint violations.
-            (t2/delete! :model/MetabotPermissions :group_id all-users-id)
+          (t2/delete! :model/MetabotPermissions)
+          (let [all-users-id    (u/the-id (perms/all-users-group))
+                all-external-id (u/the-id (perms/all-external-users-group))
+                data-analyst-id (u/the-id (perms/data-analyst-group))]
             (mt/with-temporary-setting-values [metabot-advanced-permissions true]
-              (mt/with-temp [:model/PermissionsGroup           {group-id :id} {:name "Specific Group"}
-                             :model/MetabotPermissions         _              {:group_id   all-users-id
-                                                                               :perm_type  :permission/metabot-nlq
-                                                                               :perm_value :yes}
-                             :model/MetabotPermissions         _              {:group_id   group-id
-                                                                               :perm_type  :permission/metabot-sql-generation
-                                                                               :perm_value :yes}]
+              (mt/with-temp [:model/PermissionsGroup   {group-id :id} {:name "Specific Group"}
+                             :model/MetabotPermissions _              {:group_id   all-users-id
+                                                                       :perm_type  :permission/metabot-nlq
+                                                                       :perm_value :yes}
+                             :model/MetabotPermissions _              {:group_id   all-external-id
+                                                                       :perm_type  :permission/metabot
+                                                                       :perm_value :yes}
+                             :model/MetabotPermissions _              {:group_id   data-analyst-id
+                                                                       :perm_type  :permission/metabot
+                                                                       :perm_value :yes}
+                             :model/MetabotPermissions _              {:group_id   group-id
+                                                                       :perm_type  :permission/metabot-sql-generation
+                                                                       :perm_value :yes}]
                 (let [response (mt/user-http-request :crowberto :delete 200 "ee/ai-controls/permissions/advanced")]
-                  (is (map? response))
-                  (is (contains? response :permissions))
-                  (is (false? (:advanced response))
-                      "Response should reflect advanced=false after disabling")
-                  (is (false? (metabot-settings/metabot-advanced-permissions))
-                      "metabot-advanced-permissions setting should flip to false")
-                  (is (= 0 (t2/count :model/MetabotPermissions :group_id group-id))
-                      "Specific group custom permissions should be removed")
-                  (is (= 1 (t2/count :model/MetabotPermissions :group_id all-users-id))
-                      "All Users custom permissions should be untouched"))))))))))
+                  (is (=? {:advanced false} response))
+                  (is (false? (metabot-settings/metabot-advanced-permissions)))
+                  (is (= {all-users-id    :permission/metabot-nlq
+                          all-external-id :permission/metabot}
+                         (t2/select-fn->fn :group_id :perm_type :model/MetabotPermissions))
+                      "only the simple-mode groups keep their rows")
+                  (is (=? {"permission/metabot-sql-generation" "no"} (group-perm-values response group-id))))))))))))
+
+(deftest mode-switch-is-atomic-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "a mode switch that fails part way through leaves both the mode and the rows alone"
+      (with-metabot-permissions-snapshot
+        (mt/with-temporary-setting-values [metabot-advanced-permissions true]
+          (mt/with-temp [:model/PermissionsGroup   {group-id :id} {:name "Specific Group"}
+                         :model/MetabotPermissions _              {:group_id   group-id
+                                                                   :perm_type  :permission/metabot
+                                                                   :perm_value :yes}]
+            ;; Write the setting for real before throwing, so the failure has to undo the settings cache too.
+            (mt/with-dynamic-fn-redefs [metabot-settings/metabot-advanced-permissions!
+                                        (fn [advanced?]
+                                          ((mt/original-fn #'metabot-settings/metabot-advanced-permissions!) advanced?)
+                                          (throw (ex-info "boom" {})))]
+              (mt/user-http-request :crowberto :delete 500 "ee/ai-controls/permissions/advanced"))
+            (is (true? (metabot-settings/metabot-advanced-permissions))
+                "the cached mode goes back to the one the database still holds")
+            (is (t2/exists? :model/MetabotPermissions :group_id group-id)
+                "the rows the switch would have deleted are rolled back with it")))))))
+
+(deftest mode-switch-rejected-under-env-var-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "the /advanced endpoints refuse to switch modes while an env var forces the setting"
+      (with-metabot-permissions-snapshot
+        (mt/with-temp [:model/PermissionsGroup   {group-id :id} {:name "Specific Group"}
+                       :model/MetabotPermissions _              {:group_id   group-id
+                                                                 :perm_type  :permission/metabot
+                                                                 :perm_value :yes}]
+          (mt/with-temp-env-var-value! [mb-metabot-advanced-permissions "true"]
+            (let [msg "The permission mode is set by the MB_METABOT_ADVANCED_PERMISSIONS environment variable."]
+              (is (= msg (mt/user-http-request :crowberto :delete 400 "ee/ai-controls/permissions/advanced")))
+              (is (= msg (mt/user-http-request :crowberto :post 400 "ee/ai-controls/permissions/advanced"))))
+            (is (t2/exists? :model/MetabotPermissions :group_id group-id)
+                "no rows are deleted by the refused switch")))))))

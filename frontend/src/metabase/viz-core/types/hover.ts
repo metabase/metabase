@@ -1,0 +1,62 @@
+import type { ClickObjectDataRow } from "metabase-lib";
+import type { CardId, RowValue } from "metabase-types/api";
+
+import type { RemappingHydratedDatasetColumn } from "./columns";
+import type { ComputedVisualizationSettings } from "./computed-settings";
+
+export interface DataPoint extends ClickObjectDataRow {
+  key: string;
+}
+
+export interface HoveredDimension {
+  value: RowValue;
+  column: RemappingHydratedDatasetColumn;
+}
+
+export interface TooltipRowModel {
+  color?: string;
+  name: string;
+  value: RowValue;
+  formatter?: (value: RowValue) => string;
+}
+
+export interface StackedTooltipModel {
+  headerTitle?: string;
+  headerRows: TooltipRowModel[];
+  bodyRows?: TooltipRowModel[];
+  totalFormatter?: (value: unknown) => string;
+  showTotal?: boolean;
+  showPercentages?: boolean;
+  grandTotal?: number;
+}
+
+export interface HoveredObject {
+  index?: number;
+  seriesIndex?: number;
+  seriesId?: number;
+  datumIndex?: number;
+  value?: unknown;
+  column?: RemappingHydratedDatasetColumn;
+  data?: DataPoint[];
+  footerData?: DataPoint[];
+  dimensions?: HoveredDimension[];
+  settings?: ComputedVisualizationSettings;
+  element?: Element;
+  event?: MouseEvent;
+  stackedTooltipModel?: StackedTooltipModel;
+  isAlreadyScaled?: boolean;
+  pieSliceKeyPath?: string[];
+  pieLegendHoverIndex?: number;
+}
+
+export interface HighlightedDimension {
+  value: RowValue;
+  columnName: string;
+}
+
+export interface HighlightedObject {
+  cardId?: CardId;
+  dimensions?: HighlightedDimension[];
+  columnName?: string;
+  shouldShowTooltip?: boolean;
+}

@@ -3,7 +3,9 @@ import { Route, registerPagePrefetch } from "metabase/router";
 const APPLICATION_PERMISSIONS_PATH = "/admin/permissions/application";
 
 const applicationPermissionsPage = () =>
-  import("./pages/ApplicationPermissionsPage").then((module) => ({
+  import(
+    /* webpackChunkName: "application-permissions" */ "./pages/ApplicationPermissionsPage"
+  ).then((module) => ({
     Component: module.default,
   }));
 

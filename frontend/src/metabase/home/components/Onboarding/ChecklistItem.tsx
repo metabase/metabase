@@ -29,7 +29,7 @@ export const ChecklistItem = ({
   <Accordion.Item value={value} data-testid={`${value}-item`} ref={itemRef}>
     <Accordion.Control icon={<Icon name={icon} />}>{label}</Accordion.Control>
     <Accordion.Panel>
-      <Stack gap="lg">
+      <Stack gap="xl">
         {children}
         {actions.length > 0 && (
           <ChecklistItemActions value={value} actions={actions} />

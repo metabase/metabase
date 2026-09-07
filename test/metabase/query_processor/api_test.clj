@@ -28,6 +28,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -1030,6 +1031,35 @@
                                   (lib/limit 2))]
         (is (=? {:data {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]
                                [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]}}
+                (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
+
+(mt/defdataset boolean-like-strings
+  [["ratings"
+    [{:field-name "isactive", :base-type :type/Text}]
+    [["true"] ["true"] ["false"]]]])
+
+(deftest ^:parallel filter-text-column-on-boolean-like-string-test
+  (testing "filtering a text column on the literal string \"true\" should not coerce it to a boolean (#80004)"
+    (mt/dataset boolean-like-strings
+      (let [mp (mt/metadata-provider)
+            ratings           (lib.metadata/table mp (mt/id :ratings))
+            isactive          (lib.metadata/field mp (mt/id :ratings :isactive))
+            query             (-> (lib/query mp ratings)
+                                  (lib/filter (lib/= isactive "true")))]
+        (is (=? {:status   "completed"
+                 :row_count 2
+                 :data      {:rows [[1 "true"] [2 "true"]]}}
+                (mt/user-http-request :crowberto :post 202 "dataset" query))))))
+  (testing "filtering a boolean column on an actual boolean should still work"
+    (mt/dataset places-cam-likes
+      (let [mp (mt/metadata-provider)
+            places            (lib.metadata/table mp (mt/id :places))
+            liked             (lib.metadata/field mp (mt/id :places :liked))
+            query             (-> (lib/query mp places)
+                                  (lib/filter (lib/= liked true)))]
+        (is (=? {:status   "completed"
+                 :row_count 2
+                 :data      {:rows [[1 "Tempest" true] [2 "Bullit" true]]}}
                 (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
 
 (deftest ^:parallel mbql5-query-convert-to-native-test

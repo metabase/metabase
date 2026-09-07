@@ -2274,22 +2274,27 @@
                                          :models "measure")))))))))
 
 (deftest ^:synchronized search-results-do-not-expose-is-published-test
-  (testing "the internal is_published permission signal never carries a value in search API responses"
-    (let [table-name (mt/random-name)]
-      (mt/with-temp [:model/Table _ {:name table-name :is_published true}]
-        (testing "in-place engine"
-          (let [rows (:data (mt/user-http-request :crowberto :get 200 "search"
-                                                  :q table-name :models "table" :search_engine "in-place"))]
-            (is (seq rows))
-            (is (every? (comp nil? :is_published) rows))))
-        (when (search/supports-index?)
-          (testing "appdb engine"
-            (search.tu/with-temp-index-table
-              (search/reindex! {:async? false :in-place? true})
-              (let [rows (:data (mt/user-http-request :crowberto :get 200 "search"
-                                                      :q table-name :models "table" :search_engine "appdb"))]
-                (is (seq rows))
-                (is (every? (comp nil? :is_published) rows))))))))))
+  ;; Create the index table before `with-temp` opens its transaction. On H2 and MySQL, DDL on the ambient
+  ;; connection would commit that transaction, preventing rollback and leaking rows into later tests. The nested
+  ;; scope below reuses this table. Use `-if-supported` because the rest of the test does not require an index and
+  ;; should still run where the app DB cannot support one.
+  (search.tu/with-temp-index-table-if-supported
+    (testing "the internal is_published permission signal never carries a value in search API responses"
+      (let [table-name (mt/random-name)]
+        (mt/with-temp [:model/Table _ {:name table-name :is_published true}]
+          (testing "in-place engine"
+            (let [rows (:data (mt/user-http-request :crowberto :get 200 "search"
+                                                    :q table-name :models "table" :search_engine "in-place"))]
+              (is (seq rows))
+              (is (every? (comp nil? :is_published) rows))))
+          (when (search/supports-index?)
+            (testing "appdb engine"
+              (search.tu/with-temp-index-table
+                (search/reindex! {:async? false :in-place? true})
+                (let [rows (:data (mt/user-http-request :crowberto :get 200 "search"
+                                                        :q table-name :models "table" :search_engine "appdb"))]
+                  (is (seq rows))
+                  (is (every? (comp nil? :is_published) rows)))))))))))
 
 (deftest exploration-description-searchable-in-place-test
   (testing "explorations match on :description in the in-place engine (parity with the appdb spec)"

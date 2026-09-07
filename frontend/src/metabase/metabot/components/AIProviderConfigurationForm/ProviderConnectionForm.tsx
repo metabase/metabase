@@ -53,20 +53,27 @@ export function ProviderConnectionForm({
   const [config, setConfig] = useState<LlmProviderConfig>(
     connection?.config ?? {},
   );
-  // On edit, start the picker on the model the connection is actually serving Metabot, not the type default.
+  // On edit, start the picker on the model the connection is actually serving, not the type default.
   const modelRef = useSetting("llm-metabot-provider");
   const [model, setModel] = useState<string | undefined>(() => {
     const type = providerTypes.find(
       (option) => option.type === connection?.type,
     );
+    const isOnCatalog = (id?: string | null): id is string =>
+      type?.models.some((typeModel) => typeModel.id === id) ?? false;
     const [refKey, ...refModelParts] = (modelRef ?? "").split("/");
     const refModel = refModelParts.join("/");
     if (
       connection != null &&
       refKey === connection.key &&
-      type?.models.some((typeModel) => typeModel.id === refModel)
+      isOnCatalog(refModel)
     ) {
       return refModel;
+    }
+    // Metabot points elsewhere: fall back to the model this connection was last verified against.
+    const probedModel = connection?.config?.["probed-model"];
+    if (isOnCatalog(probedModel)) {
+      return probedModel;
     }
     return type?.default_model ?? undefined;
   });
@@ -200,7 +207,7 @@ export function ProviderConnectionForm({
   const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       {match({ isEditing, providerType })
         .with({ isEditing: false, providerType: P.nullish }, () => (
           <ProviderTypePicker
@@ -211,7 +218,7 @@ export function ProviderConnectionForm({
         .with(
           { providerType: { managed: true } },
           ({ providerType: selected }) => (
-            <Stack gap="lg">
+            <Stack gap="xl">
               {!isEditing && <SelectedProvider providerType={selected} />}
               <MetabaseAIProviderSetup
                 isConnected={isEditing}
@@ -223,7 +230,7 @@ export function ProviderConnectionForm({
         )
         .with({ providerType: P.nonNullable }, ({ providerType: selected }) => (
           <form onSubmit={handleSubmit}>
-            <Stack gap="lg">
+            <Stack gap="xl">
               {!isEditing && <SelectedProvider providerType={selected} />}
               <ProviderConfigFields
                 fields={primaryFields}
@@ -333,7 +340,7 @@ function AdvancedSettings({
   children: ReactNode;
 }) {
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Button
         type="button"
         variant="subtle"
@@ -348,7 +355,7 @@ function AdvancedSettings({
         {t`Advanced settings`}
       </Button>
       <Collapse in={isOpened}>
-        <Stack gap="lg">{children}</Stack>
+        <Stack gap="xl">{children}</Stack>
       </Collapse>
     </Stack>
   );

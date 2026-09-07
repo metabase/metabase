@@ -4,14 +4,12 @@ import { useCallback } from "react";
 import * as Urls from "metabase/urls";
 import { utf8_to_b64 } from "metabase/utils/encoding";
 import type * as Lib from "metabase-lib";
-import type { Card } from "metabase-types/api";
+import type { SeriesCard } from "metabase-types/api";
 
 import { storeDrillQuery } from "../api";
 
 interface McpGlobalConfig {
   instanceUrl?: string;
-  uiCredential?: string;
-  mcpSessionId?: string;
 }
 
 type DrillThruName<T extends Lib.DrillThruType = Lib.DrillThruType> =
@@ -34,18 +32,33 @@ const isStayDrill = (drillName: string | undefined) =>
     (prefix) => drillName === prefix || drillName.startsWith(`${prefix}.`),
   );
 
-const isClaudeHost = (app: App) => {
+const isClaudeHost = (app: Pick<App, "getHostVersion">) => {
   const hostVersion = app.getHostVersion();
 
   return hostVersion?.name.toLowerCase().includes("claude");
 };
 
 type DrillThroughHandler = (
-  params: { drillName?: string; nextCard: Card },
+  params: { drillName?: string; nextCard: SeriesCard },
   defaultNavigate: () => Promise<void>,
 ) => Promise<void>;
 
-export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
+type McpDrillThroughApp = Pick<
+  App,
+  "getHostVersion" | "openLink" | "sendMessage"
+>;
+
+interface UseHandleMcpDrillThroughParams {
+  app: McpDrillThroughApp | null;
+  uiCredential: string;
+  mcpSessionId: string;
+}
+
+export function useHandleMcpDrillThrough({
+  app,
+  uiCredential,
+  mcpSessionId,
+}: UseHandleMcpDrillThroughParams): DrillThroughHandler {
   return useCallback(
     async ({ drillName, nextCard }, defaultNavigate) => {
       if (isStayDrill(drillName) || !app) {
@@ -53,7 +66,7 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         return;
       }
 
-      const { instanceUrl, uiCredential, mcpSessionId } =
+      const { instanceUrl } =
         // Unjustified type cast. FIXME
         (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
 
@@ -107,6 +120,6 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         ],
       });
     },
-    [app],
+    [app, mcpSessionId, uiCredential],
   );
 }

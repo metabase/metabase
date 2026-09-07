@@ -96,7 +96,7 @@ Metabase's reference documentation.
 
 - [Visualizing data](./questions/visualizations/visualizing-results.md)
 - [Box plots](./questions/visualizations/box-plot.md)
-- [Combo charts](./questions/visualizations/combo-chart.md)
+- [Combo charts](./questions/visualizations/line-bar-and-area-charts.md#combo-charts)
 - [Custom visualizations](./questions/visualizations/custom.md)
 - [Detail](./questions/visualizations/detail.md)
 - [Funnel charts](./questions/visualizations/funnel.md)
@@ -152,6 +152,7 @@ Metabase's reference documentation.
 - [AI overview](./ai/start.md)
 - [Metabot](./ai/metabot.md)
 - [AI settings](./ai/settings.md)
+- [Supported AI providers](./ai/providers.md)
 - [AI usage controls](./ai/usage-controls.md)
 - [AI usage auditing](./ai/usage-auditing.md)
 - [AI customization](./ai/customization.md)

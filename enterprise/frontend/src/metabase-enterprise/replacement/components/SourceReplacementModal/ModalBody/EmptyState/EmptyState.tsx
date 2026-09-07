@@ -5,7 +5,7 @@ import { Center, FixedSizeIcon, Stack, Text } from "metabase/ui";
 export function EmptyState() {
   return (
     <Center flex={1}>
-      <Stack align="center" gap="xl">
+      <Stack align="center" gap="xxl">
         <Center w="5rem" h="5rem" bg="background_surface-disabled" bdrs="50%">
           <FixedSizeIcon name="list" c="icon-secondary" />
         </Center>

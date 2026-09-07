@@ -1,13 +1,13 @@
 (ns metabase-enterprise.sandbox.api.user
   "Endpoint(s)for setting user attributes."
   (:require
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.tenants.core :as tenants]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private UserAttributes
   (mu/with-api-error-message
@@ -24,14 +24,14 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id/attributes"
-  "Update the `login_attributes` for a User."
+  "Update the `login_attributes` for a User. Only personal users can have attributes."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [login_attributes]} :- [:map
                                   [:login_attributes {:optional true} [:maybe UserAttributes]]]]
-  (api/check-404 (t2/select-one :model/User :id id))
-  (pos? (t2/update! :model/User id {:login_attributes login_attributes})))
+  (api/check-404 (sandbox.db/personal-user id))
+  (pos? (sandbox.db/set-user-login-attributes! id login_attributes)))
 
 (def ^:private max-login-attributes 5000)
 
@@ -48,16 +48,7 @@
          (mapcat keys)
          (distinct)
          (take max-login-attributes))
-        (t2/select-fn-reducible (comp (partial apply merge)
-                                      (juxt :jwt_attributes :login_attributes))
-                                [:model/User :login_attributes :jwt_attributes]
-                                {:where [:or
-                                         [:and
-                                          [:not= :jwt_attributes nil]
-                                          [:not= :jwt_attributes "{}"]]
-                                         [:and
-                                          [:not= :login_attributes nil]
-                                          [:not= :login_attributes "{}"]]]})))
+        (sandbox.db/user-attributes-reducible)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/mt/user` routes."

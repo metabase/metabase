@@ -17,7 +17,6 @@
       "zrender/lib/core/types": ["./node_modules/zrender/lib/core/types"],
       "ee-plugins": ["./frontend/src/metabase/plugins/noop"],
       "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
-      "sdk-specific-imports": ["./frontend/src/metabase/utils/noop"],
       "sdk-iframe-embedding-ee-plugins": [
         "./frontend/src/metabase/plugins/noop"
       ],

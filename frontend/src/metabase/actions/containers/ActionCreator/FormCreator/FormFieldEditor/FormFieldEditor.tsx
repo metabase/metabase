@@ -130,7 +130,7 @@ function FormFieldEditor({
               // Unjustified type cast. FIXME
               onChange={(value) => handleChangeFieldType(value as FieldType)}
             >
-              <Group gap="lg">
+              <Group gap="xl">
                 {fieldTypeOptions.map((option) => (
                   <Radio
                     key={option.value}
@@ -152,7 +152,6 @@ function FormFieldEditor({
               hidden={hidden}
               actions={
                 <Checkbox
-                  size="sm"
                   styles={{
                     label: {
                       fontSize: "12px",

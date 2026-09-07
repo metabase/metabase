@@ -15,16 +15,6 @@
 
 #?(:clj (set! *warn-on-reflection* true))
 
-(deftest ^:parallel add-period-test
-  (is (= "This sentence needs a period."
-         (u/add-period "This sentence needs a period")))
-  (is (= "This sentence doesn't need a period!"
-         (u/add-period "This sentence doesn't need a period!")))
-  (is (= "What about this one?"
-         (u/add-period "What about this one?")))
-  (is (= "   "
-         (u/add-period "   "))))
-
 (deftest ^:parallel url?-test
   (are [s expected] (= expected
                        (u/url? s))
@@ -62,6 +52,7 @@
 
 #?(:clj
    (deftest ^:parallel domain?-test
+     ;; expected in the are table is literal true/false; the expansion inlines it into (=)
      #_{:clj-kondo/ignore [:equals-true]}
      (are [s expected] (= expected (u/domain? s))
        "metabase.com"         true
@@ -388,6 +379,7 @@
     false "cam.saul+1@metabase.co.uk" "metabase.com"
     true  "cam.saul+1@metabase.com"   "metabase.com"))
 
+;; defspec-generated test var; the runner finds it via metadata, clojure-lsp sees no reference
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defspec pick-first-test 100
   (prop/for-all [coll (gen/list gen/small-integer)]
@@ -603,6 +595,7 @@
 #?(:clj
    (deftest ^:parallel case-enum-test
      (testing "case does not work"
+       ;; deliberately exercises the broken case-on-enums behavior that case-enum exists to fix
        #_{:clj-kondo/ignore [:case-symbol-test]}
        (is (= 3 (case Month/MAY
                   Month/APRIL 1
@@ -724,3 +717,22 @@
       nil    []
       \c     "abc"
       [:b 2] {:a 1 :b 2})))
+
+#?(:clj
+   (deftest https-state-test
+     (testing "a proxy that states the scheme decides it"
+       (is (= :https (u/https-state {:scheme :http :headers {"x-forwarded-proto" "https"}})))
+       (is (= :http  (u/https-state {:scheme :https :headers {"x-forwarded-proto" "http"}})))
+       (is (= :https (u/https-state {:scheme :http :headers {"x-forwarded-ssl" "on"}}))))
+     (testing "otherwise the connection we answered decides it"
+       (is (= :https (u/https-state {:scheme :https :headers {}})))
+       (testing "even when the client sends a plain-HTTP Origin"
+         (is (= :https (u/https-state {:scheme :https :headers {"origin" "http://example.com"}})))))
+     (testing "a plaintext request claiming an https Origin is unknown, not https"
+       (is (= :unknown (u/https-state {:scheme :http :headers {"origin" "https://example.com"}}))))
+     (testing "nothing to go on reads as plain HTTP"
+       (is (= :http (u/https-state {:scheme :http :headers {}})))
+       (is (= :http (u/https-state {:headers {}}))))
+     (testing "the states a caller adding protection accepts, and the one it does not"
+       (is (#{:https :unknown} (u/https-state {:scheme :http :headers {"origin" "https://example.com"}})))
+       (is (nil? (#{:https :unknown} (u/https-state {:scheme :http :headers {}})))))))

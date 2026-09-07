@@ -5,7 +5,7 @@ import {
   setupTableQueryMetadataEndpoint,
   setupUnauthorizedFieldEndpoint,
 } from "__support__/server-mocks";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/metadata-store";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 
 import { fetchTableMetadataAndForeignKeys } from "./tables";

@@ -142,4 +142,4 @@ If you're on Metabase Cloud but need to switch to hosting Metabase yourself, [co
 
 ## Further reading
 
-- [How billing works](./how-billing-works.md)
+- [How billing works](https://www.metabase.com/how-billing-works)

@@ -1,8 +1,10 @@
 import { t } from "ttag";
 
-import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
-import { getDefaultDimensionLabel } from "metabase/visualizations/lib/settings/graph";
-import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
+import {
+  GRAPH_GOAL_SETTINGS,
+  type VisualizationSettingsDefinitions,
+  getDefaultDimensionLabel,
+} from "metabase/viz-core";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
 export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {

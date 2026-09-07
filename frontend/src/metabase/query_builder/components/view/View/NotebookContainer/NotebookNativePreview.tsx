@@ -3,13 +3,14 @@ import { t } from "ttag";
 
 import { skipToken, useGetCardDashboardsQuery } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { updateQuestion } from "metabase/query_builder/actions";
-import { getQuestion } from "metabase/query_builder/selectors";
 import { NotebookNativePreview as ControlledNotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { checkNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
+
+import { updateQuestion } from "../../../../actions";
+import { getQuestion } from "../../../../store/selectors";
 
 export const NotebookNativePreview = () => {
   const dispatch = useDispatch();

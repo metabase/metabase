@@ -537,3 +537,63 @@
         (is (= "Not found."
                (mt/user-http-request :rasta :get 404 "comment/mentions"
                                      {:request-options {:headers {"x-metabase-client" "embedding-iframe"}}})))))))
+
+(deftest comment-context-is-a-closed-set-of-identity-keys-test
+  (testing "POST /api/comment/ context"
+    (mt/with-temp [:model/Document {doc-id :id} {}]
+      (let [content (tiptap [:p "hi"])
+            post!   (fn [status context]
+                      (mt/user-http-request :rasta :post status "comment/"
+                                            {:target_type "document"
+                                             :target_id   doc-id
+                                             :content     content
+                                             :context     context}))]
+        (testing "accepts the keys the product actually stores"
+          (is (=? {:context {:timeline_id 1}} (post! 200 {:timeline_id 1})))
+          (is (=? {:context {:exploration_query_ids [7]}}
+                  (post! 200 {:exploration_query_ids [7]})))
+          (is (=? {:context {:highlighted {:columnName "CATEGORY"}}}
+                  (post! 200 {:highlighted {:columnName "CATEGORY"
+                                            :dimensions [{:columnName "CATEGORY" :value "Gadget"}]}}))))
+        ;; The closed schema makes `defendpoint` strip undeclared keys during decoding rather than
+        ;; 400 — which is the safer of the two: the value cannot reach the row, and a client that
+        ;; still sends one is not broken by the change.
+        (testing "drops unknown keys, so the blob cannot quietly accrete new values"
+          (let [created (post! 200 {:some_future_key "anything"})]
+            (is (= {} (t2/select-one-fn :context :model/Comment :id (:id created))))))))))
+
+(deftest comment-highlight-label-is-stored-as-the-client-formatted-it-test
+  (testing "the label for a commented-on data point"
+    (mt/with-temp [:model/Document {doc-id :id} {}]
+      (let [highlighted {:columnName "TOTAL"
+                         :dimensions [{:columnName "TOTAL" :value 0}
+                                      {:columnName "REGION" :value "EU"}]}
+            post!       (fn [context]
+                          (mt/user-http-request :rasta :post 200 "comment/"
+                                                {:target_type "document"
+                                                 :target_id   doc-id
+                                                 :content     (tiptap [:p "hi"])
+                                                 :context     context}))
+            fetch       (fn [comment-id]
+                          (->> (mt/user-http-request :rasta :get 200 "comment/"
+                                                     :target_type "document"
+                                                     :target_id doc-id)
+                               :comments
+                               (filter #(= comment-id (:id %)))
+                               first))]
+        (testing "is stored as sent and round-trips verbatim — only the client knows the column
+                  formatting (binning, currency, date granularity) the point was rendered with, so a
+                  label rebuilt from the raw dimension values on read would not match the chart"
+          (let [created (post! {:highlighted     highlighted
+                                :highlight_label "$0 – $10, EU"})]
+            (is (= "$0 – $10, EU" (get-in created [:context :highlight_label])))
+            (is (= "$0 – $10, EU" (get-in (fetch (:id created)) [:context :highlight_label])))
+            (is (= {:highlighted highlighted :highlight_label "$0 – $10, EU"}
+                   (t2/select-one-fn :context :model/Comment :id (:id created))))))
+        (testing "is absent when the comment is not anchored to a data point"
+          (let [plain (post! {:timeline_id 1})]
+            (is (nil? (get-in plain [:context :highlight_label])))
+            (is (nil? (get-in (fetch (:id plain)) [:context :highlight_label])))))
+        (testing "is not derived on read for a comment that carries none"
+          (let [created (post! {:highlighted highlighted})]
+            (is (nil? (get-in (fetch (:id created)) [:context :highlight_label])))))))))

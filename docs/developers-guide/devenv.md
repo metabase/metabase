@@ -332,13 +332,13 @@ As in any clojure.test project, you can also run unit tests from the REPL. Some 
 
 ```clojure
 ;; run a single test with clojure.test
-some-ns=> (clojure.test/run-test metabase.util-test/add-period-test)
+some-ns=> (clojure.test/run-test metabase.util-test/index-by-test)
 
 Testing metabase.util-test
 
-Ran 1 tests containing 4 assertions.
+Ran 1 tests containing 3 assertions.
 0 failures, 0 errors.
-{:test 1, :pass 4, :fail 0, :error 0, :type :summary}
+{:test 1, :pass 3, :fail 0, :error 0, :type :summary}
 
 ;; run all tests in the namespace
 some-ns=> (clojure.test/run-tests 'metabase.util-test)

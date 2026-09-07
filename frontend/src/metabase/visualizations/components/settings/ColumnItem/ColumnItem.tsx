@@ -71,12 +71,12 @@ export const ColumnItem = ({
     data-testid={draggable ? `draggable-item-${title}` : null}
     data-enabled={!!onRemove}
     px="sm"
-    py="xs"
+    py="xxs"
     my="sm"
     draggable={draggable}
     onDragStart={onDragStart}
   >
-    <Group wrap="nowrap" gap="xs" p="xs">
+    <Group wrap="nowrap" gap="xxs" p="xxs">
       {draggable && (
         <Icon
           className={cx(CS.flexNoShrink, ColumnItemS.ColumnItemDragHandle)}
@@ -93,13 +93,13 @@ export const ColumnItem = ({
         />
       )}
     </Group>
-    <Group className={CS.flex1} px="xs" wrap="nowrap">
+    <Group className={CS.flex1} px="xxs" wrap="nowrap">
       {icon && <Icon name={icon} className={CS.flexNoShrink} />}
       <Text lh="normal" fw="bold" className={CS.textWrap}>
         {title}
       </Text>
     </Group>
-    <Group wrap="nowrap" gap="sm" p="xs">
+    <Group wrap="nowrap" gap="sm" p="xxs">
       {onEdit && (
         <ChartSettingActionIcon
           icon="ellipsis"

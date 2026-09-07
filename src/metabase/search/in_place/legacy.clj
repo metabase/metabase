@@ -604,6 +604,8 @@
                              [:and
                               [:= :bookmark.document_id :document.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
+      ;; documents in Explorations are never searchable
+      (sql.helpers/where [:= nil :document.exploration_id])
       (add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "exploration"

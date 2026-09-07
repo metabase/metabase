@@ -9,6 +9,7 @@
    [malli.error :as me]
    [metabase.config.core :as config]
    [metabase.search.config :as search.config]
+   [metabase.search.db :as search.db]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
@@ -90,7 +91,7 @@
   ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
   ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
   ;; `:data_layer` also stays IN: Metabot surfaces it on table results so the LLM sees a table's data layer.
-  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document})
+  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document :exploration_id})
 
 (def attr-types
   "The abstract types of each attribute."
@@ -101,6 +102,7 @@
    :dashboard-id            :int
    :dashboardcard-count     :int
    :database-id             :pk
+   :exploration-id          :int
    :id                      :text
    :last-edited-at          :timestamp
    :last-editor-id          :pk
@@ -139,6 +141,7 @@
          :official-collection
          :dashboard-id
          :dashboardcard-count
+         :exploration-id
          :last-viewed-at
          :pinned
          :verified                                          ;;  in addition to being a filter, this is also a ranker
@@ -475,7 +478,7 @@
   (doseq [d (keys (model-hooks))]
     (derive d :hook/search-index))
 
-  (search-models-to-update (t2/select-one :model/Card))
+  (search-models-to-update (search.db/any-card))
   (methods spec)
   (model-hooks)
 

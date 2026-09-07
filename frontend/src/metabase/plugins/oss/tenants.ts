@@ -17,7 +17,11 @@ import type {
   User,
 } from "metabase-types/api";
 
-import { PluginPlaceholder } from "../components/PluginPlaceholder";
+import {
+  PluginPlaceholder,
+  pluginPlaceholderRoute,
+} from "../components/PluginPlaceholder";
+import type { PluginRoute } from "../types";
 
 export type CreatedTenantData = {
   name: string;
@@ -41,9 +45,15 @@ export type UseListActiveTenantsResult = {
   error: unknown;
 };
 
+type UseListActiveTenantsOptions = {
+  skip?: boolean;
+};
+
 const getDefaultPluginTenants = () => ({
   isEnabled: false,
-  useListActiveTenants: (): UseListActiveTenantsResult => ({
+  useListActiveTenants: (
+    _options?: UseListActiveTenantsOptions,
+  ): UseListActiveTenantsResult => ({
     data: undefined,
     isLoading: false,
     error: undefined,
@@ -96,14 +106,10 @@ const getDefaultPluginTenants = () => ({
   TenantSpecificCollectionsItemList: (_props: { pathIndex: number }) =>
     // Unjustified type cast. FIXME
     null as React.ReactElement | null,
-  TenantCollectionList: PluginPlaceholder,
-  // Unjustified type cast. FIXME
-  CanAccessTenantSpecificRoute: PluginPlaceholder as React.ComponentType<{
-    children?: React.ReactNode;
-  }>,
-  TenantUsersList: PluginPlaceholder,
-  // Unjustified type cast. FIXME
-  TenantUsersPersonalCollectionList: PluginPlaceholder as React.ComponentType,
+  tenantCollectionList: pluginPlaceholderRoute,
+  canAccessTenantSpecificRoute: pluginPlaceholderRoute,
+  tenantUsersList: pluginPlaceholderRoute,
+  tenantUsersPersonalCollectionList: pluginPlaceholderRoute,
   GroupDescription: (_props: { group: Group }) =>
     // Unjustified type cast. FIXME
     null as React.ReactElement | null,
@@ -135,7 +141,9 @@ const getDefaultPluginTenants = () => ({
 
 export const PLUGIN_TENANTS: {
   isEnabled: boolean;
-  useListActiveTenants: () => UseListActiveTenantsResult;
+  useListActiveTenants: (
+    options?: UseListActiveTenantsOptions,
+  ) => UseListActiveTenantsResult;
   userStrategyRoute: React.ReactElement | null;
   useTenantMainNavbarData: () => {
     canAccessTenantSpecificCollections: boolean;
@@ -185,12 +193,10 @@ export const PLUGIN_TENANTS: {
   TenantSpecificCollectionsItemList: (props: {
     pathIndex: number;
   }) => React.ReactElement | null;
-  TenantCollectionList: React.ComponentType;
-  CanAccessTenantSpecificRoute: React.ComponentType<{
-    children?: React.ReactNode;
-  }>;
-  TenantUsersList: React.ComponentType;
-  TenantUsersPersonalCollectionList: React.ComponentType;
+  tenantCollectionList: PluginRoute;
+  canAccessTenantSpecificRoute: PluginRoute;
+  tenantUsersList: PluginRoute;
+  tenantUsersPersonalCollectionList: PluginRoute;
   GroupDescription: (props: { group: Group }) => React.ReactElement | null;
   EditUserStrategyModal: (props: {
     onClose: () => void;

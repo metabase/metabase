@@ -1,16 +1,16 @@
 import { t } from "ttag";
 
-import { UpsellBanner } from "metabase/common/components/upsells/components";
+import { UpsellBigCard } from "metabase/common/components/upsells/components";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 
-export const UpsellDataApps = ({ location }: { location: string }) => {
+export const UpsellDataApps = ({ source }: { source: string }) => {
   const hasDataApps = useHasTokenFeature("data-apps");
   const campaign = "data-apps";
   const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
     campaign,
-    location,
+    location: source,
   });
 
   if (hasDataApps) {
@@ -18,15 +18,18 @@ export const UpsellDataApps = ({ location }: { location: string }) => {
   }
 
   return (
-    <UpsellBanner
-      title={t`Build apps on your data`}
+    <UpsellBigCard
+      title={t`Build custom data apps`}
       campaign={campaign}
       buttonText={t`Try for free`}
       buttonLink={UPGRADE_URL}
-      location={location}
+      source={source}
+      illustrationSrc="app/assets/img/upsell-data-apps.png"
       onClick={triggerUpsellFlow}
     >
-      {t`Ship interactive apps powered by your data, served right inside Metabase.`}
-    </UpsellBanner>
+      <span>
+        {t`Build custom user interfaces, forms, and other tools that write back to your database. Automate chores, manage back-office work, and set up workflows to act on your data, all built with AI on top of your semantic layer.`}
+      </span>
+    </UpsellBigCard>
   );
 };

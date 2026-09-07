@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.prometheus-test :as prometheus-test]
+   [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.channel.settings :as channel.settings]
    [metabase.metabot.agent.core :as agent]
    [metabase.server.settings :as server.settings]
@@ -22,7 +23,9 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :test-users))
+(use-fixtures :once
+  (fixtures/initialize :test-users)
+  (encryption-tu/with-encrypted-app-db-fixture tu/test-encryption-key))
 
 (deftest manifest-endpoint-test
   (testing "GET /api/slack/manifest with metabot-v3 feature"
@@ -47,7 +50,7 @@
           (is (= "You must configure a site-url for Slack integration to work."
                  (mt/user-http-request :crowberto :get 503 "slack/manifest"))))))))
 
-(deftest events-endpoint-test
+(deftest ^:synchronized events-endpoint-test
   (testing "POST /api/metabot/slack/events"
     (tu/with-slackbot-setup
       (testing "handles URL verification challenge"
@@ -82,7 +85,7 @@
                           {:type "url_verification"
                            :challenge "test"})))))))
 
-(deftest feature-flag-test
+(deftest ^:synchronized feature-flag-test
   (testing "POST /api/metabot/slack/events"
     (testing "ack events even when metabot-v3 feature is disabled to prevent Slack retries"
       (tu/with-slackbot-setup
@@ -93,7 +96,7 @@
                                     body)]
             (is (= "ok" response) "Should ACK the event with 200 OK")))))))
 
-(deftest edited-message-ignored-test
+(deftest ^:synchronized edited-message-ignored-test
   (testing "POST /events ignores edited messages"
     (tu/with-slackbot-setup
       (doseq [[desc event-mod] [["with :edited key" {:edited {:user "U123" :ts "123"}}]
@@ -111,7 +114,7 @@
                   (is (= 0 (count @post-calls)))
                   (is (= 0 (count @ephemeral-calls))))))))))))
 
-(deftest message-deleted-ignored-test
+(deftest ^:synchronized message-deleted-ignored-test
   (testing "POST /events ignores message_deleted events"
     (tu/with-slackbot-setup
       (let [event-body (update tu/base-dm-event :event merge {:subtype "message_deleted"})
@@ -128,7 +131,7 @@
                 (is @ignored "Event should have been routed to ignore-event")
                 (is (= 0 (count @post-calls)))))))))))
 
-(deftest slackbot-disabled-setting-test
+(deftest ^:synchronized slackbot-disabled-setting-test
   (testing "POST /events acks but does not process when slack-connect-enabled is false"
     (tu/with-slackbot-setup
       (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled false]
@@ -148,7 +151,7 @@
                   (is (= 0 (count @delete-calls)) "No messages should be deleted")
                   (is (= 0 (count @ephemeral-calls)) "No ephemeral messages should be sent"))))))))))
 
-(deftest user-message-triggers-response-test
+(deftest ^:synchronized user-message-triggers-response-test
   (testing "POST /events with user message triggers AI response via Slack streaming"
     (tu/with-slackbot-setup
       (let [mock-ai-text "Here is your answer"
@@ -175,7 +178,7 @@
                 (is (empty? @add-reaction-calls))
                 (is (empty? @remove-reaction-calls))))))))))
 
-(deftest app-mention-triggers-response-test
+(deftest ^:synchronized app-mention-triggers-response-test
   (testing "POST /events with app_mention uses visible channel reply (not streaming)"
     (tu/with-slackbot-setup
       (let [mock-ai-text "Here is your answer"
@@ -206,7 +209,41 @@
                 (let [msg (t2/select-one :model/MetabotMessage :channel_id channel-id :role "assistant")]
                   (is (some? (:slack_msg_id msg))))))))))))
 
-(deftest stream-start-failure-test
+(deftest ^:synchronized app-mention-long-answer-fits-slack-blocks-test
+  (testing "POST /events with app_mention truncates a long answer so Slack accepts it (BOT-1606)"
+    (tu/with-slackbot-setup
+      (let [channel-id "C-LONG-ANSWER-TEST"
+            event-body (assoc-in tu/base-mention-event [:event :channel] channel-id)]
+        (tu/with-slackbot-mocks
+          {:ai-text tu/oversized-answer}
+          (fn [{:keys [post-calls]}]
+            (let [response (mt/client :post 200 "metabot/slack/events"
+                                      (tu/slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+              (u/poll {:thunk      #(t2/select-one :model/MetabotMessage
+                                                   :channel_id channel-id :role "assistant"
+                                                   :slack_msg_id [:not= nil])
+                       :done?      some?
+                       :timeout-ms 5000})
+              (is (= 1 (count @post-calls)))
+              (let [blocks (:blocks (first @post-calls))]
+                (testing "no block is over its limit -- unlike the untruncated answer"
+                  (is (nil? (tu/oversized-block-error blocks)))
+                  ;; The control has to name the block type the answer actually goes in, or it would
+                  ;; assert a section rule no longer in play and pass whatever the code does.
+                  (is (some? (tu/oversized-block-error [{:type "markdown" :text tu/oversized-answer}]))
+                      "the answer really is past the limit, so the case under test is the real one"))
+                (testing "the answer is cut to the limit, and the message says why"
+                  (is (= tu/slack-markdown-text-limit
+                         (count (:text (first blocks)))))
+                  (is (some (fn [block]
+                              (and (= "context" (:type block))
+                                   (str/includes? (get-in block [:elements 0 :text])
+                                                  "too long to post in Slack")))
+                            blocks)))))))))))
+
+(deftest ^:synchronized stream-start-failure-test
   (testing "When start-stream fails, falls back to a regular message"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event]
@@ -229,7 +266,30 @@
                 (testing "stop-stream is never called"
                   (is (= 0 (count @stop-stream-calls))))))))))))
 
-(deftest ai-request-error-stops-stream-test
+;; Not ^:parallel: `with-prometheus-system!` redefs a process-global var.
+(deftest ^:synchronized dm-response-undeliverable-metric-test
+  (testing "a DM whose stream and plain-text fallback both fail is counted as undeliverable"
+    (tu/with-slackbot-setup
+      (mt/with-prometheus-system! [_ system]
+        (let [event-body tu/base-dm-event]
+          (tu/with-slackbot-mocks
+            {:ai-text "Here is your answer"}
+            (fn [_]
+              ;; `post-thread-reply` delegates to `post-message`, so failing that fails the
+              ;; fallback too -- the user ends up with nothing at all.
+              (mt/with-dynamic-fn-redefs
+                [slackbot.client/stop-stream  (constantly {:ok false :error "invalid_blocks"})
+                 slackbot.client/post-message (constantly {:ok false :error "channel_not_found"})]
+                (let [response (mt/client :post 200 "metabot/slack/events"
+                                          (tu/slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  (u/poll {:thunk      #(mt/metric-value system :metabase-slackbot/responses-undeliverable)
+                           :done?      pos?
+                           :timeout-ms 5000})
+                  (is (= 1.0 (mt/metric-value system :metabase-slackbot/responses-undeliverable))))))))))))
+
+(deftest ^:synchronized ai-request-error-stops-stream-test
   (testing "When the agent loop throws after the stream has started, the stream is stopped"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event]
@@ -260,7 +320,7 @@
                 (testing "stream was stopped during cleanup"
                   (is (= 1 (count @stop-stream-calls))))))))))))
 
-(deftest streaming-request-args-test
+(deftest ^:synchronized streaming-request-args-test
   (testing "POST /events passes correct arguments to agent/run-agent-loop"
     (tu/with-slackbot-setup
       (doseq [[desc event-body]
@@ -294,7 +354,7 @@
                       (is (str/includes? content "Do not narrate the steps you took")
                           "channel response-style suffix is appended"))))))))))))
 
-(deftest slack-msg-id-stored-test
+(deftest ^:synchronized slack-msg-id-stored-test
   (testing "User and bot messages are stored with their Slack ts as slack_msg_id"
     (tu/with-slackbot-setup
       (let [event-ts  "1709567890.000001"
@@ -322,7 +382,7 @@
                     (is (= "C123" (:channel_id bot-msg)))
                     (is (= (mt/user->id :rasta) (:user_id bot-msg)))))))))))))
 
-(deftest user-message-with-visualizations-test
+(deftest ^:synchronized user-message-with-visualizations-test
   (testing "POST /events with visualizations uploads images and finalizes them in stop-stream blocks"
     (tu/with-slackbot-setup
       (let [mock-ai-text "Here are your charts"
@@ -368,7 +428,7 @@
                          (mapv :type blocks)))
                   (is (= "feedback_buttons" (get-in blocks [4 :elements 0 :type]))))))))))))
 
-(deftest user-not-linked-sends-auth-message-test
+(deftest ^:synchronized user-not-linked-sends-auth-message-test
   (testing "POST /events with unlinked user sends auth message (DM, no user mention prefix)"
     (tu/with-slackbot-setup
       (let [event-body (assoc-in tu/base-dm-event [:event :user] "U-UNKNOWN-USER")]
@@ -389,7 +449,7 @@
                           :text #"(?i).*connect.*slack.*metabase.*"}]
                         @post-calls))))))))))
 
-(deftest app-mention-unlinked-user-test
+(deftest ^:synchronized app-mention-unlinked-user-test
   (testing "POST /events with app_mention from unlinked user sends ephemeral auth message"
     (tu/with-slackbot-setup
       (doseq [[desc thread-ts expected-thread-ts]
@@ -490,7 +550,7 @@
                                                   :provider_id slack-id}]
               (is (nil? (#'slackbot/slack-id->user-id slack-id))))))))))
 
-(deftest channel-message-without-mention-no-auth-test
+(deftest ^:synchronized channel-message-without-mention-no-auth-test
   (testing "POST /events with channel message (no @mention) from unlinked user should NOT send auth message"
     (tu/with-slackbot-setup
       (let [event-body (update tu/base-dm-event :event merge
@@ -515,7 +575,7 @@
               (testing "no ephemeral auth messages sent"
                 (is (= 0 (count @ephemeral-calls)))))))))))
 
-(deftest channel-message-without-mention-linked-user-test
+(deftest ^:synchronized channel-message-without-mention-linked-user-test
   (testing "POST /events with channel message from linked user should be silently ignored"
     (tu/with-slackbot-setup
       (let [event-body (update tu/base-dm-event :event merge
@@ -538,7 +598,7 @@
               (testing "no ephemeral messages"
                 (is (= 0 (count @ephemeral-calls)))))))))))
 
-(deftest channel-file-share-without-mention-ignored-test
+(deftest ^:synchronized channel-file-share-without-mention-ignored-test
   (testing "POST /events with file_share in channel without @mention is ignored"
     (tu/with-slackbot-setup
       (let [event-body (update tu/base-dm-event :event merge
@@ -595,7 +655,7 @@
                   :request-user-id user-id}
                  (#'slackbot/authorize-delete-request "U123" "C123" "ts123"))))))))
 
-(deftest handle-delete-reaction-test
+(deftest ^:synchronized handle-delete-reaction-test
   (testing "reaction_added with a delete emoji replaces the bot response with a removed notice"
     (tu/with-slackbot-setup
       (let [owner-id   (mt/user->id :rasta)
@@ -629,7 +689,7 @@
                   (is (= message-ts (:ts (first @update-calls))))
                   (is (str/includes? (:text (first @update-calls)) "removed")))))))))))
 
-(deftest handle-delete-reaction-test-2
+(deftest ^:synchronized handle-delete-reaction-test-2
   (testing "reaction_added with a non-delete emoji is ignored"
     (tu/with-slackbot-setup
       (let [event-body {:type  "event_callback"
@@ -649,7 +709,7 @@
             (Thread/sleep 200)
             (is (= 0 (count @update-calls)) "non-delete emoji should produce no update")))))))
 
-(deftest handle-delete-reaction-test-3
+(deftest ^:synchronized handle-delete-reaction-test-3
   (testing "reaction_added with delete emoji from non-owner is ignored"
     (tu/with-slackbot-setup
       (let [event-body {:type  "event_callback"
@@ -1075,7 +1135,7 @@
 
 ;; -------------------------------- Visualization Integration Tests --------------------------------
 
-(deftest adhoc-viz-execution-test
+(deftest ^:synchronized adhoc-viz-execution-test
   (testing "POST /events with adhoc_viz executes query and uploads image"
     (tu/with-slackbot-setup
       (let [mock-ai-text    "Here's your data"
@@ -1104,7 +1164,7 @@
                 (is (= ["section" "image" "context_actions"] (mapv :type blocks)))
                 (is (re-matches #"FIMG-\d+" (get-in blocks [1 :slack_file :id])))))))))))
 
-(deftest adhoc-viz-default-display-test
+(deftest ^:synchronized adhoc-viz-default-display-test
   (testing "POST /events with adhoc_viz uses :table when display not specified"
     (tu/with-slackbot-setup
       (let [mock-query      {:database 1 :type "query" :query {:source-table 2}}
@@ -1120,7 +1180,7 @@
             (testing "display defaults to :table"
               (is (= :table (:display (first @generate-adhoc-output-calls)))))))))))
 
-(deftest mixed-viz-types-test
+(deftest ^:synchronized mixed-viz-types-test
   (testing "POST /events handles both static_viz and adhoc_viz in same response"
     (tu/with-slackbot-setup
       (let [mock-query      {:database 1 :type "query" :query {:source-table 2}}
@@ -1148,7 +1208,7 @@
                 (is (= ["section" "image" "section" "image" "section" "image" "context_actions"]
                        (mapv :type blocks)))))))))))
 
-(deftest viz-error-posts-error-message-test
+(deftest ^:synchronized viz-error-posts-error-message-test
   (testing "posts error message when visualization generation fails"
     (tu/with-slackbot-setup
       (let [event-body (update tu/base-dm-event :event merge
@@ -1168,7 +1228,7 @@
                          :done? true? :timeout-ms 5000})
                 (is (some #(= error-msg (:text %)) @post-calls))))))))))
 
-(deftest viz-error-does-not-block-other-vizs-test
+(deftest ^:synchronized viz-error-does-not-block-other-vizs-test
   (testing "a failing viz does not prevent subsequent vizs from rendering"
     (tu/with-slackbot-setup
       (let [fake-png   (byte-array [0x89 0x50 0x4E 0x47])
@@ -1194,7 +1254,7 @@
               (testing "second card still uploads"
                 (is (= 1 (count @image-calls)))))))))))
 
-(deftest viz-caption-and-link-on-image-test
+(deftest ^:synchronized viz-caption-and-link-on-image-test
   (testing "image viz for static_viz uses the card name as caption, not the AI-provided caption"
     (tu/with-slackbot-setup
       (let [mock-data-parts [{:type "static_viz" :value {:entity_id 101 :title "AI-generated caption"}}]
@@ -1220,7 +1280,7 @@
               (testing "image block references the uploaded Slack file"
                 (is (= (:file-id img) (get-in blocks [1 :slack_file :id])))))))))))
 
-(deftest table-viz-with-caption-test
+(deftest ^:synchronized table-viz-with-caption-test
   (testing "table viz posts include caption block with link"
     (tu/with-slackbot-setup
       (let [mock-query      {:database 1 :type "query" :query {:source-table 2}}
@@ -1248,7 +1308,7 @@
 
 ;; -------------------------------- Metrics Tests --------------------------------
 
-(deftest dm-response-metrics-test
+(deftest ^:synchronized dm-response-metrics-test
   (testing "Successful DM response increments prometheus counters and records duration"
     (mt/with-prometheus-system! [_ system]
       (tu/with-slackbot-setup
@@ -1265,7 +1325,7 @@
               (testing "response-duration-ms histogram is recorded"
                 (is (pos? (:sum (mt/metric-value system :metabase-slackbot/response-duration-ms {:source "dm"}))))))))))))
 
-(deftest channel-response-metrics-test
+(deftest ^:synchronized channel-response-metrics-test
   (testing "Successful channel response increments prometheus counters"
     (mt/with-prometheus-system! [_ system]
       (tu/with-slackbot-setup
@@ -1281,7 +1341,7 @@
                 (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-generated
                                                                 {:source "channel" :result "success"})))))))))))
 
-(deftest error-response-metrics-test
+(deftest ^:synchronized error-response-metrics-test
   (testing "Failed response increments error counter and records duration"
     (mt/with-prometheus-system! [_ system]
       (tu/with-slackbot-setup
@@ -1301,7 +1361,7 @@
                 (testing "response-duration-ms histogram is recorded even on error"
                   (is (pos? (:sum (mt/metric-value system :metabase-slackbot/response-duration-ms {:source "dm"})))))))))))))
 
-(deftest delete-response-metrics-test
+(deftest ^:synchronized delete-response-metrics-test
   (testing "Deleting a response increments responses-deleted counter"
     (mt/with-prometheus-system! [_ system]
       (tu/with-slackbot-setup

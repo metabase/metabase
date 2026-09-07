@@ -10,7 +10,9 @@ import type { RouteObject } from "metabase/router";
  * tiptap, which the public question and dashboard pages have no use for.
  */
 const importPublicDocument = () =>
-  import("metabase/public/containers/PublicDocument");
+  import(
+    /* webpackChunkName: "public-document" */ "metabase/public/containers/PublicDocument"
+  );
 
 const publicDocument = () =>
   importPublicDocument().then(({ PublicDocument }) => ({

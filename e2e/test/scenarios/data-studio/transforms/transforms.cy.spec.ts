@@ -1388,16 +1388,44 @@ LIMIT
     });
 
     it("should not allow to overwrite an existing table when changing the target", () => {
+      cy.log("run a transform so its target table exists");
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.runTab().click();
+      runTransformAndWaitForSuccess();
+
+      cy.log("change another transform's target to that table");
+      createMbqlTransform({
+        name: "Other transform",
+        targetTable: TARGET_TABLE_2,
+        visitTransform: true,
+      });
+      H.DataStudio.Transforms.settingsTab().click();
+      getTransformsTargetContent().button("Change target").click();
+      H.modal().within(() => {
+        cy.findByLabelText("New table name").clear().type(TARGET_TABLE);
+        cy.button("Change target").click();
+        cy.wait("@updateTransform")
+          .its("response.statusCode")
+          .should("eq", 403);
+        cy.findByText("A table with that name already exists.").should(
+          "be.visible",
+        );
+      });
+    });
+
+    it("should not allow to change the target to one of the source tables", () => {
       createMbqlTransform({ visitTransform: true });
 
-      cy.log("change the target to an existing table");
+      cy.log("change the target to the source table");
       H.DataStudio.Transforms.settingsTab().click();
       getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").clear().type(SOURCE_TABLE);
         cy.button("Change target").click();
-        cy.wait("@updateTransform");
-        cy.findByText("A table with that name already exists.").should(
+        cy.wait("@updateTransform")
+          .its("response.statusCode")
+          .should("eq", 400);
+        cy.findByText(/Cyclic transform definitions detected/).should(
           "be.visible",
         );
       });
@@ -4303,6 +4331,12 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
+    // Both tests in this file that reach the enable page turn the setting on.
+    // The snapshot restore alone does not always win the race against the
+    // backend's settings cache, so clear it explicitly. It must be unset, not
+    // false: the getter falls back to the token feature only when the setting
+    // has no value, and an explicit false hides the transforms UI outright.
+    H.updateSetting("transforms-enabled", null);
   });
 
   it(
@@ -4375,6 +4409,8 @@ describe(
     beforeEach(() => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
+      // See the note in the `oss` describe above.
+      H.updateSetting("transforms-enabled", null);
     });
 
     it("should have transforms available in self-hosted pro without upsell gem icon", () => {

@@ -41,7 +41,7 @@
       503 (tru "OpenRouter service is unavailable")
       (tru "OpenRouter API error (HTTP {0})" status))))
 
-(def ^:private supported-models
+(def supported-models
   "OpenRouter models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/v1/models` catalog.
   Mirrors the models whitelisted for the direct anthropic and openai providers; note that
@@ -77,6 +77,7 @@
    "openai/gpt-5.4-pro"              {:display-name "GPT-5.4 Pro"             :context-window  922000}
    "openai/gpt-5.4-mini"             {:display-name "GPT-5.4 Mini"            :context-window  272000}
    "qwen/qwen3.8-max"                {:display-name "Qwen3.8 Max"             :context-window 1000000}
+   "z-ai/glm-5.3"                    {:display-name "GLM-5.3"                 :context-window 1048576}
    "z-ai/glm-5.2"                    {:display-name "GLM-5.2"                 :context-window 1048576}})
 
 (defn context-window-tokens

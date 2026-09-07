@@ -3,8 +3,8 @@ import fetchMock from "fetch-mock";
 import { getMainStore } from "__support__/entities-store";
 import { createMockEntitiesState } from "__support__/store";
 import { waitFor } from "__support__/ui";
+import { getMetadata } from "metabase/metadata-store";
 import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,

@@ -652,17 +652,27 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
     });
 
-    H.pieSlices()
-      .filter("[fill^='hsla']")
-      .then(($slice) => {
-        const { height } = $slice[0].getBoundingClientRect();
+    const otherPieSlice = () => H.pieSlices().filter("[fill^='hsla']");
 
-        cy.wrap($slice).realClick({
-          x: 30,
-          y: height / 2,
-          scrollBehavior: false,
-        });
-      });
+    H.pieSlices().should("have.length", 3);
+
+    otherPieSlice().then(($slice) => {
+      const { height } = $slice[0].getBoundingClientRect();
+      cy.wrap($slice).trigger("mousemove", 30, height / 2);
+    });
+
+    H.assertEChartsTooltip({
+      header: "Category",
+      rows: [
+        { name: "Doohickey", value: "42" },
+        { name: "Gizmo", value: "51" },
+      ],
+    });
+
+    otherPieSlice().then(($slice) => {
+      const { height } = $slice[0].getBoundingClientRect();
+      cy.wrap($slice).click(30, height / 2, { force: true });
+    });
 
     H.popover().within(() => {
       cy.findByTestId("click-actions-view").within(() => {

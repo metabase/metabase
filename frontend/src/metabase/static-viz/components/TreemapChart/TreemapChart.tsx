@@ -3,26 +3,22 @@ import { type EChartsType, init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { extractRemappings } from "metabase/visualizations";
-import { registerEChartsModules } from "metabase/visualizations/echarts";
-import { getTreemapColors } from "metabase/visualizations/echarts/graph/treemap/model/colors";
 import {
-  getTreemapChartColumns,
-  getTreemapData,
-} from "metabase/visualizations/echarts/graph/treemap/model/data";
-import { getTreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
-import { shouldShowParentLabels } from "metabase/visualizations/echarts/graph/treemap/model/labels";
-import { measureTreemapLabelLayouts } from "metabase/visualizations/echarts/graph/treemap/model/measure";
-import { getTreemapLayoutNodes } from "metabase/visualizations/echarts/graph/treemap/model/tree";
-import type { TreemapTree } from "metabase/visualizations/echarts/graph/treemap/model/types";
-import {
+  type ComputedVisualizationSettings,
+  type RenderingContext,
   type TreemapChartOptionConfig,
+  type TreemapTree,
+  extractRemappings,
   getStaticTreemapOption,
-} from "metabase/visualizations/echarts/graph/treemap/option/option";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
+  getTreemapChartColumns,
+  getTreemapColors,
+  getTreemapData,
+  getTreemapFormatters,
+  getTreemapLayoutNodes,
+  measureTreemapLabelLayouts,
+  registerEChartsModules,
+  shouldShowParentLabels,
+} from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
 

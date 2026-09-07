@@ -1,5 +1,6 @@
 (ns metabase.llm.provider-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
@@ -85,6 +86,48 @@
                                       {:access-key-id     (setting/obfuscate-value "AKIAIOSFODNN7EXAMPLE")
                                        :secret-access-key "rotated-secret"
                                        :region            "us-west-1"})))))
+
+(deftest ^:parallel merge-config-preserves-a-masked-multi-line-secret-test
+  (testing (str "a service account key file is JSON that ends with a newline, so its mask straddles a line break — "
+                "echoing it back still has to keep the stored key rather than store the mask")
+    (let [key-file "{\n  \"type\": \"service_account\",\n  \"project_id\": \"my-project\"\n}\n"]
+      (is (= {:auth-method         "service-account-key"
+              :service-account-key key-file}
+             (llm.provider/merge-config "google"
+                                        {:auth-method         "service-account-key"
+                                         :service-account-key key-file}
+                                        {:auth-method         "service-account-key"
+                                         :service-account-key (setting/obfuscate-value key-file)}))))))
+
+(deftest set-single-provider-setting!-ignores-a-masked-multi-line-secret-test
+  (testing (str "the setter trims before storing, but the mask of a newline-terminated secret only matches "
+                "untrimmed — echoing it back must keep the stored key rather than store the mask")
+    (let [key-file "{\n  \"type\": \"service_account\",\n  \"project_id\": \"my-project\"\n}\n"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:auth-method         "service-account-key"
+                                                                     :service-account-key key-file})]]
+        (llm.settings/llm-google-service-account-key! (setting/obfuscate-value key-file))
+        (is (= key-file (llm.settings/llm-google-service-account-key)))))))
+
+(deftest set-single-provider-setting!-ignores-a-whitespace-padded-mask-test
+  (testing "a mask that picked up surrounding whitespace in transit is still an echo, not a new value"
+    (let [key-file "{\"type\": \"service_account\", \"project_id\": \"my-project\"}"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:auth-method         "service-account-key"
+                                                                     :service-account-key key-file})]]
+        (llm.settings/llm-google-service-account-key! (str " " (setting/obfuscate-value key-file) " "))
+        (is (= key-file (llm.settings/llm-google-service-account-key)))))))
+
+(deftest set-single-provider-setting!-stores-a-fresh-value-test
+  (testing "a freshly entered value still replaces the stored one"
+    (let [old-key "{\"type\": \"service_account\", \"project_id\": \"old-project\"}"
+          new-key "{\"type\": \"service_account\", \"project_id\": \"new-project\"}\n"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:auth-method         "service-account-key"
+                                                                     :service-account-key old-key})]]
+        (llm.settings/llm-google-service-account-key! new-key)
+        (testing "trimmed, the way the setter has always stored"
+          (is (= (str/trim new-key) (llm.settings/llm-google-service-account-key))))))))
 
 (deftest validate-config!-test
   (testing "an unknown provider type is rejected"
@@ -458,8 +501,8 @@
                 "so a type without a decided logo fails to compile. Nothing links the two, so adding a type here "
                 "without updating them ships a provider that silently falls back to the generic icon. Update "
                 "both, then this list.")
-    (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "google" "azure" "bedrock" "vllm"
-             "metabase"}
+    (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
+             "vllm" "metabase"}
            (into #{} (map :type) (llm.provider/provider-types))))))
 
 (deftest ^:parallel provider-types-test
@@ -487,6 +530,7 @@
             "mistral"    "mistral-medium-3-5"
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
+            "deepseek"   "deepseek-v4-pro"
             "google"     "google/gemini-3.5-flash"
             ;; azure's models are deployment names the admin chooses, so there is nothing to default to
             "azure"      nil
@@ -506,6 +550,7 @@
             "mistral"    "mistral-medium-3-5"
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
+            "deepseek"   "deepseek-v4-flash"
             "google"     nil
             "azure"      nil
             "bedrock"    "anthropic.claude-haiku-4-5"

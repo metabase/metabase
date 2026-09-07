@@ -85,6 +85,7 @@
   (mdb/memoize-for-application-db
    (memoize/ttl
     (fn []
+      ;; the JDBC-spec variant works on the app-db datasource without building a driver connection pool
       #_{:clj-kondo/ignore [:deprecated-var]}
       (sql-jdbc.sync/db-default-timezone (mdb/db-type) {:datasource (mdb/app-db)}))
     :ttl/threshold (u/hours->ms 1))))
@@ -183,7 +184,7 @@
   (add-search-clause {} \"birds\" :t.name :db.name)"
   [query query-string & fields-to-search]
   (sql.helpers/where query (when (seq query-string)
-                             (let [query-string (str \% (u/lower-case-en query-string) \%)]
+                             (let [query-string (h2x/like-substring query-string)]
                                (cons
                                 :or
                                 (for [field fields-to-search]

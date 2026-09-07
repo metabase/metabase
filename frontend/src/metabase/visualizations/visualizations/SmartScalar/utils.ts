@@ -3,9 +3,12 @@ import _ from "underscore";
 
 import { dayjs } from "metabase/dayjs";
 import { formatNumber } from "metabase/utils/formatting";
-import { measureText } from "metabase/utils/measure-text";
 import { uuid } from "metabase/utils/uuid";
 import { isEmpty } from "metabase/utils/validate";
+import {
+  type ComparisonMenuOption,
+  formatPreviousPeriodOptionName,
+} from "metabase/viz-core";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DateTimeAbsoluteUnit,
@@ -18,39 +21,7 @@ import type {
   RowValues,
 } from "metabase-types/api/dataset";
 
-import {
-  COMPARISON_TYPES,
-  ICON_MARGIN_RIGHT,
-  ICON_SIZE,
-  PERIOD_HIDE_HEIGHT_THRESHOLD,
-  PERIOD_LINE_HEIGHT,
-  PREVIOUS_VALUE_SIZE,
-  SPACING,
-  VALUE_MIN_HEIGHT,
-} from "./constants";
-import type { ComparisonMenuOption } from "./types";
-
-export const isPeriodVisible = (height: number) =>
-  height > PERIOD_HIDE_HEIGHT_THRESHOLD;
-
-export const formatChangeAutoPrecision = (
-  change: number,
-  {
-    fontFamily,
-    fontWeight,
-    width,
-  }: { fontFamily: string; fontWeight: number; width: number },
-): string =>
-  [2, 1]
-    .map((n) => formatChange(change, { maximumFractionDigits: n }))
-    .find(
-      (formatted) =>
-        measureText(formatted, {
-          size: "1rem",
-          family: fontFamily,
-          weight: fontWeight,
-        }).width <= width,
-    ) ?? formatChange(change, { maximumFractionDigits: 0 });
+import { COMPARISON_TYPES } from "./constants";
 
 export const formatChange = (
   change: number,
@@ -60,44 +31,6 @@ export const formatChange = (
   return n === Infinity
     ? "∞%"
     : formatNumber(n, { number_style: "percent", maximumFractionDigits });
-};
-
-export const getValueWidth = (width: number): number => {
-  return getWidthWithoutSpacing(width);
-};
-
-const getWidthWithoutSpacing = (width: number) => {
-  return Math.max(width - 2 * SPACING, 0);
-};
-
-export const getValueHeight = (
-  height: number,
-  comparisonsCount: number,
-): {
-  valueHeight: number;
-  comparisonsCount: number;
-} => {
-  const valueHeight =
-    height -
-    (isPeriodVisible(height) ? PERIOD_LINE_HEIGHT : 0) -
-    PREVIOUS_VALUE_SIZE * comparisonsCount -
-    4 * SPACING;
-
-  if (valueHeight < VALUE_MIN_HEIGHT && comparisonsCount > 1) {
-    // Show only 1 comparison if more don't fit.
-    // We could try to show 1 fewer comparison, but then it'd be unclear
-    // in tooltip of which visible comparison the hidden one should be shown.
-    return getValueHeight(height, 1);
-  }
-
-  return {
-    valueHeight: Math.max(valueHeight, 0),
-    comparisonsCount,
-  };
-};
-
-export const getChangeWidth = (width: number): number => {
-  return Math.max(width - ICON_SIZE - ICON_MARGIN_RIGHT - 2 * SPACING, 0);
 };
 
 export const COMPARISON_SELECTOR_OPTIONS = {
@@ -395,26 +328,6 @@ function createComparisonMenuOption(
   }
 
   return COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE;
-}
-
-export function formatPreviousPeriodOptionName(dateUnit: DateTimeAbsoluteUnit) {
-  switch (dateUnit) {
-    case "minute":
-      return t`Previous minute`;
-    case "hour":
-      return t`Previous hour`;
-    case "day":
-      return t`Previous day`;
-    case "week":
-      return t`Previous week`;
-    case "month":
-      return t`Previous month`;
-    case "quarter":
-      return t`Previous quarter`;
-    case "year":
-      return t`Previous year`;
-  }
-  return "";
 }
 
 function formatPeriodsAgoOptionName(dateUnit: DateTimeAbsoluteUnit) {
