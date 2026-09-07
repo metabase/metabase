@@ -53,9 +53,6 @@ const SDK_BUNDLE_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-bundle";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const SDK_OUTPUT_PATH = path.join(BUILD_PATH, SDK_BUNDLE_PATH);
 
-const ENTERPRISE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/metabase-enterprise";
-
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
 // Name prefix for all chunked-entry output files (runtime, split chunks, entry)
@@ -422,14 +419,6 @@ const config = {
       }),
     ...COMPRESSION_CONFIG,
   ].filter(Boolean),
-};
-
-config.resolve.alias = {
-  ...mainConfig.resolve.alias,
-  "sdk-ee-plugins": ENTERPRISE_SRC_PATH + "/sdk-plugins",
-  "sdk-iframe-embedding-ee-plugins":
-    ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins",
-  "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
 };
 
 if (config.cache) {

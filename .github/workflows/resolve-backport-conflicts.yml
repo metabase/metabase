@@ -176,7 +176,7 @@ jobs:
                  ```
                  ./bin/mage cljfmt-files <file1> <file2> ...
                  ```
-               - **TypeScript/JavaScript** (.ts, .tsx, .js, .jsx): run eslint with auto-fix:
+               - **TypeScript/JavaScript** (.ts, .tsx, .js, .jsx): run oxlint with auto-fix:
                  ```
                  ${{ steps.pkg.outputs.mgr }} run lint-oxlint --fix
                  ```

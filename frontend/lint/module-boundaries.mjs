@@ -573,3 +573,15 @@ export {
   getFeatureModules,
   getPublicApiModules,
 };
+
+// Shared options for the enforced boundary checks in both lint engines.
+export const boundarySettings = {
+  "boundaries/elements": elements,
+  "boundaries/ignore": ["**/e2e/**", "test/**"],
+  "boundaries/dependency-nodes": ["import", "dynamic-import"],
+};
+export const boundaryOptions = {
+  default: "disallow",
+  rules: enforcedRules,
+  message: "${file.type} cannot import from ${dependency.type}",
+};
