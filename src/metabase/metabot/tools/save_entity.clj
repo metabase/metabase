@@ -174,7 +174,7 @@
                        :display       :table}))))
 
 (defn- save-generated-dashboard!
-  [{:keys [dashboard destination description] dashboard-name :name}]
+  [{:keys [dashboard destination description generated-id] dashboard-name :name}]
   (when-not (= (:target_type destination) "collection")
     (agent-error!
      (tru "A generated dashboard can only be saved to a collection. Use a `collection` destination.")))
@@ -186,7 +186,8 @@
                             :description     description
                             :collection-id   collection-id
                             :tiles           (mapv resolve-tile (:tiles dashboard))
-                            :conversation-id (shared/current-conversation-id)})]
+                            :conversation-id (shared/current-conversation-id)
+                            :generated-id    generated-id})]
     {:dashboard        dash
      :destination      {:type "collection" :id collection-id}
      :destination-name (collection-name collection-id)
@@ -195,9 +196,10 @@
 (defn- save-dashboard-result
   [generated-dashboard-id dashboard-name description destination]
   (let [{:keys [dashboard destination-name link] saved-destination :destination}
-        (save-generated-dashboard! {:dashboard   (get (shared/current-dashboards-state)
-                                                      generated-dashboard-id)
-                                    :name        dashboard-name
+        (save-generated-dashboard! {:dashboard    (get (shared/current-dashboards-state)
+                                                       generated-dashboard-id)
+                                    :generated-id generated-dashboard-id
+                                    :name         dashboard-name
                                     :description description
                                     :destination destination})
         instruction-text (te/lines
