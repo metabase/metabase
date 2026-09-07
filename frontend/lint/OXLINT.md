@@ -130,12 +130,32 @@ one lint process, four native threads, no persistent lint cache:
 | Shared lightweight resolve configuration | 17.342 s | 16.739 s | About 0.60 s faster. |
 | Resolver/context/glob/listener reuse | 16.721 s | 15.700 s | About 1.02 s faster. |
 
-The final base runs were **15.157 / 15.311 / 16.631 s**, all exit 0, **11,980 files**,
-zero findings. The two additional files are the shared resolver configurations.
-Comparisons were collected separately under variable desktop activity: do not
-add their savings or compare absolute times across batches. These timings exclude
-CLJS compilation, formatting and type-checking. No CLJS build prerequisite was
-removed in this change.
+Latest repeated measurements (September 8) supersede the absolute timings in
+those individual experiments. The published lint implementations are unchanged:
+base `c31059bff221` and patched `e4a80ccd3a1e`; subsequent edits only update this
+documentation.
+
+macOS ARM64, Node 24.14.0, one fresh lint process per run, four native threads, no
+persistent lint cache, generated CLJS already present. Dependency files are warm in the
+OS cache; these are not cold-filesystem benchmarks. Times exclude CLJS compilation,
+formatting, and type-checking.
+
+| Configuration | Six runs (s) | Median | Mean | Range | Files |
+| --- | --- | --- | --- | --- | --- |
+| Base, no optional patches | 15.128 / 14.453 / 14.620 / 15.169 / 15.475 / 15.992 | 15.15s | 15.14s | 14.45–15.99s | 11,980 |
+| Stacked PR, six patches | 10.607 / 10.067 / 10.511 / 10.162 / 10.792 / 10.512 | 10.51s | 10.44s | 10.07–10.79s | 11,981 |
+
+September 8 repeat: six sequential pairs, alternating which PR runs first (base/patched,
+then patched/base). One initial warm-up per PR was excluded by design: **15.390s base /
+10.997s patched**. All twelve measured runs and both warm-ups exited 0 with zero
+findings; no measured run was discarded. The extra patched file is its dependency-parity
+test.
+
+The six patches save **4.70s (31.0%)** on the mean in this batch. The same
+implementation previously averaged **17.702s base / 12.240s patched** under different
+desktop activity. The faster absolute results here are a repeated measurement of
+unchanged lint code, not an additional implementation speedup or a guarantee for other
+machines.
 
 All 21 base compatibility tests pass (including the build-resolution integration
 check), and all 490 custom-rule cases pass. Published-plugin fixtures compare
@@ -172,19 +192,9 @@ base. There is no oxlint runtime patch. Review these patches on dependency upgra
 and prefer upstream fixes where possible. None of the tested releases replaces an
 entire optional patch.
 
-Latest paired comparison of the updated stack (separate from the earlier batches
-above):
-
-| Configuration | Runs | Mean | Files | Findings |
-| --- | --- | --- | --- | --- |
-| Updated base | 17.661 / 17.918 / 17.526 s | 17.702 s | 11,980 | 0 |
-| Six optional patches | 12.336 / 12.081 / 12.304 s | 12.240 s | 11,981 | 0 |
-
-The patch layer saves 5.46 s in this comparison.
-A subsequent paired check against the previously published base measured
-20.993 / 20.701 s (20.847 s mean) before and 18.203 / 17.959 s (18.081 s mean)
-after all base changes. This confirms an overall improvement despite the slower
-absolute times in later batches. Do not add savings across batches.
+The six-pair comparison in Validation and performance above measures this
+patch layer against the base. The shared Testing Library import-detection
+experiment remains separate and is not included in these patches or timings.
 
 The patch test reconstructs upstream dependencies in temporary directories by
 reversing the installed patches. It compares diagnostics and autofixes across
