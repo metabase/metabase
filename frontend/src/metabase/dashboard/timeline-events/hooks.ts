@@ -8,6 +8,7 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   DashCardId,
   DashboardCard,
+  DashboardId,
   TimelineEvent,
   TimelineEventId,
 } from "metabase-types/api";
@@ -48,15 +49,12 @@ const useTrackDashboardEventsShown = () => {
   const hasVisibleEvents = useSelector(
     (state) => !!withTimelineEvents && getHasVisibleTimelineEvents(state),
   );
-  const hasTrackedRef = useRef(false);
+  const trackedDashboardIdRef = useRef<DashboardId>();
 
   useEffect(() => {
-    hasTrackedRef.current = false;
-  }, [dashboardId]);
-
-  useEffect(() => {
-    if (hasVisibleEvents && dashboardId != null && !hasTrackedRef.current) {
-      hasTrackedRef.current = true;
+    const isTracked = trackedDashboardIdRef.current === dashboardId;
+    if (hasVisibleEvents && dashboardId != null && !isTracked) {
+      trackedDashboardIdRef.current = dashboardId;
       trackDashboardEventsShown(dashboardId);
     }
   }, [dashboardId, hasVisibleEvents]);
