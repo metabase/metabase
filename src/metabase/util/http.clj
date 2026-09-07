@@ -7,10 +7,13 @@
   (:import
    (com.google.common.net InetAddresses)
    (java.io ByteArrayOutputStream InputStream)
-   (java.net Inet6Address InetAddress Proxy Proxy$Type ProxySelector URI URL)
+   (java.net Inet6Address InetAddress ProxySelector URI URL)
    (java.util Arrays Locale)
+   (org.apache.http HttpHost)
    (org.apache.http.conn DnsResolver)
-   (org.apache.http.impl.conn SystemDefaultDnsResolver)))
+   (org.apache.http.impl.conn SystemDefaultDnsResolver SystemDefaultRoutePlanner)
+   (org.apache.http.message BasicHttpRequest)
+   (org.apache.http.protocol BasicHttpContext)))
 
 (set! *warn-on-reflection* true)
 
@@ -286,12 +289,13 @@
   and the target is resolved by the proxy, out of reach. A caller enforcing a network policy has to check the target
   host itself in that case."
   [url]
-  (boolean
-   (when-let [^ProxySelector selector (or *proxy-selector* (ProxySelector/getDefault))]
-     (try
-       (some #(not= Proxy$Type/DIRECT (.type ^Proxy %)) (.select selector (URI. (str url))))
-       ;; not a URI the selector can be asked about -- nothing is being proxied on its behalf either
-       (catch Throwable _ false)))))
+  (try
+    (let [parsed  (URL. (str url))
+          target  (HttpHost. (.getHost parsed) (.getPort parsed) (.getProtocol parsed))
+          planner (SystemDefaultRoutePlanner. ^ProxySelector *proxy-selector*)]
+      ;; Use the client's route planner: DIRECT takes precedence over later proxies, and SOCKS entries are ignored.
+      (some? (.getProxyHost (.determineRoute planner target (BasicHttpRequest. "GET" "/") (BasicHttpContext.)))))
+    (catch Exception _ false)))
 
 (defn safe-url?
   "True if `url` is safe to fetch from untrusted input: HTTPS scheme, no userinfo, and a real DNS

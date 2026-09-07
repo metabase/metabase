@@ -354,6 +354,16 @@
           (is (instance? org.apache.http.conn.DnsResolver
                          (:dns-resolver (llm.settings/llm-request-opts "http://10.0.0.1/v1")))))))))
 
+(deftest llm-request-opts-retains-resolver-for-direct-proxy-routes-test
+  (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+    (doseq [proxies [[Proxy/NO_PROXY (Proxy. Proxy$Type/HTTP (InetSocketAddress. "10.0.0.9" 3128))]
+                     [(Proxy. Proxy$Type/SOCKS (InetSocketAddress. "10.0.0.9" 1080))]]]
+      (binding [u.http/*proxy-selector* (proxy-selector proxies)]
+        (let [resolver (:dns-resolver (llm.settings/llm-request-opts "http://127.0.0.1/v1"))]
+          (is (instance? org.apache.http.conn.DnsResolver resolver))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Refusing to connect"
+                                (.resolve ^org.apache.http.conn.DnsResolver resolver "127.0.0.1"))))))))
+
 (deftest connection-time-network-policy-error-test
   (testing "direct and wrapped DNS policy rejections are recognized and translated to the URL-validation shape"
     (doseq [cause [(ex-info "blocked address" {:ssrf true})

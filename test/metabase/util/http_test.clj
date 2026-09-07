@@ -265,6 +265,26 @@
       (binding [http/*proxy-selector* (proxy-selector proxies)]
         (is (false? (http/jvm-proxied-url? "https://api.anthropic.com/v1")))))))
 
+(deftest ^:parallel jvm-proxied-url-route-selection-test
+  (let [http-proxy  (Proxy. Proxy$Type/HTTP (InetSocketAddress. "10.0.0.9" 3128))
+        socks-proxy (Proxy. Proxy$Type/SOCKS (InetSocketAddress. "10.0.0.9" 1080))]
+    (doseq [[proxies expected] [[[Proxy/NO_PROXY http-proxy] false]
+                                [[socks-proxy] false]
+                                [[socks-proxy Proxy/NO_PROXY http-proxy] false]
+                                [[http-proxy Proxy/NO_PROXY] true]
+                                [[socks-proxy http-proxy] true]]]
+      (binding [http/*proxy-selector* (proxy-selector proxies)]
+        (is (= expected (http/jvm-proxied-url? "https://api.example.com/v1")) (str proxies)))))
+  (testing "the selector receives the route target, without a path, query, or user info"
+    (let [selected-uri (atom nil)]
+      (binding [http/*proxy-selector* (proxy [ProxySelector] []
+                                        (select [uri]
+                                          (reset! selected-uri (str uri))
+                                          [Proxy/NO_PROXY])
+                                        (connectFailed [_uri _sa _ioe] nil))]
+        (is (false? (http/jvm-proxied-url? "https://user:pass@api.example.com:8443/v1?key=value")))
+        (is (= "https://api.example.com:8443" @selected-uri))))))
+
 (deftest ^:parallel address-allowed-for-network-policy?-test
   (testing "external-only admits only globally reachable addresses"
     (doseq [ip public-ips]
