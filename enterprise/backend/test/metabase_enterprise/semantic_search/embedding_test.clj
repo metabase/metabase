@@ -537,6 +537,17 @@
         (semantic.settings/ee-embedding-service-base-url! "https://elsewhere.example.com")
         (is (= "https://elsewhere.example.com" (semantic.settings/ee-embedding-service-base-url)))))))
 
+(deftest embedding-service-base-url-allows-unchanged-bulk-setting-test
+  (testing "resubmitting the same destination with an environment key does not roll back other settings"
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://embed.example.com"
+                                       ee-embedding-model-dimensions 1024]
+      (mt/with-temp-env-var-value! [mb-ee-embedding-service-api-key "embed-env-key"]
+        (is (nil? (mt/user-http-request :crowberto :put 204 "setting"
+                                        {:ee-embedding-service-base-url "  https://embed.example.com  "
+                                         :ee-embedding-model-dimensions 768})))
+        (is (= "https://embed.example.com" (semantic.settings/ee-embedding-service-base-url)))
+        (is (= 768 (semantic.settings/ee-embedding-model-dimensions)))))))
+
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
     (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"

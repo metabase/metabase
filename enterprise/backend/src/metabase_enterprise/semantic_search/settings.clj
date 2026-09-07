@@ -88,6 +88,8 @@
                   ;; The API caller cannot re-supply a key the environment holds, so this API is not where a
                   ;; connection carrying one is repointed. Mirrors the LLM provider base URLs; see
                   ;; [[metabase.llm.provider/assert-base-url-change-authorized!]].
+                  ;; Bulk settings writes call every supplied setter in one transaction, including unchanged values.
+                  ;; Accept an unchanged URL so resubmitting it does not roll back unrelated setting changes.
                   (when (and (request.current/current-request)
                              (setting/env-var-value :ee-embedding-service-api-key)
                              (not= new-value (normalize-base-url
