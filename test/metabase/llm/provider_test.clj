@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -234,6 +235,20 @@
                                                             :secret-access-key "test-secret"})))
         (is (true? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                                              :secret-access-key "test-secret"})))))))
+
+(deftest indeterminate-hosting-bedrock-requires-key-pair-test
+  (testing "a token status the token service could not confirm counts as hosted, since the chain would sign as the
+            operator on a Cloud instance that cannot reach it"
+    (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly nil)]
+      (is (true? (llm.provider/hosted?)))
+      (is (false? (llm.provider/config-complete? "bedrock" {})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Access key ID is required for bedrock"
+           (llm.provider/validate-config! "bedrock" {})))))
+  (testing "a token the service did answer for leaves a self-hosted deployment keyless"
+    (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly false)]
+      (is (false? (llm.provider/hosted?)))
+      (is (nil? (llm.provider/validate-config! "bedrock" {}))))))
 
 (deftest provider-types-carry-hosted-policy-test
   (testing "enumeration applies hosted policy too, so the connection form sees the same requirements as validation"
