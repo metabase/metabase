@@ -1,0 +1,40 @@
+diff --git a/node_modules/eslint-plugin-testing-library/dist/index.mjs b/node_modules/eslint-plugin-testing-library/dist/index.mjs
+--- a/node_modules/eslint-plugin-testing-library/dist/index.mjs
++++ b/node_modules/eslint-plugin-testing-library/dist/index.mjs
+@@ -1979,9 +1979,9 @@
+ 				const isChainedReferenceDebug = suspiciousReferenceNodes.some((suspiciousReferenceIdentifier) => {
+ 					return utilsToReport.includes(callExpressionIdentifier.name) && suspiciousReferenceIdentifier.name === referenceIdentifier.name;
+ 				});
+-				if (!builtInConsoleNodes.some((variableDeclarator) => {
++				if ((isDebugUtil || isDeclaredDebugVariable || isChainedReferenceDebug) && !builtInConsoleNodes.some((variableDeclarator) => {
+ 					return getDeclaredVariables(context, variableDeclarator).some(({ name }) => name === callExpressionIdentifier.name && isCallExpression(callExpressionIdentifier.parent));
+-				}) && (isDebugUtil || isDeclaredDebugVariable || isChainedReferenceDebug)) context.report({
++				})) context.report({
+ 					node: callExpressionIdentifier,
+ 					messageId: "noDebug"
+ 				});
+@@ -2529,10 +2529,11 @@
+ 			});
+ 		}
+ 		function registerUserEventInstance(node) {
++			const deepestIdentifier = getDeepestIdentifierNode(node);
++			if (deepestIdentifier?.name !== "setup" || !ASTUtils.isIdentifier(node.parent?.id)) return;
+ 			const propertyIdentifier = getPropertyIdentifierNode(node);
+-			const deepestIdentifier = getDeepestIdentifierNode(node);
+ 			const testingLibraryFn = resolveToTestingLibraryFn(node, context);
+-			if (propertyIdentifier?.name === testingLibraryFn?.local && deepestIdentifier?.name === "setup" && ASTUtils.isIdentifier(node.parent?.id)) userEventInstanceNames.add(node.parent.id.name);
++			if (propertyIdentifier?.name === testingLibraryFn?.local) userEventInstanceNames.add(node.parent.id.name);
+ 		}
+ 		return {
+ 			"VariableDeclarator > CallExpression": registerUserEventInstance,
+@@ -3471,8 +3472,9 @@
+ 					reportInvalidUsage(identifierNode);
+ 					return;
+ 				}
++				if (!ASTUtils.isIdentifier(memberExpressionNode.object) || isIdentifierAllowed(memberExpressionNode.object.name)) return;
+ 				const testingLibraryFn = resolveToTestingLibraryFn(node, context);
+-				if (ASTUtils.isIdentifier(memberExpressionNode.object) && !isIdentifierAllowed(memberExpressionNode.object.name) && !isIdentifierAllowed(testingLibraryFn?.original ?? "")) reportInvalidUsage(identifierNode);
++				if (!isIdentifierAllowed(testingLibraryFn?.original ?? "")) reportInvalidUsage(identifierNode);
+ 			}
+ 		};
+ 	}

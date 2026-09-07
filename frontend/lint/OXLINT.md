@@ -90,3 +90,41 @@ To reproduce the full lint timing with generated assets already present:
 Run each candidate sequentially under comparable machine load. Compare
 normalized diagnostics as well as elapsed time; an early configuration error
 is not a valid benchmark.
+
+## Dependency patch follow-up
+
+The stacked performance PR adds these patches through the existing root
+`patches/` and `patch-package` installation flow:
+
+| Dependency                    | Version | Change                                                                                                      |
+| ----------------------------- | ------- | ----------------------------------------------------------------------------------------------------------- |
+| eslint-plugin-import-x        | 4.16.1  | Classify relative, absolute and internal-regex imports before resolution when their group is already known. |
+| eslint-plugin-react           | 7.37.5  | Check for deprecated lifecycle names before component detection.                                            |
+| eslint-plugin-depend          | 1.4.0   | Reuse replacement lists per configuration and index module-prefix lookups while retaining list precedence.  |
+| eslint-plugin-ttag            | 1.1.0   | Use current sourceCode APIs and skip scope lookup inside function bodies.                                   |
+| eslint-plugin-i18next         | 6.1.3   | Compile matching expressions once per pattern list and use current sourceCode APIs.                         |
+| eslint-plugin-testing-library | 7.15.4  | Filter irrelevant AST shapes before scope/variable analysis in three checks.                                |
+
+The ttag and i18next adapters can consequently drop their compatibility wrappers.
+Import-x and Testing Library patches target the published ESM artifacts actually
+loaded by the lint configuration. These are version-specific dependency patches;
+upgrades require reviewing and reapplying them, ideally replacing them with
+upstream fixes. No oxlint runtime patch is included.
+
+`oxlint-plugin-patches.test.mjs` reconstructs upstream packages by reversing the
+installed patches in temporary copies, then compares diagnostics and autofixes
+across 160 fixtures covering all six plugins. It fails if patches were not
+installed or dependency versions changed. It needs the system `patch` command.
+
+Fresh sequential full-directory measurements on this checkout:
+
+| Candidate                      | Runs              | Mean    | Files  |
+| ------------------------------ | ----------------- | ------- | ------ |
+| Base PR, no dependency patches | 15.707 / 15.315 s | 15.51 s | 11,972 |
+| All six patches                | 10.649 / 10.841 s | 10.75 s | 11,973 |
+
+The second candidate includes one additional fixture test file. All 177
+normalized diagnostic objects are identical between both runs of each candidate.
+This is a roughly 4.77-second (31%) reduction on this machine, with the same
+unresolved migration blockers described above. It is not a clean ESLint/oxlint
+parity result.

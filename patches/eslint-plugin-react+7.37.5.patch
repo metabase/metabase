@@ -1,0 +1,19 @@
+diff --git a/node_modules/eslint-plugin-react/lib/rules/no-deprecated.js b/node_modules/eslint-plugin-react/lib/rules/no-deprecated.js
+--- a/node_modules/eslint-plugin-react/lib/rules/no-deprecated.js
++++ b/node_modules/eslint-plugin-react/lib/rules/no-deprecated.js
+@@ -204,11 +204,14 @@
+      * @param {ASTNode} node The AST node being checked.
+      */
+     function checkLifeCycleMethods(node) {
++      const methods = getLifeCycleMethods(node).filter((method) => isDeprecated(method.name));
++      if (methods.length === 0) {
++        return;
++      }
+       if (
+         componentUtil.isES5Component(node, context)
+      || componentUtil.isES6Component(node, context)
+       ) {
+-        const methods = getLifeCycleMethods(node);
+         methods.forEach((method) => checkDeprecation(node, method.name, method.node));
+       }
+     }

@@ -1,0 +1,33 @@
+diff --git a/node_modules/eslint-plugin-ttag/dist/rules/no-module-declaration.js b/node_modules/eslint-plugin-ttag/dist/rules/no-module-declaration.js
+--- a/node_modules/eslint-plugin-ttag/dist/rules/no-module-declaration.js
++++ b/node_modules/eslint-plugin-ttag/dist/rules/no-module-declaration.js
+@@ -15,11 +15,18 @@
+   },
+ 
+   create(context) {
++    function inFunctionBody(node) {
++      for (let child = node, parent = child.parent; parent; child = parent, parent = parent.parent) {
++        if ((parent.type === 'FunctionDeclaration' || parent.type === 'FunctionExpression' || parent.type === 'ArrowFunctionExpression') && parent.body === child) return true;
++      }
++      return false;
++    }
+     return {
+       TaggedTemplateExpression(node) {
+         const istTagVar = isTtag(node) || isjTtag(node);
+         if (!istTagVar) return;
+-        const scope = context.getScope().type;
++        if (inFunctionBody(node)) return;
++        const scope = context.sourceCode.getScope(node).type;
+ 
+         if (scope === 'module') {
+           context.report({
+@@ -32,7 +39,8 @@
+       CallExpression(node) {
+         const isTtagFn = isGettextFn(node) || isNgettextFn(node);
+         if (!isTtagFn) return;
+-        const scope = context.getScope().type;
++        if (inFunctionBody(node)) return;
++        const scope = context.sourceCode.getScope(node).type;
+ 
+         if (scope === 'module') {
+           context.report({
