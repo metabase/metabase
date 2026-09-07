@@ -117,8 +117,12 @@ export const ChartSettingSeriesOrder = ({
   );
 
   const handleColorChange = useCallback(
-    (item: ChartSettingSeriesOrderItem, color: string, colorName?: string) => {
-      onChangeSeriesColor(item.key, color, colorName);
+    (
+      item: ChartSettingSeriesOrderItem,
+      hexValue: string,
+      colorName?: string,
+    ) => {
+      onChangeSeriesColor(item.key, hexValue, colorName);
     },
     [onChangeSeriesColor],
   );

@@ -48,7 +48,7 @@ export function PieRowsPicker({
 
   const onChangeSeriesColor = (
     sliceKey: string,
-    color: string,
+    hexValue: string,
     colorName?: string,
   ) =>
     onChangeSettings({
@@ -56,7 +56,10 @@ export function PieRowsPicker({
         if (row.key !== sliceKey) {
           return row;
         }
-        return withColorName({ ...row, color, defaultColor: false }, colorName);
+        return withColorName(
+          { ...row, color: hexValue, defaultColor: false },
+          colorName,
+        );
       }),
     });
 

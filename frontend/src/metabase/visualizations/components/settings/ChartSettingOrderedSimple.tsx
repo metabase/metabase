@@ -35,7 +35,7 @@ interface ChartSettingOrderedSimpleProps {
   hasEditSettings: boolean;
   onChangeSeriesColor: (
     seriesKey: string,
-    color: string,
+    hexValue: string,
     colorName?: string,
   ) => void;
   onSortEnd: (newItems: SortableItem[]) => void;
@@ -97,8 +97,8 @@ export const ChartSettingOrderedSimple = ({
   );
 
   const handleColorChange = useCallback(
-    (item: SortableItem, color: string, colorName?: string) => {
-      onChangeSeriesColor(item.key, color, colorName);
+    (item: SortableItem, hexValue: string, colorName?: string) => {
+      onChangeSeriesColor(item.key, hexValue, colorName);
     },
     [onChangeSeriesColor],
   );

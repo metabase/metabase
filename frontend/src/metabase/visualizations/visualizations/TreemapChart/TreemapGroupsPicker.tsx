@@ -26,7 +26,7 @@ export function TreemapGroupsPicker({
 
   const handleChangeSeriesColor = (
     groupKey: string,
-    color: string,
+    hexValue: string,
     colorName?: string,
   ) =>
     onChangeSettings({
@@ -34,7 +34,10 @@ export function TreemapGroupsPicker({
         if (row.key !== groupKey) {
           return row;
         }
-        return withColorName({ ...row, color, defaultColor: false }, colorName);
+        return withColorName(
+          { ...row, color: hexValue, defaultColor: false },
+          colorName,
+        );
       }),
     });
 

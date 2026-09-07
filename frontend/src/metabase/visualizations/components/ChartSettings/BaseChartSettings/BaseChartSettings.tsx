@@ -176,10 +176,10 @@ export const BaseChartSettings = ({
   }, []);
 
   const handleChangeSeriesColor = useCallback(
-    (seriesKey: string, color: string, colorName?: string) => {
+    (seriesKey: string, hexValue: string, colorName?: string) => {
       if (chartSettings) {
         onChange?.(
-          updateSeriesColor(chartSettings, seriesKey, color, colorName),
+          updateSeriesColor(chartSettings, seriesKey, hexValue, colorName),
         );
       }
     },

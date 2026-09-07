@@ -2,21 +2,19 @@ import type { HTMLAttributes, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
 import { ColorPill } from "metabase/common/components/ColorPill";
-import type {
-  MetabaseAccentColorKey,
-  NamedColor,
-} from "metabase/ui/colors/types";
 
 import { PopoverRoot } from "./ColorSelectorPopover.styled";
 
 /**
  * A picker given named palette colors reports which one was chosen, so the
  * choice can be stored as a reference to the palette rather than a fixed value.
+ * The name is opaque here; callers that care what it refers to (e.g. an
+ * accent color key) narrow it on their end.
  */
-export type ColorSelectorOption = string | NamedColor;
+export type ColorSelectorOption = string | { name: string; value: string };
 
 type NormalizedOption = {
-  name?: MetabaseAccentColorKey;
+  name?: string;
   value: string;
 };
 
@@ -29,7 +27,7 @@ export interface ColorSelectorPopoverProps extends Omit<
 > {
   value?: string;
   colors: ColorSelectorOption[];
-  onChange?: (newValue: string, colorName?: string) => void;
+  onChange?: (hexValue: string, colorName?: string) => void;
   onClose?: () => void;
 }
 
@@ -38,8 +36,8 @@ export const ColorSelectorPopover = forwardRef(function ColorSelector(
   ref: Ref<HTMLDivElement>,
 ) {
   const handleSelect = useCallback(
-    (newValue: string, colorName?: string) => {
-      onChange?.(newValue, colorName);
+    (hexValue: string, colorName?: string) => {
+      onChange?.(hexValue, colorName);
       onClose?.();
     },
     [onChange, onClose],

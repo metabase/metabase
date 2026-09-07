@@ -21,13 +21,13 @@ export const getNamedAccentColors = (
 ): NamedColor[] => {
   const ranges: NamedColor[][] = [];
   if (main) {
-    ranges.push(getNamedAccents("base", palette, gray));
+    ranges.push(getNamedAccentVariant("base", palette, gray));
   }
   if (light) {
-    ranges.push(getNamedAccents("tint", palette, gray));
+    ranges.push(getNamedAccentVariant("tint", palette, gray));
   }
   if (dark) {
-    ranges.push(getNamedAccents("shade", palette, gray));
+    ranges.push(getNamedAccentVariant("shade", palette, gray));
   }
 
   return harmony ? _.unzip(ranges).flat() : ranges.flat();
@@ -38,7 +38,9 @@ export const getAccentColors = (
   palette?: ColorPalette,
 ): string[] => getNamedAccentColors(options, palette).map(({ value }) => value);
 
-const getNamedAccents = (
+// One variant (base/tint/shade) of the accent colors, as opposed to
+// getNamedAccentColors, which combines the variants an option set asks for.
+const getNamedAccentVariant = (
   variant: "base" | "tint" | "shade",
   palette?: ColorPalette,
   withGray = false,

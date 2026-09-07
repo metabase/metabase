@@ -1,4 +1,4 @@
-import { assocIn, dissocIn } from "icepick";
+import { assocIn } from "icepick";
 
 import type {
   Card,
@@ -13,27 +13,21 @@ import type {
 
 import { SERIES_SETTING_KEY } from "../shared/settings/series";
 
+import { withColorName } from "./color-name";
+
 export const updateSeriesColor = (
   settings: VisualizationSettings,
   seriesKey: string,
-  color: string,
+  hexValue: string,
   colorName?: string,
 ) => {
-  const updated = assocIn(
-    settings,
-    [SERIES_SETTING_KEY, seriesKey, "color"],
-    color,
-  );
+  const existing = settings[SERIES_SETTING_KEY]?.[seriesKey] ?? {};
 
-  // A color picked outside the palette has no name, and any name left over
-  // from an earlier pick would keep overriding it.
-  return colorName == null
-    ? dissocIn(updated, [SERIES_SETTING_KEY, seriesKey, "color_name"])
-    : assocIn(
-        updated,
-        [SERIES_SETTING_KEY, seriesKey, "color_name"],
-        colorName,
-      );
+  return assocIn(
+    settings,
+    [SERIES_SETTING_KEY, seriesKey],
+    withColorName({ ...existing, color: hexValue }, colorName),
+  );
 };
 
 export const getNameForCard = (card: SeriesCard) => {

@@ -43,9 +43,9 @@ const ChartNestedSettingsSeriesSingle = ({
           withinPortal={false}
           value={computedSettings.color}
           colors={getNamedAccentColors()}
-          onChange={(value, colorName) =>
+          onChange={(hexValue, colorName) =>
             onChangeObjectSettings(object, {
-              color: value,
+              color: hexValue,
               color_name: colorName,
             })
           }

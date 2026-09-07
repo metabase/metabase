@@ -17,7 +17,7 @@ export interface ColorSelectorProps extends ColorSelectorAttributes {
   value: string;
   colors: ColorSelectorOption[];
   pillSize?: PillSize;
-  onChange?: (newValue: string, colorName?: string) => void;
+  onChange?: (hexValue: string, colorName?: string) => void;
   withinPortal?: boolean;
 }
 

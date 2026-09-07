@@ -38,7 +38,7 @@ type ChartSettingFieldPickerProps = {
   onChange?: (value: string) => void;
   onChangeSeriesColor?: (
     seriesKey: string,
-    value: string,
+    hexValue: string,
     colorName?: string,
   ) => void;
   onRemove?: (() => void) | null;
@@ -156,8 +156,8 @@ export const ChartSettingFieldPicker = ({
                 <ChartSettingColorPicker
                   pillSize="small"
                   value={colors[seriesKey]}
-                  onChange={(value, colorName) => {
-                    onChangeSeriesColor?.(seriesKey, value, colorName);
+                  onChange={(hexValue, colorName) => {
+                    onChangeSeriesColor?.(seriesKey, hexValue, colorName);
                   }}
                   className={CS.pointerEventsAll}
                 />

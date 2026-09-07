@@ -13,7 +13,7 @@ interface ChartSettingColorPickerProps {
   value: string;
   title?: string;
   pillSize?: PillSize;
-  onChange?: (newValue: string, colorName?: string) => void;
+  onChange?: (hexValue: string, colorName?: string) => void;
   accentColorOptions?: AccentColorOptions;
 }
 

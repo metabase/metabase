@@ -91,7 +91,7 @@ export type ChartSettingSeriesOrderProps = {
   hasEditSettings: boolean;
   onChangeSeriesColor: (
     seriesKey: string,
-    color: string,
+    hexValue: string,
     colorName?: string,
   ) => void;
   onSortEnd: (newItems: ChartSettingSeriesOrderItem[]) => void;
