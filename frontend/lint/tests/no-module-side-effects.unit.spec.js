@@ -6,7 +6,7 @@ import rule from "../eslint-plugin-metabase/rules/no-module-side-effects";
 
 const ruleTester = new RuleTester({
   languageOptions: {
-    parserOptions: { ecmaFeatures: { jsx: true } },
+    parserOptions: { lang: "tsx" },
     sourceType: "module",
   },
 });
@@ -19,10 +19,7 @@ const REGISTRATION_DIR = "/repo/frontend/src/metabase/widgets/api/";
 
 const options = [{ sideEffectPaths: [REGISTRATION_FILE, REGISTRATION_DIR] }];
 
-// Real files, because the import check resolves each import on disk before looking it up.
-// registry.json classifies effects/{global,entry,self,registration}.ts, leaves unclassified.ts
-// unclassified, names facade/ a facade, and lists the packages leaflet-draw and @mantine/core/styles.css.
-// pure.ts is not listed.
+// Import checks read the resolved files before consulting the side-effect registry.
 const FIXTURES = path.resolve(__dirname, "fixtures/side-effect-files");
 const IMPORTER = path.join(FIXTURES, "importer/Widget.tsx");
 const registryOptions = {
@@ -756,6 +753,6 @@ const INVALID_CASES = [
 ];
 
 ruleTester.run("no-module-side-effects", rule, {
-  valid: VALID_CASES.map((test) => ({ filename: FILENAME, ...test })),
-  invalid: INVALID_CASES.map((test) => ({ filename: FILENAME, ...test })),
+  valid: VALID_CASES,
+  invalid: INVALID_CASES,
 });

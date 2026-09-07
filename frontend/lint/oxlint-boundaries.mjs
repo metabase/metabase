@@ -1,5 +1,3 @@
-// Specialized implementation of the two boundary rules used by Metabase.
-// Shares the existing policy; see OXLINT.md for supported features and tests.
 import path from "node:path";
 
 import micromatch from "micromatch";
@@ -18,10 +16,6 @@ const message = boundaryOptions.message;
 
 const normalize = (value) => value.replaceAll("\\", "/");
 
-/**
- * Compile the subset of boundary configuration that this repository uses.
- * Unsupported selectors throw rather than silently weakening enforcement.
- */
 export function createBoundaryChecker({ elements, rules, rootPath }) {
   const regexes = new Map();
   const compile = (pattern) => {
@@ -43,8 +37,6 @@ export function createBoundaryChecker({ elements, rules, rootPath }) {
     ) {
       throw new Error(`Unsupported boundary descriptor: ${element.type}`);
     }
-    // The upstream matcher tests full-mode descriptors against the entire path
-    // before folder-mode descriptors can match the accumulated path segments.
     return {
       ...element,
       regex: compile(
@@ -102,7 +94,8 @@ export function createBoundaryChecker({ elements, rules, rootPath }) {
       let allowed = defaultPolicy === "allow";
       let finalMessage = message;
       for (const policy of applicable) {
-        // A denial wins inside one policy; subsequent matching policies win.
+        // A denial wins within a policy.
+        // Later matching policies take precedence.
         if (policy.disallow.some((regex) => regex.test(to))) {
           allowed = false;
           finalMessage = policy.message ?? message;
@@ -136,8 +129,6 @@ export function createBoundaryChecker({ elements, rules, rootPath }) {
   return { classify, decision, types };
 }
 
-// Each checker belongs to this loaded policy snapshot. File classifications only
-// depend on the path and policy, never on file contents or resolver results.
 const checker = createBoundaryChecker({
   elements,
   rules: enforcedRules,
@@ -187,8 +178,6 @@ export function createBoundaryPlugin({ resolve }) {
               context.report({ node, message: result.message });
             }
           }
-          // Match the current dependency-nodes configuration, including type-only
-          // imports and dynamic imports, but excluding requires and re-exports.
           return {
             ImportDeclaration(node) {
               check(node.source);

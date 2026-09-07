@@ -220,9 +220,8 @@ module.exports = {
     );
     let moduleScope;
     function getModuleScope() {
-      // Oxlint constructs its JS scope objects lazily. Files that don't need a
-      // binding lookup should not pay for constructing the entire scope tree.
-      // Ask for the inner scope: getScope(Program) returns the global scope.
+      // Accessing scope constructs the scope tree for the whole file.
+      // getScope(Program) returns the global scope.
       moduleScope ??= sourceCode.scopeManager.acquire(sourceCode.ast, true);
       return moduleScope;
     }

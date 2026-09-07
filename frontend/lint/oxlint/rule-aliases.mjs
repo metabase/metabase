@@ -1,7 +1,6 @@
 import ruleMap from "./rule-map.json" with { type: "json" };
 
-// Native namespaces are reserved by oxlint. Use the same names for retained JS
-// rules in both engines so a suppression continues to target the same check.
+// Oxlint reserves native namespaces, so retained JS rules need distinct suppression names.
 export const ruleAliases = Object.fromEntries(
   Object.entries(ruleMap).filter(([, target]) =>
     /^(?:eslint|import|react|jest|typescript)-js\//.test(target),

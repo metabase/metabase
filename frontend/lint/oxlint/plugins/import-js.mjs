@@ -4,8 +4,8 @@ import { wrap } from "../plugin.mjs";
 import { resolver } from "../resolver.mjs";
 
 const require = createRequire(import.meta.url);
-// export * analysis parses dependency files. Oxlint's context.parser is a stub;
-// load the existing parser only when import-x actually needs to parse a module.
+// import-x needs a working parser for export * analysis.
+// Oxlint supplies a stub.
 const parser = (typescript) => ({
   meta: {
     name: typescript ? "typescript-eslint/parser" : "babel/eslint-parser",
@@ -22,7 +22,7 @@ const jsParser = parser(false);
 export default wrap("import-js", plugin, resolver.importSettings, (context) =>
   Object.create(context, {
     languageOptions: {
-      // Preserve lazy AST/global getters; only dependency parsing needs a shim.
+      // Spreading languageOptions eagerly evaluates its AST and global getters.
       value: Object.create(context.languageOptions, {
         parser: {
           get: () =>

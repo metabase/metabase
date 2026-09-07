@@ -19,12 +19,12 @@ import {
   ruleDefaults,
 } from "../update-recommended-rules.mjs";
 
-test("preset and default snapshots match installed plugin versions", () => {
+test("should match the installed presets and rule defaults", () => {
   assert.deepEqual(presets, recommendedRules, "Run bun run lint-config-update");
   assert.deepEqual(defaults, ruleDefaults, "Run bun run lint-config-update");
 });
 
-test("JS plugin settings match ESLint for existing and newly added paths", async () => {
+test("should match ESLint settings for each file scope", async () => {
   const eslint = new ESLint({ cwd: root });
   for (const relative of [
     "frontend/src/metabase/new-module/Example.tsx",
@@ -47,8 +47,7 @@ test("JS plugin settings match ESLint for existing and newly added paths", async
       expected.settings ?? {},
       `${relative}: settings`,
     );
-    // ESLint supplies these language defaults outside parserOptions; oxlint
-    // likewise supplies them on its own context/sourceCode object.
+    // sourceType belongs to languageOptions in ESLint's effective configuration.
     const parserOptions = { ...expected.languageOptions.parserOptions };
     const actualParserOptions = { ...actual.parserOptions };
     delete parserOptions.sourceType;
@@ -61,7 +60,7 @@ test("JS plugin settings match ESLint for existing and newly added paths", async
   }
 });
 
-test("a wrapped rule reads settings for the file oxlint is currently linting", () => {
+test("should read settings for each file through the reused context", () => {
   const namespace = "metabase";
   const [ruleName] = jsRules[namespace];
   const seen = [];
@@ -93,7 +92,7 @@ test("a wrapped rule reads settings for the file oxlint is currently linting", (
     filename = path.join(root, relative);
     rule.create(context);
     const expected = settingsForFile(filename);
-    const [current] = seen.slice(-1);
+    const current = seen.at(-1);
     assert.deepEqual(current.settings, expected.settings, relative);
     assert.deepEqual(current.parserOptions, expected.parserOptions, relative);
   }
@@ -108,7 +107,7 @@ test("a wrapped rule reads settings for the file oxlint is currently linting", (
   );
 });
 
-test("wrapping drops createOnce and rejects rules it cannot serve", () => {
+test("should require create and omit createOnce from wrapped rules", () => {
   const namespace = "metabase";
   const fakePlugin = (rule) => ({
     rules: Object.fromEntries(jsRules[namespace].map((name) => [name, rule])),
@@ -131,7 +130,7 @@ test("wrapping drops createOnce and rejects rules it cannot serve", () => {
   }
 });
 
-test("native overrides retain inherited prefer-const and console options", () => {
+test("should retain inherited prefer-const and console options", () => {
   const config = createConfig();
   const ts = config.overrides.filter((entry) =>
     entry.files.includes("**/*.ts"),
@@ -148,7 +147,7 @@ test("native overrides retain inherited prefer-const and console options", () =>
   ]);
 });
 
-test("TS base-rule disables do not overwrite native extension rules", () => {
+test("should keep TypeScript extension rules enabled when their base rules are disabled", () => {
   const config = createConfig();
   const ts = config.overrides.findLast(
     (entry) => entry.files.includes("**/*.ts") && entry.rules["no-unused-vars"],
@@ -157,7 +156,7 @@ test("TS base-rule disables do not overwrite native extension rules", () => {
   assert.equal(ts.rules["no-unused-vars"][1].varsIgnorePattern, "^_.+$");
 });
 
-test("configuration rejects boundary settings and policy overrides the checker cannot enforce", () => {
+test("should reject unsupported boundary configuration overrides", () => {
   for (const entry of [
     { settings: { "boundaries/root-path": "/elsewhere" } },
     { settings: { "boundaries/dependency-nodes": ["require"] } },
