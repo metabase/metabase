@@ -28,9 +28,7 @@ const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   SIDE_EFFECT_FREE_RULE,
 } = require("./frontend/build/shared/rspack/side-effect-free-modules");
-const {
-  EXTERNAL_DEPENDENCIES,
-} = require("./frontend/build/embedding-sdk/constants/external-dependencies");
+const resolveConfig = require("./frontend/build/embedding-sdk/rspack/resolve-config");
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
@@ -203,7 +201,7 @@ const config = {
     ],
   },
 
-  externals: EXTERNAL_DEPENDENCIES,
+  ...resolveConfig,
 
   optimization: {
     ...OPTIMIZATION_CONFIG,

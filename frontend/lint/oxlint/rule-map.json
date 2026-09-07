@@ -78,7 +78,7 @@
   "eqeqeq": "eqeqeq",
   "prefer-const": "prefer-const",
   "no-restricted-globals": "no-restricted-globals",
-  "complexity": "eslint-js/complexity",
+  "complexity": "complexity",
   "import/export": "import-js/export",
   "import/no-duplicates": "import/no-duplicates",
   "import/no-default-export": "import/no-default-export",

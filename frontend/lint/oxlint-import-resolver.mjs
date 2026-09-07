@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { isBuiltin, createRequire } from "node:module";
 import path from "node:path";
 
@@ -8,7 +9,11 @@ function aliases(values = {}) {
   return Object.fromEntries(
     Object.entries(values).map(([key, value]) => {
       const entries = Array.isArray(value) ? value : [value];
-      if (entries.some((entry) => typeof entry !== "string")) {
+      if (
+        entries.some(
+          (entry) => typeof entry !== "string" || !path.isAbsolute(entry),
+        )
+      ) {
         throw new Error(`Unsupported resolver alias: ${key}`);
       }
       return [key, entries];
@@ -16,10 +21,13 @@ function aliases(values = {}) {
   );
 }
 
-function memoize(resolve) {
+const isBare = (source) => /^[\w@]/.test(source) && !/[?#!]/.test(source);
+
+function memoize(resolve, packageRoot) {
   const cache = new Map();
   return (source, file) => {
-    const key = `${path.dirname(file)}\0${source}`;
+    const directory = path.dirname(file);
+    const key = `${isBare(source) ? packageRoot(directory) : directory}\0${source}`;
     if (!cache.has(key)) {
       // Bound memory for exceptionally large one-shot lint invocations.
       if (cache.size >= 50_000) {
@@ -41,6 +49,21 @@ export function createImportResolverService({ ResolverFactory }) {
   const resolverSettingsCache = new WeakMap();
   const webpackResolvers = new Map();
   const resolvers = new Map();
+  const packageRoots = new Map();
+  // A bare specifier resolves the same way from every directory under one package root.
+  // Alias and fallback entries are absolute paths,
+  // and the node_modules walk from a directory below the root reaches that root first.
+  function packageRoot(directory) {
+    if (!packageRoots.has(directory)) {
+      const parent = path.dirname(directory);
+      const isRoot =
+        parent === directory ||
+        existsSync(path.join(directory, "package.json")) ||
+        existsSync(path.join(directory, "node_modules"));
+      packageRoots.set(directory, isRoot ? directory : packageRoot(parent));
+    }
+    return packageRoots.get(directory);
+  }
   const node = new ResolverFactory({
     extensions: [".mjs", ".cjs", ".js", ".json", ".node"],
     conditionNames: ["import", "require", "default"],
@@ -65,7 +88,7 @@ export function createImportResolverService({ ResolverFactory }) {
     if (isBuiltin(source)) return { found: true, path: null };
     const result = legacyNative.sync(path.dirname(file), source);
     return result.path ? { found: true, path: result.path } : { found: false };
-  });
+  }, packageRoot);
 
   function webpackResolver(configPath) {
     if (webpackResolvers.has(configPath)) {
@@ -168,7 +191,7 @@ export function createImportResolverService({ ResolverFactory }) {
         }
         const result = resolveLegacyNode(source, file);
         return result.found ? result : (webpack?.(source, file) ?? result);
-      });
+      }, packageRoot);
       resolvers.set(key, {
         interfaceVersion: 3,
         name: `metabase-oxc-${mode}`,
