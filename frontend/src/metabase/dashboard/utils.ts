@@ -110,6 +110,7 @@ export function expandAdhocDashboard(dashId: string) {
     name: definition.name,
     description: definition.description ?? null,
     parameters: [],
+    width: "fixed",
     // The tiles expand into partial dashcards by design: the adhoc query path
     // only reads layout + card.
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
