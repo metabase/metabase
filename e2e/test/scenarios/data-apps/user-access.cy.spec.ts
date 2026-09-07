@@ -9,6 +9,7 @@ import {
   type DataApp,
   DataPermission,
   DataPermissionValue,
+  type Table,
 } from "metabase-types/api";
 
 const { H } = cy;
@@ -35,7 +36,7 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
     );
   });
 
-  it("adds and removes a data app user", () => {
+  it("adds and removes a data app user by pasting a single email", () => {
     cy.request("PUT", `/api/apps/${DATA_APP_NAME}/table-dependencies`, {
       table_ids: [],
     });
@@ -59,14 +60,16 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
     });
 
     cy.findByRole("button", { name: "Add users" }).click();
+    H.popover().findByText(NORMAL_USER_NAME).should("be.visible");
 
-    cy.findByRole("textbox", { name: "Search for a user to add" }).type(
-      USERS.normal.email,
-    );
-
-    H.popover().findByText(NORMAL_USER_NAME).click();
+    cy.findByRole("textbox", { name: "Search for a user to add" })
+      .paste(` ${USERS.normal.email.toUpperCase()} `)
+      .should("have.value", "");
 
     cy.findByRole("button", { name: "Add" }).click();
+
+    userRow(USERS.normal.email).should("be.visible");
+    cy.reload();
 
     H.main().within(() => {
       cy.findByText(NORMAL_USER_NAME, { timeout: 20_000 }).should("be.visible");
@@ -83,6 +86,115 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
 
       cy.findByText(NORMAL_USER_NAME).should("not.exist");
     });
+  });
+
+  it("adds users from comma-separated emails without duplicating existing members", () => {
+    cy.get<number>("@dataAppGroupId").then((groupId) => {
+      H.addUserToGroup(groupId, USERS.normal.email);
+    });
+
+    cy.visit(`/admin/settings/apps/${DATA_APP_NAME}/users`);
+    userRow(USERS.normal.email).should("be.visible");
+
+    cy.findByRole("button", { name: "Add users" }).click();
+    H.popover().findByText(NODATA_USER_NAME).should("be.visible");
+
+    cy.log("paste a comma-separated list of emails");
+    cy.findByRole("textbox", { name: "Search for a user to add" })
+      .paste(` ${USERS.normal.email}, ${USERS.nodata.email.toUpperCase()} `)
+      .should("have.value", USERS.normal.email);
+
+    cy.findByRole("button", { name: "Add" }).click();
+
+    userRow(USERS.nodata.email).should("be.visible");
+    cy.reload();
+
+    cy.log("both users from the comma-separated list should be visible");
+    userRow(USERS.normal.email).should("have.length", 1).and("be.visible");
+    userRow(USERS.nodata.email).should("have.length", 1).and("be.visible");
+  });
+
+  // SQLite does not have a schema.
+  // The visible hierarchy should be "[Database] > [Table]" in table warnings.
+  it("links a missing-access warning to a table without a schema", () => {
+    H.activateToken("pro-self-hosted");
+    H.addSqliteDatabase();
+
+    cy.get<number>("@sqliteID").then((databaseId) => {
+      H.withDatabase(databaseId, ({ NUMBER_WITH_NULLS_ID }) => {
+        cy.request<Table>("GET", `/api/table/${NUMBER_WITH_NULLS_ID}`)
+          .its("body")
+          .as("sqliteTable");
+      });
+
+      cy.updatePermissionsGraph({
+        [ALL_USERS_GROUP_ID]: {
+          [databaseId]: {
+            [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
+          },
+        },
+        [COLLECTION_GROUP_ID]: {
+          [databaseId]: {
+            [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
+          },
+        },
+      });
+    });
+
+    H.activateToken("bleeding-edge");
+
+    cy.get<Table>("@sqliteTable").then(({ id, schema }) => {
+      expect(schema).to.equal("");
+
+      cy.request("PUT", `/api/apps/${DATA_APP_NAME}/table-dependencies`, {
+        table_ids: [id],
+      });
+    });
+
+    cy.get<number>("@dataAppGroupId").then((groupId) => {
+      H.addUserToGroup(groupId, USERS.nodata.email);
+    });
+
+    cy.visit(`/admin/settings/apps/${DATA_APP_NAME}/users`);
+    userRow(USERS.nodata.email)
+      .findByRole("button", { name: "Missing data access" })
+      .should("be.visible")
+      .realHover();
+
+    cy.get<Table>("@sqliteTable").then(({ id, db_id }) => {
+      cy.findByTestId("missing-tables-list").within(() => {
+        cy.findAllByRole("link").should("have.length", 2);
+
+        cy.findByRole("link", { name: "sqlite" }).should(
+          "have.attr",
+          "href",
+          `/admin/permissions/data/database/${db_id}`,
+        );
+
+        cy.findByRole("link", { name: "Number With Nulls" })
+          .should(
+            "have.attr",
+            "href",
+            `/admin/permissions/data/database/${db_id}/table/${id}`,
+          )
+          .and("have.attr", "target", "_blank")
+          .and("have.attr", "rel", "noopener noreferrer")
+          .invoke("removeAttr", "target")
+          .click();
+      });
+
+      cy.location("pathname").should(
+        "eq",
+        `/admin/permissions/data/database/${db_id}/table/${id}`,
+      );
+    });
+
+    cy.findByTestId("permissions-editor-breadcrumbs").should(
+      "contain.text",
+      "Number With Nulls",
+    );
+
+    H.assertPermissionForItem("All Users", 0, "Blocked");
   });
 
   it("shows warnings only for users missing access to used tables", () => {
