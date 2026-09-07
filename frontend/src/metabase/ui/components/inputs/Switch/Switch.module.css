@@ -3,30 +3,20 @@
     color: var(--mb-color-text-secondary);
     font-size: var(--mantine-font-size-sm);
     line-height: var(--mantine-line-height-sm);
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
+    margin-top: 0;
+    margin-bottom: 0;
   }
 
   .error {
     color: var(--mb-color-feedback-negative-strong);
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
+    margin-top: 0;
+    margin-bottom: 0;
   }
 
   &:has(input:disabled) {
     .label,
     .description {
       color: var(--mb-color-text-disabled);
-    }
-
-    .track {
-      background-color: var(--mb-color-switch-disabled);
-      border-color: transparent;
-    }
-
-    .thumb {
-      background-color: var(--mb-color-switch_thumb-disabled);
-      box-shadow: none;
     }
   }
 
@@ -73,6 +63,7 @@
 
   input:disabled + & {
     background-color: var(--mb-color-switch-disabled);
+    border-color: transparent;
     cursor: not-allowed;
   }
 }
@@ -80,4 +71,9 @@
 .thumb {
   background-color: var(--mb-color-core-white_constant);
   box-shadow: var(--mantine-shadow-sm_outline);
+
+  input:disabled + * > & {
+    background-color: var(--mb-color-switch_thumb-disabled);
+    box-shadow: none;
+  }
 }
