@@ -177,6 +177,24 @@ check), and all 490 custom-rule cases pass. Published-plugin fixtures compare
 the separate full-tree check caught the Testing Library regression above.
 The stacked PR records its corresponding patched measurements.
 
+### Focused-test upgrade comparison
+
+Three sequential old/new pairs per state, ordered old/new, new/old, old/new,
+using the same four-thread pure-lint command. The control loads a copy of
+no-only-tests 3.3.0 through the old wrapper; the candidate loads 3.4.0 directly.
+The base and patched batches were run separately, so use each row to assess
+this upgrade, not to estimate the patch layer's speedup. All twelve runs exited
+0 with zero findings (11,980 base files; 11,981 patched); no runs were discarded.
+
+| State | 3.3.0 + wrapper runs (s) | 3.4.0 direct runs (s) | Mean before → after |
+| --- | --- | --- | --- |
+| Base | 15.756 / 14.657 / 14.320 | 14.878 / 14.976 / 15.166 | 14.91s → 15.01s |
+| Patched | 10.859 / 10.280 / 10.225 | 10.334 / 10.227 / 10.353 | 10.45s → 10.30s |
+
+The observed changes do not establish a speedup. Keep the published API upgrade
+for the simpler adapter. Removing jest-formatting changes no enabled rules and
+is not expected to improve normal oxlint runtime because it was already unloaded.
+
 Run candidates sequentially under comparable CPU load with generated assets
 present, checking exit status, file count and diagnostics alongside timing:
 
