@@ -7,7 +7,7 @@ import type { ContentDiagnosticsStaleFinding } from "metabase-types/api";
 import { getCommonColumns } from "../common-columns";
 
 export function getColumns(): TreeTableColumnDef<ContentDiagnosticsStaleFinding>[] {
-  const { name, entityType, collection, createdBy, createdAt } =
+  const { name, entityType, collectionName, createdBy, createdAt } =
     getCommonColumns<ContentDiagnosticsStaleFinding>();
   const lastActiveAt: TreeTableColumnDef<ContentDiagnosticsStaleFinding> = {
     id: "last-active-at",
@@ -30,7 +30,7 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsStaleFinding>
     },
   };
 
-  return [name, entityType, collection, createdBy, createdAt, lastActiveAt];
+  return [name, entityType, collectionName, createdBy, createdAt, lastActiveAt];
 }
 
 export const SKELETON_COLUMN_WIDTHS = [0.28, 0.12, 0.24, 0.13, 0.12, 0.11];

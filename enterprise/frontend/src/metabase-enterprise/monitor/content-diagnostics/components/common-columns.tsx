@@ -19,7 +19,7 @@ import {
 } from "./utils";
 
 type CommonColumns<T extends ContentDiagnosticsBaseFinding> = Record<
-  "name" | "entityType" | "collection" | "createdBy" | "createdAt",
+  "name" | "entityType" | "collectionName" | "createdBy" | "createdAt",
   TreeTableColumnDef<T>
 >;
 
@@ -56,10 +56,11 @@ export function getCommonColumns<
       minWidth: 100,
       accessorFn: (finding) => getEntityTypeLabel(finding),
     },
-    collection: {
-      id: "collection",
+    collectionName: {
+      id: "collection-name",
       header: t`Location`,
-      enableSorting: false,
+      enableSorting: true,
+      sortDescFirst: false,
       width: "auto",
       minWidth: 120,
       maxAutoWidth: 520,

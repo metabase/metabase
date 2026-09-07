@@ -61,6 +61,7 @@ export type ContentDiagnosticsNonCollectionFilterType = Exclude<
 export const CONTENT_DIAGNOSTICS_STALE_SORT_COLUMNS = [
   "name",
   "entity-type",
+  "collection-name",
   "created-by",
   "created-at",
   "last-active-at",
@@ -71,6 +72,7 @@ export type ContentDiagnosticsStaleSortColumn =
 export const CONTENT_DIAGNOSTICS_SLOW_SORT_COLUMNS = [
   "name",
   "entity-type",
+  "collection-name",
   "created-by",
   "created-at",
   "duration-ms",
@@ -81,6 +83,7 @@ export type ContentDiagnosticsSlowSortColumn =
 export const CONTENT_DIAGNOSTICS_DUPLICATED_SORT_COLUMNS = [
   "name",
   "entity-type",
+  "collection-name",
   "created-by",
   "created-at",
   "duplicate-count",
@@ -91,6 +94,7 @@ export type ContentDiagnosticsDuplicatedSortColumn =
 export const CONTENT_DIAGNOSTICS_IMBALANCED_SORT_COLUMNS = [
   "name",
   "entity-type",
+  "collection-name",
   "created-by",
   "created-at",
   "content-count",

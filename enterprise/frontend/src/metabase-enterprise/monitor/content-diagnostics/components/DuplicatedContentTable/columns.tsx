@@ -6,7 +6,7 @@ import type { ContentDiagnosticsDuplicatedFinding } from "metabase-types/api";
 import { getCommonColumns } from "../common-columns";
 
 export function getColumns(): TreeTableColumnDef<ContentDiagnosticsDuplicatedFinding>[] {
-  const { name, entityType, collection, createdBy, createdAt } =
+  const { name, entityType, collectionName, createdBy, createdAt } =
     getCommonColumns<ContentDiagnosticsDuplicatedFinding>();
   const duplicateCountColumn: TreeTableColumnDef<ContentDiagnosticsDuplicatedFinding> =
     {
@@ -27,7 +27,7 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsDuplicatedFin
   return [
     name,
     entityType,
-    collection,
+    collectionName,
     duplicateCountColumn,
     createdBy,
     createdAt,

@@ -397,6 +397,7 @@ describe("ImbalancedContentPage", () => {
     it.each([
       ["Name", "name"],
       ["Type", "entity-type"],
+      ["Location", "collection-name"],
       ["Created by", "created-by"],
       ["Created at", "created-at"],
       ["Content count", "content-count"],
@@ -449,15 +450,6 @@ describe("ImbalancedContentPage", () => {
         expect(getUrlQuery(router)).toEqual({});
       });
       expect(header()).not.toHaveAttribute("aria-sort");
-    });
-
-    it("does not offer sorting by Location", async () => {
-      setup({ findings: FINDINGS });
-      await waitForListToLoad();
-
-      expect(
-        screen.getByRole("columnheader", { name: /^Location/ }),
-      ).not.toHaveAttribute("tabindex");
     });
   });
 });
