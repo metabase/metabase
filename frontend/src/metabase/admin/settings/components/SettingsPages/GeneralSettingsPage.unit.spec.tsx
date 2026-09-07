@@ -35,27 +35,25 @@ const generalSettings = {
   "redirect-all-requests-to-https": false,
   "humanization-strategy": "simple",
   "enable-xrays": false,
-  "csp-img-enabled": true,
   "search-engine": "appdb",
-  "custom-viz-enabled": false,
 } as const;
+
+const originalIsEmbeddingSdkEnabled = PLUGIN_EMBEDDING_SDK.isEnabled;
+
+afterEach(() => {
+  PLUGIN_EMBEDDING_SDK.isEnabled = originalIsEmbeddingSdkEnabled;
+});
 
 const setup = async ({
   isCloudPlan,
   hasAuditApp,
-  cspImgEnabled,
-  customVizEnabled,
   isHosted,
   hasEmbeddingSdk,
-  hasSimpleEmbedding,
 }: {
   isCloudPlan?: boolean;
   hasAuditApp?: boolean;
-  cspImgEnabled?: boolean;
-  customVizEnabled?: boolean;
   isHosted?: boolean;
   hasEmbeddingSdk?: boolean;
-  hasSimpleEmbedding?: boolean;
 } = {}) => {
   // Direct control, bypassing hasPremiumFeature/MetabaseSettings singleton
   // timing -- deterministic regardless of what earlier tests in this worker
@@ -64,15 +62,11 @@ const setup = async ({
 
   const settings = createMockSettings({
     ...generalSettings,
-    "csp-img-enabled": cspImgEnabled ?? generalSettings["csp-img-enabled"],
-    "custom-viz-enabled":
-      customVizEnabled ?? generalSettings["custom-viz-enabled"],
     "is-hosted?": isHosted ?? false,
     "token-features": createMockTokenFeatures({
       hosting: isCloudPlan ?? false,
       audit_app: hasAuditApp ?? true,
       embedding_sdk: hasEmbeddingSdk ?? false,
-      embedding_simple: hasSimpleEmbedding ?? false,
     }),
   });
 
