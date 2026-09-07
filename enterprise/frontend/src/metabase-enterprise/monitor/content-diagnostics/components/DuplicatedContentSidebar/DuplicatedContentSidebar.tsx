@@ -38,7 +38,7 @@ export function DuplicatedContentSidebar({
   onClose,
 }: DuplicatedContentSidebarProps) {
   return (
-    <DiagnosticsSidebar finding={finding} onClose={onClose}>
+    <DiagnosticsSidebar finding={finding} tab="duplicated" onClose={onClose}>
       <DuplicatesSection
         duplicateCount={finding.duplicate_count}
         duplicateEntities={finding.details.duplicate_entities}

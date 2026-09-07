@@ -11,6 +11,8 @@ import { addUndo } from "metabase/redux/undo";
 import { List } from "metabase/ui";
 import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
 
+import { trackContentDiagnosticsFindingsBulkTrashed } from "../../analytics";
+
 import { useBulkTrashFindings } from "./use-bulk-trash-findings";
 
 type ContentDiagnosticsBulkTrashBarProps = {
@@ -113,8 +115,15 @@ export function ContentDiagnosticsBulkTrashBar({
   const trashCopy = getTrashCopy(archivableCount, transformCount);
 
   const handleConfirm = async () => {
+    const startTime = performance.now();
     const { total, failedFindings } = await trashFindings(selectedFindings);
     setIsConfirmOpen(false);
+
+    trackContentDiagnosticsFindingsBulkTrashed({
+      count: total,
+      durationMs: Math.trunc(performance.now() - startTime),
+      result: failedFindings.length > 0 ? "failure" : "success",
+    });
 
     if (failedFindings.length > 0) {
       dispatch(

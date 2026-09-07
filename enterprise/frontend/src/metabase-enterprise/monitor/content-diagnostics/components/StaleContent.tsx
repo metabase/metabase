@@ -1,6 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 import type { RowSelectionState } from "@tanstack/react-table";
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
@@ -11,6 +11,13 @@ import type { Sorting } from "metabase/utils/sorting";
 import { useListStaleFindingsQuery } from "metabase-enterprise/api";
 import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import type { ContentDiagnosticsStaleSortColumn } from "metabase-types/api";
+
+import {
+  getChangedFilterDimension,
+  trackContentDiagnosticsFiltersChanged,
+  trackContentDiagnosticsFindingSelected,
+  trackContentDiagnosticsTabViewed,
+} from "../analytics";
 
 import { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
@@ -84,6 +91,10 @@ export function StaleContent({
     (finding) => rowSelection[String(finding.id)],
   );
 
+  useEffect(() => {
+    trackContentDiagnosticsTabViewed("stale");
+  }, []);
+
   const clearRowSelection = () => setRowSelection({});
 
   const handleTrashSettled = (failedFindingIds: number[]) =>
@@ -99,6 +110,14 @@ export function StaleContent({
   const handleFilterOptionsChange = (
     newFilterOptions: StaleContentFilterOptions,
   ) => {
+    const dimension = getChangedFilterDimension(
+      filterOptions,
+      newFilterOptions,
+    );
+    if (dimension !== null) {
+      trackContentDiagnosticsFiltersChanged({ tab: "stale", dimension });
+    }
+
     clearRowSelection();
     onParamsChange(
       {
@@ -163,7 +182,14 @@ export function StaleContent({
               isFetching={isFetching}
               isLoading={isLoading}
               rowSelection={rowSelection}
-              onSelect={(finding) => setSelectedFindingId(finding.id)}
+              onSelect={(finding) => {
+                trackContentDiagnosticsFindingSelected({
+                  tab: "stale",
+                  entityId: finding.entity_id,
+                  entityType: finding.entity_type,
+                });
+                setSelectedFindingId(finding.id);
+              }}
               onSortOptionsChange={handleSortOptionsChange}
               onRowSelectionChange={setRowSelection}
             />

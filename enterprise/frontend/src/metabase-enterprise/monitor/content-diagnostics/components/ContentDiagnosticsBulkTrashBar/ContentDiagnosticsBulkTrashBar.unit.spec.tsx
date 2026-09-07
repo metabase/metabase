@@ -11,6 +11,8 @@ import {
 
 import { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";
 
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
+
 function card(
   opts: { id?: number; entity_id?: number } = {},
 ): ContentDiagnosticsBaseFinding {
@@ -95,6 +97,33 @@ describe("ContentDiagnosticsBulkTrashBar", () => {
         "1 transform will be permanently deleted and cannot be restored.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("hard-deletes a transform on confirm and reports it as a transform delete", async () => {
+    fetchMock.delete("path:/api/transform/7", 204);
+    const { onSettled } = setup([transform({ id: 1, entity_id: 7 })]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete" }),
+    );
+
+    await waitFor(() => {
+      expect(onSettled).toHaveBeenCalledWith([]);
+    });
+
+    expect(fetchMock.callHistory.calls("path:/api/transform/7")).toHaveLength(
+      1,
+    );
+    expect(trackSimpleEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "transform_deleted",
+        target_id: 7,
+        triggered_from: "content_diagnostics",
+        result: "success",
+      }),
+    );
   });
 
   it("archives on confirm, reports success, and clears the selection", async () => {

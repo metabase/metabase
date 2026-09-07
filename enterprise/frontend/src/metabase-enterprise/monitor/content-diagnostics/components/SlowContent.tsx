@@ -1,6 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 import type { RowSelectionState } from "@tanstack/react-table";
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
@@ -14,6 +14,13 @@ import type {
   ContentDiagnosticsSlowFinding,
   ContentDiagnosticsSlowSortColumn,
 } from "metabase-types/api";
+
+import {
+  getChangedFilterDimension,
+  trackContentDiagnosticsFiltersChanged,
+  trackContentDiagnosticsFindingSelected,
+  trackContentDiagnosticsTabViewed,
+} from "../analytics";
 
 import { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
@@ -89,6 +96,10 @@ export function SlowContent({
     (finding) => rowSelection[String(finding.id)],
   );
 
+  useEffect(() => {
+    trackContentDiagnosticsTabViewed("slow");
+  }, []);
+
   const clearRowSelection = () => setRowSelection({});
 
   const handleTrashSettled = (failedFindingIds: number[]) =>
@@ -104,6 +115,14 @@ export function SlowContent({
   const handleFilterOptionsChange = (
     newFilterOptions: SlowContentFilterOptions,
   ) => {
+    const dimension = getChangedFilterDimension(
+      filterOptions,
+      newFilterOptions,
+    );
+    if (dimension !== null) {
+      trackContentDiagnosticsFiltersChanged({ tab: "slow", dimension });
+    }
+
     clearRowSelection();
     onParamsChange(
       {
@@ -168,7 +187,14 @@ export function SlowContent({
               isFetching={isFetching}
               isLoading={isLoading}
               rowSelection={rowSelection}
-              onSelect={(finding) => setSelectedFindingId(finding.id)}
+              onSelect={(finding) => {
+                trackContentDiagnosticsFindingSelected({
+                  tab: "slow",
+                  entityId: finding.entity_id,
+                  entityType: finding.entity_type,
+                });
+                setSelectedFindingId(finding.id);
+              }}
               onSortOptionsChange={handleSortOptionsChange}
               onRowSelectionChange={setRowSelection}
             />

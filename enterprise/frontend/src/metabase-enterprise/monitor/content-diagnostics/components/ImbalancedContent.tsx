@@ -1,6 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 import type { RowSelectionState } from "@tanstack/react-table";
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
@@ -14,6 +14,13 @@ import type {
   ContentDiagnosticsImbalancedFindingType,
   ContentDiagnosticsImbalancedSortColumn,
 } from "metabase-types/api";
+
+import {
+  getChangedFilterDimension,
+  trackContentDiagnosticsFiltersChanged,
+  trackContentDiagnosticsFindingSelected,
+  trackContentDiagnosticsTabViewed,
+} from "../analytics";
 
 import { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
@@ -93,6 +100,10 @@ export function ImbalancedContent({
     (finding) => rowSelection[String(finding.id)],
   );
 
+  useEffect(() => {
+    trackContentDiagnosticsTabViewed(mode);
+  }, [mode]);
+
   const clearRowSelection = () => setRowSelection({});
 
   const handleTrashSettled = (failedFindingIds: number[]) =>
@@ -110,6 +121,14 @@ export function ImbalancedContent({
   const handleFilterOptionsChange = (
     newFilterOptions: ImbalancedContentFilterOptions,
   ) => {
+    const dimension = getChangedFilterDimension(
+      filterOptions,
+      newFilterOptions,
+    );
+    if (dimension !== null) {
+      trackContentDiagnosticsFiltersChanged({ tab: mode, dimension });
+    }
+
     clearRowSelection();
     onParamsChange(
       {
@@ -176,7 +195,14 @@ export function ImbalancedContent({
               isLoading={isLoading}
               enableSelection={enableBulkTrash}
               rowSelection={rowSelection}
-              onSelect={(finding) => setSelectedFindingId(finding.id)}
+              onSelect={(finding) => {
+                trackContentDiagnosticsFindingSelected({
+                  tab: mode,
+                  entityId: finding.entity_id,
+                  entityType: finding.entity_type,
+                });
+                setSelectedFindingId(finding.id);
+              }}
               onSortOptionsChange={handleSortOptionsChange}
               onRowSelectionChange={setRowSelection}
             />
@@ -193,6 +219,7 @@ export function ImbalancedContent({
         {selectedFinding != null && (
           <Sidebar containerWidth={containerWidth}>
             <ImbalancedContentSidebar
+              tab={mode}
               finding={selectedFinding}
               onClose={() => setSelectedFindingId(undefined)}
             />

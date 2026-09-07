@@ -17,6 +17,7 @@ export function SlowContentSidebar({
   return (
     <DiagnosticsSidebar
       finding={finding}
+      tab="slow"
       onClose={onClose}
       extraInfo={{
         label: t`Duration`,

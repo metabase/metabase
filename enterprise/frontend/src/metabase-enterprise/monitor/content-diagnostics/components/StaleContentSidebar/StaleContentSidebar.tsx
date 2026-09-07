@@ -21,6 +21,7 @@ export function StaleContentSidebar({
   return (
     <DiagnosticsSidebar
       finding={finding}
+      tab="stale"
       onClose={onClose}
       extraInfo={{
         label: getLastActiveLabel(finding.entity_type),
