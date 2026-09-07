@@ -8,26 +8,15 @@ import MetabaseSettings from "metabase/utils/settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
-  CardDisplayType,
   DashCardId,
   DashboardId,
   DashboardTabId,
-  DatasetQuery,
+  SaveMetabotDashboardTile,
 } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
 
-export type AdhocDashboardTile = {
-  title: string;
-  display: CardDisplayType;
-  dataset_query: DatasetQuery;
-  chart_id?: string;
-  card_id?: number;
-  row: number;
-  col: number;
-  size_x: number;
-  size_y: number;
-};
+export type AdhocDashboardTile = SaveMetabotDashboardTile;
 
 export type AdhocDashboardMetabotOrigin = {
   conversation_id: string;

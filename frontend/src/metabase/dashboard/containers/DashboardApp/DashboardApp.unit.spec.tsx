@@ -6,6 +6,7 @@ import {
   setupActionsEndpoints,
   setupBookmarksEndpoints,
   setupCardDataset,
+  setupCardQueryEndpoints,
   setupCardsEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
@@ -44,6 +45,7 @@ import {
   createMockDashboard,
   createMockDashboardQueryMetadata,
   createMockDatabase,
+  createMockDataset,
   createMockTable,
 } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
@@ -366,6 +368,22 @@ describe("DashboardApp ad-hoc dashboards", () => {
       },
     );
   };
+
+  it("runs a saved-question tile through its own card query endpoint", async () => {
+    setupCardQueryEndpoints(createMockCard({ id: 42 }), createMockDataset());
+    setupAdhoc({
+      ...definition,
+      tiles: [{ ...definition.tiles[0], card_id: 42 }],
+    });
+
+    expect(await screen.findByText("Venues by price")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(fetchMock.callHistory.called("path:/api/card/42/query")).toBe(
+        true,
+      ),
+    );
+    expect(fetchMock.callHistory.called("path:/api/dataset")).toBe(false);
+  });
 
   it("renders a hash-defined dashboard through the regular dashboard page, read-only", async () => {
     setupAdhoc(definition);

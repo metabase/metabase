@@ -1,6 +1,7 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
 import { assocIn, dissocIn } from "icepick";
+import { castDraft } from "immer";
 import { omit } from "underscore";
 
 import {
@@ -32,7 +33,6 @@ import type {
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
-  DashCardDataMap,
   DashCardId,
   Dashboard,
   Dataset,
@@ -447,13 +447,11 @@ export const dashcardData = createReducer(
           // mutate the draft rather than assocIn: icepick freezes its result in
           // dev, which stops immer from finalizing the draft children embedded
           // in it and leaves revoked proxies in the state
-          // Dataset is too deeply recursive for immer's Draft<> to instantiate,
-          // so write through the map's plain type
-          const dashcardData = state as unknown as DashCardDataMap;
-          dashcardData[dashcard_id] ??= {};
-          // error-only results are stored in the dataset slot by contract so
-          // the dashcard can render them; the map's Dataset type predates that
-          dashcardData[dashcard_id][card_id] = result as Dataset;
+          state[dashcard_id] ??= {};
+          // error-only results share the Dataset slot: every consumer reads
+          // them through the Dataset type (`result.error`), so the map keeps
+          // that contract rather than widening it
+          state[dashcard_id][card_id] = castDraft(result as Dataset);
         }
       })
       .addCase(clearCardData, (state, action) => {

@@ -69,6 +69,20 @@
   []
   (get-in (current-memory) [:state :chart-configs] {}))
 
+(defn resolve-generated-chart
+  "The generated chart `chart-id` from agent memory as `{:query <pMBQL> :display <keyword>}`,
+  or nil when the chart or its query is unknown. Agent-created charts carry the display in
+  `:visualization_settings :chart_type`; charts seeded from the frontend viewing context
+  leave that nil and keep the raw config under `:chart_config` instead."
+  [chart-id]
+  (when-let [chart (get (current-charts-state) chart-id)]
+    (when-let [query (or (first (:queries chart))
+                         (get (current-queries-state) (:query_id chart)))]
+      {:query   query
+       :display (or (some-> (get-in chart [:visualization_settings :chart_type]) keyword)
+                    (some-> (get-in chart [:chart_config :display_type]) keyword)
+                    :table)})))
+
 (defn current-context
   "Returns the current agent context from memory."
   []

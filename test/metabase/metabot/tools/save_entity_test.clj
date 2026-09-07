@@ -290,7 +290,7 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/Card :model/Dashboard]
       (mt/with-temp [:model/Collection coll {}
-                     :model/Card existing {:name "Existing" :dataset_query (mt/mbql-query venues)}]
+                     :model/Card existing {:name "Existing" :dataset_query (venues-query)}]
         (let [memory  (doto (dashboard-memory)
                         (swap! assoc-in [:state :dashboards "d-1" :tiles]
                                [{:card_id (:id existing) :title "Existing" :row 0 :col 0 :size_x 12 :size_y 6}

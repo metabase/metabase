@@ -15,13 +15,14 @@
 (set! *warn-on-reflection* true)
 
 (defn- place-tile!
-  [dashboard-id conversation-id {:keys [name dataset_query display row col size_x size_y chart-id card-id]}]
+  [dashboard-id conversation-id {:keys [name dataset-query display visualization-settings
+                                        row col size-x size-y chart-id card-id]}]
   (let [card (when-not card-id
                (queries/create-card!
                 {:name                   name
-                 :dataset_query          dataset_query
+                 :dataset_query          dataset-query
                  :display                display
-                 :visualization_settings {}
+                 :visualization_settings (or visualization-settings {})
                  :dashboard_id           dashboard-id}
                 {:id api/*current-user-id*}
                 :delay-event
@@ -31,23 +32,23 @@
                  :card_id      (or card-id (:id card))
                  :row          row
                  :col          col
-                 :size_x       size_x
-                 :size_y       size_y})
+                 :size_x       size-x
+                 :size_y       size-y})
     (when (and card conversation-id chart-id)
       (metabot.db/link-card-to-conversation! (:id card) conversation-id chart-id))
     card))
 
-(defn- check-tile-permissions! [{:keys [card-id dataset_query]}]
+(defn- check-tile-permissions! [{:keys [card-id dataset-query]}]
   (if card-id
     (api/read-check :model/Card card-id)
-    (query-perms/check-run-permissions-for-query dataset_query)))
+    (query-perms/check-run-permissions-for-query dataset-query)))
 
 (defn materialize!
   "Create the dashboard `name`/`description` in `collection-id` (nil for the root
-  collection) with one dashcard per tile, at the tile's `:row`/`:col`/`:size_x`/
-  `:size_y` grid position. A tile with a `:card-id` places that existing saved
-  question as-is; otherwise its `:name`, legacy `:dataset_query` and `:display`
-  keyword become a new dashboard question, stamped with the conversation + chart
+  collection) with one dashcard per tile, at the tile's `:row`/`:col`/`:size-x`/
+  `:size-y` grid position. A tile with a `:card-id` places that existing saved
+  question as-is; otherwise its `:name`, legacy `:dataset-query`, `:display`
+  keyword and optional `:visualization-settings` become a new dashboard question, stamped with the conversation + chart
   origin when `conversation-id` and `:chart-id` are known; the dashboard itself is
   stamped with `conversation-id` + `generated-id` (the id `create_dashboard` gave it). Checks query/card and
   collection permissions first, publishes the create events after the transaction

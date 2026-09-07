@@ -82,8 +82,9 @@
 (deftest create-dashboard-saved-card-tile-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card card {:name          "Saved venues"
-                                     :display       :line
-                                     :dataset_query (mt/mbql-query venues)}]
+                                     :display                :line
+                                     :dataset_query          (venues-query)
+                                     :visualization_settings {:graph.dimensions ["PRICE"]}}]
       (let [result (create! (chart-memory)
                             {:name  "Mixed"
                              :tiles [{:card_id (:id card) :title "Saved venues"}
@@ -93,8 +94,9 @@
         (testing "an existing saved question can be a tile, stored by its card id"
           (is (= {:title "Saved venues" :row 0 :col 0 :size_x 12 :size_y 6 :card_id (:id card)}
                  (first (get-in result [:structured-output :tiles])))))
-        (testing "the entity tile embeds the card's query and display so it renders ad hoc"
+        (testing "the entity tile embeds the card's query, display and settings so it renders ad hoc as saved"
           (is (= {:title "Saved venues" :display "line" :card_id (:id card)
+                  :visualization_settings {:graph.dimensions ["PRICE"]}
                   :row 0 :col 0 :size_x 12 :size_y 6}
                  (dissoc (first tiles) :query)))
           (is (map? (:query (first tiles)))))
