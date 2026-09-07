@@ -4,7 +4,7 @@ import {
   requireGarbageCollection,
   settleAndCollect,
 } from "__support__/memory";
-import { memoizeClass } from "metabase/utils/memoize";
+import { memoize } from "metabase/utils/memoize";
 
 const INSTANCES_PER_PASS = 2_000;
 const CALLS_PER_INSTANCE = 20;
@@ -12,22 +12,25 @@ const CALLS_PER_INSTANCE = 20;
 // 2,000 instances x 20 calls, so a cache that outlived its instance would show.
 const RETENTION_BUDGET_MB = 1;
 
+/** The pattern that replaced memoizeClass: a memoized arrow on a class field. */
 class Chart {
-  series() {
-    return { rows: [1, 2, 3] };
-  }
+  series = memoize(() => ({ rows: [1, 2, 3] }));
 
-  slice(index: number, options: { label: string }) {
-    return { index, label: options.label, rows: [1, 2, 3] };
-  }
+  slice = memoize((index: number, options: { label: string }) => ({
+    index,
+    label: options.label,
+    rows: [1, 2, 3],
+  }));
 }
 
-const MemoizedChart = memoizeClass<Chart>("series", "slice")(Chart);
+function makeResultRef(): WeakRef<object> {
+  const chart = new Chart();
+  return new WeakRef(chart.series());
+}
 
-/** Builds instances, calls the memoized methods, then drops everything. */
 function driveInstances(firstIndex: number) {
   for (let i = 0; i < INSTANCES_PER_PASS; i++) {
-    const chart = new MemoizedChart();
+    const chart = new Chart();
     for (let call = 0; call < CALLS_PER_INSTANCE; call++) {
       chart.series();
       chart.slice(firstIndex + call, { label: `slice ${call}` });
@@ -35,20 +38,15 @@ function driveInstances(firstIndex: number) {
   }
 }
 
-function makeResultRef(): WeakRef<object> {
-  const chart = new MemoizedChart();
-  return new WeakRef(chart.series());
-}
-
-describe("memoizeClass", () => {
+describe("a memoized class field", () => {
   it("returns the identical result for one instance", () => {
-    const chart = new MemoizedChart();
+    const chart = new Chart();
 
     expect(chart.series()).toBe(chart.series());
   });
 
   it("keeps instances apart", () => {
-    expect(new MemoizedChart().series()).not.toBe(new MemoizedChart().series());
+    expect(new Chart().series()).not.toBe(new Chart().series());
   });
 
   it("releases an instance's results with the instance", async () => {
@@ -57,8 +55,8 @@ describe("memoizeClass", () => {
     const result = makeResultRef();
     await settleAndCollect();
 
-    // The cache keys on the instance, so nothing outlives it. A cache keyed on
-    // the method would hold every instance's results for the life of the tab.
+    // The field is created per instance, so nothing outlives it. A cache built
+    // once on the prototype would hold every instance's results instead.
     expect(result.deref()).toBeUndefined();
   });
 
