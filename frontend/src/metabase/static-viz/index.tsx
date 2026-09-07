@@ -1,6 +1,7 @@
 import { setPlatformAPI } from "echarts/core";
-import enterpriseOverrides from "ee-overrides";
 import ReactDOMServer from "react-dom/server";
+
+import enterpriseOverrides from "ee-overrides";
 
 import {
   StaticChoropleth,

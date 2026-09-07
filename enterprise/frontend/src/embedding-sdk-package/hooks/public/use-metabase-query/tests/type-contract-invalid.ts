@@ -1,9 +1,9 @@
+import { TEST_SCHEMA } from "./fixtures";
+
 import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
 import { breakout, count, filter, sum, useMetabaseQuery } from "..";
-
-import { TEST_SCHEMA } from "./fixtures";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 type OrdersQuestion = (typeof TEST_SCHEMA)["questions"]["ordersQuestion"];

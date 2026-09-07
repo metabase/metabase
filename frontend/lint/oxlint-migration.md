@@ -10,7 +10,7 @@ express.
 | --- | --- | --- |
 | `bun run lint-oxlint` | 200 rules: oxlint's native Rust rules plus 10 plugins loaded through `jsPlugins` | ~8s |
 | `bun run lint-boundaries` | Module-boundary enforcement (`.oxlintrc.boundaries.json`, standalone) | ~35s |
-| `bun run lint-format` | oxfmt (quote style, spacing, **import order**) | ~1s |
+| `bun run lint-format` | oxfmt (quote style, spacing; does **not** sort imports) | ~1s |
 | `bun run type-check` | tsc — undefined names, unresolved imports, duplicate params | — |
 
 `lint-boundaries` is an order of magnitude slower than the main pass, so it is
@@ -300,56 +300,24 @@ kept the `allow` list in Cypress specs. oxlint resets to rule defaults instead, 
 made `console.warn` an error in every `.cy.spec` file. **Repeat the options in every
 override**, or the narrowing override silently becomes stricter than intended.
 
-## Import order is now oxfmt's job, not the linter's
+## Import order is preserved, not re-sorted
 
-oxfmt's `sortImports` replaces `import/order`. It is off by default and can only be
-switched on from the config file, so it lives in `.oxfmtrc.json`. Three differences
-from the ESLint rule:
+Master's import order (produced by `eslint-plugin-import`'s `import/order`) is kept
+as-is. oxfmt does **not** sort imports: `.oxfmtrc.json` carries no `sortImports`
+block, so oxfmt only formats (quotes, spacing, `printWidth`) and leaves the order
+untouched. Import order is therefore **not enforced** by either tool right now.
 
-- **It is enforced by `lint-format-pure`, not `lint-oxlint`.** A misordered import is
-  a formatting failure now, and `bun run format` fixes it.
-- **It is not opt-out-able per rule.** `eslint-disable import/order` does nothing.
-  Use `// oxfmt-ignore` above the import, which pins exactly one statement.
-- **The comparator differs in a way that cannot be fully closed.** See below.
+The reason is module-evaluation order. An earlier revision used oxfmt's `sortImports`
+tuned to match master, but oxfmt's comparator cannot fully match eslint's (it
+compares whole strings, so `metabase-types/api` sorts before `metabase/api`), leaving
+a residual of files whose imports moved. Reordering imports can change the order
+side-effectful modules evaluate in — a runtime effect no linter or tsc can see. Rather
+than carry that risk for a cosmetic rule, the sort was dropped and the residual files
+restored to master's order.
 
-### Matching master's order
-
-The naive config reordered 3,491 files, because oxfmt and eslint-plugin-import
-disagree on how to compare specifiers. eslint compares path **segments**, so
-`metabase` sorts before `metabase-types` (segment `metabase` is shorter). oxfmt
-compares the **whole string**, and `-` (0x2D) sorts before `/` (0x2F), so
-`metabase-types/api` lands before `metabase/api`. oxfmt exposes no option to change
-the comparator.
-
-The internal block is recovered with `customGroups`. The single `internalPattern`
-group is split into four ordered groups so `metabase/` precedes the hyphenated
-`metabase-*` scopes, matching eslint:
-
-- `internal-pre-metabase` — every first-party prefix that sorts before `metabase`
-- `metabase-core` — `metabase/**`
-- `metabase-scoped` — `metabase-lib`, `metabase-types`, `metabase-enterprise`
-- `internal-post-metabase` — `sdk-ee-plugins`
-
-The `{ "newlinesBetween": false }` markers between them override the global
-`newlinesBetween: true`, so the four groups read as one block with no blank lines,
-exactly as eslint left it. This drops the churn from 3,491 files to 70.
-
-Those 70 are the residual the comparator cannot express: the same hyphen-vs-slash
-collision at greater depth (`metabase/embedding` vs `metabase/embedding-sdk`) and
-among external packages (`react` vs `react-dom`). Enumerating a custom group per
-colliding prefix pair at every depth is unbounded and fragile, so these are left as
-an accepted, stable difference.
-
-Eleven files are pinned because their import order is load-bearing:
-
-- `frontend/src/metabase/query_builder/reducers.ts` — sorting triggers TS2589
-  ("Type instantiation is excessively deep") in the reducer type.
-- `frontend/src/metabase/static-viz/index.tsx` — `ee-overrides` is an rspack-only
-  alias with no tsconfig path, so it cannot be classified into a group.
-- the rest are SDK entry points and their tests, which already carried
-  `eslint-disable import/order`. They mix side-effect imports that must run first
-  (`./lib/sdk-public-path` sets webpack's `publicPath`) with assignments interleaved
-  between the imports.
+If import-order enforcement is wanted back, the path is `eslint-plugin-import-x`'s
+`import/order` as a jsPlugin (it needs a resolver), not oxfmt sorting — that keeps
+the exact eslint ordering and never reorders on its own.
 
 ## Testing custom rules
 
