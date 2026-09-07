@@ -140,7 +140,7 @@
       ;; `s` is untrusted agent input — bound it before it lands in an exception message or ex-data so a
       ;; pathological literal can't flood logs. A real temporal literal is well under this length.
       (let [s' (u/truncate s 64)]
-        (throw (ex-info (tru "Invalid temporal literal {0} in :absolute-datetime — use an ISO-8601 date, datetime, year, or year-month."
+        (throw (ex-info (tru "Invalid temporal literal {0} — use an ISO-8601 date, datetime, year, or year-month."
                              (pr-str s'))
                         {:agent-error? true
                          :status-code  400
@@ -148,10 +148,15 @@
                          :literal      s'}
                         e))))))
 
-(defn- validate-absolute-datetime-literals
-  "Validate (without coercing) the string literals in `:absolute-datetime` clauses, so malformed
-  temporal input fails fast here — where the agent sees it and can correct — instead of surviving to
-  query execution.
+(def ^:private iso-date-shaped-pattern
+  "A string that looks like an ISO-8601 date, with or without a time portion."
+  #"\d{4}-\d{2}-\d{2}.*")
+
+(defn- validate-temporal-literals
+  "Validate (without coercing) the temporal string literals the model wrote, so malformed input fails
+  fast here — where the agent sees it and can correct — instead of surviving to query execution: the
+  literal of every `:absolute-datetime` clause, and any bare `between` bound that looks like an ISO
+  date (the shape the query builder's own date filter writes).
 
   The actual string → `java.time` coercion is intentionally NOT done here: it happens later in the
   QP's `wrap-value-literals`, where the comparison field's type and the report timezone are
@@ -162,10 +167,16 @@
   ;; raw "Invalid input" on an otherwise-malformed query (e.g. an `:offset` in `:expressions`) here,
   ;; pre-empting the friendlier not-runnable gate downstream. We only need to inspect literals, and
   ;; matching a bare `[:absolute-datetime _ s _]` vector suffices — the same shape check the sibling
-  ;; `annotate-field-types` pass uses.
+  ;; `annotate-field-types` pass uses. Two walks rather than one with two patterns: `match-many` does
+  ;; not descend into a form it matched, so a wrapped bound inside a `between` must be seen by the first.
   (match/match-many pmbql-query
     [:absolute-datetime _ (s :guard string?) _]
     (assert-parseable-temporal-literal! s))
+  (match/match-many pmbql-query
+    [:between _ _ lo hi]
+    (doseq [s [lo hi]
+            :when (and (string? s) (re-matches iso-date-shaped-pattern s))]
+      (assert-parseable-temporal-literal! s)))
   pmbql-query)
 
 (defn resolve-query
@@ -188,7 +199,7 @@
      (-> (lib.normalize/normalize ::lib.schema/query with-mp)
          (annotate-field-types metadata-provider)
          annotate-metric-and-measure-ref-types
-         validate-absolute-datetime-literals))))
+         validate-temporal-literals))))
 
 ;;; ============================================================
 ;;; Export final MBQL 5 back to portable representations
