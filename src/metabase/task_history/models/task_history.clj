@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.task-history.db :as task-history.db]
    [metabase.task-history.models.task-run :as task-run]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -48,10 +49,8 @@
   ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
   ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
   ;; disk.
-  (when-let [clean-before-date (t2/select-one-fn :ended_at :model/TaskHistory {:limit    1
-                                                                               :offset   num-rows-to-keep
-                                                                               :order-by [[:ended_at :desc]]})]
-    (t2/delete! (t2/table-name :model/TaskHistory) :ended_at [:<= clean-before-date])))
+  (when-let [clean-before-date (task-history.db/nth-newest-task-history-ended-at num-rows-to-keep)]
+    (task-history.db/delete-task-history-ended-before! clean-before-date)))
 
 (def ^:private task-history-status #{:started :success :failed :unknown})
 
@@ -74,36 +73,11 @@
    :logs         mi/transform-json
    :status       mi/transform-keyword})
 
-(defn- params->where
-  [{:keys [status task]}]
-  (when (or status task)
-    ;; qualified so filters stay unambiguous when the db_name/db_engine sorts join metabase_database
-    {:where (cond-> [:and]
-              task   (conj [:= :task_history.task task])
-              status (conj [:= :task_history.status (name status)]))}))
-
 (def FilterParams
   "Schema for filter for task history."
   [:map
    [:status {:optional true} (into [:enum] task-history-status)]
    [:task {:optional true} [:string {:min 1}]]])
-
-(def ^:private join-sort-columns
-  "Sort columns that require a LEFT JOIN to `metabase_database`, mapped to the joined column to order by."
-  {:db_name   :metabase_database.name
-   :db_engine :metabase_database.engine})
-
-(defn- params->order-by
-  "Build the honeysql fragment needed to order the task history list. For `:db_name`/`:db_engine` this adds a LEFT JOIN
-  to `metabase_database` (ordering by the joined name/engine) while keeping the selected row shape to `task_history.*`.
-  A secondary `[:id :desc]` key makes ordering deterministic for low-cardinality columns."
-  [{col :sort_column
-    dir :sort_direction}]
-  (if-let [order-col (join-sort-columns col)]
-    {:select    [:task_history.*]
-     :left-join [:metabase_database [:= :task_history.db_id :metabase_database.id]]
-     :order-by  [[order-col dir] [:task_history.id :desc]]}
-    {:order-by [[col dir] [:id :desc]]}))
 
 (def ^:private available-sort-columns
   #{:started_at :ended_at :duration :task :status :db_name :db_engine})
@@ -118,24 +92,18 @@
   "Return all TaskHistory entries, filtered if `filter` is provided, applying `limit` and `offset` if not nil."
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
-   params :- [:maybe [:merge FilterParams SortParams]]]
-  (t2/select :model/TaskHistory (merge (params->where params)
-                                       (params->order-by params)
-                                       (when limit
-                                         {:limit limit})
-                                       (when offset
-                                         {:offset offset}))))
+   {:keys [status task sort_column sort_direction]} :- [:maybe [:merge FilterParams SortParams]]]
+  (task-history.db/task-histories status task (or sort_column :started_at) (or sort_direction :desc) limit offset))
 
 (mu/defn total
   "Return count of all, or filtered if `filter` is provided, task history entries."
-  [params :- FilterParams]
-  (t2/count :model/TaskHistory ((fnil identity {}) (params->where params))))
+  [{:keys [status task]} :- FilterParams]
+  (task-history.db/task-history-count status task))
 
 (defn unique-tasks
   "Return _vector_ of all unique tasks' names in alphabetical order."
   []
-  (vec (t2/select-fn-vec :task [:model/TaskHistory :task] {:group-by [:task]
-                                                           :order-by [:task]})))
+  (vec (task-history.db/distinct-task-names)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            with-task-history macro                                             |
@@ -163,7 +131,7 @@
   (let [updated-info (merge {:ended_at (t/instant)
                              :duration (ns->ms (- (System/nanoTime) startime-ns))}
                             info)]
-    (t2/update! :model/TaskHistory th-id updated-info)))
+    (task-history.db/update-task-history! th-id updated-info)))
 
 (def ^:dynamic ^Clock *log-capture-clock*
   "The java.time.Clock used for captured log message `:timestamp` values. Can be overridden for tests."
@@ -240,11 +208,11 @@
         info            (dissoc info :on-success-info :on-fail-info)
         start-time-ns   (System/nanoTime)
         run-id          (task-run/current-run-id)
-        th-id           (t2/insert-returning-pk! :model/TaskHistory
-                                                 (cond-> (assoc info
-                                                                :status     :started
-                                                                :started_at (t/instant))
-                                                   run-id (assoc :run_id run-id)))
+        th-id           (task-history.db/insert-task-history!
+                         (cond-> (assoc info
+                                        :status     :started
+                                        :started_at (t/instant))
+                           run-id (assoc :run_id run-id)))
         logs-atom       (log-capture-atom)]
     (binding [clojure.tools.logging/*logger-factory*
               (log-capture-factory clojure.tools.logging/*logger-factory* logs-atom)]

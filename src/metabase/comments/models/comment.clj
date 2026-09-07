@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.channel.urls :as channel.urls]
+   [metabase.comments.db :as comments.db]
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -29,8 +30,8 @@
   [_model k comments]
   (mi/instances-with-hydrated-data
    comments k
-   #(t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
-                      :id (keep :creator_id comments))
+   #(when-let [creator-ids (seq (keep :creator_id comments))]
+      (comments.db/users-by-id creator-ids))
    :creator_id
    {:default {}}))
 

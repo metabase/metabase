@@ -2,10 +2,10 @@
   "/api/data-studio/table endpoints for bulk table operations."
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.data-studio.db :as data-studio.db]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -15,12 +15,10 @@
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
-   [metabase.warehouse-schema.models.table :as table]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.table :as table]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,66 +29,44 @@
    [:schema_ids {:optional true} [:sequential :string]]
    [:table_ids {:optional true} [:sequential ms/PositiveInt]]])
 
-(mu/defn ^:private table-selectors->filter
-  [{:keys [database_ids table_ids schema_ids]}]
-  (let [schema-expr (fn [s]
-                      (let [[schema-db-id schema-name] (str/split s #"\:")]
-                        [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]]))]
-    (cond-> [:or false]
-      (seq database_ids) (conj [:in :db_id (sort database_ids)])
-      (seq table_ids)    (conj [:in :id    (sort table_ids)])
-      (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids))))))
-
 (mr/def ::data-layers
   (into [:enum {:decode/string keyword}] table/data-layers))
 
 ;;; ------------------------------------------------ Remapping Graph Traversal ------------------------------------------------
 
-(defn- remapped-table-ids
+(defn- remapped-table-ids-for-tables
   "Find tables connected via FK remapping (Dimensions).
   `input-field` and `output-field` are field aliases (:source_field or :target_field).
-  Returns table IDs from `output-field` that are connected to `tables` via `input-field`.
-  `tables` can be a set of table IDs or a HoneySQL subquery map."
-  [input-field output-field tables]
-  (if (empty? tables)
+  Returns table IDs from `output-field` that are connected to the Tables with `table-ids` via `input-field`."
+  [input-field output-field table-ids]
+  (if (empty? table-ids)
     #{}
-    (let [input-table-id  (keyword (name input-field) "table_id")
-          output-table-id (keyword (name output-field) "table_id")
-          not-in-tables   (if (map? tables)
-                            [:not [:exists (-> tables
-                                               (assoc :select [1])
-                                               (update :where (fn [where]
-                                                                [:and where [:= :id output-table-id]])))]]
-                            [:not [:in output-table-id tables]])]
-      (into #{} (map :table_id)
-            (t2/reducible-query {:select [[output-table-id :table_id]]
-                                 :from   [[(t2/table-name :model/Dimension) :dim]]
-                                 :join   [[(t2/table-name :model/Field) :source_field]
-                                          [:= :dim.field_id :source_field.id]
-                                          [(t2/table-name :model/Field) :target_field]
-                                          [:= :dim.human_readable_field_id :target_field.id]]
-                                 :where  [:and
-                                          [:= :dim.type "external"]
-                                          [:in input-table-id tables]
-                                          not-in-tables]})))))
+    (into #{} (map :table_id)
+          (data-studio.db/fk-remapped-table-ids-for-tables
+           (keyword (name input-field) "table_id")
+           (keyword (name output-field) "table_id")
+           table-ids
+           table-ids))))
+
+(defn- remapped-table-ids-for-selectors
+  "Find tables connected via FK remapping (Dimensions) to the Tables picked out by `selectors`.
+  `input-field` and `output-field` are field aliases (:source_field or :target_field)."
+  [input-field output-field selectors]
+  (into #{} (map :table_id)
+        (data-studio.db/fk-remapped-table-ids-for-selectors
+         (keyword (name input-field) "table_id")
+         (keyword (name output-field) "table_id")
+         selectors)))
 
 (defn- upstream-table-ids
-  "Given a table selector (set of IDs or subquery), find all tables that these tables depend on
-  via FK remapping (Dimensions)."
-  [source-tables]
-  (remapped-table-ids :source_field :target_field source-tables))
+  "Given a set of table IDs, find all tables that these tables depend on via FK remapping (Dimensions)."
+  [table-ids]
+  (remapped-table-ids-for-tables :source_field :target_field table-ids))
 
 (defn- downstream-table-ids
-  "Given a table selector (set of IDs or subquery), find all tables that depend on these tables
-  via FK remapping (Dimensions)."
-  [target-tables]
-  (remapped-table-ids :target_field :source_field target-tables))
-
-(defn- table-subquery
-  "Create a subquery that selects table IDs matching the given WHERE clause."
-  [where]
-  ^:allow-subquery
-  {:select [:id] :from [(t2/table-name :model/Table)] :where where})
+  "Given a set of table IDs, find all tables that depend on these tables via FK remapping (Dimensions)."
+  [table-ids]
+  (remapped-table-ids-for-tables :target_field :source_field table-ids))
 
 (defn- traverse-graph
   "Recursively traverse the remapping graph starting from initial-ids.
@@ -105,21 +81,21 @@
                new-neighbors)))))
 
 (defn- all-upstream-table-ids
-  "Get all upstream table IDs recursively for tables matching the given WHERE clause.
+  "Get all upstream table IDs recursively for tables picked out by `selectors`.
   The first hop uses a subquery to avoid materializing potentially millions of IDs;
   subsequent hops use IDs since remappings are rare."
-  [source-table-where]
-  (let [initial-ids (upstream-table-ids (table-subquery source-table-where))]
+  [selectors]
+  (let [initial-ids (remapped-table-ids-for-selectors :source_field :target_field selectors)]
     (if (empty? initial-ids)
       #{}
       (traverse-graph upstream-table-ids initial-ids))))
 
 (defn- all-downstream-table-ids
-  "Get all downstream table IDs recursively for tables matching the given WHERE clause.
+  "Get all downstream table IDs recursively for tables picked out by `selectors`.
   The first hop uses a subquery to avoid materializing potentially millions of IDs;
   subsequent hops use IDs since remappings are rare."
-  [target-table-where]
-  (let [initial-ids (downstream-table-ids (table-subquery target-table-where))]
+  [selectors]
+  (let [initial-ids (remapped-table-ids-for-selectors :target_field :source_field selectors)]
     (if (empty? initial-ids)
       #{}
       (traverse-graph downstream-table-ids initial-ids))))
@@ -157,7 +133,7 @@
     (u.jvm/in-virtual-thread*
      (fn []
        (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
-         (let [database (t2/select-one :model/Database db-id)]
+         (let [database (data-studio.db/database db-id)]
            ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
            ;; purposes of creating a new H2 database.
            (if (binding [driver.settings/*allow-testing-h2-connections* true
@@ -190,21 +166,21 @@
         [:owner_email {:optional true} [:maybe :string]]
         [:owner_user_id {:optional true} [:maybe :int]]]]]
   (api/check-data-analyst)
-  (let [where           (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+  (let [selectors       (select-keys body [:database_ids :schema_ids :table_ids])
         set-ks          [:data_authority
                          :data_source
                          :data_layer
                          :owner_email
                          :owner_user_id
                          :entity_type]
-        existing-tables (t2/select :model/Table {:where where})
+        existing-tables (data-studio.db/tables-matching-selectors selectors)
         table-ids       (set (map :id existing-tables))
         set-map         (select-keys body set-ks)]
     (when (seq set-map)
-      (t2/update! :model/Table [:in table-ids] set-map)
+      (data-studio.db/update-tables! table-ids set-map)
       (maybe-sync-unhidden-tables! existing-tables set-map)
       ;; Publish update events for remote sync tracking
-      (let [updated-tables (t2/select :model/Table :id [:in table-ids])]
+      (let [updated-tables (data-studio.db/tables table-ids)]
         (doseq [table updated-tables]
           (events/publish-event! :event/table-update {:object  table
                                                       :user-id api/*current-user-id*}))))
@@ -216,17 +192,16 @@
    _query-params
    body :- ::table-selectors]
   (api/check-data-analyst)
-  (let [fields            [:model/Table :id :db_id :name :display_name :schema :is_published]
-        where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        selected-tables   (t2/select fields {:where where :limit 2})
+  (let [selectors         (select-keys body [:database_ids :schema_ids :table_ids])
+        selected-tables   (data-studio.db/selection-columns-for-selectors selectors 2)
         selected-table    (when-not (next selected-tables)
                             (first selected-tables))
-        upstream-ids      (all-upstream-table-ids where)
-        downstream-ids    (all-downstream-table-ids where)
+        upstream-ids      (all-upstream-table-ids selectors)
+        downstream-ids    (all-downstream-table-ids selectors)
         upstream-tables   (when (seq upstream-ids)
-                            (t2/select fields :id [:in upstream-ids]))
+                            (data-studio.db/selection-columns-for-tables upstream-ids))
         downstream-tables (when (seq downstream-ids)
-                            (t2/select fields :id [:in downstream-ids]))]
+                            (data-studio.db/selection-columns-for-tables downstream-ids))]
     {:selected_table              selected-table
      :published_downstream_tables (filterv :is_published downstream-tables)
      :unpublished_upstream_tables (filterv (complement :is_published) upstream-tables)}))
@@ -244,9 +219,9 @@
    _
    body :- ::table-selectors]
   (api/check-data-analyst)
-  (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})
+  (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)
         db-ids (sort (set (map :db_id tables)))]
-    (doseq [database (t2/select :model/Database :id [:in db-ids])]
+    (doseq [database (data-studio.db/databases db-ids)]
       (try
         (binding [driver.settings/*allow-testing-h2-connections* true
                   driver.settings/*allow-testing-sqlite-connections* true]
@@ -264,7 +239,7 @@
    _
    body :- ::table-selectors]
   (api/check-data-analyst)
-  (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
+  (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)]
     ;; same permission skip as the single-table api, see comment in /:id/rescan_values
     (doseq [table tables]
       (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
@@ -277,12 +252,8 @@
    _
    body :- ::table-selectors]
   (api/check-data-analyst)
-  (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
-    (let [field-ids-to-delete-q ^:allow-subquery
-          {:select [:id]
-           :from   [(t2/table-name :model/Field)]
-           :where  [:in :table_id (map :id tables)]}]
-      (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids-to-delete-q]))
+  (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)]
+    (data-studio.db/delete-field-values-for-tables! (map :id tables))
     nil))
 
 (def ^{:arglists '([request respond raise])} routes

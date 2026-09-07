@@ -123,11 +123,11 @@
       (is (= {:a 1}
              (encryption-test/with-secret-key "qwe"
                (mi/encrypted-json-out
-                (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))))))
+                (encryption/encrypt "{\"a\": 1}" {:secret-key (encryption/secret-key->hash "qwe")}))))))
     (testing "Logs an error message when incoming data looks encrypted"
       (mt/with-log-messages-for-level [messages :error]
         (mi/encrypted-json-out
-         (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))
+         (encryption/encrypt "{\"a\": 1}" {:secret-key (encryption/secret-key->hash "qwe")}))
         (is (=? [{:level   :error
                   :e       nil
                   :message "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?"}]
@@ -140,7 +140,7 @@
       (mt/with-log-messages-for-level [messages :error]
         (encryption-test/with-secret-key "qwe"
           (mi/encrypted-json-out
-           (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1")))
+           (encryption/encrypt "{\"a\": 1" {:secret-key (encryption/secret-key->hash "qwe")})))
         (is (=? [{:level :error, :e nil, :message #"(?s)^Error parsing JSON: .*"}]
                 (messages)))))))
 

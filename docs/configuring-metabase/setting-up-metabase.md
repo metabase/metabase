@@ -82,6 +82,12 @@ At this point you are all set and ready to use Metabase. Since we like keeping i
 
 Once you're done here simply follow the link to **Take me to Metabase**. And if you decided to skip the newsletter sign-up, it's cool, we still like you :)
 
+## Connect an AI provider
+
+If you click **Set up AI**, Metabase walks you through [connecting an AI provider](../ai/settings.md).
+
+The providers you set up in AI settings power Metabase's built-in AI functionality, not the MCP server. With the MCP server, [your client provides the AI](../ai/mcp.md#with-the-mcp-server-your-client-provides-the-ai).
+
 ## Getting started with Metabase
 
 For a tutorial on getting up and running with questions and dashboards, head over to [Learn Metabase](https://www.metabase.com/learn/metabase-basics/getting-started/).

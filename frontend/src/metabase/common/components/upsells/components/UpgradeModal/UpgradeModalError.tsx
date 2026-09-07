@@ -8,7 +8,7 @@ interface UpgradeModalErrorProps {
 
 export function UpgradeModalError({ onClose }: UpgradeModalErrorProps) {
   return (
-    <Stack align="center" gap="lg" py="xl">
+    <Stack align="center" gap="xl" py="xxl">
       <Flex
         align="center"
         justify="center"
@@ -20,7 +20,7 @@ export function UpgradeModalError({ onClose }: UpgradeModalErrorProps) {
         <Icon name="warning" c="core-white" size={32} />
       </Flex>
 
-      <Stack align="center" gap="xs">
+      <Stack align="center" gap="xxs">
         <Title order={3} ta="center">
           {t`Something went wrong`}
         </Title>

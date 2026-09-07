@@ -2,8 +2,8 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 
 import type {
-  Card,
   Series,
+  SeriesCard,
   SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -46,8 +46,8 @@ function hasSingleSeriesKey(single: SingleSeries): boolean {
 }
 
 function isLegacySeriesCard(
-  card: Card,
-): card is Card & LegacySeriesSettingsObjectKey["card"] {
+  card: SeriesCard,
+): card is SeriesCard & LegacySeriesSettingsObjectKey["card"] {
   return "_seriesKey" in card;
 }
 

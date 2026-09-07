@@ -18,7 +18,7 @@ export function PageHeader() {
         }
       />
       <Title order={2} mb="sm">{t`Convert your models to transforms`}</Title>
-      <Text maw="38rem" mb="xl">
+      <Text maw="38rem" mb="xxl">
         {t`Transforms create tables in your database or data warehouse, regularly refreshing the data on a schedule. We'll be gradually phasing out models in favor of transforms because they and the tables they create are more reliable and extensible.`}
       </Text>
       <Title order={4}>{t`Pick a model to convert`}</Title>

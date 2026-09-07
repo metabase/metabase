@@ -97,6 +97,7 @@
   background-color: var(--mb-color-text-primary-inverse);
   border: none;
   border-radius: 1.375rem;
+  box-shadow: var(--mantine-shadow-sm_outline);
 
   input:disabled + * > & {
     background-color: var(--mb-color-background_surface-disabled);

@@ -23,6 +23,7 @@
 
 (p/import-vars
  [metabase.queries.card
+  card-param-constraints
   card-param-values
   card-param-remapped-value]
  [metabase.queries.models.card

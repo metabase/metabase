@@ -1,14 +1,14 @@
 .root {
   height: unset;
   padding: 0.125rem var(--mantine-spacing-sm);
-  gap: var(--mantine-spacing-xs);
+  gap: var(--mantine-spacing-xxs);
   font-weight: 500;
   font-size: var(--mantine-font-size-sm);
   line-height: 1rem;
   border-radius: 999px;
   color: var(--mb-color-text-primary);
   background-color: var(--mb-color-background-primary);
-  box-shadow: var(--mantine-shadow-xs);
+  box-shadow: var(--mantine-shadow-xs_outline);
 }
 
 .root[data-with-remove] {

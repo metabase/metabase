@@ -9,7 +9,7 @@
   position: absolute;
   display: flex;
   align-items: center;
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   background-color: var(--mb-color-background_page-secondary);
   pointer-events: none;
   padding: 0.25rem 0;

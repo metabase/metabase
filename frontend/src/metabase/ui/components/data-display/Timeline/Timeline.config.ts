@@ -7,6 +7,7 @@ export const timelineOverrides = {
     classNames: {
       item: TimelineStyles.item,
       itemBullet: TimelineStyles.itemBullet,
+      itemTitle: TimelineStyles.itemTitle,
     },
   }),
 };

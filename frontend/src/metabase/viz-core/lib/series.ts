@@ -6,21 +6,31 @@ import type {
   DatasetQuery,
   RawSeries,
   Series,
+  SeriesCard,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import { SERIES_SETTING_KEY } from "../shared/settings/series";
 
+import { withColorName } from "./color-name";
+
 export const updateSeriesColor = (
   settings: VisualizationSettings,
   seriesKey: string,
-  color: string,
+  hexValue: string,
+  colorName?: string,
 ) => {
-  return assocIn(settings, [SERIES_SETTING_KEY, seriesKey, "color"], color);
+  const existing = settings[SERIES_SETTING_KEY]?.[seriesKey] ?? {};
+
+  return assocIn(
+    settings,
+    [SERIES_SETTING_KEY, seriesKey],
+    withColorName({ ...existing, color: hexValue }, colorName),
+  );
 };
 
-export const getNameForCard = (card: Card) => {
+export const getNameForCard = (card: SeriesCard) => {
   return card?.name || "";
 };
 

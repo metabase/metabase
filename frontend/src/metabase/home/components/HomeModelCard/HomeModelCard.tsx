@@ -20,7 +20,7 @@ export const HomeModelCard = ({
       <Box display="flex" flex="0 0 auto">
         <EntityIcon {...icon} color="core-brand" />
       </Box>
-      <Ellipsified c="text-primary" fz="md" fw="bold" ml="md" maw="100%">
+      <Ellipsified c="text-primary" fz="md" fw="bold" ml="lg" maw="100%">
         {title}
       </Ellipsified>
     </HomeCard>

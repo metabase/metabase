@@ -163,7 +163,7 @@ const LinkToDocsOnReferencingSavedQuestionsInQueries = () => {
   );
   return (
     <Box
-      p="md"
+      p="lg"
       ta="center"
       bg="background_page-secondary"
       style={{

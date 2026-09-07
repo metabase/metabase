@@ -9,15 +9,14 @@
   (:require
    [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
+   [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration-block :as block]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
-   [metabase.queries.core :as queries]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,19 +26,11 @@
    a nil score (didn't score) are kept."
   0.1)
 
-;;; Columns we actually need from `Card`. We deliberately avoid pulling the full row
-;;; (which includes large blobs like `:result_metadata`, `:visualization_settings`,
-;;; `:parameter_mappings`, etc.) so the response stays small and JSON encoding is fast.
-(def ^:private metric-card-cols
-  [:id :name :description :collection_id :database_id :table_id :type :entity_id
-   :card_schema :dataset_query :dimensions :dimension_mappings])
-
 (defn- library-metrics-collection-ids
   "Set of collection ids (the library-metrics root + descendants) whose metric Cards should be sorted
    to the top of the /dimensions response."
   []
-  (when-let [root (t2/select-one [:model/Collection :id :location]
-                                 :type collection/library-metrics-collection-type)]
+  (when-let [root (explorations.db/library-metrics-root-collection collection/library-metrics-collection-type)]
     (conj (or (collection/descendant-ids root) #{}) (:id root))))
 
 (defn- metric-query
@@ -109,17 +100,8 @@
    name. Optionally restricted to `metric-ids` (when non-nil), preserving access checks but
    filtering to that subset."
   [metric-ids library-ids]
-  (let [base-where  (queries/visible-metric-cards-where-clause)
-        where       (if (seq metric-ids)
-                      [:and base-where [:in :id (vec metric-ids)]]
-                      base-where)]
-    (->> (t2/select [:model/Card :id]
-                    {:where    where
-                     :order-by [[[:case
-                                  [:in :collection_id (or (seq library-ids) [-1])] 0
-                                  :else 1] :asc]
-                                [:name :asc]]})
-         (mapv :id))))
+  (->> (explorations.db/metric-card-ids metric-ids library-ids)
+       (mapv :id)))
 
 (defn- load-metric-cards
   "Load the metric Card rows for `card-ids` in a single batched SELECT, returning them
@@ -128,9 +110,7 @@
    visualization_settings, dataset_query, etc.) and dominates response size."
   [card-ids]
   (when (seq card-ids)
-    (let [rows   (t2/select (into [:model/Card] metric-card-cols)
-                            :id [:in card-ids]
-                            :type "metric")
+    (let [rows   (explorations.db/metric-cards-for-explorations card-ids)
           by-id  (u/index-by :id rows)]
       (into [] (keep by-id) card-ids))))
 
@@ -154,8 +134,7 @@
             (metrics/sync-dimensions! :metadata/metric id)
             (catch Throwable e
               (log/warnf e "Failed to sync dimensions for metric card %d" id))))
-        (let [healed (u/index-by :id (t2/select (into [:model/Card] metric-card-cols)
-                                                :id [:in broken-ids]))]
+        (let [healed (u/index-by :id (explorations.db/cards-for-explorations broken-ids))]
           (mapv #(or (get healed (:id %)) %) cards))))))
 
 (defn- simple-table-query?

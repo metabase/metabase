@@ -153,7 +153,7 @@ function CoordinateValueInput({
 }: CoordinateValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
+      <Box p="lg" mah="25vh" style={{ overflow: "auto" }}>
         <NumberFilterValuePicker
           query={query}
           stageIndex={stageIndex}
@@ -169,7 +169,7 @@ function CoordinateValueInput({
 
   if (valueCount === 1) {
     return (
-      <Flex p="md">
+      <Flex p="lg">
         <BigIntNumberInput
           value={values[0]}
           placeholder={t`Enter a number`}
@@ -184,7 +184,7 @@ function CoordinateValueInput({
 
   if (valueCount === 2) {
     return (
-      <Flex align="center" justify="center" p="md">
+      <Flex align="center" justify="center" p="lg">
         <BigIntNumberInput
           value={values[0]}
           placeholder={t`Min`}
@@ -203,7 +203,7 @@ function CoordinateValueInput({
 
   if (valueCount === 4) {
     return (
-      <Stack align="center" justify="center" gap="sm" p="md">
+      <Stack align="center" justify="center" gap="sm" p="lg">
         <BigIntNumberInput
           label={t`Upper latitude`}
           value={values[0]}
