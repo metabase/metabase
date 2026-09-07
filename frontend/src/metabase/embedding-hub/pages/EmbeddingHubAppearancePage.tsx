@@ -30,7 +30,6 @@ export function EmbeddingHubAppearancePage() {
 
         <EmbeddingThemeListingApp
           basePath={`${Urls.embeddingHubAppearance()}/theme`}
-          showHeading={false}
         />
       </Stack>
 
