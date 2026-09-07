@@ -791,9 +791,8 @@
 
 (defn validate-changed-connections!
   "Run the per-field `:validate` hooks over the fields `conns` changes. This is the
-  [[metabase.llm.settings/llm-providers]] setter, so a base URL the network policy refuses cannot be saved by writing
-  the connection list straight through `PUT /api/setting/llm-providers` or `config.yml` rather than through the
-  connection API.
+  [[metabase.llm.settings/llm-providers]] setter, so trusted provisioning such as `config.yml` also validates base URLs.
+  Direct generic settings API writes are forbidden by that setter.
 
   Only the `:validate` hooks: required fields, prefixes and options are the connection API's business, and demanding
   them of every write here would break `config.yml` provisioning and the single-provider settings, which

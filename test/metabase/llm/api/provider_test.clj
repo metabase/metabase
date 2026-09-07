@@ -1379,35 +1379,32 @@
                                 {:config {:api-key "sk-ant-rotated"}}))
         (is (= {:api-key "sk-ant-rotated"} (stored-config "anthropic")))))))
 
-(deftest settings-api-cannot-store-a-base-url-on-a-blocked-network-test
-  (testing (str "the connection list is a setting in its own right, so writing the raw JSON through the settings "
-                "API has to be refused the way the connection endpoints refuse it")
+(deftest provisioning-connections-validates-changed-fields-test
+  (testing "trusted provisioning still validates changed fields after direct settings API writes are forbidden"
     (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
       (mt/with-temporary-setting-values [llm-providers []]
         (let [conn #(connection "vllm" "vllm" {:base-url %})]
-          (is (=? {:message #".*127\.0\.0\.1 is on a network.*"
-                   :field   "base-url"}
-                  (mt/user-http-request :crowberto :put 400 "setting/llm-providers"
-                                        {:value [(conn "http://127.0.0.1:8000/v1")]})))
+          (is (=? {:status-code 400, :field :base-url}
+                  (try
+                    (setting/set! :llm-providers [(conn "http://127.0.0.1:8000/v1")])
+                    (catch clojure.lang.ExceptionInfo e (ex-data e)))))
           (is (= [] (vec (llm.provider/stored-connections))))
           (testing "a base URL the policy permits still saves"
-            (mt/user-http-request :crowberto :put 204 "setting/llm-providers"
-                                  {:value [(conn "https://8.8.8.8/v1")]})
+            (setting/set! :llm-providers [(conn "https://8.8.8.8/v1")])
             (is (= [(conn "https://8.8.8.8/v1")] (vec (llm.provider/stored-connections)))))
           (testing "a base URL stored before the check does not make its connection unwritable"
             (let [grandfathered (assoc-in (conn "http://127.0.0.1:8000/v1") [:config :api-key] "sk-old")]
               (mt/with-temporary-raw-setting-values [llm-providers (json/encode [grandfathered])]
                 (testing "another connection can still be added"
-                  (mt/user-http-request :crowberto :put 204 "setting/llm-providers"
-                                        {:value [grandfathered
-                                                 (connection "anthropic" "anthropic" {:api-key "sk-ant-valid"})]})
+                  (setting/set! :llm-providers [grandfathered
+                                                (connection "anthropic" "anthropic" {:api-key "sk-ant-valid"})])
                   (is (= ["vllm" "anthropic"] (map :key (llm.provider/stored-connections)))))
                 (testing "and its own API key can still be rotated"
-                  (mt/user-http-request :crowberto :put 204 "setting/llm-providers"
-                                        {:value [(assoc-in grandfathered [:config :api-key] "sk-new")]})
+                  (setting/set! :llm-providers [(assoc-in grandfathered [:config :api-key] "sk-new")])
                   (is (= "sk-new" (get-in (first (llm.provider/stored-connections)) [:config :api-key]))))
                 (testing "but changing the base URL itself is still checked"
-                  (is (=? {:field "base-url"}
-                          (mt/user-http-request :crowberto :put 400 "setting/llm-providers"
-                                                {:value [(assoc-in grandfathered
-                                                                   [:config :base-url] "http://10.0.0.1/v1")]}))))))))))))
+                  (is (=? {:status-code 400, :field :base-url}
+                          (try
+                            (setting/set! :llm-providers
+                                          [(assoc-in grandfathered [:config :base-url] "http://10.0.0.1/v1")])
+                            (catch clojure.lang.ExceptionInfo e (ex-data e))))))))))))))
