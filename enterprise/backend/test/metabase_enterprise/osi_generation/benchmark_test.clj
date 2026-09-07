@@ -559,8 +559,9 @@
     ;; Derived from the source tree rather than hard-coded: a new adapter has to be classified here
     ;; deliberately, instead of silently falling outside the hash the way `provider_util` once did.
     (let [sources     (set (var-get #'arms/generation-source-resources))
-          ;; Not part of the request path — a change to either cannot alter a captured context.
-          non-adapters #{"metabase/metabot/self/debug.clj"
+          ;; Catalog exposes capabilities to the UI; these files do not affect generation requests.
+          non-adapters #{"metabase/metabot/self/catalog.clj"
+                         "metabase/metabot/self/debug.clj"
                          "metabase/metabot/self/features.clj"}
           ;; Anchored on a known source file: resolving the bare directory can land in the test tree,
           ;; whichever copy the classpath offers first.
