@@ -219,7 +219,13 @@ function CartesianChartInner(props: VisualizationProps) {
   useCloseTooltipOnScroll(chartRef);
 
   if (goalStatus !== "resolved") {
-    return <GoalResolutionState height={outerHeight} status={goalStatus} />;
+    return (
+      <GoalResolutionState
+        className="CardVisualization"
+        height={outerHeight}
+        status={goalStatus}
+      />
+    );
   }
 
   return (
