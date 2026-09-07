@@ -17,6 +17,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.embeddings.provider :as embeddings.provider]
    [metabase.llm.settings :as llm.settings]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
@@ -547,6 +548,37 @@
                                          :ee-embedding-model-dimensions 768})))
         (is (= "https://embed.example.com" (semantic.settings/ee-embedding-service-base-url)))
         (is (= 768 (semantic.settings/ee-embedding-model-dimensions)))))))
+
+(deftest embedding-service-base-url-refuses-to-move-a-stored-key-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://8.8.8.8"
+                                       ee-embedding-service-api-key  "stored-key"
+                                       ee-embedding-model-dimensions 1024]
+      (mt/with-user-in-groups [group {:name "Embedding settings managers"}
+                               user [group]]
+        (perms/grant-application-permissions! group :setting)
+        (testing "a Settings Manager cannot redirect an existing key, or clear its destination"
+          (doseq [url ["https://1.1.1.1" nil]]
+            (is (=? {:message "Clear the embedding service API key before changing its base URL, then set a replacement key."}
+                    (mt/user-http-request :crowberto :put 400 "setting/ee-embedding-service-base-url" {:value url})))
+            ;; The generic settings API masks validation errors for non-admins.
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request user :put 403 "setting/ee-embedding-service-base-url" {:value url}))))
+          (is (= "https://8.8.8.8" (semantic.settings/ee-embedding-service-base-url)))
+          (is (= "stored-key" (semantic.settings/ee-embedding-service-api-key))))
+        (testing "an unchanged URL in a bulk write still permits unrelated changes"
+          (is (nil? (mt/user-http-request user :put 204 "setting"
+                                          {:ee-embedding-service-base-url "  https://8.8.8.8  "
+                                           :ee-embedding-model-dimensions 768})))
+          (is (= 768 (semantic.settings/ee-embedding-model-dimensions))))
+        (testing "a replacement connection can be configured after explicitly clearing the old key"
+          (is (nil? (mt/user-http-request user :put 204 "setting/ee-embedding-service-api-key" {:value nil})))
+          (is (nil? (mt/user-http-request user :put 204 "setting/ee-embedding-service-base-url"
+                                          {:value "https://1.1.1.1"})))
+          (is (nil? (mt/user-http-request user :put 204 "setting/ee-embedding-service-api-key"
+                                          {:value "replacement-key"})))
+          (is (= "https://1.1.1.1" (semantic.settings/ee-embedding-service-base-url)))
+          (is (= "replacement-key" (semantic.settings/ee-embedding-service-api-key))))))))
 
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
