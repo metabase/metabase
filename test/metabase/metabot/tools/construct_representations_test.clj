@@ -16,10 +16,12 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.metabot.agent.links :as links]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]))
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -102,6 +104,23 @@
 
 (defn- with-coerced-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-coerced)
+                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                api/read-check                                  allow-read-check
+                api/query-check                                 allow-read-check]
+    (f)))
+
+(def ^:private mp-temporal
+  "ORDERS with a plain `:type/DateTime` column, for the temporal-clause round-trip tests."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+               {:id 102 :name "USER_ID"    :table-id 10 :base-type :type/Integer}
+               {:id 103 :name "CREATED_AT" :table-id 10 :base-type :type/DateTime}
+               {:id 104 :name "STATUS"     :table-id 10 :base-type :type/Text}]}))
+
+(defn- with-temporal-mp-and-stubs! [f]
+  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-temporal)
                 construct/resolve-database-id-from-first-stage (fn [_] 1)
                 api/read-check                                  allow-read-check
                 api/query-check                                 allow-read-check]
@@ -1319,3 +1338,104 @@
               (is (= 1 (count (get-in structured [:query :stages 0 :joins]))))
               (is (some #(= 301 (:field_id %)) (:result-columns structured))
                   "CAMPAIGNS.NAME resolves from the surfaced artifacts"))))))))
+
+(defn- legacy-json-wire
+  "Run the tool on a single-stage ORDERS query carrying `stage-kvs`, convert the resulting MBQL 5
+  query to legacy the way `links` does for the `/question#` hash, and JSON round-trip it."
+  [stage-kvs]
+  (let [result (construct/execute-representations-query
+                (query-data {"lib/type" "mbql/query"
+                             "database" "Sample"
+                             "stages"   [(merge {"lib/type"     "mbql.stage/mbql"
+                                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                                                stage-kvs)]}))]
+    (-> (get-in result [:structured-output :query]) links/->legacy-mbql json/encode (json/decode true))))
+
+(defn- assert-survives-json-hop! [wire]
+  ;; `->legacy-mbql` returns the MBQL 5 query unchanged if conversion throws, and a
+  ;; JSON-round-tripped MBQL 5 query passes `lib/query` - so without this the
+  ;; assertion below could hold while proving nothing.
+  (is (= "query" (:type wire))
+      "->legacy-mbql fell back to MBQL 5 instead of converting")
+  (is (map? (lib/query mp-temporal wire))
+      "did not survive the JSON round-trip"))
+
+;; A Metabot-built question reaches the frontend as legacy MBQL inside a base64 `/question#` hash,
+;; so it makes a JSON hop that turns every keyword into a string. Legacy normalization has no
+;; `:decode/normalize` on the temporal-unit enums used by `:absolute-datetime`, `:during` or
+;; `:temporal-extract`, so a query carrying one came back un-normalized and the question page 400'd
+;; on `/api/dataset/query_metadata`. The JSON hop is what makes this reproduce - converting to
+;; legacy alone does not, which is why the plain legacy round-trip gates above never caught it
+;; (BOT-2095).
+(deftest legacy-json-round-trip-temporal-filters-test
+  (with-temporal-mp-and-stubs!
+    (fn []
+      (let [created-at ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+            abs-dt     (fn [literal unit] ["absolute-datetime" {} literal unit])]
+        (doseq [[label filter-clause]
+                {"bare date range"
+                 ["between" {} created-at "2025-01-01" "2025-12-31"]
+                 "absolute-datetime literal carrying a bucket"
+                 ["=" {} created-at (abs-dt "2025-01-01" "month")]
+                 "absolute-datetime literal with the default unit"
+                 ["=" {} created-at (abs-dt "2025-01-01" "default")]
+                 "absolute-datetime datetime literal with the default unit"
+                 [">" {} created-at (abs-dt "2025-01-01T10:30:00" "default")]
+                 "absolute-datetime datetime literal bucketed by hour"
+                 ["=" {} created-at (abs-dt "2025-01-01T10:00:00" "hour")]
+                 "absolute-datetime year-month literal"
+                 ["=" {} created-at (abs-dt "2025-01" "month")]
+                 "several bucketed literals in one `in`"
+                 ["in" {} created-at (abs-dt "2025-01-01" "month") (abs-dt "2025-03-01" "month")]
+                 "between with one redundant bucket and `now`"
+                 ["between" {} created-at (abs-dt "2025-01-01" "day") "now"]
+                 "during"
+                 ["during" {} created-at "2025-01-01" "month"]
+                 "during with a sub-day unit"
+                 ["during" {} created-at "2025-01-01T10:00:00" "hour"]
+                 "temporal-extract"
+                 ["=" {} ["temporal-extract" {} created-at "day-of-week"] 2]
+                 "temporal-extract carrying a week mode"
+                 ["=" {} ["temporal-extract" {} created-at "week-of-year-iso"] 2]
+                 "temporal-extract with the optional week-mode slot"
+                 ["=" {} ["temporal-extract" {} created-at "day-of-week" "iso"] 2]}]
+          (testing label
+            (assert-survives-json-hop! (legacy-json-wire {"filters"     [filter-clause]
+                                                          "aggregation" [["count" {}]]}))))
+        (testing "a bucketed literal compared to a custom column"
+          (assert-survives-json-hop!
+           (legacy-json-wire {"expressions" [["datetime-add" {"lib/expression-name" "Ship Date"} created-at 3 "day"]]
+                              "filters"     [["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-01-01" "month")]]
+                              "aggregation" [["count" {}]]})))
+        (testing "a post-aggregation filter, which repair moves into a second stage"
+          (assert-survives-json-hop!
+           (legacy-json-wire {"aggregation" [["max" {} created-at]]
+                              "breakout"    [["field" {} ["Sample" "PUBLIC" "ORDERS" "USER_ID"]]]
+                              "filters"     [["<" {} ["aggregation" {} 0] (abs-dt "2025-01-01" "month")]]})))))))
+
+;; Repair moves a bucket onto the ref without knowing the column's type; lib accepts a bucket on a
+;; text column, and the QP would then drop it silently. The gate after resolve turns that into an
+;; agent-facing error instead (the pre-hoist shape used to be rejected by the expression editor gate).
+(deftest temporal-bucket-on-non-temporal-column-test
+  (with-temporal-mp-and-stubs!
+    (fn []
+      (let [status ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]]]
+        (doseq [[label filter-clause]
+                {"hoisted from a bucketed literal"
+                 ["<" {} status ["absolute-datetime" {} "2025-01-01" "month"]]
+                 "written by the model"
+                 ["=" {} ["field" {"temporal-unit" "month"} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "2025-01-01"]}]
+          (testing label
+            (try
+              (construct/execute-representations-query
+               (query-data {"lib/type" "mbql/query"
+                            "database" "Sample"
+                            "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                         "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                         "filters"      [filter-clause]
+                                         "aggregation"  [["count" {}]]}]}))
+              (is false "expected throw")
+              (catch clojure.lang.ExceptionInfo e
+                (let [d (ex-data e)]
+                  (is (true? (:agent-error? d)))
+                  (is (= :temporal-unit-on-non-temporal-column (:error d))))))))))))

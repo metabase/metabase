@@ -231,13 +231,15 @@
 
 (def ^:private raw-value? (complement lib/clause?))
 
-;; Some queries carry temporal literals in their portable / wire form — e.g. Metabot's representations
-;; repair wraps `between` bounds as `[:absolute-datetime {} "2024-01-01" :day]`, and on CLJS a string
-;; is the only representation. The comparison arms below parse temporal strings that arrive as *raw*
-;; values, but would otherwise skip ones already wrapped in `:absolute-datetime`, leaving a bare string
-;; that later middleware (e.g. `optimize-temporal-filters`) chokes on. This predicate lets those arms
-;; detect such clauses; the unit travels with the string so a `:year`/`:month` literal keeps its bucket
-;; instead of collapsing to the field's default when re-parsed.
+;; Some queries carry temporal literals in their portable / wire form — e.g. a Metabot-built query
+;; whose repair layer leaves a bucketed literal as written wherever moving the bucket onto the column
+;; would change the predicate, such as `[:absolute-datetime {} "2025-01-01" :month]` inside a
+;; `count-where`; and on CLJS a string is the only representation. The comparison arms below parse
+;; temporal strings that arrive as *raw* values, but would otherwise skip ones already wrapped in
+;; `:absolute-datetime`, leaving a bare string that later middleware (e.g. `optimize-temporal-filters`)
+;; chokes on. This predicate lets those arms detect such clauses; the unit travels with the string so
+;; a `:year`/`:month` literal keeps its bucket instead of collapsing to the field's default when
+;; re-parsed.
 (defn- string-valued-absolute-datetime
   "If `x` is an `:absolute-datetime` clause whose literal is still an (unparsed) string, return a
   `[string unit]` pair of that inner string and the clause's temporal unit; otherwise `nil`."
