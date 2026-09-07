@@ -40,8 +40,8 @@ import S from "./GetStarted.module.css";
 const MARKETING_DEMO_URL = "https://www.metabase.com/embedding-demo";
 
 const SETUP_GUIDE_URLS = {
-  permissions: `${Urls.embeddingHubGetStarted()}/permissions-setup`,
-  sso: `${Urls.embeddingHubGetStarted()}/sso-setup`,
+  permissions: `${Urls.embeddingHubGetStarted()}/permissions`,
+  sso: `${Urls.embeddingHubGetStarted()}/sso`,
 };
 
 /**

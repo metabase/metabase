@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
 import { RelatedSettingCard } from "metabase/admin/components/RelatedSettingsSection";
+import { useSetupGuideReturnPath } from "metabase/embedding/setup-guide/hooks";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import { useNavigate } from "metabase/router";
 import { Button, Flex, SimpleGrid, Stack, Text, Title } from "metabase/ui";
@@ -39,15 +40,14 @@ export const TenantsSummaryOnboardingStep = ({
   rlsColumnName?: string | null;
 }) => {
   const navigate = useNavigate();
+  const returnPath = useSetupGuideReturnPath();
 
   const { data: tenantsData } = useListTenantsQuery(
     { status: "active" },
     { skip: tenants.length > 0 },
   );
 
-  // Relative so the wizard returns to whichever host mounted it: the admin
-  // setup guide, or the embedding hub's Get started tab.
-  const onDone = () => navigate("..");
+  const onDone = () => navigate(returnPath);
 
   const tenantsToShow = useMemo(() => {
     // If we have tenants from the flow, use them

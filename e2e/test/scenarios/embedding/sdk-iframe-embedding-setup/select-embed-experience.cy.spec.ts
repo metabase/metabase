@@ -197,6 +197,13 @@ describe(suiteTitle, () => {
 
     visitNewEmbedPage();
 
+    // The hub's "New embed" button sits in the nav and is clickable as soon as
+    // the layout mounts, where the admin settings card it replaced only
+    // appeared once that page had loaded its settings. That delay was giving
+    // the throttled recents response a head start; without it the wizard is
+    // still resolving when the assertions run.
+    cy.wait("@getRecents");
+
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("Person overview").should("not.exist");
       cy.findByText("Orders in a dashboard").should("be.visible");

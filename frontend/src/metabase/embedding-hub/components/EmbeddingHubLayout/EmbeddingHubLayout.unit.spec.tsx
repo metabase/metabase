@@ -15,7 +15,7 @@ import {
 
 import { EmbeddingHubLayout } from "./EmbeddingHubLayout";
 
-jest.mock("metabase/admin/embedding/hooks", () => ({
+jest.mock("metabase/embedding/themes/hooks", () => ({
   useEnsureDefaultEmbeddingThemes: jest.fn(),
 }));
 
@@ -59,7 +59,7 @@ function setup({
       <Route path="get-started">
         <Route index element={<div>{"Get started body"}</div>} />
         <Route
-          path="permissions-setup"
+          path="permissions"
           element={<div>{"Permissions wizard body"}</div>}
         />
       </Route>
@@ -121,7 +121,7 @@ describe("EmbeddingHubLayout", () => {
   });
 
   it("keeps Get started current on the setup wizard sub-pages", async () => {
-    setup({ initialRoute: "/embedding/get-started/permissions-setup" });
+    setup({ initialRoute: "/embedding/get-started/permissions" });
 
     const nav = await findNav();
 
@@ -131,8 +131,8 @@ describe("EmbeddingHubLayout", () => {
     ).toHaveAttribute("aria-current", "page");
   });
 
-  it("does not light up Permissions on the permissions-setup wizard", async () => {
-    setup({ initialRoute: "/embedding/get-started/permissions-setup" });
+  it("does not light up Permissions on the permissions wizard", async () => {
+    setup({ initialRoute: "/embedding/get-started/permissions" });
 
     const nav = await findNav();
 
@@ -142,8 +142,8 @@ describe("EmbeddingHubLayout", () => {
     ).not.toHaveAttribute("aria-current");
   });
 
-  it("keeps the width cap on the permissions-setup wizard", async () => {
-    setup({ initialRoute: "/embedding/get-started/permissions-setup" });
+  it("keeps the width cap on the permissions wizard", async () => {
+    setup({ initialRoute: "/embedding/get-started/permissions" });
 
     await screen.findByText("Permissions wizard body");
 

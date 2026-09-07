@@ -1,0 +1,93 @@
+import { useRef } from "react";
+
+import { NotFound } from "metabase/common/components/ErrorPages";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal/LeaveRouteConfirmModal";
+import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
+import { useDeleteThemeFlow } from "metabase/embedding/themes/hooks";
+import { useEmbeddingThemeEditor } from "metabase/embedding/themes/hooks/use-embedding-theme-editor";
+import { useNavigate, useParams } from "metabase/router";
+import { Flex, Loader, Stack } from "metabase/ui";
+
+import { EditorPanel } from "./EditorPanel";
+import { PreviewPanel } from "./PreviewPanel";
+
+type EmbeddingThemeEditorAppProps = {
+  /** Where the theme listing lives, so the editor knows where to return to. */
+  basePath: string;
+};
+
+export function EmbeddingThemeEditorApp({
+  basePath,
+}: EmbeddingThemeEditorAppProps) {
+  const { themeId: themeIdParam } = useParams<{ themeId: string }>();
+  const themeId =
+    themeIdParam === "new" ? "new" : parseInt(themeIdParam ?? "", 10);
+  const editor = useEmbeddingThemeEditor(themeId);
+  const navigate = useNavigate();
+  // Suppresses the unsaved-changes prompt when we navigate away intentionally
+  // (save or delete), since those flows leave the editor while `isDirty` is true.
+  const isSavingRef = useRef(false);
+
+  const goToThemeList = () => {
+    navigate(basePath);
+  };
+
+  const {
+    requestDelete,
+    modal: deleteModal,
+    isDeleting,
+  } = useDeleteThemeFlow({
+    onDeleted: goToThemeList,
+  });
+
+  // Suppress the unsaved-changes prompt during delete: `isDeleting` is set
+  // (state, so it triggers a re-render) before the mutation awaits, ensuring
+  // the LeaveRouteConfirmModal sees `isEnabled=false` before the redirect.
+  const shouldWarnOnLeave =
+    editor.isDirty && !isSavingRef.current && !isDeleting;
+  useBeforeUnload(shouldWarnOnLeave);
+
+  const handleSave = async () => {
+    isSavingRef.current = true;
+    await editor.handleSave();
+    goToThemeList();
+  };
+
+  if (editor.isLoading) {
+    return (
+      <Stack align="center" justify="center" h="100%">
+        <Loader />
+      </Stack>
+    );
+  }
+
+  // During deletion, the GET refetches and 404s after cache invalidation, but
+  // the redirect to the theme list is on its way — don't flash NotFound.
+  if (!isDeleting && (editor.isNotFound || !editor.currentTheme)) {
+    return <NotFound />;
+  }
+
+  if (!editor.currentTheme) {
+    return (
+      <Stack align="center" justify="center" h="100%">
+        <Loader />
+      </Stack>
+    );
+  }
+
+  return (
+    <Flex h="100%" style={{ overflow: "hidden" }}>
+      <EditorPanel
+        editor={editor}
+        onSave={handleSave}
+        onCancel={goToThemeList}
+        onDelete={
+          typeof themeId === "number" ? () => requestDelete(themeId) : undefined
+        }
+      />
+      <PreviewPanel settings={editor.currentTheme.settings} />
+      <LeaveRouteConfirmModal isEnabled={shouldWarnOnLeave} />
+      {deleteModal}
+    </Flex>
+  );
+}

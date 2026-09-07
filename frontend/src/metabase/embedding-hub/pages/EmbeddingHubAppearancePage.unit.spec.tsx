@@ -73,6 +73,13 @@ describe("EmbeddingHubAppearancePage", () => {
     expect(
       screen.queryByRole("heading", { name: "Branding elements" }),
     ).not.toBeInTheDocument();
+
+    // Carried over from EmbeddingThemeListingApp.unit.spec.tsx, which
+    // asserted this while the listing still gated itself. The page is where
+    // the fetch is avoided now: it never mounts the listing.
+    expect(fetchMock.callHistory.calls("path:/api/embed-theme")).toHaveLength(
+      0,
+    );
   });
 
   it("shows both the theme listing and the branding settings when licensed", async () => {

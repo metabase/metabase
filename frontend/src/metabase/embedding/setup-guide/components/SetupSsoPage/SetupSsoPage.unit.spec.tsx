@@ -54,16 +54,13 @@ const setup = ({
   });
 
   return renderWithProviders(
-    <Route
-      path="/admin/embedding/setup-guide/sso"
-      element={<SetupSsoPage />}
-    />,
+    <Route path="/embedding/get-started/sso" element={<SetupSsoPage />} />,
     {
       storeInitialState: createMockState({
         settings: createMockSettingsState(settings),
       }),
       withRouter: true,
-      initialRoute: "/admin/embedding/setup-guide/sso",
+      initialRoute: "/embedding/get-started/sso",
     },
   );
 };

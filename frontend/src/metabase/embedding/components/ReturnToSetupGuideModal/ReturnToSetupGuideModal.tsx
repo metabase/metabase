@@ -6,7 +6,7 @@ import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 // Fallback for callers that did not say where they came from. Inlined here
 // rather than imported so this modal can live at the shared tier and be invoked
 // from anywhere without a cross-feature dependency.
-const DEFAULT_SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
+const DEFAULT_SETUP_GUIDE_PATH = "/embedding/get-started";
 
 interface ReturnToSetupGuideModalProps {
   opened: boolean;

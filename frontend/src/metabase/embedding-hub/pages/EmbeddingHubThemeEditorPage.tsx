@@ -1,5 +1,5 @@
-import { EmbeddingThemeEditorApp } from "metabase/admin/embedding/components/ThemeEditor";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { EmbeddingThemeEditorApp } from "metabase/embedding/themes/components/ThemeEditor";
 import { Navigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 

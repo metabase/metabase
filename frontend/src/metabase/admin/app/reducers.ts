@@ -20,11 +20,6 @@ export const getAdminPaths: () => AdminPath[] = () => {
       key: "databases",
     },
     {
-      name: t`Embedding`,
-      path: "/admin/embedding",
-      key: "embedding",
-    },
-    {
       name: t`AI`,
       path: "/admin/metabot",
       key: "metabot",
