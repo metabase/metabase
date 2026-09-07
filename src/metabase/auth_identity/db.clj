@@ -46,7 +46,9 @@
   (t2/delete! :model/AuthIdentity :user_id user-id :provider provider))
 
 (defn delete-sessions-for-user!
-  "Delete every Session of the User with `user-id`."
+  "Delete every Session of the User with `user-id`. Duplicates `metabase.session.db/delete-sessions-for-user!`;
+  can't delegate to it because the `session` module already depends on `auth-identity`, so the reverse dependency
+  would be a module cycle."
   [user-id]
   (t2/delete! :model/Session :user_id user-id))
 

@@ -25,18 +25,7 @@
     "CREATE INDEX IF NOT EXISTS %s_archived_idx ON %s (archived)"]))
 
 (defmethod specialization/batch-upsert! :postgres [table entries]
-  (when (seq entries)
-    (search.db/execute!
-     ;; The cost of dynamically calculating these keys should be small compared to the IO cost, so unoptimized. Note
-     ;; that the entries are not guaranteed to be homogeneous - some may be missing nullable columns. So we need to
-     ;; get the keys from *all* the entries.
-     (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
-           excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
-       {:insert-into   table
-        :values        entries
-        :on-conflict   [:model :model_id]
-        :do-update-set (with-meta (zipmap update-keys (map excluded-kw update-keys))
-                                  {:allow-subquery true})}))))
+  (search.db/postgres-batch-upsert! table entries))
 
 (defmethod specialization/base-query :postgres
   [active-table search-term search-ctx select-items]
@@ -103,7 +92,7 @@
 
 (defmethod specialization/analyze-table! :postgres
   [table-name]
-  (search.db/execute! (str "ANALYZE " (name table-name))))
+  (search.db/analyze-search-index-table! table-name))
 
 (defmethod specialization/index-size-estimate :postgres
   [table-name]
