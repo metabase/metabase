@@ -21,7 +21,7 @@ export function EmbeddingHubContent({
 }: EmbeddingHubContentProps) {
   return (
     <Box
-      component="main"
+      data-testid="embedding-hub-main"
       h="100%"
       bg="background_page-secondary"
       pos="relative"

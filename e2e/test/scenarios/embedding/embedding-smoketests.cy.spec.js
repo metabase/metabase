@@ -321,5 +321,5 @@ function visitAndEnableSharing(object, unpublishBeforeOpen = true) {
 }
 
 function mainPage() {
-  return cy.findByRole("main");
+  return cy.findByTestId("embedding-hub-main");
 }
