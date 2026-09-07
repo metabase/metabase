@@ -28,9 +28,10 @@ import {
 } from "metabase-types/guards";
 
 import {
+  GOAL_SETTINGS,
   type GoalSettingKey,
   getDynamicGoalSettingKeys,
-} from "./dynamic-goal-displays";
+} from "./dynamic-goal-settings";
 import { segmentIsValid } from "./utils";
 
 export type GoalData = Pick<
@@ -186,16 +187,6 @@ function resolveForeignColumnRef(
 function toNumberOrNull(raw: RowValue | undefined): number | null {
   return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
 }
-
-type GoalSettingKind = "value" | "segments";
-
-// Mirrors `goal-settings` in metabase.visualization-settings.dynamic-goals
-const GOAL_SETTINGS: Record<GoalSettingKey, GoalSettingKind> = {
-  "graph.goal_value": "value",
-  "progress.goal": "value",
-  "gauge.segments": "segments",
-  "scalar.segments": "segments",
-};
 
 export function supportsDynamicGoals(
   display: VisualizationDisplay | undefined,

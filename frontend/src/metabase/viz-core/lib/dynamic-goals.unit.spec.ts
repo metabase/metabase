@@ -5,7 +5,7 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-import { getDynamicGoalSettingKeys } from "./dynamic-goal-displays";
+import { getDynamicGoalSettingKeys } from "./dynamic-goal-settings";
 import type { GoalCard } from "./dynamic-goals";
 import {
   getGoalValues,

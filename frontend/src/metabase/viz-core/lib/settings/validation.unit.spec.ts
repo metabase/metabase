@@ -5,13 +5,13 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
-import { getDynamicGoalSettingKeys } from "../dynamic-goal-displays";
+import { getDynamicGoalSettingKeys } from "../dynamic-goal-settings";
 
 import { validateGoalReferences } from "./validation";
 
-jest.mock("metabase/viz-core/lib/dynamic-goal-displays", () => ({
+jest.mock("metabase/viz-core/lib/dynamic-goal-settings", () => ({
   getDynamicGoalSettingKeys: jest.fn(
-    jest.requireActual("metabase/viz-core/lib/dynamic-goal-displays")
+    jest.requireActual("metabase/viz-core/lib/dynamic-goal-settings")
       .getDynamicGoalSettingKeys,
   ),
 }));
@@ -25,7 +25,7 @@ function resolveGraphGoals() {
 function restoreDynamicGoalDisplays() {
   getDynamicGoalSettingKeysMock.mockReset();
   getDynamicGoalSettingKeysMock.mockImplementation(
-    jest.requireActual("metabase/viz-core/lib/dynamic-goal-displays")
+    jest.requireActual("metabase/viz-core/lib/dynamic-goal-settings")
       .getDynamicGoalSettingKeys,
   );
 }

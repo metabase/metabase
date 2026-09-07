@@ -3,7 +3,6 @@ import fetchMock from "fetch-mock";
 import { setupCardDataset } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import { getDynamicGoalSettingKeys } from "metabase/viz-core";
 import type { Card, DatasetData } from "metabase-types/api";
 import {
   createMockCard,
@@ -13,14 +12,16 @@ import {
 
 import { useResolvedGoalSettings } from "./use-resolved-goal-settings";
 
-jest.mock("metabase/viz-core/lib/dynamic-goal-displays", () => ({
+jest.mock("metabase/viz-core/lib/dynamic-goal-settings", () => ({
   getDynamicGoalSettingKeys: jest.fn(
-    jest.requireActual("metabase/viz-core/lib/dynamic-goal-displays")
+    jest.requireActual("metabase/viz-core/lib/dynamic-goal-settings")
       .getDynamicGoalSettingKeys,
   ),
 }));
 
-const getDynamicGoalSettingKeysMock = jest.mocked(getDynamicGoalSettingKeys);
+const getDynamicGoalSettingKeysMock: jest.Mock = jest.requireMock(
+  "metabase/viz-core/lib/dynamic-goal-settings",
+).getDynamicGoalSettingKeys;
 
 function resolveGraphGoals() {
   getDynamicGoalSettingKeysMock.mockReturnValue(["graph.goal_value"]);
@@ -29,7 +30,7 @@ function resolveGraphGoals() {
 function restoreDynamicGoalDisplays() {
   getDynamicGoalSettingKeysMock.mockReset();
   getDynamicGoalSettingKeysMock.mockImplementation(
-    jest.requireActual("metabase/viz-core/lib/dynamic-goal-displays")
+    jest.requireActual("metabase/viz-core/lib/dynamic-goal-settings")
       .getDynamicGoalSettingKeys,
   );
 }

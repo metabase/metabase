@@ -219,7 +219,6 @@ export {
 } from "./lib/choropleth";
 export { getColorScale } from "./lib/color-scales";
 export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
-export { getDynamicGoalSettingKeys } from "./lib/dynamic-goal-displays";
 export {
   getGoalSegmentBounds,
   getReferencedEntities,
