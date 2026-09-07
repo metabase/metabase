@@ -76,11 +76,6 @@
   [id]
   (t2/select-one :model/Collection :id id))
 
-(defn collection-location-columns
-  "The location, id, and type of the Collection with `id`, or nil."
-  [id]
-  (t2/select-one [:model/Collection :location :id :type] :id id))
-
 (defn directly-archived-descendant-collections
   "The directly archived Collections whose location starts with `location-prefix`."
   [location-prefix]
@@ -160,8 +155,3 @@
                                   [:= :collection_id collection-id]
                                   [:= :dashboard_id nil]]
                           :order-by [[:id :desc]]}))
-
-(defn cards-in-collection
-  "The Cards in the Collection with `collection-id`."
-  [collection-id]
-  (t2/select :model/Card :collection_id collection-id))

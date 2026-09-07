@@ -2,6 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.mcp.v2.resolve :as v2.resolve]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -56,3 +58,51 @@
       (is (v2.resolve/entity-id? eid))
       (is (thrown-with-msg? Exception #"not found"
                             (v2.resolve/resolve-id-or-404 :model/Collection eid))))))
+
+(deftest ^:parallel resolve-collection-id-test
+  (is (nil? (v2.resolve/resolve-collection-id nil)))
+  (is (nil? (v2.resolve/resolve-collection-id "root")))
+  (is (= 99 (v2.resolve/resolve-collection-id "trash" {:trash-collection-id 99})))
+  (is (thrown? Exception (v2.resolve/resolve-collection-id "trash"))))
+
+(deftest resolve-collection-id-collapses-unreadable-test
+  (testing "GHY-4148: a collection_id naming a collection the caller cannot read must give the
+            exact same not-found error as one naming no collection at all. Without the
+            `resolve-and-read` call in the main branch the id would travel straight into the write
+            unchecked, and a distinguishable error would turn the argument into a collection-id
+            enumeration oracle."
+    (mt/with-temp [:model/Collection {readable-id :id}   {:name "Readable"}
+                   :model/Collection {unreadable-id :id} {:name     "Crowberto's personal subfolder"
+                                                          :location (str "/" (:id (collection/user->personal-collection
+                                                                                   (mt/user->id :crowberto)))
+                                                                         "/")}]
+      (mt/with-test-user :rasta
+        (testing "a readable collection resolves to its own id"
+          (is (= readable-id (v2.resolve/resolve-collection-id readable-id))))
+        (let [missing    (try (v2.resolve/resolve-collection-id 13371337)
+                              (catch Exception e (ex-message e)))
+              unreadable (try (v2.resolve/resolve-collection-id unreadable-id)
+                              (catch Exception e (ex-message e)))]
+          (is (str/includes? missing "not found"))
+          ;; Compare the messages, not merely that both threw: differing wording is the leak.
+          (is (= (str/replace missing "13371337" (str unreadable-id))
+                 unreadable)))))))
+
+(deftest resolve-collection-id-or-personal-test
+  (testing "GHY-4218: an absent collection argument defaults to the caller's personal collection"
+    (mt/with-test-user :rasta
+      (is (= (:id (collection/user->personal-collection (mt/user->id :rasta)))
+             (v2.resolve/resolve-collection-id-or-personal nil)))))
+  (testing "GHY-4218: the explicit \"root\" sentinel still means the root collection"
+    (mt/with-test-user :rasta
+      (is (nil? (v2.resolve/resolve-collection-id-or-personal "root")))))
+  (testing "GHY-4218: an explicit id is resolved as usual"
+    (mt/with-test-user :rasta
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (is (= coll-id (v2.resolve/resolve-collection-id-or-personal coll-id))))))
+  (testing "GHY-4218: a caller with no personal collection (API-key users) gets a teaching error
+            rather than silently falling back to the root collection"
+    (mt/with-temp [:model/User {user-id :id} {:type :api-key}]
+      (binding [api/*current-user-id* user-id]
+        (is (thrown-with-msg? Exception #"no personal collection"
+                              (v2.resolve/resolve-collection-id-or-personal nil)))))))

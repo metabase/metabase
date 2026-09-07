@@ -606,6 +606,7 @@
            config
            events
            models
+           notification
            permissions
            premium-features
            remote-sync
@@ -639,7 +640,6 @@
            events
            lib-be
            models
-           notification
            permissions
            premium-features
            queries
@@ -1349,6 +1349,7 @@
            app-db
            bookmarks
            channel
+           collections
            config
            dashboards
            eid-translation
@@ -1579,6 +1580,7 @@
   notification
   {:team "Gadget"
    :api  #{metabase.notification.api
+           metabase.notification.card
            metabase.notification.core
            metabase.notification.init
            metabase.notification.models

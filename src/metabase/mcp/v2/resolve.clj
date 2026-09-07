@@ -3,6 +3,7 @@
    that collapses \"doesn't exist\" and \"exists but not readable\" into one not-found error."
   (:require
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]))
@@ -68,3 +69,46 @@
   [model id-or-eid]
   (resolve-and-read-with model id-or-eid
                          (fn [id] (api/read-check (mcp.db/select-one-by-id model id)))))
+
+(defn resolve-collection-id
+  "Resolve a `collection_id`/`parent_id` argument. `nil` and `\"root\"` mean the root
+   collection and resolve to nil without a DB translation; `\"trash\"` resolves to
+   `:trash-collection-id` when the caller allows it (the tool passes the id from the
+   collections module) and is a teaching error otherwise.
+
+   Anything else must name a collection the caller can read: \"doesn't exist\" and \"exists but not
+   readable\" collapse into the same not-found error, so the argument never reports the existence of
+   a collection the caller cannot see. That read also keeps an id for no collection at all from
+   travelling into the write, where it fails a `mu/defn` schema or a permission check and reaches
+   the caller as the sanitized \"Internal error\". Write permission stays the caller's job."
+  ([id-or-sentinel] (resolve-collection-id id-or-sentinel nil))
+  ([id-or-sentinel {:keys [trash-collection-id]}]
+   (cond
+     (or (nil? id-or-sentinel) (= "root" id-or-sentinel))
+     nil
+
+     (= "trash" id-or-sentinel)
+     (or trash-collection-id
+         (common/throw-teaching-error "\"trash\" is not a valid collection here — pass a collection id, entity_id, or \"root\"."))
+
+     :else
+     (:id (resolve-and-read :model/Collection id-or-sentinel)))))
+
+(defn resolve-collection-id-or-personal
+  "Like [[resolve-collection-id]], but an absent argument means the caller's personal collection
+   instead of the root collection. Explicit `\"root\"` still resolves to the root collection, so
+   callers keep a way to ask for it. Arguments arrive with top-level nils stripped at the
+   registry boundary, so a nil here is always an omitted argument rather than an explicit null.
+
+   For create paths only. On update an absent collection argument must leave content where it is,
+   so update paths guard [[resolve-collection-id]] with `contains?` instead.
+
+   API-key users have no personal collection; that nil is a teaching error here rather than a
+   silent write into the root collection."
+  [id-or-sentinel]
+  (if (some? id-or-sentinel)
+    (resolve-collection-id id-or-sentinel)
+    (or (:id (collection/user->personal-collection api/*current-user-id*))
+        (common/throw-teaching-error
+         (str "The current user has no personal collection. Pass an explicit collection_id "
+              "(or \"root\" for the root collection) instead.")))))
