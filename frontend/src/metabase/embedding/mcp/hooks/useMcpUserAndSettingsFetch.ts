@@ -96,7 +96,17 @@ export function useMcpUserAndSettingsFetch({
             settings,
           ),
         );
-        // Subscribe so RTK doesn't evict the seeded entries once they're invalidated.
+        // Subscribe so RTK doesn't evict the seeded entries — it drops entries with no
+        // subscribers when they are invalidated. Neither `initiate()` refetches: the entry
+        // is already fulfilled and neither `forceRefetch` nor `refetchOnMountOrArgChange`
+        // is set, so the query thunk's condition bails out.
+        //
+        // The subscription is also the one way this design can break. An invalidation of
+        // `current-user` or `session-properties` would refetch, and both now fail: the
+        // former 401s, and the latter — mounted without `+auth` — answers anonymously with
+        // public-only settings, silently dropping the authenticated ones. Nothing in the
+        // iframe's tree dispatches a mutation today; the first one added has to reckon with
+        // this.
         store.dispatch(loadCurrentUser());
         store.dispatch(settingsApi.endpoints.getSessionProperties.initiate());
         // Consumers outside the store and React tree (i18n, theming, dom helpers).
