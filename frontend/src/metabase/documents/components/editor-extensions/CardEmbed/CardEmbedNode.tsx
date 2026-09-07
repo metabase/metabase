@@ -237,7 +237,7 @@ export const CardEmbedComponent = memo(
     editor,
     getPos,
     deleteNode,
-    // eslint-disable-next-line complexity
+    // eslint-disable-next-line eslint-js/complexity
   }: NodeViewProps) => {
     const { _id, id, name } = node.attrs;
     const storedResultId = node.attrs.stored_result_id;

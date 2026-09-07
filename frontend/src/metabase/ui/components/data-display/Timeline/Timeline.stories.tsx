@@ -1,5 +1,4 @@
-import { Timeline, type TimelineProps } from "metabase/ui";
-import { Box, Text } from "metabase/ui";
+import { Box, Text, Timeline, type TimelineProps } from "metabase/ui";
 
 const args = {
   active: 1,

@@ -6,7 +6,6 @@
  *   bun run build:custom-viz-fixtures
  */
 
-/* global console */
 import { execFileSync } from "node:child_process";
 import { cpSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -37,7 +36,10 @@ const visualizations = [
   },
   {
     index: resolve(PLUGIN_ROOT, "src/index-widget-security-component.tsx"),
-    manifest: resolve(PLUGIN_ROOT, "manifests/demo-viz-security-component.json"),
+    manifest: resolve(
+      PLUGIN_ROOT,
+      "manifests/demo-viz-security-component.json",
+    ),
     out: resolve(
       E2E_ASSETS,
       "example_custom_viz_plugin_4_security_component.tgz",

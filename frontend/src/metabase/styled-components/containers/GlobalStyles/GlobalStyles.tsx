@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { Global, css } from "@emotion/react";
 import { useMemo } from "react";
 

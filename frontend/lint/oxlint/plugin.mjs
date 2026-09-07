@@ -4,6 +4,7 @@ export function wrap(
   namespace,
   plugin,
   transformSettings = (settings) => settings,
+  transformContext = (context) => context,
 ) {
   return {
     meta: { name: namespace },
@@ -21,10 +22,12 @@ export function wrap(
                 context.filename,
               );
               return rule.create(
-                Object.create(context, {
-                  settings: { value: transformSettings(settings) },
-                  parserOptions: { value: parserOptions },
-                }),
+                transformContext(
+                  Object.create(context, {
+                    settings: { value: transformSettings(settings) },
+                    parserOptions: { value: parserOptions },
+                  }),
+                ),
               );
             },
           },
