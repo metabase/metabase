@@ -12,6 +12,7 @@ import {
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
+import { isApiKeyGroupMember } from "metabase/common/utils/groups";
 import { useParams } from "metabase/router";
 import { Box, Button, Stack, Text } from "metabase/ui";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
@@ -61,8 +62,7 @@ const DataAppUsers = ({
   const [deleteMembership] = useDeleteMembershipMutation();
 
   const members = useMemo(
-    () =>
-      group.members.filter(({ email }) => !email.endsWith("@api-key.invalid")),
+    () => group.members.filter((member) => !isApiKeyGroupMember(member)),
     [group.members],
   );
 

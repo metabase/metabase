@@ -54,19 +54,25 @@ export const AddDataAppUsers = ({
     [members],
   );
 
+  const eligibleUsers = useMemo(
+    () =>
+      (data?.data ?? []).filter(
+        (user) =>
+          user.is_active && user.tenant_id === null && !memberIds.has(user.id),
+      ),
+    [data, memberIds],
+  );
+
   const suggestedUsers = useMemo(() => {
     const input = text.toLowerCase();
 
-    return (data?.data ?? []).filter(
+    return eligibleUsers.filter(
       (user) =>
-        user.is_active &&
-        user.tenant_id === null &&
-        !memberIds.has(user.id) &&
         !selectedUsers.has(user.id) &&
-        ((user.common_name ?? "").toLowerCase().includes(input) ||
+        (user.common_name.toLowerCase().includes(input) ||
           user.email.toLowerCase().includes(input)),
     );
-  }, [data, memberIds, selectedUsers, text]);
+  }, [eligibleUsers, selectedUsers, text]);
 
   const addUser = (user: User) => {
     if (selectedUsers.size >= MAX_SELECTED_USERS) {
@@ -83,30 +89,20 @@ export const AddDataAppUsers = ({
     const emails = event.clipboardData
       .getData("text")
       .split(",")
-      .map((email) => email.trim())
+      .map((email) => email.trim().toLowerCase())
       .filter(Boolean);
 
-    if (emails.length < 2) {
-      return;
-    }
-
     const usersByEmail = new Map(
-      (data?.data ?? []).map((user) => [user.email.toLowerCase(), user]),
+      eligibleUsers.map((user) => [user.email.toLowerCase(), user]),
     );
 
     const nextUsers = new Map(selectedUsers);
     const unmatchedEmails: string[] = [];
 
     for (const email of emails) {
-      const user = usersByEmail.get(email.toLowerCase());
+      const user = usersByEmail.get(email);
 
-      const canAdd =
-        user?.is_active &&
-        user.tenant_id === null &&
-        !memberIds.has(user.id) &&
-        nextUsers.size < MAX_SELECTED_USERS;
-
-      if (user && canAdd) {
+      if (user && nextUsers.size < MAX_SELECTED_USERS) {
         nextUsers.set(user.id, user);
       } else {
         unmatchedEmails.push(email);

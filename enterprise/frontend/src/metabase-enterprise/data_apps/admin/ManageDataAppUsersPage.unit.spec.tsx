@@ -162,7 +162,14 @@ describe("ManageDataAppUsersPage", () => {
     expect(screen.getByText("No one has access yet")).toBeInTheDocument();
   });
 
-  it("adds users pasted as comma-separated email addresses", async () => {
+  // Maps between pasted emails and the resolved users.
+  it.each([
+    [" PENDING@EXAMPLE.COM ", ["Pending User"]],
+    [
+      "pending@example.com, ANOTHER.USER@EXAMPLE.COM",
+      ["Pending User", "Another User"],
+    ],
+  ])("selects users pasted as %s", async (emails, names) => {
     setup();
 
     await userEvent.click(
@@ -174,10 +181,14 @@ describe("ManageDataAppUsersPage", () => {
     });
 
     await userEvent.click(searchInput);
-    await userEvent.paste("pending@example.com, another.user@example.com");
+    await userEvent.paste(emails);
 
-    expect(await screen.findByText("Pending User")).toBeInTheDocument();
-    expect(await screen.findByText("Another User")).toBeInTheDocument();
+    expect(searchInput).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Add" })).toBeEnabled();
+
+    for (const name of names) {
+      expect(screen.getByText(name)).toBeInTheDocument();
+    }
   });
 
   it("only offers active internal users to add", async () => {
