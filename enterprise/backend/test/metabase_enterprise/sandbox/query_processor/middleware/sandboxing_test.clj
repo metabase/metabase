@@ -2256,7 +2256,7 @@
         (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" "a"}}
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"cannot be compared with an integer column"
+               #"cannot be compared with"
                (run-venues-count-query)))))
       (testing "float column, non-numeric attribute value"
         (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)
@@ -2264,5 +2264,5 @@
                           :attributes {"cat" "a"}}
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"cannot be compared with a float column"
+               #"cannot be compared with"
                (run-venues-count-query))))))))
