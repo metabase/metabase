@@ -1,7 +1,7 @@
 import ReactDOMServer from "react-dom/server";
 
 import { createColorGetter } from "metabase/static-viz/lib/colors";
-import type { GoalData } from "metabase/visualizations/lib/dynamic-goals";
+import type { GoalData } from "metabase/viz-core";
 import type { GoalSegment } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 

@@ -1,12 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import type { ChartSettingGoalInputProps } from "metabase/viz-core";
 import { createMockColumn } from "metabase-types/api/mocks";
 
-import {
-  ChartSettingGoalInput,
-  type ChartSettingGoalInputProps,
-} from "./ChartSettingGoalInput";
+import { ChartSettingGoalInput } from "./ChartSettingGoalInput";
 
 const COLUMNS = [
   createMockColumn({

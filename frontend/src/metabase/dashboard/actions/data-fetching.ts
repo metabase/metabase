@@ -50,7 +50,7 @@ import {
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
 import { uuid } from "metabase/utils/uuid";
-import { hasUnansweredGoalReferences } from "metabase/visualizations/lib/dynamic-goals";
+import { hasUnansweredGoalReferences } from "metabase/viz-core";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,

@@ -2,7 +2,7 @@ import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
 
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
-import type { ResolvedGoalSegment } from "metabase/visualizations/lib/dynamic-goals";
+import type { ResolvedGoalSegment } from "metabase/viz-core";
 
 import {
   GAUGE_ARC_ANGLE,

@@ -15,10 +15,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import {
-  type GoalRefError,
-  resolveGoalValue,
-} from "metabase/visualizations/lib/dynamic-goals";
+import { type GoalRefError, resolveGoalValue } from "metabase/viz-core";
 import type {
   CardId,
   DatasetData,

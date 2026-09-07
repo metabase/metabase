@@ -1,4 +1,4 @@
-import type { ResolvedGoalSegment } from "metabase/visualizations/lib/dynamic-goals";
+import type { ResolvedGoalSegment } from "metabase/viz-core";
 
 import type { GaugeRange } from "./types";
 

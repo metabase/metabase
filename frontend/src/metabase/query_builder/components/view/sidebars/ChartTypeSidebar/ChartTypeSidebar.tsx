@@ -8,7 +8,7 @@ import CS from "metabase/css/core/index.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
-import { hasUnresolvedGoalReferences } from "metabase/visualizations/lib/dynamic-goals";
+import { hasUnresolvedGoalReferences } from "metabase/viz-core";
 import {
   type GetSensibleVisualizationsProps,
   getSensibleVisualizations,
