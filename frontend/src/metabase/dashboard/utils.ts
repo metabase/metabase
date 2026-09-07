@@ -207,14 +207,17 @@ export function getAllDashboardCards(dashboard: Dashboard) {
   return results;
 }
 
+export const isDashCardOnTab = (
+  dashcard: DashboardCard,
+  tabId: SelectedTabId,
+) => (dashcard.dashboard_tab_id ?? null) === tabId;
+
 export function getCurrentTabDashboardCards(
   dashboard: Dashboard,
   selectedTabId: SelectedTabId,
 ) {
-  return getAllDashboardCards(dashboard).filter(
-    ({ dashcard }) =>
-      (dashcard.dashboard_tab_id == null && selectedTabId == null) ||
-      dashcard.dashboard_tab_id === selectedTabId,
+  return getAllDashboardCards(dashboard).filter(({ dashcard }) =>
+    isDashCardOnTab(dashcard, selectedTabId),
   );
 }
 

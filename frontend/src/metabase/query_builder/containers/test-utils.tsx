@@ -406,6 +406,17 @@ export const waitForSaveToBeEnabled = async () => {
   });
 };
 
+export const saveQuestion = async () => {
+  await waitForSaveToBeEnabled();
+  await userEvent.click(screen.getByText("Save"));
+  await userEvent.click(
+    within(screen.getByTestId("save-question-modal")).getByText("Save"),
+  );
+  await waitFor(() => {
+    expect(screen.queryByTestId("save-question-modal")).not.toBeInTheDocument();
+  });
+};
+
 export const waitForNativeQueryEditorReady = async () => {
   await waitFor(() => {
     expect(screen.getByTestId("mock-native-query-editor")).toBeInTheDocument();
