@@ -34,6 +34,7 @@
    [metabase-enterprise.metabot.api.routes]
    [metabase-enterprise.mfa.routes]
    [metabase-enterprise.osi-generation.api]
+   [metabase-enterprise.osi-generation.demo-api]
    [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.remote-sync.api]
    [metabase-enterprise.replacement.api]
@@ -159,6 +160,7 @@
    ;; feature gates setup paths. MFA verification lives under /api/session/mfa/* (OSS mount).
    "/mfa"                          metabase-enterprise.mfa.routes/routes
    "/osi-generation"               (premium-handler metabase-enterprise.osi-generation.api/routes :library-retrieval)
+   "/osi-generation-demo"          metabase-enterprise.osi-generation.demo-api/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
    "/transform-test"               (premium-handler metabase-enterprise.transform-testing.api/routes :transforms-testing)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists

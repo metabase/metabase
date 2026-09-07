@@ -4207,7 +4207,10 @@
 
   enterprise/osi-generation
   {:team "Metabot"
-   :api #{metabase-enterprise.osi-generation.api metabase-enterprise.osi-generation.init}
+   :api #{metabase-enterprise.osi-generation.api
+          metabase-enterprise.osi-generation.demo-api
+          metabase-enterprise.osi-generation.demo-page
+          metabase-enterprise.osi-generation.init}
    :uses #{analytics.interface
            api
            app-db
@@ -4757,7 +4760,9 @@
      "^metabase(?:-enterprise)?\\.test"     ; anything starting with `metabase.test` or `metabase-enterprise.test`
      ;; the OSI-generation benchmark harness: test-tree namespaces (`benchmark-test` matches `-test$`,
      ;; but its `benchmark.*` helper namespaces don't) that deliberately drive the production stack
-     "^metabase-enterprise\\.osi-generation\\.benchmark\\."}}}}
+     "^metabase-enterprise\\.osi-generation\\.benchmark\\."
+     ;; demo-only glue packaged for explicitly opted-in PR environments
+     "^metabase-enterprise\\.osi-generation\\.demo-"}}}}
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                       !!
