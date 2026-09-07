@@ -1,4 +1,5 @@
 import { color } from "metabase/ui/colors";
+import { mutateColors } from "metabase/ui/colors/colors";
 
 import { getChartColor, withColorName } from "./color-name";
 
@@ -18,6 +19,26 @@ describe("getChartColor", () => {
   it("keeps the stored color when the recorded name is not a palette color", () => {
     expect(getChartColor("#123456", "accent99")).toBe("#123456");
     expect(getChartColor("#123456", "")).toBe("#123456");
+  });
+
+  describe("when the instance palette changes, as admin chart colors do", () => {
+    afterEach(() => mutateColors({}));
+
+    it("follows the new palette", () => {
+      const picked = color("accent3");
+
+      mutateColors({ accent3: "#ABCDEF" });
+
+      expect(getChartColor(picked, "accent3")).toBe("#ABCDEF");
+    });
+
+    it("leaves a color with no recorded name alone", () => {
+      const picked = color("accent3");
+
+      mutateColors({ accent3: "#ABCDEF" });
+
+      expect(getChartColor(picked)).toBe(picked);
+    });
   });
 });
 

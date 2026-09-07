@@ -9,7 +9,7 @@ const isAccentColorName = (name: string): name is MetabaseAccentColorKey =>
 
 /**
  * The color a chart should draw with: the palette color it was given when
- * there is one, so that it follows an embedding theme, and the stored value
+ * there is one, so that it follows the active palette, and the stored value
  * otherwise. Charts saved before palette colors were recorded keep their value.
  */
 export const getChartColor = (
@@ -22,7 +22,7 @@ export const getChartColor = (
 
 /**
  * Records the palette color a chart color was picked from, so that it can
- * follow an embedding theme instead of staying on the value it was given.
+ * follow the active palette instead of staying on the value it was given.
  */
 export const withColorName = <T extends { color: string; color_name?: string }>(
   row: T,
