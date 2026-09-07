@@ -6,7 +6,7 @@
     color: var(--mb-color-core-brand);
   }
 
-  &:hover {
+  &[data-variant][data-size]:hover {
     color: var(--mb-color-text-primary-inverse);
     background-color: var(--mb-color-core-brand);
 
