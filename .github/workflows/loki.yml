@@ -6,6 +6,10 @@ on:
       skip:
         type: boolean
         default: false
+      story-files:
+        description: "JSON array of story files to run, '' to run the full suite."
+        type: string
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-loki
@@ -13,7 +17,7 @@ concurrency:
 
 jobs:
   visual-test:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && inputs.story-files != '[]' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     services:
@@ -41,8 +45,18 @@ jobs:
       - name: Compile CLJS
         run: NODE_ENV=development bun run build-pure:cljs
 
+      - name: Build Storybook
+        env:
+          STORYBOOK_STORY_PATHS_FILE: ${{ inputs.story-files && 'loki-story-files.json' || '' }}
+        run: |
+          cat > loki-story-files.json <<'EOF'
+          ${{ inputs.story-files }}
+          EOF
+          bun run build-storybook
+
       - name: Run Loki Visual Tests
-        run: bun run test-visual:loki:ci
+        # All selected stories can have parameters.loki.skip set.
+        run: bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer ${{ inputs.story-files && '--passWithNoStories' || '' }}
 
       - name: Generate Visual Report on Failure
         if: failure()
