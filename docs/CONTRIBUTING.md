@@ -49,11 +49,10 @@ Once a feature has been defined, typically it will be taken on by a product desi
 
 Once the main UX flows have been dialed in, there will be a hi-fidelity visual design.
 
-Features that are ready for design are tagged [.Design Needed](https://github.com/metabase/metabase/labels/.Design%20Needed). Once a feature has had a reasonably complete visual design it is tagged [.Refined](https://github.com/metabase/metabase/labels/.Refined).
 
 ### D) Build the feature
 
-Once a feature is tagged [.Refined](https://github.com/metabase/metabase/labels/.Refined), it is considered ready to be built. A core team member (or you, awesomely helpful person that you are) can start working on it.
+Once the design of the feature has been refined, it is considered ready to be built. A core team member (or you, awesomely helpful person that you are) can start working on it.
 
 If you're building something that users will see in Metabase, please refer to the Style Guide (found at `https://storybook.metabase.com`) to learn how and when to use various Metabase UI elements.
 
@@ -103,7 +102,7 @@ Some features, eg Database drivers, don't have any user facing pixels. These are
 
 In situations where a design has already been done, we can always use some help. Chime in on a pull request or an issue and offer to help.
 
-Generally speaking, an unassigned issue tagged [.Refined](https://github.com/metabase/metabase/labels/.Refined) is fair game, as is any unassigned bug that has been confirmed with [.Reproduced](https://github.com/metabase/metabase/labels/.Reproduced). [Difficulty:Easy](https://github.com/metabase/metabase/labels/Difficulty%3AEasy) is a good filter for a first contribution. Check the issue's comments and linked pull requests before starting — an issue with no assignee may still have someone working on it.
+Generally speaking, [Difficulty:Easy](https://github.com/metabase/metabase/labels/Difficulty%3AEasy) is a good filter for a first contribution. Check the issue's comments and linked pull requests before starting — an issue with no assignee may still have someone working on it.
 
 ### #YOLO JUST SUBMIT A PR
 
