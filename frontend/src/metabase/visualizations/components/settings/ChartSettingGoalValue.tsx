@@ -3,6 +3,7 @@ import {
   getUnansweredGoalEntitiesForValues,
 } from "metabase/viz-core";
 import type { GoalValue } from "metabase-types/api";
+import { isGoalStaticValue } from "metabase-types/guards";
 
 import { ChartSettingInputNumeric } from "./ChartSettingInputNumeric";
 import { GoalValueInput, StaticGoalValueInput } from "./GoalValueInput";
@@ -26,7 +27,7 @@ export const ChartSettingGoalValue = ({
       <ChartSettingInputNumeric
         id={id}
         placeholder={placeholder}
-        value={typeof value === "number" ? value : undefined}
+        value={isGoalStaticValue(value) ? value : undefined}
         onChange={onChange}
       />
     );
