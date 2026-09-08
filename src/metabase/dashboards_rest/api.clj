@@ -10,7 +10,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.render.core :as channel.render]
    [metabase.collections-rest.api :as api.collection]
@@ -49,7 +48,6 @@
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -715,34 +713,7 @@
   ;; Output should match the shape of api/collection/<:id|root>/items. There's a test that asserts that this remains
   ;; the case, but if you change one, you'll want to change both.
   (let [dashboard  (api/read-check :model/Dashboard id)
-        query      (merge
-                    {:select [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                              :last_used_at :c.collection_id :c.archived_directly :c.archived :c.database_id
-                              :c.dashboard_id
-                              [nil :location]
-                              [(h2x/literal "card")  :model]
-                              [^:allow-subquery {:select   [:status]
-                                                 :from     [:moderation_review]
-                                                 :where    [:and
-                                                            [:= :moderated_item_type "card"]
-                                                            [:= :moderated_item_id :c.id]
-                                                            [:= :most_recent true]]
-                                                 ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                                                 ;; protecting against potential bugs
-                                                 :order-by [[:id :desc]]
-                                                 :limit    1}
-                               :moderated_status]]
-                     :from      [[:report_card :c]]
-                     :where     [:and
-                                 [:= :c.dashboard_id id]
-                                 [:exists ^:allow-subquery {:select 1
-                                                            :from [[:report_dashboardcard :dc]]
-                                                            :where [:and [:= :c.id :dc.card_id] [:= :c.dashboard_id :dc.dashboard_id]]}]
-                                 [:= :c.archived false]]}
-                    (when (request/paged?)
-                      {:limit (request/limit)
-                       :offset (request/offset)}))
-        cards      (app-db/query query)]
+        cards      (dashboards-rest.db/dashboard-item-cards id (request/paged?) (request/limit) (request/offset))]
     {:total  (count cards)
      :data   (api.collection/post-process-rows {}
                                                (dashboards-rest.db/collection (:collection_id dashboard))

@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useMemo } from "react";
 
-import { getMetadata } from "metabase/metadata-store";
-import { useDispatch, useSelector } from "metabase/redux";
+import {
+  useMetadataProvider,
+  useQuestionFromOpts,
+} from "metabase/metadata-store";
+import { useDispatch } from "metabase/redux";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import type { Location } from "metabase/router";
 import { useNavigate } from "metabase/router";
 import { b64url_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { OpaqueDatasetQuery } from "metabase-types/api";
 
 type UseAdHocTableQueryProps = {
@@ -21,7 +24,7 @@ export const useAdHocTableQuery = ({
   databaseId,
   location,
 }: UseAdHocTableQueryProps) => {
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromOpts();
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -30,10 +33,7 @@ export const useAdHocTableQuery = ({
     return query ? deserializeQueryFromUrl(query) : null;
   }, [location.search]);
 
-  const metadataProvider = useMemo(
-    () => Lib.metadataProvider(databaseId, metadata),
-    [databaseId, metadata],
-  );
+  const metadataProvider = useMetadataProvider(databaseId);
   const table = useMemo(
     () => Lib.tableOrCardMetadata(metadataProvider, tableId),
     [metadataProvider, tableId],
@@ -47,18 +47,15 @@ export const useAdHocTableQuery = ({
     if (queryParam != null) {
       const query = Lib.fromJsQuery(metadataProvider, queryParam);
       if (Lib.sourceTableOrCardId(query) === tableId) {
-        return Question.create({
-          dataset_query: Lib.toJsQuery(query),
-          metadata,
-        });
+        return buildQuestion({ dataset_query: Lib.toJsQuery(query) });
       }
     }
 
     if (table != null) {
       const query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
-      return Question.create({ dataset_query: Lib.toJsQuery(query), metadata });
+      return buildQuestion({ dataset_query: Lib.toJsQuery(query) });
     }
-  }, [tableId, table, queryParam, metadata, metadataProvider]);
+  }, [tableId, table, queryParam, buildQuestion, metadataProvider]);
 
   const handleTableQuestionChange = useCallback(
     (newQuestion: Question) => {

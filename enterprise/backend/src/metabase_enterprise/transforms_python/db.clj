@@ -2,6 +2,7 @@
   "Application database queries for the transforms-python module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
+   [metabase.app-db.core :as mdb]
    [toucan2.core :as t2]))
 
 (defn table-database-ids
@@ -38,6 +39,13 @@
   "The PythonLibrary at `path`, or nil."
   [path]
   (t2/select-one :model/PythonLibrary :path path))
+
+(defn upsert-python-library-source!
+  "Insert or update the PythonLibrary at `path`, setting its source to `source`. Returns the ID of the row."
+  [path source]
+  (mdb/update-or-insert! :model/PythonLibrary
+                         {:path path}
+                         (constantly {:path path :source source})))
 
 (defn library-sources-by-path
   "A map of path to source for every PythonLibrary."

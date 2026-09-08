@@ -95,7 +95,6 @@ const setup = async (
   seedCollections = defaultSeedCollections,
   settings = createMockSettings({ "llm-metabot-configured?": true }),
 ) => {
-  mockGetBoundingClientRect();
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
   setupMetabotsEndpoints(metabots);
@@ -130,7 +129,9 @@ const setup = async (
     },
   });
 
-  await screen.findByTestId("metabot-enabled-toggle");
+  await waitFor(() => {
+    expect(screen.getByTestId("metabot-enabled-toggle")).toBeEnabled();
+  });
 
   return view;
 };
@@ -162,6 +163,8 @@ const setupContentVerificationPlugin = () => {
 };
 
 describe("MetabotSettingsPanel", () => {
+  mockGetBoundingClientRect();
+
   afterEach(() => {
     reinitialize();
   });
