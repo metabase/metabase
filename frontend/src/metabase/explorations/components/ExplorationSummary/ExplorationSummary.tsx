@@ -1,6 +1,11 @@
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
+import type {
+  ExplorationDocument,
+  ExplorationId,
+  Timeline,
+} from "metabase-types/api";
 import { EditableText } from "metabase/common/components/EditableText";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -33,11 +38,6 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
-import type {
-  ExplorationDocument,
-  ExplorationId,
-  Timeline,
-} from "metabase-types/api";
 
 import { ExplorationComments } from "../ExplorationVisualization/ExplorationComments";
 

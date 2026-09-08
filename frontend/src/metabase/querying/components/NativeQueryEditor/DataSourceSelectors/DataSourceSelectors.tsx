@@ -2,6 +2,11 @@ import cx from "classnames";
 import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Table from "metabase-lib/v1/metadata/Table";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type { DatabaseId, TableId } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getNativeQueryLanguage } from "metabase/databases/utils/engine";
@@ -10,11 +15,6 @@ import {
   SchemaAndTableDataSelector,
 } from "metabase/querying/common/components/DataSelector";
 import { Flex } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { DatabaseId, TableId } from "metabase-types/api";
 
 type EditorContext = "action" | "question";
 

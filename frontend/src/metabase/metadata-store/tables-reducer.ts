@@ -1,12 +1,12 @@
 import { updateIn } from "icepick";
 
-import { CARD_CREATED, CARD_UPDATED } from "metabase/redux/cards";
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaId,
   getCollectionVirtualSchemaName,
   getQuestionVirtualTableId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { CARD_CREATED, CARD_UPDATED } from "metabase/redux/cards";
 
 type TableState = Record<string, any>;
 type ReducerAction = { type: string; payload?: any; error?: unknown };

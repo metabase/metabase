@@ -3,13 +3,13 @@
    render, so the "view"/"utils" naming convention doesn't apply. */
 import ReactDOMServer from "react-dom/server";
 
-import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type { RawSeries, VisualizationSettings } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks/dataset";
+import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 
 import { StaticVisualization } from "../StaticVisualization";
 

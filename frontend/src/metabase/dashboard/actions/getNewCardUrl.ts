@@ -1,9 +1,5 @@
 import _ from "underscore";
 
-import { getStructuredQuestionUrlWithParameters } from "metabase/dashboard/click-behavior/question-url";
-import type { StoreDashboard } from "metabase/redux/store";
-import * as Urls from "metabase/urls";
-import { getCardAfterVisualizationClick } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -20,6 +16,10 @@ import type {
   TemplateTag,
   VirtualCard,
 } from "metabase-types/api";
+import { getStructuredQuestionUrlWithParameters } from "metabase/dashboard/click-behavior/question-url";
+import type { StoreDashboard } from "metabase/redux/store";
+import * as Urls from "metabase/urls";
+import { getCardAfterVisualizationClick } from "metabase/viz-core";
 
 /**
  * All navigation URLs from dashboards to cards (e.x. clicking a title, drill through)

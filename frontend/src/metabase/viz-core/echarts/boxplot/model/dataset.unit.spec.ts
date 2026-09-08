@@ -1,6 +1,6 @@
 import { createMockSeriesModel } from "__support__/echarts";
-import { checkNumber } from "metabase/utils/types";
 import type { RowValue } from "metabase-types/api";
+import { checkNumber } from "metabase/utils/types";
 
 import { INDEX_KEY, X_AXIS_DATA_KEY } from "../../cartesian/constants/dataset";
 import type {

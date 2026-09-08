@@ -1,6 +1,5 @@
 import { P, match } from "ts-pattern";
 
-import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import type {
   DatasetError,
   DraftTransformSource,
@@ -10,6 +9,7 @@ import type {
   Transform,
   UnsavedTransform,
 } from "metabase-types/api";
+import { useRegisterMetabotContextProvider } from "metabase/metabot";
 
 type AnyTransform =
   | Transform

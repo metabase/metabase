@@ -5,7 +5,6 @@ import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import { createMockMetadata } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
 import { act, getIcon, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
 import type { TokenFeatures } from "metabase-types/api";
 import {
@@ -13,6 +12,7 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { SavedQuestionHeaderButton } from "./SavedQuestionHeaderButton";
 

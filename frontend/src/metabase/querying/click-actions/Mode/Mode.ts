@@ -1,3 +1,6 @@
+import type { DrillThruDisplayInfo } from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { ClickActionProps } from "metabase-lib/v1/queries/drills/types";
 import { queryDrill } from "metabase/querying/drills/utils/query-drill";
 import type {
   ClickAction,
@@ -5,9 +8,6 @@ import type {
   ClickActionsMode,
   ClickObject,
 } from "metabase/visualizations/types";
-import type { DrillThruDisplayInfo } from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type { ClickActionProps } from "metabase-lib/v1/queries/drills/types";
 
 import type { QueryClickActionsMode } from "../types";
 

@@ -1,7 +1,7 @@
 import _ from "underscore";
 
-import { getMobileHeight } from "metabase/viz-core";
 import type { BaseDashboardCard } from "metabase-types/api";
+import { getMobileHeight } from "metabase/viz-core";
 
 function sumVerticalSpace(layout: DashcardLayout[]) {
   return layout.reduce((sum, current) => sum + current.h, 0);

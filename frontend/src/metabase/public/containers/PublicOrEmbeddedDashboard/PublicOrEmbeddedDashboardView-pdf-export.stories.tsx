@@ -7,6 +7,16 @@ import { HttpResponse, http } from "msw";
 import { getPublicStore } from "__support__/entities-store";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
+import type { Dashboard } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDashboard,
+  createMockDashboardCard,
+  createMockDatabase,
+  createMockDataset,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import {
   MockDashboardContext,
@@ -22,16 +32,6 @@ import {
 import MetabaseSettings from "metabase/utils/settings";
 import { Map } from "metabase/visualizations/visualizations/Map";
 import { registerVisualization } from "metabase/viz-core";
-import type { Dashboard } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockColumn,
-  createMockDashboard,
-  createMockDashboardCard,
-  createMockDatabase,
-  createMockDataset,
-  createMockDatasetData,
-} from "metabase-types/api/mocks";
 
 registerVisualization(Map);
 

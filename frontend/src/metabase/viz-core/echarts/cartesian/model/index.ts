@@ -1,5 +1,5 @@
-import { isNotNull } from "metabase/utils/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
+import { isNotNull } from "metabase/utils/types";
 
 import {
   getCartesianChartColumns,

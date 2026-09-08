@@ -1,3 +1,6 @@
+import type { MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
+import type { SegmentId } from "metabase-types/api";
 import type {
   SerializedDefinitionInfo,
   SerializedDimensionBreakout,
@@ -7,9 +10,6 @@ import type {
   SerializedSource,
 } from "metabase/common/metrics-viewer";
 import { getObjectEntries } from "metabase/utils/objects";
-import type { MetricDefinition } from "metabase-lib/metric";
-import * as LibMetric from "metabase-lib/metric";
-import type { SegmentId } from "metabase-types/api";
 
 import type {
   ExpressionSubToken,

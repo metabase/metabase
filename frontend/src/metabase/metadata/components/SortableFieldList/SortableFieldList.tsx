@@ -2,12 +2,12 @@ import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { useMemo } from "react";
 import _ from "underscore";
 
+import type { Field, FieldId } from "metabase-types/api";
 import {
   type DragEndEvent,
   SortableList,
 } from "metabase/common/components/Sortable";
 import { Stack, rem } from "metabase/ui";
-import type { Field, FieldId } from "metabase-types/api";
 
 import { SortableFieldItem } from "../SortableFieldItem";
 

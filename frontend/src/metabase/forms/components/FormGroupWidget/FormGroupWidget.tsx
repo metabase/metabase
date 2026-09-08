@@ -3,10 +3,10 @@ import type { FocusEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
 
+import type { GroupId } from "metabase-types/api";
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import type { SelectProps } from "metabase/ui";
 import { Loader, Select } from "metabase/ui";
-import type { GroupId } from "metabase-types/api";
 
 interface FormGroupWidgetProps extends Omit<
   SelectProps,

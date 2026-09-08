@@ -1,8 +1,8 @@
+import type { CollectionId } from "metabase-types/api";
 import { useGetCollectionQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { getName } from "metabase/utils/name";
-import type { CollectionId } from "metabase-types/api";
 
 interface CollectionNameProps {
   id: CollectionId | null | undefined;

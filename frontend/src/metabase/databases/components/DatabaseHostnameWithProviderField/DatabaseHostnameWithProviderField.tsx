@@ -1,8 +1,8 @@
 import { useField, useFormikContext } from "formik";
 import { useEffect, useMemo } from "react";
 
-import { FormTextInput, type FormTextInputProps } from "metabase/forms";
 import type { DatabaseData, DatabaseProvider } from "metabase-types/api";
+import { FormTextInput, type FormTextInputProps } from "metabase/forms";
 
 import { ProviderIcon } from "./ProviderIcon";
 import { detectDBProvider } from "./database-providers";

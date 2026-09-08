@@ -1,6 +1,6 @@
 import type { MetabaseQueryObject } from "embedding-sdk-bundle/types/question";
-import { deserializeCardFromQuery } from "metabase/common/utils/card";
 import type { DatasetQuery, UnsavedCard } from "metabase-types/api";
+import { deserializeCardFromQuery } from "metabase/common/utils/card";
 
 export function getCardFromSdkQuestionQuery(
   query: string | MetabaseQueryObject | null | undefined,

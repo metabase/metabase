@@ -1,6 +1,6 @@
+import type { EnterpriseSettings } from "metabase-types/api";
 import { Api } from "metabase/api";
 import { invalidateTags, tag } from "metabase/api/tags";
-import type { EnterpriseSettings } from "metabase-types/api";
 
 type GoogleAuthSettings = Pick<
   EnterpriseSettings,

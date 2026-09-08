@@ -1,11 +1,3 @@
-import { registerVisualizations } from "metabase/visualizations/register";
-import type { Visualization } from "metabase/visualizations/types";
-import {
-  DEFAULT_VIZ_ORDER,
-  getSensibleDisplays,
-  groupVisualizationsBySensibility,
-  registerVisualization,
-} from "metabase/viz-core";
 import { SAMPLE_METADATA } from "metabase-lib/query/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
@@ -24,6 +16,14 @@ import {
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import { registerVisualizations } from "metabase/visualizations/register";
+import type { Visualization } from "metabase/visualizations/types";
+import {
+  DEFAULT_VIZ_ORDER,
+  getSensibleDisplays,
+  groupVisualizationsBySensibility,
+  registerVisualization,
+} from "metabase/viz-core";
 
 registerVisualizations();
 

@@ -2,6 +2,11 @@ import { updateIn } from "icepick";
 import { type ComponentType, useState } from "react";
 import _ from "underscore";
 
+import type {
+  DatabaseData,
+  DatabaseEditErrorType,
+  DatabaseId,
+} from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -20,11 +25,6 @@ import { useDispatch } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
 import { useLocation } from "metabase/router";
 import { Text } from "metabase/ui";
-import type {
-  DatabaseData,
-  DatabaseEditErrorType,
-  DatabaseId,
-} from "metabase-types/api";
 
 import { saveDatabase } from "../database";
 

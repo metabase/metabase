@@ -1,7 +1,7 @@
 import { render, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
+import { checkNotNull } from "metabase/utils/types";
 
 import { DataSelectorSchemaPicker } from "./DataSelectorSchemaPicker";
 

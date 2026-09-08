@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
+import type { IconName } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link/Link";
 import { Center, Group, Icon, Paper, Stack, Text, rem } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./MetadataCard.module.css";
 

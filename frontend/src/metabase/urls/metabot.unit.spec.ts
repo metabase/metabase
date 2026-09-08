@@ -1,6 +1,6 @@
-import { serializeCardForUrl } from "metabase/common/utils/card";
 import type { DatasetQuery } from "metabase-types/api";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
+import { serializeCardForUrl } from "metabase/common/utils/card";
 
 import { conversationChartUrl } from "./metabot";
 

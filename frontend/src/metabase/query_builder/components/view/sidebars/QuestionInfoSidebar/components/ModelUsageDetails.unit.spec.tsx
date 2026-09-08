@@ -13,13 +13,6 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
-import * as Urls from "metabase/urls";
-import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { Card, Collection, Database, Settings } from "metabase-types/api";
 import {
@@ -38,6 +31,13 @@ import {
   createSavedNativeCard,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 
 import { ModelUsageDetails } from "./ModelUsageDetails";
 import { DEFAULT_LIST_LIMIT } from "./hooks";

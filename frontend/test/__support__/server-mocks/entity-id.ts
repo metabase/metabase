@@ -1,12 +1,12 @@
 import fetchMock from "fetch-mock";
 
-import type { TranslateEntityIdRequest } from "metabase/api";
 import type {
   BaseEntityId,
   CardId,
   CollectionId,
   DashboardId,
 } from "metabase-types/api";
+import type { TranslateEntityIdRequest } from "metabase/api";
 
 type SUPPORTED_ENTITIES = {
   dashboard: DashboardId;

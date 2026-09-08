@@ -1,5 +1,5 @@
-import { Button, Flex, Icon } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { Button, Flex, Icon } from "metabase/ui";
 export type Shortcut = {
   name: string;
   icon: IconName;

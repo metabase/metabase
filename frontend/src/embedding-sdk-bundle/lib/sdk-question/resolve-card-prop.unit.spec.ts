@@ -1,6 +1,6 @@
 import type { MetabaseCard } from "embedding-sdk-bundle/types/question";
-import { utf8_to_b64url } from "metabase/utils/encoding";
 import type { DatasetQuery } from "metabase-types/api";
+import { utf8_to_b64url } from "metabase/utils/encoding";
 
 import { resolveCardProp } from "./resolve-card-prop";
 

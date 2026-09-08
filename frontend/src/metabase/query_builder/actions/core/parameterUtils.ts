@@ -1,3 +1,11 @@
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import type {
+  Card,
+  Parameter,
+  ParameterValuesMap,
+  SeriesCard,
+} from "metabase-types/api";
 import { dashboardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
@@ -8,14 +16,6 @@ import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { setErrorPage } from "metabase/redux/app";
 import type { Dispatch } from "metabase/redux/store";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import type {
-  Card,
-  Parameter,
-  ParameterValuesMap,
-  SeriesCard,
-} from "metabase-types/api";
 
 function shouldPropagateDashboardParameters({
   cardId,

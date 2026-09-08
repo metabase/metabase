@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 
+import * as Lib from "metabase-lib";
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { getTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
 import { Popover } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import { FilterPill } from "../FilterPill";
 

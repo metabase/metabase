@@ -1,10 +1,10 @@
 import { useCallback } from "react";
 
+import type { ParameterId } from "metabase-types/api";
 import {
   ParametersList,
   type ParametersListProps,
 } from "metabase/parameters/components/ParametersList";
-import type { ParameterId } from "metabase-types/api";
 
 import { useSyncUrlParameters } from "./use-sync-url-parameters";
 

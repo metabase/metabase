@@ -16,9 +16,6 @@ import {
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
-import { AIProviderSetup } from "metabase/metabot";
-import { reinitialize } from "metabase/plugins";
 import type {
   LlmConnectionModels,
   LlmProviderConnection,
@@ -34,6 +31,9 @@ import {
   createMockSettings,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { AIProviderSetup } from "metabase/metabot";
+import { reinitialize } from "metabase/plugins";
 
 import { AIProviderSettingsSection } from "./AIProviderSettingsSection";
 

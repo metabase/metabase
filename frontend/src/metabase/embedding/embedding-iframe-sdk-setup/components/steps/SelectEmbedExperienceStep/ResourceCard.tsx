@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { CollectionId, IconName } from "metabase-types/api";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import {
   CollectionPickerModal,
@@ -9,7 +10,6 @@ import {
   QuestionPickerModal,
 } from "metabase/common/components/Pickers";
 import { Button, Card, Icon, Stack, Text } from "metabase/ui";
-import type { CollectionId, IconName } from "metabase-types/api";
 
 import { EXPERIENCES_WITHOUT_RESOURCE_SELECTION } from "../../../constants";
 import { useSdkIframeEmbedSetupContext } from "../../../context";

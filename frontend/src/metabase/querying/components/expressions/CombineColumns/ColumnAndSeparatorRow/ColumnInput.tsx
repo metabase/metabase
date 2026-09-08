@@ -3,11 +3,11 @@ import type { FocusEvent, KeyboardEvent, MouseEvent } from "react";
 import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import { Button, FocusTrap, Icon, Input, Popover } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getThemeOverrides } from "metabase/ui/theme";
-import * as Lib from "metabase-lib";
 
 import styles from "./ColumnInput.module.css";
 

@@ -1,5 +1,11 @@
 import { useMemo } from "react";
 
+import type {
+  Database,
+  PopularItem,
+  RecentItem,
+  User,
+} from "metabase-types/api";
 import {
   useListDatabasesQuery,
   useListPopularItemsQuery,
@@ -10,12 +16,6 @@ import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import { isSyncCompleted } from "metabase/utils/syncing";
-import type {
-  Database,
-  PopularItem,
-  RecentItem,
-  User,
-} from "metabase-types/api";
 
 import { isWithinWeeks } from "../../utils";
 import { EmbedHomepage } from "../EmbedHomepage";

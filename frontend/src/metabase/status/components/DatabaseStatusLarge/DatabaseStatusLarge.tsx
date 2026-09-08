@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import type { Database } from "metabase-types/api";
 import {
   isSyncAborted,
   isSyncCompleted,
   isSyncInProgress,
 } from "metabase/utils/syncing";
-import type { Database } from "metabase-types/api";
 
 import StatusLarge from "../StatusLarge";
 

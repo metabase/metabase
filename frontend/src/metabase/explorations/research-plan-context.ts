@@ -1,9 +1,9 @@
-import type { ExplorationBlock } from "metabase/explorations/hooks";
 import type {
   ResearchPlanContext,
   ResearchPlanGroup,
   Timeline,
 } from "metabase-types/api";
+import type { ExplorationBlock } from "metabase/explorations/hooks";
 
 function blockToGroup(block: ExplorationBlock): ResearchPlanGroup {
   return {

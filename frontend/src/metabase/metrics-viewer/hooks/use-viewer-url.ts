@@ -1,12 +1,12 @@
 import { useEffect, useRef } from "react";
 import { t } from "ttag";
 
+import type { MeasureId } from "metabase-types/api";
+import type { MetricId } from "metabase-types/api/metric";
 import { useToast } from "metabase/common/hooks";
 import type { Location } from "metabase/router";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { MeasureId } from "metabase-types/api";
-import type { MetricId } from "metabase-types/api/metric";
 
 import {
   type MetricsViewerDimensionBreakoutState,

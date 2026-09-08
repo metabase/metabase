@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type {
+  ScheduleDisplayType,
+  TransformJob,
+  TransformJobId,
+  TransformTagId,
+} from "metabase-types/api";
 import {
   skipToken,
   useGetTransformJobQuery,
@@ -13,12 +19,6 @@ import { useJobHeaderState } from "metabase/transforms/hooks/use-job-header-stat
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type {
-  ScheduleDisplayType,
-  TransformJob,
-  TransformJobId,
-  TransformTagId,
-} from "metabase-types/api";
 
 import { JobEditor } from "../../components/JobEditor";
 import { JobMoreMenu } from "../../components/JobMoreMenu";

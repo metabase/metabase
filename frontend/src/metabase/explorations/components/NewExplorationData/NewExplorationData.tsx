@@ -2,6 +2,13 @@ import cx from "classnames";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  CollectionId,
+  CreateExplorationRequest,
+  ExplorationMetric,
+  MetricDimension,
+  Timeline,
+} from "metabase-types/api";
 import { useCreateExplorationMutation } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { useToast } from "metabase/common/hooks";
@@ -27,13 +34,6 @@ import {
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type {
-  CollectionId,
-  CreateExplorationRequest,
-  ExplorationMetric,
-  MetricDimension,
-  Timeline,
-} from "metabase-types/api";
 
 import { EXPLORATIONS_AGENT_ID } from "../NewExplorationChat/NewExplorationChat";
 

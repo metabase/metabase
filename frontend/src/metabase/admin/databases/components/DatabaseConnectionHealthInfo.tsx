@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { DatabaseConnectionType, DatabaseId } from "metabase-types/api";
 import { useGetDatabaseHealthQuery } from "metabase/api";
 import { Badge, Flex, type FlexProps, Text, Tooltip, rem } from "metabase/ui";
-import type { DatabaseConnectionType, DatabaseId } from "metabase-types/api";
 
 interface DatabaseConnectionHealthInfoProps extends FlexProps {
   databaseId: DatabaseId;

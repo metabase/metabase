@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
+import type { TableId } from "metabase-types/api";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { State } from "metabase/redux/store";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
-import type { TableId } from "metabase-types/api";
 
 export interface SimpleDataPickerProps {
   filterByDatabaseId: number | null;

@@ -4,6 +4,7 @@ import _ from "underscore";
 import type { TestConfig } from "yup";
 import * as Yup from "yup";
 
+import type { EnterpriseSettings, Settings } from "metabase-types/api";
 import {
   SETTINGS_CARD_STACK_PROPS,
   SETTINGS_CARD_TITLE_PROPS,
@@ -27,7 +28,6 @@ import {
   useGetSettingsQuery,
 } from "metabase/settings";
 import { Box, Flex, Group, Radio, Stack } from "metabase/ui";
-import type { EnterpriseSettings, Settings } from "metabase-types/api";
 
 import { useUpdateLdapMutation } from "../api/ldap";
 

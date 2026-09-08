@@ -1,11 +1,11 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import type { DashboardCard } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { Flex } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import type { DashboardCard } from "metabase-types/api";
 
 import { DashCardCardParameterMapperConnected } from "./DashCardCardParameterMapper";
 import S from "./DashCardParameterMapper.module.css";

@@ -53,6 +53,7 @@ import type {
   SdkDashboardId,
 } from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
+import type { CardDisplayType } from "metabase-types/api";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
@@ -71,15 +72,14 @@ import {
 } from "metabase/dashboard/context";
 import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
 import type { RefreshPeriod } from "metabase/dashboard/types";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { useSelector } from "metabase/redux";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getErrorPage } from "metabase/selectors/app";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
-import type { CardDisplayType } from "metabase-types/api";
 
 import type {
   DrillThroughQuestionProps,

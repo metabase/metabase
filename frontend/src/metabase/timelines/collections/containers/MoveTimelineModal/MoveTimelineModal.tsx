@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 
+import type { CollectionId, Timeline } from "metabase-types/api";
 import {
   collectionApi,
   skipToken,
@@ -13,7 +14,6 @@ import { useDispatch } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import MoveTimelineModal from "metabase/timelines/common/components/MoveTimelineModal";
 import * as Urls from "metabase/urls";
-import type { CollectionId, Timeline } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 

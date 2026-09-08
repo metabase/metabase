@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { getSubpathSafeUrl } from "metabase/urls";
 import type { CardDisplayType } from "metabase-types/api";
+import { getSubpathSafeUrl } from "metabase/urls";
 
 /**
  * The "table" and the "object" (detail) charts can always display the data

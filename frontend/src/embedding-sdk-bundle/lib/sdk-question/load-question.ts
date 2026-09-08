@@ -7,15 +7,15 @@ import type {
   LoadSdkQuestionParams,
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
+import Question from "metabase-lib/v1/Question";
+import type { SeriesCard } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import { getMetadata, paramFieldsFetched } from "metabase/metadata-store";
 import {
   getParameterValuesForQuestion,
   resolveCards,
 } from "metabase/query_builder";
 import { loadMetadataForCard } from "metabase/questions/actions";
-import Question from "metabase-lib/v1/Question";
-import type { SeriesCard } from "metabase-types/api";
-import type { EntityToken } from "metabase-types/api/entity";
 
 type LoadQuestionSdkParams = LoadSdkQuestionParams & {
   token: EntityToken | null | undefined;

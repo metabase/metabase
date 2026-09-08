@@ -4,15 +4,15 @@
 import type { FeatureCollection } from "geojson";
 import ReactDOMServer from "react-dom/server";
 
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 import {
   createMockColumn,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/viz-core";
 
 import { StaticChoropleth } from "./StaticChoropleth";
 import { getStaticChoroplethSettings } from "./utils";

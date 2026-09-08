@@ -1,6 +1,7 @@
 import { assocIn, dissocIn, updateIn } from "icepick";
 import { t } from "ttag";
 
+import type { CardId, CollectionId, TableId } from "metabase-types/api";
 import { Api, cardApi, tableApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -12,7 +13,6 @@ import {
   createThunkAction,
   handleActions,
 } from "metabase/redux/utils";
-import type { CardId, CollectionId, TableId } from "metabase-types/api";
 
 export const UPLOAD_DATA_FILE_TYPES = [".csv", ".tsv"];
 

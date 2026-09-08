@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 
-import type { DashboardContextReturned } from "metabase/dashboard/context";
 import type { Collection, Dashboard } from "metabase-types/api";
+import type { DashboardContextReturned } from "metabase/dashboard/context";
 
 import type { DASHBOARD_ACTION } from "./dashboard-action-keys";
 

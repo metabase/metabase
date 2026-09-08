@@ -13,6 +13,13 @@ import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type {
+  Card,
+  CollectionId,
+  Document,
+  DocumentId,
+  RegularCollectionId,
+} from "metabase-types/api";
 import { skipToken } from "metabase/api";
 import {
   useCreateDocumentMutation,
@@ -29,13 +36,6 @@ import { useDispatch, useSelector } from "metabase/redux";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type {
-  Card,
-  CollectionId,
-  Document,
-  DocumentId,
-  RegularCollectionId,
-} from "metabase-types/api";
 
 import {
   clearDraftCards,

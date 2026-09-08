@@ -7,6 +7,22 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
+import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
+import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
+import {
+  getIsMultiSelect,
+  parameterHasNoDisplayValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
+import type {
+  DashboardCard,
+  EmbeddingParameterVisibility,
+  Parameter,
+  TemporalUnit,
+  ValuesQueryType,
+  ValuesSourceConfig,
+  ValuesSourceType,
+} from "metabase-types/api";
 import { ParameterValueWidget } from "metabase/parameters/components/ParameterValueWidget";
 import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
 import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
@@ -24,22 +40,6 @@ import {
   TextInput,
 } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
-import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
-import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
-import {
-  getIsMultiSelect,
-  parameterHasNoDisplayValue,
-} from "metabase-lib/v1/parameters/utils/parameter-values";
-import type {
-  DashboardCard,
-  EmbeddingParameterVisibility,
-  Parameter,
-  TemporalUnit,
-  ValuesQueryType,
-  ValuesSourceConfig,
-  ValuesSourceType,
-} from "metabase-types/api";
 
 import { resetParameterMapping } from "../../actions";
 import {

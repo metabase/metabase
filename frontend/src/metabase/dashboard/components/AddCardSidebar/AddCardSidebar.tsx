@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 
+import type { CardId } from "metabase-types/api";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
-import type { CardId } from "metabase-types/api";
 
 import { QuestionPicker } from "../QuestionPicker";
 

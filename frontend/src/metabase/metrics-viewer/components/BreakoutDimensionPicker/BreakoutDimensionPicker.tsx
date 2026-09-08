@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
+import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 import {
   AccordionList,
   type Section,
@@ -9,8 +11,6 @@ import type { DimensionOption } from "metabase/common/components/DimensionPill";
 import { HoverParent } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import { getDimensionsByType } from "metabase/metrics-viewer/utils";
 import { Flex, Icon } from "metabase/ui";
-import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
-import * as LibMetric from "metabase-lib/metric";
 
 import S from "./BreakoutDimensionPicker.module.css";
 import { DimensionBinningPicker } from "./DimensionBinningPicker";

@@ -3,13 +3,13 @@ import { useField } from "formik";
 import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
+import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { FieldId } from "metabase-types/api";
 import { useGetFieldQuery } from "metabase/api";
 import { SelectButton } from "metabase/common/components/SelectButton";
 import CS from "metabase/css/core/index.css";
 import { SchemaTableAndFieldDataSelector } from "metabase/querying/common/components/DataSelector";
 import { Text } from "metabase/ui";
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { FieldId } from "metabase-types/api";
 
 import MappedFieldPickerS from "./MappedFieldPicker.module.css";
 

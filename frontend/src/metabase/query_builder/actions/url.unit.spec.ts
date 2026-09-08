@@ -6,6 +6,13 @@
 // other side: how `navigate` drives the router.
 
 import { createMockEntitiesState } from "__support__/store";
+import type Question from "metabase-lib/v1/Question";
+import type { Card } from "metabase-types/api";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+  createSavedStructuredCard,
+} from "metabase-types/api/mocks/presets";
 import { getMetadata } from "metabase/metadata-store";
 import {
   createMockQueryBuilderState,
@@ -21,13 +28,6 @@ import {
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
-import {
-  ORDERS_ID,
-  createSampleDatabase,
-  createSavedStructuredCard,
-} from "metabase-types/api/mocks/presets";
 
 import { SET_CURRENT_STATE } from "../store/actions";
 import { getTableUrlForPristineQuestion } from "../utils";

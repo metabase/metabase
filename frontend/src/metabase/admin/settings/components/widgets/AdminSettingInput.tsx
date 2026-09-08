@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  EnterpriseSettingKey,
+  EnterpriseSettingValue,
+  SettingDefinition,
+  SettingKey,
+} from "metabase-types/api";
 import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
@@ -15,12 +21,6 @@ import {
   type TextProps,
   Textarea,
 } from "metabase/ui";
-import type {
-  EnterpriseSettingKey,
-  EnterpriseSettingValue,
-  SettingDefinition,
-  SettingKey,
-} from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
 

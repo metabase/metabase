@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { User } from "metabase-types/api";
 import {
   skipToken,
   useGetUserQuery,
@@ -10,7 +11,6 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UserForm } from "metabase/common/components/UserForm";
 import { Modal } from "metabase/ui";
-import type { User } from "metabase-types/api";
 
 interface EditUserModalProps {
   onClose: () => void;

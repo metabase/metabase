@@ -3,6 +3,13 @@ import { useFormik } from "formik";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
+import type {
+  FieldId,
+  IconName,
+  NormalizedField,
+  User,
+} from "metabase-types/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
@@ -17,13 +24,6 @@ import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import * as actions from "metabase/reference/reference";
 import { updateField } from "metabase/reference/update-actions";
-import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
-import type {
-  FieldId,
-  IconName,
-  NormalizedField,
-  User,
-} from "metabase-types/api";
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {

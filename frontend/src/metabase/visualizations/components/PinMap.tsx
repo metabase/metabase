@@ -5,11 +5,6 @@ import { type ComponentClass, useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import CS from "metabase/css/core/index.css";
-import DashboardS from "metabase/css/dashboard.module.css";
-import { Button } from "metabase/ui";
-import type { VisualizationProps } from "metabase/visualizations/types";
-import { sumMetric, unaggregatedDataWarningMap } from "metabase/viz-core";
 import type {
   DatasetData,
   PinMapStyle,
@@ -17,6 +12,11 @@ import type {
   RowValues,
   VisualizationSettings,
 } from "metabase-types/api";
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
+import { Button } from "metabase/ui";
+import type { VisualizationProps } from "metabase/visualizations/types";
+import { sumMetric, unaggregatedDataWarningMap } from "metabase/viz-core";
 
 import { LeafletGridHeatMap } from "./LeafletGridHeatMap";
 import {

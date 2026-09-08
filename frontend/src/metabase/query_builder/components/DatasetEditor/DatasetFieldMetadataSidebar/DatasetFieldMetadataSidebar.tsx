@@ -11,6 +11,17 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import { isCurrency, isFK } from "metabase-lib/v1/types/utils/isa";
+import type {
+  ColumnSettings as ColumnSettingsType,
+  DatasetColumn,
+  Field,
+  FieldId,
+  FieldVisibilityType,
+} from "metabase-types/api";
+import type { ModelIndex } from "metabase-types/api/modelIndexes";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { FIELD_VISIBILITY_TYPES } from "metabase/common/utils/fields";
 import {
@@ -29,17 +40,6 @@ import {
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/viz-core";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import { isCurrency, isFK } from "metabase-lib/v1/types/utils/isa";
-import type {
-  ColumnSettings as ColumnSettingsType,
-  DatasetColumn,
-  Field,
-  FieldId,
-  FieldVisibilityType,
-} from "metabase-types/api";
-import type { ModelIndex } from "metabase-types/api/modelIndexes";
 
 import type { FieldWithMaybeIndex } from "../../../model-indexes/actions";
 import { canIndexField } from "../../../model-indexes/utils";

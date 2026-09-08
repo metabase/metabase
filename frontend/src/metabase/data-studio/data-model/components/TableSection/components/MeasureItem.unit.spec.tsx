@@ -1,6 +1,6 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
 import { createMockMeasure } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import { MeasureItem } from "./MeasureItem";
 

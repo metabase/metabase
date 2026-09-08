@@ -1,3 +1,4 @@
+import type { SearchResult } from "metabase-types/api";
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { QuestionLineage } from "metabase/app/nav/QuestionLineage";
 import {
@@ -25,7 +26,6 @@ import { useLocation, useNavigate, useParams } from "metabase/router";
 import { getDetailViewState, getIsNavbarOpen } from "metabase/selectors/app";
 import { modelToUrl } from "metabase/urls";
 import { isWithinIframe } from "metabase/utils/iframe";
-import type { SearchResult } from "metabase-types/api";
 
 type SearchResultSelection =
   | { type: "zoom"; objectId: SearchResult["id"] }

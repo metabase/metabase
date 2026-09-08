@@ -13,6 +13,12 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import type { CollectionItem, RecentItem } from "metabase-types/api";
+import {
+  createMockCollectionItem,
+  createMockRecentTableItem,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import {
   createMockSettingsState,
@@ -20,12 +26,6 @@ import {
 } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
-import type { CollectionItem, RecentItem } from "metabase-types/api";
-import {
-  createMockCollectionItem,
-  createMockRecentTableItem,
-  createMockUser,
-} from "metabase-types/api/mocks";
 
 const TEST_SEARCH_RESULTS: CollectionItem[] = [
   "Card ABC",

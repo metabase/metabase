@@ -2,9 +2,9 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import type { CardId, DashboardId, Parameter } from "metabase-types/api";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { ActionIcon, Box, Button, Flex, Icon } from "metabase/ui";
-import type { CardId, DashboardId, Parameter } from "metabase-types/api";
 
 import ResponsiveParametersListS from "./ResponsiveParametersList.module.css";
 import { SyncedParametersList } from "./SyncedParametersList";

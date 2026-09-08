@@ -1,5 +1,7 @@
 import { type ReactNode, useMemo } from "react";
 
+import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { Table } from "metabase-types/api";
 import {
   skipToken,
   useGetCardQuery,
@@ -9,8 +11,6 @@ import { CollectionBadge } from "metabase/common/collections/components/Collecti
 import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { Group, type GroupProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { Table } from "metabase-types/api";
 
 import { CollectionBreadcrumb } from "./CollectionBreadcrumb";
 import { Separator } from "./Separator";

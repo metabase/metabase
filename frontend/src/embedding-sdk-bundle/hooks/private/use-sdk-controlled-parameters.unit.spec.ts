@@ -2,6 +2,8 @@ import { renderHook } from "@testing-library/react";
 
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { startSdkListening } from "embedding-sdk-bundle/store/listener-middleware";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type { ParameterValuesMap } from "metabase-types/api";
 import {
   getDashboardComplete,
   getParameterValues,
@@ -9,8 +11,6 @@ import {
 } from "metabase/dashboard/selectors";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { setParameterValues } from "metabase/redux/dashboard";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { ParameterValuesMap } from "metabase-types/api";
 
 import { useSdkControlledParameters } from "./use-sdk-controlled-parameters";
 

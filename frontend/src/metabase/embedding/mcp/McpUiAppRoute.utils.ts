@@ -1,5 +1,5 @@
-import { b64_to_utf8 } from "metabase/utils/encoding";
 import type { SeriesCard, VisualizationSettings } from "metabase-types/api";
+import { b64_to_utf8 } from "metabase/utils/encoding";
 
 export const MCP_APP_VISUALIZATION_SETTINGS: VisualizationSettings = {
   "graph.x_axis.labels_enabled": false,

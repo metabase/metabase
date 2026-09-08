@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { jt, t } from "ttag";
 
+import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";
+import type { Database } from "metabase-types/api";
 import {
   usePersistDatabaseMutation,
   useUnpersistDatabaseMutation,
@@ -10,8 +12,6 @@ import { useDocsUrl } from "metabase/common/hooks";
 import { hasFeature } from "metabase/databases";
 import { useSetting } from "metabase/settings";
 import { Alert, Box, Flex, Icon, Switch } from "metabase/ui";
-import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";
-import type { Database } from "metabase-types/api";
 
 import { Description, Error, Label } from "../../DatabaseFeatureComponents";
 

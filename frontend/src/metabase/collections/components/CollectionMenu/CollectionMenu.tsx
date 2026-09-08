@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
+import type { Collection } from "metabase-types/api";
 import {
   isDedicatedTenantCollectionRoot,
   isInstanceAnalyticsCustomCollection,
@@ -14,7 +15,6 @@ import { UserHasSeenAll } from "metabase/common/components/UserHasSeen/UserHasSe
 import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import { ActionIcon, Icon, Indicator, Menu, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Collection } from "metabase-types/api";
 
 export interface CollectionMenuProps {
   collection: Collection;

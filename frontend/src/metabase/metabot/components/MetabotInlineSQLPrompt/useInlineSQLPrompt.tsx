@@ -11,12 +11,12 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
-import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
-import { useUserMetabotPermissions } from "metabase/metabot/hooks";
-import { useMetabotSQLSuggestion } from "metabase/metabot/hooks/use-metabot-sql-suggestion";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatabaseId, DatasetQuery } from "metabase-types/api";
+import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { useMetabotSQLSuggestion } from "metabase/metabot/hooks/use-metabot-sql-suggestion";
 
 import { MetabotInlineSQLPrompt } from "./MetabotInlineSQLPrompt";
 import {

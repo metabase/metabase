@@ -1,6 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  DimensionMetadata,
+  FilterClause,
+  MetricDefinition,
+} from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 import { FilterPickerBody } from "metabase/common/metrics/components/FilterPicker/FilterPickerBody";
 import {
   trackMetricsViewerFilterAdded,
@@ -13,12 +19,6 @@ import {
   parseFilter,
 } from "metabase/metrics-viewer/utils";
 import { Button, Popover } from "metabase/ui";
-import type {
-  DimensionMetadata,
-  FilterClause,
-  MetricDefinition,
-} from "metabase-lib/metric";
-import * as LibMetric from "metabase-lib/metric";
 
 import S from "../../../CenterControls.module.css";
 

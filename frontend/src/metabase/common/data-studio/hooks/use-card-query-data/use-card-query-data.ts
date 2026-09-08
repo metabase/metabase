@@ -1,9 +1,9 @@
+import type { Card, Dataset } from "metabase-types/api";
 import {
   skipToken,
   useGetAdhocQueryQuery,
   useGetCardQueryQuery,
 } from "metabase/api";
-import type { Card, Dataset } from "metabase-types/api";
 
 export function useCardQueryData(
   card: Card,

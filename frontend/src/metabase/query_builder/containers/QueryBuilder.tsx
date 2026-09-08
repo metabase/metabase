@@ -5,6 +5,7 @@ import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { Series } from "metabase-types/api";
 import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
@@ -43,7 +44,6 @@ import {
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getSetting } from "metabase/settings";
 import { useForceUpdate } from "metabase/utils/use-force-update";
-import type { Series } from "metabase-types/api";
 
 import {
   cancelQuery,

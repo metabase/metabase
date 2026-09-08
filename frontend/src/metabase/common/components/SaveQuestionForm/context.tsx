@@ -11,6 +11,8 @@ import {
 import { usePrevious } from "react-use";
 import { isEqual } from "underscore";
 
+import type Question from "metabase-lib/v1/Question";
+import type { CollectionId, DashboardId } from "metabase-types/api";
 import { useListRecentsQuery } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import {
@@ -22,8 +24,6 @@ import { getUser } from "metabase/current-user";
 import { FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { isNotNull } from "metabase/utils/types";
-import type Question from "metabase-lib/v1/Question";
-import type { CollectionId, DashboardId } from "metabase-types/api";
 
 import { SAVE_QUESTION_SCHEMA } from "./schema";
 import type { FormValues, SaveQuestionProps } from "./types";

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import { Box, Button } from "metabase/ui";
 import type { VisualizationSettings } from "metabase-types/api";
+import { Box, Button } from "metabase/ui";
 
 interface ChartSettingsErrorButtonProps {
   message: ReactNode;

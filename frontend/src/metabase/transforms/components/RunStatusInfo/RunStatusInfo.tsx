@@ -1,5 +1,5 @@
-import { Box, Group } from "metabase/ui";
 import type { Transform, TransformRunStatus } from "metabase-types/api";
+import { Box, Group } from "metabase/ui";
 
 import { formatStatus } from "../../utils";
 import { RunCancelButton } from "../RunCancelButton/RunCancelButton";

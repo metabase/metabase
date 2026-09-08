@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { jt, t } from "ttag";
 
+import type { DashboardId } from "metabase-types/api";
 import { trackCustomHomepageDashboardEnabled } from "metabase/common/analytics";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector/DashboardSelector";
 import { Link } from "metabase/common/components/Link";
@@ -9,7 +10,6 @@ import { useDispatch } from "metabase/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { useUpdateSettingsMutation } from "metabase/settings";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
-import type { DashboardId } from "metabase-types/api";
 
 const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";
 const CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY = "custom-homepage-dashboard";

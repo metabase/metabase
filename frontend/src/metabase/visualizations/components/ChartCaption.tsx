@@ -1,14 +1,14 @@
 import type { ReactNode } from "react";
 import { useCallback } from "react";
 
-import type { IconProps } from "metabase/ui";
-import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import type {
   RawSeries,
   Series,
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { IconProps } from "metabase/ui";
+import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 
 import { ChartCaptionRoot } from "./ChartCaption.styled";
 

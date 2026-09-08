@@ -1,8 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
-import type { QueryClickActionsMode } from "metabase/querying/click-actions/types";
-import type { ClickAction } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
+import type { QueryClickActionsMode } from "metabase/querying/click-actions/types";
+import type { ClickAction } from "metabase/visualizations/types";
 
 import { getEmbeddingMode } from "./getEmbeddingMode";
 

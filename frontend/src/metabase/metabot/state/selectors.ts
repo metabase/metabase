@@ -2,10 +2,10 @@ import { createSelector } from "@reduxjs/toolkit";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
+import type { TransformId } from "metabase-types/api";
 import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
-import type { TransformId } from "metabase-types/api";
 
 import {
   CONTEXT_WINDOW_WARNING_PERCENT,

@@ -1,11 +1,11 @@
+import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
+import { createMockColumn } from "metabase-types/api/mocks";
 import type {
   BarData,
   CartesianChartColumns,
   GroupedDatum,
   SeriesInfo,
 } from "metabase/viz-core";
-import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
-import { createMockColumn } from "metabase-types/api/mocks";
 
 import { getLabelsFormatter } from "./format";
 

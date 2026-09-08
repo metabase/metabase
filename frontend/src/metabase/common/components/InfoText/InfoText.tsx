@@ -1,5 +1,5 @@
-import { Group } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
+import { Group } from "metabase/ui";
 
 import { InfoTextAssetLink } from "./InfoTextAssetLink";
 import { InfoTextEditedInfo } from "./InfoTextEditedInfo";

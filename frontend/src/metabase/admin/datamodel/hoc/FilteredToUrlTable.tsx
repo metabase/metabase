@@ -2,6 +2,7 @@ import cx from "classnames";
 import { type ComponentType, type ReactNode, useState } from "react";
 import { t } from "ttag";
 
+import type { ConcreteTableId, Segment } from "metabase-types/api";
 import { skipToken, useGetTableQuery } from "metabase/api";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import CS from "metabase/css/core/index.css";
@@ -9,7 +10,6 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/querying/common/com
 import type { Location } from "metabase/router";
 import { queryToSearch, useNavigate } from "metabase/router";
 import { Icon } from "metabase/ui";
-import type { ConcreteTableId, Segment } from "metabase-types/api";
 
 type FilteredToUrlTableInnerProps = {
   location: Location;

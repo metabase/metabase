@@ -2,6 +2,12 @@ import type { FormikHelpers } from "formik";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type {
+  ActionFormInitialValues,
+  ParameterId,
+  ParametersForActionExecution,
+  WritebackAction,
+} from "metabase-types/api";
 import useActionForm from "metabase/actions/hooks/use-action-form";
 import {
   getSubmitButtonColor,
@@ -14,12 +20,6 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { Button, Flex } from "metabase/ui";
-import type {
-  ActionFormInitialValues,
-  ParameterId,
-  ParametersForActionExecution,
-  WritebackAction,
-} from "metabase-types/api";
 
 import { ActionFormFieldWidget } from "../ActionFormFieldWidget";
 

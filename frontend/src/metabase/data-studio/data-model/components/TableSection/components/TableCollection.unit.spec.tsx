@@ -1,11 +1,11 @@
 import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route } from "metabase/router";
 import type { Collection, Table } from "metabase-types/api";
 import {
   createMockCollection,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import { TableCollection } from "./TableCollection";
 

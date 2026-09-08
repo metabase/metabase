@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import type { Collection, CollectionId } from "metabase-types/api";
 import {
   collectionApi,
   snippetApi,
@@ -26,7 +27,6 @@ import {
   Menu,
   Tooltip,
 } from "metabase/ui";
-import type { Collection, CollectionId } from "metabase-types/api";
 
 import { EditCollectionModal } from "./EditCollectionModal";
 

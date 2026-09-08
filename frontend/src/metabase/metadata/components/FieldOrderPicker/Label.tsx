@@ -1,5 +1,5 @@
-import { Flex, Icon, Tooltip } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { Flex, Icon, Tooltip } from "metabase/ui";
 interface Props {
   icon: IconName;
   tooltip: string;

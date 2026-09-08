@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import type { TimelineData } from "metabase-types/api";
 import { getTimelineIcons } from "metabase/common/utils/timelines";
 import {
   Form,
@@ -13,7 +14,6 @@ import {
 } from "metabase/forms";
 import { Button } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { TimelineData } from "metabase-types/api";
 
 import FormArchiveButton from "../FormArchiveButton";
 

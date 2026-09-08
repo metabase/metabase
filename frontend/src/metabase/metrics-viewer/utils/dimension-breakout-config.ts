@@ -1,9 +1,3 @@
-import {
-  DIMENSION_PREDICATES,
-  getGeoSubtype,
-} from "metabase/common/metrics/utils/dimension-types";
-import { getColorplethColorScale } from "metabase/visualizations/visualizations/Map/map-color-scale";
-import { getBreakoutSeriesName } from "metabase/viz-core";
 import type { DimensionMetadata } from "metabase-lib/metric";
 import { isCountry, isState } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -12,6 +6,12 @@ import type {
   SeriesSettings,
   VisualizationSettings,
 } from "metabase-types/api";
+import {
+  DIMENSION_PREDICATES,
+  getGeoSubtype,
+} from "metabase/common/metrics/utils/dimension-types";
+import { getColorplethColorScale } from "metabase/visualizations/visualizations/Map/map-color-scale";
+import { getBreakoutSeriesName } from "metabase/viz-core";
 
 import {
   type BreakoutColorMap,

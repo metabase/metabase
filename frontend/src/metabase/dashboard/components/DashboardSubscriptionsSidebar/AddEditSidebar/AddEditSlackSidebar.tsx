@@ -2,6 +2,16 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import {
+  type Channel,
+  type ChannelApiResponse,
+  type ChannelSpec,
+  type Dashboard,
+  DataPermissionValue,
+  type DraftDashboardSubscription,
+  type ScheduleSettings,
+} from "metabase-types/api";
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
 import type { ScheduleValue } from "metabase/common/components/Schedule/domain";
 import type { ScheduleChangeProp } from "metabase/common/components/Schedule/types";
@@ -19,16 +29,6 @@ import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getSetting } from "metabase/settings";
 import { Icon, Stack, Switch, Text, Title } from "metabase/ui";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import {
-  type Channel,
-  type ChannelApiResponse,
-  type ChannelSpec,
-  type Dashboard,
-  DataPermissionValue,
-  type DraftDashboardSubscription,
-  type ScheduleSettings,
-} from "metabase-types/api";
 
 import S from "./AddEditSidebar.module.css";
 import { CaveatMessage } from "./CaveatMessage";

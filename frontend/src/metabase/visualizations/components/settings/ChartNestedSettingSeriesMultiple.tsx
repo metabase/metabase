@@ -1,11 +1,11 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import type { SingleSeries, VisualizationSettings } from "metabase-types/api";
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import { Flex } from "metabase/ui";
 import { getAccentColors } from "metabase/ui/colors/groups";
-import type { SingleSeries, VisualizationSettings } from "metabase-types/api";
 
 import {
   OptionsIcon,

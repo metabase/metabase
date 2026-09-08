@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 
+import type Question from "metabase-lib/v1/Question";
+import type { CardId, UnsavedCard } from "metabase-types/api";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import renderPropToHOC from "metabase/hoc/RenderPropToHOC";
 import { AdHocQuestionLoader } from "metabase/questions/components/AdHocQuestionLoader";
 import { SavedQuestionLoader } from "metabase/questions/components/SavedQuestionLoader";
-import type Question from "metabase-lib/v1/Question";
-import type { CardId, UnsavedCard } from "metabase-types/api";
 
 export type QuestionLoaderChildrenProps = {
   question: Question | null;

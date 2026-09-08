@@ -1,5 +1,11 @@
 import _ from "underscore";
 
+import { TYPE } from "metabase-lib/v1/types/constants";
+import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import {
   COLLAPSED_ROWS_SETTING,
@@ -14,12 +20,6 @@ import {
 } from "metabase/visualizations/lib/data_grid";
 import type { HeaderItem } from "metabase/visualizations/visualizations/PivotTable/types";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import { TYPE } from "metabase-lib/v1/types/constants";
-import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
-import {
-  createMockColumn,
-  createMockDatasetData,
-} from "metabase-types/api/mocks";
 
 const dimension = (i: number) =>
   createMockColumn({

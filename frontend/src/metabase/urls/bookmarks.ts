@@ -1,7 +1,7 @@
 import slugg from "slugg";
 
-import { exploration } from "metabase/urls/explorations";
 import type { Bookmark } from "metabase-types/api";
+import { exploration } from "metabase/urls/explorations";
 
 import { appendSlug } from "./utils";
 

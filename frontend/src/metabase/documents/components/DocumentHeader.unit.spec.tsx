@@ -2,11 +2,11 @@ import userEvent from "@testing-library/user-event";
 
 import { setupCommentEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockDocument, createMockUser } from "metabase-types/api/mocks";
 import {
   PrintContext,
   type PrintContextValue,
 } from "metabase/documents/contexts/PrintContext";
-import { createMockDocument, createMockUser } from "metabase-types/api/mocks";
 
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 

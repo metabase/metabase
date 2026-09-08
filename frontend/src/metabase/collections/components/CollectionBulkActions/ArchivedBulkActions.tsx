@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import type { Collection, CollectionItem } from "metabase-types/api";
 import {
   canDelete,
   useDeleteItem,
@@ -13,7 +14,6 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { canMoveItem } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import type { Collection, CollectionItem } from "metabase-types/api";
 
 type ArchivedBulkActionsProps = {
   selected: any[];

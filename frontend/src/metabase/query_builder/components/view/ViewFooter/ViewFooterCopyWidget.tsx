@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
+import type { Dataset } from "metabase-types/api";
 import { canDownloadResults } from "metabase/common/utils/dataset";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
-import type { Dataset } from "metabase-types/api";
 
 import { getFirstQueryResult } from "../../../store/selectors";
 

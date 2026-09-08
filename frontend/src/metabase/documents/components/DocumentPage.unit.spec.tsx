@@ -7,8 +7,8 @@ import {
   setupTimelinesEndpoints,
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route } from "metabase/router";
 import { createMockDocument } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import { DocumentPage } from "./DocumentPage";
 

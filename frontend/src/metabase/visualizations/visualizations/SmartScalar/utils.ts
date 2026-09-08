@@ -1,14 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { dayjs } from "metabase/dayjs";
-import { formatNumber } from "metabase/utils/formatting";
-import { uuid } from "metabase/utils/uuid";
-import { isEmpty } from "metabase/utils/validate";
-import {
-  type ComparisonMenuOption,
-  formatPreviousPeriodOptionName,
-} from "metabase/viz-core";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DateTimeAbsoluteUnit,
@@ -20,6 +12,14 @@ import type {
   RawSeries,
   RowValues,
 } from "metabase-types/api/dataset";
+import { dayjs } from "metabase/dayjs";
+import { formatNumber } from "metabase/utils/formatting";
+import { uuid } from "metabase/utils/uuid";
+import { isEmpty } from "metabase/utils/validate";
+import {
+  type ComparisonMenuOption,
+  formatPreviousPeriodOptionName,
+} from "metabase/viz-core";
 
 import { COMPARISON_TYPES } from "./constants";
 

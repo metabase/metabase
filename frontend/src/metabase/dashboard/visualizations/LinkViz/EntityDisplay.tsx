@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import type { UnrestrictedLinkEntity } from "metabase-types/api";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Markdown } from "metabase/common/components/Markdown";
 import type { IconData } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { Icon } from "metabase/ui";
 import { isEmpty } from "metabase/utils/validate";
-import type { UnrestrictedLinkEntity } from "metabase-types/api";
 
 import {
   EllipsifiedEntityContainer,

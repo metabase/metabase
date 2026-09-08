@@ -12,8 +12,8 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { registerVisualizations } from "metabase/visualizations/register";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import {
   TEST_CARD,

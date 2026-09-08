@@ -1,3 +1,7 @@
+import type {
+  CollectionId,
+  Collection as CollectionType,
+} from "metabase-types/api";
 import { useGetCollectionQuery } from "metabase/api";
 import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { useTranslateContent } from "metabase/content-translation/hooks";
@@ -5,10 +9,6 @@ import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { modelToUrl } from "metabase/urls/modelToUrl";
 import { getName } from "metabase/utils/name";
-import type {
-  CollectionId,
-  Collection as CollectionType,
-} from "metabase-types/api";
 
 const IRREGULAR_ICON_WIDTH = 16;
 const IRREGULAR_ICON_PROPS = {

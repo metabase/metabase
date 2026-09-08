@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { ApiKey } from "metabase-types/api";
 import {
   Form,
   FormErrorMessage,
@@ -8,7 +9,6 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
-import type { ApiKey } from "metabase-types/api";
 
 import { useDeleteApiKeyMutation } from "../../api/api-key";
 

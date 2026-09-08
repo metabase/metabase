@@ -2,13 +2,13 @@ import type { ChangeEvent } from "react";
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
+import type { Collection } from "metabase-types/api";
 import {
   UploadInput,
   UploadLabel,
   UploadTooltip,
 } from "metabase/common/components/upload";
 import { ActionIcon, Icon } from "metabase/ui";
-import type { Collection } from "metabase-types/api";
 
 import { UploadInfoModal } from "./CollectionUploadInfoModal";
 import { trackCSVFileUploadClicked } from "./analytics";

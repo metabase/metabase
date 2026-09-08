@@ -1,5 +1,6 @@
 import { useDroppable } from "@dnd-kit/core";
 
+import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Flex, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
@@ -10,7 +11,6 @@ import {
 } from "metabase/visualizer/selectors";
 import { isArtificialColumn } from "metabase/visualizer/utils";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
-import { isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { WellItem } from "../WellItem";
 

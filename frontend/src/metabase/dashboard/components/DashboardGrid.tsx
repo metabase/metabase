@@ -5,6 +5,16 @@ import type { ConnectedProps } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type {
+  BaseDashboardCard,
+  Card,
+  CardId,
+  Dashboard,
+  DashboardCard,
+  DashboardTabId,
+  VisualizerVizDefinition,
+} from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import {
   type OmniPickerItem,
@@ -34,16 +44,6 @@ import {
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import { isVisualizerSupportedVisualization } from "metabase/visualizer/utils";
-import type {
-  BaseDashboardCard,
-  Card,
-  CardId,
-  Dashboard,
-  DashboardCard,
-  DashboardTabId,
-  VisualizerVizDefinition,
-} from "metabase-types/api";
-import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {

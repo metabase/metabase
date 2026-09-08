@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
+import type { EmbeddingParameters } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { getPreviewParamsBySlug } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-preview-params-by-slug";
 import { getStaticEmbedSetupPublishHandlers } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
@@ -22,7 +23,6 @@ import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
 import { Paper, Stack, Tabs } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import type { EmbeddingParameters } from "metabase-types/api";
 
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
 import { LookAndFeelSettings } from "./LookAndFeelSettings";

@@ -1,5 +1,4 @@
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
-import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import type {
   RowValues,
   Series,
@@ -8,6 +7,7 @@ import type {
 } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
+import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 
 export const PREVIOUS_PERIOD_COMPARISON = {
   id: "1",

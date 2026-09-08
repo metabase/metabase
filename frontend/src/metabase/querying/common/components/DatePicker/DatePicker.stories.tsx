@@ -13,7 +13,6 @@ import { createMockState } from "metabase/redux/store/mocks";
 import { Box, Popover } from "metabase/ui";
 
 import { DatePicker } from "./DatePicker";
-
 import "metabase/embedding/theme.module.css";
 
 const storeInitialState = createMockState({

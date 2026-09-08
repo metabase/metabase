@@ -10,6 +10,11 @@ import {
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
+import type {
+  CustomGeoJSONMap,
+  CustomGeoJSONSetting,
+  GeoJSONData,
+} from "metabase-types/api";
 import { useLazyLoadGeoJSONQuery } from "metabase/admin/settings/api/geojson";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -28,11 +33,6 @@ import {
   Text,
 } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
-import type {
-  CustomGeoJSONMap,
-  CustomGeoJSONSetting,
-  GeoJSONData,
-} from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
 

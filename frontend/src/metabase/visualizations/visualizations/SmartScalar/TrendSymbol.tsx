@@ -1,5 +1,5 @@
-import { Icon, rem } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { Icon, rem } from "metabase/ui";
 
 import type { ChangeColorName } from "./compute";
 

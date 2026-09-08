@@ -1,11 +1,11 @@
 import { skipToken } from "@reduxjs/toolkit/query";
 
+import type { Table } from "metabase-types/api";
 import { useListDatabaseSchemasQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { Ellipsified } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Table } from "metabase-types/api";
 
 type DataModelBreadcrumbsProps = {
   table: Table;

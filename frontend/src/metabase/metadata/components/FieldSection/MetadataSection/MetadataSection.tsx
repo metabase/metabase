@@ -1,6 +1,7 @@
 import { memo, useMemo } from "react";
 import { t } from "ttag";
 
+import type { Field, FieldId, Table } from "metabase-types/api";
 import {
   useListDatabaseIdFieldsQuery,
   useUpdateFieldMutation,
@@ -9,7 +10,6 @@ import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { SemanticTypeAndTargetPicker } from "../../SemanticTypeAndTargetPicker";
 import { TitledSection } from "../../TitledSection";

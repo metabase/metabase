@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import Question from "metabase-lib/v1/Question";
+import type {
+  CardId,
+  ClickBehavior,
+  Dashboard,
+  DashboardCard,
+  DashboardId,
+  DashboardTab,
+  EntityCustomDestinationClickBehavior,
+} from "metabase-types/api";
 import { skipToken, useGetCardQuery, useGetDashboardQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { isPublicCollection } from "metabase/common/collections/utils";
@@ -21,16 +31,6 @@ import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { Button, Icon, Select } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import Question from "metabase-lib/v1/Question";
-import type {
-  CardId,
-  ClickBehavior,
-  Dashboard,
-  DashboardCard,
-  DashboardId,
-  DashboardTab,
-  EntityCustomDestinationClickBehavior,
-} from "metabase-types/api";
 
 import { Heading } from "../../ClickBehaviorSidebarComponents";
 import { SidebarItem } from "../../SidebarItem";

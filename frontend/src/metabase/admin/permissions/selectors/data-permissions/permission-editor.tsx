@@ -3,6 +3,13 @@ import { createSelector } from "@reduxjs/toolkit";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import type {
+  Group,
+  GroupsPermissions,
+  PermissionEntityId,
+  PermissionSubject,
+  SpecialGroupType,
+} from "metabase-types/api";
 import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import {
   getSpecialGroupType,
@@ -16,13 +23,6 @@ import {
 import type { State } from "metabase/redux/store";
 import { getPlan, getSetting, getTokenFeature } from "metabase/settings";
 import { getResponseErrorMessage } from "metabase/utils/errors";
-import type {
-  Group,
-  GroupsPermissions,
-  PermissionEntityId,
-  PermissionSubject,
-  SpecialGroupType,
-} from "metabase-types/api";
 
 import type {
   DataRouteParams,

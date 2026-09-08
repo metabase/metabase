@@ -2,9 +2,9 @@ import { waitFor } from "@testing-library/react";
 
 import { setupCurrentUserEndpoint } from "__support__/server-mocks";
 import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
+import { createMockUser } from "metabase-types/api/mocks";
 import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
-import { createMockUser } from "metabase-types/api/mocks";
 
 import { LegacyBrowseRedirect, getRoutes } from "./routes";
 

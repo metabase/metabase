@@ -3,8 +3,8 @@ import type { ComponentProps } from "react";
 
 import { setupUsersEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { UserInput } from "metabase/metadata/components/UserInput";
 import { createMockUserListResult } from "metabase-types/api/mocks";
+import { UserInput } from "metabase/metadata/components/UserInput";
 
 const handleEmailChange = jest.fn();
 const handleUserIdChange = jest.fn();

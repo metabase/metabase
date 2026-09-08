@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { dayjs } from "metabase/dayjs";
 import type * as Lib from "metabase-lib";
+import { dayjs } from "metabase/dayjs";
 
 import { defineClauses, dimension, op } from "./define";
 import { MBQLClauseCategory as CATEGORY } from "./types";

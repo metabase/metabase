@@ -6,10 +6,10 @@ import type {
   SdkBreadcrumbItem,
   SdkBreadcrumbItemType,
 } from "embedding-sdk-bundle/types/breadcrumb";
+import type { IconName } from "metabase-types/api";
 import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Flex } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import { PublicComponentStylesWrapper } from "../PublicComponentStylesWrapper";
 

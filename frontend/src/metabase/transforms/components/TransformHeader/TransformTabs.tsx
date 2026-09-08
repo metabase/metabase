@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { Transform, TransformId } from "metabase-types/api";
 import {
   type PillTab,
   PillTabNavigation,
@@ -9,7 +10,6 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import * as Urls from "metabase/urls";
-import type { Transform, TransformId } from "metabase-types/api";
 
 type TransformTabsProps = {
   transform: Transform;

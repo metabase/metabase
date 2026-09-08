@@ -1,8 +1,6 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import type { BadgeColor } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import type {
   Task,
   TaskRun,
@@ -13,6 +11,8 @@ import type {
   TaskRunType,
   TaskStatus,
 } from "metabase-types/api";
+import type { BadgeColor } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 export const formatTaskRunType = (runType: TaskRunType) =>
   match(runType)

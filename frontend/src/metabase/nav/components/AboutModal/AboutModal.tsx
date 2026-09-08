@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { MetabaseInfo } from "metabase-types/api";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/redux";
 import {
@@ -19,7 +20,6 @@ import {
   Title,
 } from "metabase/ui";
 import { capitalize } from "metabase/utils/formatting";
-import type { MetabaseInfo } from "metabase-types/api";
 
 export const AboutModal = ({
   onClose,

@@ -1,11 +1,11 @@
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import {
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { EmbeddingNav } from "./EmbeddingNav";
 

@@ -13,10 +13,6 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, noop } from "underscore";
 
-import { isAbortError } from "metabase/api/client";
-import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { getTabHiddenParameterSlugs } from "metabase/embedding/lib/tab-parameters";
-import { type NavigateFunction, navigate } from "metabase/router";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
@@ -25,6 +21,10 @@ import type {
   ParameterValuesMap,
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
+import { isAbortError } from "metabase/api/client";
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
+import { getTabHiddenParameterSlugs } from "metabase/embedding/lib/tab-parameters";
+import { type NavigateFunction, navigate } from "metabase/router";
 
 import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";

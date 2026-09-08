@@ -1,5 +1,5 @@
-import type { Section } from "metabase/common/components/AccordionList";
 import type { DimensionGroup } from "metabase-lib/metric";
+import type { Section } from "metabase/common/components/AccordionList";
 
 interface Groupable {
   group?: DimensionGroup;

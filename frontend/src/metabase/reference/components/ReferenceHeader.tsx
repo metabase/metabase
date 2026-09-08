@@ -1,10 +1,10 @@
 import cx from "classnames";
 import { memo } from "react";
 
+import type { IconName } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import L from "metabase/reference/components/List/List.module.css";
 import { Ellipsified, Icon } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./ReferenceHeader.module.css";
 

@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import type { TimelineEvent } from "metabase-types/api";
 import { Markdown } from "metabase/common/components/Markdown";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import Settings from "metabase/utils/settings";
 import { formatDateTimeWithUnit } from "metabase/value-formatting";
-import type { TimelineEvent } from "metabase-types/api";
 
 import S from "./TimelineEventInfo.module.css";
 

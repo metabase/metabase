@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SegmentedControl, type SegmentedControlProps } from "metabase/ui";
 import type { TableFieldOrder } from "metabase-types/api";
+import { SegmentedControl, type SegmentedControlProps } from "metabase/ui";
 
 import S from "./FieldOrderPicker.module.css";
 import { Label } from "./Label";

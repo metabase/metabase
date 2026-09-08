@@ -2,14 +2,14 @@ import type { UnknownAction } from "@reduxjs/toolkit";
 import { assocIn } from "icepick";
 import _ from "underscore";
 
-import { revisionApi } from "metabase/api";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { createThunkAction } from "metabase/redux";
 import type {
   Revision,
   RevisionEntityType,
   RevisionId,
 } from "metabase-types/api";
+import { revisionApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { createThunkAction } from "metabase/redux";
 
 type RevisionTargetType = RevisionEntityType | "metric";
 

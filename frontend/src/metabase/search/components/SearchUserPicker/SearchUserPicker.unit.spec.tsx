@@ -3,10 +3,10 @@ import { useState } from "react";
 
 import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import type { CreatedByFilterProps } from "metabase/common/search/types";
-import { SearchUserPicker } from "metabase/search/components/SearchUserPicker";
 import type { User, UserId } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
+import type { CreatedByFilterProps } from "metabase/common/search/types";
+import { SearchUserPicker } from "metabase/search/components/SearchUserPicker";
 
 const TEST_USERS: User[] = [
   createMockUser({ id: 1, common_name: "Alice" }),

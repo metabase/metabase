@@ -1,7 +1,7 @@
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import type { ColorName } from "metabase/ui/colors/types";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import type { NotebookDataPickerProps } from "./components/NotebookDataPicker";
 

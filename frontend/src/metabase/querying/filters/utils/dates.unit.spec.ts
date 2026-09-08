@@ -1,5 +1,3 @@
-import type { DateFilterValue } from "metabase/querying/common/types";
-import { setLocalization } from "metabase/utils/i18n";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -7,6 +5,8 @@ import {
   columnFinder,
 } from "metabase-lib/test-helpers";
 import type { DateFormattingSettings } from "metabase-types/api";
+import type { DateFilterValue } from "metabase/querying/common/types";
+import { setLocalization } from "metabase/utils/i18n";
 
 import {
   formatDate,

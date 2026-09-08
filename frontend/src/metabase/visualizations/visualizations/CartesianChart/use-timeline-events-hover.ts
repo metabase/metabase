@@ -3,6 +3,7 @@ import type { EChartsOption } from "echarts";
 import type { EChartsType } from "echarts/core";
 import { useEffect, useRef } from "react";
 
+import type { TimelineEventId } from "metabase-types/api";
 import {
   type BaseCartesianChartModel,
   type ChartLayout,
@@ -12,7 +13,6 @@ import {
   type TimelineEventsModel,
   getTimelineSelectionSeries,
 } from "metabase/viz-core";
-import type { TimelineEventId } from "metabase-types/api";
 
 import { getClosestDatumIndex, getDataSeriesEChartsIndices } from "./utils";
 

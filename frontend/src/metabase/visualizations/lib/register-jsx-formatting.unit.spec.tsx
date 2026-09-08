@@ -5,16 +5,16 @@ import { setupSdkPlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { render, screen } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
-import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { Link } from "metabase/common/components/Link";
-import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
-import { formatValue } from "metabase/value-formatting";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { ColumnSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
+import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
+import { formatValue } from "metabase/value-formatting";
 
 import { registerJsxFormatting } from "./register-jsx-formatting";
 

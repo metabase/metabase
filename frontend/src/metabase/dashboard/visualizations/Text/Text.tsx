@@ -9,6 +9,11 @@ import rehypeExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
 import { t } from "ttag";
 
+import type {
+  Dashboard,
+  VirtualDashboardCard,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
 import { updateParameterMappingsForDashcardText } from "metabase/dashboard/actions";
@@ -20,11 +25,6 @@ import {
   DATA_IMAGE_URI_PATTERN,
   type VisualizationGridSize,
 } from "metabase/viz-core";
-import type {
-  Dashboard,
-  VirtualDashboardCard,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 import {
   DisplayContainer,

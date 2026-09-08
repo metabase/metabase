@@ -3,8 +3,8 @@ import { t } from "ttag";
 import EmptyMetric from "assets/img/empty-states/qbnewb-metric.svg";
 import EmptyModel from "assets/img/empty-states/qbnewb-model.svg";
 import EmptyQuestion from "assets/img/empty-states/qbnewq-question.svg";
-import { Box, Button, Modal, Stack, Text, Title } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
+import { Box, Button, Modal, Stack, Text, Title } from "metabase/ui";
 
 interface Props {
   isShowingNewbModal: boolean;

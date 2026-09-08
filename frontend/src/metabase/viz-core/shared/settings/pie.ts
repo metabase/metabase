@@ -1,8 +1,5 @@
 import _ from "underscore";
 
-import { getColorsForValues } from "metabase/ui/colors/charts";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { checkNotNull, checkNumber, isNumber } from "metabase/utils/types";
 import {
   type DatasetColumn,
   type PieRow,
@@ -11,6 +8,9 @@ import {
   type RowValues,
   getRowsForStableKeys,
 } from "metabase-types/api";
+import { getColorsForValues } from "metabase/ui/colors/charts";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { checkNotNull, checkNumber, isNumber } from "metabase/utils/types";
 
 import { SLICE_THRESHOLD } from "../../echarts/pie/constants";
 import { getPieColumns } from "../../echarts/pie/model";

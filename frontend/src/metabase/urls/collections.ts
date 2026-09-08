@@ -1,13 +1,13 @@
 import slugg from "slugg";
 
-import {
-  isRootPersonalCollection,
-  isRootTrashCollection,
-} from "metabase/common/collections/utils";
 import type {
   Collection as BaseCollection,
   CollectionId,
 } from "metabase-types/api";
+import {
+  isRootPersonalCollection,
+  isRootTrashCollection,
+} from "metabase/common/collections/utils";
 
 import { appendSlug, extractEntityId } from "./utils";
 

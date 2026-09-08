@@ -2,6 +2,11 @@ import type { StoryFn } from "@storybook/react";
 
 import { VisualizationWrapper } from "__support__/storybook";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import type { Series } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
@@ -9,11 +14,6 @@ import {
 import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualization } from "metabase/viz-core";
-import type { Series } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
 
 import { BarChart } from "./BarChart";
 

@@ -1,9 +1,9 @@
 import { addLocale, useLocale } from "ttag";
 
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Widget } from "metabase/viz-core";
-import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
 import { BaseChartSettings } from "./BaseChartSettings";
 import type { BaseChartSettingsProps } from "./types";

@@ -1,3 +1,8 @@
+import {
+  createMockDashboard,
+  createMockDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import {
   createMockDashboardState,
@@ -6,11 +11,6 @@ import {
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
 import { navigate } from "metabase/router";
-import {
-  createMockDashboard,
-  createMockDashboardCard,
-  createMockParameter,
-} from "metabase-types/api/mocks";
 
 import { SIDEBAR_NAME } from "../constants";
 

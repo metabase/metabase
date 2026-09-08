@@ -1,5 +1,6 @@
 import { jt, t } from "ttag";
 
+import { DataPermissionValue } from "metabase-types/api";
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
@@ -17,7 +18,6 @@ import {
   Title,
   rem,
 } from "metabase/ui";
-import { DataPermissionValue } from "metabase-types/api";
 
 import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
 

@@ -8,8 +8,6 @@ import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { QuestionAlertListModal } from "metabase/notifications/modals";
-import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -23,6 +21,8 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { QuestionAlertListModal } from "metabase/notifications/modals";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { QuestionMoreActionsMenu } from "../QuestionMoreActionsMenu";
 

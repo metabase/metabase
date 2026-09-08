@@ -2,6 +2,13 @@ import cx from "classnames";
 import { Fragment } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import type {
+  GroupId,
+  GroupInfo,
+  Member,
+  User,
+  UserTenancy,
+} from "metabase-types/api";
 import {
   useCreateMembershipMutation,
   useDeleteMembershipMutation,
@@ -17,13 +24,6 @@ import CS from "metabase/css/core/index.css";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Box, Flex, Icon, Text } from "metabase/ui";
-import type {
-  GroupId,
-  GroupInfo,
-  Member,
-  User,
-  UserTenancy,
-} from "metabase-types/api";
 
 import { ACTIVE_STATUS, type ActiveStatus } from "../constants";
 

@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useEffect } from "react";
 import { jt, t } from "ttag";
 
+import type { User } from "metabase-types/api";
 import { useGetUserQuery } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
@@ -14,7 +15,6 @@ import { useNavigate } from "metabase/router";
 import { isSsoEnabled } from "metabase/selectors/settings";
 import { getSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
-import type { User } from "metabase-types/api";
 
 import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";

@@ -1,10 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import type { Segment } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Segment } from "metabase-types/api";
 
 import S from "./SegmentActionSelect.module.css";
 import { SegmentRetireModal } from "./SegmentRetireModal";

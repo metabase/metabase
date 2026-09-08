@@ -1,9 +1,9 @@
 import { useCallback } from "react";
 
+import type { Dashboard as IDashboard } from "metabase-types/api";
 import { setDashboardAttributes } from "metabase/dashboard/actions";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { Dashboard as IDashboard } from "metabase-types/api";
 
 export const useSetDashboardAttributeHandler = () => {
   const dispatch = useDispatch();

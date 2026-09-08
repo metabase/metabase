@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 
+import type { Card } from "metabase-types/api";
 import { useGetMetricQuery } from "metabase/api/metric";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
@@ -10,7 +11,6 @@ import type {
 } from "metabase/common/metrics/types";
 import { useNavigate, useParams } from "metabase/router";
 import { Center } from "metabase/ui";
-import type { Card } from "metabase-types/api";
 
 import { MetricDimensionGrid } from "../../components/MetricDimensionGrid";
 import { MetricPageCard } from "../../components/MetricPageCard";

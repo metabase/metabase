@@ -2,8 +2,6 @@ import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
-import { isTableDisplay } from "metabase/dashboard/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   ArbitraryCustomDestinationClickBehavior,
@@ -13,6 +11,8 @@ import type {
   DashboardCard,
   IconName,
 } from "metabase-types/api";
+import CS from "metabase/css/core/index.css";
+import { isTableDisplay } from "metabase/dashboard/utils";
 
 import { SidebarContent } from "../ClickBehaviorSidebarComponents";
 

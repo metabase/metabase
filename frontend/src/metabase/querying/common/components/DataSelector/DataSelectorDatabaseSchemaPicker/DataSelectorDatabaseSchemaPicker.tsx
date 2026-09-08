@@ -1,6 +1,9 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Schema from "metabase-lib/v1/metadata/Schema";
+import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 import {
   AccordionList,
   type Section as BaseSection,
@@ -8,9 +11,6 @@ import {
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Schema from "metabase-lib/v1/metadata/Schema";
-import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 
 import { DataSelectorLoading } from "../DataSelectorLoading";
 import { RawDataBackButton } from "../RawDataBackButton";

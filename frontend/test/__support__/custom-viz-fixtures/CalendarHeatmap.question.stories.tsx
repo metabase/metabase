@@ -6,6 +6,11 @@ import { type ReactNode, useEffect, useMemo } from "react";
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
+import {
+  createMockCard,
+  createMockDataset,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { Api } from "metabase/api";
 import {
@@ -18,11 +23,6 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import {
-  createMockCard,
-  createMockDataset,
-  createMockDatasetData,
-} from "metabase-types/api/mocks";
 
 import {
   HEATMAP_COLS,

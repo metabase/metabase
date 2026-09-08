@@ -8,14 +8,14 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import type { SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { Palette } from "./Palette";
 

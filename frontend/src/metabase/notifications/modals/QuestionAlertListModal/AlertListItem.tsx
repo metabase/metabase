@@ -3,15 +3,6 @@ import type { MouseEvent } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { getUser } from "metabase/current-user";
-import {
-  formatCreatorMessage,
-  formatNotificationSchedule,
-  getNotificationHandlersGroupedByTypes,
-} from "metabase/notifications/utils";
-import { useSelector } from "metabase/redux";
-import { Box, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
-import { isNotFalsy } from "metabase/utils/types";
 import type {
   Notification,
   NotificationCardSendCondition,
@@ -21,6 +12,15 @@ import type {
   NotificationHandlerSlack,
   User,
 } from "metabase-types/api";
+import { getUser } from "metabase/current-user";
+import {
+  formatCreatorMessage,
+  formatNotificationSchedule,
+  getNotificationHandlersGroupedByTypes,
+} from "metabase/notifications/utils";
+import { useSelector } from "metabase/redux";
+import { Box, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
+import { isNotFalsy } from "metabase/utils/types";
 
 import S from "./AlertListItem.module.css";
 import { AlertListItemActionButton } from "./AlertListItemActionButton";

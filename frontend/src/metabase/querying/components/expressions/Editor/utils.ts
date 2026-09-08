@@ -7,11 +7,11 @@ import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { useCallback } from "react";
 
+import type * as Lib from "metabase-lib";
 import {
   expressionClauseSnippet,
   getClauseDefinition,
 } from "metabase/querying/expressions";
-import type * as Lib from "metabase-lib";
 
 export function useInitialClause({
   initialExpressionClause,

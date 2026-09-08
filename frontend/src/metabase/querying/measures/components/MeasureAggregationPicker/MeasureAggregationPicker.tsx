@@ -1,10 +1,10 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { AggregationPicker } from "metabase/querying/common/components/AggregationPicker";
 import { ClauseStep } from "metabase/querying/notebook/components/ClauseStep";
-import * as Lib from "metabase-lib";
 
 const STAGE_INDEX = -1;
 

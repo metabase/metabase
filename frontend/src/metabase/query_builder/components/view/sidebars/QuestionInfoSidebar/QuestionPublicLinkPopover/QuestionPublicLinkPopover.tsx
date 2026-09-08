@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import type Question from "metabase-lib/v1/Question";
+import { type ExportFormat, exportFormats } from "metabase-types/api";
 import {
   useCreateCardPublicLinkMutation,
   useDeleteCardPublicLinkMutation,
@@ -10,8 +12,6 @@ import {
   trackPublicLinkRemoved,
 } from "metabase/embedding/lib/analytics";
 import { publicQuestion as getPublicQuestionUrl } from "metabase/urls";
-import type Question from "metabase-lib/v1/Question";
-import { type ExportFormat, exportFormats } from "metabase-types/api";
 
 export const QuestionPublicLinkPopover = ({
   question,

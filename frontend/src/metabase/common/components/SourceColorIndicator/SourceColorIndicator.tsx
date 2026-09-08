@@ -1,5 +1,5 @@
-import { Box, Flex, Icon } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { Box, Flex, Icon } from "metabase/ui";
 
 import S from "./SourceColorIndicator.module.css";
 

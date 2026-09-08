@@ -3,19 +3,19 @@ import type { ComponentType } from "react";
 import { t } from "ttag";
 
 import type {
-  CollectionAuthorityLevelConfig,
-  CollectionInstanceAnaltyicsConfig,
-} from "metabase/common/collections/types";
-import { useGetIconBase } from "metabase/hooks/use-icon";
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { IconProps } from "metabase/ui";
-import type {
   BaseEntityId,
   Bookmark,
   Collection,
   CollectionEssentials,
   CollectionId,
 } from "metabase-types/api";
+import type {
+  CollectionAuthorityLevelConfig,
+  CollectionInstanceAnaltyicsConfig,
+} from "metabase/common/collections/types";
+import { useGetIconBase } from "metabase/hooks/use-icon";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { IconProps } from "metabase/ui";
 
 // Types
 export type ItemWithCollection = { collection: CollectionEssentials };

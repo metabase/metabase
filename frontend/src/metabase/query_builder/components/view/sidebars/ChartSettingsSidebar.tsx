@@ -1,14 +1,14 @@
 import { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
+import type { Dataset, VisualizationSettings } from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/redux";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { visualizations } from "metabase/viz-core";
-import type Question from "metabase-lib/v1/Question";
-import type { Dataset, VisualizationSettings } from "metabase-types/api";
 
 import { onReplaceAllVisualizationSettings } from "../../../actions";
 import { onCloseChartSettings, onOpenChartType } from "../../../store/actions";

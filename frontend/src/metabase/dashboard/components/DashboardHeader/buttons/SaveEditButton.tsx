@@ -1,5 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { getMissingRequiredParameters } from "metabase/dashboard/selectors";
@@ -8,7 +9,6 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { useMaybeLocation } from "metabase/router";
 import { Tooltip } from "metabase/ui";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
 export const SaveEditButton = () => {
   const dispatch = useDispatch();

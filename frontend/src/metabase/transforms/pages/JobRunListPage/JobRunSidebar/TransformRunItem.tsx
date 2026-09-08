@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { TransformRunForJobRun } from "metabase-types/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
@@ -23,7 +24,6 @@ import {
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatDurationLong } from "metabase/utils/formatting";
-import type { TransformRunForJobRun } from "metabase-types/api";
 
 import S from "./TransformRunItem.module.css";
 

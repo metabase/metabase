@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
+import type * as Lib from "metabase-lib";
+import type { Database } from "metabase-types/api";
 import {
   type HelpText,
   getHelpText,
   getSupportedClauses,
 } from "metabase/querying/expressions";
 import { isNotNull } from "metabase/utils/types";
-import type * as Lib from "metabase-lib";
-import type { Database } from "metabase-types/api";
 
 export function getSearchPlaceholder(expressionMode: Lib.ExpressionMode) {
   if (expressionMode === "expression" || expressionMode === "filter") {

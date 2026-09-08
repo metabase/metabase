@@ -9,12 +9,12 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Markdown } from "metabase/common/components/Markdown";
 import type { HelpText } from "metabase/querying/expressions";
 import { Box, Flex, Icon, Input, Text } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import { HighlightExpressionSource } from "../HighlightExpression";
 

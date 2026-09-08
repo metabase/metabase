@@ -3,6 +3,29 @@ import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+import {
+  PULSE_PARAM_EMPTY,
+  isParameterValueEmpty,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
+import { TYPE } from "metabase-lib/v1/types/constants";
+import { isNumericBaseType, isa } from "metabase-lib/v1/types/utils/isa";
+import type {
+  ActionDashboardCard,
+  CardId,
+  DashCardId,
+  Parameter,
+  ParameterId,
+  ParameterTarget,
+  ParameterValuesMap,
+  TemporalUnit,
+  ValuesQueryType,
+  ValuesSourceConfig,
+  ValuesSourceType,
+  VisualizationDisplay,
+  WritebackAction,
+} from "metabase-types/api";
+import { isDimensionTarget } from "metabase-types/guards";
 import { fieldApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import CS from "metabase/css/core/index.css";
@@ -28,29 +51,6 @@ import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { Text } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import * as Lib from "metabase-lib";
-import {
-  PULSE_PARAM_EMPTY,
-  isParameterValueEmpty,
-} from "metabase-lib/v1/parameters/utils/parameter-values";
-import { TYPE } from "metabase-lib/v1/types/constants";
-import { isNumericBaseType, isa } from "metabase-lib/v1/types/utils/isa";
-import type {
-  ActionDashboardCard,
-  CardId,
-  DashCardId,
-  Parameter,
-  ParameterId,
-  ParameterTarget,
-  ParameterValuesMap,
-  TemporalUnit,
-  ValuesQueryType,
-  ValuesSourceConfig,
-  ValuesSourceType,
-  VisualizationDisplay,
-  WritebackAction,
-} from "metabase-types/api";
-import { isDimensionTarget } from "metabase-types/guards";
 
 import {
   trackAutoApplyFiltersDisabled,

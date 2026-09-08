@@ -1,14 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 import {
   trackMetricsViewerMetricAdded,
   trackMetricsViewerMetricRemoved,
 } from "metabase/metrics-viewer/analytics";
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import { Box, Button, Flex, Icon, Stack, Text, Tooltip } from "metabase/ui";
-import type { MetricDefinition } from "metabase-lib/metric";
-import * as LibMetric from "metabase-lib/metric";
 
 import type { SelectedMetric } from "../../types/viewer-state";
 import type { DefinitionSource } from "../../utils/definition-sources";

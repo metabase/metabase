@@ -4,9 +4,9 @@ import { useState } from "react";
 
 import { setupUsersEndpoints } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { UserListResult } from "metabase-types/api";
 import { createMockUserListResult } from "metabase-types/api/mocks";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import { UserPicker } from "./UserPicker";
 import type { UserOption } from "./types";

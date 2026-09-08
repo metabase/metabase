@@ -7,6 +7,15 @@ import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
+import type { Dashboard } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockDashboard,
+  createMockDashboardCard,
+  createMockDatabase,
+  createMockDataset,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { Api } from "metabase/api";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
@@ -18,15 +27,6 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import type { Dashboard } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockDashboard,
-  createMockDashboardCard,
-  createMockDatabase,
-  createMockDataset,
-  createMockDatasetData,
-} from "metabase-types/api/mocks";
 
 import {
   HEATMAP_COLS,

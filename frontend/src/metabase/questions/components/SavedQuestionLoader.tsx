@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 
+import Question from "metabase-lib/v1/Question";
+import type { CardId } from "metabase-types/api";
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { getMetadata } from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";
-import Question from "metabase-lib/v1/Question";
-import type { CardId } from "metabase-types/api";
 
 import type { QuestionLoaderChildrenProps } from "./QuestionLoader";
 

@@ -1,10 +1,6 @@
 /* istanbul ignore file */
 
 import { createMockEntitiesState } from "__support__/store";
-import { dayjs } from "metabase/dayjs";
-import { getMetadata } from "metabase/metadata-store";
-import { createMockState } from "metabase/redux/store/mocks";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -23,6 +19,10 @@ import {
   createProductsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { dayjs } from "metabase/dayjs";
+import { getMetadata } from "metabase/metadata-store";
+import { createMockState } from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 
 const SEGMENT_1 = createMockSegment({
   id: 1,

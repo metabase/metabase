@@ -2,6 +2,9 @@ import { useLayoutEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type { Card as CardApiType } from "metabase-types/api";
 import { useUpdateCardMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
@@ -18,9 +21,6 @@ import { getInitialUiState } from "metabase/querying/editor/components/QueryEdit
 import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
 import { Card } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type { Card as CardApiType } from "metabase-types/api";
 
 import { MetricPageCard } from "../../components/MetricPageCard";
 import { MetricPageShell } from "../../components/MetricPageShell";

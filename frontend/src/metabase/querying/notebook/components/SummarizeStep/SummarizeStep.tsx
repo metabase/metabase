@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { Box, Flex } from "metabase/ui";
 
 import type { NotebookStepProps } from "../../types";
 import { AggregateStep } from "../AggregateStep";

@@ -2,6 +2,17 @@ import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
+import type {
+  ColumnSettings,
+  DatasetColumn,
+  ForeignKey,
+  RowValues,
+  Table,
+  TableColumnOrderSetting,
+  WritebackActionId,
+} from "metabase-types/api";
 import { DeleteObjectModal } from "metabase/actions/components/DeleteObjectModal";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import { getActionItems } from "metabase/actions/utils";
@@ -39,17 +50,6 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type {
-  ColumnSettings,
-  DatasetColumn,
-  ForeignKey,
-  RowValues,
-  Table,
-  TableColumnOrderSetting,
-  WritebackActionId,
-} from "metabase-types/api";
 
 import { Sidesheet } from "./Sidesheet";
 import { extractData, getModelId } from "./utils";

@@ -1,9 +1,9 @@
-import { Box } from "metabase/ui";
 import type {
   DatasetColumn,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
+import { Box } from "metabase/ui";
 
 import S from "./ObjectDetailBody.module.css";
 import { DetailsTable } from "./ObjectDetailsTable";

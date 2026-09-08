@@ -14,11 +14,11 @@ import {
 } from "react";
 import { c } from "ttag";
 
+import type * as Lib from "metabase-lib";
+import type { IconName } from "metabase-types/api";
 import { QueryColumnInfoIcon } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import type { ExpressionSuggestion } from "metabase/querying/expressions";
 import { Box, DelayGroup, Icon } from "metabase/ui";
-import type * as Lib from "metabase-lib";
-import type { IconName } from "metabase-types/api";
 
 import S from "./Listbox.module.css";
 import { MatchText } from "./MatchText";

@@ -11,8 +11,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Input } from "metabase/ui";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -20,6 +18,8 @@ import {
   createMockRecentTableItem,
   createMockSearchResult,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Input } from "metabase/ui";
 
 import {
   CommandSuggestion,

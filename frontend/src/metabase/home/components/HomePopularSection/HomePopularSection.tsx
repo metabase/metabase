@@ -1,12 +1,12 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { PopularItem } from "metabase-types/api";
 import { useListPopularItemsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import * as Urls from "metabase/urls";
 import { getName } from "metabase/utils/name";
-import type { PopularItem } from "metabase-types/api";
 
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";

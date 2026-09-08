@@ -2,6 +2,8 @@ import cx from "classnames";
 import Color from "color";
 import { t } from "ttag";
 
+import type { RowValue, RowValues } from "metabase-types/api";
+import { getRowsForStableKeys } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified } from "metabase/ui";
 import { color } from "metabase/ui/colors";
@@ -31,8 +33,6 @@ import {
   calculateStepOpacity,
   computeChange,
 } from "metabase/viz-core";
-import type { RowValue, RowValues } from "metabase-types/api";
-import { getRowsForStableKeys } from "metabase-types/api";
 
 type FunnelStepInfo = {
   value: number;

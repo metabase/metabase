@@ -2,6 +2,11 @@ import { useMemo } from "react";
 import { msgid, ngettext } from "ttag";
 
 import {
+  getIconForField,
+  getUniqueFieldId,
+} from "metabase-lib/v1/metadata/utils/fields";
+import type { Field, IconName, Table } from "metabase-types/api";
+import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
@@ -9,11 +14,6 @@ import { getMetadata } from "metabase/metadata-store";
 import { getQueryAndColumns } from "metabase/querying/common/utils";
 import { useSelector } from "metabase/redux";
 import { DelayGroup } from "metabase/ui";
-import {
-  getIconForField,
-  getUniqueFieldId,
-} from "metabase-lib/v1/metadata/utils/fields";
-import type { Field, IconName, Table } from "metabase-types/api";
 
 import {
   NodeListContainer,

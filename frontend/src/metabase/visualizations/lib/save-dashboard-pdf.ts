@@ -1,6 +1,7 @@
 import Color from "color";
 import { t } from "ttag";
 
+import type { Dashboard } from "metabase-types/api";
 import { isStorybookActive } from "metabase/env";
 import { getCspNonce } from "metabase/utils/csp";
 import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
@@ -9,7 +10,6 @@ import {
   resolveSvgVarPaint,
   restoreNestedSvgOverflow,
 } from "metabase/viz-core";
-import type { Dashboard } from "metabase-types/api";
 
 import {
   createBrandingElement,

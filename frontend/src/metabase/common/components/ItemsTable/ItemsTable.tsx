@@ -1,9 +1,9 @@
 import cx from "classnames";
 
+import type { CollectionItem } from "metabase-types/api";
 import PinDropZone from "metabase/common/collections/components/PinDropZone";
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import CS from "metabase/css/core/index.css";
-import type { CollectionItem } from "metabase-types/api";
 
 import type { BaseItemsTableProps } from "./BaseItemsTable";
 import { BaseItemsTable } from "./BaseItemsTable";

@@ -3,6 +3,8 @@ import cx from "classnames";
 import { type ReactNode, forwardRef } from "react";
 import { t } from "ttag";
 
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetColumn } from "metabase-types/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Ellipsified, Stack, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
@@ -12,8 +14,6 @@ import {
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
 import S from "../well.module.css";

@@ -10,14 +10,14 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { dayjs } from "metabase/dayjs";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { dayjs } from "metabase/dayjs";
+import { checkNotNull } from "metabase/utils/types";
 
 import { FilterPicker } from "./FilterPicker";
 import {

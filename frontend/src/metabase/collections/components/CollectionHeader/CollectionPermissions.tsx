@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import type { Collection } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { Collection } from "metabase-types/api";
 
 interface CollectionPermissionsProps {
   collection: Collection;

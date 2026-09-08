@@ -18,8 +18,6 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import type { CacheConfig, TokenFeatures } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 import {
@@ -31,6 +29,8 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 

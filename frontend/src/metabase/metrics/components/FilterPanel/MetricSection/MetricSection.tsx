@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
-import { FixedSizeIcon, Group, Stack } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
+import { FixedSizeIcon, Group, Stack } from "metabase/ui";
 
 import { FilterSection } from "../FilterSection";
 

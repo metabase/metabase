@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import type { VisualizationDisplay } from "metabase-types/api";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import {
   ActionIcon,
@@ -12,7 +13,6 @@ import {
   Tooltip,
 } from "metabase/ui";
 import { visualizations } from "metabase/viz-core";
-import type { VisualizationDisplay } from "metabase-types/api";
 
 import ChartTypeOptionS from "./ChartTypeOption.module.css";
 

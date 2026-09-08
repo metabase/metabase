@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import type { CollectionId, SearchResult } from "metabase-types/api";
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { DetailViewState } from "metabase/redux/store";
 import { Box, Flex } from "metabase/ui";
-import type { CollectionId, SearchResult } from "metabase-types/api";
 
 import { AppSwitcher } from "../AppSwitcher";
 import NewItemButton from "../NewItemButton";

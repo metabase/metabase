@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { c, t } from "ttag";
 
+import type { Document } from "metabase-types/api";
 import { useListCommentsQuery } from "metabase/api";
 import { getListCommentsQuery } from "metabase/comments/utils";
 import {
@@ -29,13 +30,12 @@ import {
 } from "metabase/ui";
 import { waitUntilNextFramePainted } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
-import type { Document } from "metabase-types/api";
 
 import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
-import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 import S from "./DocumentHeader.module.css";
+import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 
 const saveButtonTransition: TransitionProps["transition"] = {
   in: { opacity: 1, visibility: "visible", width: "auto" },

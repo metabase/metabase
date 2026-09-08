@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { TransformTagId } from "metabase-types/api";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { Box } from "metabase/ui";
-import type { TransformTagId } from "metabase-types/api";
 
 import { TagMultiSelect } from "../../TagMultiSelect";
 import type { TransformJobInfo } from "../types";

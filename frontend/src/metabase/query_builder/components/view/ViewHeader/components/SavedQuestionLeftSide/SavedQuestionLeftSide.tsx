@@ -2,9 +2,9 @@ import cx from "classnames";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 
+import type Question from "metabase-lib/v1/Question";
 import { LastEditInfoLabel } from "metabase/common/components/LastEditInfoLabel";
 import { Box, Flex } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 
 import { SavedQuestionHeaderButton } from "../../../../SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 import { ViewSubHeading } from "../../../ViewSection";

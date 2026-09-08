@@ -1,4 +1,3 @@
-import { isResourceNotFoundError } from "metabase/utils/errors";
 import type {
   CancelJobRunRequest,
   CreateTransformRequest,
@@ -25,6 +24,7 @@ import type {
   UpdateTransformRequest,
 } from "metabase-types/api";
 import { PENDING_RUN_ID } from "metabase-types/api";
+import { isResourceNotFoundError } from "metabase/utils/errors";
 
 import { Api } from "./api";
 import {

@@ -3,6 +3,7 @@ import { dissoc } from "icepick";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import type { Dashboard as IDashboard } from "metabase-types/api";
 import { dashboardApi } from "metabase/api";
 import { invalidateTags } from "metabase/api/tags";
 import { ActionButton } from "metabase/common/components/ActionButton";
@@ -22,7 +23,6 @@ import { useLocation, useParams } from "metabase/router";
 import { Box, Button, Flex, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
-import type { Dashboard as IDashboard } from "metabase-types/api";
 
 import { FixedWidthContainer } from "../../components/Dashboard/DashboardComponents";
 import { XrayIcon } from "../XrayIcon";

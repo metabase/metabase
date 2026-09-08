@@ -1,11 +1,11 @@
 import { mockSettings } from "__support__/settings";
+import type { EnterpriseSettings } from "metabase-types/api";
+import { createMockSettings } from "metabase-types/api/mocks";
 import type { SetupState } from "metabase/redux/store";
 import {
   createMockSetupState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import type { EnterpriseSettings } from "metabase-types/api";
-import { createMockSettings } from "metabase-types/api/mocks";
 
 import { getShouldOfferAiConfig, getSteps } from "./selectors";
 

@@ -7,13 +7,13 @@ import type {
 } from "react-dnd";
 import { DropTarget } from "react-dnd";
 
+import type { Collection, CollectionItem } from "metabase-types/api";
 import {
   canPlaceEntityInCollection,
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/common/collections/utils";
 import { isMovable } from "metabase/common/hooks";
-import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { DropArea } from "./DropArea";
 

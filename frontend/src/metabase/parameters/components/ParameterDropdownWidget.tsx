@@ -1,14 +1,5 @@
 import { t } from "ttag";
 
-import type { ParameterValueWidgetProps } from "metabase/parameters/components/ParameterValueWidget";
-import { getParameterWidgetTitle } from "metabase/parameters/utils/ui";
-import { BooleanWidget } from "metabase/querying/parameters/components/BooleanWidget";
-import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
-import { DateMonthYearWidget } from "metabase/querying/parameters/components/DateMonthYearWidget";
-import { DateQuarterYearWidget } from "metabase/querying/parameters/components/DateQuarterYearWidget";
-import { DateRangeWidget } from "metabase/querying/parameters/components/DateRangeWidget";
-import { DateRelativeWidget } from "metabase/querying/parameters/components/DateRelativeWidget";
-import { DateSingleWidget } from "metabase/querying/parameters/components/DateSingleWidget";
 import type {
   FieldFilterUiParameter,
   UiParameter,
@@ -23,6 +14,15 @@ import {
   isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type { ParameterValueWidgetProps } from "metabase/parameters/components/ParameterValueWidget";
+import { getParameterWidgetTitle } from "metabase/parameters/utils/ui";
+import { BooleanWidget } from "metabase/querying/parameters/components/BooleanWidget";
+import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
+import { DateMonthYearWidget } from "metabase/querying/parameters/components/DateMonthYearWidget";
+import { DateQuarterYearWidget } from "metabase/querying/parameters/components/DateQuarterYearWidget";
+import { DateRangeWidget } from "metabase/querying/parameters/components/DateRangeWidget";
+import { DateRelativeWidget } from "metabase/querying/parameters/components/DateRelativeWidget";
+import { DateSingleWidget } from "metabase/querying/parameters/components/DateSingleWidget";
 
 import { NumberInputWidget } from "./widgets/NumberInputWidget";
 import { ParameterFieldWidget } from "./widgets/ParameterFieldWidget/ParameterFieldWidget";

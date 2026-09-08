@@ -2,15 +2,15 @@ import type { Selector } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { PLUGIN_AUDIT } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
-import { isNotNull } from "metabase/utils/types";
 import type {
   Database,
   PermissionEntityId,
   PermissionsDatabase,
 } from "metabase-types/api";
+import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import { PLUGIN_AUDIT } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
+import { isNotNull } from "metabase/utils/types";
 
 import type { RawDataRouteParams } from "../../types";
 import {

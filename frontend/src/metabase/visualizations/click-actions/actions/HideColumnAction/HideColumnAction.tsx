@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import type { LegacyDrill } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import { findColumnSettingIndexesForColumns } from "metabase-lib/v1/queries/utils/dataset";
+import type { LegacyDrill } from "metabase/visualizations/types";
 
 export const HideColumnAction: LegacyDrill = ({
   question,

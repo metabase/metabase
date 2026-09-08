@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useUnmount } from "react-use";
 import { c, t } from "ttag";
 
+import type { User } from "metabase-types/api";
 import {
   useForgotPasswordMutation,
   useGetPasswordResetUrlMutation,
@@ -17,7 +18,6 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { Button, Flex, Modal, Text, TextInput } from "metabase/ui";
 import { generatePassword } from "metabase/utils/password";
 import MetabaseSettings from "metabase/utils/settings";
-import type { User } from "metabase-types/api";
 
 import { clearTemporaryPassword, storeTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";

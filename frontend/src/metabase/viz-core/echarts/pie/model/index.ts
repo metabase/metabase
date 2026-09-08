@@ -1,13 +1,13 @@
 import { pie } from "d3";
 import _ from "underscore";
 
-import { findWithIndex } from "metabase/utils/arrays";
-import { checkNotNull } from "metabase/utils/types";
 import {
   type RawSeries,
   type RowValue,
   getRowsForStableKeys,
 } from "metabase-types/api";
+import { findWithIndex } from "metabase/utils/arrays";
+import { checkNotNull } from "metabase/utils/types";
 
 import type { ColumnDescriptor } from "../../../lib/graph/columns";
 import { getNumberOr } from "../../../lib/settings/row-values";

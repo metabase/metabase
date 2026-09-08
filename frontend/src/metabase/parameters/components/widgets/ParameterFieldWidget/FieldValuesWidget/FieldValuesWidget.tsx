@@ -10,6 +10,17 @@ import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Field from "metabase-lib/v1/metadata/Field";
+import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
+import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type {
+  CardId,
+  DashboardId,
+  FieldValue,
+  Parameter,
+  ParameterValueOrArray,
+  RowValue,
+} from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   skipToken,
@@ -39,17 +50,6 @@ import {
 } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import { isNotNull } from "metabase/utils/types";
-import Field from "metabase-lib/v1/metadata/Field";
-import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
-import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type {
-  CardId,
-  DashboardId,
-  FieldValue,
-  Parameter,
-  ParameterValueOrArray,
-  RowValue,
-} from "metabase-types/api";
 
 import { Value as ValueComponent } from "../Value";
 

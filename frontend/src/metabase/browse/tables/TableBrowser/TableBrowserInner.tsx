@@ -1,6 +1,14 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type {
+  ConcreteTableId,
+  Database,
+  DatabaseId,
+  Table,
+} from "metabase-types/api";
 import { BrowseCard } from "metabase/browse/components/BrowseCard";
 import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
@@ -12,14 +20,6 @@ import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { ActionIcon, Flex, Group, Icon, Loader, Paper } from "metabase/ui";
 import { isSyncInProgress } from "metabase/utils/syncing";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type {
-  ConcreteTableId,
-  Database,
-  DatabaseId,
-  Table,
-} from "metabase-types/api";
 
 import {
   trackBrowseXRayClicked,

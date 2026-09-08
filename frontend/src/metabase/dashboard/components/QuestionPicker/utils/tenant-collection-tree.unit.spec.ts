@@ -1,8 +1,8 @@
+import type { Collection, CollectionId } from "metabase-types/api";
+import { createMockCollection } from "metabase-types/api/mocks";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
 import type { ExpandedCollection } from "metabase/redux/store";
-import type { Collection, CollectionId } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
 
 import {
   COLLECTIONS_TOP_LEVEL_ID,

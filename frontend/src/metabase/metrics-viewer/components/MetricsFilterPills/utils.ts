@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { getDatePickerValue } from "metabase/common/metrics/utils/dates";
-import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
+import { getDatePickerValue } from "metabase/common/metrics/utils/dates";
+import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 
 export type FilterDisplayParts = {
   label: string;

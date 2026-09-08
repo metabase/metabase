@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 import {
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 type UseTableUpdateHandlersOpts = {
   table: Table;

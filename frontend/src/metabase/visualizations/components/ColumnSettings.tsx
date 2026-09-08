@@ -1,6 +1,11 @@
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
+import type {
+  ColumnSettings as ApiColumnSettings,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import ChartSettingsWidget, {
   type ChartSettingsWidgetVariant,
@@ -12,11 +17,6 @@ import {
   getSettingDefinitionsForColumn,
   getSettingsWidgets,
 } from "metabase/viz-core";
-import type {
-  ColumnSettings as ApiColumnSettings,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 type CommonProps = {
   column: FormattableColumn;

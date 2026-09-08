@@ -3,6 +3,12 @@ import type { ReactNode } from "react";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
+import type {
+  Collection,
+  CollectionEssentials,
+  EnterpriseSettingKey,
+  MetabotInfo,
+} from "metabase-types/api";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
@@ -24,12 +30,6 @@ import {
   Switch,
   Text,
 } from "metabase/ui";
-import type {
-  Collection,
-  CollectionEssentials,
-  EnterpriseSettingKey,
-  MetabotInfo,
-} from "metabase-types/api";
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 

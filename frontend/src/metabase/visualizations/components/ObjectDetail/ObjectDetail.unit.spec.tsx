@@ -6,6 +6,8 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { createMockCard } from "metabase-types/api/mocks";
+import { createProductsTable } from "metabase-types/api/mocks/presets";
 import { getMetadata } from "metabase/metadata-store";
 import {
   createMockQueryBuilderState,
@@ -16,8 +18,6 @@ import { ObjectDetail } from "metabase/visualizations/components/ObjectDetail/Ob
 import type { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
-import { createMockCard } from "metabase-types/api/mocks";
-import { createProductsTable } from "metabase-types/api/mocks/presets";
 
 registerVisualizations();
 

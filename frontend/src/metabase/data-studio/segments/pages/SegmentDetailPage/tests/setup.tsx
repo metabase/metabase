@@ -6,11 +6,6 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import { DataModelSegmentBreadcrumbs } from "metabase/data-studio/segments/components/SegmentBreadcrumbs";
-import { SegmentDetailPage } from "metabase/data-studio/segments/pages/SegmentDetailPage";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
-import { checkNotNull } from "metabase/utils/types";
 import type {
   EnterpriseSettings,
   Segment,
@@ -26,6 +21,11 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { DataModelSegmentBreadcrumbs } from "metabase/data-studio/segments/components/SegmentBreadcrumbs";
+import { SegmentDetailPage } from "metabase/data-studio/segments/pages/SegmentDetailPage";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 
 export const TEST_TABLE = createMockTable({
   id: 42,

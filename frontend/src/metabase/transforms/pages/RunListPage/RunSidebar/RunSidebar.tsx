@@ -1,9 +1,9 @@
 import { memo } from "react";
 
+import type { TransformRun } from "metabase-types/api";
 import { ErrorSection } from "metabase/transforms/components/ErrorSection";
 import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
 import { Stack } from "metabase/ui";
-import type { TransformRun } from "metabase-types/api";
 
 import { CancelationSection } from "./CancelationSection";
 import { InfoSection } from "./InfoSection";

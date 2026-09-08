@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 
-import { Sortable, SortableList } from "metabase/common/components/Sortable";
-import { useDndSensors } from "metabase/common/hooks";
 import type {
   ColumnFormattingSetting,
   DatasetColumn,
 } from "metabase-types/api";
+import { Sortable, SortableList } from "metabase/common/components/Sortable";
+import { useDndSensors } from "metabase/common/hooks";
 
 import { RulePreview } from "./RulePreview";
 

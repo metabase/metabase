@@ -1,8 +1,6 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 
-import { shouldSchemaBePassedAsQueryParam } from "metabase/api";
-import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type {
   Database,
@@ -10,6 +8,8 @@ import type {
   DatabaseUsageInfo,
   SchemaName,
 } from "metabase-types/api";
+import { shouldSchemaBePassedAsQueryParam } from "metabase/api";
+import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 
 import { PERMISSION_ERROR } from "./constants";
 import { setupTableEndpoints } from "./table";

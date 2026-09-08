@@ -7,8 +7,8 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { ActionIcon, Box, Group, Icon, Text, Tooltip } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { ActionIcon, Box, Group, Icon, Text, Tooltip } from "metabase/ui";
 
 import S from "./FilterFieldSet.module.css";
 

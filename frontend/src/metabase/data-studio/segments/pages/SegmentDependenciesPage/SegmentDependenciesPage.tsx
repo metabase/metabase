@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
+import type { Segment } from "metabase-types/api";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Card } from "metabase/ui";
-import type { Segment } from "metabase-types/api";
 
 import { SegmentHeader } from "../../components/SegmentHeader";
 import type { SegmentTabUrls } from "../../types";

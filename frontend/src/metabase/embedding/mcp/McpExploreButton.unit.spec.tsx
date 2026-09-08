@@ -12,7 +12,6 @@ import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion"
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
-import * as Urls from "metabase/urls";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -27,6 +26,7 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import * as Urls from "metabase/urls";
 
 import { McpExploreButton } from "./McpExploreButton";
 

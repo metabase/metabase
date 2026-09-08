@@ -1,6 +1,5 @@
 import { getIn } from "icepick";
 
-import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionValue,
@@ -10,6 +9,7 @@ import {
   type SchemaEntityId,
   type TableEntityId,
 } from "metabase-types/api";
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 
 // permission that do not have a nested schemas/native key
 const flatPermissions = new Set([

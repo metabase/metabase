@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useListLogsQuery } from "metabase/api/logger";
 import type { Log } from "metabase-types/api";
+import { useListLogsQuery } from "metabase/api/logger";
 
 import { maybeMergeLogs } from "./utils";
 

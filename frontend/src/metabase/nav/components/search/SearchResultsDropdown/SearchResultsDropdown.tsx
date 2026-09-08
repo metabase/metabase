@@ -1,11 +1,11 @@
 import cx from "classnames";
 import { jt, t } from "ttag";
 
+import type { SearchContext, SearchResult } from "metabase-types/api";
 import type { SearchResultsFooter } from "metabase/nav/components/search/SearchResults";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { Group, Icon, Paper, Text, rem } from "metabase/ui";
-import type { SearchContext, SearchResult } from "metabase-types/api";
 
 import S from "./SearchResultsDropdown.module.css";
 import { MIN_RESULTS_FOR_FOOTER_TEXT } from "./constants";

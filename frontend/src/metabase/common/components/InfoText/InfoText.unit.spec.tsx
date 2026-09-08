@@ -6,7 +6,6 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { dayjs } from "metabase/dayjs";
 import type { SearchModel, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
@@ -15,6 +14,7 @@ import {
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { dayjs } from "metabase/dayjs";
 
 import { InfoText } from "./InfoText";
 

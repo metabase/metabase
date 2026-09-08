@@ -2,12 +2,12 @@ import userEvent from "@testing-library/user-event";
 
 import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
-import type { OnToggleSelectedWithItem } from "metabase/common/collections/types";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
+import type { OnToggleSelectedWithItem } from "metabase/common/collections/types";
 
 import { PinnedItemsGrid } from "./PinnedItemsGrid";
 

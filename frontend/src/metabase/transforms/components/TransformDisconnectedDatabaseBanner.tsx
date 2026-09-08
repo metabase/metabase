@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Alert, Icon } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
+import { Alert, Icon } from "metabase/ui";
 
 import { isMissingSourceDatabase } from "../utils";
 

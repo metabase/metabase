@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { TaskRunType } from "metabase-types/api";
 import { Select, type SelectProps } from "metabase/ui";
 import type { SelectData } from "metabase/ui/components/inputs/Select/Select";
-import type { TaskRunType } from "metabase-types/api";
 
 type TaskRunTypePickerProps = Omit<
   SelectProps,

@@ -3,6 +3,7 @@ import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { isNumber } from "metabase-lib/v1/types/utils/isa";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
@@ -12,7 +13,6 @@ import {
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
-import { isNumber } from "metabase-lib/v1/types/utils/isa";
 
 import { WellItem } from "../WellItem";
 import S from "../well.module.css";

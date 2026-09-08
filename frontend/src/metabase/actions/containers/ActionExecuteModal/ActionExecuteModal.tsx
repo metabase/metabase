@@ -1,15 +1,15 @@
 import type { FormikHelpers } from "formik";
 import { useCallback } from "react";
 
+import type {
+  ParametersForActionExecution,
+  WritebackActionId,
+} from "metabase-types/api";
 import { skipToken, useGetActionQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import type {
-  ParametersForActionExecution,
-  WritebackActionId,
-} from "metabase-types/api";
 
 import { executeAction } from "../../actions";
 import { useActionInitialValues } from "../../hooks/use-action-initial-values";

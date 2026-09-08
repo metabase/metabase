@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { TextInputBlurChange } from "metabase/ui";
 import type { TemplateTag } from "metabase-types/api";
+import { TextInputBlurChange } from "metabase/ui";
 
 import { ContainerLabel, ErrorSpan, InputContainer } from "./TagEditorParam";
 

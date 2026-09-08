@@ -1,9 +1,9 @@
-import type { DefinitionSource } from "metabase/metrics-viewer/utils/definition-sources";
 import type {
   DimensionDisplayInfo,
   SegmentDisplayInfo,
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import type { DefinitionSource } from "metabase/metrics-viewer/utils/definition-sources";
 
 import { filterDisplayGroupsBySearch, getMetricGroups } from "./utils";
 

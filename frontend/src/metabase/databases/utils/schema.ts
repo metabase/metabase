@@ -1,7 +1,6 @@
 import type { TestContext } from "yup";
 import * as Yup from "yup";
 
-import * as Errors from "metabase/utils/errors";
 import type {
   DatabaseData,
   DatabaseFieldGroup,
@@ -9,6 +8,7 @@ import type {
   Engine,
   EngineField,
 } from "metabase-types/api";
+import * as Errors from "metabase/utils/errors";
 
 import { ADVANCED_FIELDS, FIELD_OVERRIDES } from "../constants";
 

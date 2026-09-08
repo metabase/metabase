@@ -1,5 +1,10 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type {
+  NativeDatasetResponse,
+  NormalizedQueryParameter,
+} from "metabase-types/api";
 import { useGetNativeDatasetQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
@@ -10,11 +15,6 @@ import { useSelector } from "metabase/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon, Loader, Stack } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type {
-  NativeDatasetResponse,
-  NormalizedQueryParameter,
-} from "metabase-types/api";
 
 import { language } from "../../../components/CodeMirrorEditor/language";
 

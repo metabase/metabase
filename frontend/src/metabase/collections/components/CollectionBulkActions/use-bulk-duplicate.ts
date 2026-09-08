@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
 
+import type { Collection, CollectionItem } from "metabase-types/api";
 import {
   useCopyDashboardMutation,
   useCopyDocumentMutation,
@@ -11,7 +12,6 @@ import {
   canonicalCollectionId,
 } from "metabase/common/collections/utils";
 import { useMetadataToasts } from "metabase/common/hooks";
-import type { Collection, CollectionItem } from "metabase-types/api";
 
 export const useBulkDuplicate = (
   selected: CollectionItem[],

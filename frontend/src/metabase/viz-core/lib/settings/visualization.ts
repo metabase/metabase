@@ -1,13 +1,13 @@
 import { assocIn } from "icepick";
 import { t } from "ttag";
 
-import { isVirtualDashCard } from "metabase/utils/dashboard";
 import type {
   ColumnSettings,
   DimensionReference,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
 
 import type {
   ComputedVisualizationSettings,

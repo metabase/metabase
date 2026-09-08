@@ -4,6 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import type {
+  LlmProviderConfig,
+  LlmProviderConnection,
+  LlmProviderType,
+} from "metabase-types/api";
 import {
   useCreateLlmProviderMutation,
   useUpdateLlmProviderMutation,
@@ -22,11 +27,6 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import type {
-  LlmProviderConfig,
-  LlmProviderConnection,
-  LlmProviderType,
-} from "metabase-types/api";
 
 import { ProviderConfigFields } from "./ProviderConfigFields";
 import { ProviderTypeIcon } from "./ProviderTypeIcon";

@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import type { TreemapRow } from "metabase-types/api";
 import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import {
   type TreemapGroupsPickerProps,
   getTreemapChartColumns,
 } from "metabase/viz-core";
-import type { TreemapRow } from "metabase-types/api";
 
 export function TreemapGroupsPicker({
   rawSeries,

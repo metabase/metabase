@@ -1,11 +1,11 @@
 import type { Dispatch, SetStateAction } from "react";
 import { t } from "ttag";
 
-import { CommentEditor } from "metabase/comments/components";
 import type {
   DocumentContent,
   ExplorationPageNodeId,
 } from "metabase-types/api";
+import { CommentEditor } from "metabase/comments/components";
 
 import type { CommentDrafts } from "../../types";
 

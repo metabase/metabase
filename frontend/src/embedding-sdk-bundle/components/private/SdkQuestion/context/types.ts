@@ -11,11 +11,6 @@ import type {
   SqlParameterChangePayload,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
-import type {
-  EmbeddingDataPicker,
-  EmbeddingEntityType,
-} from "metabase/redux/store/embedding-data-picker";
-import type { ClickActionsMode } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CardDisplayType,
@@ -23,6 +18,11 @@ import type {
   SeriesCard,
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
+import type {
+  EmbeddingDataPicker,
+  EmbeddingEntityType,
+} from "metabase/redux/store/embedding-data-picker";
+import type { ClickActionsMode } from "metabase/visualizations/types";
 
 type SdkQuestionConfig = {
   /**

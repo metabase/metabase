@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { GroupId, GroupInfo } from "metabase-types/api";
 import type {
   DeleteMappingModalValueType,
   GroupIds,
@@ -11,7 +12,6 @@ import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper"
 import { isAdminGroup } from "metabase/common/utils/groups";
 import AdminS from "metabase/css/admin.module.css";
 import { Flex, Icon, Tooltip } from "metabase/ui";
-import type { GroupId, GroupInfo } from "metabase-types/api";
 
 import { DeleteGroupMappingModal } from "../DeleteGroupMappingModal";
 import { GroupSelect } from "../GroupSelect";

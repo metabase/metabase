@@ -1,8 +1,3 @@
-import { RTK_CACHE_KEY_PARAM } from "metabase/api/api";
-import { cardApi } from "metabase/api/card";
-import { dashboardApi } from "metabase/api/dashboard";
-import { datasetApi } from "metabase/api/dataset";
-import type { Dispatch } from "metabase/redux/store";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -14,6 +9,11 @@ import type {
   Dataset,
   DatasetQuery,
 } from "metabase-types/api";
+import { RTK_CACHE_KEY_PARAM } from "metabase/api/api";
+import { cardApi } from "metabase/api/card";
+import { dashboardApi } from "metabase/api/dashboard";
+import { datasetApi } from "metabase/api/dataset";
+import type { Dispatch } from "metabase/redux/store";
 
 import {
   dispatchQueryEndpoint,

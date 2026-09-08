@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { Notification } from "metabase-types/api";
 import {
   skipToken,
   useGetNotificationQuery,
@@ -9,7 +10,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks/use-toast";
 import { DeleteAlertConfirmModal } from "metabase/notifications/modals/DeleteAlertConfirmModal";
 import { useSearchParams } from "metabase/router";
-import type { Notification } from "metabase-types/api";
 
 import { getAlertId } from "../../selectors";
 

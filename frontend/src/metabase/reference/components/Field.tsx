@@ -4,6 +4,15 @@ import { memo } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import { isTypeCurrency, isTypeFK } from "metabase-lib/v1/types/utils/isa";
+import type {
+  Field as ApiField,
+  DatabaseId,
+  FieldFormattingSettings,
+  FieldId,
+  IconName,
+  NormalizedField,
+} from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/common/utils/fields";
 import CS from "metabase/css/core/index.css";
@@ -14,15 +23,6 @@ import {
 import { getFieldCurrency } from "metabase/metadata/utils/field";
 import S from "metabase/reference/components/List/List.module.css";
 import { Box, Icon } from "metabase/ui";
-import { isTypeCurrency, isTypeFK } from "metabase-lib/v1/types/utils/isa";
-import type {
-  Field as ApiField,
-  DatabaseId,
-  FieldFormattingSettings,
-  FieldId,
-  IconName,
-  NormalizedField,
-} from "metabase-types/api";
 
 import type { FormFieldEntry, StubbedField } from "../types";
 

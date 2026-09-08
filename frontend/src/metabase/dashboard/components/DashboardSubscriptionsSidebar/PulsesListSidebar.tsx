@@ -2,6 +2,13 @@ import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type {
+  Channel,
+  ChannelApiResponse,
+  ChannelType,
+  DashboardSubscription,
+} from "metabase-types/api";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import { Label } from "metabase/common/components/type/Label";
 import { Subhead } from "metabase/common/components/type/Subhead";
@@ -18,13 +25,6 @@ import {
   formatDateTimeWithUnit,
   formatTimeWithUnit,
 } from "metabase/value-formatting";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type {
-  Channel,
-  ChannelApiResponse,
-  ChannelType,
-  DashboardSubscription,
-} from "metabase-types/api";
 
 import { getParameters } from "../../selectors";
 

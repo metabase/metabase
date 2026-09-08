@@ -2,6 +2,7 @@ import type { MouseEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { isEmpty } from "underscore";
 
+import type { IconName } from "metabase-types/api";
 import { useCaptureEvent } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import type {
@@ -14,7 +15,6 @@ import { useSelector } from "metabase/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { Box, Button, Center, Icon, Popover, Stack, Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import type { IconName } from "metabase-types/api";
 
 import {
   DropdownFieldSet,

@@ -2,14 +2,14 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import { type CSSProperties, useMemo, useRef } from "react";
 
-import { Icon, Stack, Text } from "metabase/ui";
-import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type {
   DatasetColumn,
   DatasetData,
   ListViewColumns,
 } from "metabase-types/api";
+import { Icon, Stack, Text } from "metabase/ui";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 
 import styles from "./ListView.module.css";
 import { ListViewItem } from "./ListViewItem";

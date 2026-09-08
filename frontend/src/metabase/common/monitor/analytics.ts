@@ -1,8 +1,8 @@
-import { trackSimpleEvent } from "metabase/analytics";
 import type {
   MonitorOpenedEvent,
   MonitorSectionClickedEvent,
 } from "metabase-types/analytics/event";
+import { trackSimpleEvent } from "metabase/analytics";
 
 export type MonitorSection = MonitorSectionClickedEvent["event_detail"];
 

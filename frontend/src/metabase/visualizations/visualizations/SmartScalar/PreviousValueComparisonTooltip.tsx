@@ -1,7 +1,7 @@
+import type { ColumnSettings } from "metabase-types/api";
 import { Flex, Text } from "metabase/ui";
 import { isEmpty } from "metabase/utils/validate";
 import { formatValue } from "metabase/value-formatting";
-import type { ColumnSettings } from "metabase-types/api";
 
 import { TrendSymbol } from "./TrendSymbol";
 import { type ComparisonResult, getComparisonDisplay } from "./compute";

@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import { AutocompleteInput } from "metabase/common/components/AutocompleteInput";
 import type { VisualizationSettings } from "metabase-types/api";
+import { AutocompleteInput } from "metabase/common/components/AutocompleteInput";
 
 interface ChartSettingLinkUrlInputProps {
   value: string | undefined | null;

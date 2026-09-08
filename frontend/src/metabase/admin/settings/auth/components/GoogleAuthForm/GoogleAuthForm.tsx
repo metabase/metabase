@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { jt, t } from "ttag";
 
+import type { SettingDefinition, Settings } from "metabase-types/api";
 import {
   SettingsPageWrapper,
   SettingsSection,
@@ -20,7 +21,6 @@ import {
   useSetting,
 } from "metabase/settings";
 import { Flex, Stack, Text, Title } from "metabase/ui";
-import type { SettingDefinition, Settings } from "metabase-types/api";
 
 import { useUpdateGoogleAuthMutation } from "../../../api/google";
 import { GOOGLE_SCHEMA } from "../../constants";

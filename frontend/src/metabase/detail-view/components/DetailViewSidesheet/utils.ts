@@ -1,4 +1,3 @@
-import { extractRemappedColumns } from "metabase/viz-core";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type {
@@ -8,6 +7,7 @@ import type {
   Table,
   TableColumnOrderSetting,
 } from "metabase-types/api";
+import { extractRemappedColumns } from "metabase/viz-core";
 
 export function extractData(
   dataset: Dataset | undefined,

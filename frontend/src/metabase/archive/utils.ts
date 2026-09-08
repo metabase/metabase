@@ -1,8 +1,8 @@
 import { c } from "ttag";
 import _ from "underscore";
 
-import * as Urls from "metabase/urls";
 import type { Collection, CollectionItem } from "metabase-types/api";
+import * as Urls from "metabase/urls";
 
 // Models that participate in the trash lifecycle (restore + permanent delete).
 // A superset of ArchivableItem.model exists in metabase/archive/hooks/use-set-archive.ts —

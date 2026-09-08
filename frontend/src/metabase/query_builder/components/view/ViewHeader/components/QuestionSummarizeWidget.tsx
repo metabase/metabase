@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { QueryBuilderMode } from "metabase/redux/store";
 import { Button, Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 
 import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
 

@@ -1,6 +1,5 @@
 import * as Yup from "yup";
 
-import * as Errors from "metabase/utils/errors";
 import {
   type FieldTypeInfo,
   isDate,
@@ -13,6 +12,7 @@ import type {
   TransformTarget,
   UpdateTransformRequest,
 } from "metabase-types/api";
+import * as Errors from "metabase/utils/errors";
 
 // Same rule as the BE's `date-or-datetime?`: temporal but not time-only (time watermarks wrap at
 // midnight). The predicates check effective_type first, so coerced columns (e.g. unix

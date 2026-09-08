@@ -8,10 +8,6 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, waitFor } from "__support__/ui";
-import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
-import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import { getDashcards } from "metabase/dashboard/selectors";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -21,6 +17,10 @@ import {
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
+import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { getDashcards } from "metabase/dashboard/selectors";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
 
 import { useDashboardChartPaste } from "./use-dashboard-chart-paste";
 

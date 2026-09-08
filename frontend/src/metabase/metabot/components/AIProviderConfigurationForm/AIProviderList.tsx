@@ -3,6 +3,10 @@ import type { ReactNode } from "react";
 import { Fragment, useId, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  LlmProviderConnection,
+  LlmProviderType,
+} from "metabase-types/api";
 import {
   useDeleteLlmProviderMutation,
   useListLlmProviderTypesQuery,
@@ -29,10 +33,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import type {
-  LlmProviderConnection,
-  LlmProviderType,
-} from "metabase-types/api";
 
 import { ProviderConnectionModal } from "./ProviderConnectionModal";
 import { ProviderTypeIcon } from "./ProviderTypeIcon";

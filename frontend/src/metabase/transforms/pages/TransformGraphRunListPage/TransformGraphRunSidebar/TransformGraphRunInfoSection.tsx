@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { TransformGraphRun } from "metabase-types/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { SidebarInfoRow } from "metabase/transforms/components/SidebarInfoRow";
 import {
@@ -11,7 +12,6 @@ import {
 import { Box, Card } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatDurationLong } from "metabase/utils/formatting";
-import type { TransformGraphRun } from "metabase-types/api";
 
 import { formatRunType } from "../TransformGraphRunTable";
 

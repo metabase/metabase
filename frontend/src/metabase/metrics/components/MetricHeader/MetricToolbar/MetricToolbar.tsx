@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { c, t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type { Card } from "metabase-types/api";
 import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
@@ -27,9 +30,6 @@ import { openUrl } from "metabase/redux/app";
 import { useNavigate } from "metabase/router";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
 
 import S from "./MetricToolbar.module.css";
 

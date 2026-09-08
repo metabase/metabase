@@ -16,11 +16,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { SetupStep } from "metabase/redux/store";
-import {
-  createMockSetupState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type {
   EnterpriseSettings,
   TokenFeatures,
@@ -33,6 +28,11 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import type { SetupStep } from "metabase/redux/store";
+import {
+  createMockSetupState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 
 import { Setup } from "../components/Setup";
 

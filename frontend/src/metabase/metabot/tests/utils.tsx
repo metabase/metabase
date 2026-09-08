@@ -18,6 +18,16 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import type {
+  MetabotConversation,
+  MetabotInfo,
+  User,
+} from "metabase-types/api";
+import {
+  createMockMetabotInfo,
+  createMockUser,
+  createMockUserMetabotPermissions,
+} from "metabase-types/api/mocks";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 import {
   type MockStreamedEndpointParams,
@@ -30,16 +40,6 @@ import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
-import type {
-  MetabotConversation,
-  MetabotInfo,
-  User,
-} from "metabase-types/api";
-import {
-  createMockMetabotInfo,
-  createMockUser,
-  createMockUserMetabotPermissions,
-} from "metabase-types/api/mocks";
 
 import { Metabot } from "../components/Metabot";
 import "../components/MetabotChat/MetabotChat";

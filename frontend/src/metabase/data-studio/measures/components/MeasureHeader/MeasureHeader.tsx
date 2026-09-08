@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import type { Measure } from "metabase-types/api";
 import { useUpdateMeasureMutation } from "metabase/api";
 import {
   PaneHeader,
@@ -9,7 +10,6 @@ import {
 import { useMetadataToasts } from "metabase/common/hooks";
 import { EntityDetailTabs } from "metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
 import { Stack } from "metabase/ui";
-import type { Measure } from "metabase-types/api";
 
 import type { MeasureTabUrls } from "../../types";
 import { MeasureMoreMenu } from "../MeasureMoreMenu";

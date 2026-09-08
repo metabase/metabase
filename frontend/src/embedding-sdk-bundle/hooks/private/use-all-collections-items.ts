@@ -3,6 +3,8 @@ import { t } from "ttag";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getUserTenantCollectionId } from "embedding-sdk-bundle/store/collections";
+import type { Collection, CollectionItem } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 import {
   skipToken,
   useGetCollectionQuery,
@@ -14,8 +16,6 @@ import { getUserPersonalCollectionId } from "metabase/current-user";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 import { isNotNull } from "metabase/utils/types";
-import type { Collection, CollectionItem } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
 
 export type AllCollectionsItem = CollectionItem &
   Pick<Collection, "is_personal">;

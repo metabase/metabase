@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import * as LibMetric from "metabase-lib/metric";
 import {
   getDateFilterClause,
   getDatePickerUnits,
@@ -9,7 +10,6 @@ import {
 import { DatePicker } from "metabase/querying/common/components/DatePicker";
 import type { DatePickerValue } from "metabase/querying/common/types";
 import { Button, Flex, PopoverBackButton } from "metabase/ui";
-import * as LibMetric from "metabase-lib/metric";
 
 import { FilterSubmitButton } from "../FilterSubmitButton";
 import type { FilterPickerWidgetProps } from "../types";

@@ -1,5 +1,5 @@
-import { Group, Pill } from "metabase/ui";
 import type { TransformTag } from "metabase-types/api";
+import { Group, Pill } from "metabase/ui";
 
 type TagListProps = {
   tags: TransformTag[];

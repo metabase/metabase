@@ -1,6 +1,9 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
+import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { Card, IconName } from "metabase-types/api";
 import {
   skipToken,
   useGetCardQuery,
@@ -16,9 +19,6 @@ import {
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { Card, IconName } from "metabase-types/api";
 
 import { FieldList } from "../FieldList";
 import { NodeListTitleText } from "../NodeList";

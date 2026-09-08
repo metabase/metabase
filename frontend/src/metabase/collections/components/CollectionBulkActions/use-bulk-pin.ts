@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type { Collection, CollectionItem } from "metabase-types/api";
 import { setCollectionItemPinnedAndTrack } from "metabase/common/collections/analytics";
 import { isItemPinned } from "metabase/common/collections/utils";
 import {
@@ -9,7 +10,6 @@ import {
   useMetadataToasts,
   useSetPinned,
 } from "metabase/common/hooks";
-import type { Collection, CollectionItem } from "metabase-types/api";
 
 export const useBulkPin = (
   selected: CollectionItem[],

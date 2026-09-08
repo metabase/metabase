@@ -4,9 +4,6 @@
 
 import Color from "color";
 
-import { alpha } from "metabase/ui/colors";
-import { getSafeColor } from "metabase/ui/colors/safe-color";
-import { isNumber } from "metabase/utils/types";
 import type {
   ColumnFormattingOperator,
   ColumnFormattingSetting,
@@ -14,6 +11,9 @@ import type {
   RowValue,
   RowValues,
 } from "metabase-types/api";
+import { alpha } from "metabase/ui/colors";
+import { getSafeColor } from "metabase/ui/colors/safe-color";
+import { isNumber } from "metabase/utils/types";
 
 import type { Extent, Formatter } from "../types";
 

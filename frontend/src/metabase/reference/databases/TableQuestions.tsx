@@ -2,6 +2,8 @@ import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Card } from "metabase-types/api";
 import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
@@ -13,8 +15,6 @@ import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
 import * as Urls from "metabase/urls";
 import { visualizations } from "metabase/viz-core";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Card } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";

@@ -1,7 +1,7 @@
 import { mockSettings } from "__support__/settings";
 import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { LockedTransformsHoverCard } from "./LockedTransformsHoverCard";
 

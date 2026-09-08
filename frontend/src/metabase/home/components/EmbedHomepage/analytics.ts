@@ -1,5 +1,5 @@
-import { trackSchemaEvent } from "metabase/analytics";
 import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
+import { trackSchemaEvent } from "metabase/analytics";
 
 const SCHEMA_NAME = "embedding_homepage";
 

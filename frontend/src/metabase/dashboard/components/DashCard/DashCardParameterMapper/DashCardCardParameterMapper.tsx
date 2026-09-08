@@ -1,6 +1,18 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
+import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
+import { isParameterVariableTarget } from "metabase-lib/v1/parameters/utils/targets";
+import type {
+  Card,
+  DashboardCard,
+  MetricDimension,
+  Parameter,
+  ParameterTarget,
+  VirtualCard,
+} from "metabase-types/api";
+import { isStructuredDimensionTarget } from "metabase-types/guards";
 import { isActionDashCard } from "metabase/actions/utils";
 import { skipToken } from "metabase/api";
 import { useListMetricDimensionsQuery } from "metabase/api/metric";
@@ -22,18 +34,6 @@ import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
 import { Box, Flex, Icon, Text, Transition } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import { getMobileHeight } from "metabase/viz-core";
-import type Question from "metabase-lib/v1/Question";
-import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
-import { isParameterVariableTarget } from "metabase-lib/v1/parameters/utils/targets";
-import type {
-  Card,
-  DashboardCard,
-  MetricDimension,
-  Parameter,
-  ParameterTarget,
-  VirtualCard,
-} from "metabase-types/api";
-import { isStructuredDimensionTarget } from "metabase-types/guards";
 
 import { DashCardCardParameterMapperContent } from "./DashCardCardParameterMapperContent";
 import S from "./DashCardParameterMapper.module.css";

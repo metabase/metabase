@@ -2,6 +2,7 @@ import type { MouseEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { TaskRunDateFilterOption } from "metabase-types/api";
 import {
   Combobox,
   Group,
@@ -11,7 +12,6 @@ import {
   Stack,
   Switch,
 } from "metabase/ui";
-import type { TaskRunDateFilterOption } from "metabase-types/api";
 
 import { guardTaskRunStartedAtRange } from "../../utils";
 

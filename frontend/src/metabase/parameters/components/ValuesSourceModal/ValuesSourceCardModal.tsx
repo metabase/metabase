@@ -1,13 +1,13 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { Parameter, ValuesSourceConfig } from "metabase-types/api";
 import { skipToken, useGetCardQuery } from "metabase/api";
 import {
   QuestionPickerModal,
   type QuestionPickerValueItem,
   getQuestionPickerValue,
 } from "metabase/common/components/Pickers/QuestionPicker";
-import type { Parameter, ValuesSourceConfig } from "metabase-types/api";
 
 interface ValuesSourceCardModalProps {
   parameter: Parameter;

@@ -3,12 +3,6 @@ import type { MouseEvent } from "react";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-import { EmptyState } from "metabase/common/components/EmptyState";
-import CS from "metabase/css/core/index.css";
-import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { Box, Ellipsified, Icon } from "metabase/ui";
-import { displayNameForColumn, formatValue } from "metabase/value-formatting";
-import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { ClickObject } from "metabase-lib";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -23,6 +17,12 @@ import type {
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { Box, Ellipsified, Icon } from "metabase/ui";
+import { displayNameForColumn, formatValue } from "metabase/value-formatting";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 
 import { ExpandableString } from "./ExpandableString";
 import S from "./ObjectDetailsTable.module.css";

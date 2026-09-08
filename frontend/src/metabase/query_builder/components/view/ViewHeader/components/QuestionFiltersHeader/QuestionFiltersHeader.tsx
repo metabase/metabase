@@ -1,7 +1,7 @@
-import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
-import type { QueryBuilderMode } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
+import type { QueryBuilderMode } from "metabase/redux/store";
 
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 

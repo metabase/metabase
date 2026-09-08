@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import type * as Lib from "metabase-lib";
 import {
   type UpdateQueryHookProps,
   useBreakoutQueryHandlers,
 } from "metabase/query_builder";
 import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
 import { Button, Divider, Icon, Stack } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 
 import { useSdkQuestionContext } from "../../../context";
 import type { SDKBreakoutItem } from "../use-breakout-data";

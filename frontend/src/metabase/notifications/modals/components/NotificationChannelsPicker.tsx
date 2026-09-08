@@ -1,5 +1,10 @@
 import { t } from "ttag";
 
+import type {
+  ChannelApiResponse,
+  NotificationHandler,
+  User,
+} from "metabase-types/api";
 import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
 import { canAccessSettings, getUser } from "metabase/current-user";
 import { ChannelSettingsBlock } from "metabase/notifications/channels/ChannelSettingsBlock";
@@ -12,11 +17,6 @@ import {
 import { getNotificationHandlersGroupedByTypes } from "metabase/notifications/utils";
 import { useSelector } from "metabase/redux";
 import { Stack } from "metabase/ui";
-import type {
-  ChannelApiResponse,
-  NotificationHandler,
-  User,
-} from "metabase-types/api";
 
 const DEFAULT_CHANNELS_CONFIG = {
   email: {

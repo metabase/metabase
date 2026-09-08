@@ -1,9 +1,9 @@
 import _ from "underscore";
 
+import type { Card } from "metabase-types/api";
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch } from "metabase/redux/store";
-import type { Card } from "metabase-types/api";
 
 /**
  * Card lifecycle events dispatched by the create/update thunks below. They let

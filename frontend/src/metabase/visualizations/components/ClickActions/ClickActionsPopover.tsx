@@ -1,5 +1,7 @@
 import { Component } from "react";
 
+import type Question from "metabase-lib/v1/Question";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 import { connect } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
 import type { Path } from "metabase/router";
@@ -13,8 +15,6 @@ import type {
   RegularClickAction,
 } from "metabase/visualizations/types";
 import { isPopoverClickAction } from "metabase/visualizations/types";
-import type Question from "metabase-lib/v1/Question";
-import type { Series, VisualizationSettings } from "metabase-types/api";
 
 import { ClickActionsView } from "./ClickActionsView";
 

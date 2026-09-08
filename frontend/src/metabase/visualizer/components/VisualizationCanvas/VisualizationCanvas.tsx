@@ -3,6 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import metabot from "assets/img/metabot-96x96.svg";
+import type { RawSeries } from "metabase-types/api";
 import { useSelector } from "metabase/redux";
 import {
   ActionIcon,
@@ -24,7 +25,6 @@ import {
   getVisualizerRawSeries,
 } from "metabase/visualizer/selectors";
 import { isCartesianChart } from "metabase/viz-core";
-import type { RawSeries } from "metabase-types/api";
 
 import { TabularPreviewModal } from "../TabularPreviewModal";
 import { useVisualizerUi } from "../VisualizerUiContext";

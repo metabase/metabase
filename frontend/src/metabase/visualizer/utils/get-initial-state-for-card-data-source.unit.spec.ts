@@ -1,4 +1,3 @@
-import { registerVisualizations } from "metabase/visualizations/register";
 import type { CardDisplayType } from "metabase-types/api";
 import {
   createMockCard,
@@ -8,6 +7,7 @@ import {
   createMockDatasetData,
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { getInitialStateForCardDataSource } from "./get-initial-state-for-card-data-source";
 

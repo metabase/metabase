@@ -1,4 +1,3 @@
-import type { ColorName } from "metabase/ui/colors";
 import type {
   CardType,
   Collection,
@@ -8,6 +7,7 @@ import type {
   SearchModel,
   VisualizationDisplay,
 } from "metabase-types/api";
+import type { ColorName } from "metabase/ui/colors";
 
 export type IconModel =
   | SearchModel

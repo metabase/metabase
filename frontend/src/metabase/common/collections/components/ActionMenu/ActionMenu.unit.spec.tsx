@@ -4,17 +4,17 @@ import fetchMock from "fetch-mock";
 
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
-import * as Analytics from "metabase/analytics";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { Collection, CollectionItem, Database } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockDocument,
 } from "metabase-types/api/mocks";
+import * as Analytics from "metabase/analytics";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 
 import { ActionMenu } from "./ActionMenu";
 

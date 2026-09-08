@@ -1,5 +1,5 @@
-import { isSortColumn } from "metabase/utils/sorting";
 import type { SortDirection } from "metabase-types/api";
+import { isSortColumn } from "metabase/utils/sorting";
 
 import type { QueryParam } from "./types";
 

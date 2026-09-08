@@ -1,13 +1,13 @@
 import type { ComponentProps } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { CardId } from "metabase-types/api";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Transition } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type { CardId } from "metabase-types/api";
 
 import { ViewTitleHeader } from "../../ViewHeader";
 import { ViewHeading, ViewSection } from "../../ViewSection";

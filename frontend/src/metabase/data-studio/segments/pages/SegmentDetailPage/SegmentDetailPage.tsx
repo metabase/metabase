@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type { Segment } from "metabase-types/api";
 import { useUpdateSegmentMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
@@ -11,8 +13,6 @@ import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get
 import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { Button, Group } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type { Segment } from "metabase-types/api";
 
 import { SegmentEditor } from "../../components/SegmentEditor";
 import { SegmentHeader } from "../../components/SegmentHeader";

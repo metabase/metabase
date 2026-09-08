@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { skipToken, useListTableForeignKeysQuery } from "metabase/api";
 import { DetailViewSidesheet } from "metabase/detail-view/components";
 import { filterByPk } from "metabase/detail-view/utils";
@@ -14,7 +15,6 @@ import {
   getComputedSettingsForSeries,
   getSeriesWithDisplay,
 } from "metabase/viz-core";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
 import {
   closeObjectDetail,

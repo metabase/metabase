@@ -15,11 +15,11 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
   createMockCollection,
   createMockDashboard,
 } from "metabase-types/api/mocks";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 
 import { DashboardMoveModalConnected } from "./DashboardMoveModal";
 

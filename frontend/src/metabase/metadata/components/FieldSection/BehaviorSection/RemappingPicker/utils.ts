@@ -1,13 +1,13 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getColumnIcon } from "metabase/common/utils/columns";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { is403Error } from "metabase/utils/errors";
 import * as Lib from "metabase-lib";
 import { getRemappings } from "metabase-lib/v1/queries/utils/field";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, FieldValue, Table } from "metabase-types/api";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { is403Error } from "metabase/utils/errors";
 
 import type { RemappingValue } from "./DisplayValuesPicker";
 

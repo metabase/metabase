@@ -1,7 +1,7 @@
 import _ from "underscore";
 
-import { getDefaultFieldSettings } from "metabase/actions/utils";
 import type { ActionFormSettings, Parameter } from "metabase-types/api";
+import { getDefaultFieldSettings } from "metabase/actions/utils";
 
 export const syncFieldsWithParameters = (
   settings: ActionFormSettings,

@@ -1,5 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
+import {
+  PRODUCTS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
@@ -7,11 +12,6 @@ import {
 } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
-import {
-  PRODUCTS_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
 
 import { ChartSettingsSidebar } from "./ChartSettingsSidebar";
 

@@ -1,11 +1,11 @@
 /* istanbul ignore file */
 
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import {
   createSampleDatabase,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
+import { checkNotNull } from "metabase/utils/types";
 
 import type { NotebookStep } from "./types";
 

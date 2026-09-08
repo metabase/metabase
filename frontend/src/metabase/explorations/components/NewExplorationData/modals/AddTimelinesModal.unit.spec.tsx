@@ -6,13 +6,13 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import { makeMockSelection } from "metabase/explorations/test-utils";
 import type { Timeline } from "metabase-types/api";
 import {
   createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
+import { makeMockSelection } from "metabase/explorations/test-utils";
 
 import { AddTimelinesModal } from "./AddTimelinesModal";
 

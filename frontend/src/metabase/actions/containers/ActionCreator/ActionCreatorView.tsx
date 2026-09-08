@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 import { Button } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
 import {
   ActionCreatorBodyContainer,

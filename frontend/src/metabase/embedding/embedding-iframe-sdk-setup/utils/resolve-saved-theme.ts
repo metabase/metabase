@@ -1,5 +1,5 @@
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import type { EmbeddingTheme } from "metabase-types/api/embedding-theme";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
 import type { SdkIframeEmbedSetupTheme } from "../types";
 

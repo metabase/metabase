@@ -1,11 +1,11 @@
-import { useTranslateContent } from "metabase/content-translation/hooks";
-import * as Urls from "metabase/urls";
 import type {
   Collection,
   CollectionEssentials,
   CollectionId,
   Dashboard,
 } from "metabase-types/api";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import * as Urls from "metabase/urls";
 
 import { CollectionBreadcrumbsView } from "./CollectionBreadcrumbsView";
 import { collectionToCrumbs } from "./utils";

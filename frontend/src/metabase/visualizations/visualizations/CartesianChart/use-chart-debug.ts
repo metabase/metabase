@@ -2,9 +2,9 @@
 import type { EChartsCoreOption } from "echarts/core";
 import { useEffect } from "react";
 
+import type { RawSeries } from "metabase-types/api";
 import { isChartsDebugLoggingEnabled } from "metabase/env";
 import type { BaseCartesianChartModel } from "metabase/viz-core";
-import type { RawSeries } from "metabase-types/api";
 
 export function useChartDebug({
   isQueryBuilder,

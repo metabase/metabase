@@ -2,19 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePrevious } from "react-use";
 import { c, t } from "ttag";
 
-import {
-  useGetExplorationQuery,
-  useListCommentsQuery,
-  useListTimelinesQuery,
-} from "metabase/api";
-import { explorationApi } from "metabase/api/exploration";
-import { getListCommentsQuery } from "metabase/comments/utils";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useToast } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
-import { useLocation, useNavigate, useParams } from "metabase/router";
-import { Group, Stack } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import type {
   Exploration,
   ExplorationBlockNode,
@@ -30,6 +17,19 @@ import {
   isSettledExplorationQueryStatus,
   isTerminalExplorationThreadStatus,
 } from "metabase-types/api";
+import {
+  useGetExplorationQuery,
+  useListCommentsQuery,
+  useListTimelinesQuery,
+} from "metabase/api";
+import { explorationApi } from "metabase/api/exploration";
+import { getListCommentsQuery } from "metabase/comments/utils";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useToast } from "metabase/common/hooks";
+import { useDispatch } from "metabase/redux";
+import { useLocation, useNavigate, useParams } from "metabase/router";
+import { Group, Stack } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import {
   ExplorationSidebar,

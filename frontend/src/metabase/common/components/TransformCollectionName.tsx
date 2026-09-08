@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { CollectionId } from "metabase-types/api";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { isRootCollection } from "metabase/common/collections/utils";
-import type { CollectionId } from "metabase-types/api";
 
 export function TransformCollectionName({ id }: { id: CollectionId }) {
   const { data: collection } = useGetCollectionQuery(

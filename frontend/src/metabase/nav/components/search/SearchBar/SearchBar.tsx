@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import type { SearchResult } from "metabase-types/api";
 import { useKeyboardShortcut } from "metabase/common/hooks/use-keyboard-shortcut";
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { useToggle } from "metabase/common/hooks/use-toggle";
@@ -33,7 +34,6 @@ import { Box, Flex, Icon, UnstyledButton, rem } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
-import type { SearchResult } from "metabase-types/api";
 
 import { CommandPaletteTrigger } from "./CommandPaletteTrigger";
 import S from "./SearchBar.module.css";

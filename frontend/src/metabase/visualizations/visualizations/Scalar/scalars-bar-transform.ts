@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import type { TransformSeries } from "metabase/visualizations/components/TransformedVisualization";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { RawSeries } from "metabase-types/api";
+import type { TransformSeries } from "metabase/visualizations/components/TransformedVisualization";
 
 export const scalarToBarTransform: TransformSeries = (rawSeries) => {
   // Unjustified type cast. FIXME

@@ -8,9 +8,6 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { deserializeCardFromUrl } from "metabase/common/utils/card";
-import * as Urls from "metabase/urls";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -37,6 +34,9 @@ import {
   createProductsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { deserializeCardFromUrl } from "metabase/common/utils/card";
+import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 
 import { QuestionDataSource } from "./QuestionDataSource";
 

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { GroupInfo, SpecialGroupType } from "metabase-types/api";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 
 const SPECIAL_GROUP_NAMES: Record<string, () => string> = {
   "All Users": () => t`All Users`,

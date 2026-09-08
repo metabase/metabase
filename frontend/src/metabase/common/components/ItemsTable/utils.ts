@@ -1,3 +1,4 @@
+import type { Collection } from "metabase-types/api";
 import type {
   CollectionContentTableColumn,
   CollectionContentTableColumnsMap,
@@ -9,7 +10,6 @@ import type {
 import { isRootTrashCollection } from "metabase/common/collections/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { type BreakpointName, breakpoints } from "metabase/ui/theme";
-import type { Collection } from "metabase-types/api";
 
 export interface ResponsiveProps {
   /** The element will be hidden when the container's width is below this breakpoint */

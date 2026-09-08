@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { TimelineEvent } from "metabase-types/api";
 import {
   useGetTimelineEventQuery,
   useUpdateTimelineEventMutation,
@@ -8,7 +9,6 @@ import { useSetArchive } from "metabase/archive/hooks";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import EditEventModal from "metabase/timelines/common/components/EditEventModal";
-import type { TimelineEvent } from "metabase-types/api";
 
 interface EditEventModalContainerProps {
   eventId: number;

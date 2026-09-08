@@ -1,5 +1,8 @@
 import { c, t } from "ttag";
 
+import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetColumn, DatasetData } from "metabase-types/api";
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 import {
   ChartSettingsError,
   type VisualizationDefinition,
@@ -9,9 +12,6 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/viz-core";
-import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, DatasetData } from "metabase-types/api";
-import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { MAX_COMPARISONS, VIZ_SETTINGS_DEFAULTS } from "./constants";
 import {

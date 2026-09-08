@@ -2,12 +2,12 @@ import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import type { DatabaseData } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useFormErrorMessage } from "metabase/forms";
 import { useSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
-import type { DatabaseData } from "metabase-types/api";
 
 const defaultCloudGatewayIPs = [
   "18.207.81.126",

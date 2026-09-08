@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 
+import type { Dashboard } from "metabase-types/api";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { useSelector } from "metabase/redux";
-import type { Dashboard } from "metabase-types/api";
 
 import { getEventHandlers } from "../../store/selectors";
 

@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
+import type { Exploration, ExplorationPageNodeId } from "metabase-types/api";
 import { Tree, useTree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { getInitialExpandedIds } from "metabase/common/components/tree/utils";
@@ -27,7 +28,6 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import type { Exploration, ExplorationPageNodeId } from "metabase-types/api";
 
 import type { ExplorationSortOrder } from "../../sidebar-preferences";
 import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";

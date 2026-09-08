@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { Modal } from "metabase/ui";
 import type {
   LlmProviderConnection,
   LlmProviderType,
 } from "metabase-types/api";
+import { Modal } from "metabase/ui";
 
 import { ProviderConnectionForm } from "./ProviderConnectionForm";
 

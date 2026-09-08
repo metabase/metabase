@@ -1,5 +1,7 @@
 import { useEffect, useMemo } from "react";
 
+import Question from "metabase-lib/v1/Question";
+import type { CollectionId } from "metabase-types/api";
 import {
   skipToken,
   useGetCardQuery,
@@ -11,8 +13,6 @@ import { closeNavbar, openNavbar } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
-import Question from "metabase-lib/v1/Question";
-import type { CollectionId } from "metabase-types/api";
 
 import { NavRoot, Sidebar } from "./MainNavbar.styled";
 import MainNavbarContainer from "./MainNavbarContainer";

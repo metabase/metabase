@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { TableId } from "metabase-types/api";
 import { useGetTableQueryMetadataQuery } from "metabase/api";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { DataPickerModal } from "metabase/common/components/Pickers/DataPicker";
@@ -20,7 +21,6 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type { TableId } from "metabase-types/api";
 
 import type { TableColumnSelection } from "./RlsDataSelector";
 import S from "./RlsDataSelector.module.css";

@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
-import { ClickMappings } from "metabase/dashboard/components/ClickMappings/ClickMappings";
 import type {
   ClickBehavior,
   Dashboard,
   DashboardCard,
 } from "metabase-types/api";
+import CS from "metabase/css/core/index.css";
+import { ClickMappings } from "metabase/dashboard/components/ClickMappings/ClickMappings";
 
 import { Heading, SidebarContent } from "./ClickBehaviorSidebarComponents";
 

@@ -1,3 +1,10 @@
+import type {
+  DatabaseId,
+  GetDatabaseMetadataRequest,
+  Segment,
+  SegmentId,
+  TableId,
+} from "metabase-types/api";
 import { databaseApi, segmentApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
@@ -8,13 +15,6 @@ import {
   fetchTableMetadataAndForeignKeys,
 } from "metabase/redux/tables";
 import { checkNotNull } from "metabase/utils/types";
-import type {
-  DatabaseId,
-  GetDatabaseMetadataRequest,
-  Segment,
-  SegmentId,
-  TableId,
-} from "metabase-types/api";
 
 /**
  * Fetch orchestration for the reference segment pages.

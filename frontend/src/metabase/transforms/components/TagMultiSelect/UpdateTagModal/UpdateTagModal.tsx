@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import type { TransformTag } from "metabase-types/api";
 import { useUpdateTransformTagMutation } from "metabase/api";
 import {
   Form,
@@ -12,7 +13,6 @@ import {
 } from "metabase/forms";
 import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { TransformTag } from "metabase-types/api";
 
 type UpdateTagModalProps = {
   tag: TransformTag;

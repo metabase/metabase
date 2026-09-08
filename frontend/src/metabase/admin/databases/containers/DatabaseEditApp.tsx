@@ -2,6 +2,7 @@ import { type ComponentType, useEffect, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   useGetDatabaseQuery,
@@ -25,7 +26,6 @@ import { connect, useSelector } from "metabase/redux";
 import { Outlet, useParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { Box, Divider, Flex } from "metabase/ui";
-import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";
 
 import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionInfoSection";
 import { DatabaseDangerZoneSection } from "../components/DatabaseDangerZoneSection";

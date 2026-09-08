@@ -1,8 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
-import type { ClickAction, LegacyDrill } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
+import type { ClickAction, LegacyDrill } from "metabase/visualizations/types";
 
 import { Mode } from "../Mode";
 import { ArchivedMode } from "../modes/ArchivedMode";

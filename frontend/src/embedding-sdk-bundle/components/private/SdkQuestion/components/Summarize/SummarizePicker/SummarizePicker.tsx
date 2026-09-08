@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import {
   AggregationPicker,
   type AggregationPickerProps,
 } from "metabase/querying/common/components/AggregationPicker";
-import * as Lib from "metabase-lib";
 
 import { useSdkQuestionContext } from "../../../context";
 import { BadgeList, type BadgeListProps } from "../../util/BadgeList";

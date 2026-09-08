@@ -3,6 +3,8 @@ import { useCallback, useMemo } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import CS from "metabase/css/core/index.css";
 import { getSubpathSafeUrl } from "metabase/urls";
 import {
@@ -10,8 +12,6 @@ import {
   getVisibleTableData,
 } from "metabase/visualizations/lib/visible-table-data";
 import { isPivoted as _isPivoted, getTitleForColumn } from "metabase/viz-core";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 
 import { TableInteractive } from "../../components/TableInteractive";
 import type { VisualizationProps } from "../../types";

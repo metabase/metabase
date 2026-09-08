@@ -15,8 +15,6 @@ import {
   renderWithProviders,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { createMockState } from "metabase/redux/store/mocks";
 import type {
   Collection,
   CollectionItem,
@@ -36,6 +34,8 @@ import {
   createMockTable,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import {
   EntityPickerModal,

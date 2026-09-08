@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import type { DatePickerValue } from "metabase/querying/common/types";
 import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import {
@@ -7,8 +9,6 @@ import {
   getDatePickerUnits,
   getDatePickerValue,
 } from "metabase/querying/filters/utils/dates";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 
 import { LAST_QUERY_STAGE_INDEX } from "./constants";
 

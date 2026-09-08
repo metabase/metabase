@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import type { Dashboard, InviteTarget } from "metabase-types/api";
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { getUserIsAdmin } from "metabase/current-user";
 import {
@@ -27,7 +28,6 @@ import {
   dashboard as getDashboardUrl,
   publicDashboard as getPublicDashboardUrl,
 } from "metabase/urls";
-import type { Dashboard, InviteTarget } from "metabase-types/api";
 
 import { DashboardPublicLinkPopover } from "../../../DashboardInfoSidebar/DashboardPublicLinkPopover/DashboardPublicLinkPopover";
 

@@ -3,14 +3,14 @@ import { isValidElementType } from "react-is";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isStorybookActive } from "metabase/env";
-import { retry } from "metabase/utils/retry";
 import type {
   IconName,
   RawSeries,
   TransformedSeries,
   VisualizationDisplay,
 } from "metabase-types/api";
+import { isStorybookActive } from "metabase/env";
+import { retry } from "metabase/utils/retry";
 
 import type { VisualizationDefinition } from "../types/definition";
 

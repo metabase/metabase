@@ -1,8 +1,3 @@
-import {
-  type GeoSubtype,
-  getGeoSubtype,
-} from "metabase/common/metrics/utils/dimension-types";
-import { getDimensionIcon } from "metabase/common/utils/columns";
 import type {
   DimensionGroup,
   DimensionMetadata,
@@ -10,6 +5,11 @@ import type {
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { IconName } from "metabase-types/api";
+import {
+  type GeoSubtype,
+  getGeoSubtype,
+} from "metabase/common/metrics/utils/dimension-types";
+import { getDimensionIcon } from "metabase/common/utils/columns";
 
 import type {
   AvailableDimension,

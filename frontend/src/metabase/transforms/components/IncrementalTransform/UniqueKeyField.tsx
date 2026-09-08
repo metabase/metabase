@@ -1,9 +1,9 @@
 import { useField } from "formik";
 import { t } from "ttag";
 
+import type { TableId } from "metabase-types/api";
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import { MultiSelect, TagsInput } from "metabase/ui";
-import type { TableId } from "metabase-types/api";
 
 // Form value is a comma-separated string of physical column names; this adapter presents it as a
 // column multi-select. Labels use the column display name (matching the checkpoint field select),

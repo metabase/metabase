@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 
+import type * as Lib from "metabase-lib";
 import { Select, Stack } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import type * as Lib from "metabase-lib";
 
 import {
   getColumnOptions,

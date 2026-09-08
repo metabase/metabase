@@ -1,6 +1,7 @@
 import { memo, useState } from "react";
 import { t } from "ttag";
 
+import type { FieldId, Table } from "metabase-types/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Link } from "metabase/common/components/Link";
 import { useTableUpdateHandlers } from "metabase/metadata/hooks";
@@ -15,7 +16,6 @@ import {
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { FieldId, Table } from "metabase-types/api";
 
 import { FieldOrderPicker } from "../FieldOrderPicker";
 import { NameDescriptionInput } from "../NameDescriptionInput";

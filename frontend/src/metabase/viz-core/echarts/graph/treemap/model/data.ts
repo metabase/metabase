@@ -1,10 +1,10 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import type {
   DatasetColumn,
   RawSeries,
   RowValue,
   TreemapRow,
 } from "metabase-types/api";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 
 import { sumMetric } from "../../../../lib/dataset";
 import { getColumnDescriptors } from "../../../../lib/graph/columns";

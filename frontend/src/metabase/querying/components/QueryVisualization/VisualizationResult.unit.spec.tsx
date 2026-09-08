@@ -7,8 +7,6 @@ import {
   screen,
   within,
 } from "__support__/ui";
-import { registerVisualizations } from "metabase/visualizations/register";
-import { loadVisualizationComponents } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockDataset,
@@ -21,6 +19,8 @@ import {
   createOrdersTotalDatasetColumn,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { registerVisualizations } from "metabase/visualizations/register";
+import { loadVisualizationComponents } from "metabase/viz-core";
 
 import { Mode } from "../../click-actions/Mode";
 import { defaultClickActionMode } from "../../click-actions/lib/modes";

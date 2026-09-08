@@ -1,12 +1,12 @@
 import cx from "classnames";
 import React from "react";
 
+import type { SortDirection } from "metabase-types/api";
 import {
   PaginationControls,
   type PaginationControlsProps,
 } from "metabase/common/components/PaginationControls";
 import { Box, Flex, type FlexProps, Icon, Stack } from "metabase/ui";
-import type { SortDirection } from "metabase-types/api";
 
 import CS from "./Table.module.css";
 import type { ColumnItem } from "./types";

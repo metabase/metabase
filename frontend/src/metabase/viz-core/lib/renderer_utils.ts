@@ -1,9 +1,6 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import type { Dayjs } from "metabase/dayjs";
-import { formatNullable } from "metabase/utils/formatting";
-import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import type {
   DatasetData,
@@ -15,6 +12,9 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import { isObjectWithRaw } from "metabase-types/guards";
+import type { Dayjs } from "metabase/dayjs";
+import { formatNullable } from "metabase/utils/formatting";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
 
 import { dimensionIsNumeric } from "./numeric";
 import { dimensionIsExplicitTimeseries } from "./timeseries";

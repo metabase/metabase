@@ -6,7 +6,6 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
 import type { SearchResult } from "metabase-types/api";
@@ -15,6 +14,7 @@ import {
   createMockModelResult,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 
 import { createMockNotebookStep } from "../../../test-utils";
 import type { NotebookStep } from "../../../types";

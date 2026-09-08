@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { mockStorageCloudAddOn } from "metabase-types/api/mocks/add-ons";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { StoragePurchaseButton } from "./StoragePurchaseButton";
 import {

@@ -1,12 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import {
-  createParameter,
-  getFilteringParameterValuesMap,
-  getUnsavedDashboardUiParameters,
-  hasMapping,
-  hasMatchingParameters,
-  setParameterName,
-} from "metabase/parameters/utils/dashboards";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -25,6 +17,14 @@ import {
   PRODUCTS,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import {
+  createParameter,
+  getFilteringParameterValuesMap,
+  getUnsavedDashboardUiParameters,
+  hasMapping,
+  hasMatchingParameters,
+  setParameterName,
+} from "metabase/parameters/utils/dashboards";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

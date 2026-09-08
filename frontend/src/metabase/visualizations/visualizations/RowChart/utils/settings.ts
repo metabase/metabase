@@ -1,5 +1,5 @@
-import { type Range, type Series, getStackOffset } from "metabase/viz-core";
 import type { VisualizationSettings } from "metabase-types/api";
+import { type Range, type Series, getStackOffset } from "metabase/viz-core";
 
 export const getLabelledSeries = <TDatum>(
   settings: VisualizationSettings,

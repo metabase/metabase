@@ -1,8 +1,8 @@
 import { P, isMatching } from "ts-pattern";
 
-import * as Urls from "metabase/urls";
 import type { Card, CardDisplayType, DatasetQuery } from "metabase-types/api";
 import { isCardDisplayType } from "metabase-types/api";
+import * as Urls from "metabase/urls";
 
 import { deserializeCardFromUrl } from "./card";
 

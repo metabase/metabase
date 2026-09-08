@@ -1,10 +1,10 @@
 import { createAction } from "redux-actions";
 
+import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 import {
   NAVIGATE_BACK_TO_DASHBOARD,
   RESET_QB,
 } from "metabase/redux/query-builder";
-import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 
 export const RESET_UI_CONTROLS = "metabase/qb/RESET_UI_CONTROLS";
 export const resetUIControls = createAction(RESET_UI_CONTROLS);

@@ -1,7 +1,7 @@
 import type { EChartsType } from "echarts/core";
 
-import type { ChartBoundsCoords, TimelineEventsModel } from "metabase/viz-core";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
+import type { ChartBoundsCoords, TimelineEventsModel } from "metabase/viz-core";
 
 import {
   arePositionedClustersEqual,

@@ -1,8 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import type { User } from "metabase-types/api";
 import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import type { User } from "metabase-types/api";
 
 import { currentUserApi } from "./api/current-user";
 

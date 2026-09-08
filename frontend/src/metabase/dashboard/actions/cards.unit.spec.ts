@@ -9,11 +9,6 @@ import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import type { State, StoreDashcard } from "metabase/redux/store";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type {
   CardId,
   DashCardId,
@@ -40,6 +35,11 @@ import {
   ORDERS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import type { State, StoreDashcard } from "metabase/redux/store";
+import {
+  createMockDashboardState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 
 import type { SectionLayout } from "../sections";
 import { layoutOptions } from "../sections";

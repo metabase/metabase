@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import type { RowValue } from "metabase-types/api";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 
 import { getNumberOr } from "../../../../lib/settings/row-values";
 import type { ComputedVisualizationSettings } from "../../../../types";

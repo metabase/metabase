@@ -17,16 +17,6 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { dayjs } from "metabase/dayjs";
-import type { DashboardState, StoreDashboard } from "metabase/redux/store";
-import {
-  createMockDashboardState,
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import { Route, useLocation, useParams } from "metabase/router";
-import * as iframeUtils from "metabase/utils/iframe";
 import type {
   Card,
   Dashboard,
@@ -40,6 +30,16 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { dayjs } from "metabase/dayjs";
+import type { DashboardState, StoreDashboard } from "metabase/redux/store";
+import {
+  createMockDashboardState,
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { Route, useLocation, useParams } from "metabase/router";
+import * as iframeUtils from "metabase/utils/iframe";
 
 import { MainNavbar } from "../MainNavbar";
 

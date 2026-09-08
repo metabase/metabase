@@ -1,6 +1,8 @@
 import { Fragment, useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type { FieldId, ParameterId } from "metabase-types/api";
 import {
   skipToken,
   useGetFieldQuery,
@@ -24,8 +26,6 @@ import {
   Switch,
   Text,
 } from "metabase/ui";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { FieldId, ParameterId } from "metabase-types/api";
 
 import S from "./ParameterLinkedFilters.module.css";
 import type { ParameterInfo } from "./types";

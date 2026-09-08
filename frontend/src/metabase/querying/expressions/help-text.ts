@@ -1,6 +1,6 @@
-import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
+import { isNotNull } from "metabase/utils/types";
 
 import { getClauseDefinition } from "./clause";
 

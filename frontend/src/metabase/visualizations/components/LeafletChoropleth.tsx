@@ -2,9 +2,9 @@ import "leaflet/dist/leaflet.css";
 import type { Feature, FeatureCollection } from "geojson";
 import L from "leaflet";
 
+import type { GeoJSONData, Series } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/ui/utils/colors";
-import type { GeoJSONData, Series } from "metabase-types/api";
 
 import { CardRenderer } from "./CardRenderer";
 import { computeMinimalBounds } from "./leaflet-bounds";

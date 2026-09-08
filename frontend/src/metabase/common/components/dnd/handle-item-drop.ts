@@ -1,3 +1,4 @@
+import type { Collection, CollectionItem } from "metabase-types/api";
 import { archiveAndTrack } from "metabase/archive/analytics";
 import {
   moveCollectionItemAndTrack,
@@ -13,7 +14,6 @@ import {
   isMovable,
   isPinnable,
 } from "metabase/common/hooks";
-import type { Collection, CollectionItem } from "metabase-types/api";
 
 export type ItemDropResult = {
   collection?: Collection;

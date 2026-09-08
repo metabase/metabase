@@ -1,10 +1,10 @@
 import type { ComponentType } from "react";
 
+import type { User, UserId } from "metabase-types/api";
 import {
   PluginPlaceholder,
   pluginPlaceholderRoute,
 } from "metabase/plugins/components/PluginPlaceholder";
-import type { User, UserId } from "metabase-types/api";
 
 import type { GetAuthProviders } from "../types";
 

@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import type { SettingDefinitionMap, SettingKey } from "metabase-types/api";
 import { isErrorWithMessage } from "metabase/admin/performance/utils";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
@@ -19,7 +20,6 @@ import {
 } from "metabase/settings";
 import { Box, Button, Chip, Flex, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { SettingDefinitionMap, SettingKey } from "metabase-types/api";
 
 import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
 

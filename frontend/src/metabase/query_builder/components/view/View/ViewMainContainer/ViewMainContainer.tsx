@@ -1,6 +1,16 @@
 import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type {
+  CardId,
+  DatabaseId,
+  NativeQuerySnippet,
+  ParameterId,
+} from "metabase-types/api";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
 import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
@@ -13,16 +23,6 @@ import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
 import type { QueryBuilderMode } from "metabase/redux/store";
 import { Box } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type {
-  CardId,
-  DatabaseId,
-  NativeQuerySnippet,
-  ParameterId,
-} from "metabase-types/api";
 
 import { useVisualizationResultQBProps } from "../../../../hooks";
 import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";

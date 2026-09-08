@@ -1,13 +1,13 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { Collection } from "metabase-types/api";
 import { useCreateCollectionMutation } from "metabase/api";
 import { getCollectionPathAsArray } from "metabase/common/collections/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useNavigate } from "metabase/router";
 import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Collection } from "metabase-types/api";
 
 import type { CreateCollectionFormOwnProps } from "../components/CreateCollectionForm";
 import { CreateCollectionForm } from "../components/CreateCollectionForm";

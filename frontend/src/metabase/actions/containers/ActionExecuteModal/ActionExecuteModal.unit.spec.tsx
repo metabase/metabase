@@ -10,13 +10,13 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { actionApi } from "metabase/api";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { useDispatch } from "metabase/redux";
 import {
   createMockActionParameter,
   createMockImplicitQueryAction,
 } from "metabase-types/api/mocks";
+import { actionApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { useDispatch } from "metabase/redux";
 
 import type { ActionExecuteModalProps } from "./ActionExecuteModal";
 import { ActionExecuteModal } from "./ActionExecuteModal";

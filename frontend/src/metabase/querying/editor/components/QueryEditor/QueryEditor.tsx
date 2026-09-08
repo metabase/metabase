@@ -2,11 +2,11 @@ import { useElementSize } from "@mantine/hooks";
 import type { ComponentType, ReactNode } from "react";
 import { t } from "ttag";
 
+import type * as Lib from "metabase-lib";
+import type { DatasetQuery } from "metabase-types/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
 import { Center, Flex, Modal } from "metabase/ui";
-import type * as Lib from "metabase-lib";
-import type { DatasetQuery } from "metabase-types/api";
 
 import { useQueryEditor } from "../../hooks/use-query-editor";
 import type {

@@ -1,3 +1,10 @@
+import type {
+  Card,
+  ColumnSettings,
+  DatasetData,
+  RawSeries,
+  RowValue,
+} from "metabase-types/api";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import {
   formatCellValueForCopy,
@@ -21,13 +28,6 @@ import {
   getTitleForColumn,
   isPivoted,
 } from "metabase/viz-core";
-import type {
-  Card,
-  ColumnSettings,
-  DatasetData,
-  RawSeries,
-  RowValue,
-} from "metabase-types/api";
 
 interface ResultsClipboardParams {
   card: Card;

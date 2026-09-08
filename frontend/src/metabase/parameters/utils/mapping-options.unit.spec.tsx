@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   SAMPLE_METADATA,
@@ -33,6 +32,7 @@ import type {
   TestNativeQuerySpec,
   TestQuerySpec,
 } from "metabase-types/api/query";
+import { isNotNull } from "metabase/utils/types";
 
 import {
   type ParameterMappingOption,

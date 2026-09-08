@@ -2,10 +2,10 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { createMockDashboard } from "metabase-types/api/mocks";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Menu } from "metabase/ui";
-import { createMockDashboard } from "metabase-types/api/mocks";
 
 import {
   AutoRefreshMenuItem,

@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { Table } from "metabase-types/api";
 import { getEntityIcon } from "metabase/detail-view/utils";
 import { Group, Icon, Select, SelectItem, type SelectProps } from "metabase/ui";
-import type { Table } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   value: Table["entity_type"];

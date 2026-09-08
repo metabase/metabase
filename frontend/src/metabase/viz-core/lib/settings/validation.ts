@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isNotNull } from "metabase/utils/types";
 import type {
   DatasetColumn,
   RowValues,
@@ -9,6 +8,7 @@ import type {
   SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isNotNull } from "metabase/utils/types";
 
 import { ChartSettingsError, MinRowsError } from "../errors";
 import { getCartesianChartColumns } from "../graph/columns";

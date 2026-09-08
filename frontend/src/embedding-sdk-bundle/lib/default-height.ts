@@ -1,5 +1,5 @@
-import { getDefaultSize } from "metabase/viz-core";
 import type { VisualizationDisplay } from "metabase-types/api";
+import { getDefaultSize } from "metabase/viz-core";
 
 /**
  * How many pixels are in each cell?

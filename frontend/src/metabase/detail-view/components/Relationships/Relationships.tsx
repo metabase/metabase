@@ -1,8 +1,8 @@
 import { type ReactNode, useMemo } from "react";
 import { jt, t } from "ttag";
 
-import { type BoxProps, Stack, Text } from "metabase/ui";
 import type { ForeignKey } from "metabase-types/api";
+import { type BoxProps, Stack, Text } from "metabase/ui";
 
 import { Relationship } from "./Relationship";
 

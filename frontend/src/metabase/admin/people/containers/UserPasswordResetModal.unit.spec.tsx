@@ -9,8 +9,8 @@ import {
 } from "__support__/server-mocks/user";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { UserPasswordResetModal } from "./UserPasswordResetModal";
 

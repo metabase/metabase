@@ -1,6 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
-import { type Dayjs, dayjs } from "metabase/dayjs";
 import type { CardId } from "metabase-types/api";
+import { type Dayjs, dayjs } from "metabase/dayjs";
 
 import { expressionParts } from "./expression";
 import { isSegmentMetadata } from "./metadata";

@@ -9,6 +9,7 @@ import {
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { UserId } from "metabase-types/api";
 import { useListUsersQuery } from "metabase/api";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import {
@@ -25,7 +26,6 @@ import {
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { UserId } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import {

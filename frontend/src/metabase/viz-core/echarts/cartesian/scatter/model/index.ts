@@ -1,5 +1,5 @@
-import { isNotNull } from "metabase/utils/types";
 import type { RawSeries } from "metabase-types/api";
+import { isNotNull } from "metabase/utils/types";
 
 import type {
   ComputedVisualizationSettings,

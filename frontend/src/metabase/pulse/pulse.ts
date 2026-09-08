@@ -1,13 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { getEmailDomain } from "metabase/utils/email";
-import MetabaseSettings from "metabase/utils/settings";
-import { formatFrame } from "metabase/utils/time-dayjs";
-import {
-  formatDateTimeWithUnit,
-  formatTimeWithUnit,
-} from "metabase/value-formatting";
 import {
   getDefaultValuePopulatedParameters,
   normalizeParameterValue,
@@ -24,6 +17,13 @@ import type {
   ScheduleSettings,
   User,
 } from "metabase-types/api";
+import { getEmailDomain } from "metabase/utils/email";
+import MetabaseSettings from "metabase/utils/settings";
+import { formatFrame } from "metabase/utils/time-dayjs";
+import {
+  formatDateTimeWithUnit,
+  formatTimeWithUnit,
+} from "metabase/value-formatting";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,

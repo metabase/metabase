@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { isValidElement } from "react";
 
-import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { QueryEditor } from "metabase/querying/editor/components/QueryEditor/QueryEditor";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
+import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { QueryEditor } from "metabase/querying/editor/components/QueryEditor/QueryEditor";
 
 import { NativeQueryParametersList } from "../NativeQueryParametersList";
 import { TemplateTagsSidebar } from "../TemplateTagsSidebar";

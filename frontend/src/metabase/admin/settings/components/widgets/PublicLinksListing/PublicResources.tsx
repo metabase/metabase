@@ -1,5 +1,10 @@
 import { t } from "ttag";
 
+import type {
+  GetPublicAction,
+  GetPublicCard,
+  GetPublicDashboard,
+} from "metabase-types/api";
 import {
   useDeleteActionPublicLinkMutation,
   useDeleteCardPublicLinkMutation,
@@ -10,11 +15,6 @@ import {
 } from "metabase/api";
 import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
-import type {
-  GetPublicAction,
-  GetPublicCard,
-  GetPublicDashboard,
-} from "metabase-types/api";
 
 import { PublicLinksListing } from "./PublicLinksListing";
 

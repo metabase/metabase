@@ -1,3 +1,4 @@
+import type { Timeline } from "metabase-types/api";
 import {
   skipToken,
   useDeleteTimelineMutation,
@@ -7,7 +8,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import DeleteTimelineModal from "metabase/timelines/common/components/DeleteTimelineModal";
 import * as Urls from "metabase/urls";
-import type { Timeline } from "metabase-types/api";
 
 function DeleteTimelineModalContainer({
   params,

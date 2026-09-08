@@ -7,14 +7,14 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 
 import { SiteUrlWidget } from "./SiteUrlWidget";
 

@@ -1,5 +1,6 @@
 import type { EChartsCoreOption } from "echarts/core";
 
+import type { RawSeries } from "metabase-types/api";
 import { dayjs } from "metabase/dayjs";
 import { isNotNull } from "metabase/utils/types";
 import {
@@ -13,7 +14,6 @@ import {
   getDashboardAdjustedSettings,
   getDatasetKey,
 } from "metabase/viz-core";
-import type { RawSeries } from "metabase-types/api";
 
 import { normalizeDimensionValue } from "./events";
 import type { CartesianHoveredObject } from "./types";

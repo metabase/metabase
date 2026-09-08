@@ -2,6 +2,22 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import type { Draft } from "immer";
 import _ from "underscore";
 
+import {
+  isDate,
+  isDimension,
+  isMetric,
+  isNumeric,
+  isString,
+} from "metabase-lib/v1/types/utils/isa";
+import type {
+  Dataset,
+  DatasetColumn,
+  VisualizationSettings,
+  VisualizerColumnReference,
+  VisualizerDataSource,
+  VisualizerDataSourceId,
+  XAxisScale,
+} from "metabase-types/api";
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import { isNotNull } from "metabase/utils/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
@@ -20,22 +36,6 @@ import {
   getDefaultMetricFilter,
   isCartesianChart,
 } from "metabase/viz-core";
-import {
-  isDate,
-  isDimension,
-  isMetric,
-  isNumeric,
-  isString,
-} from "metabase-lib/v1/types/utils/isa";
-import type {
-  Dataset,
-  DatasetColumn,
-  VisualizationSettings,
-  VisualizerColumnReference,
-  VisualizerDataSource,
-  VisualizerDataSourceId,
-  XAxisScale,
-} from "metabase-types/api";
 
 import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 

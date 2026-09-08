@@ -1,14 +1,14 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { UNBINNED } from "metabase/metrics-viewer/constants";
-import { Box, Button, DefaultSelectItem, Popover } from "metabase/ui";
 import type {
   DimensionMetadata,
   MetricDefinition,
   ProjectionClause,
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import { UNBINNED } from "metabase/metrics-viewer/constants";
+import { Box, Button, DefaultSelectItem, Popover } from "metabase/ui";
 
 import S from "../../../CenterControls.module.css";
 

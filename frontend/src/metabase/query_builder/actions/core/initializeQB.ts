@@ -1,3 +1,16 @@
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
+import type {
+  Card,
+  SegmentId,
+  SeriesCard,
+  UnsavedCard,
+} from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
+import { isSavedCard } from "metabase-types/guards";
 import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
@@ -22,19 +35,6 @@ import { navigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { isNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
-import type {
-  Card,
-  SegmentId,
-  SeriesCard,
-  UnsavedCard,
-} from "metabase-types/api";
-import type { EntityToken } from "metabase-types/api/entity";
-import { isSavedCard } from "metabase-types/guards";
 
 import { resetQB } from "../../store/actions";
 import {

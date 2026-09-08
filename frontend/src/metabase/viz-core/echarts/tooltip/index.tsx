@@ -3,9 +3,9 @@ import type React from "react";
 import { useEffect, useMemo } from "react";
 import _ from "underscore";
 
+import type { ClickObject } from "metabase-lib";
 import { getCspNonce } from "metabase/utils/csp";
 import { isNotNull } from "metabase/utils/types";
-import type { ClickObject } from "metabase-lib";
 
 import TooltipStyles from "../../components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
 import type { ComputedVisualizationSettings } from "../../types";

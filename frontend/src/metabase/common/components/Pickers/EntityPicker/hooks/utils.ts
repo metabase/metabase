@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import type { CollectionNamespace } from "metabase-types/api";
 import { collectionApi } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
 import { allCollectionModels } from "metabase/common/components/Pickers/utils";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux";
-import type { CollectionNamespace } from "metabase-types/api";
 
 import type { OmniPickerCollectionItem } from "../types";
 

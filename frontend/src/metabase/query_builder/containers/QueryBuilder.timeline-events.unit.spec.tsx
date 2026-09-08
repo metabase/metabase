@@ -1,9 +1,9 @@
 import { screen, waitFor } from "__support__/ui";
-import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import {
   getFetchedTimelines,

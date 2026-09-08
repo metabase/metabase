@@ -7,15 +7,15 @@ import type {
 } from "echarts/types/src/util/types";
 import _ from "underscore";
 
-import { getTextColorForBackground } from "metabase/ui/colors/palette";
-import { isNotNull } from "metabase/utils/types";
-import { formatValue } from "metabase/value-formatting";
 import type {
   DatasetColumn,
   RowValue,
   SeriesSettings,
   XAxisScale,
 } from "metabase-types/api";
+import { getTextColorForBackground } from "metabase/ui/colors/palette";
+import { isNotNull } from "metabase/utils/types";
+import { formatValue } from "metabase/value-formatting";
 
 import type {
   ComputedVisualizationSettings,

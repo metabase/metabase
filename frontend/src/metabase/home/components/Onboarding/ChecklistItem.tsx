@@ -1,8 +1,8 @@
 import type { CSSProperties, ReactNode, Ref } from "react";
 
+import type { IconName } from "metabase-types/api";
 import type { ChecklistItemValue } from "metabase/redux/store";
 import { Accordion, Icon, Stack } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import type { ChecklistAction } from "./ChecklistItemActions";
 import { ChecklistItemActions } from "./ChecklistItemActions";

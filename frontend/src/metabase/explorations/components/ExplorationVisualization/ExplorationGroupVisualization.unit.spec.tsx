@@ -3,11 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { setHighlightedComment } from "metabase/explorations/explorations.slice";
-import { createPage, createQuery } from "metabase/explorations/test-utils";
-import { Route } from "metabase/router";
-import { registerVisualizations } from "metabase/visualizations/register";
-import type { ClickObject } from "metabase/visualizations/types";
 import type {
   Dataset,
   ExplorationPageNode,
@@ -23,6 +18,11 @@ import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
+import { setHighlightedComment } from "metabase/explorations/explorations.slice";
+import { createPage, createQuery } from "metabase/explorations/test-utils";
+import { Route } from "metabase/router";
+import { registerVisualizations } from "metabase/visualizations/register";
+import type { ClickObject } from "metabase/visualizations/types";
 
 import { ExplorationGroupVisualization } from "./ExplorationGroupVisualization";
 

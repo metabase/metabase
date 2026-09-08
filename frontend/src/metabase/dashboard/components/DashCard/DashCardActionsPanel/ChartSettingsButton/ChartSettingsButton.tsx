@@ -1,14 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { DashboardChartSettings } from "metabase/dashboard/components/DashboardChartSettings";
-import { Modal } from "metabase/ui";
 import type {
   DashCardSeries,
   DashboardCard,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+import { DashboardChartSettings } from "metabase/dashboard/components/DashboardChartSettings";
+import { Modal } from "metabase/ui";
 
 import { DashCardActionButton } from "../DashCardActionButton";
 

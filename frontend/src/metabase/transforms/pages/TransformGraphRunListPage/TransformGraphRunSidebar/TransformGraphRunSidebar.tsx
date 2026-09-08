@@ -3,6 +3,10 @@ import { memo, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type {
+  TransformGraphRun,
+  TransformRunForJobRun,
+} from "metabase-types/api";
 import {
   skipToken,
   useCancelCurrentTransformRunMutation,
@@ -35,10 +39,6 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-import type {
-  TransformGraphRun,
-  TransformRunForJobRun,
-} from "metabase-types/api";
 
 import { TransformRunItem } from "../../JobRunListPage/JobRunSidebar/TransformRunItem";
 import { RunName, isDeletedRun } from "../TransformGraphRunTable";

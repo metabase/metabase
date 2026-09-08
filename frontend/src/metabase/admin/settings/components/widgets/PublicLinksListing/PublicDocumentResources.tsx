@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import type { Document } from "metabase-types/api";
 import { PublicLinksListing } from "metabase/admin/settings/components/widgets/PublicLinksListing/index";
 import {
   useDeleteDocumentPublicLinkMutation,
   useListPublicDocumentsQuery,
 } from "metabase/api";
 import * as Urls from "metabase/urls";
-import type { Document } from "metabase-types/api";
 
 export const PublicLinksDocumentListing = () => {
   const query = useListPublicDocumentsQuery();

@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Card } from "metabase-types/api";
 import { useGetMetricQuery } from "metabase/api/metric";
 import {
   type PillTab,
@@ -12,9 +15,6 @@ import { getMetadata } from "metabase/metadata-store";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Card } from "metabase-types/api";
 
 interface MetricTabsProps {
   card: Card;

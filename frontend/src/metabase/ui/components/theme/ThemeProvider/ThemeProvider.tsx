@@ -5,10 +5,10 @@ import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
 import { type ReactNode, useContext, useMemo } from "react";
 
+import type { ColorSettings } from "metabase-types/api";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { getCspNonce } from "metabase/utils/csp";
-import type { ColorSettings } from "metabase-types/api";
 
 import { getThemeOverrides } from "../../../theme";
 import "../../overlays/Popover/register-popover-dropdown";

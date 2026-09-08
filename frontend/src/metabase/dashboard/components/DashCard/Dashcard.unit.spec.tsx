@@ -16,19 +16,6 @@ import {
   within,
 } from "__support__/ui";
 import {
-  MockDashboardContext,
-  type MockDashboardContextProps,
-} from "metabase/dashboard/context/mock-context";
-import * as dashboardSelectors from "metabase/dashboard/selectors";
-import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
-import { reinitialize } from "metabase/plugins";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
-import { registerVisualizations } from "metabase/visualizations/register";
-import {
   type DashCardDataMap,
   DataPermissionValue,
   type DownloadPermission,
@@ -53,6 +40,19 @@ import {
   createMockTextDashboardCard,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import {
+  MockDashboardContext,
+  type MockDashboardContextProps,
+} from "metabase/dashboard/context/mock-context";
+import * as dashboardSelectors from "metabase/dashboard/selectors";
+import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
+import { reinitialize } from "metabase/plugins";
+import {
+  createMockDashboardState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import type { DashCardProps } from "./DashCard";
 import { DashCard } from "./DashCard";

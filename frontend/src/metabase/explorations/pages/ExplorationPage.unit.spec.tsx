@@ -8,6 +8,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import type { Exploration, ExplorationThread } from "metabase-types/api";
 import {
   createBlock,
   createExploration,
@@ -17,7 +18,6 @@ import {
 } from "metabase/explorations/test-utils";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { Exploration, ExplorationThread } from "metabase-types/api";
 
 import { ExplorationPage } from "./ExplorationPage";
 

@@ -17,6 +17,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import type { DocumentContent } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
@@ -31,7 +32,6 @@ import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/exte
 import { getSetting } from "metabase/settings";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
-import type { DocumentContent } from "metabase-types/api";
 
 import S from "./CommentEditor.module.css";
 import { EmojiSuggestionExtension } from "./EmojiSuggestionExtension";

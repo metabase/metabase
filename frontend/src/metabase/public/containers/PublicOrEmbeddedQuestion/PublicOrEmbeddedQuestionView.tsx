@@ -2,13 +2,6 @@ import cx from "classnames";
 import { updateIn } from "icepick";
 import type { Dispatch, SetStateAction } from "react";
 
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import CS from "metabase/css/core/index.css";
-import type { DisplayTheme } from "metabase/embedding/types";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { EmbedFrame } from "metabase/public/components/EmbedFrame";
-import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder";
-import Visualization from "metabase/visualizations/components/Visualization";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -21,6 +14,13 @@ import type {
   RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
+import type { DisplayTheme } from "metabase/embedding/types";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { EmbedFrame } from "metabase/public/components/EmbedFrame";
+import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder";
+import Visualization from "metabase/visualizations/components/Visualization";
 
 import { publicClickActionMode } from "../../PublicMode";
 

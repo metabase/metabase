@@ -1,9 +1,5 @@
 import type { ComponentType } from "react";
 
-import type { ToastArgs } from "metabase/common/hooks";
-import type { IconData } from "metabase/common/utils/icon";
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { Dispatch } from "metabase/redux/store";
 import type {
   CustomVizPluginId,
   CustomVizPluginRuntime,
@@ -11,6 +7,10 @@ import type {
   WidgetMount,
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
+import type { ToastArgs } from "metabase/common/hooks";
+import type { IconData } from "metabase/common/utils/icon";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { Dispatch } from "metabase/redux/store";
 
 export type LoadCustomVizPluginForDisplayResult =
   | { status: "loaded"; display: VisualizationDisplay }

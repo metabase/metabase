@@ -1,9 +1,9 @@
-import * as Analytics from "metabase/analytics";
 import type { CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
+import * as Analytics from "metabase/analytics";
 
 import { handleItemDrop } from "./handle-item-drop";
 

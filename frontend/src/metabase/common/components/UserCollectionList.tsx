@@ -1,3 +1,4 @@
+import type { CollectionId, IconName, User } from "metabase-types/api";
 import { useListUsersQuery } from "metabase/api";
 import {
   PERSONAL_COLLECTIONS,
@@ -5,7 +6,6 @@ import {
 } from "metabase/common/collections/constants";
 import { CollectionListView } from "metabase/common/components/CollectionListView";
 import * as Urls from "metabase/urls";
-import type { CollectionId, IconName, User } from "metabase-types/api";
 
 export const UserCollectionList = () => {
   const { data, isLoading } = useListUsersQuery({});

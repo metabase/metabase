@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import {
   skipToken,
   useGetSegmentQuery,
@@ -10,7 +11,6 @@ import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
-import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
 import type { SegmentTabUrls } from "../types";
 

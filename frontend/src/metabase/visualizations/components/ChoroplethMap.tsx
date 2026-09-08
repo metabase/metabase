@@ -6,6 +6,13 @@ import { useEffect, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
+import type {
+  CustomGeoJSONMap,
+  GeoJSONData,
+  RowValue,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
@@ -26,13 +33,6 @@ import {
   getMinSize,
   unaggregatedDataWarningMap,
 } from "metabase/viz-core";
-import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
-import type {
-  CustomGeoJSONMap,
-  GeoJSONData,
-  RowValue,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 import { ChartWithLegend } from "./ChartWithLegend";
 import {

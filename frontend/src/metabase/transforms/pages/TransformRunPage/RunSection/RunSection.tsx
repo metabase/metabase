@@ -3,6 +3,12 @@ import { useCallback, useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import type {
+  Transform,
+  TransformDagDirection,
+  TransformDagRunId,
+  TransformTagId,
+} from "metabase-types/api";
 import {
   skipToken,
   useCancelCurrentTransformRunMutation,
@@ -29,12 +35,6 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-import type {
-  Transform,
-  TransformDagDirection,
-  TransformDagRunId,
-  TransformTagId,
-} from "metabase-types/api";
 
 import {
   trackTransformRunTagsUpdated,

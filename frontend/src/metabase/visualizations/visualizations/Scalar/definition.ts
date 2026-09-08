@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { DatasetData } from "metabase-types/api/dataset";
 import {
   type VisualizationDefinition,
   columnSettings,
@@ -8,7 +9,6 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/viz-core";
-import type { DatasetData } from "metabase-types/api/dataset";
 
 export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Number`,

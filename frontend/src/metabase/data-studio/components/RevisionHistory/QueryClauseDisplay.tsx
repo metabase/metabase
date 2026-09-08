@@ -1,8 +1,8 @@
+import * as Lib from "metabase-lib";
+import type { DatasetQuery, TableId } from "metabase-types/api";
 import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type { DatasetQuery, TableId } from "metabase-types/api";
 
 import { ClausePill } from "./ClausePill";
 import type { DefinitionType } from "./types";

@@ -1,6 +1,11 @@
 import { memo, useCallback, useState } from "react";
 import { t } from "ttag";
 
+import {
+  type FieldId,
+  type Table,
+  isConcreteTableId,
+} from "metabase-types/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
@@ -32,11 +37,6 @@ import {
 import * as Urls from "metabase/urls";
 import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
 import { dependencyGraph } from "metabase/urls/dependencies";
-import {
-  type FieldId,
-  type Table,
-  isConcreteTableId,
-} from "metabase-types/api";
 
 import S from "./TableSection.module.css";
 import { MeasureList } from "./components/MeasureList";

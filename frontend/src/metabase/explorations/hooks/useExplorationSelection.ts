@@ -8,6 +8,12 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import type {
+  DimensionId,
+  ExplorationMetric,
+  MetricDimension,
+  Timeline,
+} from "metabase-types/api";
 import { useListTimelinesQuery } from "metabase/api";
 import { getUserPersonalCollectionId } from "metabase/current-user";
 import {
@@ -16,12 +22,6 @@ import {
 } from "metabase/explorations/constants";
 import type { ExplorationCollection } from "metabase/explorations/types";
 import { useSelector } from "metabase/redux";
-import type {
-  DimensionId,
-  ExplorationMetric,
-  MetricDimension,
-  Timeline,
-} from "metabase-types/api";
 
 export interface ExplorationBlock {
   id: string;

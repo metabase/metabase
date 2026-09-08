@@ -1,6 +1,4 @@
 import { is_coerceable } from "cljs/metabase.types.core";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { getGlobalSettingsForColumn } from "metabase/viz-core";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isTypeFK, isa } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -11,6 +9,8 @@ import type {
   SchemaName,
   Table,
 } from "metabase-types/api";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getGlobalSettingsForColumn } from "metabase/viz-core";
 
 import { hasDatabaseFeature } from "./database";
 import { getSchemaDisplayName } from "./schema";

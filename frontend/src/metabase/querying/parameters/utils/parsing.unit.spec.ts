@@ -1,5 +1,5 @@
-import type { DateFilterValue } from "metabase/querying/common/types";
 import type { ParameterValueOrArray } from "metabase-types/api";
+import type { DateFilterValue } from "metabase/querying/common/types";
 
 import {
   deserializeBooleanParameterValue,

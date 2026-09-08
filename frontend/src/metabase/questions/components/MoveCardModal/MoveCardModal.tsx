@@ -2,6 +2,7 @@ import { useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
+import type { Card } from "metabase-types/api";
 import { getDashboard, useUpdateCardMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { QuestionMoveConfirmModal } from "metabase/common/collections/components/QuestionMoveConfirmModal";
@@ -20,7 +21,6 @@ import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
 import { Box, Icon, Radio, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Card } from "metabase-types/api";
 
 import MoveCardToast from "./MoveCardToast";
 

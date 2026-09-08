@@ -1,3 +1,4 @@
+import type { EmbeddingParameters } from "metabase-types/api";
 import type { StaticEmbedSetupPaneProps } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/StaticEmbedSetupPane";
 import {
   trackStaticEmbedDiscarded,
@@ -6,7 +7,6 @@ import {
 } from "metabase/embedding/lib/analytics";
 import { countEmbeddingParameterOptions } from "metabase/embedding/lib/count-embedding-parameter-options";
 import type { EmbedResourceParameter } from "metabase/embedding/types";
-import type { EmbeddingParameters } from "metabase-types/api";
 
 import { getDefaultEmbeddingParams } from "./get-default-embedding-params";
 

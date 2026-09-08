@@ -1,5 +1,5 @@
-import { CollectionBadge } from "metabase/common/collections/components/CollectionBadge";
 import type { CollectionId } from "metabase-types/api";
+import { CollectionBadge } from "metabase/common/collections/components/CollectionBadge";
 
 import { Separator } from "./Separator";
 

@@ -1,5 +1,7 @@
 import { msgid, ngettext, t } from "ttag";
 
+import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
+import { isConcreteTableId } from "metabase-types/api";
 import {
   useGetTableQueryMetadataQuery,
   useListTableForeignKeysQuery,
@@ -11,8 +13,6 @@ import {
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
-import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
-import { isConcreteTableId } from "metabase-types/api";
 
 import { ConnectedTableList } from "./ConnectedTableList";
 import { FieldList } from "./FieldList";

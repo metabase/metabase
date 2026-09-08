@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import type { EditWidgetData } from "metabase/viz-core";
 import type { DatasetColumn } from "metabase-types/api";
+import type { EditWidgetData } from "metabase/viz-core";
 
 import { ColumnItem } from "./ColumnItem";
 

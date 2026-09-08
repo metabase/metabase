@@ -1,8 +1,5 @@
 import { t } from "ttag";
 
-import { serializeCardForUrl } from "metabase/common/utils/card";
-import { dayjs } from "metabase/dayjs";
-import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -11,6 +8,9 @@ import type { DatabaseId } from "metabase-types/api/database";
 import type { FieldId } from "metabase-types/api/field";
 import type { SegmentId } from "metabase-types/api/segment";
 import type { TableId } from "metabase-types/api/table";
+import { serializeCardForUrl } from "metabase/common/utils/card";
+import { dayjs } from "metabase/dayjs";
+import * as Urls from "metabase/urls";
 
 export const idsToObjectMap = <T extends { id: unknown }>(
   ids: ReadonlyArray<string | number>,

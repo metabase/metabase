@@ -2,6 +2,10 @@ import type { Editor } from "@tiptap/react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type {
+  VisualizationDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { useDispatch, useSelector } from "metabase/redux";
 import {
@@ -17,10 +21,6 @@ import {
   Text,
 } from "metabase/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
-import type {
-  VisualizationDisplay,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 import {
   closeSidebar,

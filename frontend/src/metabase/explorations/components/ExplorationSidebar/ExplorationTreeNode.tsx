@@ -10,6 +10,15 @@ import {
 import { t } from "ttag";
 
 import {
+  type ExplorationId,
+  type ExplorationPageNodeId,
+  type ExplorationQueryStatus,
+  type ExplorationThreadId,
+  isRestartableExplorationThreadStatus,
+  isSettledExplorationQueryStatus,
+  isTerminalExplorationThreadStatus,
+} from "metabase-types/api";
+import {
   useCancelExplorationThreadMutation,
   useRestartExplorationThreadMutation,
   useSetPagesHiddenMutation,
@@ -35,15 +44,6 @@ import {
   type IconProps,
   Menu,
 } from "metabase/ui";
-import {
-  type ExplorationId,
-  type ExplorationPageNodeId,
-  type ExplorationQueryStatus,
-  type ExplorationThreadId,
-  isRestartableExplorationThreadStatus,
-  isSettledExplorationQueryStatus,
-  isTerminalExplorationThreadStatus,
-} from "metabase-types/api";
 
 import { ExplorationErrorMarker } from "./ExplorationErrorMarker";
 import { ExplorationLastActivity } from "./ExplorationLastActivity";

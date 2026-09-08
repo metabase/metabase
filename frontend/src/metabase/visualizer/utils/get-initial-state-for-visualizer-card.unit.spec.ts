@@ -1,4 +1,3 @@
-import { registerVisualizations } from "metabase/visualizations/register";
 import type { VisualizerVizDefinition } from "metabase-types/api";
 import {
   createMockCard,
@@ -7,6 +6,7 @@ import {
   createMockDatasetData,
   createMockVisualizerDashboardCard,
 } from "metabase-types/api/mocks";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { getInitialStateForVisualizerCard } from "./get-initial-state-for-visualizer-card";
 

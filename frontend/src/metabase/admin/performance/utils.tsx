@@ -3,6 +3,15 @@ import { c } from "ttag";
 import * as Yup from "yup";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
+import type {
+  AdaptiveStrategy,
+  CacheConfig,
+  CacheStrategy,
+  CacheStrategyType,
+  CacheableModel,
+} from "metabase-types/api";
+import { CacheDurationUnit } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
 import { getScheduleStrings } from "metabase/common/components/Schedule/strings";
 import {
@@ -13,15 +22,6 @@ import {
   defaultMinDurationMs,
 } from "metabase/plugins";
 import { isNullOrUndefined } from "metabase/utils/types";
-import type {
-  AdaptiveStrategy,
-  CacheConfig,
-  CacheStrategy,
-  CacheStrategyType,
-  CacheableModel,
-} from "metabase-types/api";
-import { CacheDurationUnit } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
 
 import { rootId } from "./constants/simple";
 

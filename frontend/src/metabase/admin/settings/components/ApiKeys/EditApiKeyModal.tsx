@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type { ApiKey, UpdateApiKeyRequest } from "metabase-types/api";
 import {
   Form,
   FormErrorMessage,
@@ -11,7 +12,6 @@ import {
 } from "metabase/forms";
 import { Button, Group, Modal, Paper, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
-import type { ApiKey, UpdateApiKeyRequest } from "metabase-types/api";
 
 import {
   useRegenerateApiKeyMutation,

@@ -11,7 +11,6 @@ import {
   questionIdArgType,
   questionIds,
 } from "embedding-sdk-bundle/test/storybook-id-args";
-import { Box, Stack } from "metabase/ui";
 import {
   createMockNativeCard,
   createMockNativeDatasetQuery,
@@ -19,6 +18,7 @@ import {
   createMockParameter,
 } from "metabase-types/api/mocks";
 import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import { Box, Stack } from "metabase/ui";
 
 import { SdkQuestion } from "./SdkQuestion";
 import { nativeQuestionWithParametersData } from "./data/data";

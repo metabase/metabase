@@ -23,11 +23,6 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
-import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
-import { checkNotNull } from "metabase/utils/types";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -38,6 +33,11 @@ import {
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
+import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 
 const TEST_COLLECTION = createMockCollection();
 

@@ -17,16 +17,16 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
-import { checkNotNull } from "metabase/utils/types";
 import {
   createMockDashboard,
   createMockDashboardQueryMetadata,
   createMockDatabase,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
+import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 
 const TARGET_TEXT = "Scroll to me plz.";
 const DASHBOARD_ID = 1;

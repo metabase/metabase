@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type { MouseEvent, PropsWithChildren } from "react";
 
+import type { CollectionItem } from "metabase-types/api";
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
@@ -9,7 +10,6 @@ import {
   CollectionRowDropTarget,
 } from "metabase/common/components/dnd/CollectionDropTarget";
 import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
-import type { CollectionItem } from "metabase-types/api";
 
 import S from "./BaseItemTableRow.module.css";
 

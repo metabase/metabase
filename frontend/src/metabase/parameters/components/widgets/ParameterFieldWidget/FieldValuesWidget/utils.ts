@@ -1,9 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { ComboboxItem } from "metabase/ui";
-import { isTransientId } from "metabase/utils/dashboard";
-import { stripId } from "metabase/utils/formatting";
 import type Field from "metabase-lib/v1/metadata/Field";
 import {
   canListFieldValues,
@@ -24,6 +21,9 @@ import type {
   Parameter,
   RowValue,
 } from "metabase-types/api";
+import type { ComboboxItem } from "metabase/ui";
+import { isTransientId } from "metabase/utils/dashboard";
+import { stripId } from "metabase/utils/formatting";
 
 import type { ValuesMode } from "./types";
 

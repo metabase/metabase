@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { PaginationFooter } from "metabase/data-grid";
 import Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
+import { PaginationFooter } from "metabase/data-grid";
 
 import S from "./ObjectDetail.module.css";
 import { ObjectDetailPanel } from "./ObjectDetailPanel";

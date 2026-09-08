@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import {
   type EntityType,
@@ -23,7 +24,6 @@ import { TransformCollectionName } from "metabase/common/components/TransformCol
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Button, Icon, Input, type InputWrapperProps } from "metabase/ui";
-import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
 interface FormCollectionPickerProps extends InputWrapperProps {
   name: string;

@@ -4,13 +4,13 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { UpdatesNavItem } from "./UpdatesNavItem";
 

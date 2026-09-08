@@ -1,5 +1,5 @@
-import { ActionIcon, Flex, Icon } from "metabase/ui";
 import type { CardDisplayType, IconName } from "metabase-types/api";
+import { ActionIcon, Flex, Icon } from "metabase/ui";
 
 import S from "./ChartTypePicker.module.css";
 

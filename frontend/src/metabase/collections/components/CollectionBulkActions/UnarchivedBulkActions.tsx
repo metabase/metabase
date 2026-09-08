@@ -1,8 +1,8 @@
 import { c, t } from "ttag";
 
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import { BulkActionButton } from "metabase/common/components/BulkActionBar";
 import { Icon, Menu } from "metabase/ui";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import { useBulkBookmark } from "./use-bulk-bookmark";
 import { useBulkDuplicate } from "./use-bulk-duplicate";

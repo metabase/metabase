@@ -2,10 +2,10 @@ import { act } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, waitFor } from "__support__/ui";
-import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import type { Collection } from "metabase-types/api";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
+import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 
 import { useCollectionChartPaste } from "./use-collection-chart-paste";
 

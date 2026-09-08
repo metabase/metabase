@@ -1,5 +1,5 @@
-import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
+import { checkNotNull } from "metabase/utils/types";
 
 import {
   deriveFieldOperatorFromParameter,

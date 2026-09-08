@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
+import type { FieldId, Table } from "metabase-types/api";
 import { SortableFieldList } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import type { FieldId, Table } from "metabase-types/api";
 
 type TableSortableFieldListProps = {
   table: Table;

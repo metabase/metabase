@@ -1,8 +1,8 @@
 // VisualizeButton.tsx
 import { t } from "ttag";
 
-import { Button } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
+import { Button } from "metabase/ui";
 
 import { useRunVisualization } from "./use-run-visualization";
 

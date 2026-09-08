@@ -1,7 +1,3 @@
-import { cardApi, dashboardApi, datasetApi } from "metabase/api";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { createThunkAction } from "metabase/redux";
-import type { Dispatch, GetState } from "metabase/redux/store";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -13,6 +9,10 @@ import type {
   Parameter,
   RowValue,
 } from "metabase-types/api";
+import { cardApi, dashboardApi, datasetApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { createThunkAction } from "metabase/redux";
+import type { Dispatch, GetState } from "metabase/redux/store";
 
 import { fieldRemappingsUpdated } from "./actions";
 import { getFieldRemappings } from "./selectors";

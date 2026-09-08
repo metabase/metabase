@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type * as Lib from "metabase-lib";
 import { dayjs } from "metabase/dayjs";
 import {
   pluralize,
@@ -7,7 +8,6 @@ import {
   stripId,
 } from "metabase/utils/formatting/strings";
 import type { Drill } from "metabase/visualizations/types/click-actions";
-import type * as Lib from "metabase-lib";
 
 export const fkFilterDrill: Drill<Lib.FKFilterDrillThruInfo> = ({
   drill,

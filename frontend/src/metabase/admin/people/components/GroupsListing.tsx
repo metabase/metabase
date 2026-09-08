@@ -3,6 +3,7 @@ import { useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import type { ApiKey, GroupInfo } from "metabase-types/api";
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
 import { getErrorMessage } from "metabase/api/utils";
@@ -27,7 +28,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { KEYCODE_ENTER } from "metabase/utils/keyboard";
-import type { ApiKey, GroupInfo } from "metabase-types/api";
 
 import { useListApiKeysQuery } from "../../settings/api/api-key";
 import { groupIdToColor } from "../colors";

@@ -3,6 +3,15 @@ import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
+import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
+import type {
+  Card,
+  DashboardCard,
+  Parameter,
+  ParameterTarget,
+  VirtualCard,
+} from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { setParameterMapping } from "metabase/dashboard/actions/parameters";
 import {
@@ -25,15 +34,6 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
-import type Question from "metabase-lib/v1/Question";
-import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
-import type {
-  Card,
-  DashboardCard,
-  Parameter,
-  ParameterTarget,
-  VirtualCard,
-} from "metabase-types/api";
 
 import { DashCardCardParameterMapperButton } from "./DashCardCardParameterMapperButton";
 import S from "./DashCardParameterMapper.module.css";

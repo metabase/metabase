@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { useMemo } from "react";
 
-import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { Flex } from "metabase/ui";
 
 import S from "./FilterPanel.module.css";
 import { FilterPanelPopover } from "./FilterPanelPopover";

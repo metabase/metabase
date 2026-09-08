@@ -1,8 +1,3 @@
-import {
-  deserializeCardFromQuery,
-  getMetricSeriesWithDefaultDisplay,
-} from "metabase/common/utils/card";
-import { utf8_to_b64url } from "metabase/utils/encoding";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
@@ -11,6 +6,11 @@ import {
   createMockDataset,
 } from "metabase-types/api/mocks";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+import {
+  deserializeCardFromQuery,
+  getMetricSeriesWithDefaultDisplay,
+} from "metabase/common/utils/card";
+import { utf8_to_b64url } from "metabase/utils/encoding";
 
 describe("deserializeCardFromQuery", () => {
   const MBQL_QUERY = {

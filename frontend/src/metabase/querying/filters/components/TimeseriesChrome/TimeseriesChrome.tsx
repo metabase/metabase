@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Group, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import { Group, Text } from "metabase/ui";
 
 import { TimeseriesBucketPicker } from "./TimeseriesBucketPicker";
 import { TimeseriesFilterPicker } from "./TimeseriesFilterPicker";

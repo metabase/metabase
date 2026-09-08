@@ -1,10 +1,10 @@
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import {
   getAdHocQuestionDescription,
   shouldRenderAdhocDescription,
 } from "metabase/query_builder";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 
 export const getQuestionTitle = (
   question: Question | undefined,

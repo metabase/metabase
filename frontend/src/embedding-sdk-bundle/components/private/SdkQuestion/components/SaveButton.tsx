@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import type { ButtonProps } from "embedding-sdk-bundle/types/ui";
-import { isQuestionDirty } from "metabase/querying/common/utils/question";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import { isQuestionDirty } from "metabase/querying/common/utils/question";
 
 import { useSdkQuestionContext } from "../context";
 

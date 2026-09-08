@@ -11,6 +11,12 @@ import {
 } from "react";
 import _ from "underscore";
 
+import type {
+  MetabotChatContext,
+  MetabotSuggestedTransform,
+  MetabotTransformInfo,
+  TaggedTransform,
+} from "metabase-types/api";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
@@ -19,12 +25,6 @@ import {
 import { dayjs } from "metabase/dayjs";
 import { useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import type {
-  MetabotChatContext,
-  MetabotSuggestedTransform,
-  MetabotTransformInfo,
-  TaggedTransform,
-} from "metabase-types/api";
 
 export type ChatContextProviderFn = (
   state: State,

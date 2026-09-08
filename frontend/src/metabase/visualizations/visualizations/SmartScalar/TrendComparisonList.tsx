@@ -1,5 +1,5 @@
-import { Ellipsified, Flex, Stack, Text } from "metabase/ui";
 import type { ColumnSettings } from "metabase-types/api";
+import { Ellipsified, Flex, Stack, Text } from "metabase/ui";
 
 import S from "./TrendComparisonList.module.css";
 import {

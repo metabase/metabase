@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { Bookmark, Collection } from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
@@ -35,7 +36,6 @@ import { useSetting, useUserSetting } from "metabase/settings";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
-import type { Bookmark, Collection } from "metabase-types/api";
 
 import {
   PaddedSidebarLink,

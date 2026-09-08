@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { NotificationId } from "metabase-types/api";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
@@ -15,7 +16,6 @@ import {
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { NotificationId } from "metabase-types/api";
 
 import {
   trackAlertsManagementAlertOpened,

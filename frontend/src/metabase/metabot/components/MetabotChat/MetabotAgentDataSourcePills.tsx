@@ -1,6 +1,17 @@
 import { Fragment, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type {
+  DatasetQuery,
+  IconName,
+  MetabotCodeEdit,
+  MetabotCodeEditorBufferContext,
+  MetabotSourceFeedback,
+  NativeDatasetQuery,
+  TemplateTags,
+} from "metabase-types/api";
 import {
   skipToken,
   useExtractSourcesQuery,
@@ -31,17 +42,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type {
-  DatasetQuery,
-  IconName,
-  MetabotCodeEdit,
-  MetabotCodeEditorBufferContext,
-  MetabotSourceFeedback,
-  NativeDatasetQuery,
-  TemplateTags,
-} from "metabase-types/api";
 
 import { useSubmitMetabotSourceFeedbackMutation } from "../../api";
 

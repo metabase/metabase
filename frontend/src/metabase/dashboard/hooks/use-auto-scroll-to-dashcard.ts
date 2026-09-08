@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from "react";
 
+import type { DashCardId } from "metabase-types/api";
 import type { Path } from "metabase/router";
 import { useNavigate } from "metabase/router";
 import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
-import type { DashCardId } from "metabase-types/api";
 
 export interface UseAutoScrollToDashcardResult {
   autoScrollToDashcardId: DashCardId | undefined;

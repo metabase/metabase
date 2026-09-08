@@ -1,9 +1,9 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 import { t } from "ttag";
 
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { formatPercent } from "metabase/utils/formatting";
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
 import {
   EChartsTooltip,

@@ -2,6 +2,16 @@ import { getIn, setIn } from "icepick";
 import _ from "underscore";
 
 import {
+  DataPermission,
+  DataPermissionValue,
+  type DatabaseEntityId,
+  type GroupsPermissions,
+  type PermissionEntityId,
+  type PermissionsDatabase,
+  type SchemaEntityId,
+  type TableEntityId,
+} from "metabase-types/api";
+import {
   isSchemaEntityId,
   isTableEntityId,
 } from "metabase/admin/permissions/utils/data-entity-id";
@@ -12,16 +22,6 @@ import {
   tableToTableEntityId,
 } from "metabase/admin/permissions/utils/metadata";
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
-import {
-  DataPermission,
-  DataPermissionValue,
-  type DatabaseEntityId,
-  type GroupsPermissions,
-  type PermissionEntityId,
-  type PermissionsDatabase,
-  type SchemaEntityId,
-  type TableEntityId,
-} from "metabase-types/api";
 
 import {
   getFieldsPermission,

@@ -3,13 +3,13 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import CS from "metabase/css/core/index.css";
 import type {
   ClickBehavior,
   ClickBehaviorType,
   DashboardCard,
   DatasetColumn,
 } from "metabase-types/api";
+import CS from "metabase/css/core/index.css";
 
 import { hasActionsMenu } from "../../../utils";
 

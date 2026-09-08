@@ -3,9 +3,6 @@ import { type FormEvent, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import CS from "metabase/css/core/index.css";
-import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
-import { Box } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import {
   getFilterArgumentFormatOptions,
@@ -18,6 +15,9 @@ import {
   hasValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { CardId, DashboardId, RowValue } from "metabase-types/api";
+import CS from "metabase/css/core/index.css";
+import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
+import { Box } from "metabase/ui";
 
 import { Footer } from "../Widget";
 import { MIN_WIDTH } from "../constants";

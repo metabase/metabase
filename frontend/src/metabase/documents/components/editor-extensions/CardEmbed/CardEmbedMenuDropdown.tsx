@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
+import type { Dataset } from "metabase-types/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
 import { canDownloadResults } from "metabase/common/utils/dataset";
 import { Icon, Menu } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
-import type Question from "metabase-lib/v1/Question";
-import type { Dataset } from "metabase-types/api";
 
 export interface CardEmbedMenuContext {
   canWrite: boolean;

@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 
-import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 

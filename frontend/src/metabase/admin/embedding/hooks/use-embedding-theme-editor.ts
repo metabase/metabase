@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { isEqual } from "underscore";
 
+import type { EmbeddingTheme } from "metabase-types/api";
+import type { ColorSettings } from "metabase-types/api/settings";
 import { useDefaultEmbeddingThemeSettings } from "metabase/admin/embedding/hooks/use-default-embedding-theme-settings";
 import { skipToken } from "metabase/api";
 import {
@@ -19,8 +21,6 @@ import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useSetting } from "metabase/settings";
 import { suggestHarmonyColors } from "metabase/ui/colors/harmonies";
-import type { EmbeddingTheme } from "metabase-types/api";
-import type { ColorSettings } from "metabase-types/api/settings";
 
 interface ThemeEditorState {
   name: string;

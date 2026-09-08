@@ -1,10 +1,10 @@
-import { Button, Icon } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   ClickBehavior,
   Dashboard,
   DashboardCard,
 } from "metabase-types/api";
+import { Button, Icon } from "metabase/ui";
 
 import S from "../ClickBehaviorSidebar.module.css";
 import { SidebarContent } from "../ClickBehaviorSidebarComponents";

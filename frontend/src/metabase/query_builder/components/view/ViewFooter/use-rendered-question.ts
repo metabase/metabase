@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
+import { useSelector } from "metabase/redux";
 
 import {
   getIsRunning,

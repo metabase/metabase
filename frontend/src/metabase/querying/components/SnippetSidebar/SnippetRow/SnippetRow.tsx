@@ -2,10 +2,10 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { NativeQuerySnippet } from "metabase-types/api";
 import { useUpdateSnippetMutation } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { Button, Ellipsified, Flex, Icon } from "metabase/ui";
-import type { NativeQuerySnippet } from "metabase-types/api";
 
 import SnippetRowS from "./SnippetRow.module.css";
 

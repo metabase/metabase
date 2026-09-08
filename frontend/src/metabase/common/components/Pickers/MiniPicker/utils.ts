@@ -2,12 +2,12 @@ import { useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
+import type { SchemaName } from "metabase-types/api";
 import { cardApi, collectionApi, databaseApi, tableApi } from "metabase/api";
 import { getCollectionItemsOptions } from "metabase/common/components/Pickers/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux";
 import { useDispatch } from "metabase/redux";
-import type { SchemaName } from "metabase-types/api";
 
 import type { DataPickerValue } from "../DataPicker";
 

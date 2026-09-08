@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { Database } from "metabase-types/api";
 import {
   tableApi,
   useDismissDatabaseSyncSpinnerMutation,
@@ -17,7 +18,6 @@ import { useDispatch } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { Button, Flex, Tooltip } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
-import type { Database } from "metabase-types/api";
 
 import { DatabaseConnectionHealthInfo } from "../DatabaseConnectionHealthInfo";
 import {

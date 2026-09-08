@@ -3,6 +3,13 @@ import type { Draft } from "@reduxjs/toolkit";
 import { createAction, createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
+import type {
+  DashCardId,
+  Dashboard,
+  DashboardId,
+  DashboardTabId,
+  ParameterId,
+} from "metabase-types/api";
 import { updateDashboard } from "metabase/api/dashboard";
 import { CANCEL_EDITING_DASHBOARD } from "metabase/dashboard/actions/core";
 import { INITIALIZE, selectTab } from "metabase/redux/dashboard";
@@ -16,13 +23,6 @@ import type {
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import { getPositionForNewDashCard } from "metabase/utils/dashboard_grid";
 import { checkNotNull } from "metabase/utils/types";
-import type {
-  DashCardId,
-  Dashboard,
-  DashboardId,
-  DashboardTabId,
-  ParameterId,
-} from "metabase-types/api";
 
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import {

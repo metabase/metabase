@@ -2,6 +2,20 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  getFieldRefForComparison,
+  migratePivotColumnSplitSetting,
+} from "metabase-lib/v1/queries/utils/pivot";
+import { isDimension } from "metabase-lib/v1/types/utils/isa";
+import type {
+  Card,
+  DatasetColumn,
+  DatasetData,
+  PivotTableColumnSplitSetting,
+  RawSeries,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { displayNameForColumn } from "metabase/value-formatting";
 import {
   COLLAPSED_ROWS_SETTING,
@@ -17,20 +31,6 @@ import {
   type ComputedVisualizationSettings,
   columnSettings,
 } from "metabase/viz-core";
-import {
-  getFieldRefForComparison,
-  migratePivotColumnSplitSetting,
-} from "metabase-lib/v1/queries/utils/pivot";
-import { isDimension } from "metabase-lib/v1/types/utils/isa";
-import type {
-  Card,
-  DatasetColumn,
-  DatasetData,
-  PivotTableColumnSplitSetting,
-  RawSeries,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 import { partitions } from "./partitions";
 import {

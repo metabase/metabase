@@ -3,11 +3,11 @@ import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { IconName, RelatedDashboardXRays } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Box, Card, Flex, Icon, Title, Tooltip } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
-import type { IconName, RelatedDashboardXRays } from "metabase-types/api";
 
 import S from "./AutomaticDashboardApp.module.css";
 import { trackSuggestedXRayClicked } from "./analytics";

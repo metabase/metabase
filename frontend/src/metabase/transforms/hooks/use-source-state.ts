@@ -1,11 +1,5 @@
 import { useMemo, useState } from "react";
 
-import {
-  deactivateSuggestedTransform,
-  getMetabotSuggestedTransform,
-} from "metabase/metabot/state";
-import { getMetadata } from "metabase/metadata-store";
-import { useDispatch, useSelector } from "metabase/redux";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -14,6 +8,12 @@ import type {
   SuggestedTransform,
   TransformId,
 } from "metabase-types/api";
+import {
+  deactivateSuggestedTransform,
+  getMetabotSuggestedTransform,
+} from "metabase/metabot/state";
+import { getMetadata } from "metabase/metadata-store";
+import { useDispatch, useSelector } from "metabase/redux";
 
 import { isSameSource } from "../utils";
 

@@ -1,11 +1,11 @@
 import { type ReactNode, useCallback, useState } from "react";
 
+import type { SearchResult } from "metabase-types/api";
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import type { DetailViewState } from "metabase/redux/store";
 import { Box, Flex } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
 
 import { AppSwitcher } from "../AppSwitcher";
 import { SearchButton } from "../search/SearchButton/SearchButton";

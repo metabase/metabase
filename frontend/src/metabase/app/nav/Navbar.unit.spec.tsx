@@ -15,6 +15,12 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import type { User } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockDatabase,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
   CLOSE_NAVBAR,
@@ -30,12 +36,6 @@ import {
 } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
-import type { User } from "metabase-types/api";
-import {
-  createMockCollection,
-  createMockDatabase,
-  createMockUser,
-} from "metabase-types/api/mocks";
 
 import { Navbar } from "./Navbar";
 

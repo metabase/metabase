@@ -1,8 +1,8 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { reinitialize } from "metabase/plugins";
 import type { CollectionItemModel } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import { reinitialize } from "metabase/plugins";
 
 import {
   getCollectionItemsOptions,

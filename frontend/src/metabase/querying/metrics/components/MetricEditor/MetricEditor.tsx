@@ -1,11 +1,11 @@
 import { type ReactNode, forwardRef, useState } from "react";
 
-import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
-import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
+import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
+import { Flex } from "metabase/ui";
 
 import { MetricEditorBody } from "./MetricEditorBody";
 import { MetricEditorFooter } from "./MetricEditorFooter";

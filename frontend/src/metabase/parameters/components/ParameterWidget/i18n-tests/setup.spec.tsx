@@ -1,10 +1,10 @@
+import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
+import { createMockParameter } from "metabase-types/api/mocks";
 import {
   type ContentTranslationTestSetupOptions,
   setupForContentTranslationTest,
 } from "metabase/content-translation/test-utils";
 import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
-import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
-import { createMockParameter } from "metabase-types/api/mocks";
 
 export function setup(options: ContentTranslationTestSetupOptions) {
   const parameter: FieldFilterUiParameter = {

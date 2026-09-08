@@ -1,6 +1,9 @@
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type { TableId, TransformSource } from "metabase-types/api";
+import type { TransformType } from "metabase-types/api/transform";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useDocsUrl } from "metabase/common/hooks";
 import { FormSelect } from "metabase/forms";
@@ -18,9 +21,6 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type { TableId, TransformSource } from "metabase-types/api";
-import type { TransformType } from "metabase-types/api/transform";
 
 import {
   MBQLKeysetColumnSelect,

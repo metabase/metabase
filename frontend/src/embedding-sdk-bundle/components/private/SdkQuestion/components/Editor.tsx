@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import { useListDatabasesQuery } from "metabase/api";
 import { getMetadata } from "metabase/metadata-store";
 import {
@@ -11,8 +13,6 @@ import { Notebook as QBNotebook } from "metabase/querying/notebook/components/No
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import { ScrollArea } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 
 import { QueryEditorAndResults } from "./QueryEditorAndResults";
 

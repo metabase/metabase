@@ -1,6 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+import type { Group, GroupId } from "metabase-types/api";
 import { permissionApi } from "metabase/api";
 import {
   getGroupSortOrder,
@@ -10,7 +11,6 @@ import {
 } from "metabase/common/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import type { Group, GroupId } from "metabase-types/api";
 
 const isPinnedGroup = (group: Group) =>
   isAdminGroup(group) || isDefaultGroup(group) || isDataAnalystGroup(group);

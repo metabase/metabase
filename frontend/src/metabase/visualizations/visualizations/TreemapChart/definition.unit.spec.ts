@@ -1,3 +1,9 @@
+import type { RowValues } from "metabase-types/api/dataset";
+import { createMockCard } from "metabase-types/api/mocks/card";
+import {
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks/dataset";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
@@ -5,12 +11,6 @@ import {
   getComputedSettings,
   getSettingsWidgets,
 } from "metabase/viz-core";
-import type { RowValues } from "metabase-types/api/dataset";
-import { createMockCard } from "metabase-types/api/mocks/card";
-import {
-  createMockColumn,
-  createMockDatasetData,
-} from "metabase-types/api/mocks/dataset";
 
 import { TREEMAP_CHART_DEFINITION } from "./definition";
 

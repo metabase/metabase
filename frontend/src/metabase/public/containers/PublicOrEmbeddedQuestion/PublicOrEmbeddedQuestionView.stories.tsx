@@ -14,6 +14,12 @@ import {
   NumberColumn,
   StringColumn,
 } from "__support__/visualizations";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 import { MetabaseReduxProvider } from "metabase/redux";
 import {
   createMockSettingsState,
@@ -27,12 +33,6 @@ import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar"
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import * as TABLE_MOCK_DATA from "metabase/visualizations/visualizations/Table/stories-data";
 import { registerVisualization } from "metabase/viz-core";
-import {
-  createMockCard,
-  createMockColumn,
-  createMockDataset,
-  createMockDatasetData,
-} from "metabase-types/api/mocks";
 
 import {
   PublicOrEmbeddedQuestionView,

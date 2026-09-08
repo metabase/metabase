@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { memo } from "react";
 
-import { Link } from "metabase/common/components/Link";
 import type { IconName } from "metabase-types/api";
+import { Link } from "metabase/common/components/Link";
 
 import { LabelIcon } from "../LabelIcon";
 import S from "../Sidebar.module.css";

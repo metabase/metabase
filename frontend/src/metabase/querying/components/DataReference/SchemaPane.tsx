@@ -1,9 +1,9 @@
 import { msgid, ngettext } from "ttag";
 
+import { isConcreteTableId } from "metabase-types/api";
 import { useListDatabaseSchemaTablesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { isConcreteTableId } from "metabase-types/api";
 
 import {
   NodeListContainer,

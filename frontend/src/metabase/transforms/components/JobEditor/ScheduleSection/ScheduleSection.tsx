@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { c, t } from "ttag";
 
+import type { ScheduleDisplayType } from "metabase-types/api";
 import {
   useCancelJobRunMutation,
   useRunTransformJobMutation,
@@ -23,7 +24,6 @@ import { useSetting } from "metabase/settings";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-import type { ScheduleDisplayType } from "metabase-types/api";
 
 import { trackTransformJobTriggerManualRun } from "../../../analytics";
 import { RunButton } from "../../RunButton";

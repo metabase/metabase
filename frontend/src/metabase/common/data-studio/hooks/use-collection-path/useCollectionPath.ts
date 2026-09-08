@@ -1,9 +1,9 @@
-import { useGetCollectionQuery } from "metabase/api/collection";
-import { isRootCollection } from "metabase/common/collections/utils";
 import type {
   CollectionId,
   CollectionNamespace,
 } from "metabase-types/api/collection";
+import { useGetCollectionQuery } from "metabase/api/collection";
+import { isRootCollection } from "metabase/common/collections/utils";
 
 interface UseCollectionPathOptions {
   collectionId: CollectionId | null;

@@ -18,7 +18,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { Route } from "metabase/router";
 import type { TransformGraphRun } from "metabase-types/api";
 import {
   createMockListTransformGraphRunsResponse,
@@ -27,6 +26,7 @@ import {
   createMockTransformRunForJobRun,
   createMockTransformTarget,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import { TransformGraphRunListPage } from "./TransformGraphRunListPage";
 

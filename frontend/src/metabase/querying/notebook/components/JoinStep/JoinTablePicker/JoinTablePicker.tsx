@@ -2,12 +2,12 @@ import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import type * as Lib from "metabase-lib";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { isEmbedding } from "metabase/embedding/config";
 import { Box, Icon, Popover, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { METAKEY } from "metabase/utils/browser";
-import type * as Lib from "metabase-lib";
 
 import { NotebookCellItem } from "../../NotebookCell";
 import { CONTAINER_PADDING } from "../../NotebookCell/constants";

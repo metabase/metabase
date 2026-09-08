@@ -8,12 +8,12 @@ import {
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
-import { createMockState } from "metabase/redux/store/mocks";
-import { checkNotNull } from "metabase/utils/types";
 import type { Card } from "metabase-types/api";
 import { createMockCard, createMockUser } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { getMetadata } from "metabase/metadata-store";
+import { createMockState } from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 
 import { HasResultsAlertPrompt } from "./HasResultsAlertPrompt";
 

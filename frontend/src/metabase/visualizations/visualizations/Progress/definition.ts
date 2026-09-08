@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import { color } from "metabase/ui/colors";
 import {
   type VisualizationDefinition,
@@ -8,7 +9,6 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/viz-core";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { findProgressColumn } from "./utils";
 

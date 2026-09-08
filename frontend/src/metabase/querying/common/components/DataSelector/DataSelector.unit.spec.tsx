@@ -4,12 +4,6 @@ import type { ComponentProps } from "react";
 import { createMockMetadata } from "__support__/metadata";
 import { getIcon, render, renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
-import { UnconnectedDataSelector as DataSelector } from "metabase/querying/common/components/DataSelector";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import { checkNotNull } from "metabase/utils/types";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   createMockDatabase,
@@ -20,6 +14,12 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { UnconnectedDataSelector as DataSelector } from "metabase/querying/common/components/DataSelector";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 
 type DataSelectorProps = ComponentProps<typeof DataSelector>;
 

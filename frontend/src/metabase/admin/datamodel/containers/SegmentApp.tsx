@@ -1,6 +1,11 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  CreateSegmentRequest,
+  Segment,
+  UpdateSegmentRequest,
+} from "metabase-types/api";
 import {
   useCreateSegmentMutation,
   useGetSegmentQuery,
@@ -13,11 +18,6 @@ import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useNavigate, useParams } from "metabase/router";
-import type {
-  CreateSegmentRequest,
-  Segment,
-  UpdateSegmentRequest,
-} from "metabase-types/api";
 
 import { SegmentForm } from "../components/SegmentForm";
 

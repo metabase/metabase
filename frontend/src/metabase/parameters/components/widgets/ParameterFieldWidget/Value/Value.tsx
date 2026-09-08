@@ -1,13 +1,13 @@
 import { isValidElement } from "react";
 
-import { useTranslateContent } from "metabase/content-translation/hooks";
-import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { formatValue } from "metabase/value-formatting";
 import type {
   ColumnSettings,
   DashboardId,
   Parameter,
 } from "metabase-types/api";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
+import { formatValue } from "metabase/value-formatting";
 
 import RemappedValue from "./RemappedValue";
 

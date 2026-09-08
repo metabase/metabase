@@ -1,5 +1,5 @@
-import { Api } from "metabase/api";
 import type { UserLoginHistory } from "metabase-types/api";
+import { Api } from "metabase/api";
 
 export const loginHistoryApi = Api.injectEndpoints({
   endpoints: (builder) => ({

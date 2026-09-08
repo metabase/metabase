@@ -3,6 +3,32 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+import type {
+  Card,
+  CardId,
+  DashCardId,
+  DashCardSeries,
+  DashCardSeriesItem,
+  DashboardCard,
+  Dataset,
+  DatasetData,
+  IconName,
+  Series,
+  SeriesCard,
+  VirtualCardDisplay,
+  VisualizationSettings,
+  VisualizerDataSourceId,
+  VisualizerSeries,
+  VisualizerSeriesItem,
+} from "metabase-types/api";
+import {
+  isDashCardDataSeries,
+  isVisualizerDashboardCard,
+  isVisualizerDataSeries,
+} from "metabase-types/guards/dashboard";
 import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
 import CS from "metabase/css/core/index.css";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
@@ -54,32 +80,6 @@ import {
   getVisualizationRaw,
   isCartesianChart,
 } from "metabase/viz-core";
-import type Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
-import type {
-  Card,
-  CardId,
-  DashCardId,
-  DashCardSeries,
-  DashCardSeriesItem,
-  DashboardCard,
-  Dataset,
-  DatasetData,
-  IconName,
-  Series,
-  SeriesCard,
-  VirtualCardDisplay,
-  VisualizationSettings,
-  VisualizerDataSourceId,
-  VisualizerSeries,
-  VisualizerSeriesItem,
-} from "metabase-types/api";
-import {
-  isDashCardDataSeries,
-  isVisualizerDashboardCard,
-  isVisualizerDataSeries,
-} from "metabase-types/guards/dashboard";
 
 import { CollapsibleDashboardParameterList } from "../CollapsibleDashboardParameterList";
 

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import type { GroupProps } from "metabase/ui";
 import type { Table } from "metabase-types/api";
+import type { GroupProps } from "metabase/ui";
 
 import { ModelNav } from "./ModelNav";
 import { TableNav } from "./TableNav";

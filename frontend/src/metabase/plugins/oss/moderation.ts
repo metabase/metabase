@@ -1,8 +1,5 @@
 import type React from "react";
 
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { IconProps } from "metabase/ui";
-import type { ColorName } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   BaseUser,
@@ -11,6 +8,9 @@ import type {
   IconName,
   MetabotInfo,
 } from "metabase-types/api";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { IconProps } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 export type RevisionOrModerationEvent = {
   title: string;

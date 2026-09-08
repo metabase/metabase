@@ -2,13 +2,13 @@ import userEvent from "@testing-library/user-event";
 
 import { callMockEvent } from "__support__/events";
 import { screen, waitFor } from "__support__/ui";
-import { getDefaultFormSettings } from "metabase/actions/utils";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import {
   createMockActionParameter,
   createMockImplicitQueryAction,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
+import { getDefaultFormSettings } from "metabase/actions/utils";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 
 import type { SetupOpts } from "./common";
 import { setup as baseSetup } from "./common";

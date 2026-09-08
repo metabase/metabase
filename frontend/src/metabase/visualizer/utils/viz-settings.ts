@@ -1,8 +1,8 @@
+import type { VisualizationDisplay } from "metabase-types/api";
 import {
   type VisualizationSettingDefinition,
   getVisualization,
 } from "metabase/viz-core";
-import type { VisualizationDisplay } from "metabase-types/api";
 
 import { DEFAULT_VISUALIZER_DISPLAY } from "../constants";
 

@@ -1,16 +1,16 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { EmptyState } from "metabase/common/components/EmptyState";
-import CS from "metabase/css/core/index.css";
-import { setActionForDashcard } from "metabase/dashboard/actions";
-import { useDispatch } from "metabase/redux";
-import { Button } from "metabase/ui";
 import type {
   ActionDashboardCard,
   Dashboard,
   WritebackAction,
 } from "metabase-types/api";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import CS from "metabase/css/core/index.css";
+import { setActionForDashcard } from "metabase/dashboard/actions";
+import { useDispatch } from "metabase/redux";
+import { Button } from "metabase/ui";
 
 import {
   ActionSettingsHeader,

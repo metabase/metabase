@@ -6,8 +6,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import type {
   CollectionId,
   CollectionNamespace,
@@ -19,6 +17,8 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import CreateCollectionForm from "../CreateCollectionForm";
 

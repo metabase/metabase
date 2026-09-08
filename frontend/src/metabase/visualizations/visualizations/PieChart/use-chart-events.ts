@@ -2,6 +2,8 @@ import type { EChartsType } from "echarts/core";
 import { type MutableRefObject, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
+import type { ClickObjectDimension } from "metabase-lib";
+import type { DatasetColumn, RowValue } from "metabase-types/api";
 import { formatPercent } from "metabase/utils/formatting";
 import { checkNotNull } from "metabase/utils/types";
 import type {
@@ -24,8 +26,6 @@ import {
   getValueFromDimensionKey,
   useClickedStateTooltipSync,
 } from "metabase/viz-core";
-import type { ClickObjectDimension } from "metabase-lib";
-import type { DatasetColumn, RowValue } from "metabase-types/api";
 
 export const getTooltipModel = (
   sliceKeyPath: string[],

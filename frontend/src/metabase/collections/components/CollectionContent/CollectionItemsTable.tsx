@@ -10,6 +10,17 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import NoResultsImg from "assets/img/no_results.svg";
+import type {
+  Bookmark,
+  Collection,
+  CollectionId,
+  CollectionItem,
+  CollectionItemModel,
+  Database,
+  ListCollectionItemsRequest,
+  ListCollectionItemsSortColumn,
+  SortingOptions,
+} from "metabase-types/api";
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import {
   ALL_MODELS,
@@ -34,17 +45,6 @@ import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import type {
-  Bookmark,
-  Collection,
-  CollectionId,
-  CollectionItem,
-  CollectionItemModel,
-  Database,
-  ListCollectionItemsRequest,
-  ListCollectionItemsSortColumn,
-  SortingOptions,
-} from "metabase-types/api";
 
 import { CollectionItemsToolbar } from "./CollectionItemsToolbar";
 

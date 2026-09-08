@@ -2,8 +2,8 @@ import { useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
-import { useListRecentsQuery } from "metabase/api";
 import type { RecentItem } from "metabase-types/api";
+import { useListRecentsQuery } from "metabase/api";
 
 import { EMBED_RESOURCE_LIST_MAX_RECENTS } from "../constants";
 import type { SdkIframeEmbedSetupRecentItem } from "../types";

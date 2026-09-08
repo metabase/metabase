@@ -2,6 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { Dashboard } from "metabase-types/api";
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -9,7 +10,6 @@ import { setArchivedDashboard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/redux";
 import { useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { Dashboard } from "metabase-types/api";
 
 type OwnProps = {
   onClose: () => void;

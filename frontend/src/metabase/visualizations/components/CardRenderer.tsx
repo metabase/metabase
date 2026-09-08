@@ -1,9 +1,9 @@
 import type { CSSProperties, ForwardedRef } from "react";
 import { Component, forwardRef } from "react";
 
+import type { Series } from "metabase-types/api";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { isSameSeries } from "metabase/viz-core";
-import type { Series } from "metabase-types/api";
 
 export type CardRendererProps = {
   className?: string;

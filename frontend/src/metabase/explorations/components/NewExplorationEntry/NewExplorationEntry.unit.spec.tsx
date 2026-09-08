@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import type { GetMyExplorationsResponse } from "metabase-types/api";
 import { useGetMyExplorationsQuery } from "metabase/api";
 import {
   trackExplorationAgentMessageSent,
@@ -16,7 +17,6 @@ import {
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { GetMyExplorationsResponse } from "metabase-types/api";
 
 import { NewExplorationEntry } from "./NewExplorationEntry";
 

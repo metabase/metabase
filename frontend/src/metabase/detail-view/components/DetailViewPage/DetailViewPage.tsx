@@ -1,6 +1,13 @@
 import { useViewportSize } from "@mantine/hooks";
 import { useMemo } from "react";
 
+import { isPK } from "metabase-lib/v1/types/utils/isa";
+import type {
+  DatasetColumn,
+  ForeignKey,
+  RowValues,
+  Table,
+} from "metabase-types/api";
 import {
   DetailsGroup,
   Header,
@@ -14,13 +21,6 @@ import {
 } from "metabase/detail-view/utils";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { Box, Group, Stack, rem } from "metabase/ui";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type {
-  DatasetColumn,
-  ForeignKey,
-  RowValues,
-  Table,
-} from "metabase-types/api";
 
 import S from "./DetailViewPage.module.css";
 

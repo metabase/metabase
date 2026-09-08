@@ -2,6 +2,7 @@ import cx from "classnames";
 import { type MouseEvent, useCallback, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
+import type { IconName, SortingOptions } from "metabase-types/api";
 import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
@@ -34,7 +35,6 @@ import {
   Skeleton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { IconName, SortingOptions } from "metabase-types/api";
 
 import BrowseTableS from "../components/BrowseTable.module.css";
 

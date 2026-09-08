@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
+import type {
+  Dataset,
+  ExportFormat,
+  TableExportFormat,
+} from "metabase-types/api";
+import { exportFormatPng, exportFormats } from "metabase-types/api";
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
 import { Link } from "metabase/common/components/Link";
 import { useDocsUrl } from "metabase/common/hooks";
@@ -20,13 +27,6 @@ import {
   Title,
 } from "metabase/ui";
 import { canSavePng } from "metabase/viz-core";
-import type Question from "metabase-lib/v1/Question";
-import type {
-  Dataset,
-  ExportFormat,
-  TableExportFormat,
-} from "metabase-types/api";
-import { exportFormatPng, exportFormats } from "metabase-types/api";
 
 export type FormatPreference = {
   last_download_format: ExportFormat;

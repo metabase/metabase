@@ -1,13 +1,13 @@
 import _ from "underscore";
 
-import { type Dayjs, dayjs } from "metabase/dayjs";
-import { parseTimestamp } from "metabase/utils/time-dayjs";
-import { isNotNull } from "metabase/utils/types";
 import type {
   DateTimeAbsoluteUnit,
   RawSeries,
   RowValue,
 } from "metabase-types/api";
+import { type Dayjs, dayjs } from "metabase/dayjs";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import { isNotNull } from "metabase/utils/types";
 
 import { isTimezoneNaiveWallClock } from "../../../lib/date-validation";
 import {

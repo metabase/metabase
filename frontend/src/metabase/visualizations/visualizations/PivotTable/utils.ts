@@ -1,10 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/ui";
-import { sumArray } from "metabase/utils/arrays";
-import { measureText } from "metabase/utils/measure-text";
-import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type {
@@ -14,6 +10,10 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/ui";
+import { sumArray } from "metabase/utils/arrays";
+import { measureText } from "metabase/utils/measure-text";
+import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
 
 import {
   CELL_HEIGHT,

@@ -1,7 +1,7 @@
+import type { Database } from "metabase-types/api";
 import { isDeprecatedEngine } from "metabase/databases/utils/engine";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
-import type { Database } from "metabase-types/api";
 
 interface Props {
   databases?: Pick<Database, "is_sample" | "engine">[];

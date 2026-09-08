@@ -1,5 +1,6 @@
 import type { HTMLAttributes } from "react";
 
+import type { CardDisplayType, VisualizationDisplay } from "metabase-types/api";
 import AreaSkeleton from "metabase/visualizations/components/skeletons/AreaSkeleton";
 import BarSkeleton from "metabase/visualizations/components/skeletons/BarSkeleton";
 import FunnelSkeleton from "metabase/visualizations/components/skeletons/FunnelSkeleton";
@@ -16,7 +17,6 @@ import SkeletonCaption from "metabase/visualizations/components/skeletons/Skelet
 import TableSkeleton from "metabase/visualizations/components/skeletons/TableSkeleton";
 import { VisualizationSkeleton } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
 import WaterfallSkeleton from "metabase/visualizations/components/skeletons/WaterfallSkeleton";
-import type { CardDisplayType, VisualizationDisplay } from "metabase-types/api";
 
 export type ChartSkeletonProps = HTMLAttributes<HTMLDivElement> & {
   display?: CardDisplayType;

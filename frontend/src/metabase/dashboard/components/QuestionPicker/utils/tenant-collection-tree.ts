@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { Collection, CollectionId } from "metabase-types/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { ExpandedCollection } from "metabase/redux/store";
-import type { Collection, CollectionId } from "metabase-types/api";
 
 export const SHARED_TENANT_COLLECTIONS_ROOT_ID: CollectionId =
   "shared-tenant-collections-root";

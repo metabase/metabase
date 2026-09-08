@@ -1,9 +1,9 @@
 import { screen } from "@testing-library/react";
 
 import { renderWithProviders } from "__support__/ui";
-import { FormProvider } from "metabase/forms";
 import type { TransformSource } from "metabase-types/api";
 import { createMockTransformSource } from "metabase-types/api/mocks";
+import { FormProvider } from "metabase/forms";
 
 import { IncrementalTransformSettings } from "./IncrementalTransformSettings";
 import { getInitialValues } from "./form";

@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { FieldId } from "metabase-types/api";
 import { useRescanFieldValuesMutation } from "metabase/api";
 import { useMetadataToasts, useTemporaryState } from "metabase/common/hooks";
 import { Button } from "metabase/ui";
-import type { FieldId } from "metabase-types/api";
 
 interface Props {
   fieldId: FieldId;

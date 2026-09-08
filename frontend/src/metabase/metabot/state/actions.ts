@@ -8,6 +8,15 @@ import { P, isMatching, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type {
+  JSONValue,
+  MetabotAgentRequest,
+  MetabotAgentResponse,
+  MetabotChatContext,
+  MetabotCodeEditorBufferContext,
+  MetabotStateContext,
+  MetabotTransformInfo,
+} from "metabase-types/api";
 import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
@@ -26,15 +35,6 @@ import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { retry } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
-import type {
-  JSONValue,
-  MetabotAgentRequest,
-  MetabotAgentResponse,
-  MetabotChatContext,
-  MetabotCodeEditorBufferContext,
-  MetabotStateContext,
-  MetabotTransformInfo,
-} from "metabase-types/api";
 
 import { metabotApi } from "../api";
 import {

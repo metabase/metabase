@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { act } from "__support__/ui";
+import { createMockTransform } from "metabase-types/api/mocks";
 import {
   addSuggestedTransform,
   getMetabotReactionsState,
   setNavigateToPath,
 } from "metabase/metabot/state";
-import { createMockTransform } from "metabase-types/api/mocks";
 
 import { newConversationButton, setup } from "./utils";
 

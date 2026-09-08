@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 
+import * as Lib from "metabase-lib";
 import {
   type ColumnListItem,
   QueryColumnPicker,
 } from "metabase/querying/common/components/QueryColumnPicker";
-import * as Lib from "metabase-lib";
 
 import {
   ExpressionWidget,

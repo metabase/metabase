@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import type { Segment, Table } from "metabase-types/api";
 import {
   DataModelBreadcrumbs,
   PublishedTableBreadcrumbs,
 } from "metabase/data-studio/common/components/Breadcrumbs";
 import * as Urls from "metabase/urls";
-import type { Segment, Table } from "metabase-types/api";
 
 type SegmentBreadcrumbsProps = {
   table: Table;

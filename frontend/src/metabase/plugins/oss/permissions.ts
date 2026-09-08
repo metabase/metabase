@@ -1,9 +1,6 @@
 import type { Action, ThunkDispatch } from "@reduxjs/toolkit";
 import type { ReactElement, ReactNode } from "react";
 
-import { getUserIsAdmin } from "metabase/current-user";
-import type { State } from "metabase/redux/store";
-import type { ColorName } from "metabase/ui/colors/types";
 import type {
   DataPermission,
   DatabaseEntityId,
@@ -19,6 +16,9 @@ import type {
   User,
 } from "metabase-types/api";
 import { DataPermissionValue } from "metabase-types/api";
+import { getUserIsAdmin } from "metabase/current-user";
+import type { State } from "metabase/redux/store";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import type { PluginGroupManagersType } from "../types";
 

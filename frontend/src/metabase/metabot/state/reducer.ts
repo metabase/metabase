@@ -6,16 +6,16 @@ import {
 import { type WritableDraft, castDraft } from "immer";
 import _ from "underscore";
 
-import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
-import { logout } from "metabase/redux/auth";
-import { LOCATION_CHANGE, type Location, matchPath } from "metabase/router";
-import * as Urls from "metabase/urls";
 import type {
   MetabotCodeEdit,
   MetabotStateContext,
   MetabotSuggestedTransform,
   SuggestedTransform,
 } from "metabase-types/api";
+import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
+import { logout } from "metabase/redux/auth";
+import { LOCATION_CHANGE, type Location, matchPath } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import type { MetabotProfileId } from "../constants";
 import { isContextWindowFull } from "../utils/context-usage";

@@ -1,12 +1,12 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { reinitialize } from "metabase/plugins";
 import type { LlmProviderTypeName } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { reinitialize } from "metabase/plugins";
 
 import { ProviderTypeIcon } from "./ProviderTypeIcon";
 

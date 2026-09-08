@@ -4,7 +4,6 @@ import fetchMock from "fetch-mock";
 import { setupSchemaEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route } from "metabase/router";
 import type { Table } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -12,6 +11,7 @@ import {
   createMockSegment,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import { DataModelSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
 

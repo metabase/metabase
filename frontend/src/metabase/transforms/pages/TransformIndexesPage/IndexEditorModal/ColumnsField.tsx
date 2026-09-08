@@ -2,8 +2,8 @@ import { useField } from "formik";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { type ComboboxItem, Input, MultiSelect, Stack } from "metabase/ui";
 import type { IndexColumn, IndexColumnDirection } from "metabase-types/api";
+import { type ComboboxItem, Input, MultiSelect, Stack } from "metabase/ui";
 
 import { DirectionList } from "./DirectionList";
 

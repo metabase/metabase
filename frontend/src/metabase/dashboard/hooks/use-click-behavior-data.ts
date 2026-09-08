@@ -1,6 +1,14 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
+import type {
+  CardId,
+  ClickBehavior,
+  DashCardId,
+  DashboardId,
+  EntityCustomDestinationClickBehavior,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { getUserAttributes } from "metabase/current-user";
 import {
   setOrUnsetParameterValues,
@@ -16,14 +24,6 @@ import {
 import { useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { ClickObject } from "metabase/visualizations/types";
-import type {
-  CardId,
-  ClickBehavior,
-  DashCardId,
-  DashboardId,
-  EntityCustomDestinationClickBehavior,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 type EntityObject = {
   id: number | string;

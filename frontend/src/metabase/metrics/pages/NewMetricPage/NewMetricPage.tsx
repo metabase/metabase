@@ -2,6 +2,8 @@ import { useDisclosure } from "@mantine/hooks";
 import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type { Card as CardApiType } from "metabase-types/api";
 import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
@@ -20,8 +22,6 @@ import { useSelector } from "metabase/redux";
 import { useLocation, useNavigate } from "metabase/router";
 import { Breadcrumbs, Card, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import * as Lib from "metabase-lib";
-import type { Card as CardApiType } from "metabase-types/api";
 
 import { metricUrls as defaultUrls } from "../../urls";
 import { getValidationResult } from "../../utils/validation";

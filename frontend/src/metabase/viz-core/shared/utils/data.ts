@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { formatNullable } from "metabase/utils/formatting";
 import {
   type DatasetData,
   type RowValue,
   type SeriesOrderSetting,
   getRowsForStableKeys,
 } from "metabase-types/api";
+import { formatNullable } from "metabase/utils/formatting";
 
 import { getColumnScaling } from "../../echarts/cartesian/model/util";
 import { sumMetric } from "../../lib/dataset";

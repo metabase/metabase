@@ -2,10 +2,10 @@ import type { SetStateAction } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { FieldId, TableId } from "metabase-types/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { Button, Flex, Icon, Stack, Text, UnstyledButton } from "metabase/ui";
-import type { FieldId, TableId } from "metabase-types/api";
 
 import { useUpsertGroupTableAccessPolicies } from "../hooks/use-upsert-group-table-access-policies";
 

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import type { LoginData } from "metabase-types/api";
 import {
   Form,
   FormCheckbox,
@@ -11,7 +12,6 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/utils/errors";
-import type { LoginData } from "metabase-types/api";
 
 const LOGIN_SCHEMA = Yup.object().shape({
   username: Yup.string()

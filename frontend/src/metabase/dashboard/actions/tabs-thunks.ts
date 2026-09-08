@@ -1,7 +1,7 @@
+import type { DashboardTabId } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { checkNotNull } from "metabase/utils/types";
-import type { DashboardTabId } from "metabase-types/api";
 
 import { trackCardMoved } from "../analytics";
 import { getDashCardById, getDashcards } from "../selectors";

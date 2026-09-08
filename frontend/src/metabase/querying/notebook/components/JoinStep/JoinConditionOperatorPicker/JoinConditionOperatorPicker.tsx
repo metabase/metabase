@@ -2,9 +2,9 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { SelectList } from "metabase/common/components/SelectList";
 import { Popover } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import S from "./JoinConditionOperatorPicker.module.css";
 

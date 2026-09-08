@@ -1,13 +1,13 @@
 import _ from "underscore";
 
 import { substitute_tags } from "cljs/metabase.parameters.shared";
-import { siteLocale, withInstanceLanguage } from "metabase/utils/i18n";
 import { isTextTagTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Dashboard,
   ParameterValuesMap,
   VirtualDashboardCard,
 } from "metabase-types/api";
+import { siteLocale, withInstanceLanguage } from "metabase/utils/i18n";
 
 type FillParametersInTextProps = {
   dashcard?: VirtualDashboardCard;

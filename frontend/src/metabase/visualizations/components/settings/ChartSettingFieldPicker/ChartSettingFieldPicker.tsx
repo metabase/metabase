@@ -4,11 +4,11 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import type { DatasetColumn, Series } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Group, Icon } from "metabase/ui";
 import { keyForSingleSeries } from "metabase/viz-core";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import type { DatasetColumn, Series } from "metabase-types/api";
 
 import { ChartSettingActionIcon } from "../ChartSettingActionIcon";
 import { ChartSettingColorPicker } from "../ChartSettingColorPicker";

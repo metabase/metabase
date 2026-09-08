@@ -3,6 +3,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type {
+  ActionFormSettings,
+  FieldSettings,
+  Parameter,
+  WritebackAction,
+} from "metabase-types/api";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import type {
   DragEndEvent,
@@ -11,12 +17,6 @@ import type {
 import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import { Form, FormProvider } from "metabase/forms";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
-import type {
-  ActionFormSettings,
-  FieldSettings,
-  Parameter,
-  WritebackAction,
-} from "metabase-types/api";
 
 import {
   getDefaultFormSettings,

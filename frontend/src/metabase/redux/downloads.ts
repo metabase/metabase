@@ -8,6 +8,16 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
+import type Question from "metabase-lib/v1/Question";
+import type {
+  DashCardId,
+  Dashboard,
+  DashboardId,
+  Dataset,
+  VisualizationSettings,
+} from "metabase-types/api";
+import { exportFormatPng } from "metabase-types/api";
+import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 import { datasetApi } from "metabase/api/dataset";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { DownloadsState, State } from "metabase/redux/store";
@@ -27,16 +37,6 @@ import {
   saveDashboardPdf,
 } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getCardKey } from "metabase/viz-core";
-import type Question from "metabase-lib/v1/Question";
-import type {
-  DashCardId,
-  Dashboard,
-  DashboardId,
-  Dataset,
-  VisualizationSettings,
-} from "metabase-types/api";
-import { exportFormatPng } from "metabase-types/api";
-import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import { trackDownloadResults, trackExportDashboardToPDF } from "./analytics";
 

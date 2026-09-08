@@ -2,13 +2,13 @@ import cx from "classnames";
 import type { HTMLAttributes, Key, ReactNode } from "react";
 import { t } from "ttag";
 
+import type { SortingOptions } from "metabase-types/api";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { Box, Card, Flex, LoadingOverlay } from "metabase/ui";
-import type { SortingOptions } from "metabase-types/api";
 
 import S from "./AdminDataTable.module.css";
 

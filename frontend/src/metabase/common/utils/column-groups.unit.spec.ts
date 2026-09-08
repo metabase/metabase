@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -8,6 +7,7 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { checkNotNull } from "metabase/utils/types";
 
 import { getColumnGroupIcon } from "./column-groups";
 

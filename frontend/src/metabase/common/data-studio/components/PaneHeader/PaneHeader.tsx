@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import type { IconName } from "metabase-types/api";
 import { EditableText } from "metabase/common/components/EditableText";
 import { MetabotDataStudioButton } from "metabase/metabot/components/MetabotDataStudioButton";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
@@ -14,7 +15,6 @@ import {
   type StackProps,
   Tooltip,
 } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./PaneHeader.module.css";
 

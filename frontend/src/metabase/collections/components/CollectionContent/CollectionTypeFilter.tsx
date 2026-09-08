@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useId } from "react";
 import { t } from "ttag";
 
+import type { CollectionItemModel } from "metabase-types/api";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import {
   Button,
@@ -12,7 +13,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { CollectionItemModel } from "metabase-types/api";
 
 import { TYPE_FILTER_MODELS } from "./constants";
 

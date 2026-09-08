@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { MetabotInfo, SuggestedMetabotPrompt } from "metabase-types/api";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
@@ -27,7 +28,6 @@ import {
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { MetabotInfo, SuggestedMetabotPrompt } from "metabase-types/api";
 
 export const PAGE_SIZE = 10;
 

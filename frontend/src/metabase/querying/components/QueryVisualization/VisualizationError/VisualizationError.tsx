@@ -2,6 +2,9 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { DatasetError, DatasetErrorType } from "metabase-types/api";
 import { isNetworkError, isStreamInterruptedError } from "metabase/api/client";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ErrorDetails } from "metabase/common/components/ErrorDetails/ErrorDetails";
@@ -15,9 +18,6 @@ import { useSelector } from "metabase/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Center, Flex, Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type { DatasetError, DatasetErrorType } from "metabase-types/api";
 
 import { VISUALIZATION_SLOW_TIMEOUT } from "../../../constants";
 

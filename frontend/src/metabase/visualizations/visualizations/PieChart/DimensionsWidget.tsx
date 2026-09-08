@@ -16,6 +16,7 @@ import {
 import { type MutableRefObject, useState } from "react";
 import { t } from "ttag";
 
+import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import { Button, Text } from "metabase/ui";
@@ -25,7 +26,6 @@ import {
   getOptionFromColumn,
   getPieDimensions,
 } from "metabase/viz-core";
-import { isDimension } from "metabase-lib/v1/types/utils/isa";
 
 import Styles from "./DimensionsWidget.module.css";
 import { PieRowsPicker } from "./PieRowsPicker";

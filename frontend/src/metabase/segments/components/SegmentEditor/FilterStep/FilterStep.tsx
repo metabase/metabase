@@ -1,10 +1,10 @@
 import { type Ref, forwardRef, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { Button, Flex, Icon, Popover } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import { ClauseStep } from "../ClauseStep";
 

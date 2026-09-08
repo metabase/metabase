@@ -8,11 +8,11 @@ import {
 } from "react";
 import type { ResizableBoxProps } from "react-resizable";
 
+import * as Lib from "metabase-lib";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import { Box } from "metabase/ui";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { checkNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
 
 import { DatasetNotebook } from "./DatasetNotebook";
 import S from "./DatasetQueryEditor.module.css";

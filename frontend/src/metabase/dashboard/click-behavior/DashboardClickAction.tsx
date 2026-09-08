@@ -1,3 +1,5 @@
+import type Question from "metabase-lib/v1/Question";
+import type { ParameterValueOrArray } from "metabase-types/api";
 import { selectTab } from "metabase/redux/dashboard";
 import type { Dispatch } from "metabase/redux/store";
 import type {
@@ -6,8 +8,6 @@ import type {
   ClickObject,
   LegacyDrill,
 } from "metabase/visualizations/types";
-import type Question from "metabase-lib/v1/Question";
-import type { ParameterValueOrArray } from "metabase-types/api";
 
 import {
   getDashboardDrillLinkUrl,

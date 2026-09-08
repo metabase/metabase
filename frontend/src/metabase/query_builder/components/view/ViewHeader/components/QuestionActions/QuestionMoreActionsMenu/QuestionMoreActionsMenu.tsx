@@ -2,6 +2,9 @@ import { Fragment, type JSX, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import {
@@ -14,9 +17,6 @@ import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 import { Icon, Menu } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
 
 import {
   softReloadCard,

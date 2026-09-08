@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import type { Card, Dashboard } from "metabase-types/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DashboardSharingEmbeddingModal } from "metabase/dashboard/components/DashboardSharingEmbeddingModal";
 import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
 import { useGetCurrentResource } from "metabase/embedding/embedding-iframe-sdk-setup/hooks";
 import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
 import type { LegacyStaticEmbeddingModalProps } from "metabase/plugins";
-import type { Card, Dashboard } from "metabase-types/api";
 
 export type InternalProps = LegacyStaticEmbeddingModalProps & {
   onClose: () => void;

@@ -1,9 +1,9 @@
-import { trackSchemaEvent } from "metabase/analytics";
 import type {
   EmbedResourceDownloadOptions,
   EmbeddingParameterVisibility,
   ExportFormat,
 } from "metabase-types/api";
+import { trackSchemaEvent } from "metabase/analytics";
 
 import type {
   DisplayTheme,

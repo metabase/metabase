@@ -1,6 +1,6 @@
+import type { VisualizationDisplay } from "metabase-types/api";
 import type { FlexProps } from "metabase/ui";
 import { isCartesianChart } from "metabase/viz-core";
-import type { VisualizationDisplay } from "metabase-types/api";
 
 import { CartesianHorizontalWell } from "./CartesianHorizontallWell";
 import { FunnelHorizontalWell } from "./FunnelHorizontalWell";

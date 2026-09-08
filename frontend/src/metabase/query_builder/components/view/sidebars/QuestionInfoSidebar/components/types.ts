@@ -1,5 +1,5 @@
-import type { IconData } from "metabase/common/utils/icon";
 import type { SearchModel } from "metabase-types/api";
+import type { IconData } from "metabase/common/utils/icon";
 
 export interface QuestionSource {
   href: string;

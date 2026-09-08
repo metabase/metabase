@@ -1,5 +1,3 @@
-import { groupColumnsBySuitableVizSettings } from "metabase/visualizer/visualizations/compat";
-import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type {
   Dataset,
   DatasetColumn,
@@ -7,6 +5,8 @@ import type {
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
+import { groupColumnsBySuitableVizSettings } from "metabase/visualizer/visualizations/compat";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 
 interface CompatibilityParameters {
   currentDataset: {

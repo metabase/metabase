@@ -1,5 +1,5 @@
-import { useGetCollectionQuery } from "metabase/api";
 import type { CollectionId } from "metabase-types/api";
+import { useGetCollectionQuery } from "metabase/api";
 
 import {
   CollectionBreadcrumbs as Breadcrumbs,

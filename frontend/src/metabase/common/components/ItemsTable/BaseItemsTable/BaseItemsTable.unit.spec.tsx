@@ -3,6 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import type { CollectionItem, IconName } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import { DEFAULT_VISIBLE_COLUMNS_LIST } from "metabase/common/collections/columns";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import type { ItemWithLastEditInfo } from "metabase/common/components/LastEditInfoLabel/LastEditInfoLabel";
@@ -12,11 +17,6 @@ import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
 } from "metabase/utils/formatting";
-import type { CollectionItem, IconName } from "metabase-types/api";
-import {
-  createMockCollection,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
 
 import type { BaseItemsTableProps } from "./BaseItemsTable";
 import { BaseItemsTable } from "./BaseItemsTable";

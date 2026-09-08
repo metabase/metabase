@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { User as UserType } from "metabase-types/api";
 import {
   useCreateUserMutation,
   useListPermissionsGroupsQuery,
@@ -14,7 +15,6 @@ import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { generatePassword } from "metabase/utils/password";
 import MetabaseSettings from "metabase/utils/settings";
-import type { User as UserType } from "metabase-types/api";
 
 import { storeTemporaryPassword } from "../people";
 

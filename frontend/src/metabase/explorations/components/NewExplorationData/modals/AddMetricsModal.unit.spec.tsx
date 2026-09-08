@@ -7,14 +7,14 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
+import type { ExplorationMetric } from "metabase-types/api";
+import { createMockMetric } from "metabase-types/api/mocks/metric";
 import type { ExplorationBlock } from "metabase/explorations/hooks";
 import {
   makeMockSelection,
   mockExplorationBlock,
 } from "metabase/explorations/test-utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import type { ExplorationMetric } from "metabase-types/api";
-import { createMockMetric } from "metabase-types/api/mocks/metric";
 
 import { AddMetricsModal } from "./AddMetricsModal";
 

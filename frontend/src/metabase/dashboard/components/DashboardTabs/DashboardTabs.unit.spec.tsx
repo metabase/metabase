@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import type { DashboardTab } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
+import { createMockDashboardCard } from "metabase-types/api/mocks/dashboard";
 import { Link } from "metabase/common/components/Link";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
@@ -11,9 +14,6 @@ import { createTabSlug } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/redux";
 import type { DashboardState } from "metabase/redux/store";
 import { Route, useLocation } from "metabase/router";
-import type { DashboardTab } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
-import { createMockDashboardCard } from "metabase-types/api/mocks/dashboard";
 
 import { DashboardTabs } from "./DashboardTabs";
 import { TEST_DASHBOARD_STATE } from "./test-utils";

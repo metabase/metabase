@@ -1,16 +1,16 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import {
-  useCreateSnippetMutation,
-  useUpdateSnippetMutation,
-} from "metabase/api";
-import { Flex, Modal } from "metabase/ui";
 import type {
   CreateSnippetRequest,
   NativeQuerySnippet,
   UpdateSnippetRequest,
 } from "metabase-types/api";
+import {
+  useCreateSnippetMutation,
+  useUpdateSnippetMutation,
+} from "metabase/api";
+import { Flex, Modal } from "metabase/ui";
 
 import { SnippetForm, type SnippetFormValues } from "../SnippetForm";
 

@@ -1,6 +1,7 @@
 import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
+import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";
 import { setupApi, userApi } from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
 import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
@@ -22,7 +23,6 @@ import {
   settingsApi,
 } from "metabase/settings";
 import MetabaseSettings from "metabase/utils/settings";
-import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";
 
 import {
   trackAddDataLaterClicked,

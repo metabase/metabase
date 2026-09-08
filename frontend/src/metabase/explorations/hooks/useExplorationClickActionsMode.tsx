@@ -1,6 +1,14 @@
 import { type Dispatch, type SetStateAction, useMemo, useRef } from "react";
 import { t } from "ttag";
 
+import type {
+  DocumentContent,
+  ExplorationId,
+  ExplorationPageId,
+  ExplorationQuery,
+  ExplorationQueryId,
+  ExplorationQueryType,
+} from "metabase-types/api";
 import { useCreateCommentMutation } from "metabase/api/comment";
 import { useExploreFurtherMutation } from "metabase/api/exploration";
 import { useToast } from "metabase/common/hooks";
@@ -21,14 +29,6 @@ import type {
   ClickObject,
 } from "metabase/visualizations/types";
 import { isBrushClickObject } from "metabase/visualizations/types";
-import type {
-  DocumentContent,
-  ExplorationId,
-  ExplorationPageId,
-  ExplorationQuery,
-  ExplorationQueryId,
-  ExplorationQueryType,
-} from "metabase-types/api";
 
 import { ExplorationCommentEditor } from "../components/ExplorationVisualization/ExplorationCommentEditor";
 import type { CommentDrafts } from "../types";

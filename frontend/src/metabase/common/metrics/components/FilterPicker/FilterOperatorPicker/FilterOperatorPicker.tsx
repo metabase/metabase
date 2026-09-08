@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Button, Icon, Menu } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import { Button, Icon, Menu } from "metabase/ui";
 
 import type { FilterOperatorOption } from "../types";
 

@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import type { DatabaseData } from "metabase-types/api";
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 import type {
   InviteInfo,
@@ -9,7 +10,6 @@ import type {
   UserInfo,
 } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
-import type { DatabaseData } from "metabase-types/api";
 
 export const getStep = (state: State): SetupStep => {
   return state.setup.step;

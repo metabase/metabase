@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import type { TransformJobId } from "metabase-types/api";
 import {
   type PillTab,
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
 import * as Urls from "metabase/urls";
-import type { TransformJobId } from "metabase-types/api";
 
 type JobTabsProps = {
   jobId: TransformJobId;

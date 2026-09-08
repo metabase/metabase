@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Checkbox, DelayGroup } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import S from "./FieldPicker.module.css";
 

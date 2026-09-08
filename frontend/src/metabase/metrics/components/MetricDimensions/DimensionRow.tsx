@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import type { MetricDimension } from "metabase-types/api";
 import { Sortable } from "metabase/common/components/Sortable";
 import { getDimensionIcon } from "metabase/common/utils/columns";
 import {
@@ -12,7 +13,6 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type { MetricDimension } from "metabase-types/api";
 
 import S from "./MetricDimensions.module.css";
 import { isOrphaned } from "./utils";

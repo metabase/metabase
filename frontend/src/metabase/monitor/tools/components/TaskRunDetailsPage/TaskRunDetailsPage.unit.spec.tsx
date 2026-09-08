@@ -8,10 +8,10 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { Route } from "metabase/router";
-import * as Urls from "metabase/urls";
 import type { TaskRunExtended } from "metabase-types/api";
 import { createMockTaskRunExtended } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { TaskRunDetailsPage } from "./TaskRunDetailsPage";
 

@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import type {
+  TableDataLayer,
+  TableDataSource,
+  UserId,
+} from "metabase-types/api";
 import { useEditTablesMutation } from "metabase/api";
 import {
   trackDataStudioBulkAttributeUpdated,
@@ -17,11 +22,6 @@ import {
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
-import type {
-  TableDataLayer,
-  TableDataSource,
-  UserId,
-} from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import { SyncOptionsModal } from "../../SyncOptionsModal";

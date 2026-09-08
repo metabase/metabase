@@ -1,6 +1,7 @@
 import { type ChangeEvent, memo, useEffect, useState } from "react";
 import { t } from "ttag";
 
+import type { Field } from "metabase-types/api";
 import { useUpdateFieldMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
@@ -10,7 +11,6 @@ import {
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, Switch, rem } from "metabase/ui";
-import type { Field } from "metabase-types/api";
 
 import { CoercionStrategyPicker } from "../../CoercionStrategyPicker";
 import { LabeledValue } from "../../LabeledValue";

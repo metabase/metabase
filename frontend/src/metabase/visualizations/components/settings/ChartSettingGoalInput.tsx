@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import { Box, Group, Icon, Menu, NumberInput, TextInput } from "metabase/ui";
 import type { ChartSettingGoalInputProps } from "metabase/viz-core";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import S from "./ChartSettingFieldPicker/ChartSettingFieldPicker.module.css";
 

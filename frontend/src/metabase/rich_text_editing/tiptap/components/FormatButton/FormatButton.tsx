@@ -1,7 +1,7 @@
 import type React from "react";
 
-import { Icon, Tooltip, UnstyledButton } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { Icon, Tooltip, UnstyledButton } from "metabase/ui";
 
 import S from "./FormatButton.module.css";
 

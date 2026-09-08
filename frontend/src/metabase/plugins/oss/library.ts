@@ -1,18 +1,6 @@
 import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 import type { ComponentType, ReactNode } from "react";
 
-import type { TagType } from "metabase/api/tags";
-import type { UseQuery } from "metabase/api/types/rtk";
-import type {
-  OmniPickerCollectionItem,
-  OmniPickerItem,
-} from "metabase/common/components/Pickers/EntityPicker/types";
-import type { MiniPickerCollectionFolderItem } from "metabase/common/components/Pickers/MiniPicker/types";
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type {
-  DataReferenceLibraryItem,
-  DataReferencePaneProps,
-} from "metabase/querying/components/DataReference/types";
 import type {
   Collection,
   CollectionId,
@@ -25,6 +13,18 @@ import type {
   SchemaId,
   TableId,
 } from "metabase-types/api";
+import type { TagType } from "metabase/api/tags";
+import type { UseQuery } from "metabase/api/types/rtk";
+import type {
+  OmniPickerCollectionItem,
+  OmniPickerItem,
+} from "metabase/common/components/Pickers/EntityPicker/types";
+import type { MiniPickerCollectionFolderItem } from "metabase/common/components/Pickers/MiniPicker/types";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type {
+  DataReferenceLibraryItem,
+  DataReferencePaneProps,
+} from "metabase/querying/components/DataReference/types";
 
 export type CreateLibraryModalProps = {
   title?: string;

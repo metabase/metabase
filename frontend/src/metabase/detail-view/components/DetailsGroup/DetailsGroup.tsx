@@ -1,3 +1,9 @@
+import type {
+  ColumnSettings,
+  DatasetColumn,
+  RowValues,
+  Table,
+} from "metabase-types/api";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import {
   getColumnTitle,
@@ -5,12 +11,6 @@ import {
   renderValue,
 } from "metabase/detail-view/utils";
 import { Flex, Group, Stack, Text, rem } from "metabase/ui";
-import type {
-  ColumnSettings,
-  DatasetColumn,
-  RowValues,
-  Table,
-} from "metabase-types/api";
 
 import S from "./DetailsGroup.module.css";
 import { Value } from "./Value";

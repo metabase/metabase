@@ -1,7 +1,7 @@
 import { nanoid } from "@reduxjs/toolkit";
 
-import { api } from "metabase/api/client";
 import type { JSONValue } from "metabase-types/api";
+import { api } from "metabase/api/client";
 
 import { type AIStreamingConfig, processChatResponse } from "./process-stream";
 

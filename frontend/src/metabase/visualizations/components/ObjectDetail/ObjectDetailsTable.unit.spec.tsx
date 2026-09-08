@@ -3,12 +3,12 @@ import userEvent from "@testing-library/user-event";
 
 import { testDataset } from "__support__/testDataset";
 import { render, screen } from "__support__/ui";
-import { DetailsTable } from "metabase/visualizations/components/ObjectDetail/ObjectDetailsTable";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import { DetailsTable } from "metabase/visualizations/components/ObjectDetail/ObjectDetailsTable";
 
 const objectDetailCard = {
   card: {

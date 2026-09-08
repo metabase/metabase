@@ -2,9 +2,9 @@ import fetchMock from "fetch-mock";
 
 import { setupCurrentUserEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import { createMockUser } from "metabase-types/api/mocks";
 
 import { LoadCurrentUser } from "./LoadCurrentUser";
 

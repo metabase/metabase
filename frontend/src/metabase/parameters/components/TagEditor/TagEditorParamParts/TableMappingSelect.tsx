@@ -1,11 +1,11 @@
 import { useId } from "react";
 import { t } from "ttag";
 
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { TableId, TemplateTag } from "metabase-types/api";
 import { LabelWithInfo } from "metabase/common/components/LabelWithInfo";
 import { SchemaAndTableDataSelector } from "metabase/querying/common/components/DataSelector";
 import { Group, Switch } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { TableId, TemplateTag } from "metabase-types/api";
 
 import { ContainerLabel, ErrorSpan, InputContainer } from "./TagEditorParam";
 

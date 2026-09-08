@@ -1,10 +1,10 @@
 import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
 import {
   createMockCollection,
   createMockDashboard,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import { CollectionBreadcrumbs } from "./CollectionBreadcrumbs";
 

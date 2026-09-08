@@ -11,6 +11,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
+import type { Bookmark } from "metabase-types/api";
 import { useDeleteBookmarkMutation } from "metabase/api";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
@@ -21,7 +22,6 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Bookmark } from "metabase-types/api";
 
 import { SidebarHeading } from "../../MainNavbar.styled";
 import type { SelectedItem } from "../../types";

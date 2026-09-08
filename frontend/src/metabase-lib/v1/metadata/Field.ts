@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { formatField, stripId } from "metabase/utils/formatting";
 import {
   getFieldValues,
   getRemappings,
@@ -30,6 +29,7 @@ import type {
   FieldReference,
   NormalizedField,
 } from "metabase-types/api";
+import { formatField, stripId } from "metabase/utils/formatting";
 
 import type Metadata from "./Metadata";
 import type Table from "./Table";

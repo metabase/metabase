@@ -1,9 +1,9 @@
 import { msgid, ngettext, t } from "ttag";
 
+import type { FieldId, FieldValue } from "metabase-types/api";
 import { useGetFieldQuery, useGetFieldValuesQuery } from "metabase/api";
 import { Flex, Loader } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
-import type { FieldId, FieldValue } from "metabase-types/api";
 
 import {
   Container,

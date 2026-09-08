@@ -6,8 +6,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection } from "metabase-types/api";
 import {
   createMockCollection,
@@ -16,6 +14,8 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
+import { createMockState } from "metabase/redux/store/mocks";
 
 console.warn = jest.fn();
 console.error = jest.fn();

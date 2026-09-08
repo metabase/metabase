@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { isValidElement, useMemo } from "react";
 
+import type { DatasetColumn } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import {
@@ -11,7 +12,6 @@ import {
   type RemappingHydratedDatasetColumn,
   formatValueForTooltip,
 } from "metabase/viz-core";
-import type { DatasetColumn } from "metabase-types/api";
 
 import S from "./KeyValuePairChartTooltip.module.css";
 

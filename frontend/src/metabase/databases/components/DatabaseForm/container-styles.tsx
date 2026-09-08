@@ -1,5 +1,5 @@
-import { Box } from "metabase/ui";
 import { isContainerStyle } from "metabase-types/api";
+import { Box } from "metabase/ui";
 
 export function CustomContainer({
   children,

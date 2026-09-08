@@ -1,10 +1,10 @@
 import cx from "classnames";
 
+import * as Lib from "metabase-lib";
+import type { Field } from "metabase-types/api";
 import { Sortable } from "metabase/common/components/Sortable";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Box, Card, Ellipsified, Flex, Icon, Text, rem } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type { Field } from "metabase-types/api";
 
 import S from "./SortableFieldItem.module.css";
 

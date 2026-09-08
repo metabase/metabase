@@ -1,8 +1,8 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings, ParameterValueOrArray } from "metabase-types/api";
 import type { DatasetColumn, RowValue } from "metabase-types/api/dataset";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 
 import { formatDateTimeForParameter } from "./date";
 import { getUrlProtocol, isDefaultLinkProtocol } from "./url";

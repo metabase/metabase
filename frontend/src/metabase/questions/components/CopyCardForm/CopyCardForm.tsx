@@ -3,6 +3,13 @@ import { c, t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
+import type {
+  Card,
+  CardType,
+  CollectionId,
+  DashboardId,
+  DashboardTabId,
+} from "metabase-types/api";
 import { FormCollectionAndDashboardPicker } from "metabase/common/collections/containers/FormCollectionAndDashboardPicker";
 import { getEntityTypeFromCardType } from "metabase/common/collections/utils";
 import { FormDashboardTabSelect } from "metabase/common/components/FormDashboardTabSelect";
@@ -19,13 +26,6 @@ import {
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { Button, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type {
-  Card,
-  CardType,
-  CollectionId,
-  DashboardId,
-  DashboardTabId,
-} from "metabase-types/api";
 
 const QUESTION_SCHEMA = Yup.object({
   name: Yup.string()

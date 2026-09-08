@@ -1,4 +1,3 @@
-import type { ComboboxItem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -8,6 +7,7 @@ import type {
   NormalizedField,
   Table,
 } from "metabase-types/api";
+import type { ComboboxItem } from "metabase/ui";
 
 const STAGE_INDEX = -1;
 

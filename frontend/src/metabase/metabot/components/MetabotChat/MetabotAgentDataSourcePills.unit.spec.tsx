@@ -2,8 +2,6 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
-import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import type {
   DatasetQuery,
   MetabotCodeEdit,
@@ -17,6 +15,8 @@ import {
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
+import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
+import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 
 import {
   CodeEditTablePills,

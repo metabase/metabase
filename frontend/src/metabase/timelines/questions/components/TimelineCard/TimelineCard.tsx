@@ -3,9 +3,9 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 import { getTimelineName } from "metabase/common/utils/timelines";
 import { Box, Checkbox, Ellipsified, Flex, Icon } from "metabase/ui";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import EventCard from "../EventCard";
 

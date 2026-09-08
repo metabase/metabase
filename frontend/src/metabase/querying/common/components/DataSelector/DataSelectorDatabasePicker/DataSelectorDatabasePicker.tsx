@@ -2,14 +2,14 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Schema from "metabase-lib/v1/metadata/Schema";
 import {
   AccordionList,
   type Section,
 } from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import { Icon, Tooltip } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Schema from "metabase-lib/v1/metadata/Schema";
 
 import { DataSelectorLoading } from "../DataSelectorLoading";
 import { RawDataBackButton } from "../RawDataBackButton";

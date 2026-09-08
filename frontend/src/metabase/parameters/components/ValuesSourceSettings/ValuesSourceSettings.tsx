@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Flex, Modal, Radio, Stack, Tooltip } from "metabase/ui";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import type {
   Parameter,
@@ -9,6 +8,7 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import { Box, Button, Flex, Modal, Radio, Stack, Tooltip } from "metabase/ui";
 
 import ValuesSourceModal from "../ValuesSourceModal";
 

@@ -1,10 +1,10 @@
-import type { DimensionFilterValue } from "metabase/common/metrics-viewer";
 import type {
   DimensionMetadata,
   FilterClause,
   MetricDefinition,
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import type { DimensionFilterValue } from "metabase/common/metrics-viewer";
 
 export type { DimensionFilterValue } from "metabase/common/metrics-viewer";
 

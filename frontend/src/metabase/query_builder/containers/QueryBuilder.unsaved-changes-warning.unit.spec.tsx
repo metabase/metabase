@@ -13,8 +13,8 @@ import {
   within,
 } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
-import { registerVisualizations } from "metabase/visualizations/register";
 import { createMockCardQueryMetadata } from "metabase-types/api/mocks";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import {
   TEST_DB,

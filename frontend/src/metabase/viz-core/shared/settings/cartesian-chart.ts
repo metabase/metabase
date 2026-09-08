@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isNotNull } from "metabase/utils/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isAny,
@@ -17,6 +16,7 @@ import type {
   SeriesOrderSetting,
   VisualizationDisplay,
 } from "metabase-types/api";
+import { isNotNull } from "metabase/utils/types";
 
 import {
   getCardsColumns,

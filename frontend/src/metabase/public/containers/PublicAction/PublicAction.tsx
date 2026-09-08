@@ -1,5 +1,9 @@
 import { useCallback, useState } from "react";
 
+import type {
+  ParametersForActionExecution,
+  WritebackAction,
+} from "metabase-types/api";
 import ActionForm from "metabase/actions/components/ActionForm";
 import { getSuccessMessage } from "metabase/actions/utils";
 import { publicApi } from "metabase/api";
@@ -7,10 +11,6 @@ import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import type { AppErrorDescriptor } from "metabase/redux/store";
-import type {
-  ParametersForActionExecution,
-  WritebackAction,
-} from "metabase-types/api";
 
 import {
   FormContainer,

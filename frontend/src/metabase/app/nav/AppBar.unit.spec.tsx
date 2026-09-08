@@ -9,6 +9,13 @@ import {
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
+import type { Card } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockDashboard,
+  createMockSearchResult,
+} from "metabase-types/api/mocks";
 import { DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS } from "metabase/redux/embed";
 import type {
   DashboardState,
@@ -24,13 +31,6 @@ import {
 } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { modelToUrl } from "metabase/urls";
-import type { Card } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockCollection,
-  createMockDashboard,
-  createMockSearchResult,
-} from "metabase-types/api/mocks";
 
 import { AppBarContainer, getSearchResultSelection } from "./AppBar";
 

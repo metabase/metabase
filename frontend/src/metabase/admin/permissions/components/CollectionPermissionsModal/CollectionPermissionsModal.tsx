@@ -2,6 +2,7 @@ import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { Collection, CollectionNamespace } from "metabase-types/api";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { isPersonalCollectionChild } from "metabase/common/collections/utils";
 import { Link } from "metabase/common/components/Link";
@@ -11,7 +12,6 @@ import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Button } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Collection, CollectionNamespace } from "metabase-types/api";
 
 import {
   type UpdateCollectionPermissionParams,

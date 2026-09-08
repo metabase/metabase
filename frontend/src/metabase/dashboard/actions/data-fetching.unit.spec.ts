@@ -7,15 +7,6 @@ import {
   setupDatabaseEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { Api } from "metabase/api";
-import type { DashboardState, State } from "metabase/redux/store";
-import type { StoreSeedState } from "metabase/redux/store/mocks";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
-import { isQuestionDashCard } from "metabase/utils/dashboard";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -27,6 +18,15 @@ import {
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { Api } from "metabase/api";
+import type { DashboardState, State } from "metabase/redux/store";
+import type { StoreSeedState } from "metabase/redux/store/mocks";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockStoreDashboard,
+} from "metabase/redux/store/mocks";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
 
 import { dashboardReducers } from "../reducers";
 

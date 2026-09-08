@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 
+import type Question from "metabase-lib/v1/Question";
+import type { VisualizationSettings } from "metabase-types/api";
 import type { StackProps } from "metabase/ui";
 import {
   BaseChartSettings,
   useChartSettingsState,
 } from "metabase/visualizations/components/ChartSettings";
 import { getSettingsWidgetsForSeries } from "metabase/viz-core";
-import type Question from "metabase-lib/v1/Question";
-import type { VisualizationSettings } from "metabase-types/api";
 
 import {
   type SdkQuestionContextType,

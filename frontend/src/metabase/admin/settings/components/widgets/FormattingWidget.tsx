@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { CurrencyStyle, FormattingSettings } from "metabase-types/api";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
@@ -14,7 +15,6 @@ import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
 } from "metabase/value-formatting";
-import type { CurrencyStyle, FormattingSettings } from "metabase-types/api";
 
 const DEFAULT_FORMATTING_SETTINGS: FormattingSettings = {
   "type/Temporal": {

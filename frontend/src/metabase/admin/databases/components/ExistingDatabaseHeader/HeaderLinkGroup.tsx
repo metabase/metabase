@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import type { Database } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import { Button, Flex, Icon } from "metabase/ui";
 import { browseDatabase } from "metabase/urls";
 import { isSyncInProgress } from "metabase/utils/syncing";
-import type { Database } from "metabase-types/api";
 
 interface Props {
   database: Database;

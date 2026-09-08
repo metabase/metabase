@@ -1,16 +1,6 @@
 import { t } from "ttag";
 
 import {
-  canPlaceEntityInCollection as canPlaceEntityInCollectionImpl,
-  canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
-} from "metabase/common/data-studio/collection-utils";
-import { getUserPersonalCollectionId } from "metabase/current-user";
-import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
-import type { IconProps } from "metabase/ui";
-import { color } from "metabase/ui/colors";
-import type { ColorName } from "metabase/ui/colors/types";
-import {
   type Bookmark,
   type CardType,
   type Collection,
@@ -24,6 +14,16 @@ import {
   type User,
   isBaseEntityID,
 } from "metabase-types/api";
+import {
+  canPlaceEntityInCollection as canPlaceEntityInCollectionImpl,
+  canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
+} from "metabase/common/data-studio/collection-utils";
+import { getUserPersonalCollectionId } from "metabase/current-user";
+import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
+import type { IconProps } from "metabase/ui";
+import { color } from "metabase/ui/colors";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import { PERSONAL_COLLECTIONS, ROOT_COLLECTION } from "./constants";
 

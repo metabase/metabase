@@ -3,7 +3,6 @@ import fetchMock from "fetch-mock";
 import { useState } from "react";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { DashboardSubscription } from "metabase-types/api";
@@ -13,6 +12,7 @@ import {
   createMockDashboardSubscription,
   createMockParameter,
 } from "metabase-types/api/mocks";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 
 import { ParameterSidebar } from "./ParameterSidebar";
 

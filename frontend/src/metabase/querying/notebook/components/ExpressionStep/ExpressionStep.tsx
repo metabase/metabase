@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
-import { useTranslateContent } from "metabase/content-translation/hooks";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 
 import {
   ExpressionWidget,

@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Box, Title } from "metabase/ui";
@@ -7,7 +8,6 @@ import type {
   ClickActionPopoverProps,
   Drill,
 } from "metabase/visualizations/types/click-actions";
-import * as Lib from "metabase-lib";
 
 import { trackColumnCombineViaColumnHeader } from "../../analytics";
 import { CombineColumns } from "../../components/expressions";

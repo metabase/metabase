@@ -2,6 +2,8 @@ import type { Row } from "@tanstack/react-table";
 import { type ReactNode, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
+import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import {
   useLazyListPersistedInfoQuery,
   useRefreshModelCacheMutation,
@@ -34,8 +36,6 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { capitalize } from "metabase/utils/formatting";
-import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
-import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
 const PAGE_SIZE = 20;
 

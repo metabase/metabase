@@ -7,13 +7,13 @@ import {
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route } from "metabase/router";
-import * as domUtils from "metabase/utils/dom";
 import type { SettingDefinition } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
+import * as domUtils from "metabase/utils/dom";
 
 import { DomainsSettingsPage } from "./DomainsSettingsPage";
 

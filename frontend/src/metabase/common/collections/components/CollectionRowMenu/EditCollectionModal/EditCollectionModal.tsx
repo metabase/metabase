@@ -1,6 +1,11 @@
 import { type KeyboardEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type {
+  Collection,
+  CollectionId,
+  CollectionItem,
+} from "metabase-types/api";
 import { useUpdateCollectionMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import {
@@ -22,11 +27,6 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { Button, Group, Modal, Stack } from "metabase/ui";
-import type {
-  Collection,
-  CollectionId,
-  CollectionItem,
-} from "metabase-types/api";
 
 type EditCollectionModalProps = {
   collection: Collection | CollectionItem;

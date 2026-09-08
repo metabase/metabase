@@ -1,7 +1,7 @@
 import Color from "color";
 
-import { checkNumber, isNotNull } from "metabase/utils/types";
 import type { RawSeries } from "metabase-types/api";
+import { checkNumber, isNotNull } from "metabase/utils/types";
 
 import { getTrendLineFunction } from "../../../lib/trends";
 import type {

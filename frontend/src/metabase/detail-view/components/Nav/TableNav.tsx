@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
+import { type Table, isConcreteTableId } from "metabase-types/api";
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { Group, type GroupProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { type Table, isConcreteTableId } from "metabase-types/api";
 
 import { Separator } from "./Separator";
 

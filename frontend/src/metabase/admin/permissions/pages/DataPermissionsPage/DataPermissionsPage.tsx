@@ -1,5 +1,6 @@
 import { useAsync } from "react-use";
 
+import type { GroupInfo } from "metabase-types/api";
 import {
   skipToken,
   useGetDatabaseMetadataQuery,
@@ -10,7 +11,6 @@ import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Outlet, useParams } from "metabase/router";
 import { Center, Loader } from "metabase/ui";
-import type { GroupInfo } from "metabase-types/api";
 
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
 import { PermissionsPageLayout } from "../../components/PermissionsPageLayout/PermissionsPageLayout";

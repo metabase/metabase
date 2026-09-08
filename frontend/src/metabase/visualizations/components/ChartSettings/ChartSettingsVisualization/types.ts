@@ -1,4 +1,3 @@
-import type { StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
@@ -6,6 +5,7 @@ import type {
   RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { StackProps } from "metabase/ui";
 
 import type { ChartSettingsFooterProps } from "../ChartSettingsFooter";
 

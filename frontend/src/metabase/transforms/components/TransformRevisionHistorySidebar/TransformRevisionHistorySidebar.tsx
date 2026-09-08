@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import type { Transform } from "metabase-types/api";
 import {
   skipToken,
   useListRevisionsQuery,
@@ -14,7 +15,6 @@ import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTim
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import type { Transform } from "metabase-types/api";
 
 interface TransformRevisionHistorySidebarProps {
   transform: Transform;

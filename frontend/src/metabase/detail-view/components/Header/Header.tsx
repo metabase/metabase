@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import type { DatasetColumn, IconName, RowValues } from "metabase-types/api";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import {
   getAvatarColumn,
@@ -9,7 +10,6 @@ import {
   renderValue,
 } from "metabase/detail-view/utils";
 import { Box, Group, Icon, Image, Stack, Text, rem } from "metabase/ui";
-import type { DatasetColumn, IconName, RowValues } from "metabase-types/api";
 
 import S from "./Header.module.css";
 

@@ -1,6 +1,7 @@
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 
+import type { IndexField, IndexKind } from "metabase-types/api";
 import { Form, FormSubmitButton } from "metabase/forms";
 import {
   Button,
@@ -10,7 +11,6 @@ import {
   SelectItemWithDescription,
   Stack,
 } from "metabase/ui";
-import type { IndexField, IndexKind } from "metabase-types/api";
 
 import { IndexFieldInput } from "./IndexFieldInput";
 import { getIndexTypeDescription } from "./constants";

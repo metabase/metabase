@@ -1,11 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { sortActionParams } from "metabase/actions/utils";
-import { EmptyState } from "metabase/common/components/EmptyState";
-import { setParameterMapping } from "metabase/dashboard/actions";
-import { useDispatch } from "metabase/redux";
-import { Select } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type {
   ActionDashboardCard,
@@ -16,6 +11,11 @@ import type {
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
+import { sortActionParams } from "metabase/actions/utils";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { setParameterMapping } from "metabase/dashboard/actions";
+import { useDispatch } from "metabase/redux";
+import { Select } from "metabase/ui";
 
 import {
   ParameterFormBadge,

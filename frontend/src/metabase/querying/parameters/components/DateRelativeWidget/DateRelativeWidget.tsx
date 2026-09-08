@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import { match } from "ts-pattern";
 
+import type { ParameterValueOrArray } from "metabase-types/api";
 import { RelativeDateShortcutPicker } from "metabase/querying/common/components/RelativeDateShortcutPicker";
 import type { RelativeDatePickerValue } from "metabase/querying/common/types";
 import {
   deserializeDateParameterValue,
   serializeDateParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
-import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateRelativePickerProps = {
   value: ParameterValueOrArray | null | undefined;

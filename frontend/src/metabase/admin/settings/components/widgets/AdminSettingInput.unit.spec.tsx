@@ -13,12 +13,12 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
+import { UndoListing } from "metabase/common/components/UndoListing";
 
 import {
   AdminSettingInput,

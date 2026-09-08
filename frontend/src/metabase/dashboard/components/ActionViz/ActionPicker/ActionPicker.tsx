@@ -2,6 +2,7 @@ import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { Card, WritebackAction } from "metabase-types/api";
 import { useListActionsQuery, useSearchQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToggle } from "metabase/common/hooks/use-toggle";
@@ -14,7 +15,6 @@ import {
   Modal,
   PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS,
 } from "metabase/ui";
-import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
   ActionItem,

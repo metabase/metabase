@@ -1,5 +1,5 @@
-import { trackSimpleEvent } from "metabase/analytics";
 import type { CardId, NotificationId } from "metabase-types/api";
+import { trackSimpleEvent } from "metabase/analytics";
 
 import type { NotificationsTab } from "./NotificationsAdminPage/types";
 

@@ -4,16 +4,16 @@ import {
   createMockSeriesModel,
 } from "__support__/echarts";
 import {
+  createMockColumn,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
+import {
   type CartesianChartColumns,
   type Datum,
   INDEX_KEY,
   X_AXIS_DATA_KEY,
   getDatasetKey,
 } from "metabase/viz-core";
-import {
-  createMockColumn,
-  createMockSingleSeries,
-} from "metabase-types/api/mocks";
 
 import { normalizeDimensionValue } from "./events";
 import {

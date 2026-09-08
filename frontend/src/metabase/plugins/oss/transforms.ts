@@ -1,12 +1,12 @@
 import type { ComponentType, ReactNode } from "react";
 
+import type { PythonTransformSourceDraft, Transform } from "metabase-types/api";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
   PluginPlaceholder,
   pluginPlaceholderRoute,
 } from "metabase/plugins/components/PluginPlaceholder";
 import type { PluginRoute } from "metabase/plugins/types";
-import type { PythonTransformSourceDraft, Transform } from "metabase-types/api";
 
 // Types
 export type TransformPickerItem = OmniPickerItem & {

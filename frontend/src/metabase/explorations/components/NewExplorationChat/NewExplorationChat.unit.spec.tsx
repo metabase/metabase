@@ -4,6 +4,16 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type {
+  AddResearchGroupsResponse,
+  GetExplorationDataResponse,
+} from "metabase-types/api";
+import {
+  createMockMetric,
+  createMockMetricDimension,
+  createMockTokenFeatures,
+  createMockUserMetabotPermissions,
+} from "metabase-types/api/mocks";
 import {
   trackExplorationAgentMessageSent,
   trackExplorationPlanEdited,
@@ -15,16 +25,6 @@ import type {
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state";
 import { createMockState } from "metabase/redux/store/mocks";
-import type {
-  AddResearchGroupsResponse,
-  GetExplorationDataResponse,
-} from "metabase-types/api";
-import {
-  createMockMetric,
-  createMockMetricDimension,
-  createMockTokenFeatures,
-  createMockUserMetabotPermissions,
-} from "metabase-types/api/mocks";
 
 import { NewExplorationChat } from "./NewExplorationChat";
 

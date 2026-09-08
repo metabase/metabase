@@ -2,17 +2,17 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type {
+  Revision as RevisionType,
+  Segment,
+  User,
+} from "metabase-types/api";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { Revision } from "metabase/segments";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
 import * as Urls from "metabase/urls";
-import type {
-  Revision as RevisionType,
-  Segment,
-  User,
-} from "metabase-types/api";
 
 interface Props {
   revisions?: RevisionType[] | null;

@@ -4,6 +4,8 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import { noop } from "underscore";
 
+import Question from "metabase-lib/v1/Question";
+import type { DashboardTabId } from "metabase-types/api";
 import {
   skipToken,
   useGetAdhocQueryQuery,
@@ -34,8 +36,6 @@ import { isResourceNotFoundError } from "metabase/utils/errors";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
 import { getDatasetError, getGenericErrorMessage } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
-import type { DashboardTabId } from "metabase-types/api";
 
 import { useSaveMetabotEntityMutation } from "../../api";
 

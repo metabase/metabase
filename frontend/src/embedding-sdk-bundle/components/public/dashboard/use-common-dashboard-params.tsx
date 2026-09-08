@@ -2,6 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { usePrevious, useUnmount } from "react-use";
 
 import { useSdkDispatch, useSdkStore } from "embedding-sdk-bundle/store";
+import type Question from "metabase-lib/v1/Question";
+import {
+  type DashboardId,
+  type QuestionDashboardCard,
+  isBaseEntityID,
+} from "metabase-types/api";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { getMetadata } from "metabase/metadata-store";
@@ -14,12 +20,6 @@ import type { StoreDashboard } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import { isJWT } from "metabase/utils/jwt";
 import { parseNumber } from "metabase/utils/number";
-import type Question from "metabase-lib/v1/Question";
-import {
-  type DashboardId,
-  type QuestionDashboardCard,
-  isBaseEntityID,
-} from "metabase-types/api";
 
 export const useCommonDashboardParams = ({
   dashboardId,

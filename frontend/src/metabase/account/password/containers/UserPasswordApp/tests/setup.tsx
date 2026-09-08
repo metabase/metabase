@@ -2,13 +2,13 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupMfaStatusEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { MfaStatus, TokenFeatures, User } from "metabase-types/api";
 import {
   createMockMfaStatus,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import UserPasswordApp from "../UserPasswordApp";
 

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { EmbeddingTheme } from "metabase-types/api/embedding-theme";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import { Box, Flex, Icon, SimpleGrid, Tooltip } from "metabase/ui";
-import type { EmbeddingTheme } from "metabase-types/api/embedding-theme";
 
 import type { SdkIframeEmbedSetupTheme } from "../../types";
 import { getConfigurableThemeColors } from "../../utils/theme-colors";

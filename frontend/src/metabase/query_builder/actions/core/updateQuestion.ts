@@ -1,5 +1,8 @@
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
@@ -8,9 +11,6 @@ import type {
   GetState,
   QueryBuilderMode,
 } from "metabase/redux/store";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
 import { UPDATE_QUESTION, onCloseQuestionInfo } from "../../store/actions";
 import {

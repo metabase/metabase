@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { Notification, User } from "metabase-types/api";
 import { getArchiveUrl } from "metabase/account/notifications/actions";
 import {
   skipToken,
@@ -12,7 +13,6 @@ import { getUser } from "metabase/current-user";
 import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
-import type { Notification, User } from "metabase-types/api";
 
 import { getAlertId } from "../../selectors";
 

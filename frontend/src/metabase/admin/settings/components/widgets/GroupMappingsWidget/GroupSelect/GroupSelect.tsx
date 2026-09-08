@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { t } from "ttag";
 
+import type { GroupInfo } from "metabase-types/api";
 import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
 import type { GroupIds, UserGroupType } from "metabase/admin/types";
 import {
@@ -20,7 +21,6 @@ import {
   useCombobox,
 } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import type { GroupInfo } from "metabase-types/api";
 
 import S from "./GroupSelect.module.css";
 

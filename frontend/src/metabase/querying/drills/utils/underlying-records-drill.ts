@@ -1,12 +1,12 @@
 import { msgid, ngettext } from "ttag";
 
+import type * as Lib from "metabase-lib";
 import { dayjs } from "metabase/dayjs";
 import { inflect } from "metabase/utils/formatting/strings";
 import type {
   Drill,
   QuestionChangeClickAction,
 } from "metabase/visualizations/types/click-actions";
-import type * as Lib from "metabase-lib";
 
 const isShortTableName = (tableName: string) => tableName.length <= 20;
 

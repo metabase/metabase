@@ -1,3 +1,5 @@
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import type { Card } from "metabase-types/api";
 import {
   useUpdateCardEmbeddingParamsMutation,
   useUpdateCardEnableEmbeddingMutation,
@@ -6,8 +8,6 @@ import { EmbedModal } from "metabase/embedding/components/EmbedModal";
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import type { Card } from "metabase-types/api";
 
 type QuestionEmbedWidgetProps = {
   card: Card;

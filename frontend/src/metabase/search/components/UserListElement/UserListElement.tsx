@@ -1,5 +1,5 @@
-import { Button, Text } from "metabase/ui";
 import type { UserListResult } from "metabase-types/api";
+import { Button, Text } from "metabase/ui";
 
 import Styles from "./UserListElement.module.css";
 

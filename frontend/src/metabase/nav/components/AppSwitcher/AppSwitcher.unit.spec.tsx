@@ -3,12 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { dayjs } from "metabase/dayjs";
-import {
-  createMockAdminAppState,
-  createMockAdminState,
-} from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import type { HelpLinkSetting } from "metabase-types/api";
 import {
   createMockMetabaseInfo,
@@ -16,6 +10,12 @@ import {
   createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { dayjs } from "metabase/dayjs";
+import {
+  createMockAdminAppState,
+  createMockAdminState,
+} from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { AppSwitcher } from "./AppSwitcher";
 import type { CurrentApp } from "./useGetCurrentApp";

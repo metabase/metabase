@@ -1,10 +1,10 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks/dataset";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 
 import { getTreemapChartColumns, getTreemapData } from "./data";
 import { getNodesFromPath } from "./tree";

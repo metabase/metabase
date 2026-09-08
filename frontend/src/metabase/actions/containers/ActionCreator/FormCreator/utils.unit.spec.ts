@@ -1,5 +1,5 @@
-import { getDefaultFieldSettings } from "metabase/actions/utils";
 import type { FieldSettingsMap } from "metabase-types/api";
+import { getDefaultFieldSettings } from "metabase/actions/utils";
 
 import { reorderFields } from "./utils";
 

@@ -1,10 +1,10 @@
 import { dissocIn } from "icepick";
 import _ from "underscore";
 
-import type { Dispatch } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetColumn, Field, FieldReference } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
+import type { Dispatch } from "metabase/redux/store";
 
 import {
   createModelIndex,

@@ -5,9 +5,9 @@ import {
   setupTablesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route } from "metabase/router";
 import type { Database, Table } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import { TablePermalinkRedirect } from "./TablePermalinkRedirect";
 

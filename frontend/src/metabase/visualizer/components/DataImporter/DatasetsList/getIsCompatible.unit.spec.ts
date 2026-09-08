@@ -1,4 +1,3 @@
-import { registerVisualizations } from "metabase/visualizations/register";
 import type { Field } from "metabase-types/api";
 import {
   createMockCategoryColumn,
@@ -7,6 +6,7 @@ import {
   createMockField,
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { getIsCompatible } from "./getIsCompatible";
 

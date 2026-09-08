@@ -4,13 +4,13 @@ import { useMemo } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type { ForeignKey } from "metabase-types/api";
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { Loader, Stack, Text, rem } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type { ForeignKey } from "metabase-types/api";
 
 import S from "./Relationship.module.css";
 import {

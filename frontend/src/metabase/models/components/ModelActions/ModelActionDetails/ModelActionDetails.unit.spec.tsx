@@ -11,7 +11,6 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import type {
   Card,
   Database,
@@ -26,6 +25,7 @@ import {
   createSampleDatabase,
   createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
+import { getRoutes as getModelRoutes } from "metabase/models/routes";
 
 const TEST_DATABASE_WITH_ACTIONS = createSampleDatabase({
   settings: { "database-enable-actions": true },

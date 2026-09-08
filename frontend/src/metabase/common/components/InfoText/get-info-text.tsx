@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { SearchResult } from "metabase-types/api";
 import { getCollection } from "metabase/common/collections/utils";
 import {
   PLUGIN_COLLECTIONS,
@@ -10,7 +11,6 @@ import {
   collection as collectionUrl,
   dashboard as dashboardUrl,
 } from "metabase/urls";
-import type { SearchResult } from "metabase-types/api";
 
 export type InfoTextData = {
   link?: string | null;

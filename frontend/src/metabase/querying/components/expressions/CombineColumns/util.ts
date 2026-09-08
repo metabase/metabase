@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { getColumnExample } from "metabase-lib/v1/expressions/column-example";
+import { isNotNull } from "metabase/utils/types";
 
 export type ColumnAndSeparator = {
   separator: string | null;

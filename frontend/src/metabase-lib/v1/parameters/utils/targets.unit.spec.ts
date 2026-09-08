@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -43,6 +42,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { isDimensionTarget } from "metabase-types/guards";
+import { checkNotNull } from "metabase/utils/types";
 
 type StructuredCard = Card<StructuredDatasetQuery>;
 

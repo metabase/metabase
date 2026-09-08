@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type { DashboardId, VisualizerDataSource } from "metabase-types/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useDispatch, useSelector } from "metabase/redux";
 import {
@@ -21,7 +22,6 @@ import {
   initializeVisualizer,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
-import type { DashboardId, VisualizerDataSource } from "metabase-types/api";
 
 import {
   trackVisualizerAddMoreDataClicked,

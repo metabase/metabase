@@ -1,7 +1,7 @@
+import type { CollectionItem } from "metabase-types/api";
 import { useListCollectionItemsQuery } from "metabase/api";
 import { getCollectionItemsOptions } from "metabase/common/components/Pickers/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import type { CollectionItem } from "metabase-types/api";
 
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerItem } from "../../types";

@@ -1,5 +1,6 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 
+import type { CardDisplayType } from "metabase-types/api";
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 import { getTooltipModel } from "metabase/visualizations/visualizations/CartesianChart/events";
 import {
@@ -10,7 +11,6 @@ import {
   GOAL_LINE_SERIES_ID,
   getTooltipBaseOption,
 } from "metabase/viz-core";
-import type { CardDisplayType } from "metabase-types/api";
 
 interface ChartItemTooltip {
   dataIndex: number;

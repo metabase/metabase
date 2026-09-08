@@ -1,8 +1,8 @@
 import type { FormEvent } from "react";
 import { useMemo } from "react";
 
-import { Box, Radio, Stack } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
+import { Box, Radio, Stack } from "metabase/ui";
 
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";

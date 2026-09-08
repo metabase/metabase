@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { AggregationType, DatasetColumn } from "metabase-types/api";
 import { checkNumber } from "metabase/utils/types";
 import { isEmpty } from "metabase/utils/validate";
-import type { AggregationType, DatasetColumn } from "metabase-types/api";
 
 import { SERIES_SETTING_KEY } from "../../../shared/settings/series";
 import type { ComputedVisualizationSettings } from "../../../types";

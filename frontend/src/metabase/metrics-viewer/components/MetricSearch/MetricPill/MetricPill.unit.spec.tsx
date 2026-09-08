@@ -3,6 +3,11 @@ import userEvent from "@testing-library/user-event";
 
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
+import {
+  createMockMetricDimension,
+  createMockMetricDimensionGroup,
+  createMockNormalizedMetric,
+} from "metabase-types/api/mocks/metric";
 import type {
   MetricsViewerDefinitionEntry,
   SelectedMetric,
@@ -12,11 +17,6 @@ import {
   createMetricMetadata,
   setupDefinition,
 } from "metabase/metrics-viewer/utils/__tests__/test-helpers";
-import {
-  createMockMetricDimension,
-  createMockMetricDimensionGroup,
-  createMockNormalizedMetric,
-} from "metabase-types/api/mocks/metric";
 
 import { MetricPill } from "./MetricPill";
 

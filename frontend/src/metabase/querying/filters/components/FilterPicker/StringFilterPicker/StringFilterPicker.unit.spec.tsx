@@ -13,8 +13,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
@@ -24,6 +22,8 @@ import {
   PRODUCT_VENDOR_VALUES,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 
 import {
   createQuery,

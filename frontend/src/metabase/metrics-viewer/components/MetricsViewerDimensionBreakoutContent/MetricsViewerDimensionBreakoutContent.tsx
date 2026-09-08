@@ -1,5 +1,8 @@
 import { useCallback, useMemo } from "react";
 
+import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
+import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 import { dayjs } from "metabase/dayjs";
 import {
   DimensionPillBar,
@@ -18,9 +21,6 @@ import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import { Box, Flex, Stack } from "metabase/ui";
 import { getObjectKeys } from "metabase/utils/objects";
 import type { OnBrush } from "metabase/visualizations/types";
-import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
-import * as LibMetric from "metabase-lib/metric";
-import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 
 export function MetricsViewerDimensionBreakoutContent() {
   const {

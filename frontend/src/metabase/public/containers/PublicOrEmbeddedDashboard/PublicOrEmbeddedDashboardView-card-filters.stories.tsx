@@ -6,19 +6,6 @@ import _ from "underscore";
 import { getPublicStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import {
-  MockDashboardContext,
-  type MockDashboardContextProps,
-} from "metabase/dashboard/context/mock-context";
-import { Heading } from "metabase/dashboard/visualizations/Heading";
-import { MetabaseReduxProvider } from "metabase/redux";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import { registerVisualization } from "metabase/viz-core";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -32,6 +19,19 @@ import {
   createMockParameter,
 } from "metabase-types/api/mocks";
 import { PRODUCTS } from "metabase-types/api/mocks/presets";
+import {
+  MockDashboardContext,
+  type MockDashboardContextProps,
+} from "metabase/dashboard/context/mock-context";
+import { Heading } from "metabase/dashboard/visualizations/Heading";
+import { MetabaseReduxProvider } from "metabase/redux";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import { registerVisualization } from "metabase/viz-core";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 

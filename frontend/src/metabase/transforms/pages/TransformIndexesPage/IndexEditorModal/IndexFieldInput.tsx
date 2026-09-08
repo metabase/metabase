@@ -1,5 +1,6 @@
 import { match } from "ts-pattern";
 
+import type { IndexField } from "metabase-types/api";
 import {
   FormNumberInput,
   FormSelect,
@@ -7,7 +8,6 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import type { ComboboxItem } from "metabase/ui";
-import type { IndexField } from "metabase-types/api";
 
 import { ColumnsField } from "./ColumnsField";
 

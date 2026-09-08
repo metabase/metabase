@@ -1,13 +1,13 @@
 import { useRef } from "react";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
 import {
   ActionButton,
   type ActionButtonHandle,
 } from "metabase/common/components/ActionButton";
 import { EditBar } from "metabase/common/components/EditBar";
 import { Button } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 
 import S from "./MetricEditorHeader.module.css";
 

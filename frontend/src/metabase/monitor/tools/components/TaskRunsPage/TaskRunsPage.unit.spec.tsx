@@ -10,11 +10,11 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import type { ListTaskRunsResponse } from "metabase-types/api";
+import { createMockTaskRun } from "metabase-types/api/mocks";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { ListTaskRunsResponse } from "metabase-types/api";
-import { createMockTaskRun } from "metabase-types/api/mocks";
 
 import { TaskRunsPage } from "./TaskRunsPage";
 

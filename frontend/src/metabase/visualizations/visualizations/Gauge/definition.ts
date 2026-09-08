@@ -2,6 +2,7 @@ import Color from "color";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import { color as colorHex } from "metabase/ui/colors";
 import {
   type VisualizationDefinition,
@@ -10,7 +11,6 @@ import {
   getMinSize,
   segmentIsValid,
 } from "metabase/viz-core";
-import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { isGaugeSegmentsArray } from "./types";
 

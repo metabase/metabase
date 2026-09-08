@@ -1,7 +1,7 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import type { Dataset, IconName } from "metabase-types/api";
+import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 
 export class MinColumnsError extends Error {
   constructor(minColumns: number) {

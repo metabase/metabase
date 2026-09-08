@@ -1,14 +1,14 @@
 import cx from "classnames";
 import { useMemo } from "react";
 
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type { DatasetColumn } from "metabase-types/api";
 import { Box } from "metabase/ui";
 import type {
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type { DatasetColumn } from "metabase-types/api";
 
 import { LIST_DEFINITION } from "../../definition";
 import { ListView } from "../ListView/ListView";

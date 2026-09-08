@@ -1,13 +1,13 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { canonicalCollectionId } from "metabase/common/collections/utils";
 import type {
   Collection,
   IconName,
   Timeline,
   TimelineIcon,
 } from "metabase-types/api";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 
 export const getTimelineName = (timeline: Timeline) => {
   return timeline.default && timeline.collection

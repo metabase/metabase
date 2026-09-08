@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Box, Group, Icon, SegmentedControl } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { Box, Group, Icon, SegmentedControl } from "metabase/ui";
 
 import type { ActivePreviewPane } from "./types";
 

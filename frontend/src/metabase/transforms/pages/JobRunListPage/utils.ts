@@ -1,11 +1,11 @@
-import type { Location } from "metabase/router";
-import * as Urls from "metabase/urls";
 import {
   SORT_DIRECTIONS,
   TRANSFORM_JOB_RUN_SORT_COLUMNS,
   TRANSFORM_JOB_RUN_STATUSES,
   TRANSFORM_RUN_METHODS,
 } from "metabase-types/api";
+import type { Location } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import type { JobRunSortOptions } from "./types";
 

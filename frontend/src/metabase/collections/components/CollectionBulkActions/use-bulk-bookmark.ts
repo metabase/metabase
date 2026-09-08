@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type { Bookmark, CollectionItem } from "metabase-types/api";
 import { useCreateBookmarkMutation } from "metabase/api";
 import { trackCollectionItemBookmarked } from "metabase/common/collections/analytics";
 import {
@@ -9,7 +10,6 @@ import {
   isItemBookmarked,
 } from "metabase/common/collections/utils";
 import { useMetadataToasts } from "metabase/common/hooks";
-import type { Bookmark, CollectionItem } from "metabase-types/api";
 
 export const useBulkBookmark = (
   selected: CollectionItem[],

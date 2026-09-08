@@ -2,13 +2,6 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { act, screen, waitFor, within } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
-import { registerVisualizations } from "metabase/visualizations/register";
-import type {
-  Visualization,
-  VisualizationProps,
-} from "metabase/visualizations/types/visualization";
-import { registerVisualization } from "metabase/viz-core";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { CustomVizDisplayType, DatasetData } from "metabase-types/api";
 import {
@@ -26,6 +19,13 @@ import {
   createOrdersIdDatasetColumn,
   createOrdersTotalDatasetColumn,
 } from "metabase-types/api/mocks/presets";
+import { checkNotNull } from "metabase/utils/types";
+import { registerVisualizations } from "metabase/visualizations/register";
+import type {
+  Visualization,
+  VisualizationProps,
+} from "metabase/visualizations/types/visualization";
+import { registerVisualization } from "metabase/viz-core";
 
 import { getCard } from "../store/selectors";
 

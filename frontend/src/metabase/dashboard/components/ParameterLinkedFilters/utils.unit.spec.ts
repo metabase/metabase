@@ -1,4 +1,3 @@
-import { checkNotNull } from "metabase/utils/types";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { FieldId } from "metabase-types/api";
@@ -8,6 +7,7 @@ import {
   PRODUCTS,
   REVIEWS,
 } from "metabase-types/api/mocks/presets";
+import { checkNotNull } from "metabase/utils/types";
 
 import { getFilterFieldsRequest, getParametersInfo } from "./utils";
 

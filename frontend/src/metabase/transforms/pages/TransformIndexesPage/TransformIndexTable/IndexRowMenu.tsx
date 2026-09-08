@@ -1,8 +1,8 @@
 import type { MouseEvent } from "react";
 import { t } from "ttag";
 
-import { ActionIcon, Icon, Menu } from "metabase/ui";
 import type { TableIndexEntry } from "metabase-types/api";
+import { ActionIcon, Icon, Menu } from "metabase/ui";
 
 import { isManagedIndex, isPendingDeletion } from "./utils";
 

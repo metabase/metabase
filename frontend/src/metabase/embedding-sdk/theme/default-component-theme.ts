@@ -1,10 +1,10 @@
 import { merge } from "icepick";
 
+import type { DeepPartial } from "metabase-types/utils/types";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
 import type { MantineThemeOverride } from "metabase/ui";
 import { OVERLAY_Z_INDEX } from "metabase/ui/component-theme";
-import type { DeepPartial } from "metabase-types/utils/types";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
 

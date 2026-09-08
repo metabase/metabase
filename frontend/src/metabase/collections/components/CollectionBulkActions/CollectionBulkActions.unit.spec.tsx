@@ -19,8 +19,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import * as Analytics from "metabase/analytics";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import {
   createMockBookmark,
@@ -30,6 +28,8 @@ import {
   createMockDashboard,
   createMockDocument,
 } from "metabase-types/api/mocks";
+import * as Analytics from "metabase/analytics";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 
 import { CollectionBulkActions } from "./CollectionBulkActions";
 

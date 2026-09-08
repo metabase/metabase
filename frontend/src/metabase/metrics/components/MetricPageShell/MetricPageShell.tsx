@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import type { Card } from "metabase-types/api";
 import { useDeleteCardMutation, useUpdateCardMutation } from "metabase/api";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
@@ -8,7 +9,6 @@ import type { MetricUrls } from "metabase/common/metrics/types";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
-import type { Card } from "metabase-types/api";
 
 import { CollectionBreadcrumbs } from "../CollectionBreadcrumbs";
 import { MetricHeader } from "../MetricHeader";

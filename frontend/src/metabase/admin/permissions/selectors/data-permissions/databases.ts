@@ -1,13 +1,13 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { databaseApi } from "metabase/api";
-import type { State } from "metabase/redux/store";
-import { checkNotNull } from "metabase/utils/types";
 import type {
   Database,
   DatabaseId,
   PermissionsDatabase,
 } from "metabase-types/api";
+import { databaseApi } from "metabase/api";
+import type { State } from "metabase/redux/store";
+import { checkNotNull } from "metabase/utils/types";
 
 /**
  * The permissions tree needs every table of a database, hidden ones included,

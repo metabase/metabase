@@ -17,14 +17,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { modalRoute } from "metabase/common/components/ModalRoute";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import { Route, redirect } from "metabase/router";
-import * as Urls from "metabase/urls";
-import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   Card,
@@ -52,6 +44,14 @@ import {
   createStructuredModelCard as _createStructuredModelCard,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
+import { modalRoute } from "metabase/common/components/ModalRoute";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { Route, redirect } from "metabase/router";
+import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 
 import ActionCreatorModal from "../ActionCreatorModal";
 

@@ -1,7 +1,7 @@
 import _ from "underscore";
 
-import type { Locale } from "metabase/redux/store";
 import type { LocaleData } from "metabase-types/api";
+import type { Locale } from "metabase/redux/store";
 
 import { SUBSCRIBE_TOKEN, SUBSCRIBE_URL } from "./constants";
 

@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { type FormEvent, useState } from "react";
 import { msgid, ngettext } from "ttag";
 
+import type { TransformRunStatus } from "metabase-types/api";
 import {
   Box,
   Button,
@@ -11,7 +12,6 @@ import {
   Popover,
   Stack,
 } from "metabase/ui";
-import type { TransformRunStatus } from "metabase-types/api";
 
 import { FILTER_WIDGET_MIN_WIDTH } from "../../../../constants";
 import { formatStatus } from "../../../../utils";

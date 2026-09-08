@@ -1,5 +1,6 @@
 import cx from "classnames";
 
+import type { IconName } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import {
@@ -11,7 +12,6 @@ import {
   Title,
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { IconName } from "metabase-types/api";
 
 const sizeOptions = {
   md: {

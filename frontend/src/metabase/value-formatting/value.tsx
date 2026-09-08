@@ -1,10 +1,5 @@
 import cx from "classnames";
 
-import CS from "metabase/css/core/index.css";
-import { type Dayjs, dayjs } from "metabase/dayjs";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { formatNumber, removeNewLines } from "metabase/utils/formatting";
-import { parseNumber } from "metabase/utils/number";
 import {
   isBoolean,
   isCoordinate,
@@ -16,6 +11,11 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
 import { clickBehaviorIsValid } from "metabase-types/guards";
+import CS from "metabase/css/core/index.css";
+import { type Dayjs, dayjs } from "metabase/dayjs";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { formatNumber, removeNewLines } from "metabase/utils/formatting";
+import { parseNumber } from "metabase/utils/number";
 
 import { getDataFromClicked } from "./click-data";
 import { formatDateTimeWithUnit, formatRange } from "./date";

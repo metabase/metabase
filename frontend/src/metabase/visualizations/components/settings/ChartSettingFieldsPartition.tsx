@@ -7,6 +7,11 @@ import { type ReactNode, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import type {
+  ColumnNameColumnSplitSetting,
+  DatasetColumn,
+} from "metabase-types/api";
 import {
   MultiContainerDraggableContext,
   type MultiContainerDraggableContextShouldUpdateStateData,
@@ -17,11 +22,6 @@ import CS from "metabase/css/core/index.css";
 import { Box, Text } from "metabase/ui";
 import type { Partition } from "metabase/visualizations/visualizations/PivotTable/partitions";
 import type { RemappingHydratedDatasetColumn } from "metabase/viz-core";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import type {
-  ColumnNameColumnSplitSetting,
-  DatasetColumn,
-} from "metabase-types/api";
 
 import { ColumnItem } from "./ColumnItem";
 

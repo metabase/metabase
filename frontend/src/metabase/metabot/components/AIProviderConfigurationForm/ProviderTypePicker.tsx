@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Group, SimpleGrid, Text, UnstyledButton } from "metabase/ui";
 import type { LlmProviderType } from "metabase-types/api";
+import { Group, SimpleGrid, Text, UnstyledButton } from "metabase/ui";
 
 import { ProviderTypeIcon } from "./ProviderTypeIcon";
 import S from "./ProviderTypePicker.module.css";

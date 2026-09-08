@@ -8,8 +8,8 @@ import type {
   SdkLoadingError,
 } from "embedding-sdk-bundle/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
-import type { MetabaseFetchRequestTokenFn } from "metabase/embedding-sdk/types/refresh-token";
 import type { DashboardTabId } from "metabase-types/api";
+import type { MetabaseFetchRequestTokenFn } from "metabase/embedding-sdk/types/refresh-token";
 
 import { initAuth, refreshTokenAsync } from "./auth";
 import {

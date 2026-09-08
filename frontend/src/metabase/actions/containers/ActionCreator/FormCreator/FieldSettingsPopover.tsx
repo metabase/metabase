@@ -3,15 +3,15 @@ import type { ChangeEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { getInputTypes } from "metabase/actions/constants";
-import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { Popover, Radio, Stack, Switch, UnstyledButton } from "metabase/ui";
-import { TextInput } from "metabase/ui/components/inputs/TextInput";
 import type {
   FieldSettings,
   FieldType,
   InputSettingType,
 } from "metabase-types/api";
+import { getInputTypes } from "metabase/actions/constants";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { Popover, Radio, Stack, Switch, UnstyledButton } from "metabase/ui";
+import { TextInput } from "metabase/ui/components/inputs/TextInput";
 
 import {
   Divider,

@@ -1,6 +1,8 @@
 import { type Middleware, isFulfilled } from "@reduxjs/toolkit";
 import type { Schema } from "normalizr";
 
+import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
+import type { DatabaseId, SchemaName } from "metabase-types/api";
 import {
   automagicDashboardsApi,
   cardApi,
@@ -15,8 +17,6 @@ import {
   snippetApi,
   tableApi,
 } from "metabase/api";
-import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
-import type { DatabaseId, SchemaName } from "metabase-types/api";
 
 import { updateMetadata } from "./actions";
 import {

@@ -2,14 +2,14 @@ import { useCallback, useState } from "react";
 import { useDeepCompareEffect, useLatest } from "react-use";
 import _ from "underscore";
 
+import { UNNAMED_SCHEMA_NAME } from "metabase-lib/v1/metadata/utils/schema";
+import type { DatabaseId, SchemaName } from "metabase-types/api";
 import {
   useLazyListDatabaseSchemaTablesQuery,
   useLazyListDatabaseSchemasQuery,
   useLazyListDatabasesQuery,
 } from "metabase/api";
 import { isSyncCompleted } from "metabase/utils/syncing";
-import { UNNAMED_SCHEMA_NAME } from "metabase-lib/v1/metadata/utils/schema";
-import type { DatabaseId, SchemaName } from "metabase-types/api";
 
 import type {
   DatabaseNode,

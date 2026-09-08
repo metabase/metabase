@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type * as Lib from "metabase-lib";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Box, Checkbox, Flex, Icon, Text, TextInput } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 
 import type { ColumnGroupItem, ColumnItem } from "./types";
 import {

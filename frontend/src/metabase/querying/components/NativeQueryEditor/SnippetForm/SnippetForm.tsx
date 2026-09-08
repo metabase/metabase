@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 import { useListCollectionsQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -15,7 +16,6 @@ import {
 } from "metabase/forms";
 import { Button, Flex, Icon, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
 import S from "./SnippetForm.module.css";
 

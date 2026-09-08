@@ -1,6 +1,7 @@
 import type React from "react";
 import { useCallback, useMemo } from "react";
 
+import type { RawSeries } from "metabase-types/api";
 import type {
   OnChangeCardAndRun,
   OnChangeCardAndRunOpts,
@@ -11,7 +12,6 @@ import {
   type RenderingContext,
   getComputedSettingsForSeries,
 } from "metabase/viz-core";
-import type { RawSeries } from "metabase-types/api";
 
 export type TransformSeries = (
   rawSeries: RawSeries,

@@ -1,7 +1,7 @@
-import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
-import type { DimensionType } from "metabase/common/metrics/utils/dimension-types";
 import type { MetricDefinition } from "metabase-lib/metric";
 import type { MetricDimension } from "metabase-types/api";
+import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
+import type { DimensionType } from "metabase/common/metrics/utils/dimension-types";
 
 export interface OverviewDimension {
   dimensionId: string;

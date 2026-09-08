@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef } from "react";
 
-import { useLazyGetAdhocQueryQuery } from "metabase/api";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Dataset, DatasetQuery } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
+import { useLazyGetAdhocQueryQuery } from "metabase/api";
 
 import type { QueryEditorUiState } from "../../types";
 

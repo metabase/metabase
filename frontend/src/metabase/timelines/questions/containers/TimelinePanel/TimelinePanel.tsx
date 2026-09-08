@@ -1,10 +1,10 @@
 import type { ComponentProps } from "react";
 
+import type { CollectionId, TimelineEvent } from "metabase-types/api";
 import { useGetCollectionQuery } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { CollectionId, TimelineEvent } from "metabase-types/api";
 
 import TimelinePanel from "../../components/TimelinePanel";
 

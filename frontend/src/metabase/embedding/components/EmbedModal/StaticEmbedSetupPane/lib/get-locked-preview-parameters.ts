@@ -1,5 +1,5 @@
-import type { EmbedResourceParameter } from "metabase/embedding/types";
 import type { EmbeddingParameters } from "metabase-types/api";
+import type { EmbedResourceParameter } from "metabase/embedding/types";
 
 export function getLockedPreviewParameters(
   resourceParameters: EmbedResourceParameter[],

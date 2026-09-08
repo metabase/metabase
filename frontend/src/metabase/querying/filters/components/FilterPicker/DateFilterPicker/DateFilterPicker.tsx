@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import * as Lib from "metabase-lib";
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
@@ -7,7 +8,6 @@ import { DatePicker } from "metabase/querying/common/components/DatePicker";
 import { SimpleDatePicker } from "metabase/querying/common/components/DatePicker/SimpleDatePicker";
 import type { DatePickerValue } from "metabase/querying/common/types";
 import { PopoverBackButton } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import { FilterSubmitButton } from "../FilterSubmitButton";
 import type { FilterPickerWidgetProps } from "../types";

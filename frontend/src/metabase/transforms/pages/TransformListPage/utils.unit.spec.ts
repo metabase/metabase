@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { getLibQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
@@ -15,6 +14,7 @@ import {
   createMockTransformOwner,
   createMockTransformTarget,
 } from "metabase-types/api/mocks";
+import { getLibQuery } from "metabase/transforms/utils";
 
 import {
   buildTreeData,

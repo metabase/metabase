@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { DateFormattingSettings } from "metabase-types/api/settings";
 import { dayjs } from "metabase/dayjs";
 import type {
   DatePickerExtractionUnit,
@@ -9,7 +10,6 @@ import type {
   ExcludeDatePickerOperator,
   ExcludeDatePickerValue,
 } from "metabase/querying/common/types";
-import type { DateFormattingSettings } from "metabase-types/api/settings";
 
 import { EXCLUDE_OPERATOR_OPTIONS, EXCLUDE_UNIT_OPTIONS } from "./constants";
 import type {

@@ -2,11 +2,11 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ImplicitActionIcon from "metabase/actions/components/ImplicitActionIcon";
 import type {
   ActionFormSettings,
   WritebackImplicitQueryAction,
 } from "metabase-types/api";
+import ImplicitActionIcon from "metabase/actions/components/ImplicitActionIcon";
 
 import { getDefaultFormSettings } from "../../../../utils";
 import type { ActionContextType } from "../ActionContext";

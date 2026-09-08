@@ -1,14 +1,14 @@
 import { memo } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type { Field, FieldId, Table } from "metabase-types/api";
 import { useUpdateFieldMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Group, Stack, type StackProps, Text } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { NameDescriptionInput } from "../NameDescriptionInput";
 import { ResponsiveButton } from "../ResponsiveButton";

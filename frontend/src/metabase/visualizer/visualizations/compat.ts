@@ -1,16 +1,16 @@
 import _ from "underscore";
 
-import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
-import {
-  type ComputedVisualizationSettings,
-  isCartesianChart,
-} from "metabase/viz-core";
 import type {
   Dataset,
   DatasetColumn,
   Field,
   VisualizerDataSourceId,
 } from "metabase-types/api";
+import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
+import {
+  type ComputedVisualizationSettings,
+  isCartesianChart,
+} from "metabase/viz-core";
 
 import { findColumnSlotForCartesianChart } from "./cartesian";
 import { findColumnSlotForFunnel } from "./funnel";

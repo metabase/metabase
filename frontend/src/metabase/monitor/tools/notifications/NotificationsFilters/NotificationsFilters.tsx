@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type {
+  NotificationChannelType,
+  NotificationRunStatus,
+} from "metabase-types/api";
 import {
   FilterPill,
   FilterSection,
   ListFilterPopover,
 } from "metabase/common/components/ListFilterPopover";
 import { TextInput } from "metabase/ui";
-import type {
-  NotificationChannelType,
-  NotificationRunStatus,
-} from "metabase-types/api";
 
 import { CHANNEL_VALUES } from "../NotificationsAdminPage/constants";
 import type {

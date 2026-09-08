@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -27,6 +26,7 @@ import {
   createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { checkNotNull } from "metabase/utils/types";
 
 import Question from "./Question";
 import NativeQuery from "./queries/NativeQuery";

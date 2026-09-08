@@ -1,6 +1,7 @@
 import { updateIn } from "icepick";
 import { c, t } from "ttag";
 
+import type { DatabaseData } from "metabase-types/api";
 import { useToast } from "metabase/common/hooks";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -13,7 +14,6 @@ import {
   getUser,
 } from "metabase/setup";
 import { Text } from "metabase/ui";
-import type { DatabaseData } from "metabase-types/api";
 
 import {
   skipDatabase,

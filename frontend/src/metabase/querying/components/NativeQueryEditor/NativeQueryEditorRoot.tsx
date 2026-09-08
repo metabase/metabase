@@ -14,6 +14,17 @@ import {
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type {
+  CardId,
+  DatabaseId,
+  DatasetQuery,
+  NativeQuerySnippet,
+  ParameterId,
+} from "metabase-types/api";
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
@@ -28,17 +39,6 @@ import type { QueryModalType } from "metabase/querying/constants";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { useSelector } from "metabase/redux";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type {
-  CardId,
-  DatabaseId,
-  DatasetQuery,
-  NativeQuerySnippet,
-  ParameterId,
-} from "metabase-types/api";
 
 import S from "./NativeQueryEditor.module.css";
 import { ResizableArea } from "./ResizableArea";

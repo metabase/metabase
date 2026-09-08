@@ -5,11 +5,6 @@ import {
   NumberColumn,
   StringColumn,
 } from "__support__/visualizations";
-import { registerVisualizations } from "metabase/visualizations/register";
-import {
-  getComputedSettingsForSeries,
-  getStoredSettingsForSeries,
-} from "metabase/viz-core";
 import type {
   Series,
   VisualizationDisplay,
@@ -20,6 +15,11 @@ import {
   createMockDatasetData,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+import { registerVisualizations } from "metabase/visualizations/register";
+import {
+  getComputedSettingsForSeries,
+  getStoredSettingsForSeries,
+} from "metabase/viz-core";
 
 registerVisualizations();
 

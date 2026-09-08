@@ -1,20 +1,5 @@
 import { t } from "ttag";
 
-import { dayjs } from "metabase/dayjs";
-import type { ColorGetter } from "metabase/ui/colors/types";
-import { formatNumber } from "metabase/utils/formatting";
-import { isNumber } from "metabase/utils/types";
-import { isEmpty } from "metabase/utils/validate";
-import {
-  formatDateTimeRangeWithUnit,
-  formatValue,
-} from "metabase/value-formatting";
-import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
-import {
-  computeChange,
-  findPreviousNonEmptyRowIndex,
-  formatPreviousPeriodOptionName,
-} from "metabase/viz-core";
 import type { ClickObject } from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -34,6 +19,21 @@ import type {
 } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+import { dayjs } from "metabase/dayjs";
+import type { ColorGetter } from "metabase/ui/colors/types";
+import { formatNumber } from "metabase/utils/formatting";
+import { isNumber } from "metabase/utils/types";
+import { isEmpty } from "metabase/utils/validate";
+import {
+  formatDateTimeRangeWithUnit,
+  formatValue,
+} from "metabase/value-formatting";
+import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
+import {
+  computeChange,
+  findPreviousNonEmptyRowIndex,
+  formatPreviousPeriodOptionName,
+} from "metabase/viz-core";
 
 import { COMPARISON_TYPES, VIZ_SETTINGS_DEFAULTS } from "./constants";
 

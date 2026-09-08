@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import CS from "metabase/css/core/index.css";
 import { LimitInput } from "metabase/querying/components/LimitInput";
 import { Box, Radio, Stack } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
-import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 interface LimitPopoverProps {
   limit: number | null;

@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
-import { Flex, Text } from "metabase/ui";
 import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type { Parameter, TemplateTag } from "metabase-types/api";
+import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
+import { Flex, Text } from "metabase/ui";
 
 import {
   ContainerLabel,

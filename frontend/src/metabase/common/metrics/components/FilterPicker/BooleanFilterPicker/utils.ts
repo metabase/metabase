@@ -1,5 +1,5 @@
-import type { BooleanFilterValue } from "metabase/querying/common/types";
 import * as LibMetric from "metabase-lib/metric";
+import type { BooleanFilterValue } from "metabase/querying/common/types";
 
 export function getFilterValue(
   definition: LibMetric.MetricDefinition,

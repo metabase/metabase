@@ -4,6 +4,18 @@ import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 import { noop } from "underscore";
 
+import type {
+  ExplorationId,
+  ExplorationPageNode,
+  ExplorationQuery,
+  HydratedExplorationExploreFilter,
+  SingleSeries,
+  Timeline,
+  TimelineEvent,
+  TimelineEventId,
+  TimelineId,
+} from "metabase-types/api";
+import { isSettledExplorationQueryStatus } from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { explorationApi } from "metabase/api/exploration";
 import { Warnings } from "metabase/common/components/Warnings";
@@ -24,18 +36,6 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
 import type { ClickActionsMode, OnBrush } from "metabase/visualizations/types";
 import { type HighlightedObject, isCartesianChart } from "metabase/viz-core";
-import type {
-  ExplorationId,
-  ExplorationPageNode,
-  ExplorationQuery,
-  HydratedExplorationExploreFilter,
-  SingleSeries,
-  Timeline,
-  TimelineEvent,
-  TimelineEventId,
-  TimelineId,
-} from "metabase-types/api";
-import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { useExplorationClickActionsMode } from "../../hooks/useExplorationClickActionsMode";
 import { getHighlightedForChildTarget } from "../../selectors";

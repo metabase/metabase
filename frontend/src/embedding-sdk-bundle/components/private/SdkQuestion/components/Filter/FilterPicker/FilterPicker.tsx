@@ -1,11 +1,11 @@
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
+import type * as Lib from "metabase-lib";
 import type { UpdateQueryHookProps } from "metabase/query_builder";
 import {
   FilterPicker as InnerFilterPicker,
   type FilterPickerProps as InnerFilterPickerProps,
 } from "metabase/querying/filters/components/FilterPicker";
 import { Box } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 
 import { useSdkQuestionContext } from "../../../context";
 import { LAST_STAGE_INDEX } from "../../../utils/stages";

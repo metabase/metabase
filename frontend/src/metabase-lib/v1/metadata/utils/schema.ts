@@ -1,5 +1,5 @@
-import { humanize, titleize } from "metabase/utils/formatting";
 import type { DatabaseId, SchemaId, SchemaName } from "metabase-types/api";
+import { humanize, titleize } from "metabase/utils/formatting";
 
 export const UNNAMED_SCHEMA_NAME = "";
 

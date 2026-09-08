@@ -3,6 +3,14 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type {
+  Collection,
+  CollectionId,
+  CollectionNamespace,
+  CollectionPermissions,
+  Group as GroupType,
+  SpecialGroupType,
+} from "metabase-types/api";
 import { collectionApi } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
@@ -24,14 +32,6 @@ import type {
   State,
 } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
-import type {
-  Collection,
-  CollectionId,
-  CollectionNamespace,
-  CollectionPermissions,
-  Group as GroupType,
-  SpecialGroupType,
-} from "metabase-types/api";
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { Messages } from "../constants/messages";

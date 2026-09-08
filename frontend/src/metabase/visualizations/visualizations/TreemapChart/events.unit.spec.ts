@@ -1,13 +1,5 @@
 import type { EChartsType } from "echarts/core";
 
-import {
-  type ComputedVisualizationSettings,
-  TREEMAP_HOVER_OVERLAY_FILL,
-  type TreemapChartColumns,
-  type TreemapRect,
-  type TreemapTree,
-  getTreemapRootNodeId,
-} from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 import {
   createMockCard,
@@ -17,6 +9,14 @@ import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks/dataset";
+import {
+  type ComputedVisualizationSettings,
+  TREEMAP_HOVER_OVERLAY_FILL,
+  type TreemapChartColumns,
+  type TreemapRect,
+  type TreemapTree,
+  getTreemapRootNodeId,
+} from "metabase/viz-core";
 
 import {
   dispatchTreemapViewRoot,

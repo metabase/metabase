@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { jt, t } from "ttag";
 
+import type { Transform } from "metabase-types/api";
 import {
   useDeleteTransformMutation,
   useDeleteTransformTargetMutation,
@@ -23,7 +24,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { Transform } from "metabase-types/api";
 
 type DeleteTransformModalProps = {
   transform: Transform;

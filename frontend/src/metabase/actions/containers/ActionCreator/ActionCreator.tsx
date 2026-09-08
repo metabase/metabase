@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { CardId, WritebackAction } from "metabase-types/api";
 import { useCreateActionMutation, useUpdateActionMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { Modal } from "metabase/ui";
-import type { CardId, WritebackAction } from "metabase-types/api";
 
 import { isSavedAction } from "../../utils";
 

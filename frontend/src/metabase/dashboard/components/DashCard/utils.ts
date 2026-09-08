@@ -1,4 +1,3 @@
-import { getVirtualCardType } from "metabase/dashboard/utils";
 import type {
   BaseDashboardCard,
   Card,
@@ -13,6 +12,7 @@ import {
   isVirtualCard,
   isVisualizerSeriesItem,
 } from "metabase-types/guards/dashboard";
+import { getVirtualCardType } from "metabase/dashboard/utils";
 
 const VIZ_WITH_CUSTOM_MAPPING_UI = ["heading", "placeholder"];
 

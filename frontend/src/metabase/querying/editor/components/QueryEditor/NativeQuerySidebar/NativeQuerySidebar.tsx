@@ -2,10 +2,10 @@ import { type ComponentType, useState } from "react";
 import { useMount } from "react-use";
 import { match } from "ts-pattern";
 
-import { Box } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeQuerySnippet, RowValue } from "metabase-types/api";
+import { Box } from "metabase/ui";
 
 import { DataReference } from "../../../../components/DataReference/DataReference";
 import { SnippetSidebar } from "../../../../components/SnippetSidebar";

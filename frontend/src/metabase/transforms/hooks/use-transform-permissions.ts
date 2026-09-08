@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 
+import type { Database, Transform } from "metabase-types/api";
 import { useListDatabasesQuery } from "metabase/api/database";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import type { Database, Transform } from "metabase-types/api";
 
 import { sourceDatabaseId } from "../utils";
 

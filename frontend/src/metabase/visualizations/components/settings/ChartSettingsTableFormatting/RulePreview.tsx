@@ -3,6 +3,10 @@ import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type {
+  ColumnFormattingSetting,
+  DatasetColumn,
+} from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import {
   ActionIcon,
@@ -13,10 +17,6 @@ import {
   type PaperProps,
   Text,
 } from "metabase/ui";
-import type {
-  ColumnFormattingSetting,
-  DatasetColumn,
-} from "metabase-types/api";
 
 import { RuleBackground } from "./RuleBackground";
 import { RuleDescription } from "./RuleDescription";

@@ -1,6 +1,6 @@
+import { isConcreteTableId } from "metabase-types/api";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import * as Urls from "metabase/urls";
-import { isConcreteTableId } from "metabase-types/api";
 
 export const metricUrls: MetricUrls = {
   about: Urls.metricAbout,

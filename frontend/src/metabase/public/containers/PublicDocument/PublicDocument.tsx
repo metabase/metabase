@@ -4,6 +4,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { useEffect, useMemo } from "react";
 import { useAsync, useMount } from "react-use";
 
+import type { Document } from "metabase-types/api";
 import { publicApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -27,7 +28,6 @@ import { useLocation, useParams } from "metabase/router";
 import { getSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
 import { initializeIframeResizer } from "metabase/utils/dom";
-import type { Document } from "metabase-types/api";
 
 import S from "./PublicDocument.module.css";
 

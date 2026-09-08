@@ -1,8 +1,8 @@
 import { renderHook } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
-import * as Urls from "metabase/urls";
 import { createMockCard } from "metabase-types/api/mocks";
+import * as Urls from "metabase/urls";
 
 import { useHandleMcpDrillThrough } from "./useHandleMcpDrillThrough";
 

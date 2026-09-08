@@ -1,8 +1,8 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { dayjs } from "metabase/dayjs";
 import type { DayOfWeekId } from "metabase-types/api";
+import { dayjs } from "metabase/dayjs";
 
 // returns 0-6 where Sunday as 0 and Saturday as 6
 const getFirstDayOfWeekIndex = (): number => {

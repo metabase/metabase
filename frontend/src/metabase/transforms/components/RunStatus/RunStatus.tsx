@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { TransformRun } from "metabase-types/api";
 import { useSetting } from "metabase/settings";
 import { Box, Group, Icon } from "metabase/ui";
-import type { TransformRun } from "metabase-types/api";
 
 import { parseTimestampWithTimezone } from "../../utils";
 import { RunInfo } from "../RunInfo";

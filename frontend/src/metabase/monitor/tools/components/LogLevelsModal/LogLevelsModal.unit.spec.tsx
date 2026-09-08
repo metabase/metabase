@@ -14,11 +14,11 @@ import {
   within,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import type { LoggerPreset } from "metabase-types/api";
+import { createMockLoggerPreset } from "metabase-types/api/mocks/logger";
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
-import type { LoggerPreset } from "metabase-types/api";
-import { createMockLoggerPreset } from "metabase-types/api/mocks/logger";
 
 import { LogLevelsModal } from "./LogLevelsModal";
 

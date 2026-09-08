@@ -2,13 +2,6 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { fieldApi, skipToken, useGetFieldQuery } from "metabase/api";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
-import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
-import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
-import { type DispatchFn, connect } from "metabase/redux";
-import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -35,6 +28,13 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import { fieldApi, skipToken, useGetFieldQuery } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
+import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
+import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
+import { type DispatchFn, connect } from "metabase/redux";
+import { Box } from "metabase/ui";
 
 import TagEditorParamS from "./TagEditorParam.module.css";
 import {

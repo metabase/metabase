@@ -1,13 +1,13 @@
 import { Component, type ComponentType } from "react";
 import _ from "underscore";
 
+import type { Series, VisualizationSettings } from "metabase-types/api";
 import {
   type ComputedVisualizationSettings,
   type VisualizationSettingsDefinitions,
   getSettingsWidgets,
   updateSettings,
 } from "metabase/viz-core";
-import type { Series, VisualizationSettings } from "metabase-types/api";
 
 import ChartSettingsWidget from "../ChartSettingsWidget";
 

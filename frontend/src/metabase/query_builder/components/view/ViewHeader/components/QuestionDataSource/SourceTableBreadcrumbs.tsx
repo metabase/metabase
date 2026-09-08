@@ -1,10 +1,10 @@
 import type { ReactElement } from "react";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import { skipToken, useGetTableQuery } from "metabase/api";
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import * as Urls from "metabase/urls";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";

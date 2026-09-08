@@ -1,7 +1,6 @@
 import slugg from "slugg";
 import _ from "underscore";
 
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -19,6 +18,7 @@ import type {
   TemplateTag,
   TemplateTags,
 } from "metabase-types/api";
+import { checkNotNull } from "metabase/utils/types";
 
 import { TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";

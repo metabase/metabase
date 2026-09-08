@@ -1,9 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { pick } from "underscore";
 
-import { skipToken, useSearchQuery } from "metabase/api";
-import { trackSearchClick } from "metabase/common/search/analytics";
-import { Stack } from "metabase/ui";
 import {
   SEARCH_MODELS,
   type SchemaName,
@@ -11,6 +8,9 @@ import {
   type SearchRequest,
   type SearchResult,
 } from "metabase-types/api";
+import { skipToken, useSearchQuery } from "metabase/api";
+import { trackSearchClick } from "metabase/common/search/analytics";
+import { Stack } from "metabase/ui";
 
 import { useOmniPickerContext } from "../../context";
 import { useCurrentSearchScope } from "../../hooks/use-current-search-scope";

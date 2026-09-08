@@ -2,6 +2,8 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import cx from "classnames";
 import { useMemo } from "react";
 
+import { isDate } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetColumn } from "metabase-types/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Flex, type FlexProps, Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
@@ -16,8 +18,6 @@ import {
 } from "metabase/visualizer/selectors";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
 import { getDefaultDimensionFilter } from "metabase/viz-core";
-import { isDate } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
 import S from "../well.module.css";

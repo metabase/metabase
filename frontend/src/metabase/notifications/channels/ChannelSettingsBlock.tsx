@@ -1,8 +1,8 @@
 import type { JSX, ReactNode } from "react";
 
+import type { IconName } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { Button, Group, Icon, Stack, Text } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 type ChannelSettingsBlockProps = {
   title: string;
   iconName: IconName;

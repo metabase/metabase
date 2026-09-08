@@ -1,5 +1,6 @@
 import { type ReactNode, useMemo } from "react";
 
+import type { Series } from "metabase-types/api";
 import {
   DEFAULT_EDITOR_CAPABILITIES,
   EMPTY_CARD_EMBED_SLOTS,
@@ -9,7 +10,6 @@ import {
 } from "metabase/rich_text_editing/tiptap/EditorHost";
 import type { ClickActionsMode } from "metabase/visualizations/types";
 import type { HighlightedObject } from "metabase/viz-core";
-import type { Series } from "metabase-types/api";
 
 import { navigateToCardFromDocument } from "../../actions";
 import {

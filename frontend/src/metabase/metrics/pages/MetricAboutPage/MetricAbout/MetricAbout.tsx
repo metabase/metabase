@@ -1,10 +1,10 @@
 import { useState } from "react";
 
+import type { Card } from "metabase-types/api";
 import { MetricCardVisualization } from "metabase/common/data-studio/components/OverviewVisualization";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { Box, Flex, Stack } from "metabase/ui";
-import type { Card } from "metabase-types/api";
 
 import { AboutVisualization } from "./AboutVisualization";
 import { DescriptionSection } from "./DescriptionSection";

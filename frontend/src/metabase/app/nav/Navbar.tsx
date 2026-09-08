@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import type { User } from "metabase-types/api";
 import { useListDatabasesQuery } from "metabase/api";
 import { getUser } from "metabase/current-user";
 import { getDashboard } from "metabase/dashboard/shell-selectors";
@@ -10,7 +11,6 @@ import type { AdminPath, State, StoreDashboard } from "metabase/redux/store";
 import { useLocation, useParams } from "metabase/router";
 import { getAdminPaths } from "metabase/selectors/admin";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import type { User } from "metabase-types/api";
 
 type NavbarProps = {
   isOpen: boolean;

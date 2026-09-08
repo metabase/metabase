@@ -1,10 +1,10 @@
 import cx from "classnames";
 
+import type { IconName } from "metabase-types/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useLocation } from "metabase/router";
 import { Ellipsified, FixedSizeIcon, Flex } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./PillTabNavigation.module.css";
 

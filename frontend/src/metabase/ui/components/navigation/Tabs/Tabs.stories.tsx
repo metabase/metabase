@@ -1,5 +1,5 @@
-import { Icon, Tabs, type TabsProps } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { Icon, Tabs, type TabsProps } from "metabase/ui";
 
 const args = {
   orientation: "horizontal",

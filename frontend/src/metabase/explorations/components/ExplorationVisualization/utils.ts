@@ -1,5 +1,33 @@
 import { t } from "ttag";
 
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import {
+  isCountry,
+  isDate,
+  isDateWithoutTime,
+  isNumeric,
+  isState,
+} from "metabase-lib/v1/types/utils/isa";
+import type {
+  CardDisplayType,
+  ColumnSettings,
+  Dataset,
+  DatasetColumn,
+  DateTimeAbsoluteUnit,
+  ExplorationExploreFilter,
+  ExplorationQuery,
+  ExplorationQueryId,
+  ExplorationQueryType,
+  RowValue,
+  RowValues,
+  SeriesCard,
+  SeriesSettings,
+  SingleSeries,
+  VisualizationDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 import { dayjs } from "metabase/dayjs";
 import {
   CARTESIAN_SERIES_COL_NAME,
@@ -30,34 +58,6 @@ import {
   getSeriesVizSettingsKey,
   isCartesianChart,
 } from "metabase/viz-core";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import {
-  isCountry,
-  isDate,
-  isDateWithoutTime,
-  isNumeric,
-  isState,
-} from "metabase-lib/v1/types/utils/isa";
-import type {
-  CardDisplayType,
-  ColumnSettings,
-  Dataset,
-  DatasetColumn,
-  DateTimeAbsoluteUnit,
-  ExplorationExploreFilter,
-  ExplorationQuery,
-  ExplorationQueryId,
-  ExplorationQueryType,
-  RowValue,
-  RowValues,
-  SeriesCard,
-  SeriesSettings,
-  SingleSeries,
-  VisualizationDisplay,
-  VisualizationSettings,
-} from "metabase-types/api";
-import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 const SHOULD_STACK_CUTOFF = 8;
 const MIN_SEGMENTS_TO_SHOW_HEATMAP = 4;

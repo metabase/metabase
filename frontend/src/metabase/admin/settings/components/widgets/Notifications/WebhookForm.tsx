@@ -3,6 +3,11 @@ import { useMemo, useState } from "react";
 import { c, jt, t } from "ttag";
 import * as Yup from "yup";
 
+import {
+  type NotificationAuthMethods,
+  type NotificationAuthType,
+  isNotificationChannelTestErrorResponse,
+} from "metabase-types/api";
 import { useTestChannelMutation } from "metabase/api/channel";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useActionButtonLabel } from "metabase/common/hooks/use-action-button-label";
@@ -27,11 +32,6 @@ import {
   Title,
 } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";
-import {
-  type NotificationAuthMethods,
-  type NotificationAuthType,
-  isNotificationChannelTestErrorResponse,
-} from "metabase-types/api";
 
 import { buildAuthInfo } from "./utils";
 

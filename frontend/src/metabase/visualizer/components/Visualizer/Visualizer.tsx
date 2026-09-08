@@ -10,6 +10,7 @@ import { useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useUnmount } from "react-use";
 
+import type { DashboardId, VisualizerVizDefinition } from "metabase-types/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { DraggedItem } from "metabase/redux/store/visualizer";
 import { Box } from "metabase/ui";
@@ -25,7 +26,6 @@ import {
   resetVisualizer,
   setDraggedItem,
 } from "metabase/visualizer/visualizer.slice";
-import type { DashboardId, VisualizerVizDefinition } from "metabase-types/api";
 
 import { DataImporter } from "../DataImporter";
 import { DragOverlay as VisualizerDragOverlay } from "../DragOverlay";

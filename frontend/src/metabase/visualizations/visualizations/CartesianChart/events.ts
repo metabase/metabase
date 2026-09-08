@@ -1,6 +1,25 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type {
+  BrushClickObject,
+  BrushRange,
+  ClickObject,
+  ClickObjectDimension,
+} from "metabase-lib";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import { isDate, isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
+import type {
+  CardDisplayType,
+  CardId,
+  DatasetColumn,
+  RawSeries,
+  RowValue,
+} from "metabase-types/api";
+import { isSavedCard } from "metabase-types/guards";
 import { isNative } from "metabase/common/utils/card";
 import { dayjs } from "metabase/dayjs";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
@@ -52,25 +71,6 @@ import {
   isRemappedToString,
   isTimeSeriesAxis,
 } from "metabase/viz-core";
-import type {
-  BrushClickObject,
-  BrushRange,
-  ClickObject,
-  ClickObjectDimension,
-} from "metabase-lib";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import { isDate, isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
-import type {
-  CardDisplayType,
-  CardId,
-  DatasetColumn,
-  RawSeries,
-  RowValue,
-} from "metabase-types/api";
-import { isSavedCard } from "metabase-types/guards";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;

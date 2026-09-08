@@ -1,12 +1,12 @@
-import type { DimensionType } from "metabase/common/metrics/utils/dimension-types";
-import * as Urls from "metabase/urls";
-import { b64url_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
 import type {
   MathOperator,
   SegmentId,
   TemporalUnit,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { DimensionType } from "metabase/common/metrics/utils/dimension-types";
+import * as Urls from "metabase/urls";
+import { b64url_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
 
 import { defineCompactSchema } from "./compact-schema";
 import type {

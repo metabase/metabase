@@ -1,8 +1,8 @@
 import { diffWords } from "diff";
 import { t } from "ttag";
 
-import { Box, Flex, Icon, Text } from "metabase/ui";
 import type { DatasetQuery, FieldDiff, TableId } from "metabase-types/api";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 
 import { QueryClauseDisplay } from "./QueryClauseDisplay";
 import type { DefinitionType } from "./types";

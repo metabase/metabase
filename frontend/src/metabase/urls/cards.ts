@@ -1,15 +1,15 @@
 import slugg from "slugg";
 
-import {
-  isTransientCardId,
-  serializeCardForUrl,
-} from "metabase/common/utils/card";
 import type {
   CardId,
   ParameterValuesMap,
   Card as SavedCard,
   UnsavedCard,
 } from "metabase-types/api";
+import {
+  isTransientCardId,
+  serializeCardForUrl,
+} from "metabase/common/utils/card";
 
 import {
   appendSlug,

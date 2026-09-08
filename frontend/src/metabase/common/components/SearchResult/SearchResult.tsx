@@ -2,6 +2,7 @@ import cx from "classnames";
 import type { AnchorHTMLAttributes, HTMLAttributes, MouseEvent } from "react";
 import { forwardRef, useCallback } from "react";
 
+import type { SearchContext, SearchResult } from "metabase-types/api";
 import { Markdown } from "metabase/common/components/Markdown";
 import { trackSearchClick } from "metabase/common/search/analytics";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -21,7 +22,6 @@ import {
 } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isSyncCompleted } from "metabase/utils/syncing";
-import type { SearchContext, SearchResult } from "metabase-types/api";
 
 import { InfoText } from "../InfoText";
 

@@ -2,6 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type {
+  Bookmark,
+  Collection,
+  CollectionItem,
+  Database,
+} from "metabase-types/api";
 import {
   type ArchivableItem,
   isDeletable,
@@ -40,12 +46,6 @@ import {
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
-import type {
-  Bookmark,
-  Collection,
-  CollectionItem,
-  Database,
-} from "metabase-types/api";
 
 import S from "./ActionMenu.module.css";
 import { EntityItemMenu } from "./EntityItemMenu";

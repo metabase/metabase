@@ -2,6 +2,7 @@ import type { KeyboardEvent } from "react";
 import { forwardRef, useCallback, useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
+import type { Collection } from "metabase-types/api";
 import { getCollectionIcon } from "metabase/common/collections/utils";
 import { CollectionDropTarget } from "metabase/common/components/dnd/CollectionDropTarget";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
@@ -13,7 +14,6 @@ import { getIsTenantUser } from "metabase/current-user";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
-import type { Collection } from "metabase-types/api";
 
 import {
   CollectionNodeRoot,

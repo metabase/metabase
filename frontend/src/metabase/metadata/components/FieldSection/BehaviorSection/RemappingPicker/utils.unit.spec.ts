@@ -1,10 +1,10 @@
-import { checkNotNull } from "metabase/utils/types";
 import type { FieldValue } from "metabase-types/api";
 import {
   createMockField,
   createMockFieldDimension,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { checkNotNull } from "metabase/utils/types";
 
 import {
   getFkTargetTableEntityNameOrNull,

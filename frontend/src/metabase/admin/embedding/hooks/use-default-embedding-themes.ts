@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/settings";
 import type { CreateEmbeddingThemeRequest } from "metabase-types/api";
+import { useSetting } from "metabase/settings";
 
 import { deriveSdkThemeSettings } from "../utils/derive-sdk-theme-settings";
 

@@ -2,6 +2,8 @@ import { useEffect, useMemo } from "react";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { useGetCardQuery, useGetCardQueryMetadataQuery } from "metabase/api";
 import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
@@ -19,8 +21,6 @@ import { useParams } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import * as Urls from "metabase/urls";
 import { extractRemappedColumns } from "metabase/viz-core";
-import * as Lib from "metabase-lib";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 type ModelDetailPageParams = {
   slug: string;

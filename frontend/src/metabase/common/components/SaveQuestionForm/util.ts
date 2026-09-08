@@ -1,14 +1,14 @@
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
+import type { CardType, CollectionId, User } from "metabase-types/api";
 import {
   canonicalCollectionId,
   canonicalCollectionIdOrEntityId,
 } from "metabase/common/collections/utils";
 import { trackMetricCreated } from "metabase/common/data-studio/analytics";
 import { isNullOrUndefined } from "metabase/utils/types";
-import type Question from "metabase-lib/v1/Question";
-import type { CardType, CollectionId, User } from "metabase-types/api";
 
 import type {
   CreateQuestionOptions,

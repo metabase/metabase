@@ -2,6 +2,12 @@ import userEvent from "@testing-library/user-event";
 
 import { setupExplorationDataEndpoint } from "__support__/server-mocks/metric";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { ExplorationMetric, Timeline } from "metabase-types/api";
+import { createMockTimeline } from "metabase-types/api/mocks";
+import {
+  createMockMetric,
+  createMockMetricDimension,
+} from "metabase-types/api/mocks/metric";
 import { useCreateExplorationMutation } from "metabase/api";
 import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type { ExplorationBlock } from "metabase/explorations/hooks";
@@ -11,12 +17,6 @@ import {
   mockExplorationBlock,
 } from "metabase/explorations/test-utils";
 import { useMetabotAgent } from "metabase/metabot/hooks";
-import type { ExplorationMetric, Timeline } from "metabase-types/api";
-import { createMockTimeline } from "metabase-types/api/mocks";
-import {
-  createMockMetric,
-  createMockMetricDimension,
-} from "metabase-types/api/mocks/metric";
 
 import {
   NewExplorationData,

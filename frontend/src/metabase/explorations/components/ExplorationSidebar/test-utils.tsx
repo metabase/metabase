@@ -1,6 +1,11 @@
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import type {
+  ExplorationBlockNode,
+  ExplorationQuery,
+  ExplorationThread,
+} from "metabase-types/api";
 import {
   DEFAULT_SORT_ORDER,
   type ExplorationSortOrder,
@@ -12,11 +17,6 @@ import {
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type {
-  ExplorationBlockNode,
-  ExplorationQuery,
-  ExplorationThread,
-} from "metabase-types/api";
 
 import { ExplorationSidebar } from "./ExplorationSidebar";
 import {

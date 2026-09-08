@@ -1,7 +1,7 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
 import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import AccountLayout from "./AccountLayout";
 

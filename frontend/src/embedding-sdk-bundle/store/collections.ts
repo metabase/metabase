@@ -1,8 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { P, match } from "ts-pattern";
 
-import { getUser, getUserPersonalCollectionId } from "metabase/current-user";
 import type { CollectionId, RegularCollectionId } from "metabase-types/api";
+import { getUser, getUserPersonalCollectionId } from "metabase/current-user";
 
 import type {
   SdkBrowserCollectionId,

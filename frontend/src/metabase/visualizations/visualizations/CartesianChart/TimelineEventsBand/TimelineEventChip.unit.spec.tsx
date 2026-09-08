@@ -1,9 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { TimelineEventGroup } from "metabase/viz-core";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
+import type { TimelineEventGroup } from "metabase/viz-core";
 
 import { TimelineEventChip } from "./TimelineEventChip";
 

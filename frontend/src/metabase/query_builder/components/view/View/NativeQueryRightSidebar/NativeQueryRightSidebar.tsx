@@ -1,10 +1,5 @@
 import { match } from "ts-pattern";
 
-import { TagEditorSidebar } from "metabase/parameters/components/TagEditor/TagEditorSidebar";
-import { DataReference } from "metabase/querying/components/DataReference/DataReference";
-import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
-import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
-import { useDispatch, useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CollectionId,
@@ -17,6 +12,11 @@ import type {
   Timeline,
   TimelineEvent,
 } from "metabase-types/api";
+import { TagEditorSidebar } from "metabase/parameters/components/TagEditor/TagEditorSidebar";
+import { DataReference } from "metabase/querying/components/DataReference/DataReference";
+import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
+import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
+import { useDispatch, useSelector } from "metabase/redux";
 
 import { setTemplateTagConfig } from "../../../../actions";
 import { getOriginalQuestion } from "../../../../store/selectors";

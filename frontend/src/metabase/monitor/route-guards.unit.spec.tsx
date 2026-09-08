@@ -1,11 +1,11 @@
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockUser } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { parseSearchQuery } from "metabase/utils/browser";
-import { createMockUser } from "metabase-types/api/mocks";
 
 import {
   CanAccessAiAuditing,

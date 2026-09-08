@@ -3,6 +3,17 @@ import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type {
+  Card,
+  Collection,
+  CollectionItem,
+  Dashboard,
+  Document,
+  Exploration,
+  NativeQuerySnippet,
+  Table,
+  Timeline,
+} from "metabase-types/api";
 import {
   cardApi,
   collectionApi,
@@ -31,17 +42,6 @@ import {
 } from "metabase/common/collections/utils";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import type {
-  Card,
-  Collection,
-  CollectionItem,
-  Dashboard,
-  Document,
-  Exploration,
-  NativeQuerySnippet,
-  Table,
-  Timeline,
-} from "metabase-types/api";
 
 type Movable<
   M extends string,

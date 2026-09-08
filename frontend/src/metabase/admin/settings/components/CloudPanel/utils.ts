@@ -1,9 +1,9 @@
-import { dayjs } from "metabase/dayjs";
-import type { Plan } from "metabase/settings";
 import type {
   CloudMigration,
   CloudMigrationState,
 } from "metabase-types/api/cloud-migration";
+import { dayjs } from "metabase/dayjs";
+import type { Plan } from "metabase/settings";
 
 export type InternalCloudMigrationState = CloudMigrationState | "uninitialized";
 export type InProgressStates = "init" | "setup" | "dump" | "upload";

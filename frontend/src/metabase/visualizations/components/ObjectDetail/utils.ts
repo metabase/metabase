@@ -1,8 +1,5 @@
 import { t } from "ttag";
 
-import * as Urls from "metabase/urls";
-import { singularize } from "metabase/utils/formatting";
-import { formatValue } from "metabase/value-formatting";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
 import {
@@ -17,6 +14,9 @@ import type {
   TableId,
   VisualizationSettings,
 } from "metabase-types/api";
+import * as Urls from "metabase/urls";
+import { singularize } from "metabase/utils/formatting";
+import { formatValue } from "metabase/value-formatting";
 
 import type { ObjectId } from "./types";
 

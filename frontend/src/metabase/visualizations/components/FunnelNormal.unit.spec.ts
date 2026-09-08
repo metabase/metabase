@@ -1,6 +1,6 @@
-import { calculateFunnelSteps } from "metabase/viz-core";
 import type { RowValues } from "metabase-types/api";
 import { getRowsForStableKeys } from "metabase-types/api";
+import { calculateFunnelSteps } from "metabase/viz-core";
 
 import { getSortedRows } from "./FunnelNormal";
 

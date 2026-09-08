@@ -1,8 +1,8 @@
 import { match } from "ts-pattern";
 import _ from "underscore";
 
-import { Box, Flex, Icon } from "metabase/ui";
 import type { NotificationHandler } from "metabase-types/api";
+import { Box, Flex, Icon } from "metabase/ui";
 
 import { getChannelIconName } from "../NotificationsAdminPage/utils";
 

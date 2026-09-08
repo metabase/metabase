@@ -1,8 +1,8 @@
 import { c, msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { has24HourModeSetting } from "metabase/utils/time-dayjs";
 import type { ScheduleDayType, ScheduleFrameType } from "metabase-types/api";
+import { has24HourModeSetting } from "metabase/utils/time-dayjs";
 
 import { AM, PM } from "./constants";
 import type { AmPm } from "./types";

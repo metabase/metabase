@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type { Collection } from "metabase-types/api";
 import { useCreateCollectionMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
@@ -18,7 +19,6 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { Button, Group, Modal, Stack } from "metabase/ui";
-import type { Collection } from "metabase-types/api";
 
 type CreateTransformCollectionModalProps = {
   onClose: () => void;

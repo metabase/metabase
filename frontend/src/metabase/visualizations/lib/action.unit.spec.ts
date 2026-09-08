@@ -1,10 +1,10 @@
+import Question from "metabase-lib/v1/Question";
 import { navigate } from "metabase/router";
 import MetabaseSettings from "metabase/utils/settings";
 import type {
   QuestionChangeClickAction,
   UrlClickAction,
 } from "metabase/visualizations/types";
-import Question from "metabase-lib/v1/Question";
 
 import { performAction } from "./action";
 

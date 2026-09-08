@@ -1,9 +1,9 @@
 import _ from "underscore";
 
+import type { DatabaseData } from "metabase-types/api";
 import { databaseApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch } from "metabase/redux/store";
-import type { DatabaseData } from "metabase-types/api";
 
 export const editParamsForUserControlledScheduling = _.compose(
   editScheduleParamsForUserControlledScheduling,

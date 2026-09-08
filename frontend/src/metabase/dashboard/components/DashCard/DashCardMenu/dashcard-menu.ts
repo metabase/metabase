@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
+import type { DashboardCard, Dataset } from "metabase-types/api";
 import type { DashboardContextProps } from "metabase/dashboard/context";
 import type { DashCardMenuItem } from "metabase/embedding-sdk/types/plugins";
 import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
-import type { DashboardCard, Dataset } from "metabase-types/api";
 
 export type DashboardCardMenuCustomElement = ({
   question,

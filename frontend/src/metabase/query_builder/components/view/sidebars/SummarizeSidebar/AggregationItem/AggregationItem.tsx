@@ -1,9 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
 
+import type * as Lib from "metabase-lib";
 import { AggregationPicker } from "metabase/querying/common/components/AggregationPicker";
 import { Box, Icon, Popover } from "metabase/ui";
 import { PreventPopoverExitProvider } from "metabase/ui/components/utils/PreventPopoverExit";
-import type * as Lib from "metabase-lib";
 
 import AggregationItemS from "./AggregationItem.module.css";
 

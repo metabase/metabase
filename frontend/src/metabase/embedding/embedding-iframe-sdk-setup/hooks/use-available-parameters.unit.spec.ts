@@ -1,12 +1,12 @@
 import { renderHook } from "@testing-library/react";
 
-import { useAvailableParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-available-parameters";
 import type { Card, Dashboard } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
   createMockParameter,
 } from "metabase-types/api/mocks";
+import { useAvailableParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-available-parameters";
 
 const mockDispatch = jest.fn();
 

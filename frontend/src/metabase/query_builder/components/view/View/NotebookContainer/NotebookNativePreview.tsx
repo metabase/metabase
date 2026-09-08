@@ -1,13 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
 import { skipToken, useGetCardDashboardsQuery } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { NotebookNativePreview as ControlledNotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { checkNotNull } from "metabase/utils/types";
-import type Question from "metabase-lib/v1/Question";
 
 import { updateQuestion } from "../../../../actions";
 import { getQuestion } from "../../../../store/selectors";

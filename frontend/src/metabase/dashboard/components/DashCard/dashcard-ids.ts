@@ -1,6 +1,6 @@
+import type { DashboardCard } from "metabase-types/api";
 import { isJWT } from "metabase/utils/jwt";
 import { isUuid } from "metabase/utils/uuid";
-import type { DashboardCard } from "metabase-types/api";
 
 export const getDashcardTokenId = (dashcard: DashboardCard) =>
   isJWT(dashcard.dashboard_id) ? String(dashcard.dashboard_id) : undefined;

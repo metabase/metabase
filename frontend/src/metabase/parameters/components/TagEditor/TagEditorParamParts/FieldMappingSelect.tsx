@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { SchemaTableAndFieldDataSelector } from "metabase/querying/common/components/DataSelector";
-import { Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import { type FieldTypeInfo, isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, TemplateTag } from "metabase-types/api";
+import { SchemaTableAndFieldDataSelector } from "metabase/querying/common/components/DataSelector";
+import { Text } from "metabase/ui";
 
 import { ContainerLabel, InputContainer } from "./TagEditorParam";
 

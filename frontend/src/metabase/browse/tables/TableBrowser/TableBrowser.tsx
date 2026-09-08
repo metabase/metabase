@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
 
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
+import {
+  type DatabaseId,
+  type Table,
+  isConcreteTableId,
+} from "metabase-types/api";
 import {
   skipToken,
   useGetDatabaseMetadataQuery,
@@ -11,13 +18,6 @@ import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isSyncInProgress } from "metabase/utils/syncing";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
-import {
-  type DatabaseId,
-  type Table,
-  isConcreteTableId,
-} from "metabase-types/api";
 
 import { RELOAD_INTERVAL } from "../../constants";
 

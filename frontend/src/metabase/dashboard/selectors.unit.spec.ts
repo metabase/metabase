@@ -1,6 +1,18 @@
 import { chain } from "icepick";
 
 import { createMockEntitiesState } from "__support__/store";
+import Field from "metabase-lib/v1/metadata/Field";
+import {
+  createMockCard,
+  createMockDashboard,
+  createMockDashboardCard,
+  createMockDashboardTab,
+  createMockField,
+  createMockHeadingDashboardCard,
+  createMockNativeDatasetQuery,
+  createMockParameter,
+  createMockStructuredDatasetQuery,
+} from "metabase-types/api/mocks";
 import {
   getClickBehaviorSidebarDashcard,
   getDashboardComplete,
@@ -20,18 +32,6 @@ import {
   createMockState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
-import Field from "metabase-lib/v1/metadata/Field";
-import {
-  createMockCard,
-  createMockDashboard,
-  createMockDashboardCard,
-  createMockDashboardTab,
-  createMockField,
-  createMockHeadingDashboardCard,
-  createMockNativeDatasetQuery,
-  createMockParameter,
-  createMockStructuredDatasetQuery,
-} from "metabase-types/api/mocks";
 
 import { SIDEBAR_NAME } from "./constants";
 

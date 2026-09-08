@@ -1,5 +1,5 @@
-import { visualizations } from "metabase/viz-core";
 import type { CardDisplayType, IconName } from "metabase-types/api";
+import { visualizations } from "metabase/viz-core";
 
 // Default visualization can be any sensible visualization, so the
 // chart type picker needs to be able to show any icon.

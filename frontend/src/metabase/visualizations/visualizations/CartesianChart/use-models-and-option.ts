@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import type { CardDisplayType, TimelineEventId } from "metabase-types/api";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { getTooltipOption } from "metabase/visualizations/echarts/cartesian/option/tooltip";
@@ -19,7 +20,6 @@ import {
   getWaterfallChartModel,
   getWaterfallChartOption,
 } from "metabase/viz-core";
-import type { CardDisplayType, TimelineEventId } from "metabase-types/api";
 
 const NO_SELECTED_TIMELINE_EVENT_IDS: TimelineEventId[] = [];
 

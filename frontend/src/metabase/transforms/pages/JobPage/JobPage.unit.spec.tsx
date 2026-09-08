@@ -8,13 +8,13 @@ import {
   setupListTransformTagsEndpoint,
 } from "__support__/server-mocks/transform";
 import { act, renderWithProviders, screen, within } from "__support__/ui";
-import { Route } from "metabase/router";
-import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTransformJob,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { JobPage } from "./JobPage";
 

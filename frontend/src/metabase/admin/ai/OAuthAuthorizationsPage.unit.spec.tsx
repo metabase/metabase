@@ -4,12 +4,12 @@ import type { ReactNode } from "react";
 
 import { setupOAuthAuthorizationsEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { Route } from "metabase/router";
 import type { ListOAuthAuthorizationsResponse } from "metabase-types/api";
 import {
   createMockListOAuthAuthorizationsResponse,
   createMockOAuthAuthorization,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import { OAuthAuthorizationsPage } from "./OAuthAuthorizationsPage";
 import { OAUTH_PAGE_SIZE } from "./oauth-utils";

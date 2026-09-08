@@ -1,9 +1,9 @@
+import type Question from "metabase-lib/v1/Question";
 import { Mode } from "metabase/querying/click-actions/Mode";
 import { getQueryMode } from "metabase/querying/click-actions/lib/modes";
 import { DefaultMode } from "metabase/querying/click-actions/modes/DefaultMode";
 import type { QueryClickActionsMode } from "metabase/querying/click-actions/types";
 import type { ClickActionsMode } from "metabase/visualizations/types";
-import type Question from "metabase-lib/v1/Question";
 
 import { DashboardClickAction } from "./DashboardClickAction";
 

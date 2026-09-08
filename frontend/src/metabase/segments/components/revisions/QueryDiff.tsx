@@ -1,5 +1,5 @@
-import CS from "metabase/css/core/index.css";
 import type { QueryDiff as QueryDiffType, TableId } from "metabase-types/api";
+import CS from "metabase/css/core/index.css";
 
 import { QueryDefinition } from "../QueryDefinition";
 

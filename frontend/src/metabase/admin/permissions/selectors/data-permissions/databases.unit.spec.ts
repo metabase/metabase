@@ -1,8 +1,8 @@
 import { QueryStatus } from "@reduxjs/toolkit/query";
 
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { getPermissionsDatabase, getPermissionsDatabases } from "./databases";
 

@@ -1,8 +1,8 @@
+import type { RowValues } from "metabase-types/api";
 import {
   type CartesianChartColumns,
   unaggregatedDataWarning,
 } from "metabase/viz-core";
-import type { RowValues } from "metabase-types/api";
 
 export const getChartWarnings = (
   chartColumns: CartesianChartColumns,

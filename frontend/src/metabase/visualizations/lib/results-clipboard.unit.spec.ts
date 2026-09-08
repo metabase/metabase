@@ -1,7 +1,3 @@
-import type { ContentTranslationFunction } from "metabase/content-translation/types";
-import { registerVisualizations } from "metabase/visualizations/register";
-import type * as VizCore from "metabase/viz-core";
-import { getTableClickedObjectRowData } from "metabase/viz-core";
 import type {
   Card,
   DatasetData,
@@ -12,6 +8,10 @@ import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
+import { registerVisualizations } from "metabase/visualizations/register";
+import type * as VizCore from "metabase/viz-core";
+import { getTableClickedObjectRowData } from "metabase/viz-core";
 
 import {
   ResultsTooLargeError,

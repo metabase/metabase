@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import type { Drill } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
+import type { Drill } from "metabase/visualizations/types/click-actions";
 
 import { getFilterPopover } from "./filter-drill";
 

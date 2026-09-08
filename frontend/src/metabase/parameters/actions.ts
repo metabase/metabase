@@ -1,12 +1,3 @@
-import { cardApi, dashboardApi, parametersApi } from "metabase/api";
-import type {
-  CardParameterValuesRequest,
-  SearchCardParameterValuesRequest,
-} from "metabase/api/card";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import type { DispatchFn } from "metabase/redux";
-import type { GetState } from "metabase/redux/store";
-import { stableStringify } from "metabase/utils/objects";
 import { getNonVirtualFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -19,6 +10,15 @@ import type {
   SearchDashboardParameterValuesRequest,
 } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
+import { cardApi, dashboardApi, parametersApi } from "metabase/api";
+import type {
+  CardParameterValuesRequest,
+  SearchCardParameterValuesRequest,
+} from "metabase/api/card";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import type { DispatchFn } from "metabase/redux";
+import type { GetState } from "metabase/redux/store";
+import { stableStringify } from "metabase/utils/objects";
 
 import { getParameterValuesCache } from "./selectors";
 import { getFilteringParameterValuesMap } from "./utils/dashboards";

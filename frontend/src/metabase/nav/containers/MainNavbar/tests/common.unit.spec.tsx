@@ -1,15 +1,15 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, within } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { dayjs } from "metabase/dayjs";
-import * as Urls from "metabase/urls";
 import {
   createMockCard,
   createMockDashboard,
   createMockModelResult,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { dayjs } from "metabase/dayjs";
+import * as Urls from "metabase/urls";
 
 import {
   NESTED_COLLECTION,

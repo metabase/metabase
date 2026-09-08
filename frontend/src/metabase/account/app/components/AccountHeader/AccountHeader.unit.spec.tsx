@@ -1,8 +1,8 @@
 import { mockSettings } from "__support__/settings";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { AccountHeader } from "./AccountHeader";
 

@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import type { Timeline } from "metabase-types/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import {
   getEventCount,
@@ -8,7 +9,6 @@ import {
 } from "metabase/common/utils/timelines";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Timeline } from "metabase-types/api";
 
 import {
   CardBody,

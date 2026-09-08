@@ -12,6 +12,14 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { defaults } from "underscore";
 
+import type * as Lib from "metabase-lib";
+import { getColumnExample } from "metabase-lib/v1/expressions/column-example";
+import type {
+  DatasetColumn,
+  DatasetData,
+  IconName,
+  RowValues,
+} from "metabase-types/api";
 import {
   ReorderableTagsInput,
   SortablePill,
@@ -32,14 +40,6 @@ import {
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import type * as Lib from "metabase-lib";
-import { getColumnExample } from "metabase-lib/v1/expressions/column-example";
-import type {
-  DatasetColumn,
-  DatasetData,
-  IconName,
-  RowValues,
-} from "metabase-types/api";
 
 import { useListColumns } from "./ListView";
 import S from "./ListView.module.css";

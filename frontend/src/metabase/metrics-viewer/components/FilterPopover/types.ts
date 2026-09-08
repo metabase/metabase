@@ -1,5 +1,5 @@
-import type { Section as BaseSection } from "metabase/common/components/AccordionList";
 import type * as LibMetric from "metabase-lib/metric";
+import type { Section as BaseSection } from "metabase/common/components/AccordionList";
 
 export type DimensionListItem = {
   name: string;

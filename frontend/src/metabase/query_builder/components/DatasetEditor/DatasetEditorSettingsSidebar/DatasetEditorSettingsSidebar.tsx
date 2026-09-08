@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import type { CardDisplayType } from "metabase-types/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Button, Group, SegmentedControl, Stack, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import type { CardDisplayType } from "metabase-types/api";
 
 import {
   getIsListViewConfigurationShown,

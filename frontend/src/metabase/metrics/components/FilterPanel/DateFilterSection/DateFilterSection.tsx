@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
+import * as LibMetric from "metabase-lib/metric";
 import { getDatePickerValue } from "metabase/common/metrics/utils/dates";
 import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
-import * as LibMetric from "metabase-lib/metric";
 
 import { FilterSectionLayout } from "../FilterSectionLayout";
 import type { FilterSectionWidgetProps } from "../types";

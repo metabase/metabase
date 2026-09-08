@@ -4,6 +4,7 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import {
   HoverParent,
   QueryColumnInfoIcon,
@@ -11,7 +12,6 @@ import {
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { ColumnBucketPickerPopover } from "metabase/querying/common/components/QueryColumnPicker/ColumnBucketPickerPopover";
 import { Box, type BoxProps, Button, Flex, Icon, Tooltip } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import BreakoutColumnListItemS from "./BreakoutColumnListItem.module.css";
 

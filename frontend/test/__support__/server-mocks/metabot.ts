@@ -3,7 +3,6 @@ import fetchMock, {
   type UserRouteConfig,
 } from "fetch-mock";
 
-import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import type {
   LlmConnectionModels,
   LlmProviderConnection,
@@ -24,6 +23,7 @@ import type {
 } from "metabase-types/api";
 import { createMockLlmProviderConnection } from "metabase-types/api/mocks/llm";
 import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metabot";
+import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 
 const METABASE_MANAGED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"] =
   "metabase-ai-managed";

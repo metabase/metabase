@@ -1,9 +1,9 @@
+import type { DatabaseId, FieldId } from "metabase-types/api";
 import { useListDatabaseIdFieldsQuery } from "metabase/api";
 import { FkTargetPicker } from "metabase/metadata/components";
 import type { FkTargetPickerField } from "metabase/metadata/components/FkTargetPicker/FkTargetPicker";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { SelectProps } from "metabase/ui";
-import type { DatabaseId, FieldId } from "metabase-types/api";
 
 interface Props {
   databaseId: DatabaseId;

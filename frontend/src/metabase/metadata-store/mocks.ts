@@ -1,6 +1,5 @@
 import { type Schema as NormalizrSchema, normalize } from "normalizr";
 
-import type { EntitiesState } from "metabase/redux/store";
 import type {
   Card,
   Database,
@@ -13,6 +12,7 @@ import type {
   Table,
   User,
 } from "metabase-types/api";
+import type { EntitiesState } from "metabase/redux/store";
 
 import {
   DatabaseSchema,

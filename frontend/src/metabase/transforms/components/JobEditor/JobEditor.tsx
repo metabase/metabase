@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
+import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { Stack } from "metabase/ui";
-import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { JobHeader } from "../JobHeader";
 

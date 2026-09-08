@@ -1,7 +1,7 @@
 import { useField } from "formik";
 
-import { Input } from "metabase/ui";
 import type { TransformTagId } from "metabase-types/api";
+import { Input } from "metabase/ui";
 
 import { TagMultiSelect } from "../TagMultiSelect";
 

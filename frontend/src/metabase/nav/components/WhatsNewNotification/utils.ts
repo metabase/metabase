@@ -1,7 +1,7 @@
-import { isNotFalsy } from "metabase/utils/types";
-import { compareVersions } from "metabase/utils/version";
 import type { VersionInfoRecord } from "metabase-types/api";
 import type { VersionInfo } from "metabase-types/api/settings";
+import { isNotFalsy } from "metabase/utils/types";
+import { compareVersions } from "metabase/utils/version";
 /**
  * Helper function that:
  * - gets versions > lastAcknowledgedVersion (if not null) & <= currentVersion

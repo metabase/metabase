@@ -10,9 +10,6 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import { SearchResult } from "metabase/common/components/SearchResult";
-import { reinitialize } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks";
 import type {
   SearchResult as ApiSearchResult,
   TokenFeatures,
@@ -22,6 +19,9 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { SearchResult } from "metabase/common/components/SearchResult";
+import { reinitialize } from "metabase/plugins";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { createWrappedSearchResult } from "./util";
 

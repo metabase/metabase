@@ -1,3 +1,4 @@
+import type { DashboardId, Bookmark as IBookmark } from "metabase-types/api";
 import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
@@ -6,7 +7,6 @@ import {
 import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import type { DashboardId, Bookmark as IBookmark } from "metabase-types/api";
 
 import { trackDashboardBookmarked } from "../analytics";
 

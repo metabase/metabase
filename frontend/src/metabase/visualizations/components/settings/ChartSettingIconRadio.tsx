@@ -1,5 +1,5 @@
-import { ActionIcon, Icon } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { ActionIcon, Icon } from "metabase/ui";
 
 import S from "./ChartSettingIconRadio.module.css";
 

@@ -9,9 +9,6 @@ import {
   screen,
   getIcon as testGetIcon,
 } from "__support__/ui";
-import type { OnToggleSelectedWithItem } from "metabase/common/collections/types";
-import { modelIconMap } from "metabase/common/utils/icon";
-import { Route } from "metabase/router";
 import type {
   Collection,
   CollectionItem,
@@ -23,6 +20,9 @@ import {
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
 import { createMockRecentCollectionItem } from "metabase-types/api/mocks/activity";
+import type { OnToggleSelectedWithItem } from "metabase/common/collections/types";
+import { modelIconMap } from "metabase/common/utils/icon";
+import { Route } from "metabase/router";
 
 import { CompactPinnedItemCard } from "./CompactPinnedItemCard";
 import { CompactPinnedItemCardSkeleton } from "./CompactPinnedItemCardSkeleton";

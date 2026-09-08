@@ -1,10 +1,10 @@
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 
+import type { CommentReaction } from "metabase-types/api";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Flex, Text, Tooltip } from "metabase/ui";
-import type { CommentReaction } from "metabase-types/api";
 
 import S from "./Discussion.module.css";
 

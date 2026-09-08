@@ -1,9 +1,9 @@
 import type { FormEvent } from "react";
 import { useMemo } from "react";
 
+import * as Lib from "metabase-lib";
 import { BooleanPicker } from "metabase/querying/common/components/BooleanPicker";
 import { Box } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";

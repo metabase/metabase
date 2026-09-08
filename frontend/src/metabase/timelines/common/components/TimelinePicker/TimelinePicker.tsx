@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 import { msgid, ngettext } from "ttag";
 
-import { getEventCount } from "metabase/common/utils/timelines";
 import type { Timeline } from "metabase-types/api";
+import { getEventCount } from "metabase/common/utils/timelines";
 
 import {
   CardAside,

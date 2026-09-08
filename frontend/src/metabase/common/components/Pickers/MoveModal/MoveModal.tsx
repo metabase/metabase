@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { CollectionId, CollectionItem } from "metabase-types/api";
 import type {
   MoveCollectionDestination,
   MoveDestination,
@@ -18,7 +19,6 @@ import {
 } from "metabase/common/components/Pickers";
 import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
 import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
-import type { CollectionId, CollectionItem } from "metabase-types/api";
 
 import type {
   EntityPickerModalProps,

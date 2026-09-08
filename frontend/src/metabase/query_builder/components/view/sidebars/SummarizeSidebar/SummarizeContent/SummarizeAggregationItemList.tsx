@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
-import { Group, type GroupProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { Group, type GroupProps } from "metabase/ui";
 
 import type { UpdateQueryHookProps } from "../../../../../hooks/types";
 import { getAggregationItems } from "../../../../../utils/get-aggregation-items";

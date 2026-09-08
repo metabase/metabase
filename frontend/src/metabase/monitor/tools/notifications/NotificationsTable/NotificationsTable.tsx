@@ -8,6 +8,7 @@ import type {
 import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
+import type { AdminNotification, NotificationId } from "metabase-types/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
@@ -29,7 +30,6 @@ import {
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { getUserLabel } from "metabase/utils/user";
-import type { AdminNotification, NotificationId } from "metabase-types/api";
 
 import { NotificationSummary } from "../NotificationSummary";
 import {

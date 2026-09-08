@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
+import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 import { useGetDashboardQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import { FormFooter } from "metabase/common/components/FormFooter";
@@ -23,7 +24,6 @@ import {
 import { Button, Group, Icon, Tooltip } from "metabase/ui";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import * as Errors from "metabase/utils/errors";
-import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 
 const DASHBOARD_SCHEMA = Yup.object({
   name: Yup.string()

@@ -1,5 +1,3 @@
-import type { VisualizerVizDefinitionWithColumnsAndPreloadedDatasets } from "metabase/redux/store/visualizer";
-import { isNotNull } from "metabase/utils/types";
 import type {
   Card,
   DashCardDataSeries,
@@ -8,6 +6,8 @@ import type {
   VisualizerColumnReference,
   VisualizerDataSource,
 } from "metabase-types/api";
+import type { VisualizerVizDefinitionWithColumnsAndPreloadedDatasets } from "metabase/redux/store/visualizer";
+import { isNotNull } from "metabase/utils/types";
 
 import {
   copyColumn,

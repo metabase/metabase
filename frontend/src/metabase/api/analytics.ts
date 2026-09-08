@@ -1,16 +1,16 @@
 import _ from "underscore";
 
 import {
+  toSnowplowContentTypes,
+  toSnowplowContext,
+} from "metabase-types/analytics";
+import type { SearchRequest, SearchResponse } from "metabase-types/api";
+import {
   hashSearchTerm,
   shouldReportSearchTerm,
   trackSchemaEvent,
 } from "metabase/analytics";
 import { openSaveDialog } from "metabase/utils/dom";
-import {
-  toSnowplowContentTypes,
-  toSnowplowContext,
-} from "metabase-types/analytics";
-import type { SearchRequest, SearchResponse } from "metabase-types/api";
 
 import { Api } from "./api";
 

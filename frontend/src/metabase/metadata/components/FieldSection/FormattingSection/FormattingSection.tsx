@@ -1,17 +1,17 @@
 import { memo, useMemo } from "react";
 import { t } from "ttag";
 
+import { isCurrency } from "metabase-lib/v1/types/utils/isa";
+import type {
+  Field,
+  FieldFormattingSettings as FieldSettings,
+} from "metabase-types/api";
 import { useUpdateFieldMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { ColumnSettings } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/viz-core";
-import { isCurrency } from "metabase-lib/v1/types/utils/isa";
-import type {
-  Field,
-  FieldFormattingSettings as FieldSettings,
-} from "metabase-types/api";
 
 import { TitledSection } from "../../TitledSection";
 

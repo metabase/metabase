@@ -1,7 +1,6 @@
 /* eslint-disable metabase/no-unjustified-type-casts */
 
 import * as LibMetric from "cljs/metabase.lib_metric.js";
-import { type Dayjs, dayjs } from "metabase/dayjs";
 import type { Metadata } from "metabase-lib";
 import type {
   ConcreteTableId,
@@ -11,6 +10,7 @@ import type {
   MetricId,
   SegmentId,
 } from "metabase-types/api";
+import { type Dayjs, dayjs } from "metabase/dayjs";
 
 import type {
   BinningStrategy,

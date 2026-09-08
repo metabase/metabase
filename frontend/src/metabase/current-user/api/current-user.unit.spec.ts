@@ -3,8 +3,8 @@ import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
 import { findRequests } from "__support__/server-mocks";
-import { Api } from "metabase/api/api";
 import { createMockUser } from "metabase-types/api/mocks";
+import { Api } from "metabase/api/api";
 
 import { currentUserApi } from "./current-user";
 

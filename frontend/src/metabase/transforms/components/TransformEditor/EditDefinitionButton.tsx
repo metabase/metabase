@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { TransformId } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import { Button, type ButtonProps } from "metabase/ui";
 import { transformEdit } from "metabase/urls";
-import type { TransformId } from "metabase-types/api";
 
 type EditDefinitionButtonProps = {
   transformId: TransformId;

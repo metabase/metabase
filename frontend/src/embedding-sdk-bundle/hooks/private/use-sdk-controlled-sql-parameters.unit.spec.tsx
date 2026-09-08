@@ -1,10 +1,10 @@
 import { renderHook } from "@testing-library/react";
 
-import { useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { ParameterValuesMap } from "metabase-types/api";
+import { useSelector } from "metabase/redux";
 
 import type { SqlParameterValues } from "../../types";
 

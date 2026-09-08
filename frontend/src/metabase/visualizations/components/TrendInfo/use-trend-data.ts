@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 
+import type { Dataset, DatasetColumn } from "metabase-types/api";
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 import {
   formatDateTimeRangeWithUnit,
   formatValue,
@@ -9,8 +11,6 @@ import {
   computePreviousPeriodChange,
   findPreviousNonEmptyRowIndex,
 } from "metabase/viz-core";
-import type { Dataset, DatasetColumn } from "metabase-types/api";
-import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 type TrendData = {
   value: string;

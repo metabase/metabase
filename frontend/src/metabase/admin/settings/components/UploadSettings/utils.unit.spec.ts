@@ -1,7 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import type { Database, Schema } from "metabase-types/api";
 import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
+import { checkNotNull } from "metabase/utils/types";
 
 import { dbHasSchema, getDatabaseOptions, getSchemaOptions } from "./utils";
 

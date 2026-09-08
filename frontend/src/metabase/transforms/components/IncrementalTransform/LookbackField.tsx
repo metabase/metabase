@@ -2,11 +2,11 @@ import { useFormikContext } from "formik";
 import { useEffect } from "react";
 import { t } from "ttag";
 
+import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
+import type { LookbackUnit } from "metabase-types/api";
 import { skipToken, useGetFieldQuery } from "metabase/api";
 import { FormField, FormNumberInput, FormSelect } from "metabase/forms";
 import { Group } from "metabase/ui";
-import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
-import type { LookbackUnit } from "metabase-types/api";
 
 import {
   type IncrementalSettingsFormValues,

@@ -2,12 +2,12 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 import { Box, HoverCard, Icon, Text, UnstyledButton } from "metabase/ui";
 import {
   TIMELINE_EVENTS_BAND,
   type TimelineEventGroup,
 } from "metabase/viz-core";
-import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import S from "./TimelineEventsBand.module.css";
 import { TimelineEventRow, TimelineEventsList } from "./TimelineEventsList";

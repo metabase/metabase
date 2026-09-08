@@ -13,15 +13,15 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { loadActionCreator } from "metabase/querying/action-creator";
-import { Route, useLocation, useParams } from "metabase/router";
-import { checkNotNull } from "metabase/utils/types";
 import type { Card, WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { loadActionCreator } from "metabase/querying/action-creator";
+import { Route, useLocation, useParams } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 
 import ActionCreatorModal from "./ActionCreatorModal";
 

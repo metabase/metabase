@@ -1,6 +1,6 @@
+import type { ColumnSettings } from "metabase-types/api";
 import { isEmail } from "metabase/utils/email";
 import { removeNewLines } from "metabase/utils/formatting";
-import type { ColumnSettings } from "metabase-types/api";
 
 import { getDataFromClicked } from "./click-data";
 import { renderLinkTextForClick } from "./link";

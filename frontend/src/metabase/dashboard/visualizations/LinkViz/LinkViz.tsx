@@ -2,13 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-import { useToggle } from "metabase/common/hooks/use-toggle";
-import { getParameterValues } from "metabase/dashboard/selectors";
-import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
-import { SearchResults } from "metabase/nav/components/search/SearchResults";
-import { useSelector } from "metabase/redux";
-import { Popover, TextInput } from "metabase/ui";
-import { getUrlTarget, modelToUrl } from "metabase/urls";
 import type {
   Dashboard,
   LinkCardSettings,
@@ -17,6 +10,13 @@ import type {
   VirtualDashboardCard,
 } from "metabase-types/api";
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
+import { useToggle } from "metabase/common/hooks/use-toggle";
+import { getParameterValues } from "metabase/dashboard/selectors";
+import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
+import { SearchResults } from "metabase/nav/components/search/SearchResults";
+import { useSelector } from "metabase/redux";
+import { Popover, TextInput } from "metabase/ui";
+import { getUrlTarget, modelToUrl } from "metabase/urls";
 
 import {
   EntityDisplay,

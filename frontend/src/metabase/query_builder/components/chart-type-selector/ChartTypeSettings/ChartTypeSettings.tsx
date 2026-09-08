@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { VisualizationDisplay } from "metabase-types/api";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { Space, Stack, type StackProps, Text } from "metabase/ui";
-import type { VisualizationDisplay } from "metabase-types/api";
 
 import { ChartTypeList, type ChartTypeListProps } from "../ChartTypeList";
 

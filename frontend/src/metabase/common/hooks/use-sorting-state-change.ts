@@ -1,13 +1,13 @@
 import type { SortingState, Updater } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 
+import type { SortingOptions } from "metabase-types/api";
 import {
   getNextOptionalSorting,
   getSortingState,
   toSorting,
   toSortingOptions,
 } from "metabase/utils/sorting";
-import type { SortingOptions } from "metabase-types/api";
 
 type UseSortingStateChangeProps<TColumn extends string> = {
   sortingOptions: SortingOptions<TColumn>;

@@ -1,7 +1,7 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
 import type { FieldId, Table } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import { TableSection } from "./TableSection";
 

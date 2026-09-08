@@ -9,14 +9,14 @@ import { screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
-import { ROOT_COLLECTION as ROOT } from "metabase/common/collections/constants";
-import { useLocale } from "metabase/common/hooks/use-locale";
 import type { Collection, Dashboard } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDashboard,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { ROOT_COLLECTION as ROOT } from "metabase/common/collections/constants";
+import { useLocale } from "metabase/common/hooks/use-locale";
 
 import {
   CreateDashboardModal,

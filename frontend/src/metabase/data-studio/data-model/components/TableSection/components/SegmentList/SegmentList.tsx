@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { Table } from "metabase-types/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics";
@@ -7,7 +8,6 @@ import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
 import { useSelector } from "metabase/redux";
 import { Button, Group, Icon, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Table } from "metabase-types/api";
 
 import S from "../../TableSection.module.css";
 import { SegmentItem } from "../SegmentItem";

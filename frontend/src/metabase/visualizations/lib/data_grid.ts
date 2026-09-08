@@ -1,6 +1,13 @@
 import _ from "underscore";
 
 import * as Pivot from "cljs/metabase.pivot.js";
+import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
+import type {
+  DatasetColumn,
+  DatasetData,
+  RowValue,
+  RowValues,
+} from "metabase-types/api";
 import { checkNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
 import type {
@@ -13,13 +20,6 @@ import {
   type PivotedRowValues,
   makeCellBackgroundGetter,
 } from "metabase/viz-core";
-import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
-import type {
-  DatasetColumn,
-  DatasetData,
-  RowValue,
-  RowValues,
-} from "metabase-types/api";
 
 export function isPivotGroupColumn(
   col: Pick<DatasetColumn, "name"> | undefined,

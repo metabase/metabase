@@ -1,8 +1,8 @@
 import { forwardRef } from "react";
 import { t } from "ttag";
 
-import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 
 import type { McpFeedbackChoice } from "./McpFeedbackArea";
 

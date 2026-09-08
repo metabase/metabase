@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
-import { useLazyGetFieldQuery, useUpdateTransformMutation } from "metabase/api";
 import type { Transform } from "metabase-types/api";
+import { useLazyGetFieldQuery, useUpdateTransformMutation } from "metabase/api";
 
 import {
   type IncrementalSettingsFormValues,

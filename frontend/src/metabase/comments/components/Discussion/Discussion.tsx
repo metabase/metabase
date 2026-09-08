@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type {
+  Comment,
+  CommentEntityType,
+  DocumentContent,
+  EntityId,
+} from "metabase-types/api";
 import {
   useCreateCommentMutation,
   useDeleteCommentMutation,
@@ -13,12 +19,6 @@ import { useToast } from "metabase/common/hooks";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Avatar, Stack, Timeline, rem } from "metabase/ui";
-import type {
-  Comment,
-  CommentEntityType,
-  DocumentContent,
-  EntityId,
-} from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
 

@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { forwardRef, useCallback, useMemo } from "react";
 
+import type { Parameter, ParameterId } from "metabase-types/api";
 import type {
   DragEndEvent,
   RenderItemProps,
@@ -11,7 +12,6 @@ import CS from "metabase/css/core/index.css";
 import type { ParametersListProps } from "metabase/parameters/components/ParametersList/types";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { Flex, Icon } from "metabase/ui";
-import type { Parameter, ParameterId } from "metabase-types/api";
 
 import { ParameterWidget } from "../ParameterWidget";
 

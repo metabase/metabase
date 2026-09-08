@@ -1,14 +1,4 @@
 import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/metadata-store";
-import * as questionActions from "metabase/questions/actions";
-import type { QueryBuilderMode } from "metabase/redux/store";
-import {
-  createMockQueryBuilderState,
-  createMockQueryBuilderUIControlsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import { checkNotNull } from "metabase/utils/types";
-import { registerVisualizations } from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
@@ -49,6 +39,16 @@ import {
   createSavedStructuredCard,
   createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
+import { getMetadata } from "metabase/metadata-store";
+import * as questionActions from "metabase/questions/actions";
+import type { QueryBuilderMode } from "metabase/redux/store";
+import {
+  createMockQueryBuilderState,
+  createMockQueryBuilderUIControlsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { UPDATE_QUESTION } from "../../store/actions";
 import * as qbActions from "../../store/actions";

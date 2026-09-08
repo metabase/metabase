@@ -1,3 +1,10 @@
+import type {
+  ActionDashboardCard,
+  ActionFormSubmitResult,
+  Dashboard,
+  ParametersForActionExecution,
+  WritebackAction,
+} from "metabase-types/api";
 import {
   getActionErrorMessage,
   getActionExecutionMessage,
@@ -8,13 +15,6 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import type { Dispatch } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { getDashboardType } from "metabase/utils/dashboard";
-import type {
-  ActionDashboardCard,
-  ActionFormSubmitResult,
-  Dashboard,
-  ParametersForActionExecution,
-  WritebackAction,
-} from "metabase-types/api";
 
 import { closeSidebar, setSidebar } from "./ui";
 

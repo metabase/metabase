@@ -1,5 +1,5 @@
-import { trackSimpleEvent } from "metabase/analytics";
 import type { CollectionId, ConcreteTableId } from "metabase-types/api";
+import { trackSimpleEvent } from "metabase/analytics";
 
 export const trackDataStudioLibraryCreated = (id: CollectionId) => {
   trackSimpleEvent({

@@ -6,7 +6,6 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
 import type {
   EnterpriseSettingKey,
   SettingDefinition,
@@ -15,6 +14,7 @@ import {
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
+import { UndoListing } from "metabase/common/components/UndoListing";
 
 import { BaseSMTPConnectionForm } from "./BaseSMTPConnectionForm";
 

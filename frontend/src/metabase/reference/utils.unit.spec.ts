@@ -1,6 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { separateTablesBySchema } from "metabase/reference/databases/TableList";
-import { getQuestion } from "metabase/reference/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -9,6 +7,8 @@ import {
   createMockSegment,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { separateTablesBySchema } from "metabase/reference/databases/TableList";
+import { getQuestion } from "metabase/reference/utils";
 
 describe("Reference utils.js", () => {
   const stageIndex = 0;

@@ -1,6 +1,15 @@
 import type { FormikHelpers } from "formik";
 import { startTransition, useCallback, useEffect, useState } from "react";
 
+import type {
+  ActionDashboardCard,
+  Dashboard,
+  OnSubmitActionForm,
+  ParametersForActionExecution,
+  VisualizationSettings,
+  WritebackAction,
+  WritebackParameter,
+} from "metabase-types/api";
 import ActionParametersInputForm, {
   ActionParametersInputModal,
 } from "metabase/actions/containers/ActionParametersInputForm";
@@ -15,15 +24,6 @@ import {
 import { useDispatch } from "metabase/redux";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
-import type {
-  ActionDashboardCard,
-  Dashboard,
-  OnSubmitActionForm,
-  ParametersForActionExecution,
-  VisualizationSettings,
-  WritebackAction,
-  WritebackParameter,
-} from "metabase-types/api";
 
 import ActionButtonView from "./ActionButtonView";
 import { FormTitle, FormWrapper } from "./ActionForm.styled";

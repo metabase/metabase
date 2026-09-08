@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type {
+  CardQueryMetadata,
+  DimensionId,
+  MetricId,
+} from "metabase-types/api";
 import {
   useListMetricDimensionsQuery,
   useRemoveMetricDimensionsMutation,
@@ -17,11 +22,6 @@ import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Divider, Flex, Paper } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import type {
-  CardQueryMetadata,
-  DimensionId,
-  MetricId,
-} from "metabase-types/api";
 
 import { AddDimensionsPanel } from "./AddDimensionsPanel";
 import { DimensionList } from "./DimensionList";

@@ -1,8 +1,8 @@
+import type { DimensionMetadata } from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import { Flex, Text } from "metabase/ui";
-import type { DimensionMetadata } from "metabase-lib/metric";
-import type { IconName } from "metabase-types/api";
 
 import type { MetricSourceId } from "../../types";
 

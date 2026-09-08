@@ -1,6 +1,6 @@
-import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
+import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 
 import { QueryVisualization } from "../../../../components/QueryVisualization";
 

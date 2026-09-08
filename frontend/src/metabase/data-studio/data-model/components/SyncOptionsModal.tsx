@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Modal, Stack, Text, rem } from "metabase/ui";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import { Modal, Stack, Text, rem } from "metabase/ui";
 
 import { DiscardTableFieldValuesButton } from "./DiscardTableFieldValuesButton";
 import { RescanTableFieldsButton } from "./RescanTableFieldsButton";

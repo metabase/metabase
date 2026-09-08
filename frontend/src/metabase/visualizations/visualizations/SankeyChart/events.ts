@@ -1,6 +1,9 @@
 import type { EChartsType } from "echarts/core";
 import { useMemo } from "react";
 
+import Question from "metabase-lib/v1/Question";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import type { RawSeries, RowValue, SeriesCard } from "metabase-types/api";
 import type {
   ClickObject,
   VisualizationProps,
@@ -15,9 +18,6 @@ import {
   type SankeyNode,
   useClickedStateTooltipSync,
 } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import type { RawSeries, RowValue, SeriesCard } from "metabase-types/api";
 
 const getSankeyClickData = (
   [

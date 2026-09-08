@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { jt, t } from "ttag";
 
-import { Anchor } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
+import { Anchor } from "metabase/ui";
 
 import { CreateOrEditQuestionAlertModal } from "../modals";
 import { ALERT_TYPE_ROWS, getAlertType } from "../utils";

@@ -1,5 +1,5 @@
-import { useListCacheConfigsQuery } from "metabase/api";
 import type { ListCacheConfigsRequest } from "metabase-types/api";
+import { useListCacheConfigsQuery } from "metabase/api";
 
 import { translateConfigFromAPI } from "../utils";
 

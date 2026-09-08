@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
 import { Link } from "metabase/common/components/Link";
 import { ViewButton } from "metabase/common/components/ViewButton";
 import * as Urls from "metabase/urls";
-import type Question from "metabase-lib/v1/Question";
 
 interface ExploreResultsLinkProps {
   question: Question;

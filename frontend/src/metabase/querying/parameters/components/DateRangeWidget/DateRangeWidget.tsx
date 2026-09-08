@@ -2,6 +2,7 @@ import { useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { ParameterValueOrArray } from "metabase-types/api";
 import { dayjs } from "metabase/dayjs";
 import {
   DateRangePicker,
@@ -12,7 +13,6 @@ import {
   serializeDateParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
 import { Button } from "metabase/ui";
-import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateRangeWidgetProps = {
   value: ParameterValueOrArray | null | undefined;

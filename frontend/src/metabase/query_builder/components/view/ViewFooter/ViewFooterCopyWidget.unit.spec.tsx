@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import * as SaveChartImage from "metabase/visualizations/lib/save-chart-image";
-import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card, Dataset } from "metabase-types/api";
 import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
+import * as SaveChartImage from "metabase/visualizations/lib/save-chart-image";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { queryErrored } from "../../../actions/querying";
 

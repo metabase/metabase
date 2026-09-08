@@ -47,8 +47,6 @@ import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
-import type { EmbeddingDataPicker } from "metabase/redux/store/embedding-data-picker";
-import { utf8_to_b64url } from "metabase/utils/encoding";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -59,6 +57,8 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import type { EmbeddingDataPicker } from "metabase/redux/store/embedding-data-picker";
+import { utf8_to_b64url } from "metabase/utils/encoding";
 
 import {
   InteractiveQuestion,

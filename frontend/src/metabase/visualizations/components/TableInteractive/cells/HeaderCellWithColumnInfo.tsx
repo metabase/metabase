@@ -1,6 +1,9 @@
 import type React from "react";
 import { memo, useMemo } from "react";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { DatasetColumn } from "metabase-types/api";
 import { QueryColumnInfoPopover } from "metabase/common/components/MetadataInfo/ColumnInfoPopover";
 import {
   HeaderCellPill,
@@ -8,9 +11,6 @@ import {
   HeaderCellWrapper,
 } from "metabase/data-grid";
 import type { MantineTheme } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type { DatasetColumn } from "metabase-types/api";
 
 import { useTableInteractiveContext } from "../TableInteractiveContext";
 

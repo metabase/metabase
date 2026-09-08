@@ -1,8 +1,8 @@
-import { trackSimpleEvent } from "metabase/analytics";
 import type {
   CollectionId,
   CollectionItem,
 } from "metabase-types/api/collection";
+import { trackSimpleEvent } from "metabase/analytics";
 
 type CollectionItemActionResult = "success" | "failure";
 type CollectionItemPinTriggeredFrom =

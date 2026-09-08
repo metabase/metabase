@@ -2,6 +2,12 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  DimensionMetadata,
+  FilterClause,
+  MetricDefinition,
+} from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import { FilterPickerBody } from "metabase/common/metrics/components/FilterPicker/FilterPickerBody";
 import {
@@ -13,12 +19,6 @@ import {
   TextInput,
   UnstyledButton,
 } from "metabase/ui";
-import type {
-  DimensionMetadata,
-  FilterClause,
-  MetricDefinition,
-} from "metabase-lib/metric";
-import * as LibMetric from "metabase-lib/metric";
 
 import type { SourceColorMap } from "../../types/viewer-state";
 import type { DefinitionSource } from "../../utils/definition-sources";

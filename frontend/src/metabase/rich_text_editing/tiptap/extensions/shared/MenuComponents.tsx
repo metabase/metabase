@@ -1,11 +1,11 @@
 import type { DOMAttributes, MouseEvent } from "react";
 import { t } from "ttag";
 
+import type { IconName } from "metabase-types/api";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Avatar, Group, Icon, Stack, Text, UnstyledButton } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { IconName } from "metabase-types/api";
 
 import S from "./MenuItems.module.css";
 

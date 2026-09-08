@@ -2,6 +2,11 @@ import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type {
+  ListTaskRunsSortColumn,
+  SortingOptions,
+  TaskRun,
+} from "metabase-types/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
@@ -18,11 +23,6 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import type {
-  ListTaskRunsSortColumn,
-  SortingOptions,
-  TaskRun,
-} from "metabase-types/api";
 
 import { formatTaskRunType, renderTaskRunCounters } from "../../utils";
 import { TaskRunStatusBadge } from "../TaskRunStatusBadge";

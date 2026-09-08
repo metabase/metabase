@@ -16,8 +16,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -33,6 +31,8 @@ import {
   ORDERS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
+import { checkNotNull } from "metabase/utils/types";
 
 import { Notebook, type NotebookProps } from "./Notebook";
 

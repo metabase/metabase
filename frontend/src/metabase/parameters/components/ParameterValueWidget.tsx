@@ -2,14 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { type ReactNode, useMemo, useState } from "react";
 
-import { Sortable } from "metabase/common/components/Sortable";
-import { useTranslateContent } from "metabase/content-translation/hooks";
-import CS from "metabase/css/core/index.css";
-import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
-import S from "metabase/parameters/components/ParameterValueWidget.module.css";
-import { ParameterValueWidgetTrigger } from "metabase/parameters/components/ParameterValueWidgetTrigger";
-import { getParameterIconName } from "metabase/parameters/utils/ui";
-import { Icon, Popover, type PopoverProps } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   isBooleanParameter,
@@ -22,6 +14,14 @@ import {
   parameterHasNoDisplayValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
+import { Sortable } from "metabase/common/components/Sortable";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import CS from "metabase/css/core/index.css";
+import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
+import S from "metabase/parameters/components/ParameterValueWidget.module.css";
+import { ParameterValueWidgetTrigger } from "metabase/parameters/components/ParameterValueWidgetTrigger";
+import { getParameterIconName } from "metabase/parameters/utils/ui";
+import { Icon, Popover, type PopoverProps } from "metabase/ui";
 
 import {
   ParameterDropdownWidget,

@@ -1,9 +1,9 @@
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 import { skipToken, useGetTimelineQuery } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import TimelineDetailsModal from "../../components/TimelineDetailsModal";

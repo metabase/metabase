@@ -1,17 +1,17 @@
 import { useMemo, useState } from "react";
 import { c, t } from "ttag";
 
+import type {
+  ScheduleDayType,
+  ScheduleFrameType,
+  ScheduleSettings,
+} from "metabase-types/api";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Group, SegmentedControl, Tooltip } from "metabase/ui";
 import { capitalize } from "metabase/utils/formatting/strings";
 import { has24HourModeSetting } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";
-import type {
-  ScheduleDayType,
-  ScheduleFrameType,
-  ScheduleSettings,
-} from "metabase-types/api";
 
 import { AutoWidthSelect } from "./AutoWidthSelect";
 import { AM, PM } from "./constants";

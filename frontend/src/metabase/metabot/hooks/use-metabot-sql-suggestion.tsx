@@ -1,6 +1,7 @@
 import { isFulfilled, isRejected } from "@reduxjs/toolkit";
 import { useCallback, useMemo, useState } from "react";
 
+import type { DatabaseId } from "metabase-types/api";
 import {
   METABOT_ERR_MSG,
   METABOT_PROFILE_OVERRIDES,
@@ -14,7 +15,6 @@ import {
 } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import type { DatabaseId } from "metabase-types/api";
 
 import { useMetabotAgent } from "./use-metabot-agent";
 

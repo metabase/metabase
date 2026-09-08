@@ -18,11 +18,11 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { createMockCollection } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
-import { createMockCollection } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { SegmentApp } from "./SegmentApp";
 

@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { TaskRunStatus } from "metabase-types/api";
 import { Select, type SelectProps } from "metabase/ui";
 import type { SelectData } from "metabase/ui/components/inputs/Select/Select";
-import type { TaskRunStatus } from "metabase-types/api";
 
 type TaskRunStatusPicker = Omit<SelectProps, "data" | "value" | "onChange"> & {
   value: TaskRunStatus | null;

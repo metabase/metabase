@@ -1,16 +1,16 @@
 import type {
-  KnownDataPart,
-  SearchResultItem,
-} from "metabase/api/ai-streaming/schemas";
-import type { FinishReason } from "metabase/api/ai-streaming/sse-types";
-import type { MetabotProfileId } from "metabase/metabot/constants";
-import type {
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotStateContext,
   MetabotSuggestedTransform,
   MetabotTransformInfo,
 } from "metabase-types/api";
+import type {
+  KnownDataPart,
+  SearchResultItem,
+} from "metabase/api/ai-streaming/schemas";
+import type { FinishReason } from "metabase/api/ai-streaming/sse-types";
+import type { MetabotProfileId } from "metabase/metabot/constants";
 
 export type MetabotDataPart = Exclude<
   KnownDataPart,

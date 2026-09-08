@@ -1,4 +1,3 @@
-import { isNotNull } from "metabase/utils/types";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetData,
@@ -6,6 +5,7 @@ import type {
   RowValue,
   RowValues,
 } from "metabase-types/api";
+import { isNotNull } from "metabase/utils/types";
 
 /**
  * Sums two metric column values.

@@ -1,5 +1,6 @@
 import { jt, msgid, ngettext, t } from "ttag";
 
+import type { Card as CardApiType, CardType } from "metabase-types/api";
 import {
   useGetDatabaseQuery,
   useGetTableQuery,
@@ -15,7 +16,6 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Box, Stack, Text, Tooltip } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
-import type { Card as CardApiType, CardType } from "metabase-types/api";
 
 import { MetadataCard, MetadataRow, MetadataRowLink } from "./MetadataCard";
 import { MetricSubSection } from "./MetricSubSection";

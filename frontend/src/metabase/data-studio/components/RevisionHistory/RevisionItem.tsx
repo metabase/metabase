@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import type { FieldDiff, Revision, TableId } from "metabase-types/api";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { getUserId } from "metabase/current-user";
 import { dayjs } from "metabase/dayjs";
 import { useSelector } from "metabase/redux";
 import { Box, Flex, Stack, Text, Timeline } from "metabase/ui";
-import type { FieldDiff, Revision, TableId } from "metabase-types/api";
 
 import { RevisionDiff } from "./RevisionDiff";
 import S from "./RevisionHistory.module.css";

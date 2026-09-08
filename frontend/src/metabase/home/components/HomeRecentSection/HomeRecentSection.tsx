@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { RecentItem } from "metabase-types/api";
 import { useListRecentsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getUser } from "metabase/current-user";
@@ -7,7 +8,6 @@ import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
 import { getName } from "metabase/utils/name";
-import type { RecentItem } from "metabase-types/api";
 
 import { isWithinWeeks } from "../../utils";
 import { HomeCaption } from "../HomeCaption";

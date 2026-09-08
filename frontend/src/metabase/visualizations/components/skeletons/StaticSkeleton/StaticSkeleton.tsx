@@ -1,8 +1,8 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
+import type { IconName } from "metabase-types/api";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Group, Tooltip } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import {
   SkeletonDescription,

@@ -3,9 +3,9 @@ import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
+import type { IconName } from "metabase-types/api";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import { Flex, Pill, Text } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./MetricsFilterPill.module.css";
 

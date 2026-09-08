@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isNamelessSchema } from "metabase-lib/v1/metadata/utils/schema";
+import type {
+  CollectionItem,
+  SchemaName,
+  SearchModel,
+  SearchRequest,
+} from "metabase-types/api";
 import {
   searchApi,
   skipToken,
@@ -32,13 +39,6 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import { isNamelessSchema } from "metabase-lib/v1/metadata/utils/schema";
-import type {
-  CollectionItem,
-  SchemaName,
-  SearchModel,
-  SearchRequest,
-} from "metabase-types/api";
 
 import { type MiniPickerSearchParams, useMiniPickerContext } from "../context";
 import type {

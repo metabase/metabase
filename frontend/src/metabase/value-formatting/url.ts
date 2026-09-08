@@ -1,6 +1,6 @@
-import { removeNewLines } from "metabase/utils/formatting";
 import { isURL } from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings } from "metabase-types/api";
+import { removeNewLines } from "metabase/utils/formatting";
 
 import { getDataFromClicked } from "./click-data";
 import { renderLinkTextForClick, renderLinkURLForClick } from "./link";

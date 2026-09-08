@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import type { State } from "metabase/redux/store";
 import type { Card, CardId, TimelineEventId } from "metabase-types/api";
+import type { State } from "metabase/redux/store";
 
 import { initialState } from "./documents.slice";
 

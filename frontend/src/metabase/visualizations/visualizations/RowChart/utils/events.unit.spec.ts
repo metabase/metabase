@@ -1,3 +1,8 @@
+import type { VisualizationSettings } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockNumericColumn,
+} from "metabase-types/api/mocks";
 import type {
   BarData,
   BreakoutChartColumns,
@@ -8,11 +13,6 @@ import type {
   SeriesInfo,
   TooltipRowModel,
 } from "metabase/viz-core";
-import type { VisualizationSettings } from "metabase-types/api";
-import {
-  createMockColumn,
-  createMockNumericColumn,
-} from "metabase-types/api/mocks";
 
 import {
   getClickData,

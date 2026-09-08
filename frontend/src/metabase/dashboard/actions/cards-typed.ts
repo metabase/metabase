@@ -1,6 +1,17 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type {
+  Card,
+  CardId,
+  DashCardId,
+  DashboardCard,
+  DashboardId,
+  DashboardTabId,
+  VirtualCard,
+  VisualizerVizDefinition,
+} from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -19,17 +30,6 @@ import {
 import { checkNotNull } from "metabase/utils/types";
 import { getCardIdsFromColumnValueMappings } from "metabase/visualizer/utils";
 import { getRegisteredDefaultSize } from "metabase/viz-core";
-import type {
-  Card,
-  CardId,
-  DashCardId,
-  DashboardCard,
-  DashboardId,
-  DashboardTabId,
-  VirtualCard,
-  VisualizerVizDefinition,
-} from "metabase-types/api";
-import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import {
   trackCardCreated,

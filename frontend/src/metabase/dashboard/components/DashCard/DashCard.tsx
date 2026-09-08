@@ -2,6 +2,19 @@ import cx from "classnames";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useMount, useUpdateEffect } from "react-use";
 
+import Question from "metabase-lib/v1/Question";
+import type {
+  Card,
+  DashCardId,
+  DashCardSeries,
+  DashboardCard,
+  VirtualCard,
+  VisualizationSettings,
+} from "metabase-types/api";
+import {
+  isDashCardDataSeries,
+  isVisualizerDashboardCard,
+} from "metabase-types/guards/dashboard";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
@@ -14,8 +27,8 @@ import {
   getDashcardResultsError,
   isDashcardLoading,
 } from "metabase/dashboard/utils";
-import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { getMetadata } from "metabase/metadata-store";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -34,19 +47,6 @@ import {
   extendCardWithDashcardSettings,
   getVisualizationRaw,
 } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
-import type {
-  Card,
-  DashCardId,
-  DashCardSeries,
-  DashboardCard,
-  VirtualCard,
-  VisualizationSettings,
-} from "metabase-types/api";
-import {
-  isDashCardDataSeries,
-  isVisualizerDashboardCard,
-} from "metabase-types/guards/dashboard";
 
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";

@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { c, t } from "ttag";
 
+import type { EngineKey } from "metabase-types/api";
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { Link } from "metabase/common/components/Link";
 import { useDocsUrl } from "metabase/common/hooks";
@@ -20,7 +21,6 @@ import {
   ScrollArea,
   Title,
 } from "metabase/ui";
-import type { EngineKey } from "metabase-types/api";
 
 import {
   ENGINE_DOC_MAP,

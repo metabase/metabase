@@ -2,10 +2,10 @@ import { useDisclosure } from "@mantine/hooks";
 import type { ChangeEventHandler } from "react";
 import { useMemo, useRef } from "react";
 
+import type { VisualizationSettings } from "metabase-types/api";
 import { SelectList } from "metabase/common/components/SelectList";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import { Popover, TextInput, type TextInputProps } from "metabase/ui";
-import type { VisualizationSettings } from "metabase-types/api";
 
 import { OptionsList } from "./AutocompleteInput.styled";
 

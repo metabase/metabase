@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type { Parameter, TemporalUnit } from "metabase-types/api";
 import {
   Box,
   Button,
@@ -10,8 +12,6 @@ import {
   Text,
   rem,
 } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type { Parameter, TemporalUnit } from "metabase-types/api";
 
 import S from "./TemporalUnitSettings.module.css";
 

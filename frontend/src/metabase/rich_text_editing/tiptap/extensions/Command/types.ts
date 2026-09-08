@@ -1,8 +1,8 @@
 import type { Editor } from "@tiptap/core";
 import type { ComponentType } from "react";
 
-import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 import type { IconName } from "metabase-types/api";
+import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 export interface CommandOption {
   icon?: IconName;
   text?: string;

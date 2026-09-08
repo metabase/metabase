@@ -4,10 +4,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import { registerVisualizations } from "metabase/visualizations/register";
 import type { CardDisplayType } from "metabase-types/api";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { DashboardChartSettings } from "./DashboardChartSettings";
 

@@ -1,3 +1,4 @@
+import type { Collection, UpdateCollectionRequest } from "metabase-types/api";
 import { useUpdateCollectionMutation } from "metabase/api";
 import {
   isInstanceAnalyticsCollection,
@@ -5,7 +6,6 @@ import {
   isTrashedCollection,
 } from "metabase/common/collections/utils";
 import { Flex } from "metabase/ui";
-import type { Collection, UpdateCollectionRequest } from "metabase-types/api";
 
 import { CollectionMenu } from "../CollectionMenu";
 

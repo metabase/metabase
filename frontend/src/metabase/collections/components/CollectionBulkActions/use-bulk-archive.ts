@@ -1,5 +1,10 @@
 import { useCallback, useMemo } from "react";
 
+import type {
+  Collection,
+  CollectionItem,
+  CollectionItemModel,
+} from "metabase-types/api";
 import { archiveAndTrack } from "metabase/archive/analytics";
 import {
   type ArchivableItem,
@@ -7,11 +12,6 @@ import {
   useSetArchive,
 } from "metabase/archive/hooks";
 import { canArchiveItem } from "metabase/common/collections/utils";
-import type {
-  Collection,
-  CollectionItem,
-  CollectionItemModel,
-} from "metabase-types/api";
 
 const ARCHIVABLE_MODELS: ReadonlySet<CollectionItemModel> = new Set([
   "card",

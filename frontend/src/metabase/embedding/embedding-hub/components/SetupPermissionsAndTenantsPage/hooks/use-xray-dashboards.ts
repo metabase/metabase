@@ -1,6 +1,11 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  CollectionId,
+  CollectionItem,
+  DashboardCard,
+} from "metabase-types/api";
 import {
   Api,
   skipToken,
@@ -14,11 +19,6 @@ import {
   createVirtualCard,
 } from "metabase/common/utils/dashboard";
 import { useDispatch } from "metabase/redux";
-import type {
-  CollectionId,
-  CollectionItem,
-  DashboardCard,
-} from "metabase-types/api";
 
 // This name is hardcoded in the backend (see xrays/automagic_dashboards/populate.clj).
 // There is no special collection type — the name is the canonical identifier.

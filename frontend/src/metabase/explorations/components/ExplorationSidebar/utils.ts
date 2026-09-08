@@ -1,9 +1,6 @@
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { dayjs } from "metabase/dayjs";
-import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import type {
   Comment,
   Exploration,
@@ -22,6 +19,9 @@ import {
   isRestartableExplorationThreadStatus,
   isTerminalExplorationThreadStatus,
 } from "metabase-types/api";
+import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import { dayjs } from "metabase/dayjs";
+import type { ExplorationSidebarTab } from "metabase/explorations/types";
 
 import {
   DEFAULT_SORT_ORDER,

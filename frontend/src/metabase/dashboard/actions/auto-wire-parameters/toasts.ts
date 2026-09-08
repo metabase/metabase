@@ -1,13 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { SetMultipleDashCardAttributesOpts } from "metabase/dashboard/actions";
-import {
-  setDashCardAttributes,
-  setMultipleDashCardAttributes,
-} from "metabase/dashboard/actions";
-import type { Dispatch, GetState } from "metabase/redux/store";
-import { addUndo, dismissUndo } from "metabase/redux/undo";
 import type {
   DashCardId,
   DashboardParameterMapping,
@@ -15,6 +8,13 @@ import type {
   ParameterId,
   QuestionDashboardCard,
 } from "metabase-types/api";
+import type { SetMultipleDashCardAttributesOpts } from "metabase/dashboard/actions";
+import {
+  setDashCardAttributes,
+  setMultipleDashCardAttributes,
+} from "metabase/dashboard/actions";
+import type { Dispatch, GetState } from "metabase/redux/store";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 
 import {
   AUTO_WIRE_TOAST_TIMEOUT,

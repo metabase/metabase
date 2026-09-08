@@ -11,11 +11,11 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { Route } from "metabase/router";
-import * as Urls from "metabase/urls";
 import type { Task } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { TaskDetailsPage } from "./TaskDetailsPage";
 

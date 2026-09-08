@@ -17,10 +17,6 @@ import {
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { useLocale } from "metabase/common/hooks/use-locale";
-import { reinitialize as reinitializePlugins } from "metabase/plugins";
-import { defer } from "metabase/utils/promise";
 import type {
   Collection,
   CollectionItem,
@@ -34,6 +30,10 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { useLocale } from "metabase/common/hooks/use-locale";
+import { reinitialize as reinitializePlugins } from "metabase/plugins";
+import { defer } from "metabase/utils/promise";
 
 jest.mock("metabase/common/hooks/use-locale", () => ({
   useLocale: jest.fn(),

@@ -1,8 +1,8 @@
+import type Question from "metabase-lib/v1/Question";
+import type { Collection } from "metabase-types/api";
 import { coerceCollectionId } from "metabase/common/collections/utils";
 import type { StoreDashboard } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
-import type Question from "metabase-lib/v1/Question";
-import type { Collection } from "metabase-types/api";
 
 import type { SelectedItem } from "./types";
 

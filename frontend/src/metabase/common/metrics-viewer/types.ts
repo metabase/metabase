@@ -1,4 +1,3 @@
-import type { DimensionType } from "metabase/common/metrics/utils/dimension-types";
 import type {
   BooleanFilterParts,
   CoordinateFilterParts,
@@ -11,6 +10,7 @@ import type {
   TimeFilterParts,
 } from "metabase-lib/metric";
 import type { CardDisplayType } from "metabase-types/api";
+import type { DimensionType } from "metabase/common/metrics/utils/dimension-types";
 
 export type MetricsViewerDisplayType = Extract<
   CardDisplayType,

@@ -1,5 +1,7 @@
 import { useEffect, useMemo } from "react";
 
+import Question from "metabase-lib/v1/Question";
+import type { DatasetColumn, Parameter } from "metabase-types/api";
 import { skipToken, useListUserAttributesQuery } from "metabase/api";
 import { getDashcardData, getParameters } from "metabase/dashboard/selectors";
 import {
@@ -11,8 +13,6 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import MetabaseSettings from "metabase/utils/settings";
-import Question from "metabase-lib/v1/Question";
-import type { DatasetColumn, Parameter } from "metabase-types/api";
 
 import type { ClickMappingsOwnProps, TargetItem } from "./types";
 import { isMappableColumn } from "./utils";

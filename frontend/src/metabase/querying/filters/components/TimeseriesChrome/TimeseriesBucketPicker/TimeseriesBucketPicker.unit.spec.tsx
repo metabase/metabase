@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { TemporalUnit, TestColumnSpec } from "metabase-types/api";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+import { checkNotNull } from "metabase/utils/types";
 
 import { TimeseriesBucketPicker } from "./TimeseriesBucketPicker";
 

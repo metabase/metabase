@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type { DatasetQuery, Measure, Table } from "metabase-types/api";
 import { useCreateMeasureMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { trackMeasureCreated } from "metabase/common/data-studio/analytics";
@@ -12,8 +14,6 @@ import { getMetadataWithHiddenTables } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { Button } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type { DatasetQuery, Measure, Table } from "metabase-types/api";
 
 import { MeasureEditor } from "../../components/MeasureEditor";
 import { NewMeasureHeader } from "../../components/NewMeasureHeader";

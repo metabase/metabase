@@ -1,7 +1,5 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
-import { isVirtualDashCard } from "metabase/utils/dashboard";
-import { isNotNull } from "metabase/utils/types";
 import type {
   Alert,
   ApiKey,
@@ -70,6 +68,8 @@ import type {
   AdminNotification,
   Notification,
 } from "metabase-types/api/notification";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
+import { isNotNull } from "metabase/utils/types";
 
 import { getLensKey } from "../utils/transform-inspector-lens";
 

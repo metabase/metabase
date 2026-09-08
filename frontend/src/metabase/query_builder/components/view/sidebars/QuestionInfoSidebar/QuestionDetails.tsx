@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { c, t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { getCollectionName } from "metabase/common/collections/utils";
 import { DateTime } from "metabase/common/components/DateTime";
@@ -11,7 +12,6 @@ import Styles from "metabase/css/core/index.css";
 import { Box, Flex, FixedSizeIcon as Icon, Loader, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
-import type Question from "metabase-lib/v1/Question";
 
 import SidebarStyles from "./QuestionInfoSidebar.module.css";
 import { QuestionPublicLinkPopover } from "./QuestionPublicLinkPopover/QuestionPublicLinkPopover";

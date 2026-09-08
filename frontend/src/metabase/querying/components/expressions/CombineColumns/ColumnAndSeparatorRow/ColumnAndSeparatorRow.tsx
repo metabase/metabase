@@ -2,9 +2,9 @@ import type { FocusEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import type * as Lib from "metabase-lib";
 import { Button, Flex, Icon, Text, TextInput, rem } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
-import type * as Lib from "metabase-lib";
 
 import { formatSeparator, label } from "../util";
 

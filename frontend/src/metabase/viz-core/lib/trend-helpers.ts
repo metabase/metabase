@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { isEmpty } from "metabase/utils/validate";
 import type { DateTimeAbsoluteUnit, RowValues } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+import { isEmpty } from "metabase/utils/validate";
 
 import { computeChange } from "./numeric";
 

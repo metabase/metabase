@@ -7,12 +7,12 @@ import {
   setupNullGetUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { Route } from "metabase/router";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import { CollectionContent } from "./CollectionContent";
 

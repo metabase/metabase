@@ -1,7 +1,5 @@
 import { renderHook } from "@testing-library/react";
 
-import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters";
-import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type {
   Card,
   Dashboard,
@@ -13,6 +11,8 @@ import {
   createMockDashboard,
   createMockParameter,
 } from "metabase-types/api/mocks";
+import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters";
+import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 
 jest.mock(
   "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters-conversion",

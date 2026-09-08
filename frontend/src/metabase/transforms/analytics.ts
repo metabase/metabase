@@ -1,4 +1,3 @@
-import { trackSimpleEvent } from "metabase/analytics";
 import type {
   IndexKind,
   InspectorCardId,
@@ -7,6 +6,7 @@ import type {
   TransformId,
   TransformJobId,
 } from "metabase-types/api";
+import { trackSimpleEvent } from "metabase/analytics";
 
 /** Lens ID concatenated with params */
 type LensKey = string;

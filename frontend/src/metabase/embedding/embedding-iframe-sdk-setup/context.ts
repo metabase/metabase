@@ -1,13 +1,13 @@
 import { createContext, useContext } from "react";
 
-import type { EmbeddingParametersValues } from "metabase/embedding/types";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import type {
   Card,
   Dashboard,
   EmbeddingParameters,
   Parameter,
 } from "metabase-types/api";
+import type { EmbeddingParametersValues } from "metabase/embedding/types";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 
 import type {
   SdkIframeEmbedSetupExperience,

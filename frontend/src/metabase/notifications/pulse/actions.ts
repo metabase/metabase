@@ -1,10 +1,6 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
-import { subscriptionApi } from "metabase/api";
-import { createThunkAction } from "metabase/redux";
-import { addUndo } from "metabase/redux/undo";
-import { getResponseErrorMessage } from "metabase/utils/errors";
 import type {
   ChannelApiResponse,
   CreateSubscriptionRequest,
@@ -12,6 +8,10 @@ import type {
   DraftDashboardSubscription,
   UpdateSubscriptionRequest,
 } from "metabase-types/api";
+import { subscriptionApi } from "metabase/api";
+import { createThunkAction } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
+import { getResponseErrorMessage } from "metabase/utils/errors";
 
 import { getEditingPulse } from "./selectors";
 

@@ -1,6 +1,6 @@
+import type Question from "metabase-lib/v1/Question";
 import type { MetabaseDataPointObject } from "metabase/embedding-sdk/types/plugins";
 import type { ClickObject } from "metabase/visualizations/types";
-import type Question from "metabase-lib/v1/Question";
 
 import { transformSdkQuestion } from "./transform-question";
 

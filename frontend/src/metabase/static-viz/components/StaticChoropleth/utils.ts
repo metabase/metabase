@@ -1,6 +1,7 @@
 import Color from "color";
 import type { Feature, FeatureCollection } from "geojson";
 
+import type { GeoJSONData, RawSeries, RowValue } from "metabase-types/api";
 import {
   type ComputedVisualizationSettings,
   columnSettings,
@@ -8,7 +9,6 @@ import {
   getComputedSettings,
   getStoredSettingsForSeries,
 } from "metabase/viz-core";
-import type { GeoJSONData, RawSeries, RowValue } from "metabase-types/api";
 
 // Internal projection resolution, not output size — the SVG is rasterized at a fixed width downstream.
 export const MAP_WIDTH = 1000;

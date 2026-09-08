@@ -1,3 +1,4 @@
+import type { DashboardId, Revision } from "metabase-types/api";
 import { revisionApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
@@ -6,7 +7,6 @@ import {
 } from "metabase/dashboard/actions";
 import { createThunkAction } from "metabase/redux";
 import { REVERT_TO_REVISION } from "metabase/redux/dashboard";
-import type { DashboardId, Revision } from "metabase-types/api";
 
 export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,

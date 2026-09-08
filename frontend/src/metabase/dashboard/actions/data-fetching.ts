@@ -4,6 +4,22 @@ import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type {
+  Card,
+  CardId,
+  DashCardId,
+  Dashboard,
+  DashboardCard,
+  DashboardId,
+  DashboardQueryMetadata,
+  Dataset,
+  JsonQuery,
+  ParameterId,
+  ParameterValuesMap,
+  QuestionDashboardCard,
+} from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 import {
   automagicDashboardsApi,
   cardApi,
@@ -50,22 +66,6 @@ import {
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
 import { uuid } from "metabase/utils/uuid";
-import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type {
-  Card,
-  CardId,
-  DashCardId,
-  Dashboard,
-  DashboardCard,
-  DashboardId,
-  DashboardQueryMetadata,
-  Dataset,
-  JsonQuery,
-  ParameterId,
-  ParameterValuesMap,
-  QuestionDashboardCard,
-} from "metabase-types/api";
-import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";

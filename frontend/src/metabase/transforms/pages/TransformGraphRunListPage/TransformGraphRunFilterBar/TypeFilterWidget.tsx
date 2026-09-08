@@ -2,6 +2,10 @@ import { useDisclosure } from "@mantine/hooks";
 import { type FormEvent, useState } from "react";
 import { t } from "ttag";
 
+import {
+  TRANSFORM_GRAPH_RUN_TYPES,
+  type TransformGraphRunType,
+} from "metabase-types/api";
 import { FILTER_WIDGET_MIN_WIDTH } from "metabase/transforms/constants";
 import { FilterFieldSet } from "metabase/transforms/pages/RunListPage/RunFilterBar/FilterFieldSet";
 import {
@@ -13,10 +17,6 @@ import {
   Popover,
   Stack,
 } from "metabase/ui";
-import {
-  TRANSFORM_GRAPH_RUN_TYPES,
-  type TransformGraphRunType,
-} from "metabase-types/api";
 
 export function formatGraphRunType(type: TransformGraphRunType): string {
   switch (type) {

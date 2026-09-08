@@ -1,9 +1,9 @@
 import cx from "classnames";
 import type { ComponentPropsWithoutRef } from "react";
 
+import type { IconName } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { Icon, UnstyledButton } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./ViewButton.module.css";
 

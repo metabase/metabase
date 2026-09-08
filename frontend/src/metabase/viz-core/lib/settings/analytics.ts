@@ -1,5 +1,5 @@
-import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 import type { DashboardId } from "metabase-types/api";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 
 export const trackStackedSeriesEnabled = () => {
   trackSimpleEvent({

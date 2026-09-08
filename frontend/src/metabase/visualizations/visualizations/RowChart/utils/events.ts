@@ -1,6 +1,17 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
+import type {
+  ClickObject,
+  ClickObjectDimension,
+} from "metabase-lib/v1/queries/drills/types";
+import { isMetric } from "metabase-lib/v1/types/utils/isa";
+import type {
+  DatasetColumn,
+  RowValue,
+  RowValues,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { formatNullable } from "metabase/utils/formatting";
 import { isNotNull } from "metabase/utils/types";
 import {
@@ -20,17 +31,6 @@ import {
   getStackOffset,
   sumMetric,
 } from "metabase/viz-core";
-import type {
-  ClickObject,
-  ClickObjectDimension,
-} from "metabase-lib/v1/queries/drills/types";
-import { isMetric } from "metabase-lib/v1/types/utils/isa";
-import type {
-  DatasetColumn,
-  RowValue,
-  RowValues,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 const getMetricColumnData = (
   columns: DatasetColumn[],

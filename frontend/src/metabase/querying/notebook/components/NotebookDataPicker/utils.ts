@@ -1,6 +1,6 @@
-import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import { isConcreteTableId } from "metabase-types/api";
+import * as Urls from "metabase/urls";
 
 type Props = {
   query: Lib.Query;

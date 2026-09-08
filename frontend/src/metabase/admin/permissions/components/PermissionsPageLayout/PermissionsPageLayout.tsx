@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type { IconName } from "metabase-types/api";
 import {
   CloseSidebarButton,
   FullHeightContainer,
@@ -24,7 +25,6 @@ import {
   Modal as NewModal,
   Text,
 } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import {
   clearSaveError as clearPermissionsSaveError,

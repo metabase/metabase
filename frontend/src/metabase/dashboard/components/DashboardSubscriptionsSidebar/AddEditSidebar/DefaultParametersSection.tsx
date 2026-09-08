@@ -1,12 +1,12 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import type { Parameter, ParameterValueOrArray } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import { Ellipsified, Icon, Title } from "metabase/ui";
 import { conjunct } from "metabase/utils/formatting";
 import { isNotNull } from "metabase/utils/types";
-import type { Parameter, ParameterValueOrArray } from "metabase-types/api";
 
 interface FormattedParam {
   name: string;

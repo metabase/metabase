@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { trackColumnExtractViaPlusModal } from "metabase/querying/analytics";
 import {
   ExtractColumn,
@@ -10,7 +11,6 @@ import { setUIControls } from "metabase/redux/query-builder";
 import { Box, rem } from "metabase/ui";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
-import * as Lib from "metabase-lib";
 
 export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
   if (!clicked || clicked.value !== undefined || !clicked.columnShortcuts) {

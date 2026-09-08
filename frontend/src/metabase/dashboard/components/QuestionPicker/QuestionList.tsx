@@ -1,6 +1,12 @@
 import { type ComponentProps, useEffect, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  CardId,
+  CollectionId,
+  CollectionItem,
+  SearchResult,
+} from "metabase-types/api";
 import {
   skipToken,
   useGetCardQuery,
@@ -22,12 +28,6 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/utils/constants";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
-import type {
-  CardId,
-  CollectionId,
-  CollectionItem,
-  SearchResult,
-} from "metabase-types/api";
 
 import S from "./QuestionList.module.css";
 import { trackVisualizeAnotherWayClicked } from "./analytics";

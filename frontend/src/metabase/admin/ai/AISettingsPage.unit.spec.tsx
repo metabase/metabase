@@ -20,17 +20,17 @@ import {
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
-import { buildDefaultMetabots } from "metabase/metabot/tests/utils";
-import { reinitialize } from "metabase/plugins";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import {
   createMockCollection,
   createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
+import { buildDefaultMetabots } from "metabase/metabot/tests/utils";
+import { reinitialize } from "metabase/plugins";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { AISettingsPage, McpSettingsPage } from "./AISettingsPage";
 

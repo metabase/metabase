@@ -2,6 +2,10 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
+import type {
+  OAuthAuthorization,
+  OAuthClientEventType,
+} from "metabase-types/api";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -27,10 +31,6 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
-import type {
-  OAuthAuthorization,
-  OAuthClientEventType,
-} from "metabase-types/api";
 
 import { useListOAuthAuthorizationsQuery } from "../settings/api/oauth";
 

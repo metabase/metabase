@@ -4,12 +4,12 @@ import {
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { Route } from "metabase/router";
 import {
   createMockCollection,
   createMockTransform,
 } from "metabase-types/api/mocks";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { Route } from "metabase/router";
 
 import { TransformHeader } from "./TransformHeader";
 

@@ -1,8 +1,8 @@
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { Alert, Anchor, Box, Icon } from "metabase/ui";
 import type { Engine } from "metabase-types/api";
+import { Alert, Anchor, Box, Icon } from "metabase/ui";
 
 export interface DatabaseEngineWarningProps {
   engineKey?: string;

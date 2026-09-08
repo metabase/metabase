@@ -1,16 +1,16 @@
 import type { ReactElement, ReactNode } from "react";
 
+import {
+  DataPermission,
+  DataPermissionValue,
+  type PermissionEntityId,
+} from "metabase-types/api/permissions";
 import type {
   PermissionAction,
   PermissionConfirmationProps,
   PermissionOption,
   PostActionFunction,
 } from "metabase/plugins";
-import {
-  DataPermission,
-  DataPermissionValue,
-  type PermissionEntityId,
-} from "metabase-types/api/permissions";
 
 export { DataPermission, DataPermissionValue };
 export type {

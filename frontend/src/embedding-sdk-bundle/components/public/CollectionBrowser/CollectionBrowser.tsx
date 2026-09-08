@@ -19,6 +19,13 @@ import type {
   SdkBrowserCollectionId,
 } from "embedding-sdk-bundle/types/collection";
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
+import type {
+  Collection,
+  CollectionId,
+  CollectionItem,
+  CollectionItemModel,
+} from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -32,13 +39,6 @@ import { collectionToCrumbs } from "metabase/nav/components/CollectionBreadcrumb
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
 import { Box, Group, Icon, Stack } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import type {
-  Collection,
-  CollectionId,
-  CollectionItem,
-  CollectionItemModel,
-} from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
 
 import { collectionBrowserPropsSchema } from "./CollectionBrowser.schema";
 

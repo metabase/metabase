@@ -6,14 +6,14 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockSetupState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import {
   createMockCollection,
   createMockSearchResult,
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
+import { createMockSetupState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { BrowseModels } from "./BrowseModels";
 import { createMockModelResult, createMockRecentModel } from "./test-utils";

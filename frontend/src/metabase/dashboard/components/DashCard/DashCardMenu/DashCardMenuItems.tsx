@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
+import type { DashCardId, Dataset } from "metabase-types/api";
 import { canDownloadResults } from "metabase/common/utils/dataset";
 import { editQuestion } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -11,8 +13,6 @@ import type {
 } from "metabase/embedding-sdk/types/plugins";
 import { useDispatch } from "metabase/redux";
 import { Icon, Menu } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
-import type { DashCardId, Dataset } from "metabase-types/api";
 
 import { canEditQuestion } from "./utils";
 

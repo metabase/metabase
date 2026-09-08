@@ -3,9 +3,6 @@ import { setupMetricEndpoint } from "__support__/server-mocks/metric";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { MetricUrls } from "metabase/common/metrics/types";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -18,6 +15,9 @@ import {
   createMockMetricDimension,
 } from "metabase-types/api/mocks/metric";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import type { MetricUrls } from "metabase/common/metrics/types";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { MetricTabs } from "./MetricTabs";
 

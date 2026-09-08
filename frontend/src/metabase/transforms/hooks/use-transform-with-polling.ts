@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import { skipToken, useGetTransformQuery } from "metabase/api";
 import type { Transform } from "metabase-types/api";
+import { skipToken, useGetTransformQuery } from "metabase/api";
 
 import { POLLING_INTERVAL } from "../constants";
 import {

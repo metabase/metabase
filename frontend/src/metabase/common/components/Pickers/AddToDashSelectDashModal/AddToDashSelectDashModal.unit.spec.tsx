@@ -18,9 +18,6 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { ROOT_COLLECTION as ROOT } from "metabase/common/collections/constants";
-import { Route } from "metabase/router";
-import { checkNotNull, isNotNull } from "metabase/utils/types";
 import type {
   BaseEntityId,
   Card,
@@ -36,6 +33,9 @@ import {
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { ROOT_COLLECTION as ROOT } from "metabase/common/collections/constants";
+import { Route } from "metabase/router";
+import { checkNotNull, isNotNull } from "metabase/utils/types";
 
 import { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 

@@ -16,14 +16,14 @@ import type {
   SdkQuestionState,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
-import { isAbortError } from "metabase/api/client";
-import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type Question from "metabase-lib/v1/Question";
 import type {
   ParameterValuesMap,
   QueryVisualizationDisplayType,
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
+import { isAbortError } from "metabase/api/client";
+import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 
 type LoadQuestionResult = Promise<
   SdkQuestionState & { originalQuestion?: Question }

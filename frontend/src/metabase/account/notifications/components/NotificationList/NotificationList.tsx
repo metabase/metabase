@@ -2,10 +2,10 @@ import cx from "classnames";
 import type { JSX, ReactNode } from "react";
 import { t } from "ttag";
 
+import type { User } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import type { NotificationListItem } from "metabase/notifications/types";
 import { Box, Flex, Icon, Text, UnstyledButton } from "metabase/ui";
-import type { User } from "metabase-types/api";
 
 import {
   DashboardNotificationCard,

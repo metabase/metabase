@@ -1,13 +1,13 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/utils/types";
-import { getMaxDimensionsSupported, isCartesianChart } from "metabase/viz-core";
 import type {
   DatasetColumn,
   VisualizationDisplay,
   VisualizationSettings,
   VisualizerColumnValueSource,
 } from "metabase-types/api";
+import { isNotNull } from "metabase/utils/types";
+import { getMaxDimensionsSupported, isCartesianChart } from "metabase/viz-core";
 
 import { isScalarFunnel } from "../visualizations/funnel";
 
