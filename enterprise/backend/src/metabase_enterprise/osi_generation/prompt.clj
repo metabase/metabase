@@ -48,14 +48,15 @@
 (defn- existing-block
   "Template context for the existing-context block, or nil when the candidate has no stored row:
   the previous `ai_context`, its ownership, and both staleness timestamps as absolute ISO-8601 UTC."
-  [{:keys [ai_context data_source generated_at invalidated_at] :as existing-context}]
+  [{:keys [ai_context data_source generated_at invalidated_at] :as existing-context} rewrite-requested?]
   (when existing-context
-    {:human-approved (contains? #{:human "human"} data_source)
-     :generated-at   (iso-utc generated_at)
-     :invalidated-at (iso-utc invalidated_at)
-     :instructions   (:instructions ai_context)
-     :synonyms       (not-empty (:synonyms ai_context))
-     :examples       (not-empty (:examples ai_context))}))
+    {:human-approved   (contains? #{:human "human"} data_source)
+     :rewrite-requested rewrite-requested?
+     :generated-at     (iso-utc generated_at)
+     :invalidated-at   (iso-utc invalidated_at)
+     :instructions     (:instructions ai_context)
+     :synonyms         (not-empty (:synonyms ai_context))
+     :examples         (not-empty (:examples ai_context))}))
 
 (defn- diff-block
   "Template context for the diff block — one `{:field s :from s :to s}` per changed basis key, in
@@ -84,7 +85,7 @@
         ;; version bump and a corresponding template change.
         user   (selmer/render @user-template
                               (merge llm-input
-                                     {:existing (existing-block existing-context)
+                                     {:existing (existing-block existing-context rewrite-requested?)
                                       :diff     (diff-block diff)
                                       :fresh    (and (nil? diff) (nil? existing-context))
                                       :rewrite-requested rewrite-requested?}))]
