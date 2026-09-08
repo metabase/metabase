@@ -1,15 +1,21 @@
 (ns metabase.cmd.copy-test
   (:require
    [clojure.java.classpath :as classpath]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.namespace.find :as ns.find]
+   [metabase.app-db.data-source :as mdb.data-source]
+   [metabase.app-db.setup :as mdb.setup]
    [metabase.classloader.core :as classloader]
-   [metabase.cmd.copy :as copy]))
+   [metabase.cmd.copy :as copy]
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel sql-for-selecting-instances-from-source-db-test
   (is (= "SELECT * FROM metabase_field ORDER BY id ASC"
-         (#'copy/sql-for-selecting-instances-from-source-db :model/Field))))
+         (#'copy/sql-for-selecting-instances-from-source-db :model/Field)))
+  (is (= "SELECT * FROM metabot_permissions WHERE group_id IN (SELECT id FROM permissions_group)"
+         (#'copy/sql-for-selecting-instances-from-source-db :metabot_permissions))))
 
 (deftest ^:parallel copy-h2-database-details-test
   (doseq [copy-h2-database-details? [true false]]
@@ -22,6 +28,45 @@
                 (#'copy/model-results-xform :model/Database)
                 [{:id 1, :engine "h2", :details "{:db \"metabase.db\"}"}
                  {:id 2, :engine "postgres", :details "{:db \"metabase\"}"}])))))))
+
+(defn- h2-data-source []
+  (mdb.data-source/raw-connection-string->DataSource
+   (format "jdbc:h2:mem:%s;DB_CLOSE_DELAY=-1" (random-uuid))))
+
+(defn- shutdown! [data-source]
+  (jdbc/execute! {:datasource data-source} ["SHUTDOWN"] {:transaction? false}))
+
+(defn- metabot-permissions-by-group-type
+  "{magic_group_type {perm_type perm_value}}, with rows of groups the target doesn't have under nil."
+  [data-source]
+  (reduce (fn [m {:keys [magic_group_type perm_type perm_value]}]
+            (assoc-in m [magic_group_type perm_type] perm_value))
+          {}
+          (jdbc/query {:datasource data-source}
+                      ["SELECT pg.magic_group_type, mp.perm_type, mp.perm_value
+                        FROM metabot_permissions mp
+                        LEFT JOIN permissions_group pg ON pg.id = mp.group_id"])))
+
+(deftest copy-metabot-permissions-test
+  (testing "a dump made by an OSS build before metabot_permissions was copied restores like a fresh install (#78414)"
+    (let [source (h2-data-source)
+          target (h2-data-source)]
+      (try
+        (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
+        (let [fresh (metabot-permissions-by-group-type source)]
+          ;; such a dump holds the dumping build's seed rows under its own group ids, while the source's magic groups
+          ;; sit elsewhere with none
+          (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY FALSE"])
+          (jdbc/execute! {:datasource source} ["UPDATE permissions_group SET id = id + 10 WHERE id > 2"])
+          (doseq [table ["permissions" "data_permissions"]]
+            (jdbc/execute! {:datasource source} [(format "UPDATE %s SET group_id = group_id + 10 WHERE group_id > 2" table)]))
+          (jdbc/execute! {:datasource source} ["UPDATE metabot_permissions SET perm_value = 'no' WHERE group_id = 1 AND perm_type = 'permission/metabot'"])
+          (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY TRUE"])
+          (copy/copy! :h2 source :h2 target)
+          (is (= (assoc-in fresh ["all-internal-users" "permission/metabot"] "no")
+                 (metabot-permissions-by-group-type target))))
+        (finally
+          (run! shutdown! [source target]))))))
 
 (def ^:private models-to-exclude
   "Models that should *not* be migrated in `load-from-h2`."
@@ -93,4 +138,5 @@
   (doseq [model (all-model-names)
           :let  [copy-models (set copy/entities)]]
     (is (contains? copy-models model)
-        (format "%s should be added to %s, or to %s" model `copy/entities `models-to-exclude))))
+        (format "%s should be added to %s, or to %s" model `copy/entities `models-to-exclude)))
+  (is (apply distinct? (map t2/table-name copy/entities))))

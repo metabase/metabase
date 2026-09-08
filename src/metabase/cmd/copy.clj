@@ -140,10 +140,11 @@
     :model/MetabotSourceFeedback
     :model/MetabotUsedTable
     :model/MetabotPrompt
-    :model/OsiAiContext]
+    :model/OsiAiContext
+    ;; 61+, by table name: migrations create and seed it on every edition, but its model is EE-only
+    :metabot_permissions]
    (when config/ee-available?
-     [:model/MetabotPermissions
-      :model/MetabotGroupLimit
+     [:model/MetabotGroupLimit
       :model/MetabotInstanceLimit
       :model/Sandbox
       :model/Tenant
@@ -191,6 +192,9 @@
   [model]
   (case model
     :model/Field {:order-by [[:id :asc]]}
+    ;; dumps made by an OSS build before this table was copied still hold the rows the target's own migrations seeded,
+    ;; which can point at group ids the source never had
+    :metabot_permissions {:where [:in :group_id {:select [:id] :from [:permissions_group]}]}
     nil))
 
 (defn- sql-for-selecting-instances-from-source-db [model]
@@ -441,6 +445,24 @@
                                         table-name table-name)]]
         (jdbc/execute! target-db-conn sql)))))
 
+(def ^:private metabot-permissions-seed-sql
+  "The seed of changeset v61.98kjjhf. Dumps made by an OSS build before this table was copied hold the dumping build's
+  seed rows under its own group ids, so the source's magic groups can arrive with none."
+  "INSERT INTO metabot_permissions (group_id, perm_type, perm_value)
+   SELECT pg.id, d.perm_type, d.perm_value
+   FROM permissions_group pg
+   CROSS JOIN (
+     SELECT 'permission/metabot' AS perm_type, 'yes' AS perm_value
+     UNION ALL SELECT 'permission/metabot-sql-generation', 'yes'
+     UNION ALL SELECT 'permission/metabot-nlq', 'yes'
+     UNION ALL SELECT 'permission/metabot-other-tools', 'yes'
+   ) AS d
+   WHERE pg.magic_group_type IN ('admin', 'all-internal-users', 'data-analyst', 'all-external-users')
+     AND NOT EXISTS (
+       SELECT 1 FROM metabot_permissions mp
+       WHERE mp.group_id = pg.id AND mp.perm_type = d.perm_type
+     )")
+
 (mu/defn copy!
   "Copy data from a source application database into an empty destination application database."
   [source-db-type     :- [:enum :h2 :postgres :mysql]
@@ -480,4 +502,6 @@
       (with-disabled-db-constraints target-db-type target-conn-spec
         (copy-data! source-data-source target-db-type target-conn-spec))))
   ;; finally, update sequence values (if needed)
-  (update-sequence-values! target-db-type target-data-source))
+  (update-sequence-values! target-db-type target-data-source)
+  (step (trs "Seeding metabot permissions for magic groups without any...")
+    (jdbc/execute! {:datasource target-data-source} [metabot-permissions-seed-sql])))
