@@ -1,9 +1,11 @@
 (ns metabase.actions.hierarchy
   "Keyword hierarchy relating action keywords to the keywords whose method implementations they share.
 
-  Kept separate from Clojure's global hierarchy so that action relationships are visible in one place and cannot
-  collide with other users of the global hierarchy. Driver-level action methods dispatch on `[driver action]` through
-  the driver hierarchy and only ever name leaf action keywords, so they are unaffected by this one.
+  Kept separate from Clojure's global hierarchy so that action relationships are visible in one place and
+  cannot collide with other users of the global hierarchy.
+
+  Driver-level action methods resolve `[driver action]` through `driver/hierarchy`, and should only ever
+  dispatch on concrete actions - this hierarchy is irrelevant there.
 
     (derive! :table.row/create :table.row/common)")
 
