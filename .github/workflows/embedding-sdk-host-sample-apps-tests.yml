@@ -202,9 +202,7 @@ jobs:
       fail-fast: false
       matrix:
         environment: ["production", "development"]
-    # TEMPORARILY DISABLED: re-enable by removing the `false &&` below.
     if: |
-      false &&
       !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       (github.ref == 'refs/heads/master' || github.base_ref == 'master')
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -233,11 +231,6 @@ jobs:
           sample-app-branch-name: ${{ needs.get-sample-apps-data.outputs.branch_name }}
           sample-app-environment: ${{ matrix.environment }}
           staging-mb-all-features-token: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
-          shoppy-iam-role: ${{ secrets.SHOPPY_IAM_ROLE }}
-          shoppy-metabase-app-db-s3-bucket: ${{ secrets.SHOPPY_METABASE_APP_DB_S3_BUCKET }}
-          shoppy-metabase-app-db-s3-key: ${{ secrets.SHOPPY_METABASE_APP_DB_S3_KEY }}
-          shoppy-metabase-app-db-user: ${{ secrets.SHOPPY_METABASE_APP_DB_USER }}
-          shoppy-metabase-app-db-database: ${{ secrets.SHOPPY_METABASE_APP_DB_DATABASE }}
           metastore-dev-server-url: ${{ secrets.METASTORE_DEV_SERVER_URL }}
           shoppy-datadog-application-id: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_APPLICATION_ID }}
           shoppy-datadog-client-token: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_CLIENT_TOKEN }}
@@ -270,9 +263,7 @@ jobs:
   # They use the shoppy production environment and include performance measurement tests.
   e2e-shoppy-synthetic-tests:
     needs: [get-sample-apps-data]
-    # TEMPORARILY DISABLED: re-enable by removing the `false &&` below.
     if: |
-      false &&
       !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/master'
@@ -302,11 +293,6 @@ jobs:
           sample-app-branch-name: ${{ needs.get-sample-apps-data.outputs.branch_name }}
           sample-app-environment: production
           staging-mb-all-features-token: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
-          shoppy-iam-role: ${{ secrets.SHOPPY_IAM_ROLE }}
-          shoppy-metabase-app-db-s3-bucket: ${{ secrets.SHOPPY_METABASE_APP_DB_S3_BUCKET }}
-          shoppy-metabase-app-db-s3-key: ${{ secrets.SHOPPY_METABASE_APP_DB_S3_KEY }}
-          shoppy-metabase-app-db-user: ${{ secrets.SHOPPY_METABASE_APP_DB_USER }}
-          shoppy-metabase-app-db-database: ${{ secrets.SHOPPY_METABASE_APP_DB_DATABASE }}
           metastore-dev-server-url: ${{ secrets.METASTORE_DEV_SERVER_URL }}
           shoppy-datadog-application-id: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_APPLICATION_ID }}
           shoppy-datadog-client-token: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_CLIENT_TOKEN }}
