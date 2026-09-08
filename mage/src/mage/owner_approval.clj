@@ -18,9 +18,10 @@
 
 (set! *warn-on-reflection* true)
 
-;;; The first commit where .clj-kondo/config/modules/config.edn carries :team, i.e. the earliest point the
-;;; module system can attribute a file to an owner team. Default lower bound for the audit.
-(def default-boundary-sha "b6dff656d7c705c90d45833bd92d69deb4c8f741")
+(def default-boundary-sha
+  "The first commit where .clj-kondo/config/modules/config.edn carries :team, i.e. the earliest point the
+  module system can attribute a file to an owner team. Default lower bound for the audit."
+  "b6dff656d7c705c90d45833bd92d69deb4c8f741")
 
 (def ^:private repo "metabase/metabase")
 (def ^:private config-path ".clj-kondo/config/modules/config.edn")
@@ -248,7 +249,7 @@
 
 (defn- pr-row
   "One report map for a PR commit, joining its point-in-time ownership with its cached approvers."
-  [{:keys [pr sha ct subject files config-blob team-blob]} captured-at]
+  [{:keys [pr sha ct files config-blob team-blob]} captured-at]
   (let [review         (or (cached-review pr) {})
         modules-config (read-config-blob config-blob)
         team->members  (read-team-blob team-blob)
