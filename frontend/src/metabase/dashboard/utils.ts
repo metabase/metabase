@@ -133,8 +133,24 @@ export type AdhocDashboard = Pick<
   dashcards: AdhocDashCard[];
 };
 
+function getAdhocDashboardKey(
+  dashId: string,
+  definition: AdhocDashboardDefinition,
+) {
+  if (definition.metabot != null) {
+    return definition.metabot.dashboard_id;
+  }
+  const encodedDefinition = dashId.slice(dashId.indexOf("#") + 1);
+  let hash = 2166136261;
+  for (let index = 0; index < encodedDefinition.length; index++) {
+    hash = Math.imul(hash ^ encodedDefinition.charCodeAt(index), 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 export function expandAdhocDashboard(dashId: string): AdhocDashboard {
   const definition = getAdhocDashboardDefinition(dashId);
+  const key = getAdhocDashboardKey(dashId, definition);
   return {
     id: dashId,
     name: definition.name,
@@ -142,7 +158,7 @@ export function expandAdhocDashboard(dashId: string): AdhocDashboard {
     parameters: [],
     width: "fixed",
     dashcards: definition.tiles.map((tile, index) => ({
-      id: `adhoc-dashcard-${index}`,
+      id: `adhoc-${key}-dashcard-${index}`,
       dashboard_id: dashId,
       card_id: tile.card_id ?? null,
       col: tile.col,
@@ -153,7 +169,7 @@ export function expandAdhocDashboard(dashId: string): AdhocDashboard {
       parameter_mappings: [],
       series: [],
       card: {
-        id: tile.card_id ?? `adhoc-card-${index}`,
+        id: tile.card_id ?? `adhoc-${key}-card-${index}`,
         name: tile.title,
         display: tile.display,
         dataset_query: tile.dataset_query,

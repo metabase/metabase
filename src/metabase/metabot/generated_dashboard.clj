@@ -26,7 +26,7 @@
                  :visualization_settings (or visualization-settings {})
                  :dashboard_id           dashboard-id}
                 {:id api/*current-user-id*}
-                :delay-event
+                true
                 false))]
     (metabot.db/insert-dashcard!
      {:dashboard_id dashboard-id
