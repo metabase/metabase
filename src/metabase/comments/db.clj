@@ -18,6 +18,27 @@
                          [:= :target_id target-id]]
               :order-by [[:created_at :asc]]}))
 
+(defn document-comments
+  "The Comments on the document with `document-id`, oldest first, ties broken on `:id`.
+
+  Distinct from [[comments-for-target]], which leaves ties undetermined."
+  [document-id]
+  (t2/select :model/Comment
+             :target_type "document"
+             :target_id document-id
+             {:order-by [[:created_at :asc] [:id :asc]]}))
+
+(defn document-child-target-counts
+  "Rows of `:child_target_id` and `:comment_count` for the document with `document-id`, counting only
+  live comments and skipping threads with no child target."
+  [document-id]
+  (t2/select [:model/Comment :child_target_id [:%count.id :comment_count]]
+             :target_type "document"
+             :target_id document-id
+             :child_target_id [:not= nil]
+             :deleted_at nil
+             {:group-by [:child_target_id]}))
+
 (defn active-user-ids
   "The ids among `user-ids` of active Users, or nil."
   [user-ids]
