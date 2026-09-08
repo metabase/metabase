@@ -1,10 +1,8 @@
 (ns metabase-enterprise.audit-app.permissions-test
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.audit-test :as audit-test]
-   [metabase-enterprise.audit-app.permissions :as audit-app.permissions]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
@@ -25,13 +23,16 @@
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
-(deftest audit-db-view-names-test
-  (testing "`audit-db-view-names` includes all views in the app DB prefixed with `v_`"
-    (let [view-query "SELECT table_name FROM information_schema.views WHERE table_name LIKE 'v\\_%';"]
-      (is (set/superset?
-           audit-app.permissions/audit-db-view-names
-           (into #{}
-                 (map :table_name (t2/query view-query))))))))
+(deftest audit-view-names-test
+  (testing "the audit purview is exactly the set of `v_`-prefixed views the migrations create"
+    ;; equality, not superset: a view left out of the purview is invisible to usage analytics, and a purview entry
+    ;; with no view behind it is a grant documented for a view that doesn't exist.
+    ;;
+    ;; H2 folds unquoted identifiers to upper case, so both the predicate and the results have to be lower-cased --
+    ;; matching on `table_name` directly finds nothing there, which is how the older superset form passed vacuously.
+    (let [view-query "SELECT table_name FROM information_schema.views WHERE LOWER(table_name) LIKE 'v\\_%';"]
+      (is (= audit/audit-view-names
+             (into #{} (map (comp u/lower-case-en :table_name)) (t2/query view-query)))))))
 
 (deftest audit-db-basic-query-test
   (audit-test/with-audit-db-restoration!
@@ -50,7 +51,7 @@
         (testing "A non-native query can be run on views in the audit DB"
           (let [audit-view (t2/select-one :model/Table
                                           :db_id audit/audit-db-id
-                                          {:where [:in [:lower :name] audit-app.permissions/audit-db-view-names]})]
+                                          {:where [:in [:lower :name] audit/audit-view-names]})]
             (when-not (some-> audit-view :name u/lower-case-en (str/starts-with? "v_"))
               (sync/sync-database! (t2/select-one :model/Database audit/audit-db-id)))
             (is (partial=

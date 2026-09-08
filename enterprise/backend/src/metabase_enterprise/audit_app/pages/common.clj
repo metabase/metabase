@@ -113,7 +113,7 @@
     (binding [driver/*driver*                            driver
               qp.timezone/*results-timezone-id-override* (application-db-default-timezone)]
       (try
-        (with-open [conn (.getConnection (mdb/app-db))
+        (with-open [conn (.getConnection (mdb/audit-read-data-source))
                     stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
                     rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
           (let [rsmeta   (.getMetaData rs)

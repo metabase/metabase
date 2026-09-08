@@ -234,3 +234,33 @@
                           default-quartz-max-pool-size)
     "minPoolSize"     1
     "initialPoolSize" 1}))
+
+(def ^:private default-audit-max-pool-size 5)
+
+(mu/defn audit-connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
+  "Create a small connection pool for the Audit DB path, separate from the main application DB pool.
+
+  Audit content queries the application database (see [[metabase.audit-app.purview]]) but is partly user-authored and
+  unbounded in cost, so it gets its own pool: an expensive audit query can then only exhaust the audit pool, never the
+  slots application code needs. The pool name makes audit connections identifiable on the database side.
+
+  `data-source` is the audit-read [[javax.sql.DataSource]], which is a distinct credential only when the operator has
+  configured one -- see [[metabase.app-db.env/audit-read-data-source]]. It must be unpooled: an already-pooled
+  `data-source` is rejected."
+  ^PoolBackedDataSource [db-type :- :keyword
+                         data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  ;; [[connection-pool-data-source]] returns an already-pooled data-source as-is, which here would silently share the
+  ;; main pool and reintroduce the contention this pool exists to prevent -- so reject pooled input instead.
+  (when (instance? PoolBackedDataSource data-source)
+    (throw (ex-info (str "audit-connection-pool-data-source requires an unpooled data-source: an already-pooled one"
+                         " would be shared with the main pool, defeating the workload isolation.")
+                    {:data-source-name (.getDataSourceName ^PoolBackedDataSource data-source)})))
+  (connection-pool-data-source
+   db-type
+   data-source
+   {"dataSourceName"  (format "metabase-%s-audit-read" (name db-type))
+    "maxPoolSize"     (or (config/config-int :mb-audit-db-max-connection-pool-size)
+                          default-audit-max-pool-size)
+    ;; audit traffic is bursty and often absent entirely, so don't hold idle connections open for it
+    "minPoolSize"     1
+    "initialPoolSize" 1}))
