@@ -97,7 +97,6 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
   };
 
   return {
-    id: "__CUSTOM_VIZ_NAME__",
     getName: () => "__CUSTOM_VIZ_DISPLAY_NAME__",
     minSize: { width: 2, height: 2 },
     defaultSize: { width: 6, height: 4 },
@@ -125,8 +124,7 @@ export default createVisualization;
 
 | Property                 | Type                                | Description                                                                                                                                                     |
 | ------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`                     | `string`                            | Unique identifier. Must match `name` in `metabase-plugin.json`.                                                                                                 |
-| `getName()`              | `() => string`                      | Display name shown in the chart type picker.                                                                                                                    |
+| `getName()`              | `() => string`                      | Optional. Display name shown in the chart type picker. Defaults to `name` from `metabase-plugin.json`.                                                          |
 | `minSize`                | `{ width, height }`                 | Minimum dashboard grid size.                                                                                                                                    |
 | `defaultSize`            | `{ width, height }`                 | Default dashboard grid size.                                                                                                                                    |
 | `noHeader`               | `boolean`                           | When `true`, hides the default card title/description header.                                                                                                   |

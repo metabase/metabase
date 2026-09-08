@@ -47,8 +47,6 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
   locale,
 }) => {
   return defineConfig<Settings>({
-    id: "example_custom_viz_plugin",
-    getName: () => "example_custom_viz_plugin",
     minSize: { width: 2, height: 2 },
     checkRenderable(series, settings) {
       if (series.length !== 1) {

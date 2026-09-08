@@ -1,4 +1,7 @@
 (ns mage.core-test
+  "Tests for the mage CLI itself.
+  Requires every other mage test namespace: `./bin/mage -test` runs `clojure.test/run-all-tests`, which
+  only sees namespaces that are already loaded."
   (:require
    [babashka.fs :as fs]
    [babashka.tasks :as bt]
@@ -9,31 +12,20 @@
    [mage.bot.autobot-test]
    [mage.bot.dev-env-core-test]
    [mage.bot.env-test]
+   [mage.bot.pr-env-test]
    [mage.bot.prompt-test]
+   [mage.bot.repl-eval-test]
    [mage.doctor-test]
    [mage.fix-unused-requires-test]
    [mage.kondo-ratchet-test]
    [mage.merge-kondo-ratchets-test]
-   [mage.merge-yaml-migrations-test :as merge-yaml-migrations-test]
+   [mage.merge-yaml-migrations-test]
    [mage.modules-test]
    [mage.project-tests-test]
    [mage.shell-test]
    [mage.token-scan-test]
    [mage.util :as u]
    [mage.util-test]))
-
-(comment
-  ;; Load test namespaces to ensure code coverage
-  mage.doctor-test/keep-me
-  mage.fix-unused-requires-test/keep-me
-  mage.kondo-ratchet-test/keep-me
-  mage.merge-kondo-ratchets-test/keep-me
-  mage.util-test/keep-me
-  mage.modules-test/keep-me
-  mage.project-tests-test/keep-me
-  mage.shell-test/keep-me
-  merge-yaml-migrations-test/keep-me
-  token-scan-test/keep-me)
 
 (set! *warn-on-reflection* true)
 
