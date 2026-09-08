@@ -278,6 +278,7 @@
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
   (try
+    (search.index/delete-obsolete-tables!)
     (search.index/ensure-ready!)
     (if in-place?
       (when-let [table (search.index/active-table)]
