@@ -431,19 +431,27 @@
   original-describe-database
   (get-method driver/describe-database* :snowflake))
 
+(def ^:dynamic *override-describe-database-to-filter-session-schemas?*
+  "Whether to override the production implementation for `describe-database` with one that hides other CI jobs'
+  `temp_` session schemas. This is `true` by default during tests to fake database isolation, as on Redshift; bind it
+  `false` to see everything in the database."
+  true)
+
 ;; Other CI jobs' session schemas come and go in the shared static databases while this run is looking at them. Hide
 ;; them so sync and `describe-database` only see the dataset's tables and this run's own.
 (defmethod driver/describe-database* :snowflake
   [driver database]
-  (let [session-schema (unique-session-schema)]
-    (update (original-describe-database driver database)
-            :tables
-            (fn [tables]
-              (into #{}
-                    (remove (fn [{:keys [schema]}]
-                              (and (str/starts-with? (str schema) "temp_")
-                                   (not= schema session-schema))))
-                    tables)))))
+  (if *override-describe-database-to-filter-session-schemas?*
+    (let [session-schema (unique-session-schema)]
+      (update (original-describe-database driver database)
+              :tables
+              (fn [tables]
+                (into #{}
+                      (remove (fn [{:keys [schema]}]
+                                (and (str/starts-with? (str schema) "temp_")
+                                     (not= schema session-schema))))
+                      tables))))
+    (original-describe-database driver database)))
 
 ;;; ------------------------------------------------ Fake Sync Support ------------------------------------------------
 
