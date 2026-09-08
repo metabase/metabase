@@ -4,17 +4,17 @@
 Type: {{entity-type}}
 Name: {{name}}
 {% if display-name %}Display name: {{display-name}}
-{% endif %}{% if description %}Description (input only — do not rewrite it): {{description}}
+{% endif %}{% if description %}Description (primary business meaning; input only — do not rewrite it): {{description}}
 {% endif %}{% if field-names %}
-Fields:
+Fields (supporting structural evidence):
 {% for f in field-names %}- {{f}}
 {% endfor %}{% endif %}
 {% if existing %}
 # Existing metadata
 
-{% if existing.human-approved %}This metadata was approved by a human and explicitly selected for rewriting. Treat it as authoritative context while producing the requested new version.
-{% else %}This metadata is an unapproved Metabot draft — use it as context and rewrite it when appropriate.
-{% endif %}
+This is prior context, not guaranteed current truth. It may no longer be reliable because the entity's authored inputs can have changed; reassess it against the current name, description, and supporting structure.
+Approval status: {% if existing.human-approved %}This metadata was approved by a human. Treat that provenance as strong evidence, while resolving clear conflicts in favor of current authored metadata.{% else %}This is an unapproved Metabot draft. Preserve its useful entries for continuity only when current authored metadata still supports them.{% endif %}
+Explicit regeneration requested: {% if existing.rewrite-requested %}Yes. Produce a newly assessed version rather than carrying this forward by default.{% else %}No.{% endif %}
 {% if existing.generated-at %}Generated at: {{existing.generated-at}}
 {% endif %}{% if existing.invalidated-at %}Entity changed at: {{existing.invalidated-at}}
 {% endif %}{% if existing.instructions %}

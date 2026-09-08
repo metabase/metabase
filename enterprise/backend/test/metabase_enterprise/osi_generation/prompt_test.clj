@@ -33,8 +33,28 @@
                                    :ai_context {:instructions "Net of refunds"}}}
           message (get-in (prompt/build-messages base) [1 :content])]
       (is (str/includes? message "unapproved Metabot draft"))
+      (is (str/includes? message "may no longer be reliable"))
+      (is (str/includes? message "Explicit regeneration requested: No"))
       (is (str/includes? message "Net of refunds"))
       (is (not (str/includes? message "approved by a human"))))))
+
+(deftest ^:parallel authored-metadata-and-existing-context-outrank-fields-test
+  (let [messages (prompt/build-messages
+                  {:llm-input {:entity-type "table"
+                               :name        "Marching orders"
+                               :description "Commands issued to a soldier"
+                               :field-names ["user_id" "product_id"]}
+                   :existing-context {:data_source :metabot
+                                      :ai_context {:synonyms ["military orders"]}}})
+        system   (get-in messages [0 :content])
+        user     (get-in messages [1 :content])]
+    (is (str/includes? system "name and description define its intended business meaning"))
+    (is (str/includes? system "response replaces the existing metadata"))
+    (is (str/includes? system "Explicitly carry forward existing synonyms"))
+    (is (str/includes? user "Description (primary business meaning"))
+    (is (str/includes? user "Fields (supporting structural evidence)"))
+    (is (str/includes? user "Preserve its useful entries for continuity"))
+    (is (str/includes? user "military orders"))))
 
 (deftest ^:parallel requested-human-rewrite-framing-test
   (testing "human-approved metadata keeps its provenance when an explicit rewrite enters generation"
@@ -48,7 +68,8 @@
       (is (str/includes? system "Treat human-approved metadata as authoritative context"))
       (is (not (str/includes? system "Human-approved metadata is excluded")))
       (is (str/includes? message "approved by a human"))
-      (is (str/includes? message "authoritative context"))
+      (is (str/includes? message "strong evidence"))
+      (is (str/includes? message "Explicit regeneration requested: Yes"))
       (is (str/includes? message "Explicit rewrite request"))
       (is (not (str/includes? message "unapproved Metabot draft"))))))
 
