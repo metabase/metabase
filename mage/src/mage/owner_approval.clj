@@ -7,7 +7,6 @@
   say which owner teams signed off. Results go to a wide CSV for upload to Metabase; a second command
   renders an HTML summary."
   (:require
-   ^:clj-kondo/ignore
    [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
