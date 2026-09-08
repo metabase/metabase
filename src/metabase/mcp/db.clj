@@ -17,6 +17,20 @@
   {:pre [(integer? id)]}
   (t2/select-one model :id id))
 
+(defn select-by-ids
+  "The `model` rows whose primary keys are in `ids`. `ids` is expected non-empty — an empty `:in` is a SQL
+  error rather than an empty result, so callers guard it."
+  [model ids]
+  (t2/select model :id [:in ids]))
+
+(defn select-users-where
+  "The `:model/User` rows matching the HoneySQL `where` clause.
+
+  Takes an assembled clause rather than the values behind it: the clause encodes which users the caller is
+  allowed to resolve at all, which is a permission decision and belongs with the permission check."
+  [where]
+  (t2/select :model/User {:where where}))
+
 (defn insert-feedback!
   "Insert the McpFeedback `row`."
   [row]

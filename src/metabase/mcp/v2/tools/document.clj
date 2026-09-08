@@ -13,6 +13,7 @@
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
@@ -24,8 +25,7 @@
    [metabase.users.models.user :as user]
    [metabase.users.settings :as users.settings]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -102,7 +102,7 @@
                                                       set
                                                       (conj api/*current-user-id*))])
                     :none  (conj clauses [:= :id api/*current-user-id*])))]
-    (t2/select :model/User {:where clauses})))
+    (mcp.db/select-users-where clauses)))
 
 (defn- smart-link-rows
   "`{[model id] row}` for every distinct smart-link target among `links` the current user may
@@ -120,7 +120,7 @@
                                      (filterv #(smart-link-readable? model %)
                                               (if (= "user" model)
                                                 (visible-user-rows ids)
-                                                (t2/select db-model :id [:in ids])))
+                                                (mcp.db/select-by-ids db-model ids)))
                                      (catch Exception e
                                        (log/warnf e "smart link lookup failed for %s" model)
                                        nil)))]
@@ -217,7 +217,7 @@
   (let [ids (distinct (prose-mirror/card-ids {:document     ast
                                               :content_type prose-mirror/prose-mirror-content-type}))]
     (when (seq ids)
-      (let [cards (into {} (map (juxt :id identity)) (t2/select :model/Card :id [:in ids]))]
+      (let [cards (into {} (map (juxt :id identity)) (mcp.db/select-by-ids :model/Card ids))]
         (doseq [id ids]
           (let [card (get cards id)]
             (when-not (and card
