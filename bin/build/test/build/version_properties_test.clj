@@ -1,7 +1,33 @@
 (ns build.version-properties-test
   (:require
    [build.version-properties :as version-properties]
-   [clojure.test :refer :all]))
+   [clojure.test :refer :all]
+   [clojure.tools.build.api :as b]
+   [metabuild-common.core :as u])
+  (:import
+   (java.nio.file Files)
+   (java.nio.file.attribute FileAttribute)))
+
+(deftest most-recent-tag-test
+  (let [repo (str (Files/createTempDirectory "metabase-version-properties-test-" (make-array FileAttribute 0)))
+        git! (fn [& args]
+               (apply u/sh {:dir repo, :quiet? true} "git" args))
+        sh*  u/sh*]
+    (try
+      (git! "init" "--quiet")
+      (git! "config" "user.email" "test@metabase.com")
+      (git! "config" "user.name" "Metabase Test")
+      (git! "commit" "--quiet" "--allow-empty" "--message" "Metabase release")
+      (git! "tag" "v0.60.0-beta")
+      (git! "commit" "--quiet" "--allow-empty" "--message" "Custom viz release")
+      (git! "tag" "custom-viz-v2.0.0-canary.0")
+      (with-redefs [u/sh* (fn [& args]
+                            (apply sh* {:dir repo, :quiet? true} args))]
+        (is (= "v0.60.0-beta"
+               (#'version-properties/most-recent-tag))
+            "Metabase version detection should ignore component release tags"))
+      (finally
+        (b/delete {:path repo})))))
 
 (deftest tag-parts-test
   (doseq [[tag expected] {nil          nil
