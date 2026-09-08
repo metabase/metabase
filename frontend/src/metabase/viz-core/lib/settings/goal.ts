@@ -61,8 +61,7 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
     getHidden: (_series, vizSettings) =>
       vizSettings["graph.show_goal"] !== true,
     readDependencies: ["graph.show_goal"],
-    // the transformed series drop `data.referenced_entities`
-    useRawSeries: true,
+    useRawSeries: true, // see getRawSeries
     getProps: ([{ card, data }]) => ({
       data,
       datasetQuery: card.dataset_query,

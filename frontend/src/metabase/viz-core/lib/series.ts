@@ -15,6 +15,8 @@ import { isObjectWithRaw } from "metabase-types/guards";
 import { SERIES_SETTING_KEY } from "../shared/settings/series";
 
 // Transformed series keep the raw series they were derived from in `_raw`.
+// The transforms rebuild `data`, dropping fields such as `referenced_entities`
+// that only the raw series carry.
 export function getRawSeries(series: Series): Series {
   return isObjectWithRaw(series) && series._raw ? series._raw : series;
 }

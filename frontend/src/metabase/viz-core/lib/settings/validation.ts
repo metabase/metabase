@@ -111,7 +111,6 @@ export const validateGoalReferences = (
   series: Series,
   settings: VisualizationSettings,
 ) => {
-  // the transformed series drop `data.referenced_entities`
   const [{ card, data }] = getRawSeries(series);
 
   getDynamicGoalSettingKeys(card.display).forEach((key) => {
