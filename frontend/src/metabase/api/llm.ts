@@ -50,7 +50,9 @@ export const llmApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/llm/active-model",
       }),
-      providesTags: () => [listTag("llm-active-model")],
+      // "session-properties" so picking a different default or mini model — which invalidates that tag —
+      // also refreshes which provider the notice says is serving requests
+      providesTags: () => [listTag("llm-active-model"), "session-properties"],
     }),
     reorderLlmProviders: builder.mutation<
       LlmProviderConnection[],
