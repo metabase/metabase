@@ -1,3 +1,4 @@
+import { mockDynamicGoalSettingKeys } from "__support__/dynamic-goals";
 import { color } from "metabase/ui/colors";
 import type {
   GoalSegment,
@@ -822,12 +823,6 @@ describe("isGraphGoalReference", () => {
     return { "graph.show_goal": true, "graph.goal_value": goal };
   }
 
-  it("is false for unset and static goals", () => {
-    expect(isGraphGoalReference("gauge", shownGoal(null))).toBe(false);
-    expect(isGraphGoalReference("gauge", shownGoal(undefined))).toBe(false);
-    expect(isGraphGoalReference("gauge", shownGoal(10))).toBe(false);
-  });
-
   it("is false for a reference on a display that does not resolve graph goals", () => {
     expect(isGraphGoalReference("scalar", shownGoal(ref))).toBe(false);
     expect(isGraphGoalReference("scalar", shownGoal("count"))).toBe(false);
@@ -835,16 +830,31 @@ describe("isGraphGoalReference", () => {
     expect(isGraphGoalReference(undefined, shownGoal(ref))).toBe(false);
   });
 
-  it("is false when the goal line is hidden", () => {
-    expect(isGraphGoalReference("gauge", { "graph.goal_value": ref })).toBe(
-      false,
-    );
-    expect(
-      isGraphGoalReference("gauge", {
-        "graph.show_goal": false,
-        "graph.goal_value": ref,
-      }),
-    ).toBe(false);
+  describe("for a display that resolves graph goals", () => {
+    mockDynamicGoalSettingKeys(["graph.goal_value"]);
+
+    it("is true for a shown reference", () => {
+      expect(isGraphGoalReference("line", shownGoal(ref))).toBe(true);
+      expect(isGraphGoalReference("line", shownGoal("count"))).toBe(true);
+    });
+
+    it("is false for unset and static goals", () => {
+      expect(isGraphGoalReference("line", shownGoal(null))).toBe(false);
+      expect(isGraphGoalReference("line", shownGoal(undefined))).toBe(false);
+      expect(isGraphGoalReference("line", shownGoal(10))).toBe(false);
+    });
+
+    it("is false when the goal line is hidden", () => {
+      expect(isGraphGoalReference("line", { "graph.goal_value": ref })).toBe(
+        false,
+      );
+      expect(
+        isGraphGoalReference("line", {
+          "graph.show_goal": false,
+          "graph.goal_value": ref,
+        }),
+      ).toBe(false);
+    });
   });
 });
 
