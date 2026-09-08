@@ -3,7 +3,6 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [java-time.api :as t]
-   [metabase.app-db.core :as app-db]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -21,30 +20,6 @@
   "Whether the Card with `card-id` is a series of the DashboardCard with `dashcard-id`."
   [card-id dashcard-id]
   (t2/exists? :model/DashboardCardSeries :card_id card-id :dashboardcard_id dashcard-id))
-
-(defn cache-entry
-  "`row-fn` applied to the results and updated-at of the QueryCache entry for `query-hash`, or nil."
-  [row-fn query-hash]
-  (t2/select-one-fn row-fn [:model/QueryCache :results :updated_at] :query_hash query-hash))
-
-(defn claim-cache-refresh-lease!
-  "Set `refresh_started_at` of the QueryCache entry for `query-hash` to `started-at` if its lease (defaulting to
-  `lease-free-sentinel`) is older than `lease-cutoff`, returning the number of rows updated."
-  [query-hash lease-free-sentinel lease-cutoff started-at]
-  (t2/update! (t2/table-name :model/QueryCache)
-              {:query_hash                                         query-hash
-               [:coalesce :refresh_started_at lease-free-sentinel] [:< lease-cutoff]}
-              {:refresh_started_at started-at}))
-
-(defn delete-cache-entry!
-  "Delete the QueryCache entry for `query-hash`."
-  [query-hash]
-  (t2/delete! (t2/table-name :model/QueryCache) :query_hash query-hash))
-
-(defn delete-cache-entries-updated-before!
-  "Delete the QueryCache entries last updated at or before `updated-before`."
-  [updated-before]
-  (t2/delete! (t2/table-name :model/QueryCache) :updated_at [:<= updated-before]))
 
 (defn insert-query-executions!
   "Insert the QueryExecution `rows`."
@@ -72,12 +47,3 @@
   "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."
   [card-ids]
   (t2/select [:model/Card :id :database_id :card_schema] :id [:in card-ids]))
-
-(defn upsert-cache-entry!
-  "Insert or update the QueryCache entry for `query-hash`, setting `:results` to `results` and `:updated_at` to
-  `timestamp`, and clearing `:refresh_started_at`."
-  [query-hash timestamp results]
-  (app-db/update-or-insert! :model/QueryCache {:query_hash query-hash}
-                            (constantly {:updated_at         timestamp
-                                         :results            results
-                                         :refresh_started_at nil})))
