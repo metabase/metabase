@@ -360,6 +360,15 @@ jobs:
         ${{ needs.embedding-sdk-package.result != 'success' ||
         needs.uberjar.result != 'success' }}
 
+  build-scripts-tests:
+    needs: [should-run, files-changed]
+    if: |
+      !cancelled() &&
+      (needs.should-run.outputs.verdict == 'force-run' ||
+      needs.files-changed.result == 'success')
+    uses: ./.github/workflows/build-scripts.yml
+    secrets: inherit
+
   bundle-size:
     needs: [uberjar, files-changed]
     if: |

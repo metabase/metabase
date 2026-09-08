@@ -1,11 +1,7 @@
 name: Build scripts
 
 on:
-  push:
-    branches:
-      - 'master'
-      - 'release-**'
-  pull_request:
+  workflow_call:
 
 jobs:
 
