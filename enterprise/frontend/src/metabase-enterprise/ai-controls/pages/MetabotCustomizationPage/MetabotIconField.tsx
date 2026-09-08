@@ -195,7 +195,6 @@ export function MetabotIconField() {
                 })
               }
               disabled={isLoadingIllustrations}
-              size="sm"
             />
           </Group>
         </Stack>
