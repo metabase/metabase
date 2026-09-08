@@ -60,61 +60,78 @@ function routeKey(method: string, path: string): string {
   return `${method.toUpperCase()} ${path.replace(/\{[^}]+\}|:[\w-]+/g, "{}")}`;
 }
 
+/** Explain up to five disagreements; TypeScript remains the authority on assignability. */
 function mismatchDetail(
   checker: ts.TypeChecker,
   from: ts.Type,
   to: ts.Type,
   at: ts.Node,
-  path = "$",
-  depth = 0,
 ): string {
-  const summary = `${path}: ${checker.typeToString(from)} is not assignable to ${checker.typeToString(to)}`;
-  if (depth >= 6) {
-    return summary;
-  }
-  if (from.isUnion()) {
-    const incompatible = from.types.find(
-      (type) => !checker.isTypeAssignableTo(type, to),
-    );
-    return incompatible
-      ? mismatchDetail(checker, incompatible, to, at, path, depth + 1)
-      : summary;
-  }
-  const fromElement =
-    checker.isArrayType(from) &&
-    checker.getIndexTypeOfType(from, ts.IndexKind.Number);
-  const toElement =
-    checker.isArrayType(to) &&
-    checker.getIndexTypeOfType(to, ts.IndexKind.Number);
-  if (fromElement && toElement) {
-    return mismatchDetail(
-      checker,
-      fromElement,
-      toElement,
-      at,
-      `${path}[]`,
-      depth + 1,
-    );
-  }
-  if (from.flags & ts.TypeFlags.Object && to.flags & ts.TypeFlags.Object) {
-    for (const property of to.getProperties()) {
-      const actual =
-        propertyType(checker, from, property.name, at) ??
-        checker.getUndefinedType();
-      const expected = checker.getTypeOfSymbolAtLocation(property, at);
-      if (!checker.isTypeAssignableTo(actual, expected)) {
-        return mismatchDetail(
-          checker,
-          actual,
-          expected,
-          at,
-          `${path}.${property.name}`,
-          depth + 1,
-        );
+  const messages: string[] = [];
+  const visit = (from: ts.Type, to: ts.Type, path: string, depth: number) => {
+    if (messages.length >= 5 || checker.isTypeAssignableTo(from, to)) {
+      return;
+    }
+    const before = messages.length;
+    if (depth < 8) {
+      if (from.isUnion()) {
+        from.types.forEach((type) => visit(type, to, path, depth + 1));
+      } else {
+        const target = checker.getNonNullableType(to);
+        const fromElement =
+          checker.isArrayType(from) &&
+          checker.getIndexTypeOfType(from, ts.IndexKind.Number);
+        const toElement =
+          checker.isArrayType(target) &&
+          checker.getIndexTypeOfType(target, ts.IndexKind.Number);
+        if (fromElement && toElement) {
+          visit(fromElement, toElement, `${path}[]`, depth + 1);
+        } else if (
+          from.flags & ts.TypeFlags.Object &&
+          target.flags & ts.TypeFlags.Object
+        ) {
+          for (const property of target.getProperties()) {
+            if (messages.length >= 5) {
+              break;
+            }
+            const actualProperty = from.getProperty(property.name);
+            const field = `${path}.${property.name}`;
+            if (
+              !(property.flags & ts.SymbolFlags.Optional) &&
+              !actualProperty
+            ) {
+              messages.push(`${field}: required property is missing`);
+            } else if (
+              !(property.flags & ts.SymbolFlags.Optional) &&
+              actualProperty &&
+              actualProperty.flags & ts.SymbolFlags.Optional
+            ) {
+              messages.push(
+                `${field}: property is optional but required by the target contract`,
+              );
+            } else {
+              const actual =
+                propertyType(checker, from, property.name, at) ??
+                checker.getUndefinedType();
+              visit(
+                actual,
+                checker.getTypeOfSymbolAtLocation(property, at),
+                field,
+                depth + 1,
+              );
+            }
+          }
+        }
       }
     }
-  }
-  return summary;
+    if (messages.length === before) {
+      messages.push(
+        `${path}: ${checker.typeToString(from)} is not assignable to ${checker.typeToString(to)}`,
+      );
+    }
+  };
+  visit(from, to, "$", 0);
+  return [...new Set(messages)].join("\n  ");
 }
 
 function operations(
@@ -157,46 +174,66 @@ function operations(
   return result;
 }
 
-/** An unresolved or unconstrained contract is a coverage gap, not a successful check. */
+/** Locate an unresolved or unconstrained contract instead of counting it as compatible. */
 function looseType(
   checker: ts.TypeChecker,
   type: ts.Type,
   at: ts.Node,
+  path: string,
   seen = new Set<ts.Type>(),
-): boolean {
+): string | undefined {
   if (seen.has(type)) {
-    return false;
+    return undefined;
   }
   seen.add(type);
   if (
     type.flags &
     (ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.TypeParameter)
   ) {
-    return true;
+    return `${path}: ${checker.typeToString(type)} is unconstrained or unresolved`;
   }
   if (type.isUnionOrIntersection()) {
-    return type.types.some((t) => looseType(checker, t, at, seen));
+    for (const part of type.types) {
+      const gap = looseType(checker, part, at, path, seen);
+      if (gap) {
+        return gap;
+      }
+    }
+    return undefined;
   }
   if (!(type.flags & ts.TypeFlags.Object)) {
-    return false;
+    return undefined;
   }
   if (checker.isArrayType(type) || checker.isTupleType(type)) {
     // isArrayType/isTupleType identify TypeReferences; TS doesn't expose them as type predicates.
     const reference = type as ts.TypeReference;
-    return checker
-      .getTypeArguments(reference)
-      .some((t) => looseType(checker, t, at, seen));
+    for (const element of checker.getTypeArguments(reference)) {
+      const gap = looseType(checker, element, at, `${path}[]`, seen);
+      if (gap) {
+        return gap;
+      }
+    }
+    return undefined;
   }
-  return (
-    checker
-      .getIndexInfosOfType(type)
-      .some((i) => looseType(checker, i.type, at, seen)) ||
-    type
-      .getProperties()
-      .some((p) =>
-        looseType(checker, checker.getTypeOfSymbolAtLocation(p, at), at, seen),
-      )
-  );
+  for (const index of checker.getIndexInfosOfType(type)) {
+    const gap = looseType(checker, index.type, at, `${path}[key]`, seen);
+    if (gap) {
+      return gap;
+    }
+  }
+  for (const property of type.getProperties()) {
+    const gap = looseType(
+      checker,
+      checker.getTypeOfSymbolAtLocation(property, at),
+      at,
+      `${path}.${property.name}`,
+      seen,
+    );
+    if (gap) {
+      return gap;
+    }
+  }
+  return undefined;
 }
 
 function returnExpression(fn: ts.Node): ts.Expression | undefined {
@@ -224,7 +261,12 @@ function returnExpression(fn: ts.Node): ts.Expression | undefined {
     ts.forEachChild(node, visit);
   };
   visit(fn.body);
-  const value = returns.length === 1 ? returns[0]?.expression : undefined;
+  // A single return inside an if/loop can still fall through without a request.
+  const last = fn.body.statements.at(-1);
+  const value =
+    returns.length === 1 && last && ts.isReturnStatement(last)
+      ? last.expression
+      : undefined;
   return value && unwrap(value);
 }
 
@@ -263,6 +305,23 @@ export function checkContracts(
   generatedFile: string,
   root: string,
 ): ContractResult[] {
+  const options = program.getCompilerOptions();
+  if (!(options.strictNullChecks ?? options.strict)) {
+    throw new Error("API contract checking requires strictNullChecks.");
+  }
+  const syntaxErrors = [generatedFile, ...endpointFiles].flatMap((file) => {
+    const source = program.getSourceFile(file);
+    return source ? program.getSyntacticDiagnostics(source) : [];
+  });
+  if (syntaxErrors.length) {
+    throw new Error(
+      ts.formatDiagnosticsWithColorAndContext(syntaxErrors, {
+        getCanonicalFileName: (file) => file,
+        getCurrentDirectory: () => root,
+        getNewLine: () => "\n",
+      }),
+    );
+  }
   const checker = program.getTypeChecker();
   const generated = program.getSourceFile(generatedFile);
   if (!generated) {
@@ -279,9 +338,11 @@ export function checkContracts(
       if (
         ts.isCallExpression(node) &&
         ts.isPropertyAccessExpression(node.expression) &&
-        ts.isIdentifier(node.expression.expression) &&
-        node.expression.expression.text === "builder" &&
-        ["query", "mutation"].includes(node.expression.name.text)
+        ["query", "mutation"].includes(node.expression.name.text) &&
+        (checker.getTypeAtLocation(node.expression.expression).aliasSymbol
+          ?.name === "EndpointBuilder" ||
+          (ts.isIdentifier(node.expression.expression) &&
+            node.expression.expression.text === "builder"))
       ) {
         checkEndpoint(node, source);
       }
@@ -309,12 +370,12 @@ export function checkContracts(
         });
       };
       const compare = (part: string, from: ts.Type, to: ts.Type) => {
-        if (looseType(checker, from, node) || looseType(checker, to, node)) {
-          add(
-            part,
-            "unverified",
-            "Contract contains any, unknown, an unresolved type, or an unbound generic.",
-          );
+        const response = part.startsWith("response");
+        const gap =
+          looseType(checker, from, node, response ? "backend$" : "frontend$") ??
+          looseType(checker, to, node, response ? "frontend$" : "backend$");
+        if (gap) {
+          add(part, "unverified", gap);
         } else if (checker.isTypeAssignableTo(from, to)) {
           add(part, "pass", "Compatible");
         } else {
@@ -331,11 +392,17 @@ export function checkContracts(
         );
         return;
       }
-      if (config.properties.some(ts.isSpreadAssignment)) {
+      if (
+        config.properties.some(
+          (property) =>
+            ts.isSpreadAssignment(property) ||
+            (property.name && ts.isComputedPropertyName(property.name)),
+        )
+      ) {
         add(
           "endpoint",
           "unverified",
-          "Endpoint configuration contains a spread.",
+          "Endpoint configuration contains a spread or computed property.",
         );
         return;
       }
@@ -354,13 +421,19 @@ export function checkContracts(
       const methodNode = request && expressionMember(request, "method");
       if (
         !parsed ||
-        (request && request.properties.some(ts.isSpreadAssignment)) ||
+        (request &&
+          request.properties.some(
+            (property) =>
+              (!ts.isPropertyAssignment(property) &&
+                !ts.isShorthandPropertyAssignment(property)) ||
+              (property.name && ts.isComputedPropertyName(property.name)),
+          )) ||
         (methodNode && !ts.isStringLiteral(methodNode))
       ) {
         add(
           "endpoint",
           "unverified",
-          "Cannot statically identify one HTTP request (queryFn, dynamic URL/method, multiple returns, or spread).",
+          "Cannot statically identify one HTTP request (queryFn, dynamic URL/method, conditional returns, computed properties, accessors, or spread).",
         );
         return;
       }
