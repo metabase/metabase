@@ -69,7 +69,11 @@ import {
   type DashboardContextProviderHandle,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
+import {
+  getDashboardComplete,
+  getIsDirty,
+  getIsEditing,
+} from "metabase/dashboard/selectors";
 import type { RefreshPeriod } from "metabase/dashboard/types";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
@@ -376,6 +380,7 @@ const SdkDashboardInner = ({
     useState<number>();
 
   const dashboard = useSelector(getDashboardComplete);
+  const isEditing = useSelector(getIsEditing);
   const autoScrollToDashcardId = useMemo(
     () =>
       dashboard?.dashcards.find(
@@ -654,6 +659,7 @@ const SdkDashboardInner = ({
                   skip={skipStyledWrapper}
                   className={className}
                   style={style}
+                  fullHeight={isEditing}
                 >
                   <Dashboard className={EmbedFrameS.EmbedFrame} />
                   <AutoRefreshController refreshPeriod={autoRefreshInterval} />
