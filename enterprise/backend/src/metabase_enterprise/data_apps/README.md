@@ -54,13 +54,13 @@ runs in its own transaction, so one failing app cannot roll back the others.
 A sync **upserts every app it finds and deletes every row whose directory is gone.** The
 consequences are worth stating explicitly, because they're the questions that come up:
 
-| Event | What happens to apps |
-|---|---|
-| App directory removed from the repo | Row and cached bundle deleted on the next sync |
-| Repo switched to a different one | Previous repo's apps are absent from the new snapshot, so they're dropped |
-| Repo unlinked | Nothing — unlinking runs no sync, so apps survive |
-| Repo has no `data_apps/` at all | All apps removed |
-| Failed clone/fetch | Nothing — that throws before a snapshot exists, so deletion never fires |
+| Event                               | What happens to apps                                                      |
+| ----------------------------------- | ------------------------------------------------------------------------- |
+| App directory removed from the repo | Row and cached bundle deleted on the next sync                            |
+| Repo switched to a different one    | Previous repo's apps are absent from the new snapshot, so they're dropped |
+| Repo unlinked                       | Nothing — unlinking runs no sync, so apps survive                         |
+| Repo has no `data_apps/` at all     | All apps removed                                                          |
+| Failed clone/fetch                  | Nothing — that throws before a snapshot exists, so deletion never fires   |
 
 Pruning is by **directory presence**, not by successful parse. An app whose directory is still
 there but whose `data_app.yaml` is momentarily broken keeps its row and its last-good bundle, and is
@@ -126,16 +126,16 @@ middleware's lookup doesn't pull in route code.
 Each app owns two server-managed resources (`resources.clj`), created on draft or first import and
 reasserted on every sync: a **collection** holding the copies the app is served from (saved
 questions, action models, table-sourced metrics) and a **permissions group** its users belong to.
+
 The group is set database-level `view-data :blocked` on every database, so it grants **no data
 access of its own** (which cascades `create-queries`/`download-results` to `:no`); every group but
 admins is revoked from the collection before the app group gets read access. Deleting an app deletes
 both resources and everything in the collection.
 
-**Viewing an app** requires read access to its resource collection — in practice, membership in
-the app's group, or admin. `can-read?` on the row itself is unconditionally true (the listing shows
-every app to any signed-in user); the gate is the collection read check in the metadata and bundle
-endpoints, and the endpoints are `+auth`. An app with no linked collection yet is viewable by any
-signed-in user.
+**Viewing an app** requires read access to its resource collection. You have to be a member in
+the app's group or be an admin. An app without a linked resource collection is considered _unpublished_.
+The app's metadata and bundle endpoint returns HTTP 409 for all signed-in users. The frontend
+shows the error "This data app isn’t published yet".
 
 **A viewer sees an app's data only through access they already hold.** The app group grants no
 view-data of its own, so a viewer without access to an app's tables (e.g. a sandboxed user) sees no
@@ -147,12 +147,12 @@ status.
 
 ## Namespace map
 
-| Namespace | Responsibility |
-|---|---|
-| `sync.clj` | Discovery, materialization, pruning, drafts. The entry point remote-sync calls. |
-| `config.clj` | `data_app.yaml` parsing and validation; the `data_apps/` layout constants. |
-| `api.clj` | The `/api/apps` endpoints, bundle serving, ETag handling. |
-| `resources.clj` | Lifecycle of the app-owned collection and permission group: creation, view-data blocking, deletion. |
-| `models/data_app.clj` | The `:model/DataApp` Toucan model, permissions, blob coercion. |
-| `csp.clj` | `allowed_hosts` lookup for the core CSP middleware. |
-| `init.clj` | Loads the above so endpoints, models, and hooks register. |
+| Namespace             | Responsibility                                                                                      |
+| --------------------- | --------------------------------------------------------------------------------------------------- |
+| `sync.clj`            | Discovery, materialization, pruning, drafts. The entry point remote-sync calls.                     |
+| `config.clj`          | `data_app.yaml` parsing and validation; the `data_apps/` layout constants.                          |
+| `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |
+| `resources.clj`       | Lifecycle of the app-owned collection and permission group: creation, view-data blocking, deletion. |
+| `models/data_app.clj` | The `:model/DataApp` Toucan model, permissions, blob coercion.                                      |
+| `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                                                 |
+| `init.clj`            | Loads the above so endpoints, models, and hooks register.                                           |
