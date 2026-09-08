@@ -112,6 +112,54 @@
            [[] []]
            tiles)))
 
+(defn- occupied-cells [tiles]
+  (into #{}
+        (for [{:keys [row col size_x size_y]} tiles
+              r (range row (+ row size_y))
+              c (range col (+ col size_x))]
+          [r c])))
+
+(defn- free-columns-right-of [occupied rows right-edge]
+  (count (take-while (fn [c] (not-any? #(occupied [% c]) rows))
+                     (range right-edge autoplace/default-grid-width))))
+
+(defn- contiguous? [tiles]
+  (every? (fn [[left right]] (= (+ (:col left) (:size_x left)) (:col right)))
+          (partition 2 1 tiles)))
+
+(defn- stretch-row
+  "Widen the tiles that start on the same row so they span the free columns to their
+  right, preserving their relative widths. Tiles packed under a taller neighbour or
+  otherwise not side by side are left as placed."
+  [occupied tiles]
+  (let [tiles      (vec (sort-by :col tiles))
+        last-tile  (peek tiles)
+        rows       (range (:row last-tile)
+                          (+ (:row last-tile) (transduce (map :size_y) max 0 tiles)))
+        extra      (free-columns-right-of occupied rows (+ (:col last-tile) (:size_x last-tile)))
+        total      (transduce (map :size_x) + 0 tiles)
+        grow       (map #(quot (* extra (:size_x %)) total) tiles)
+        leftover   (- extra (reduce + grow))]
+    (if (or (zero? extra) (not (contiguous? tiles)))
+      tiles
+      (first (reduce (fn [[out col] [tile g bonus]]
+                       (let [width (+ (:size_x tile) g bonus)]
+                         [(conj out (assoc tile :col col :size_x width)) (+ col width)]))
+                     [[] (:col (first tiles))]
+                     (map vector tiles grow (concat (repeat leftover 1) (repeat 0))))))))
+
+(defn- stretch-rows
+  "Post-pass over autoplaced tiles: fill each row's trailing gap, row by row, so the
+  dashboard spans the full grid width wherever the placement allows."
+  [tiles]
+  (loop [groups   (sort-by key (group-by :row tiles))
+         occupied (occupied-cells tiles)
+         out      []]
+    (if-let [[_ group] (first groups)]
+      (let [stretched (stretch-row occupied group)]
+        (recur (rest groups) (into occupied (occupied-cells stretched)) (into out stretched)))
+      out)))
+
 (defn- tile->state [{chart-id :chart_id query-id :query_id card-id :card_id :as tile}]
   (cond-> (select-keys tile [:title :row :col :size_x :size_y])
     chart-id (assoc :chart_id chart-id)
@@ -136,10 +184,11 @@
   from this conversation become new questions when the dashboard is saved.
 
   Tiles are sized automatically from their chart type (e.g. a single number is small,
-  a table is tall) and placed on the 24-column grid in your order. Optionally give a
-  tile a coarse `size` hint when it deserves more room: `wide` (18 columns), `tall`
-  (9 columns, 12 rows), or `full` (the whole width). You cannot control exact
-  positions.
+  a table is tall) and placed on the 24-column grid in your order, then each row is
+  stretched to span the full width, so sizes are relative. Optionally give a tile a
+  coarse `size` hint when it deserves more room than its neighbours: `wide` (18
+  columns), `tall` (9 columns, 12 rows), or `full` (a row of its own). You cannot
+  control exact positions.
 
   Omit `tiles` to create a blank dashboard when the user wants to start from an empty
   dashboard with a custom title and add questions later. Once it is saved, you can add
@@ -156,7 +205,7 @@
   (try
     (run! validate-tile! tiles)
     (let [dashboard-id (str (random-uuid))
-          positioned   (place-tiles (mapv resolve-tile tiles))
+          positioned   (stretch-rows (place-tiles (mapv resolve-tile tiles)))
           dashboard    (cond-> {:dashboard_id dashboard-id
                                 :name         dashboard-name
                                 :tiles        (mapv tile->state positioned)}
