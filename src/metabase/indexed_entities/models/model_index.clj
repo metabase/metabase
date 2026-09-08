@@ -5,8 +5,8 @@
    [metabase.indexed-entities.db :as indexed-entities.db]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.permissions.core :as perms]
@@ -51,24 +51,6 @@
   "Filter function for valid tuples for indexing: an id and a value."
   [[id v]] (and id v))
 
-(mu/defn- fix-expression-refs :- ::lib.schema.ref/ref
-  "Convert expression ref into a field ref.
-
-  Expression refs (`[:expression {} \"full-name\"]`) are how the _query_ refers to a custom column. But nested queries
-  don't, (and shouldn't) care that those are expressions. They are just another field. The field type is always
-  `:type/Text` enforced by the endpoint to create model indexes."
-  [field-ref :- ::lib.schema.ref/ref
-   base-type :- ::lib.schema.common/base-type]
-  (case (first field-ref)
-    :field field-ref
-    :expression (let [[_ _ expression-name] field-ref]
-                  ;; api validated that this is a text field when the model-index was created. When selecting the
-                  ;; expression we treat it as a field.
-                  (lib/normalize [:field {:base-type base-type} expression-name]))
-    (throw (ex-info (format "Invalid field ref for indexing: %s" field-ref)
-                    {:field-ref field-ref
-                     :valid-clauses [:field :expression]}))))
-
 (mr/def ::model-index
   [:map
    [:model_id  ::lib.schema.id/card]
@@ -78,21 +60,31 @@
 (mu/defn ^:private fetch-values
   [model-index :- ::model-index]
   (let [model     (indexed-entities.db/card (:model_id model-index))
-        fix       (mu/fn [field-ref :- some?
-                          base-type :- ::lib.schema.common/base-type]
-                    (-> (lib/normalize ::lib.schema.ref/ref field-ref)
-                        (fix-expression-refs base-type)))
-        ;; :type/Text and :type/Integer are ensured at creation time on the api.
-        value-ref (-> model-index :value_ref (fix :type/Text))
-        pk-ref    (-> model-index :pk_ref (fix :type/Integer))
         mp        (lib-be/application-database-metadata-provider
                    (:database_id model))
-        query     (lib/query mp (lib.metadata/card mp (:id model)))]
+        query     (lib/query mp (lib.metadata/card mp (:id model)))
+        columns   (lib/returned-columns query)
+        ;; :type/Text and :type/Integer are ensured at creation time on the api.
+        fix       (fn [ref typ]
+                    (-> (lib/normalize ::lib.schema.ref/ref ref)
+                        (lib/update-options assoc :base-type typ)))
+        ;; Expression refs are how the _query_ refers to a custom column. But
+        ;; nested queries don't, (and shouldn't) care that those are expressions.
+        ;; They are just another field. pulling columns from the model normalizes
+        ;; expressions into fields.
+        value-col (lib.equality/find-matching-column (fix (:value_ref model-index)
+                                                          :type/Text) columns)
+        pk-col (lib.equality/find-matching-column (fix (:pk_ref model-index)
+                                                       :type/Integer) columns)]
     (try
+      (when (nil? value-col)
+        (throw (ex-info "Invalid field ref for indexing" {:ref (:value_ref model-index)})))
+      (when (nil? pk-col)
+        (throw (ex-info "Invalid field ref for indexing" {:ref (:pk_ref model-index)})))
       [nil (->> (qp/process-query
                  (-> query
-                     (lib/breakout pk-ref)
-                     (lib/breakout value-ref)
+                     (lib/breakout pk-col)
+                     (lib/breakout value-col)
                      (lib/limit (inc max-indexed-values))))
                 :data :rows (filter valid-tuples?))]
       (catch Exception e
