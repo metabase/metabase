@@ -197,8 +197,8 @@
 
    Thrown by [[metabase.metabot.self/parse-provider-model]] and by the provider
    adapters' own setup validation; all deserve the same check-your-AI-settings copy."
-  #{"llm-not-configured" "api-key-missing" "base-url-missing" "model-missing"
-    "proxy-unsupported" "proxy-not-configured" "invalid-service-account-key"
+  #{"llm-not-configured" "api-key-missing" "credentials-unavailable" "base-url-missing"
+    "model-missing" "proxy-unsupported" "proxy-not-configured" "invalid-service-account-key"
     "not-a-service-account-key" "invalid-location" "project-id-required"
     "invalid-project-id" "invalid-model" "unsupported-model" "invalid-region"})
 
