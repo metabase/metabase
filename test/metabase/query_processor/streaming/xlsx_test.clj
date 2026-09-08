@@ -809,3 +809,13 @@
     (binding [qp.xlsx/*number-of-characters-cell* 5]
       (is (= ["abcde"]
              (second (xlsx-export [{:id 0, :name "Col"}] {} [["abcdefghijklmnopqrstuvwxyz"]])))))))
+(deftest number-of-characters-cell-non-string-test
+  (testing "Non-string values (e.g. dictionaries) are truncated like strings (#80572)"
+    (binding [qp.xlsx/*number-of-characters-cell* 5]
+      (is (= ["{\"a\":"]
+             (second (xlsx-export [{:id 0, :name "Col"}] {} [[{:a "verylong"}]]))))))
+
+  (testing "A dictionary longer than Excel's real limit no longer fails the download (#80572)"
+    (is (= 32767
+           (count (first (second (xlsx-export [{:id 0, :name "Col"}] {}
+                                              [[{:a (apply str (repeat 40000 "x"))}]]))))))))
