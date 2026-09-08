@@ -270,7 +270,11 @@ const RowChartVisualization = ({
         />
       )}
       {goalStatus !== "resolved" ? (
-        <GoalResolutionState height={outerHeight} status={goalStatus} />
+        <GoalResolutionState
+          height={outerHeight}
+          kind="value"
+          status={goalStatus}
+        />
       ) : (
         <RowChartLegendLayout
           width={outerWidth}

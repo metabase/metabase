@@ -8,7 +8,6 @@ import { formatValue } from "metabase/value-formatting";
 import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
 import { useResolvedGoalSegments } from "metabase/visualizations/hooks/use-resolved-goal-segments";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import { getUnresolvedGoalMessage } from "metabase/viz-core";
 
 import { GaugeArc } from "./GaugeArc";
 import { GaugeNeedle } from "./GaugeNeedle";
@@ -150,7 +149,7 @@ function GaugeComponent({
       <GoalResolutionState
         className={className}
         height={heightProp}
-        message={getUnresolvedGoalMessage("segments")}
+        kind="segments"
         status={goalSegments.status}
       />
     );

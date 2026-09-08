@@ -239,7 +239,11 @@ function CartesianChartInner(props: VisualizationProps) {
         />
       )}
       {goalStatus !== "resolved" ? (
-        <GoalResolutionState height={outerHeight} status={goalStatus} />
+        <GoalResolutionState
+          height={outerHeight}
+          kind="value"
+          status={goalStatus}
+        />
       ) : (
         <CartesianChartLegendLayout
           isReversed={settings["legend.is_reversed"]}

@@ -242,6 +242,7 @@ export type {
   ResolvedGoalSegment,
   ResolvedGoalValue,
 } from "./lib/dynamic-goals";
+export type { GoalSettingKind } from "./lib/dynamic-goal-settings";
 export {
   ChartSettingsError,
   getDatasetError,

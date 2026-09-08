@@ -1,17 +1,20 @@
 import { Center, Loader, Text } from "metabase/ui";
-import { getUnresolvedGoalMessage } from "metabase/viz-core";
+import {
+  type GoalSettingKind,
+  getUnresolvedGoalMessage,
+} from "metabase/viz-core";
 
 type GoalResolutionStateProps = {
   className?: string;
   height: number;
-  message?: string;
+  kind: GoalSettingKind;
   status: "resolving" | "failed";
 };
 
 export function GoalResolutionState({
   className,
   height,
-  message = getUnresolvedGoalMessage("value"),
+  kind,
   status,
 }: GoalResolutionStateProps) {
   return (
@@ -20,7 +23,7 @@ export function GoalResolutionState({
         <Loader />
       ) : (
         <Text c="text-secondary" ta="center">
-          {message}
+          {getUnresolvedGoalMessage(kind)}
         </Text>
       )}
     </Center>
