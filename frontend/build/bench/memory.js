@@ -50,26 +50,91 @@ function adHocQuestion(question) {
   return `/question#${Buffer.from(JSON.stringify(withDisplay)).toString("base64")}`;
 }
 
-async function api(path) {
+async function api(path, body) {
   const response = await fetch(`${site}${path}`, {
-    headers: { cookie: `metabase.SESSION=${sessionCookie}` },
+    method: body ? (body.__method ?? "POST") : "GET",
+    headers: {
+      cookie: `metabase.SESSION=${sessionCookie}`,
+      "content-type": "application/json",
+    },
+    body: body ? JSON.stringify({ ...body, __method: undefined }) : undefined,
   });
   if (!response.ok) {
-    throw new Error(`GET ${path} failed: ${response.status}`);
+    throw new Error(
+      `${path} failed: ${response.status} ${await response.text()}`,
+    );
   }
   return response.json();
+}
+
+/** A count broken out by month, which is what most of the charts render. */
+function countByMonth(databaseId, tableId, dateFieldId) {
+  return {
+    type: "query",
+    database: databaseId,
+    query: {
+      "source-table": tableId,
+      aggregation: [["count"]],
+      breakout: [["field", dateFieldId, { "temporal-unit": "month" }]],
+    },
+  };
+}
+
+/**
+ * The visualisations worth walking.
+ *
+ * Each is a different renderer, so a leak in one does not imply a leak in the
+ * others. `LAP_STEPS` narrows the lap to a subset, which is how a climbing
+ * count gets pinned to a single display.
+ */
+const CHART_DISPLAYS = ["line", "bar", "area", "row", "pie", "scalar"];
+
+/**
+ * Puts a dashboard and a card per display on a blank instance.
+ *
+ * The bench instance has no saved content, and a dashboard is the surface that
+ * mounts several visualisations at once, so the lap has to create one before it
+ * can walk it.
+ */
+async function seed({ databaseId, tableId, dateFieldId }) {
+  const query = countByMonth(databaseId, tableId, dateFieldId);
+
+  const cards = [];
+  for (const display of CHART_DISPLAYS) {
+    cards.push(
+      await api("/api/card", {
+        name: `bench ${display}`,
+        dataset_query: query,
+        display,
+        visualization_settings: {},
+      }),
+    );
+  }
+
+  const dashboard = await api("/api/dashboard", { name: "bench dashboard" });
+  await api(`/api/dashboard/${dashboard.id}`, {
+    __method: "PUT",
+    dashcards: cards.map((card, index) => ({
+      id: -1 - index,
+      card_id: card.id,
+      row: Math.floor(index / 2) * 4,
+      col: (index % 2) * 9,
+      size_x: 9,
+      size_y: 4,
+      visualization_settings: {},
+      parameter_mappings: [],
+    })),
+  });
+
+  return { dashboardId: dashboard.id, cards };
 }
 
 /**
  * One pass over the app.
  *
  * Breadth is the point. A lap that only opened one page could only ever catch a
- * leak on that page, so this covers the surfaces that mount the most: a table,
- * a chart, both query editors, and an admin screen. When a count climbs, bisect
- * by trimming the list.
- *
- * The two query URLs are built from whatever database the instance has, so this
- * works against a blank instance with only the sample data.
+ * leak on that page, so this walks a dashboard holding every chart type, each
+ * visualisation on its own, both query editors, and an admin screen.
  */
 async function buildLap() {
   const databases = await api("/api/database");
@@ -81,37 +146,42 @@ async function buildLap() {
     String(field.effective_type || field.base_type).startsWith("type/Date"),
   );
 
-  const table_query = {
-    dataset_query: {
-      type: "query",
-      database: database.id,
-      query: { "source-table": table.id },
-    },
-    display: "table",
-  };
+  if (!dateField) {
+    throw new Error(`No date column on ${table.name}, so no chart to render`);
+  }
 
-  // A breakout by month is what puts a real chart on the screen, which is where
-  // an undisposed ECharts instance would show. Without a date column the lap
-  // still runs, just without that surface.
-  const chart_query = dateField && {
-    dataset_query: {
-      type: "query",
-      database: database.id,
-      query: {
-        "source-table": table.id,
-        aggregation: [["count"]],
-        breakout: [["field", dateField.id, { "temporal-unit": "month" }]],
-      },
-    },
-    display: "line",
-  };
+  const { dashboardId, cards } = await seed({
+    databaseId: database.id,
+    tableId: table.id,
+    dateFieldId: dateField.id,
+  });
+
+  const query = countByMonth(database.id, table.id, dateField.id);
 
   return [
     { name: "home", path: "/" },
-    { name: "table question", path: adHocQuestion(table_query) },
-    ...(chart_query
-      ? [{ name: "chart question", path: adHocQuestion(chart_query) }]
-      : []),
+    // Several visualisations mounting and unmounting together.
+    { name: "dashboard", path: `/dashboard/${dashboardId}` },
+    // Then each one on its own, so a climb can be pinned to one renderer.
+    ...cards.map((card) => ({
+      name: card.display,
+      path: `/question/${card.id}`,
+    })),
+    {
+      name: "table question",
+      path: adHocQuestion({
+        dataset_query: {
+          type: "query",
+          database: database.id,
+          query: { "source-table": table.id },
+        },
+        display: "table",
+      }),
+    },
+    {
+      name: "ad-hoc chart",
+      path: adHocQuestion({ dataset_query: query, display: "line" }),
+    },
     { name: "notebook", path: "/question/notebook#" },
     { name: "browse databases", path: "/browse/databases" },
     { name: "collection", path: "/collection/root" },
