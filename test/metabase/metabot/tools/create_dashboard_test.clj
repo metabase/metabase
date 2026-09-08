@@ -74,10 +74,33 @@
                                    {:query_id "q-1" :title "Table"}]}))))
     (testing "a coarse size hint overrides the default and later tiles flow around it"
       (is (= [{:title "Bar" :row 0 :col 0 :size_x 24 :size_y 9}
-              {:title "Table" :row 9 :col 0 :size_x 12 :size_y 9}]
+              {:title "Table" :row 9 :col 0 :size_x 24 :size_y 9}]
              (state-tiles {:name  "Hinted"
                            :tiles [{:chart_id "c-1" :title "Bar" :size "full"}
                                    {:query_id "q-1" :title "Table"}]}))))))
+
+(deftest create-dashboard-stretches-rows-test
+  (let [memory (doto (chart-memory)
+                 (swap! assoc-in [:state :charts "c-2"]
+                        {:chart_id "c-2" :query_id "q-1" :queries [(venues-query)]
+                         :visualization_settings {:chart_type :scalar}}))
+        state-tiles (fn [args]
+                      (mapv #(select-keys % [:title :row :col :size_x :size_y])
+                            (get-in (create! memory args) [:structured-output :tiles])))]
+    (testing "an odd tile left alone on its row spans the full width"
+      (is (= [{:title "Bar" :row 0 :col 0 :size_x 12 :size_y 6}
+              {:title "Bar 2" :row 0 :col 12 :size_x 12 :size_y 6}
+              {:title "Table" :row 6 :col 0 :size_x 24 :size_y 9}]
+             (state-tiles {:name  "Odd"
+                           :tiles [{:chart_id "c-1" :title "Bar"}
+                                   {:chart_id "c-1" :title "Bar 2"}
+                                   {:query_id "q-1" :title "Table"}]}))))
+    (testing "side-by-side tiles share a row's slack in proportion to their widths"
+      (is (= [{:title "Total" :row 0 :col 0 :size_x 8 :size_y 3}
+              {:title "Bar" :row 0 :col 8 :size_x 16 :size_y 6}]
+             (state-tiles {:name  "Proportional"
+                           :tiles [{:chart_id "c-2" :title "Total"}
+                                   {:chart_id "c-1" :title "Bar"}]}))))))
 
 (deftest create-dashboard-saved-card-tile-test
   (mt/with-current-user (mt/user->id :crowberto)
