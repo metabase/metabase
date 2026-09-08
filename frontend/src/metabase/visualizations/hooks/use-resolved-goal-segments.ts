@@ -16,15 +16,11 @@ import {
   useAnsweredGoalData,
 } from "./use-answered-goal-data";
 
-export type GoalSegmentsResolution = GoalResolution<{
-  segments: ResolvedGoalSegment[];
-}>;
-
 export function useResolvedGoalSegments(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   segments: GoalSegment[] | undefined,
-): GoalSegmentsResolution {
+): GoalResolution<{ segments: ResolvedGoalSegment[] }> {
   const bounds = getGoalSegmentBounds(segments);
   const answered = useAnsweredGoalData(
     datasetQuery,
@@ -36,7 +32,6 @@ export function useResolvedGoalSegments(
     return answered;
   }
 
-  // No further fetch happens past this point, so an unanswered bound counts as failed.
   if (hasUnresolvedGoalValues(answered.data, bounds)) {
     return { status: "failed" };
   }
