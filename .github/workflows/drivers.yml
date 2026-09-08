@@ -74,6 +74,7 @@ jobs:
   # All decision logic is consolidated in mage driver-decisions.
   determine-driver-skips:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
     outputs:
       # All driver run decisions (from mage driver-decisions)
       h2-should-run: ${{ steps.driver-decisions.outputs.h2-should-run }}
