@@ -1,0 +1,90 @@
+;; Which changes make CI run driver tests. Read by `mage.modules` (which decides), by
+;; `metabase.core.modules-test` (which checks the exemptions are still justified), and by
+;; `dev.deps-graph/module-boundary-stats` (which counts the result).
+;;
+;; `:trigger-modules` and `:cloud-trigger-modules` are the roots: a change to one of these, or to anything
+;; they transitively depend on, runs driver tests. The cloud set additionally pulls in the drivers that
+;; need secrets and network round trips.
+;;
+;; `:exempt-modules` are the modules upstream of a root that we have decided not to trigger on anyway.
+;; Every entry is an unverified bet that the coupling is not real enough to break a driver test. The
+;; set should only shrink: its size is a module-boundary ratchet (`:driver-test-exempt-modules`), and
+;; `metabase.core.modules-test` fails any entry the graph no longer justifies (not a declared module,
+;; or no longer upstream of a driver-triggering module). Dropping an entry restores those driver-test
+;; runs, so watch it against `:driver-test-triggering-modules`, which counts what is left after the
+;; exemptions apply and moves the other way.
+{:trigger-modules
+ #{driver transforms}
+
+ :cloud-trigger-modules
+ #{query-processor transforms
+   enterprise/transforms enterprise/transforms-python}
+
+ :exempt-modules
+ #{analytics
+   analytics-interface
+   api
+   api-scope
+   api-keys
+   appearance
+   audit-app
+   auth-identity
+   auth-provider
+   batch-processing
+   channel
+   classloader
+   collections
+   config
+   content-verification
+   contextual-interestingness
+   dashboards
+   documents
+   eid-translation
+   embedding
+   enterprise/api
+   enterprise/scim
+   enterprise/sso
+   enterprise/transforms
+   enterprise/transforms-inspector
+   entity-retrieval
+   events
+   explorations
+   formatter
+   geojson
+   initialization-status
+   interestingness
+   internal-stats
+   llm
+   login-history
+   mcp
+   metabot
+   notification
+   oauth-server
+   permissions
+   premium-features
+   public-sharing
+   pulse
+   remote-sync
+   request
+   search
+   secrets
+   server
+   session
+   settings
+   setup
+   slackbot
+   sso
+   staleness
+   startup
+   system
+   task
+   task-history
+   tiles
+   timeline
+   tracing
+   types
+   users
+   util
+   version
+   view-log
+   warehouse-schema}}
