@@ -40,7 +40,7 @@
       (is (= {:dashboard_id dashboard-id
               :name         "Ops overview"
               :description  "Key ops charts."
-              :tiles        [{:title "Venues by price" :row 0 :col 0 :size_x 12 :size_y 6 :chart_id "c-1"}
+              :tiles        [{:title "Venues by price" :row 0 :col 0 :size_x 12 :size_y 9 :chart_id "c-1"}
                              {:title "All venues" :row 0 :col 12 :size_x 12 :size_y 9 :query_id "q-1"}]}
              (get-in @memory [:state :dashboards dashboard-id])))
       (is (= (get-in @memory [:state :dashboards])
@@ -54,7 +54,7 @@
                 :title       "Ops overview"
                 :description "Key ops charts."}
                (dissoc data :tiles)))
-        (is (= [{:title "Venues by price" :display "bar" :row 0 :col 0 :size_x 12 :size_y 6 :chart_id "c-1"}
+        (is (= [{:title "Venues by price" :display "bar" :row 0 :col 0 :size_x 12 :size_y 9 :chart_id "c-1"}
                 {:title "All venues" :display "table" :row 0 :col 12 :size_x 12 :size_y 9}]
                (map #(dissoc % :dataset_query) (:tiles data))))
         (is (every? #(map? (:dataset_query %)) (:tiles data)))))
@@ -66,8 +66,8 @@
         state-tiles (fn [args]
                       (mapv #(select-keys % [:title :row :col :size_x :size_y])
                             (get-in (create! memory args) [:structured-output :tiles])))]
-    (testing "tiles take their display type's default size and are autoplaced in order"
-      (is (= [{:title "Bar" :row 0 :col 0 :size_x 12 :size_y 6}
+    (testing "tiles take their display type's default size, autoplaced in order and levelled to the row's height"
+      (is (= [{:title "Bar" :row 0 :col 0 :size_x 12 :size_y 9}
               {:title "Table" :row 0 :col 12 :size_x 12 :size_y 9}]
              (state-tiles {:name  "Defaults"
                            :tiles [{:chart_id "c-1" :title "Bar"}
@@ -95,8 +95,8 @@
                            :tiles [{:chart_id "c-1" :title "Bar"}
                                    {:chart_id "c-1" :title "Bar 2"}
                                    {:query_id "q-1" :title "Table"}]}))))
-    (testing "side-by-side tiles share a row's slack in proportion to their widths"
-      (is (= [{:title "Total" :row 0 :col 0 :size_x 8 :size_y 3}
+    (testing "side-by-side tiles share a row's slack in proportion to their widths and its height"
+      (is (= [{:title "Total" :row 0 :col 0 :size_x 8 :size_y 6}
               {:title "Bar" :row 0 :col 8 :size_x 16 :size_y 6}]
              (state-tiles {:name  "Proportional"
                            :tiles [{:chart_id "c-2" :title "Total"}
