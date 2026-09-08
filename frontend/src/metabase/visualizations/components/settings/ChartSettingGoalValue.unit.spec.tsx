@@ -27,6 +27,7 @@ function setup({
   value?: GoalValue | null;
 }) {
   const onChange = jest.fn();
+
   renderWithProviders(
     <ChartSettingGoalValue
       data={DATA}
@@ -38,6 +39,7 @@ function setup({
       onChange={onChange}
     />,
   );
+
   return { onChange, input: screen.getByRole("textbox") };
 }
 
