@@ -104,7 +104,6 @@
   log-deprecated-env-var-usage!
   get-value-of-type
   has-advanced-setting-access?
-  migrate-encrypted-settings!
   obfuscate-value
   read-setting
   registered-settings
