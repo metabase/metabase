@@ -17,7 +17,7 @@ import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
 
 type PublicOrEmbeddedDashCardMenuProps = {
   result: Dataset;
-  // Every caller gates on `isQuestionCard(dashcard.card)`, so a virtual
+  // Every caller gates on `isQuestionDashCard(dashcard)`, so a virtual
   // dashcard never reaches this menu.
   dashcard: QuestionDashboardCard;
 };
