@@ -55,7 +55,7 @@ export type ChartSettingGoalValueProps = {
   onChange: (value: GoalValue | undefined) => void;
   data: DatasetData;
   datasetQuery?: DatasetQuery;
-  // false keeps the plain numeric input of displays that don't resolve references yet
+  // false for visualizations that don't support dynamic goals yet
   isDynamic?: boolean;
   placeholder?: string;
   showSelfColumns?: boolean;
