@@ -29,6 +29,10 @@ export interface MetabaseQuestion {
  * Settings for bar, line, area, combo, and row charts. Use these to pin result
  * columns, labels, scales, stacking, goal lines, trend lines, series order, or
  * per-column formatting.
+ *
+ * `graph.goal_value` shares the API's `GoalValue` type, so it also accepts a
+ * column reference. Cartesian charts draw the goal line only for a number
+ * until they resolve references.
  */
 export type CartesianVisualizationSettings = Pick<
   VisualizationSettings,
