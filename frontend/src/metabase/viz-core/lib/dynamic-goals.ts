@@ -188,6 +188,15 @@ function toNumberOrNull(raw: RowValue | undefined): number | null {
   return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
 }
 
+// Renderers only see numbers here: the chart boundary resolves references first.
+// A reference that got past it means resolution was skipped, so it counts as "no goal".
+export function getNumericGoalValue(
+  settings: VisualizationSettings,
+): number | null {
+  const value = settings["graph.goal_value"];
+  return isGoalStaticValue(value) ? value : null;
+}
+
 export function isDynamicGoalSetting(
   display: VisualizationDisplay | undefined,
   key: GoalSettingKey,

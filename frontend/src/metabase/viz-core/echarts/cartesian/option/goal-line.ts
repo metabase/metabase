@@ -2,7 +2,7 @@ import type { CustomSeriesOption } from "echarts/charts";
 
 import type { RowValue } from "metabase-types/api";
 
-import { getNumericGoalValue } from "../../../lib/settings/goal";
+import { getNumericGoalValue } from "../../../lib/dynamic-goals";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,

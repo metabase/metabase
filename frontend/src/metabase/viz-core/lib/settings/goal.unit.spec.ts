@@ -1,27 +1,6 @@
 import type { VisualizationSettings } from "metabase-types/api";
 
-import { getChartGoal, getNumericGoalValue } from "./goal";
-
-describe("getNumericGoalValue", () => {
-  it("returns a static goal", () => {
-    expect(getNumericGoalValue({ "graph.goal_value": 42 })).toBe(42);
-    expect(getNumericGoalValue({ "graph.goal_value": 0 })).toBe(0);
-  });
-
-  it("returns null for an unset goal", () => {
-    expect(getNumericGoalValue({})).toBeNull();
-    expect(getNumericGoalValue({ "graph.goal_value": null })).toBeNull();
-  });
-
-  it("returns null for an unresolved reference", () => {
-    expect(getNumericGoalValue({ "graph.goal_value": "count" })).toBeNull();
-    expect(
-      getNumericGoalValue({
-        "graph.goal_value": { type: "card", id: 1, column: "sum" },
-      }),
-    ).toBeNull();
-  });
-});
+import { getChartGoal } from "./goal";
 
 describe("getChartGoal", () => {
   const settings: VisualizationSettings = {

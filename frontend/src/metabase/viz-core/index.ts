@@ -223,6 +223,7 @@ export {
   cardHasUnansweredGoalReferences,
   cardHasUnresolvedGoalReferences,
   getGoalSegmentBounds,
+  getNumericGoalValue,
   getReferencedEntities,
   getSegmentColor,
   getUnansweredGoalEntities,
@@ -334,11 +335,7 @@ export {
   NUMBER_COLUMN_SETTINGS,
   tableColumnSettings,
 } from "./lib/settings/column";
-export {
-  getChartGoal,
-  getNumericGoalValue,
-  GRAPH_GOAL_SETTINGS,
-} from "./lib/settings/goal";
+export { getChartGoal, GRAPH_GOAL_SETTINGS } from "./lib/settings/goal";
 export {
   BOXPLOT_DATA_SETTINGS,
   BOXPLOT_SETTINGS,

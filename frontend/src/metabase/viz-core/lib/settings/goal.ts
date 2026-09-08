@@ -1,26 +1,16 @@
 import { t } from "ttag";
 
 import type { VisualizationSettings } from "metabase-types/api";
-import { isGoalStaticValue } from "metabase-types/guards";
 
 import { getDefaultGoalLabel } from "../../shared/settings/cartesian-chart";
 import type { ChartGoal } from "../../shared/types/settings";
 import type { VisualizationSettingsDefinitions } from "../../types";
-import { isDynamicGoalSetting } from "../dynamic-goals";
+import { getNumericGoalValue, isDynamicGoalSetting } from "../dynamic-goals";
 
 import { getStackOffset } from "./stacking";
 
 const getGoalValue = (value: number, isPercent: boolean) =>
   isPercent ? value / 100 : value;
-
-// Renderers only see numbers here: the chart boundary resolves references first.
-// A reference that got past it means resolution was skipped, so it counts as "no goal".
-export const getNumericGoalValue = (
-  settings: VisualizationSettings,
-): number | null => {
-  const value = settings["graph.goal_value"];
-  return isGoalStaticValue(value) ? value : null;
-};
 
 export const getChartGoal = (
   settings: VisualizationSettings,
