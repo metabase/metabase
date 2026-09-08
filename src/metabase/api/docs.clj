@@ -38,7 +38,6 @@
   (not-any? #(or (= path %) (str/starts-with? path (str % "/"))) non-public-path-prefixes))
 
 (defn- schema-refs
-  "Set of `#/components/schemas/*` names referenced anywhere inside `x`."
   [x]
   (let [names (volatile! #{})]
     (walk/postwalk
@@ -51,7 +50,6 @@
     @names))
 
 (defn- reachable-schemas
-  "Transitive closure of the schema names reachable from `roots`."
   [schemas roots]
   (loop [seen #{}, queue (vec roots)]
     (if-let [schema-name (peek queue)]
@@ -62,10 +60,8 @@
       seen)))
 
 (defn open-api-object
-  "The OpenAPI document describing the public API of `root-handler`.
-
-  Normalizes [[metabase.api.open-api/root-open-api-object]]: environment-dependent routes are dropped and unreachable schemas pruned.
-  Callers add `:info`/`:servers`."
+  "The public API document for `root-handler`, excluding development routes and unreachable schemas.
+  Callers supply `:info` and `:servers`."
   [root-handler]
   (let [spec    (open-api/root-open-api-object root-handler)
         paths   (into {} (filter (comp public-path? key)) (:paths spec))

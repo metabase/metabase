@@ -49,7 +49,7 @@ jobs:
         if: needs.files-changed.outputs.yaml == 'true'
         uses: ./.github/actions/prepare-frontend
 
-      # Always required by whitespace linter, also used by OpenAPI spec validation
+      # Required by the whitespace linter.
       - name: Setup backend env
         uses: ./.github/actions/prepare-backend
 
@@ -124,7 +124,6 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
-  # A stable status for branch protection, including PRs outside the path filter.
   api-contracts-result:
     needs: [files-changed, api-contracts]
     if: always() && !cancelled()
