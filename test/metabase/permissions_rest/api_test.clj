@@ -76,6 +76,98 @@
         (is (not (contains? (set (map :name (mt/user-http-request :crowberto :get 200 "permissions/group")))
                             "Data Analysts")))))))
 
+(defn- data-analyst-group-id []
+  (u/the-id (perms-group/data-analyst)))
+
+(defn- add-to-data-analyst-group-with-feature!
+  "Add `user-id` to the Data Analysts group, temporarily enabling `advanced-permissions` to get past the addition gate."
+  [user-id]
+  (mt/with-premium-features #{:advanced-permissions}
+    (perms/add-user-to-group! user-id (data-analyst-group-id))))
+
+(defn- data-analyst-group-listed? []
+  (contains? (set (map :id (fetch-groups))) (data-analyst-group-id)))
+
+(mt/when-ee-evailable
+ (deftest data-analyst-group-listed-with-feature-test
+   (testing "GET /api/permissions/group lists the Data Analysts group with advanced-permissions, even when empty"
+     (mt/with-premium-features #{:advanced-permissions}
+       (is (data-analyst-group-listed?))))))
+
+(deftest data-analyst-group-hidden-without-feature-when-empty-test
+  (testing "GET /api/permissions/group omits an empty Data Analysts group without advanced-permissions"
+    (mt/with-premium-features #{}
+      (is (not (data-analyst-group-listed?))))))
+
+(mt/when-ee-evailable
+ (deftest data-analyst-group-listed-without-feature-when-populated-test
+   (testing "GET /api/permissions/group lists a populated Data Analysts group without advanced-permissions"
+     (mt/with-temp [:model/User {user-id :id} {}]
+       (add-to-data-analyst-group-with-feature! user-id)
+       (mt/with-premium-features #{}
+         (let [group (m/find-first #(= (data-analyst-group-id) (:id %)) (fetch-groups))]
+           (is (some? group))
+           (testing "with its member count"
+             (is (= 1 (:member_count group))))))))))
+
+(mt/when-ee-evailable
+ (deftest data-analyst-group-hidden-without-feature-after-last-member-removed-test
+   (testing "GET /api/permissions/group omits the Data Analysts group once its last member is removed"
+     (mt/with-temp [:model/User {user-id :id} {}]
+       (add-to-data-analyst-group-with-feature! user-id)
+       (mt/with-premium-features #{}
+         (is (data-analyst-group-listed?))
+         (perms/remove-user-from-group! user-id (data-analyst-group-id))
+         (is (not (data-analyst-group-listed?))))))))
+
+(mt/when-ee-evailable
+ (deftest data-analyst-group-visibility-counts-active-members-only-test
+   (testing "GET /api/permissions/group counts only active members when deciding to list the Data Analysts group"
+     (mt/with-temp [:model/User {user-id :id} {}]
+       (add-to-data-analyst-group-with-feature! user-id)
+       (mt/with-premium-features #{}
+         (is (data-analyst-group-listed?))
+         (testing "deactivating the only member hides the group"
+           (t2/update! :model/User user-id {:is_active false})
+           (is (not (data-analyst-group-listed?))))
+         (testing "reactivating them brings it back, the membership having survived"
+           (t2/update! :model/User user-id {:is_active true})
+           (is (data-analyst-group-listed?))
+           (is (t2/exists? :model/PermissionsGroupMembership
+                           :user_id user-id :group_id (data-analyst-group-id)))))))))
+
+(mt/when-ee-evailable
+ (deftest data-analyst-group-membership-listing-test
+   (testing "GET /api/permissions/membership"
+     (testing "without advanced-permissions, memberships of a populated Data Analysts group are listed"
+       (mt/with-temp [:model/User {user-id :id} {}]
+         (add-to-data-analyst-group-with-feature! user-id)
+         (mt/with-premium-features #{}
+           (let [memberships (mt/user-http-request :crowberto :get 200 "permissions/membership")]
+             (is (contains? (set (keep (fn [{:keys [user_id group_id]}]
+                                         (when (= user-id user_id) group_id))
+                                       (mapcat val memberships)))
+                            (data-analyst-group-id))))))))))
+
+(deftest fetch-data-analyst-group-by-id-test
+  (testing "GET /api/permissions/group/:id returns the Data Analysts group regardless of feature or membership"
+    (doseq [features [#{:advanced-permissions} #{}]]
+      (testing (str "premium features: " features)
+        (testing "empty group"
+          (mt/with-premium-features features
+            (is (= (data-analyst-group-id)
+                   (:id (mt/user-http-request :crowberto :get 200
+                                              (format "permissions/group/%d" (data-analyst-group-id))))))))
+        (mt/when-ee-evailable
+         (testing "populated group"
+           (mt/with-temp [:model/User {user-id :id} {}]
+             (add-to-data-analyst-group-with-feature! user-id)
+             (mt/with-premium-features features
+               (let [group (mt/user-http-request :crowberto :get 200
+                                                 (format "permissions/group/%d" (data-analyst-group-id)))]
+                 (is (= (data-analyst-group-id) (:id group)))
+                 (is (contains? (set (map :user_id (:members group))) user-id)))))))))))
+
 (deftest groups-list-limit-test
   (testing "GET /api/permissions/group?limit=1&offset=1"
     (testing "Limit and offset pagination have defaults"
@@ -179,18 +271,32 @@
       (perms/grant-collection-readwrite-permissions! writers coll)
       (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
       (perms/grant-collection-read-permissions! (perms-group/data-analyst) coll)
-      (let [ids (set (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
-                                           :type "dashboard" :id (u/the-id dash)))]
-        (testing "includes ids of groups with read or read-write access to the item's collection"
-          (is (contains? ids (u/the-id readers)))
-          (is (contains? ids (u/the-id writers)))
-          (is (contains? ids (u/the-id (perms-group/all-users)))))
-        (testing "the ids are unfiltered: system-managed groups like Data Analysts are included when they hold a grant"
-          (is (contains? ids (u/the-id (perms-group/data-analyst)))))
-        (testing "excludes groups without access"
-          (is (not (contains? ids (u/the-id no-access)))))
-        (testing "excludes the Administrators group, whose access is implicit rather than granted"
-          (is (not (contains? ids (u/the-id (perms-group/admin))))))))
+      (let [fetch-ids (fn [] (set (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                                        :type "dashboard" :id (u/the-id dash))))]
+        (mt/with-premium-features #{:advanced-permissions}
+          (let [ids (fetch-ids)]
+            (testing "includes ids of groups with read or read-write access to the item's collection"
+              (is (contains? ids (u/the-id readers)))
+              (is (contains? ids (u/the-id writers)))
+              (is (contains? ids (u/the-id (perms-group/all-users)))))
+            (mt/when-ee-evailable
+             (testing "includes the Data Analysts group when it holds a grant"
+               (is (contains? ids (u/the-id (perms-group/data-analyst))))))
+            (testing "excludes groups without access"
+              (is (not (contains? ids (u/the-id no-access)))))
+            (testing "excludes the Administrators group, whose access is implicit rather than granted"
+              (is (not (contains? ids (u/the-id (perms-group/admin))))))))
+        (testing "without advanced-permissions the Data Analysts group is dropped, even when it holds a grant"
+          (mt/with-premium-features #{}
+            (let [ids (fetch-ids)]
+              (is (not (contains? ids (u/the-id (perms-group/data-analyst)))))
+              (is (contains? ids (u/the-id readers))))))
+        (mt/when-ee-evailable
+         (testing "without advanced-permissions the Data Analysts group is dropped even when populated"
+           (mt/with-temp [:model/User {user-id :id} {}]
+             (add-to-data-analyst-group-with-feature! user-id)
+             (mt/with-premium-features #{}
+               (is (not (contains? (fetch-ids) (u/the-id (perms-group/data-analyst)))))))))))
     (testing "works for questions, resolving the card's collection"
       (mt/with-temp [:model/Collection       coll {}
                      :model/Card             card {:collection_id (u/the-id coll)}
