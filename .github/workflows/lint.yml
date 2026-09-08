@@ -104,7 +104,7 @@ jobs:
       - name: Prepare backend environment
         uses: ./.github/actions/prepare-backend
       - name: Test the contract checker
-        run: bun run api-contracts:test
+        run: bun run api-contract-check:test
       - name: Generate the Enterprise spec from checked-out source
         run: bun run openapi:generate
       - name: Validate the OpenAPI spec
@@ -114,7 +114,7 @@ jobs:
       - name: Compile CLJS dependencies used by frontend types
         run: bun run build-pure:cljs
       - name: Check frontend API contracts against the baseline
-        run: bun run api-contracts-pure
+        run: bun run api-contract-check-pure
       - name: Upload contract coverage and diagnostics
         if: always()
         uses: actions/upload-artifact@v7
