@@ -57,8 +57,7 @@
 
   Each entry holds entity maps shaped by the `metabase.typed-schemas.schema.*`
   builders; `:key` on each entity seeds the generated object keys. `:errors`
-  describes entities that could not be built (currently only models), so one
-  broken entity does not fail the whole response."
+  describes entities that could not be built (currently only models)."
   [:map {:closed true}
    [:models    [:sequential :map]]
    [:tables    [:sequential :map]]
