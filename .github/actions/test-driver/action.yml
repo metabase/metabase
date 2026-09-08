@@ -197,4 +197,4 @@ runs:
       with:
         adapter: backend
         test-suite: ${{ inputs.junit-name }}
-        enforce-quarantine: ${{ inputs.quarantine-engine == 'ci-conductor' }}
+        enforce-quarantine: "true"

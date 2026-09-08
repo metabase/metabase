@@ -162,7 +162,6 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: determine-driver-skips
@@ -216,7 +215,6 @@ jobs:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
         test-args: ${{ matrix.job.test-args }}
         artifact-suffix: ${{ matrix.job.name }}
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -279,7 +277,6 @@ jobs:
         junit-name: 'be-tests-clickhouse-ee'
         test-args: ${{ matrix.job.test-args }}
         artifact-suffix: ${{ matrix.job.name }}
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -313,7 +310,6 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-databricks-ee:
     needs: determine-driver-skips
@@ -376,7 +372,6 @@ jobs:
         junit-name: 'be-tests-databricks-ee'
         artifact-suffix: ${{ matrix.job.name }}
         test-args: ${{ matrix.job.test-args }}
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-h2:
     needs: determine-driver-skips
@@ -396,7 +391,6 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-h2-oss:
     needs: determine-driver-skips
@@ -417,7 +411,6 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-mysql-mariadb:
     needs: determine-driver-skips
@@ -536,7 +529,6 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -596,7 +588,6 @@ jobs:
         junit-name: ${{ matrix.version.junit-name }}
         test-args: ${{ matrix.job.test-args }}
         artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -658,7 +649,6 @@ jobs:
           test-args: >-
             :exclude-tags '[:mongo-sharded-cluster-tests :mb/transforms-python-test]'
             :only-tags [:mb/driver-tests]
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
@@ -683,7 +673,6 @@ jobs:
         junit-name: 'be-tests-mongo-sharded-cluster-ee'
         test-args: >-
           :only metabase.driver.mongo.sharded-cluster-test
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-oracle:
     needs: determine-driver-skips
@@ -748,7 +737,6 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-postgres:
     needs: determine-driver-skips
@@ -841,7 +829,6 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -908,7 +895,6 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-redshift-ee:
     needs: determine-driver-skips
@@ -999,7 +985,6 @@ jobs:
         test-args: >-
           ${{ matrix.job.test-args }}
         artifact-suffix: ${{ matrix.job.name }}
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1062,7 +1047,6 @@ jobs:
         junit-name: 'be-tests-snowflake-ee'
         test-args: ${{ matrix.job.test-args }}
         artifact-suffix: ${{ matrix.job.name }}
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1094,7 +1078,6 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-sqlite-ee:
     needs: determine-driver-skips
@@ -1115,7 +1098,6 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-sqlserver:
     needs: determine-driver-skips
@@ -1171,7 +1153,6 @@ jobs:
         junit-name: ${{ matrix.version.junit-name }}
         test-args: ${{ matrix.job.test-args }}
         artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1268,7 +1249,6 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   drivers-tests-result:
     needs:
