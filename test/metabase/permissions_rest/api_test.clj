@@ -68,14 +68,6 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "permissions/group"))))))
 
-(deftest no-data-analyst-groups-test
-  (testing "GET /api/permissions/group"
-    (testing "in OSS, the data analyst group is hidden"
-      ;; note that this uses `config/ee-available?` instead of a feature to avoid hiding a group that may stil provide permissions!
-      (when-not config/ee-available?
-        (is (not (contains? (set (map :name (mt/user-http-request :crowberto :get 200 "permissions/group")))
-                            "Data Analysts")))))))
-
 (defn- data-analyst-group-id []
   (u/the-id (perms-group/data-analyst)))
 
@@ -167,6 +159,50 @@
                                                  (format "permissions/group/%d" (data-analyst-group-id)))]
                  (is (= (data-analyst-group-id) (:id group)))
                  (is (contains? (set (map :user_id (:members group))) user-id)))))))))))
+
+(deftest data-analyst-group-data-model-permission-is-locked-test
+  (testing "the Data Analysts group's data-model permission is rendered as enforced and cannot be edited"
+    (doseq [features [#{:advanced-permissions} #{}]]
+      (testing (str "premium features: " features)
+        (mt/with-premium-features features
+          (testing "GET /api/permissions/graph renders the locked value"
+            (is (= {:schemas "all"}
+                   (get-in (mt/user-http-request :crowberto :get 200 "permissions/graph")
+                           [:groups (data-analyst-group-id) (mt/id) :data-model]))))
+          (testing "PUT /api/permissions/graph refuses to change it"
+            (is (= "You cannot modify the data model permission for the 'Data Analysts' group."
+                   (mt/user-http-request
+                    :crowberto :put 400 "permissions/graph"
+                    (assoc-in (data-perms.graph/api-graph)
+                              [:groups (data-analyst-group-id) (mt/id) :data-model]
+                              {:schemas :none}))))))))))
+
+(deftest data-analyst-group-cannot-be-renamed-or-deleted-test
+  (testing "the Data Analysts group is neither renameable nor deletable"
+    (let [error   (format "You cannot edit or delete the '%s' permissions group!"
+                          (t2/select-one-fn :name :model/PermissionsGroup :id (data-analyst-group-id)))
+          locked? (fn []
+                    (is (= error
+                           (mt/user-http-request :crowberto :put 400
+                                                 (format "permissions/group/%d" (data-analyst-group-id))
+                                                 {:name "Renamed Analysts"})))
+                    (is (= error
+                           (mt/user-http-request :crowberto :delete 400
+                                                 (format "permissions/group/%d" (data-analyst-group-id)))))
+                    (is (t2/exists? :model/PermissionsGroup
+                                    :id (data-analyst-group-id)
+                                    :magic_group_type perms-group/data-analyst-magic-group-type)))]
+      (doseq [features [#{:advanced-permissions} #{}]]
+        (testing (str "premium features: " features)
+          (testing "empty group"
+            (mt/with-premium-features features
+              (locked?)))
+          (mt/when-ee-evailable
+           (testing "populated group"
+             (mt/with-temp [:model/User {user-id :id} {}]
+               (add-to-data-analyst-group-with-feature! user-id)
+               (mt/with-premium-features features
+                 (locked?))))))))))
 
 (deftest groups-list-limit-test
   (testing "GET /api/permissions/group?limit=1&offset=1"
