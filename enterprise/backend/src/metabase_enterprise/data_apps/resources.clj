@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-apps.resources
   "Lifecycle for the permission group and resource collection owned by a data app."
   (:require
+   [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase.collections.core :as collection]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
@@ -89,7 +90,7 @@
   "Create or restore the server-owned permission resources for `app` and return their IDs."
   [app]
   (perms/with-global-permissions-lock
-    (let [app        (t2/select-one :model/DataApp :id (:id app))
+    (let [app        (data-apps.db/non-blob-data-app (:id app))
           group      (permission-group! app)
           collection (resource-collection! app)]
       (t2/update! :model/PermissionsGroup :id (:id group)
