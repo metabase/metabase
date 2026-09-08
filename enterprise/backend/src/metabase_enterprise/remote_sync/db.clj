@@ -2,7 +2,6 @@
   "Application database queries for the remote-sync module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
-   [metabase.collections.core :as collections]
    [toucan2.core :as t2]))
 
 (defn eligible-children
@@ -225,8 +224,8 @@
   "Matches `collections` and all of their descendants."
   [collections]
   (into [:or [:in :id (map :id collections)]]
-        (for [collection collections]
-          [:like :location (str (collections/location-path collection) "%")])))
+        (for [{:keys [id location]} collections]
+          [:like :location (str location id "/%")])))
 
 (defn collections
   "The Collections with `collection-ids`."
@@ -431,6 +430,17 @@
   "The `:id` and `:status` of the RemoteSyncObjects of the Collections with `collection-ids` and their contents."
   [collection-ids]
   (t2/select [:model/RemoteSyncObject :id :status] {:where (contents-rso-expr collection-ids)}))
+
+(defn content-rsos
+  "The `:id`, `:status`, `:model_type`, and `:model_id` of the RemoteSyncObjects of the Collections with
+  `collection-ids` and their contents."
+  [collection-ids]
+  (t2/select [:model/RemoteSyncObject :id :status :model_type :model_id] {:where (contents-rso-expr collection-ids)}))
+
+(defn unarchived-ids
+  "The IDs among `ids` of the instances of `model` not archived under the `archived-key` column."
+  [model ids archived-key]
+  (t2/select-pks-set model :id [:in ids] archived-key false))
 
 (defn removed-content-rso-ids
   "The IDs of the RemoteSyncObjects pending removal among those of the Collections with `collection-ids` and their

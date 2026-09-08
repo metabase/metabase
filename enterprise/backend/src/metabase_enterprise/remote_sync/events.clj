@@ -276,13 +276,46 @@
         (log/info "Library collection is no longer remote-synced, disabling snippet sync tracking")
         (disable-snippet-tracking!)))))
 
+(defn- cascade-archive-to-contents!
+  "Archiving a collection archives its whole subtree with bulk updates that publish no per-entity events, so
+  the contents' RemoteSyncObject rows are marked here: never-pushed 'create' rows are dropped, the rest are
+  marked 'delete' so the next export removes their files. Rows already pending removal are left as they are."
+  [collection]
+  (let [rows    (remote-sync.db/content-rsos (remote-sync.db/subtree-collection-ids [collection]))
+        created (filter #(= "create" (:status %)) rows)
+        tracked (remove #(contains? #{"create" "delete" "removed"} (:status %)) rows)]
+    (when (seq created)
+      (remote-sync.db/delete-rsos! (map :id created)))
+    (when (seq tracked)
+      (remote-sync.db/set-rsos-status! (map :id tracked) "delete" (t/offset-date-time)))))
+
+(defn- restore-unarchived-contents!
+  "Reverses [[cascade-archive-to-contents!]] when the collection is unarchived before the deletion was pushed:
+  subtree rows pending 'delete' whose entity is no longer archived go back to 'update'. Entities archived
+  directly stay archived through the unarchive, so their rows stay pending deletion."
+  [collection]
+  (let [rows       (filter #(= "delete" (:status %))
+                           (remote-sync.db/content-rsos (remote-sync.db/subtree-collection-ids [collection])))
+        restorable (for [[model-type type-rows] (group-by :model_type rows)
+                         :let [{:keys [model-key archived-key]} (spec/spec-for-model-type model-type)
+                               ids  (map :model_id type-rows)
+                               live (if (and model-key archived-key)
+                                      (remote-sync.db/unarchived-ids model-key ids archived-key)
+                                      (set ids))]
+                         row type-rows
+                         :when (contains? live (:model_id row))]
+                     (:id row))]
+    (when (seq restorable)
+      (remote-sync.db/set-rsos-status! restorable "update" (t/offset-date-time)))))
+
 (methodical/defmethod events/publish-event! ::collection-change-event
   [topic event]
   (let [{:keys [object]} event
         should-sync? (spec/should-sync-collection? object)
         is-remote-synced? (collections/remote-synced-collection? object)
         existing-entry (remote-sync.db/rso "Collection" (:id object))
-        status (if (:archived object)
+        archived? (boolean (:archived object))
+        status (if archived?
                  "delete"
                  (case topic
                    :event/collection-create "create"
@@ -290,15 +323,22 @@
     (when (and (= topic :event/collection-update)
                (spec/library-collection? object))
       (handle-library-sync-status-change! is-remote-synced?))
-    (cond
-      should-sync?
-      (do
-        (log/infof "Creating remote sync object entry for collection %s (status: %s)" (:id object) status)
-        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details))
-      (and existing-entry (not should-sync?))
-      (do
-        (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))
-        (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" hydrate-collection-details)))))
+    (t2/with-transaction [_conn]
+      (cond
+        should-sync?
+        (do
+          (log/infof "Creating remote sync object entry for collection %s (status: %s)" (:id object) status)
+          (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details)
+          (cond
+            archived?
+            (cascade-archive-to-contents! object)
+
+            (= "delete" (:status existing-entry))
+            (restore-unarchived-contents! object)))
+        (and existing-entry (not should-sync?))
+        (do
+          (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))
+          (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" hydrate-collection-details))))))
 
 ;;; ----------------------------------------- FieldUserSettings Tracking -----------------------------------------------
 ;; When a field is updated in a published table, also track any FieldUserSettings row for that field.
