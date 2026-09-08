@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { useCreateLibraryMutation } from "metabase-enterprise/api";
+import type { Collection } from "metabase-types/api";
 import { trackDataStudioLibraryCreated } from "metabase/common/data-studio/analytics";
 import { useMetadataToasts } from "metabase/common/hooks";
 import {
@@ -22,8 +24,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { useCreateLibraryMutation } from "metabase-enterprise/api";
-import type { Collection } from "metabase-types/api";
 
 export function CreateLibraryModal({
   title = t`Create your Library`,

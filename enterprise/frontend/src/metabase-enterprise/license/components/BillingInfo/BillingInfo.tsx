@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import type { BillingInfo as IBillingInfo } from "metabase-types/api";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { ButtonLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
 import { Alert, Anchor, Box, Icon } from "metabase/ui";
-import type { BillingInfo as IBillingInfo } from "metabase-types/api";
 
 import { BillingInfoTable } from "./BillingInfoTable";
 

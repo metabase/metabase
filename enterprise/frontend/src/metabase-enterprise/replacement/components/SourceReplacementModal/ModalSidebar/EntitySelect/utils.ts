@@ -1,8 +1,8 @@
+import type { DatabaseId, SourceReplacementEntry } from "metabase-types/api";
 import type {
   OmniPickerItem,
   OmniPickerValue,
 } from "metabase/common/components/Pickers";
-import type { DatabaseId, SourceReplacementEntry } from "metabase-types/api";
 
 import { isSameEntity } from "../../../../utils";
 import type { CardEntityData, EntityItem, TableEntityData } from "../../types";

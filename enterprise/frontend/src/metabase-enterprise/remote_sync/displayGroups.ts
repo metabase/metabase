@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isLibraryCollection } from "metabase/common/collections/utils";
 import type {
   Collection,
   CollectionId,
@@ -10,6 +9,7 @@ import type {
   RemoteSyncEntityModel,
   RemoteSyncEntityStatus,
 } from "metabase-types/api";
+import { isLibraryCollection } from "metabase/common/collections/utils";
 
 /**
  * Sentinel value for the virtual Transforms root collection.

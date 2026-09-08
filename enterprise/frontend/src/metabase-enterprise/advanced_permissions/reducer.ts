@@ -2,6 +2,13 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import { createAction, createSlice } from "@reduxjs/toolkit";
 
 import {
+  DataPermission,
+  DataPermissionValue,
+  type GroupId,
+  type Impersonation,
+  type PermissionEntityId,
+} from "metabase-types/api";
+import {
   LOAD_DATA_PERMISSIONS,
   SAVE_DATA_PERMISSIONS,
   UPDATE_DATA_PERMISSION,
@@ -11,13 +18,6 @@ import {
   GROUPS_BASE_PATH,
 } from "metabase/admin/permissions/utils/urls";
 import { navigate } from "metabase/router";
-import {
-  DataPermission,
-  DataPermissionValue,
-  type GroupId,
-  type Impersonation,
-  type PermissionEntityId,
-} from "metabase-types/api";
 
 export const getImpersonatedPostAction = (
   entityId: PermissionEntityId,

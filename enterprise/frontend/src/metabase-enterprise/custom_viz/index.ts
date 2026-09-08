@@ -1,3 +1,5 @@
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux/hooks";
 import { addUndo } from "metabase/redux/undo";
@@ -5,8 +7,6 @@ import {
   getPluginAssetUrl,
   resolveCustomVizAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
-import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import { CustomVizDevPage } from "./components/CustomVizDevPage";
 import { CustomVizPage } from "./components/CustomVizPage";

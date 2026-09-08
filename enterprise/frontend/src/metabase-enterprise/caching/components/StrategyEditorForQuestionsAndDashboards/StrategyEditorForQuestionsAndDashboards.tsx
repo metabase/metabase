@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { CacheableModel } from "metabase-types/api";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { PerformancePageContent } from "metabase/admin/performance/components/PerformancePageContent";
 import { StrategyForm } from "metabase/admin/performance/components/StrategyForm";
@@ -20,7 +21,6 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { Center, Flex, Text } from "metabase/ui";
-import type { CacheableModel } from "metabase-types/api";
 
 import { PolicySidePanel } from "../PolicySidePanel";
 import {

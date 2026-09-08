@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useCreateDestinationDatabaseMutation } from "metabase-enterprise/api";
+import type { Database, DatabaseData } from "metabase-types/api";
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
 import { useGetDatabaseQuery, useUpdateDatabaseMutation } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -12,8 +14,6 @@ import { addUndo } from "metabase/redux/undo";
 import { useNavigate, useParams } from "metabase/router";
 import { Flex, Icon, Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { useCreateDestinationDatabaseMutation } from "metabase-enterprise/api";
-import type { Database, DatabaseData } from "metabase-types/api";
 
 import { paramIdToGetQuery } from "../utils";
 

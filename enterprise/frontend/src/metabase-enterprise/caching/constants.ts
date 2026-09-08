@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { CacheDurationUnit } from "metabase-types/api";
 import { defaultCron } from "metabase/common/components/Schedule/cron";
 import {
   PerformanceTabId,
@@ -9,7 +10,6 @@ import {
   getPositiveIntegerSchema,
 } from "metabase/plugins";
 import type { AdminPath } from "metabase/redux/store";
-import { CacheDurationUnit } from "metabase-types/api";
 
 export const durationUnits = new Set(
   Object.values(CacheDurationUnit).map(String),

@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Skeleton } from "metabase/ui";
 import type {
   CardMetadata,
   MetadataProvider,
   Query,
   TableMetadata,
 } from "metabase-lib";
+import { Skeleton } from "metabase/ui";
 
 import { BreakoutChartCard } from "../../metabot-analytics/components/ConversationStatsPage/BreakoutChartCard";
 import { useAdhocBreakoutQuery } from "../../metabot-analytics/hooks/useAdhocBreakoutQuery";

@@ -1,13 +1,13 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useConfirmation, useToast } from "metabase/common/hooks";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
 import {
   useDeleteDataAppMutation,
   useSetDataAppEnabledMutation,
 } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
+import { useConfirmation, useToast } from "metabase/common/hooks";
+import { ActionIcon, Icon, Menu } from "metabase/ui";
 
 type Props = {
   app: DataApp;

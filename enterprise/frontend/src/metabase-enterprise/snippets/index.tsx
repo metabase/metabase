@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import {
@@ -9,7 +10,6 @@ import {
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
 } from "metabase/plugins";
 import { setOpenModalWithProps } from "metabase/redux/ui";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { CollectionRow } from "./components/CollectionRow";
 import { MoveSnippetModal } from "./components/MoveSnippetModal";

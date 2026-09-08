@@ -1,7 +1,7 @@
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { useGetDependenciesCount } from "./hooks/use-get-dependencies-count";
 import { LazyDependencyGraphPage, loadDependencyGraphPage } from "./lazy";

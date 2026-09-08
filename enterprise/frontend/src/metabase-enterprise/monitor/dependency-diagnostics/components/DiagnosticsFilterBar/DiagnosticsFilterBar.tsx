@@ -2,14 +2,14 @@ import { useDebouncedCallback } from "@mantine/hooks";
 import { type ChangeEvent, memo, useState } from "react";
 import { t } from "ttag";
 
-import { FixedSizeIcon, Group, TextInput } from "metabase/ui";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { FilterOptionsPicker } from "metabase-enterprise/dependencies/components/FilterOptionsPicker";
 import type { DependencyFilterOptions } from "metabase-enterprise/dependencies/types";
 import {
   areFilterOptionsEqual,
   getSearchQuery,
 } from "metabase-enterprise/dependencies/utils";
+import { FixedSizeIcon, Group, TextInput } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import type { DependencyDiagnosticsMode } from "../types";
 import { getAvailableGroupTypes, getDefaultFilterOptions } from "../utils";

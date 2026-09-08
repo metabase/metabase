@@ -1,9 +1,9 @@
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 
+import type { RemoteSyncConfigurationSettings } from "metabase-types/api";
 import CS from "metabase/css/core/bordered.module.css";
 import { Box, Flex, Icon, Switch, Text } from "metabase/ui";
-import type { RemoteSyncConfigurationSettings } from "metabase-types/api";
 
 import { TRANSFORMS_KEY } from "../../constants";
 

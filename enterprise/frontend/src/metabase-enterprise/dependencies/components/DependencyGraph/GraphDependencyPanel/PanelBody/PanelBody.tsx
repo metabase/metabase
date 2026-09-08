@@ -1,8 +1,8 @@
 import { memo } from "react";
 
+import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 import CS from "metabase/css/core/text.module.css";
 import { Box, Group, Stack } from "metabase/ui";
-import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import {
   getNodeIcon,

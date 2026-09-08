@@ -1,5 +1,5 @@
-import { PLUGIN_DATABASE_REPLICATION } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_DATABASE_REPLICATION } from "metabase/plugins";
 
 import { DatabaseReplicationSection } from "./DatabaseReplicationSection";
 

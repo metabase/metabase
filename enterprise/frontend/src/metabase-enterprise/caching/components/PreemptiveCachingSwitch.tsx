@@ -1,9 +1,9 @@
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 
+import type { DurationStrategy, ScheduleStrategy } from "metabase-types/api";
 import type { PreemptiveCachingSwitchProps } from "metabase/plugins";
 import { Switch } from "metabase/ui";
-import type { DurationStrategy, ScheduleStrategy } from "metabase-types/api";
 
 export const PreemptiveCachingSwitch = ({
   handleSwitchToggle,

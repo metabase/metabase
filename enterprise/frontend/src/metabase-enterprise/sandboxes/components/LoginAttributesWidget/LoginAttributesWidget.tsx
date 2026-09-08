@@ -2,9 +2,6 @@ import { useField } from "formik";
 import { type HTMLAttributes, useMemo } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetUserQuery } from "metabase/api";
-import { FormField } from "metabase/common/components/FormField";
-import { Accordion, Box, Loader, Text } from "metabase/ui";
 import { useGetTenantQuery } from "metabase-enterprise/api";
 import { getExtraAttributes } from "metabase-enterprise/sandboxes/utils";
 import type {
@@ -14,6 +11,9 @@ import type {
   UserAttributeValue,
   UserId,
 } from "metabase-types/api";
+import { skipToken, useGetUserQuery } from "metabase/api";
+import { FormField } from "metabase/common/components/FormField";
+import { Accordion, Box, Loader, Text } from "metabase/ui";
 
 import { LoginAttributeMappingEditor } from "./LoginAttributeMappingEditor";
 

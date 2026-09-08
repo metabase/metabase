@@ -1,4 +1,10 @@
 import type {
+  CardType,
+  DependencyEntry,
+  DependencyNode,
+  SearchModel,
+} from "metabase-types/api";
+import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
   OmniPickerQuestionItem,
@@ -6,12 +12,6 @@ import type {
   OmniPickerValue,
 } from "metabase/common/components/Pickers";
 import type { TransformPickerItem } from "metabase/plugins/oss/transforms";
-import type {
-  CardType,
-  DependencyEntry,
-  DependencyNode,
-  SearchModel,
-} from "metabase-types/api";
 
 import { getDependencyType } from "../../../../utils";
 import { SEARCH_MODEL_TO_GROUP_TYPE } from "../constants";

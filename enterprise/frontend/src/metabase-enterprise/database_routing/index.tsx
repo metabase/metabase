@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 import { Route } from "metabase/router";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { DatabaseRoutingSection } from "./DatabaseRoutingSection";
 import { DestinationDatabaseConnectionModal } from "./DestinationDatabaseConnectionModal";

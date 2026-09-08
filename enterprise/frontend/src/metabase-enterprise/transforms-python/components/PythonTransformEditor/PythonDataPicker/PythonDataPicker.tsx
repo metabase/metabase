@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { skipToken, useListTablesQuery } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Box, Button, Icon, Stack, Text } from "metabase/ui";
 import type {
   DatabaseId,
   PythonTransformTableAliases,
   Table,
 } from "metabase-types/api";
 import { isConcreteTableId } from "metabase-types/api";
+import { skipToken, useListTablesQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { Box, Button, Icon, Stack, Text } from "metabase/ui";
 
 import { AliasInput } from "./AliasInput";
 import S from "./PythonDataPicker.module.css";

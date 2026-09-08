@@ -1,11 +1,11 @@
 import type { CustomVisualization } from "custom-viz";
 import type { ComponentType } from "react";
 
+import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
 import type {
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
-import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
 
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 

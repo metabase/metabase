@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 import { Api, useListDatabasesQuery } from "metabase/api";
 import { listTag, tag } from "metabase/api/tags";
 import { useTokenRefreshUntil } from "metabase/api/utils";
@@ -12,7 +13,6 @@ import {
 import { getUserIsAdmin } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
-import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
 import { STORAGE_PRODUCT_TYPE } from "./use-storage-add-on";
 

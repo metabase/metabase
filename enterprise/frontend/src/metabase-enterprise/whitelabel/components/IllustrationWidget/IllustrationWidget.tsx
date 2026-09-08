@@ -3,6 +3,10 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  EnterpriseSettingKey,
+  IllustrationSettingValue,
+} from "metabase-types/api";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { LighthouseIllustrationThumbnail } from "metabase/common/components/LighthouseIllustration";
@@ -10,10 +14,6 @@ import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import CS from "metabase/css/core/index.css";
 import { useAdminSetting } from "metabase/settings";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
-import type {
-  EnterpriseSettingKey,
-  IllustrationSettingValue,
-} from "metabase-types/api";
 
 import { ImageUploadInfoDot } from "../ImageUploadInfoDot";
 

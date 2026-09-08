@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 
-import { useRunInspectorQueryQuery } from "metabase/api";
 import {
   type CardStats,
   computeCardStats,
 } from "metabase-enterprise/transforms-inspector/lib/transforms-inspector";
 import type { InspectorCard } from "metabase-types/api";
+import { useRunInspectorQueryQuery } from "metabase/api";
 
 import { useLensContentContext } from "../components/LensContent/LensContentContext";
 

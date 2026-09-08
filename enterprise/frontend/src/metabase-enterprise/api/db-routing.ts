@@ -1,11 +1,11 @@
 import _ from "underscore";
 
-import { idTag, invalidateTags, listTag } from "metabase/api/tags";
 import type {
   CreateDestinationDatabaseRequest,
   Database,
   UpdateDatabaseRouterRequest,
 } from "metabase-types/api";
+import { idTag, invalidateTags, listTag } from "metabase/api/tags";
 
 import { EnterpriseApi } from "./api";
 

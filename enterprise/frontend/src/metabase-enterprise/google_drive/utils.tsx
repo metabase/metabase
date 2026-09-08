@@ -2,17 +2,17 @@ import { useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import {
+  useDeleteGsheetsFolderLinkMutation,
+  useGetServiceAccountQuery,
+} from "metabase-enterprise/api";
+import type { GdrivePayload } from "metabase-types/api";
 import { skipToken } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
-import {
-  useDeleteGsheetsFolderLinkMutation,
-  useGetServiceAccountQuery,
-} from "metabase-enterprise/api";
-import type { GdrivePayload } from "metabase-types/api";
 
 export type ErrorPayload =
   | unknown

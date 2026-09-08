@@ -1,8 +1,8 @@
 import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import { Flex, Switch, Text } from "metabase/ui";
 import { AIToolKey } from "metabase-types/api";
+import { Flex, Switch, Text } from "metabase/ui";
 
 import type { AiFeatureAccessRow, AiFeatureAccessTableProps } from "./utils";
 

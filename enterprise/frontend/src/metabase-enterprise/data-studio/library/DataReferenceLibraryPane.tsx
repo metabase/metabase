@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { type SearchResult, isConcreteTableId } from "metabase-types/api";
 import { skipToken, useSearchQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
@@ -18,7 +19,6 @@ import type {
   OnItemClick,
 } from "metabase/querying/components/DataReference/types";
 import { Box, Ellipsified, Text } from "metabase/ui";
-import { type SearchResult, isConcreteTableId } from "metabase-types/api";
 
 import { useGetLibraryCollection } from "./utils";
 

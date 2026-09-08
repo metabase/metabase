@@ -17,10 +17,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
-import * as Urls from "metabase/urls";
-import { parseSearchQuery } from "metabase/utils/browser";
 import {
   ALL_USERS_GROUP,
   BOBBY,
@@ -35,6 +31,10 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
 
 import { ConversationsPage } from "./ConversationsPage";
 

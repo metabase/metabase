@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import type { Collection } from "metabase-types/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
@@ -19,8 +21,6 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { Collection } from "metabase-types/api";
 
 import { ActionCell } from "../components/ActionCell";
 import { EmptyStateAction } from "../components/EmptyStateAction";

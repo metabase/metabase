@@ -1,14 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 
-import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
-import { useNavigate } from "metabase/router";
-import { Card } from "metabase/ui";
 import type {
   DependencyEntry,
   DependencyNode,
   SearchModel,
 } from "metabase-types/api";
+import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
+import { useNavigate } from "metabase/router";
+import { Card } from "metabase/ui";
 
 import { EntryButton } from "./EntryButton";
 import { EntryPickerModal } from "./EntryPickerModal";

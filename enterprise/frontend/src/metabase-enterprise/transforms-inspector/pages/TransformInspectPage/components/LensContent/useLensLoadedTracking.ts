@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 
-import { trackTransformInspectLensLoaded } from "metabase/transforms/analytics";
 import type { TransformId } from "metabase-types/api";
+import { trackTransformInspectLensLoaded } from "metabase/transforms/analytics";
 
 import type { LensKey } from "../../types";
 

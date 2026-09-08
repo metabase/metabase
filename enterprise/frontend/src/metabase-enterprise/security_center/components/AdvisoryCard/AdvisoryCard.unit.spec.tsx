@@ -1,8 +1,8 @@
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { Advisory } from "metabase-types/api";
 import { createMockVersion } from "metabase-types/api/mocks";
 import { createAdvisory } from "metabase-types/api/mocks/security-center";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 
 import { AdvisoryCard } from "./AdvisoryCard";
 

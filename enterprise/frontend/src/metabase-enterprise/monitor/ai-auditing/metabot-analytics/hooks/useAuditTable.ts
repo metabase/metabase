@@ -1,5 +1,11 @@
 import { useMemo } from "react";
 
+import type {
+  CardMetadata,
+  MetadataProvider,
+  TableMetadata,
+} from "metabase-lib";
+import * as Lib from "metabase-lib";
 import {
   skipToken,
   useGetAdhocQueryMetadataQuery,
@@ -7,12 +13,6 @@ import {
 } from "metabase/api";
 import { getMetadataUnfiltered } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import type {
-  CardMetadata,
-  MetadataProvider,
-  TableMetadata,
-} from "metabase-lib";
-import * as Lib from "metabase-lib";
 
 import { AUDIT_DB_ID } from "../constants";
 

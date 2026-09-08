@@ -1,10 +1,10 @@
-import { getUserIsAdmin } from "metabase/current-user";
-import { useSelector } from "metabase/redux";
-import { useSetting } from "metabase/settings";
 import {
   useGetBillingInfoQuery,
   useListAddOnsQuery,
 } from "metabase-enterprise/api";
+import { getUserIsAdmin } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 
 export function useTransformsBilling() {
   const isAdmin = useSelector(getUserIsAdmin);

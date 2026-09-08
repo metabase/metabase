@@ -1,15 +1,15 @@
 import {
-  type UrlStateConfig,
-  parsePage,
-  parseSortColumn,
-  parseSortDirection,
-} from "metabase/common/hooks/use-url-state";
-import {
   type FilterUrlState,
   filterUrlStateConfig,
   mergeUrlStateConfig,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters/url-state";
 import type { SortDirection } from "metabase-types/api";
+import {
+  type UrlStateConfig,
+  parsePage,
+  parseSortColumn,
+  parseSortDirection,
+} from "metabase/common/hooks/use-url-state";
 
 import { CLI_EVENT_SORT_COLUMNS, type CliEventSortColumn } from "./query-utils";
 

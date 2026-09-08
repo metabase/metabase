@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import type { ConcreteTableId } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { Box, Stack, Text, Title } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
-import type { ConcreteTableId } from "metabase-types/api";
 
 import { useSchemaViewerContext } from "../../../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../../../types";

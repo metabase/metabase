@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { CollectionId } from "metabase-types/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useSetCollection } from "metabase/common/hooks/use-set-collection";
 import type { MoveSnippetModalProps } from "metabase/plugins";
-import type { CollectionId } from "metabase-types/api";
 
 import { SnippetCollectionPickerModal } from "../SnippetCollectionPickerModal";
 

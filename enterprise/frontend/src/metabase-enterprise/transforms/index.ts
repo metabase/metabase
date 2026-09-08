@@ -1,5 +1,5 @@
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 
 import { TransformsUpsellPage } from "./upsells/pages/TransformsUpsellPage";
 

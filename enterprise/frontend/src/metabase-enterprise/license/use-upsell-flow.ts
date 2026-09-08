@@ -1,12 +1,12 @@
 import { useEffect, useRef } from "react";
 import { t } from "ttag";
 
+import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 import { useUpsellLink } from "metabase/common/components/upsells/components/use-upsell-link";
 import { useStoreUrl, useToast } from "metabase/common/hooks";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
-import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 
 const NOTIFICATION_TIMEOUT = 30_000;
 const METABASE_INSTANCE_WINDOW_NAME = "metabase-instance";

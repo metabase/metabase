@@ -6,11 +6,6 @@ import {
   useState,
 } from "react";
 
-import {
-  useGetChannelInfoQuery,
-  useListUserRecipientsQuery,
-} from "metabase/api";
-import { useSetting, useUpdateSettingsMutation } from "metabase/settings";
 import type {
   ChannelApiResponse,
   NotificationHandlerEmail,
@@ -19,6 +14,11 @@ import type {
   SendTestNotificationRequest,
   User,
 } from "metabase-types/api";
+import {
+  useGetChannelInfoQuery,
+  useListUserRecipientsQuery,
+} from "metabase/api";
+import { useSetting, useUpdateSettingsMutation } from "metabase/settings";
 
 const ADMIN_GROUP_ID = 2;
 

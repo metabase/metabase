@@ -2,12 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { Fragment } from "react";
 import { t } from "ttag";
 
+import type { DatabaseId, SourceReplacementEntry } from "metabase-types/api";
 import {
   EntityPickerModal,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
 import { Box, Button, Icon, Input } from "metabase/ui";
-import type { DatabaseId, SourceReplacementEntry } from "metabase-types/api";
 
 import type { EntityItem } from "../../types";
 

@@ -3,13 +3,13 @@ import type { ComponentProps } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
-import Visualization from "metabase/visualizations/components/Visualization";
-import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { RowValues, Series } from "metabase-types/api";
 import {
   createMockColumn,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+import Visualization from "metabase/visualizations/components/Visualization";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 
 import { AuditTableVisualization } from "./AuditTableVisualization";
 

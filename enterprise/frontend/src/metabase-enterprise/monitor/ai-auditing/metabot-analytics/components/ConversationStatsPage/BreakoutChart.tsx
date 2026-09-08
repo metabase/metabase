@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Skeleton, useMantineTheme } from "metabase/ui";
 import type { Query } from "metabase-lib";
+import { Skeleton, useMantineTheme } from "metabase/ui";
 
 import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 

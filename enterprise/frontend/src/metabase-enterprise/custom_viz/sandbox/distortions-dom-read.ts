@@ -1,5 +1,5 @@
-import { BLOCKED_TAGS } from "metabase/utils/scripts-sandbox";
 import type { CustomVizPluginId } from "metabase-types/api";
+import { BLOCKED_TAGS } from "metabase/utils/scripts-sandbox";
 
 // DOM scoping is custom-viz-specific: each custom-viz plugin renders inside
 // its own `<div data-plugin-sandbox="<id>">…</div>` container, and every Node

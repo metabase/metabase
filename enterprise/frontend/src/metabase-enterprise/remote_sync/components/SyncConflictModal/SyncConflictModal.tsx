@@ -1,10 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useMetadataToasts } from "metabase/common/hooks";
-import { useSelector } from "metabase/redux";
-import { useGetSettingsQuery, useSetting } from "metabase/settings";
-import { Box, Button, Group, Icon, Modal } from "metabase/ui";
 import {
   useGetBranchesQuery,
   useUpdateRemoteSyncSettingsMutation,
@@ -21,6 +17,10 @@ import type {
   RemoteSyncConfigurationSettings,
   RemoteSyncConflictVariant,
 } from "metabase-types/api";
+import { useMetadataToasts } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
+import { useGetSettingsQuery, useSetting } from "metabase/settings";
+import { Box, Button, Group, Icon, Modal } from "metabase/ui";
 
 import { ChangesLists } from "../ChangesLists";
 import { CommitMessageSection } from "../PushChangesModal/CommitMessageSection";

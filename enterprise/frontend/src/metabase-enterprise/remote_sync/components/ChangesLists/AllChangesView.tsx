@@ -1,18 +1,6 @@
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
-import { useSetting } from "metabase/settings";
-import {
-  Box,
-  Divider,
-  Group,
-  Icon,
-  Paper,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
 import {
   type CollectionGroup,
   TRANSFORMS_ROOT_ID,
@@ -28,6 +16,18 @@ import {
   getSyncStatusIcon,
 } from "metabase-enterprise/remote_sync/utils";
 import type { RemoteSyncEntity } from "metabase-types/api";
+import { useListCollectionsTreeQuery } from "metabase/api";
+import { useSetting } from "metabase/settings";
+import {
+  Box,
+  Divider,
+  Group,
+  Icon,
+  Paper,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 
 import { CollectionPath } from "./CollectionPath";
 import { EntityLink } from "./EntityLink";

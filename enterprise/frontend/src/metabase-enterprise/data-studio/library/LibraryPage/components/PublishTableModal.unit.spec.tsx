@@ -11,8 +11,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { BulkTableSelectionInfo } from "metabase-types/api";
 import {
   createMockBulkTableInfo,
@@ -21,6 +19,8 @@ import {
   createMockCollectionItem,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { PublishTableModal } from "./PublishTableModal";
 

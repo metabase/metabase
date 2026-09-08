@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import type { TimeoutValue } from "metabase-types/api";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useAdminSetting } from "metabase/settings";
 import { Flex, Select, Stack, Text, TextInput } from "metabase/ui";
-import type { TimeoutValue } from "metabase-types/api";
 
 const getUnits = () => [
   { value: "minutes", label: t`minutes` },

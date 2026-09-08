@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { Card, Dashboard, ModerationReview } from "metabase-types/api";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Icon, Menu } from "metabase/ui";
-import type { Card, Dashboard, ModerationReview } from "metabase-types/api";
 
 import { useEditItemVerificationMutation } from "../api/moderation";
 import {

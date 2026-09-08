@@ -1,6 +1,11 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type {
+  Advisory,
+  AdvisoryId,
+  AdvisorySeverity,
+} from "metabase-types/api";
 import { Markdown } from "metabase/common/components/Markdown";
 import { useSetting } from "metabase/settings";
 import {
@@ -18,11 +23,6 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import type {
-  Advisory,
-  AdvisoryId,
-  AdvisorySeverity,
-} from "metabase-types/api";
 
 import { trackSecurityAdvisoryDownloadClicked } from "../../analytics";
 import { getDownloadJarForInstance, isAcknowledged } from "../../utils";

@@ -1,13 +1,13 @@
 import cx from "classnames";
 import { c, t } from "ttag";
 
+import { useRevokeSupportAccessGrantMutation } from "metabase-enterprise/api";
+import type { SupportAccessGrant } from "metabase-types/api";
 import { useConfirmation, useMetadataToasts } from "metabase/common/hooks";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { type Dayjs, dayjs } from "metabase/dayjs";
 import { ActionIcon, Badge, Group, Icon } from "metabase/ui";
-import { useRevokeSupportAccessGrantMutation } from "metabase-enterprise/api";
-import type { SupportAccessGrant } from "metabase-types/api";
 
 interface AccessGrantListProps {
   accessGrants: SupportAccessGrant[];

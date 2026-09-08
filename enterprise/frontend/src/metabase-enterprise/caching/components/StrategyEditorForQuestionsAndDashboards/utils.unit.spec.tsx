@@ -1,6 +1,3 @@
-import { getShortStrategyLabel } from "metabase/admin/performance/utils";
-import { getCollectionPathAsString } from "metabase/common/collections/utils";
-import { PLUGIN_CACHING, strategies } from "metabase/plugins";
 import { enterpriseOnlyCachingStrategies } from "metabase-enterprise/caching/constants";
 import {
   type AdaptiveStrategy,
@@ -8,6 +5,9 @@ import {
   type ScheduleStrategy,
 } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
+import { getShortStrategyLabel } from "metabase/admin/performance/utils";
+import { getCollectionPathAsString } from "metabase/common/collections/utils";
+import { PLUGIN_CACHING, strategies } from "metabase/plugins";
 
 import type { CacheableItem } from "../types";
 

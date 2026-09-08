@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import type { SearchModel } from "metabase-types/api";
 import { useSearchQuery } from "metabase/api";
 import {
   ActionIcon,
@@ -12,7 +13,6 @@ import {
   Popover,
   Stack,
 } from "metabase/ui";
-import type { SearchModel } from "metabase-types/api";
 
 import S from "./SearchModelPicker.module.css";
 import { getSearchModelItems } from "./utils";

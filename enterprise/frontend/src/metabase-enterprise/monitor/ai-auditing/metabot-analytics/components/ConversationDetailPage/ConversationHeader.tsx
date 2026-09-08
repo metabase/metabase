@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import { useGetTenantQuery } from "metabase-enterprise/api";
+import * as EnterpriseUrls from "metabase-enterprise/urls";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import {
   skipToken,
@@ -27,8 +29,6 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
-import { useGetTenantQuery } from "metabase-enterprise/api";
-import * as EnterpriseUrls from "metabase-enterprise/urls";
 
 import { useGetMetabotAnalyticsConversationQuery } from "../../api";
 import type { ConversationDetail } from "../../types";

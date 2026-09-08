@@ -1,9 +1,9 @@
-import { slugify as toSlug } from "metabase/utils/formatting";
 import type {
   PythonTransformTableAliases,
   PythonTransformTableEntry,
   Table,
 } from "metabase-types/api";
+import { slugify as toSlug } from "metabase/utils/formatting";
 
 import type { TableSelection } from "./types";
 

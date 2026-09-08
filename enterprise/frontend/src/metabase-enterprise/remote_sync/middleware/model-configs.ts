@@ -1,5 +1,8 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 
+import { pythonLibraryApi } from "metabase-enterprise/api/python-transform-library";
+import { tableApi as enterpriseTableApi } from "metabase-enterprise/api/table";
+import type { CollectionId } from "metabase-types/api";
 import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
@@ -14,9 +17,6 @@ import { timelineEventApi } from "metabase/api/timeline-event";
 import { transformApi } from "metabase/api/transform";
 import { transformTagApi } from "metabase/api/transform-tag";
 import type { State } from "metabase/redux/store";
-import { pythonLibraryApi } from "metabase-enterprise/api/python-transform-library";
-import { tableApi as enterpriseTableApi } from "metabase-enterprise/api/table";
-import type { CollectionId } from "metabase-types/api";
 
 import { getCollectionFromCollectionsTree } from "./collection";
 import {

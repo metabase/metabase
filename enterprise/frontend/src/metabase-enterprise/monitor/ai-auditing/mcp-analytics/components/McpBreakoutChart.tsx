@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Skeleton, useMantineTheme } from "metabase/ui";
 import type {
   CardMetadata,
   MetadataProvider,
@@ -9,6 +8,7 @@ import type {
   TableMetadata,
 } from "metabase-lib";
 import type { VisualizationDisplay } from "metabase-types/api";
+import { Skeleton, useMantineTheme } from "metabase/ui";
 
 import { BreakoutChartCard } from "../../metabot-analytics/components/ConversationStatsPage/BreakoutChartCard";
 import { mapBreakoutDimension } from "../../metabot-analytics/components/ConversationStatsPage/breakout-raw-series";

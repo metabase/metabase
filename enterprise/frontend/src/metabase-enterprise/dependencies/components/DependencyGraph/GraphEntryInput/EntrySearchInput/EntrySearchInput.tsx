@@ -3,17 +3,17 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
+  type DependencyEntry,
+  type SearchModel,
+  isActivityModel,
+} from "metabase-types/api";
+import {
   useListRecentsQuery,
   useLogRecentItemMutation,
   useSearchQuery,
 } from "metabase/api";
 import { DefaultSelectItem, FixedSizeIcon, Loader, Select } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import {
-  type DependencyEntry,
-  type SearchModel,
-  isActivityModel,
-} from "metabase-types/api";
 
 import { SearchModelPicker } from "./SearchModelPicker";
 import { BROWSE_OPTION_VALUE } from "./constants";

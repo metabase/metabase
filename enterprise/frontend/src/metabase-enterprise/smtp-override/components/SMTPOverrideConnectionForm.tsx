@@ -1,11 +1,11 @@
 import { useCallback } from "react";
 
-import { BaseSMTPConnectionForm } from "metabase/admin/settings/components/Email/BaseSMTPConnectionForm";
-import { trackSMTPSetupSuccess } from "metabase/admin/settings/components/Email/analytics";
 import {
   useDeleteEmailSMTPOverrideSettingsMutation,
   useUpdateEmailSMTPOverrideSettingsMutation,
 } from "metabase-enterprise/api/smtp-override";
+import { BaseSMTPConnectionForm } from "metabase/admin/settings/components/Email/BaseSMTPConnectionForm";
+import { trackSMTPSetupSuccess } from "metabase/admin/settings/components/Email/analytics";
 
 export const SMTPOverrideConnectionForm = ({
   onClose,

@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 
+import { useListTenantsQuery } from "metabase-enterprise/api";
+import type { Tenant } from "metabase-types/api";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { ItemList } from "metabase/common/components/Pickers/EntityPicker";
 import { allCollectionModels } from "metabase/common/components/Pickers/utils";
-import { useListTenantsQuery } from "metabase-enterprise/api";
-import type { Tenant } from "metabase-types/api";
 
 export const TenantSpecificCollectionsItemList = ({
   pathIndex,

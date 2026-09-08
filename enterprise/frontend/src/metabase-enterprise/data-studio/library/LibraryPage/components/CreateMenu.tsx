@@ -1,6 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
 import {
@@ -13,8 +15,6 @@ import { setOpenModalWithProps } from "metabase/redux/ui";
 import { useNavigate } from "metabase/router";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
 import { PublishTableModal } from "./PublishTableModal";
 

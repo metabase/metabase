@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import type { PythonTransformSourceValidationResult } from "metabase/plugins";
 import type {
   PythonTransformSource,
   PythonTransformSourceDraft,
 } from "metabase-types/api";
+import type { PythonTransformSourceValidationResult } from "metabase/plugins";
 
 export function getPythonSourceValidationResult(
   source: PythonTransformSourceDraft,

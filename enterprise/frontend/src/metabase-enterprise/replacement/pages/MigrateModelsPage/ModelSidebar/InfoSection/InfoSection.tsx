@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import type { Card } from "metabase-types/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import CS from "metabase/css/core/index.css";
 import { Box, Group, Card as MantineCard, Stack } from "metabase/ui";
-import type { Card } from "metabase-types/api";
 
 import S from "./InfoSection.module.css";
 

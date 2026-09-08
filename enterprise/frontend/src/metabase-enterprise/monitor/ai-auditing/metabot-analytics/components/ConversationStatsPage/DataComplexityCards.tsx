@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { P, match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
 
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { getErrorMessage } from "metabase/api/utils";
 import {
   Accordion,
@@ -22,7 +23,6 @@ import {
 import type { MetabaseColorKey } from "metabase/ui/colors/types";
 import { formatNumber } from "metabase/utils/formatting";
 import { getObjectEntries } from "metabase/utils/objects";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { useGetDataComplexityScoresQuery } from "../../api";
 import {

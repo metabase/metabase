@@ -1,10 +1,10 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { CollectionId } from "metabase-types/api";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import type { SnippetCollectionPickerModalProps } from "metabase/plugins";
-import type { CollectionId } from "metabase-types/api";
 
 export function SnippetCollectionPickerModal({
   isOpen,

@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { ConcreteTableId, Table } from "metabase-types/api";
 import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics";
 import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
 import {
@@ -9,7 +10,6 @@ import {
 import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { ConcreteTableId, Table } from "metabase-types/api";
 
 type TableSegmentsProps = {
   table: Table;

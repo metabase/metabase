@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { c, t } from "ttag";
 
+import type { NativeQuerySnippet } from "metabase-types/api";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
-import type { NativeQuerySnippet } from "metabase-types/api";
 
 import { SnippetModal, type SnippetModalType } from "./SnippetModal";
 

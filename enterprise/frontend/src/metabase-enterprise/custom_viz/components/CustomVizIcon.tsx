@@ -1,7 +1,7 @@
+import type { CustomVizPlugin } from "metabase-types/api";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Flex } from "metabase/ui";
 import { getPluginAssetUrl } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
-import type { CustomVizPlugin } from "metabase-types/api";
 
 type Props = {
   plugin: CustomVizPlugin;

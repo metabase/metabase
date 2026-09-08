@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
-import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import type { SourceReplacementColumnMapping } from "metabase-types/api";
+import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 
 import type { EntityItem } from "../../types";
 

@@ -1,5 +1,3 @@
-import type { ContentTranslationFunction } from "metabase/content-translation/types";
-import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Series,
   SeriesSettings,
@@ -10,6 +8,8 @@ import {
   createMockDatasetData,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { leaveUntranslated } from "./use-translate-content";
 import {

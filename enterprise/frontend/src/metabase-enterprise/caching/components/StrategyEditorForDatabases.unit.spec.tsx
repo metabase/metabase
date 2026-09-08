@@ -2,6 +2,15 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { act, screen, waitFor, within } from "__support__/ui";
+import {
+  CacheDurationUnit,
+  type DurationStrategy,
+  type ScheduleStrategy,
+} from "metabase-types/api";
+import {
+  createMockCacheConfig,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
 import {
   setupStrategyEditorForDatabases as baseSetup,
@@ -12,15 +21,6 @@ import {
 } from "metabase/admin/performance/components/test-utils";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import {
-  CacheDurationUnit,
-  type DurationStrategy,
-  type ScheduleStrategy,
-} from "metabase-types/api";
-import {
-  createMockCacheConfig,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
 
 function setup(opts: SetupOpts = {}) {
   baseSetup({

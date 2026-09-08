@@ -1,9 +1,9 @@
 import { useState } from "react";
 
+import type { MfaAdminUser, MfaUserListRequest } from "metabase-types/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import type { MfaAdminUser, MfaUserListRequest } from "metabase-types/api";
 
 import { type MfaUsersPageProps, PAGE_SIZE } from "./MfaUsersPage";
 

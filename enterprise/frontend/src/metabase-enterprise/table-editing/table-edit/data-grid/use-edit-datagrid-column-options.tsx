@@ -1,10 +1,10 @@
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 
-import type { ColumnOptions } from "metabase/data-grid";
-import { formatValue } from "metabase/value-formatting";
 import type { DescribeActionFormResponse } from "metabase-enterprise/table-editing/api/types";
 import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
+import type { ColumnOptions } from "metabase/data-grid";
+import { formatValue } from "metabase/value-formatting";
 
 import type { TableDataGetColumnSortDirection } from "../use-edit-table-data";
 

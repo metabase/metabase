@@ -2,6 +2,13 @@ import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { t } from "ttag";
 
+import type { DependencyErrorGroup } from "metabase-enterprise/dependencies/types";
+import {
+  getDependencyErrorGroups,
+  getDependencyErrors,
+  getErrorTypeLabel,
+} from "metabase-enterprise/dependencies/utils";
+import type { DependencyNode } from "metabase-types/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import CS from "metabase/css/core/index.css";
 import {
@@ -15,13 +22,6 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import type { DependencyErrorGroup } from "metabase-enterprise/dependencies/types";
-import {
-  getDependencyErrorGroups,
-  getDependencyErrors,
-  getErrorTypeLabel,
-} from "metabase-enterprise/dependencies/utils";
-import type { DependencyNode } from "metabase-types/api";
 
 import S from "./ErrorsSection.module.css";
 

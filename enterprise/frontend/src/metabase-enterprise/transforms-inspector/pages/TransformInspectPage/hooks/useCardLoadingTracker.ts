@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 
-import { useSubscriber } from "metabase/common/hooks";
 import type { InspectorCardId } from "metabase-types/api";
+import { useSubscriber } from "metabase/common/hooks";
 
 export const useCardLoadingTracker = (onAllCardsLoaded: () => void) => {
   const startedRef = useRef(new Set<InspectorCardId>());

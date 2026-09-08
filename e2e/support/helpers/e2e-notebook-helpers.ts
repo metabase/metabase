@@ -6,8 +6,8 @@ import {
   miniPickerBrowseAll,
   popover,
 } from "e2e/support/helpers/e2e-ui-elements-helpers";
-import type { NotebookStepType } from "metabase/querying/notebook/types";
 import type { IconName } from "metabase-types/api";
+import type { NotebookStepType } from "metabase/querying/notebook/types";
 export function notebookButton() {
   return cy
     .findByTestId("qb-header-action-panel")

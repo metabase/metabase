@@ -1,8 +1,8 @@
 import type { MouseEvent } from "react";
 import { t } from "ttag";
 
-import { Button, FixedSizeIcon } from "metabase/ui";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
+import { Button, FixedSizeIcon } from "metabase/ui";
 
 import { getNodeIcon, getNodeLabel } from "../../../../utils";
 

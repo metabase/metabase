@@ -1,6 +1,12 @@
 import { useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
+import {
+  useCheckReplaceSourceQuery,
+  useListNodeDependentsQuery,
+} from "metabase-enterprise/api";
+import { useReplaceSourceMutation } from "metabase-enterprise/api/replacement";
+import type { SourceReplacementEntry } from "metabase-types/api";
 import { useGetCardQuery, useGetTableQuery } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import type {
@@ -8,12 +14,6 @@ import type {
   SourceReplacementTriggeredFrom,
 } from "metabase/plugins";
 import { Flex, Modal } from "metabase/ui";
-import {
-  useCheckReplaceSourceQuery,
-  useListNodeDependentsQuery,
-} from "metabase-enterprise/api";
-import { useReplaceSourceMutation } from "metabase-enterprise/api/replacement";
-import type { SourceReplacementEntry } from "metabase-types/api";
 
 import { trackReplaceDataSourceConfirmed } from "../../analytics";
 

@@ -1,8 +1,8 @@
 import type { OnChangeFn, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 
-import { DataGrid, useDataGridInstance } from "metabase/data-grid";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
+import { DataGrid, useDataGridInstance } from "metabase/data-grid";
 
 import type { DescribeActionFormResponse } from "../../api/types";
 import type { TableDataGetColumnSortDirection } from "../use-edit-table-data";

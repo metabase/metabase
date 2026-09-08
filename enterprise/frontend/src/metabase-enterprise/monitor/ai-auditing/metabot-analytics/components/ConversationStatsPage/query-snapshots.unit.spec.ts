@@ -1,6 +1,6 @@
+import type { Query } from "metabase-lib";
 /* eslint-disable jest/expect-expect -- snapshotQuery() asserts via toMatchSnapshot */
 import type { DateFilterValue } from "metabase/querying/common/types";
-import type { Query } from "metabase-lib";
 
 import { buildTimeseriesBreakoutQuery } from "./ConversationsByDayChart";
 import { buildAuditViewsFixture } from "./audit-views-fixture";

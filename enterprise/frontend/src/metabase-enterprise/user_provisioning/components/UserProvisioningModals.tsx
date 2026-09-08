@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import type { useRegenerateScimTokenMutation } from "metabase-enterprise/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Button, Flex, Modal, type ModalProps, Stack, Text } from "metabase/ui";
-import type { useRegenerateScimTokenMutation } from "metabase-enterprise/api";
 
 import { CopyScimInput } from "./ScimInputs";
 import { ScimTextWarning } from "./ScimTextWarning";

@@ -1,5 +1,5 @@
-import type { OmniPickerItem } from "metabase/common/components/Pickers/EntityPicker/types";
 import { createMockCollectionItem } from "metabase-types/api/mocks";
+import type { OmniPickerItem } from "metabase/common/components/Pickers/EntityPicker/types";
 
 import { getCollectionPickerItems } from "./utils";
 

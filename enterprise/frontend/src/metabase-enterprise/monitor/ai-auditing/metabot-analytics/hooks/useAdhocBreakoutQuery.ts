@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 
-import { useGetAdhocQueryQuery } from "metabase/api";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { Dataset, DatasetQuery } from "metabase-types/api";
+import { useGetAdhocQueryQuery } from "metabase/api";
 
 type AdhocQueryResult = {
   data: Dataset | undefined;

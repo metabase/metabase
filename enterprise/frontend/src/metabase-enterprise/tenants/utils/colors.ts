@@ -1,5 +1,5 @@
-import { color } from "metabase/ui/colors";
 import type { Tenant } from "metabase-types/api";
+import { color } from "metabase/ui/colors";
 
 const groupColorPalette = [
   color("feedback-negative"),

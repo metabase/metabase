@@ -2,6 +2,10 @@ import { sql } from "@codemirror/lang-sql";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  NativeQuerySnippet,
+  RegularCollectionId,
+} from "metabase-types/api";
 import { useCreateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
@@ -22,10 +26,6 @@ import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { Card, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type {
-  NativeQuerySnippet,
-  RegularCollectionId,
-} from "metabase-types/api";
 
 import S from "./NewSnippetPage.module.css";
 

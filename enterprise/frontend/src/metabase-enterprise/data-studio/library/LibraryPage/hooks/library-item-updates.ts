@@ -1,8 +1,8 @@
 import { match } from "ts-pattern";
 
+import type { CollectionId } from "metabase-types/api";
 import type { ArchivableItem } from "metabase/archive/hooks";
 import type { MovableItem } from "metabase/common/hooks";
-import type { CollectionId } from "metabase-types/api";
 
 import type { SelectedItem } from "./library-bulk-selection.utils";
 

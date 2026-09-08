@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { jt, t } from "ttag";
 
+import type { HelpLinkSetting } from "metabase-types/api";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { getErrorMessage } from "metabase/api/utils";
@@ -9,7 +10,6 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
 import { Stack, TextInput } from "metabase/ui";
-import type { HelpLinkSetting } from "metabase-types/api";
 
 const supportedPrefixes = ["http://", "https://", "mailto:"];
 

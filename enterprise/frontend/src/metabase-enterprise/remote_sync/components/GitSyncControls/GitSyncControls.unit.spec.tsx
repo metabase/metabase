@@ -5,11 +5,11 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupRemoteSyncEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { taskUpdated } from "../../sync-task-slice";
 

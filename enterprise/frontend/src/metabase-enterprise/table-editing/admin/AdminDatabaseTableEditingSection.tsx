@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type {
+  Database,
+  DatabaseData,
+  DatabaseId,
+  DatabaseLocalSettingAvailability,
+} from "metabase-types/api";
 import {
   Description,
   Error,
@@ -11,12 +17,6 @@ import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { ALLOWED_ENGINES_FOR_TABLE_EDITING } from "metabase/databases/constants";
 import { Alert, Box, Flex, Icon, Switch } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";
-import type {
-  Database,
-  DatabaseData,
-  DatabaseId,
-  DatabaseLocalSettingAvailability,
-} from "metabase-types/api";
 
 import {
   DATABASE_TABLE_EDITING_SETTING,

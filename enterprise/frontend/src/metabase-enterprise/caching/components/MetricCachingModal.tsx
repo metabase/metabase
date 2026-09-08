@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { CacheStrategy, CacheableModel } from "metabase-types/api";
 import { StrategyForm } from "metabase/admin/performance/components/StrategyForm";
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
 import { useConfirmIfFormIsDirty } from "metabase/admin/performance/hooks/useConfirmIfFormIsDirty";
@@ -8,7 +9,6 @@ import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrateg
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type { MetricCachingModalProps } from "metabase/plugins";
 import { Modal } from "metabase/ui";
-import type { CacheStrategy, CacheableModel } from "metabase-types/api";
 
 import S from "./MetricCachingModal.module.css";
 

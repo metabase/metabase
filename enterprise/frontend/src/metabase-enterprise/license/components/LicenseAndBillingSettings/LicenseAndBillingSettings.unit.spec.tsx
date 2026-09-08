@@ -8,8 +8,6 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { dayjs } from "metabase/dayjs";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type {
   BillingInfo,
   BillingInfoLineItem,
@@ -19,6 +17,8 @@ import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { dayjs } from "metabase/dayjs";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 
 import { getBillingInfoId } from "../BillingInfo/utils";
 

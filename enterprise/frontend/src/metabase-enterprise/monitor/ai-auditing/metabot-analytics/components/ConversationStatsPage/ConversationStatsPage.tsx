@@ -1,24 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { getErrorMessage } from "metabase/api/utils";
-import { useToast } from "metabase/common/hooks";
-import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { dayjs } from "metabase/dayjs";
-import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
-import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
-import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
-import { queryToSearch, useLocation, useNavigate } from "metabase/router";
-import {
-  Button,
-  Flex,
-  SimpleGrid,
-  Stack,
-  Tabs,
-  Text,
-  Title,
-} from "metabase/ui";
-import * as Urls from "metabase/urls";
 import {
   useGetDataComplexityScoresQuery,
   useRefreshDataComplexityScoresMutation,
@@ -38,6 +20,24 @@ import {
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
 import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { getErrorMessage } from "metabase/api/utils";
+import { useToast } from "metabase/common/hooks";
+import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { dayjs } from "metabase/dayjs";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
+import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
+import { queryToSearch, useLocation, useNavigate } from "metabase/router";
+import {
+  Button,
+  Flex,
+  SimpleGrid,
+  Stack,
+  Tabs,
+  Text,
+  Title,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import { BreakoutChart } from "./BreakoutChart";
 import {

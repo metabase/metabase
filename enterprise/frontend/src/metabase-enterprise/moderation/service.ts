@@ -1,7 +1,6 @@
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import type { ColorName } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   BaseUser,
@@ -9,6 +8,7 @@ import type {
   ModerationReview,
   User,
 } from "metabase-types/api";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import { MODERATION_STATUS_ICONS } from "./constants";
 

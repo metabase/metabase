@@ -12,9 +12,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { AIProviderList } from "metabase/metabot";
-import { reinitialize } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockLlmProviderConnection,
   createMockLlmProviderType,
@@ -23,6 +20,9 @@ import {
   createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { AIProviderList } from "metabase/metabot";
+import { reinitialize } from "metabase/plugins";
+import { createMockState } from "metabase/redux/store/mocks";
 
 function setup({
   tokens = 4_000_000,

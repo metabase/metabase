@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 
-import { useNavigate } from "metabase/router";
 import * as Urls from "metabase-enterprise/urls";
 import type { Database } from "metabase-types/api";
+import { useNavigate } from "metabase/router";
 
 export function useRedirectDestinationDatabase(
   database: Pick<Database, "id" | "router_database_id"> | undefined,

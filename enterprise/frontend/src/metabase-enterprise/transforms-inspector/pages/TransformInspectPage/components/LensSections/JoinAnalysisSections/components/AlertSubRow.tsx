@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 
-import { Box, List } from "metabase/ui";
 import type { InspectorAlertTrigger } from "metabase-types/api";
+import { Box, List } from "metabase/ui";
 
 type AlertSubRowProps = {
   alerts: InspectorAlertTrigger[];

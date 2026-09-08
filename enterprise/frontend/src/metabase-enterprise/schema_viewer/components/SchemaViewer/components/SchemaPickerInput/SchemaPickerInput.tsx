@@ -2,14 +2,14 @@ import { useCallback, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { isNamelessSchema } from "metabase-lib/v1/metadata/utils/schema";
+import type { DatabaseId, SchemaName } from "metabase-types/api";
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
 import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import { useNavigate } from "metabase/router";
 import { Button, FixedSizeIcon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { isNamelessSchema } from "metabase-lib/v1/metadata/utils/schema";
-import type { DatabaseId, SchemaName } from "metabase-types/api";
 
 import S from "./SchemaPickerInput.module.css";
 

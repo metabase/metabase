@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { useAdminSettingWithDebouncedInput } from "metabase-enterprise/ai-controls/hooks";
 import {
   SettingsPageWrapper,
   SettingsSection,
@@ -7,7 +8,6 @@ import {
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { TextInput } from "metabase/ui";
-import { useAdminSettingWithDebouncedInput } from "metabase-enterprise/ai-controls/hooks";
 
 import { MetabotIconField } from "./MetabotIconField";
 

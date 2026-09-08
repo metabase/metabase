@@ -1,6 +1,8 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type { ErdField } from "metabase-types/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import CS from "metabase/css/core/index.css";
 import {
@@ -12,8 +14,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type { ErdField } from "metabase-types/api";
 
 import type { SchemaViewerFlowNode } from "../../types";
 

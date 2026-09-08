@@ -1,9 +1,9 @@
-import type * as Urls from "metabase/urls";
 import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "metabase-enterprise/dependencies/constants";
 import type {
   DependencyFilterOptions,
   DependencySortOptions,
 } from "metabase-enterprise/dependencies/types";
+import type * as Urls from "metabase/urls";
 
 import { BROKEN_GROUP_TYPES, UNREFERENCED_GROUP_TYPES } from "./constants";
 import type { DependencyDiagnosticsMode } from "./types";

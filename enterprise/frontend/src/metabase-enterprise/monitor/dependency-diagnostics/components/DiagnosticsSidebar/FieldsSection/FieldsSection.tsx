@@ -1,6 +1,12 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import {
+  getNodeFields,
+  getNodeFieldsLabel,
+} from "metabase-enterprise/dependencies/utils";
+import * as Lib from "metabase-lib";
+import type { DependencyNode, Field } from "metabase-types/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import CS from "metabase/css/core/index.css";
 import {
@@ -12,12 +18,6 @@ import {
   Stack,
   Title,
 } from "metabase/ui";
-import {
-  getNodeFields,
-  getNodeFieldsLabel,
-} from "metabase-enterprise/dependencies/utils";
-import * as Lib from "metabase-lib";
-import type { DependencyNode, Field } from "metabase-types/api";
 
 import S from "./FieldsSection.module.css";
 

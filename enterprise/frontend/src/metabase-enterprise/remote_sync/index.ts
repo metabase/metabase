@@ -1,9 +1,9 @@
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
   PLUGIN_REDUCERS,
   PLUGIN_REDUX_MIDDLEWARES,
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { LibraryNav } from "./LibraryNav";
 import { CollectionsNavTree } from "./components/CollectionsNavTree";

@@ -1,9 +1,9 @@
 import type { Row, Table } from "@tanstack/react-table";
 import { useMemo } from "react";
 
+import type { RowValue, RowValues } from "metabase-types/api";
 import { BaseCell, type ColumnOptions } from "metabase/data-grid";
 import { Checkbox, Flex, Group, Icon, Tooltip } from "metabase/ui";
-import type { RowValue, RowValues } from "metabase-types/api";
 
 import S from "./EditTableDataGrid.module.css";
 import CellS from "./TableEditingCell.module.css";

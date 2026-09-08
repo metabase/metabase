@@ -7,18 +7,18 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { BrowseModels } from "metabase/browse";
-import {
-  createMockModelResult,
-  createMockRecentModel,
-} from "metabase/browse/models/test-utils";
-import { createMockSetupState } from "metabase/redux/store/mocks";
 import type { RecentCollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { BrowseModels } from "metabase/browse";
+import {
+  createMockModelResult,
+  createMockRecentModel,
+} from "metabase/browse/models/test-utils";
+import { createMockSetupState } from "metabase/redux/store/mocks";
 
 const setup = (modelCount: number, recentModelCount = 5) => {
   const databases = [createMockDatabase()];

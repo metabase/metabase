@@ -1,5 +1,5 @@
-import { PLUGIN_IS_EE_BUILD, PLUGIN_SUPPORT } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_IS_EE_BUILD, PLUGIN_SUPPORT } from "metabase/plugins";
 
 import {
   GrantAccessModal,

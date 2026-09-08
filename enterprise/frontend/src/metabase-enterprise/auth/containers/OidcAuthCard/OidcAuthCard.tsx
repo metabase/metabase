@@ -1,16 +1,16 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { AuthCard } from "metabase/admin/settings/auth/components/AuthCard";
-import { getErrorMessage } from "metabase/api/utils/errors";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useHasTokenFeature, useToast } from "metabase/common/hooks";
-import { useAdminSetting } from "metabase/settings";
 import {
   useDeleteCustomOidcMutation,
   useGetCustomOidcProvidersQuery,
   useUpdateCustomOidcMutation,
 } from "metabase-enterprise/api";
+import { AuthCard } from "metabase/admin/settings/auth/components/AuthCard";
+import { getErrorMessage } from "metabase/api/utils/errors";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useHasTokenFeature, useToast } from "metabase/common/hooks";
+import { useAdminSetting } from "metabase/settings";
 
 export function OidcAuthCard() {
   const {

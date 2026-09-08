@@ -9,11 +9,11 @@ import {
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { uuid } from "metabase/utils/uuid";
 import {
   createMockDashboardCard,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
+import { uuid } from "metabase/utils/uuid";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;

@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { useReplaceModelWithTransformMutation } from "metabase-enterprise/api";
+import type { Card, Database } from "metabase-types/api";
 import {
   skipToken,
   useGetDatabaseQuery,
@@ -31,8 +33,6 @@ import {
 } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { slugify } from "metabase/utils/formatting";
-import { useReplaceModelWithTransformMutation } from "metabase-enterprise/api";
-import type { Card, Database } from "metabase-types/api";
 
 const VALIDATION_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),

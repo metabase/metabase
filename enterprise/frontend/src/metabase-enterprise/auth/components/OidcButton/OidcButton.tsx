@@ -1,11 +1,11 @@
 import { useCallback } from "react";
 
+import type { OidcAuthProvider } from "metabase-types/api";
 import {
   AuthCardButton,
   AuthTextButton,
 } from "metabase/auth/components/AuthButton";
 import type { AuthProvider } from "metabase/plugins/types";
-import type { OidcAuthProvider } from "metabase-types/api";
 
 interface OidcButtonProps {
   provider: OidcAuthProvider;

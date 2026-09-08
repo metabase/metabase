@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import { useAdminSettingWithBlurInput } from "metabase-enterprise/ai-controls/hooks";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Textarea } from "metabase/ui";
-import { useAdminSettingWithBlurInput } from "metabase-enterprise/ai-controls/hooks";
 
 import S from "./MetabotSystemPromptsPage.module.css";
 

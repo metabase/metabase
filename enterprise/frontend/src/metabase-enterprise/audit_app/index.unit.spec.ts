@@ -1,5 +1,5 @@
-import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 
 import {
   getAiAuditingRoutes,

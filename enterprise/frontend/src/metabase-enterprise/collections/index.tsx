@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type { Collection } from "metabase-types/api";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
-import type { Collection } from "metabase-types/api";
 
 import { isTenantCollection } from "../tenants/utils/utils";
 

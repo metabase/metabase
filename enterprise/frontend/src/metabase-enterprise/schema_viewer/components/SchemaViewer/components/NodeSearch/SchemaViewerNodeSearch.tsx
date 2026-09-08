@@ -2,6 +2,7 @@ import { useHotkeys } from "@mantine/hooks";
 import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import {
   Combobox,
   FixedSizeIcon,
@@ -10,7 +11,6 @@ import {
   TextInput,
   useCombobox,
 } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../../types";

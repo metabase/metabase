@@ -3,8 +3,6 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import CS from "metabase/css/core/index.css";
-import { Box, Button, Icon, Select, Text, Tooltip } from "metabase/ui";
 import { QuestionParameterTargetWidget } from "metabase-enterprise/sandboxes/containers/QuestionParameterTargetWidget";
 import type {
   DataAttributeMap,
@@ -27,6 +25,8 @@ import type {
   Table,
   UserAttributeKey,
 } from "metabase-types/api";
+import CS from "metabase/css/core/index.css";
+import { Box, Button, Icon, Select, Text, Tooltip } from "metabase/ui";
 
 type ValueType = string | ParameterTarget | null;
 

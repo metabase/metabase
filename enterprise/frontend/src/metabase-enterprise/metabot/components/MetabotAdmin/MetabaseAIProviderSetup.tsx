@@ -4,6 +4,11 @@ import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import {
+  type MetabotUsageResponse,
+  useGetMetabotUsageQuery,
+} from "metabase-enterprise/api";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+import {
   useCreateLlmProviderMutation,
   useRefreshTokenStatusMutation,
 } from "metabase/api";
@@ -28,11 +33,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
-import {
-  type MetabotUsageResponse,
-  useGetMetabotUsageQuery,
-} from "metabase-enterprise/api";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import {
   METABASE_MANAGED_AI_FEATURE,

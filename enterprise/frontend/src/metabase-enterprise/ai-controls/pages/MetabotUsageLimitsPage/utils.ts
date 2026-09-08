@@ -1,7 +1,7 @@
 import { c, msgid, t } from "ttag";
 
-import type { SegmentedControlItem } from "metabase/ui";
 import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
+import type { SegmentedControlItem } from "metabase/ui";
 
 export const SAVE_DEBOUNCE_MS = 500;
 export const MAX_LIMIT_INPUT = 999999999;

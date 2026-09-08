@@ -1,14 +1,5 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
-import type { TagType } from "metabase/api/tags";
-import {
-  TAG_TYPES,
-  provideCollectionTags,
-  provideDatabaseTags,
-  provideFieldListTags,
-  provideTableTags,
-  provideUserTags,
-} from "metabase/api/tags";
 import {
   type CardDependencyNode,
   DEPENDENCY_TYPES,
@@ -26,6 +17,15 @@ import {
   type TableDependencyNode,
   type TransformDependencyNode,
 } from "metabase-types/api";
+import type { TagType } from "metabase/api/tags";
+import {
+  TAG_TYPES,
+  provideCollectionTags,
+  provideDatabaseTags,
+  provideFieldListTags,
+  provideTableTags,
+  provideUserTags,
+} from "metabase/api/tags";
 
 export const ENTERPRISE_TAG_TYPES = [
   ...TAG_TYPES,

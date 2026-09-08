@@ -1,8 +1,8 @@
-import { Flex } from "metabase/ui";
 import type {
   DependencyNode,
   SourceReplacementColumnMapping,
 } from "metabase-types/api";
+import { Flex } from "metabase/ui";
 
 import type { EntityItem, TabType } from "../types";
 

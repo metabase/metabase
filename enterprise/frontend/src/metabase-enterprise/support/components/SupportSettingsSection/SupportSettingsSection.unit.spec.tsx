@@ -6,9 +6,9 @@ import {
   setupListAccessGrantsEndpointWithError,
 } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import { createMockAccessGrant } from "metabase-types/api/mocks";
 import { dayjs } from "metabase/dayjs";
 import { Route } from "metabase/router";
-import { createMockAccessGrant } from "metabase-types/api/mocks";
 
 import { GrantAccessModal } from "./GrantAccessModal";
 import { SupportSettingsSection } from "./SupportSettingsSection";

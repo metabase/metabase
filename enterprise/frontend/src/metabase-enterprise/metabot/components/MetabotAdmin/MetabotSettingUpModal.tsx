@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { useTokenRefreshUntil } from "metabase/api/utils/use-token-refresh";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import {
@@ -13,7 +14,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { METABASE_MANAGED_AI_FEATURE } from "../../constants";
 

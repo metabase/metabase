@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
-import { Combobox, Input, useCombobox } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
+import { Combobox, Input, useCombobox } from "metabase/ui";
 
 import type { TableActionInputSharedProps } from "./types";
 

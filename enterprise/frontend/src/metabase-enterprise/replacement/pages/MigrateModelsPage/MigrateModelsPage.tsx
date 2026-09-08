@@ -3,11 +3,11 @@ import cx from "classnames";
 import { useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
+import type { CardId } from "metabase-types/api";
 import { useSearchQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { ListErrorState } from "metabase/common/components/ListErrorState";
 import { Card, Flex, Stack } from "metabase/ui";
-import type { CardId } from "metabase-types/api";
 
 import S from "./MigrateModelsPage.module.css";
 import { ModelSidebar } from "./ModelSidebar";

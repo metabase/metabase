@@ -4,6 +4,17 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import {
+  type CustomOidcConfig,
+  type OidcCheckRequest,
+  useCheckOidcConnectionMutation,
+  useCreateCustomOidcMutation,
+  useDeleteCustomOidcMutation,
+  useGetCustomOidcProvidersQuery,
+  useUpdateCustomOidcMutation,
+} from "metabase-enterprise/api";
+import { provisioningOptions } from "metabase-enterprise/auth/utils";
+import type { Group, GroupId } from "metabase-types/api";
+import {
   CollapsibleSettingsSection,
   SETTINGS_CARD_DESCRIPTION_PROPS,
   SETTINGS_CARD_STACK_PROPS,
@@ -34,17 +45,6 @@ import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
 import { Button, Flex, Stack } from "metabase/ui";
-import {
-  type CustomOidcConfig,
-  type OidcCheckRequest,
-  useCheckOidcConnectionMutation,
-  useCreateCustomOidcMutation,
-  useDeleteCustomOidcMutation,
-  useGetCustomOidcProvidersQuery,
-  useUpdateCustomOidcMutation,
-} from "metabase-enterprise/api";
-import { provisioningOptions } from "metabase-enterprise/auth/utils";
-import type { Group, GroupId } from "metabase-types/api";
 
 const DEFAULT_SCOPES = ["openid", "email", "profile"];
 const DEFAULT_EMAIL_ATTRIBUTE = "email";

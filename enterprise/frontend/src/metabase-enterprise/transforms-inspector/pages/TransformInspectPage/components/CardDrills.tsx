@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { InspectorDrillLensTrigger } from "metabase-types/api";
 import { trackTransformInspectDrillLensClicked } from "metabase/transforms/analytics";
 import { Flex } from "metabase/ui";
-import type { InspectorDrillLensTrigger } from "metabase-types/api";
 
 import { DrillButton } from "./DrillButton";
 import { useLensContentContext } from "./LensContent/LensContentContext";

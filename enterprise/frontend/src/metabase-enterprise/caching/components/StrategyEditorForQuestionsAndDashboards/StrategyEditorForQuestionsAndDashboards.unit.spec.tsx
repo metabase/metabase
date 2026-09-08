@@ -12,8 +12,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import type {
   CacheConfig,
   CacheConfigWithDetails,
@@ -27,6 +25,8 @@ import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { StrategyEditorForQuestionsAndDashboards } from "./StrategyEditorForQuestionsAndDashboards";
 

@@ -1,12 +1,12 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { useUpdateCustomVizPluginMutation } from "metabase-enterprise/api";
+import type { CustomVizPlugin, CustomVizPluginId } from "metabase-types/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { ActionIcon, Box, Flex, Group, Icon, Menu, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { useUpdateCustomVizPluginMutation } from "metabase-enterprise/api";
-import type { CustomVizPlugin, CustomVizPluginId } from "metabase-types/api";
 
 import { trackCustomVizPluginToggled } from "../analytics";
 

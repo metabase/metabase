@@ -2,6 +2,13 @@ import { useElementSize } from "@mantine/hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { useGetMetabotAnalyticsConversationQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
+import type {
+  ConversationFeedback,
+  GeneratedQuery,
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
+import Question from "metabase-lib/v1/Question";
+import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -43,13 +50,6 @@ import { question as ML_getUrl } from "metabase/urls/questions";
 import { formatNumber } from "metabase/utils/formatting";
 import { checkNotNull } from "metabase/utils/types";
 import { getUserName } from "metabase/utils/user";
-import { useGetMetabotAnalyticsConversationQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
-import type {
-  ConversationFeedback,
-  GeneratedQuery,
-} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
-import Question from "metabase-lib/v1/Question";
-import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
 import { ConversationHeader } from "./ConversationHeader";
 import { ForkBoundary } from "./ForkBoundary";

@@ -1,6 +1,11 @@
 import { useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
+import {
+  useGetPythonLibraryQuery,
+  useUpdatePythonLibraryMutation,
+} from "metabase-enterprise/api/python-transform-library";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
@@ -10,11 +15,6 @@ import { useParams } from "metabase/router";
 import { Alert, Box, Card, Stack } from "metabase/ui";
 import type * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-import {
-  useGetPythonLibraryQuery,
-  useUpdatePythonLibraryMutation,
-} from "metabase-enterprise/api/python-transform-library";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 
 import { PythonEditor } from "../../components/PythonEditor";
 

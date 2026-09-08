@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 
+import { useListAddOnsQuery } from "metabase-enterprise/api";
+import type { GetCloudAddOnsResponse } from "metabase-types/api";
 import {
   type FormatNumberOptions,
   formatNumber,
 } from "metabase/utils/formatting";
-import { useListAddOnsQuery } from "metabase-enterprise/api";
-import type { GetCloudAddOnsResponse } from "metabase-types/api";
 
 import {
   METABASE_MANAGED_AI_PRODUCT_TYPE,

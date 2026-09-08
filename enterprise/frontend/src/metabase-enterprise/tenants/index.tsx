@@ -1,6 +1,8 @@
 import { Fragment } from "react";
 import { t } from "ttag";
 
+import { useListTenantsQuery } from "metabase-enterprise/api";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { UserActivationModal } from "metabase/admin/people/containers/UserActivationModal";
@@ -28,8 +30,6 @@ import { Route, redirect } from "metabase/router";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
 import { Box, Text } from "metabase/ui";
-import { useListTenantsQuery } from "metabase-enterprise/api";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";

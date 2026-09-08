@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import { useDisableAdvancedAIControlsPermissionsMutation } from "metabase-enterprise/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { Text } from "metabase/ui";
-import { useDisableAdvancedAIControlsPermissionsMutation } from "metabase-enterprise/api";
 
 type Props = {
   onClose: () => void;

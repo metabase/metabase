@@ -1,5 +1,5 @@
-import type { EntityPickerProps } from "metabase/common/components/Pickers";
 import type { RecentContexts } from "metabase-types/api";
+import type { EntityPickerProps } from "metabase/common/components/Pickers";
 
 export const SOURCE_PICKER_MODELS: EntityPickerProps["models"] = [
   "table",

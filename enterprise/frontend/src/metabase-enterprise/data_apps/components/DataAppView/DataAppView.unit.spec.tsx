@@ -1,9 +1,9 @@
 import { act } from "@testing-library/react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import {
   DATA_APP_ERROR_MESSAGE_TYPE,

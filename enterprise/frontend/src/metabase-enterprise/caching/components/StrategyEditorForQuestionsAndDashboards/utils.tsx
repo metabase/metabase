@@ -1,9 +1,9 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { CacheDurationUnit } from "metabase-types/api";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { getCollectionPathAsString } from "metabase/common/collections/utils";
-import { CacheDurationUnit } from "metabase-types/api";
 
 import type { CacheableItem } from "../types";
 

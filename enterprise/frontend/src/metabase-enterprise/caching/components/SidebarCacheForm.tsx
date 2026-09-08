@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { CacheStrategy } from "metabase-types/api";
 import { StrategyForm } from "metabase/admin/performance/components/StrategyForm";
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
 import { useConfirmIfFormIsDirty } from "metabase/admin/performance/hooks/useConfirmIfFormIsDirty";
@@ -10,7 +11,6 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { SidesheetSubPage } from "metabase/common/components/Sidesheet";
 import type { SidebarCacheFormProps } from "metabase/plugins";
 import { Stack } from "metabase/ui";
-import type { CacheStrategy } from "metabase-types/api";
 
 import { getItemId, getItemName } from "./utils";
 

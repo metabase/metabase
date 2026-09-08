@@ -6,13 +6,13 @@ import {
   setupPermissionMembershipEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { Route } from "metabase/router";
-import * as Urls from "metabase/urls";
 import type {
   ConversationDetail,
   ConversationFeedback,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
 import { createMockUser } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { ConversationDetailPage } from "./ConversationDetailPage";
 

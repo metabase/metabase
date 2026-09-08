@@ -1,10 +1,6 @@
 import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
-import { getErrorMessage } from "metabase/api/utils";
-import { useToast } from "metabase/common/hooks";
-import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { useGetSettingsQuery } from "metabase/settings";
 import { useCreateLibraryMutation } from "metabase-enterprise/api";
 import { useUpdateRemoteSyncSettingsMutation } from "metabase-enterprise/api/remote-sync";
 import type {
@@ -12,6 +8,10 @@ import type {
   RemoteSyncConfigurationSettings,
 } from "metabase-types/api";
 import { isRemoteSyncDependencyError } from "metabase-types/guards";
+import { getErrorMessage } from "metabase/api/utils";
+import { useToast } from "metabase/common/hooks";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { useGetSettingsQuery } from "metabase/settings";
 
 import {
   trackBranchSwitched,

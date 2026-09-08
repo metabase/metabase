@@ -1,13 +1,13 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { Modal, type ModalProps } from "metabase/ui";
 import {
   type PreviewDatabaseReplicationResponse,
   useCreateDatabaseReplicationMutation,
   usePreviewDatabaseReplicationMutation,
 } from "metabase-enterprise/api/database-replication";
 import type { Database } from "metabase-types/api";
+import { Modal, type ModalProps } from "metabase/ui";
 
 import { DatabaseReplicationError } from "./DatabaseReplicationError";
 import {

@@ -1,6 +1,6 @@
-import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 
 import { DataReferenceLibraryPane } from "./DataReferenceLibraryPane";
 import { CollectionPermissionsModal } from "./components/CollectionPermissionsModal";

@@ -1,7 +1,6 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
-import { checkNotNull } from "metabase/utils/types";
 import type {
   CollectionItem,
   Dashboard,
@@ -12,6 +11,7 @@ import type {
   ParameterValues,
   User,
 } from "metabase-types/api";
+import { checkNotNull } from "metabase/utils/types";
 
 import type { DashcardQueryResponse, DatasetResponse } from "./types";
 

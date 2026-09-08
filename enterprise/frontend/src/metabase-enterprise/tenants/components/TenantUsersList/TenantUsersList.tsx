@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import { useListTenantsQuery } from "metabase-enterprise/api";
+import type { IconName } from "metabase-types/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { CollectionListView } from "metabase/common/components/CollectionListView";
 import * as Urls from "metabase/urls";
-import { useListTenantsQuery } from "metabase-enterprise/api";
-import type { IconName } from "metabase-types/api";
 
 export const TenantUsersList = () => {
   const { data, isLoading } = useListTenantsQuery({ status: "active" });

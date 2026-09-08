@@ -2,9 +2,9 @@ import type { FocusEvent } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type { FontFile } from "metabase-types/api";
 import { useAdminSetting } from "metabase/settings";
 import { Stack, Text, TextInput } from "metabase/ui";
-import type { FontFile } from "metabase-types/api";
 
 import {
   TableBody,

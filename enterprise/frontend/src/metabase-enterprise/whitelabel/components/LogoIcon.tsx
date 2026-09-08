@@ -1,13 +1,13 @@
 import cx from "classnames";
 import { type CSSProperties, useEffect, useRef } from "react";
 
-import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/redux";
-import { parseDataUri } from "metabase/utils/data-url";
 import {
   getIsDefaultMetabaseLogo,
   getLogoUrl,
 } from "metabase-enterprise/settings/selectors";
+import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/redux";
+import { parseDataUri } from "metabase/utils/data-url";
 
 const DEFAULT_HEIGHT = 32;
 

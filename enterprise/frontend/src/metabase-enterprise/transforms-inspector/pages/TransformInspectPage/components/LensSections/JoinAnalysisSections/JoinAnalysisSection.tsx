@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import type { InspectorCard } from "metabase-types/api";
 import {
   Card,
   Stack,
@@ -10,7 +11,6 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { InspectorCard } from "metabase-types/api";
 
 import { useLensContentContext } from "../../LensContent/LensContentContext";
 

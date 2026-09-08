@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 
+import { TRANSFORMS_ROOT_ID } from "metabase-enterprise/remote_sync/utils";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { buildCollectionTree } from "metabase/common/collections/utils";
 import { getAllDescendantIds } from "metabase/common/components/tree/utils";
 import { useSetting } from "metabase/settings";
-import { TRANSFORMS_ROOT_ID } from "metabase-enterprise/remote_sync/utils";
 
 import { useGitSyncVisible } from "./use-git-sync-visible";
 import { useRemoteSyncDirtyState } from "./use-remote-sync-dirty-state";

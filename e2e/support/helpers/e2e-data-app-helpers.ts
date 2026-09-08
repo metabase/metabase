@@ -1,6 +1,6 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
-import * as Urls from "metabase/urls/data-apps";
 import type { DataApp } from "metabase-types/api";
+import * as Urls from "metabase/urls/data-apps";
 
 import type { DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";

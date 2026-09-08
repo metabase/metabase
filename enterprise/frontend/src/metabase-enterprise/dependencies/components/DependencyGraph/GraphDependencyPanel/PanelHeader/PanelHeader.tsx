@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 import {
   ActionIcon,
   FixedSizeIcon,
@@ -8,7 +9,6 @@ import {
   TextInput,
   Title,
 } from "metabase/ui";
-import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 
 import { FilterOptionsPicker } from "../../../../components/FilterOptionsPicker";
 import { SortOptionsPicker } from "../../../../components/SortOptionsPicker";

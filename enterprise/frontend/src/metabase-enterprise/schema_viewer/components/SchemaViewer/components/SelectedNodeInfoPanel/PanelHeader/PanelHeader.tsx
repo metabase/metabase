@@ -2,6 +2,7 @@ import cx from "classnames";
 import { Fragment } from "react";
 import { t } from "ttag";
 
+import type { Database } from "metabase-types/api";
 import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import {
@@ -16,7 +17,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Database } from "metabase-types/api";
 
 import type { SchemaViewerFlowNode } from "../../../types";
 

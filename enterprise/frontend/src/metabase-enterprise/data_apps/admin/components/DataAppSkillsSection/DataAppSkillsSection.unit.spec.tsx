@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockVersion } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { createMockVersion } from "metabase-types/api/mocks";
 
 import { DataAppSkillsSection } from "./DataAppSkillsSection";
 

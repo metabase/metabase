@@ -3,10 +3,10 @@ import { useFormik } from "formik";
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
+import type { RowValue } from "metabase-types/api";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import Animation from "metabase/css/core/animation.module.css";
 import { Box, Button, Center, Flex, Loader, Modal } from "metabase/ui";
-import type { RowValue } from "metabase-types/api";
 
 import type {
   DescribeActionFormResponse,

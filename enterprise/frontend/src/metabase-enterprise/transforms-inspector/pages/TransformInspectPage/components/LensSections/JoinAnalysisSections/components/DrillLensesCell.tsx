@@ -1,11 +1,11 @@
 import { c } from "ttag";
 
-import { trackTransformInspectDrillLensClicked } from "metabase/transforms/analytics";
-import { Flex } from "metabase/ui";
 import type {
   InspectorDrillLensTrigger,
   TransformId,
 } from "metabase-types/api";
+import { trackTransformInspectDrillLensClicked } from "metabase/transforms/analytics";
+import { Flex } from "metabase/ui";
 
 import type { LensHandle } from "../../../../types";
 import { DrillButton } from "../../../DrillButton";

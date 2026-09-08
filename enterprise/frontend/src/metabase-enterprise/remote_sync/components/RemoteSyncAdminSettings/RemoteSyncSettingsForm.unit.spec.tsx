@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 
 import { findRequests } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { createMockCollectionItemFromCollection } from "metabase-types/api/mocks";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 
 import {
   createMockLibraryCollection,

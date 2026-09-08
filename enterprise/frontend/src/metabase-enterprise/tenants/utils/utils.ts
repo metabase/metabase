@@ -1,10 +1,5 @@
 import { t } from "ttag";
 
-import {
-  type OmniPickerCollectionItem,
-  type OmniPickerItem,
-  isInDbTree,
-} from "metabase/common/components/Pickers";
 import type {
   Collection,
   CollectionItemModel,
@@ -12,6 +7,11 @@ import type {
   Group,
   User,
 } from "metabase-types/api";
+import {
+  type OmniPickerCollectionItem,
+  type OmniPickerItem,
+  isInDbTree,
+} from "metabase/common/components/Pickers";
 
 import {
   SHARED_TENANT_NAMESPACE,

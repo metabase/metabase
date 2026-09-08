@@ -1,6 +1,6 @@
-import { invalidateTags, provideModeratedItemTags } from "metabase/api/tags";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 import type { VerifyItemRequest } from "metabase-types/api";
+import { invalidateTags, provideModeratedItemTags } from "metabase/api/tags";
 
 export const contentVerificationApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({

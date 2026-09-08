@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 
+import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
+import type { LibraryCollection } from "metabase-types/api";
 import { useListCollectionItemsQuery } from "metabase/api";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import {
@@ -7,8 +9,6 @@ import {
   useGetSettingsQuery,
   useSetting,
 } from "metabase/settings";
-import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
-import type { LibraryCollection } from "metabase-types/api";
 
 import {
   COLLECTIONS_KEY,

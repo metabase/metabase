@@ -1,6 +1,6 @@
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_NOTIFICATIONS_SDK } from "metabase/plugins";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { DashboardSubscriptionsButton } from "./DashboardSubscriptionsButton";
 import { QuestionAlertsButton } from "./QuestionAlertsButton";

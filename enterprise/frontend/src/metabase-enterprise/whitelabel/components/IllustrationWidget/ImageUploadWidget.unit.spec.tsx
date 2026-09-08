@@ -7,12 +7,12 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
 } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 
 import { ImageUploadWidget } from "./ImageUploadWidget";
 

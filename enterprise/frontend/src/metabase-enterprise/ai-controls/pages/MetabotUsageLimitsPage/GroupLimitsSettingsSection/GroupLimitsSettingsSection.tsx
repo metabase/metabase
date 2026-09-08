@@ -1,17 +1,17 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import {
+  useGetAIControlsGroupLimitsQuery,
+  useGetAIControlsInstanceLimitQuery,
+  useGetAIControlsTenantLimitsQuery,
+} from "metabase-enterprise/api";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import { isDefaultGroup } from "metabase/common/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 import { Tabs } from "metabase/ui";
-import {
-  useGetAIControlsGroupLimitsQuery,
-  useGetAIControlsInstanceLimitQuery,
-  useGetAIControlsTenantLimitsQuery,
-} from "metabase-enterprise/api";
 
 import { GroupLimitsTab } from "./GroupLimitsTab";
 import { TenantLimitsTab } from "./TenantLimitsTab";

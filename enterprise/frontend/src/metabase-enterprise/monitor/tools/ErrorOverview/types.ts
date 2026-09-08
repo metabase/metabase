@@ -1,5 +1,5 @@
-import type { Sorting } from "metabase/utils/sorting";
 import type { CardId } from "metabase-types/api";
+import type { Sorting } from "metabase/utils/sorting";
 
 export type ErroringCard = {
   id: CardId;

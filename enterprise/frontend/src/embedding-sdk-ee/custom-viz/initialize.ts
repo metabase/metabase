@@ -5,6 +5,13 @@ import {
   ensureMetabaseProviderPropsStore,
   useMetabaseProviderPropsStore,
 } from "embedding-sdk-bundle/lib/provider-props-store";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type {
+  CustomVizPluginId,
+  CustomVizPluginRuntime,
+  VisualizationDisplay,
+} from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { api } from "metabase/api/client";
 import type { IconData } from "metabase/common/utils/icon";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
@@ -17,13 +24,6 @@ import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
-import type {
-  CustomVizPluginId,
-  CustomVizPluginRuntime,
-  VisualizationDisplay,
-} from "metabase-types/api";
-import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import { CustomVizSettingWidget } from "../../metabase-enterprise/custom_viz/components/CustomVizSettingWidget";
 import type { LoadCustomVizPluginOptions } from "../../metabase-enterprise/custom_viz/custom-viz-plugins";

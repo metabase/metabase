@@ -1,5 +1,5 @@
-import type { State } from "metabase/redux/store";
 import type { RemoteSyncConfigurationSettings } from "metabase-types/api";
+import type { State } from "metabase/redux/store";
 
 import type { SYNC_LIBRARY_PENDING_KEY } from "./constants";
 import type { SyncTaskState } from "./sync-task-slice";

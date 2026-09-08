@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
+import { useGetTenantQuery } from "metabase-enterprise/api";
+import type { IconName } from "metabase-types/api";
 import { useListUsersQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { CollectionListView } from "metabase/common/components/CollectionListView";
 import { useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import { useGetTenantQuery } from "metabase-enterprise/api";
-import type { IconName } from "metabase-types/api";
 
 export const TenantUsersPersonalCollectionList = () => {
   const { tenantId: tenantIdParam } = useParams();

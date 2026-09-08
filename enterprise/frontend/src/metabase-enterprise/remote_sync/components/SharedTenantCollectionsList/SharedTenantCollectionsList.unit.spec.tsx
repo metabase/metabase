@@ -2,6 +2,8 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { CollectionSyncPreferences } from "metabase-types/api";
+import { createMockCollectionItem } from "metabase-types/api/mocks";
 import {
   Form,
   FormProvider,
@@ -9,8 +11,6 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { Radio, Stack } from "metabase/ui";
-import type { CollectionSyncPreferences } from "metabase-types/api";
-import { createMockCollectionItem } from "metabase-types/api/mocks";
 
 import { COLLECTIONS_KEY, TYPE_KEY } from "../../constants";
 

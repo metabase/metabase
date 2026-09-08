@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { c, msgid, ngettext, t } from "ttag";
 
+import type { ForcePushCasualties } from "metabase-types/api";
 import {
   Anchor,
   Box,
@@ -11,7 +12,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { ForcePushCasualties } from "metabase-types/api";
 
 interface ForcePushWarningProps {
   casualties: ForcePushCasualties;

@@ -2,7 +2,6 @@
 // chunk. If this module is ever declared side-effect free, the bundler would
 // drop this import and the graph would render unstyled.
 import "@xyflow/react/dist/style.css";
-
 import {
   Background,
   Panel,
@@ -14,6 +13,12 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  ConcreteTableId,
+  DatabaseId,
+  ErdResponse,
+  SchemaName,
+} from "metabase-types/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import {
@@ -26,12 +31,6 @@ import {
   Text,
   useColorScheme,
 } from "metabase/ui";
-import type {
-  ConcreteTableId,
-  DatabaseId,
-  ErdResponse,
-  SchemaName,
-} from "metabase-types/api";
 
 import S from "./SchemaViewer.module.css";
 import { SchemaViewerContext } from "./SchemaViewerContext";

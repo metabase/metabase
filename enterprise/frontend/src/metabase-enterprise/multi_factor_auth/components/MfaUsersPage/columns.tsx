@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { MfaAdminUser } from "metabase-types/api";
 import {
   Badge,
   Ellipsified,
@@ -7,7 +8,6 @@ import {
   type TreeTableColumnDef,
 } from "metabase/ui";
 import { getFullName } from "metabase/utils/user";
-import type { MfaAdminUser } from "metabase-types/api";
 
 export function getNameColumn<
   TUser extends MfaAdminUser,

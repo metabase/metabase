@@ -1,6 +1,12 @@
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import type {
+  ConcreteTableId,
+  InspectorCard,
+  InspectorSource,
+  InspectorTarget,
+} from "metabase-types/api";
 import {
   Box,
   Card,
@@ -13,12 +19,6 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
-import type {
-  ConcreteTableId,
-  InspectorCard,
-  InspectorSource,
-  InspectorTarget,
-} from "metabase-types/api";
 
 import { FieldInfoSection } from "./components/FieldInfoSection/FieldInfoSection";
 import { RowCountCard } from "./components/RowCountCard";

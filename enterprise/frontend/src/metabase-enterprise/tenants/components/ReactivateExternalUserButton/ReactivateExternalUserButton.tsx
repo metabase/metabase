@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { ReactivateUserButton } from "metabase/admin/people/components/ReactivateUserButton";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 import type { User } from "metabase-types/api";
+import { ReactivateUserButton } from "metabase/admin/people/components/ReactivateUserButton";
 
 export const ReactivateExternalUserButton = ({ user }: { user: User }) => {
   // This is set to all to avoid making another API request to the BE. <TenantDisplayName> should be

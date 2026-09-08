@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import { InteractiveEmbeddingAuthorizedOriginsWidget } from "metabase-enterprise/embedding/components/InteractiveEmbeddingAuthorizedOriginsWidget";
 import { EmbeddingSettingsCard } from "metabase/admin/settings/components/EmbeddingSettings";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
 import { Stack } from "metabase/ui/components";
-import { InteractiveEmbeddingAuthorizedOriginsWidget } from "metabase-enterprise/embedding/components/InteractiveEmbeddingAuthorizedOriginsWidget";
 
 export function InteractiveEmbeddingSettingsCard() {
   const isInteractiveEmbeddingEnabled = useSetting(

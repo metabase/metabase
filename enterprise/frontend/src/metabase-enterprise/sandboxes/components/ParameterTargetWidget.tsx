@@ -1,6 +1,8 @@
 import cx from "classnames";
 import { type ReactNode, useState } from "react";
 
+import type Question from "metabase-lib/v1/Question";
+import type { ParameterTarget } from "metabase-types/api";
 import { SelectButton } from "metabase/common/components/SelectButton";
 import { useCaptureEvent } from "metabase/common/hooks";
 import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
@@ -9,8 +11,6 @@ import {
   getMappingOptionByTarget,
 } from "metabase/parameters/utils/mapping-options";
 import { Box, Popover } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
-import type { ParameterTarget } from "metabase-types/api";
 
 type TriggerRenderProps = {
   selected?: ParameterMappingOption;

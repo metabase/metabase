@@ -8,6 +8,7 @@ import type {
 import { type MouseEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type { CardId } from "metabase-types/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { useScrollToTop } from "metabase/common/hooks";
@@ -29,7 +30,6 @@ import {
   getNextOptionalSorting,
   getSortingState,
 } from "metabase/utils/sorting";
-import type { CardId } from "metabase-types/api";
 
 import {
   type ErroringCard,

@@ -1,6 +1,13 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type {
+  GroupId,
+  PermissionEntityId,
+  TableEntityId,
+} from "metabase-types/api";
+import { DataPermissionValue } from "metabase-types/api";
 import { isTableEntityId } from "metabase/admin/permissions/utils/data-entity-id";
 import {
   getDatabaseFocusPermissionsUrl,
@@ -20,13 +27,6 @@ import {
   type PermissionOption,
 } from "metabase/plugins";
 import { navigate } from "metabase/router";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
-import type {
-  GroupId,
-  PermissionEntityId,
-  TableEntityId,
-} from "metabase-types/api";
-import { DataPermissionValue } from "metabase-types/api";
 
 import sandboxingReducer from "./actions";
 import { LoginAttributesWidget } from "./components/LoginAttributesWidget/LoginAttributesWidget";

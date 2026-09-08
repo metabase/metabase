@@ -1,6 +1,8 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { LoginAttributesWidget } from "metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget";
+import type { Tenant } from "metabase-types/api";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import {
   Form,
@@ -11,8 +13,6 @@ import {
 } from "metabase/forms";
 import { Button } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import { LoginAttributesWidget } from "metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget";
-import type { Tenant } from "metabase-types/api";
 
 const MAX_SLUG_LENGTH = 255;
 

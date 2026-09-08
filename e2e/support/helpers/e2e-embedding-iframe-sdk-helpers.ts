@@ -2,11 +2,11 @@ import { match } from "ts-pattern";
 
 import { openSharingMenu } from "e2e/support/helpers/e2e-sharing-helpers";
 import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 import type {
   CreateApiKeyResponse,
   CustomVizDisplayType,
 } from "metabase-types/api";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
 import { createApiKey, updateSetting } from "./api";
 import { getIframeBody } from "./e2e-embedding-helpers";

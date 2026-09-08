@@ -1,3 +1,5 @@
+import type MetadataDatabase from "metabase-lib/v1/metadata/Database";
+import type { Database, DatabaseId, Transform } from "metabase-types/api";
 import {
   skipToken,
   useGetDatabaseQuery,
@@ -8,8 +10,6 @@ import { DatabaseDataSelector } from "metabase/querying/common/components/DataSe
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import { Flex } from "metabase/ui";
-import type MetadataDatabase from "metabase-lib/v1/metadata/Database";
-import type { Database, DatabaseId, Transform } from "metabase-types/api";
 
 import S from "./PythonTransformTopBar.module.css";
 

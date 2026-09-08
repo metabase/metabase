@@ -1,3 +1,8 @@
+import type {
+  CollectionId,
+  CollectionItem,
+  DatabaseId,
+} from "metabase-types/api";
 import {
   canonicalCollectionId,
   isRootCollection,
@@ -7,11 +12,6 @@ import type {
   TreeItem,
 } from "metabase/data-studio/common/types";
 import type { SelectionState } from "metabase/ui";
-import type {
-  CollectionId,
-  CollectionItem,
-  DatabaseId,
-} from "metabase-types/api";
 
 export type LibrarySection = "data" | "metrics" | "snippets";
 

@@ -3,11 +3,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { CollapseSection } from "metabase/common/components/CollapseSection";
-import CS from "metabase/css/core/index.css";
-import { ParametersList } from "metabase/parameters/components/ParametersList";
-import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import { getPulseParameters } from "metabase/pulse";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import {
@@ -20,6 +15,11 @@ import type {
   Parameter,
   ParameterId,
 } from "metabase-types/api";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
+import CS from "metabase/css/core/index.css";
+import { ParametersList } from "metabase/parameters/components/ParametersList";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import { getPulseParameters } from "metabase/pulse";
 
 import { getSortedParameters } from "./utils";
 

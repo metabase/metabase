@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { tenantIdToColor } from "metabase-enterprise/tenants/utils/colors";
+import * as Urls from "metabase-enterprise/urls";
+import type { Tenant } from "metabase-types/api";
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { SearchFilter } from "metabase/admin/people/components/SearchFilter";
 import {
@@ -21,9 +24,6 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import { tenantIdToColor } from "metabase-enterprise/tenants/utils/colors";
-import * as Urls from "metabase-enterprise/urls";
-import type { Tenant } from "metabase-types/api";
 
 import { TenantsListingEmptyState } from "../TenantsListingEmptyState";
 

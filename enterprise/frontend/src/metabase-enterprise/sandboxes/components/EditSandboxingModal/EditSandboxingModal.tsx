@@ -4,6 +4,19 @@ import { useAsyncFn } from "react-use";
 import { c, jt, t } from "ttag";
 import _ from "underscore";
 
+import type {
+  GroupTableAccessPolicyDraft,
+  GroupTableAccessPolicyParams,
+} from "metabase-enterprise/sandboxes/types";
+import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
+import * as Lib from "metabase-lib";
+import type {
+  GroupId,
+  GroupTableAccessPolicy,
+  IconName,
+  Table,
+  UserAttributeKey,
+} from "metabase-types/api";
 import {
   skipToken,
   useGetCardQuery,
@@ -34,19 +47,6 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getName } from "metabase/utils/name";
-import type {
-  GroupTableAccessPolicyDraft,
-  GroupTableAccessPolicyParams,
-} from "metabase-enterprise/sandboxes/types";
-import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
-import * as Lib from "metabase-lib";
-import type {
-  GroupId,
-  GroupTableAccessPolicy,
-  IconName,
-  Table,
-  UserAttributeKey,
-} from "metabase-types/api";
 
 import {
   AttributeOptionsEmptyState,

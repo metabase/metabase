@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import * as Urls from "metabase-enterprise/urls";
 import { Link } from "metabase/common/components/Link";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
-import * as Urls from "metabase-enterprise/urls";
 
 export const EditUserStrategySettingsButton = ({
   page,

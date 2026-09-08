@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { Database } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import {
   hasActionsEnabled,
@@ -9,7 +10,6 @@ import {
 } from "metabase/common/utils/database";
 import { hasFeature } from "metabase/databases";
 import { Text } from "metabase/ui";
-import type { Database } from "metabase-types/api";
 
 export const getDisabledFeatureMessage = (
   database: Database,

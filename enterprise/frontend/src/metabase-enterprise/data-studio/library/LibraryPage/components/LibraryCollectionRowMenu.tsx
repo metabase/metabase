@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 import _ from "underscore";
 
-import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
 import type { Collection, CollectionId } from "metabase-types/api";
+import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
 
 import { getArchiveLibraryCollectionsMessage } from "../utils";
 

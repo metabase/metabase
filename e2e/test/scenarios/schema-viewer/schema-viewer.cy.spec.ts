@@ -6,8 +6,8 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { checkNotNull } from "metabase/utils/types";
 import type { TableId } from "metabase-types/api";
+import { checkNotNull } from "metabase/utils/types";
 
 const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 

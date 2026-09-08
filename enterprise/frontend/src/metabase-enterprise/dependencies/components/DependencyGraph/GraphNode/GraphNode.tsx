@@ -8,6 +8,7 @@ import {
 import cx from "classnames";
 import { type MouseEvent, memo, useContext } from "react";
 
+import type { DependencyNode } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import {
   Box,
@@ -18,7 +19,6 @@ import {
   Stack,
   UnstyledButton,
 } from "metabase/ui";
-import type { DependencyNode } from "metabase-types/api";
 
 import type { DependentGroup } from "../../../types";
 import {

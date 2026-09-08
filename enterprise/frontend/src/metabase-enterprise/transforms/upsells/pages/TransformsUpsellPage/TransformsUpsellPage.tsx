@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useState } from "react";
 import { jt, t } from "ttag";
 
+import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api/cloud-add-ons";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DottedBackground } from "metabase/common/components/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/common/components/upsells/components/LineDecorator";
@@ -13,7 +14,6 @@ import { TransformsHeader } from "metabase/transforms/components/TransformsHeade
 import { EnableTransformsCard } from "metabase/transforms/pages/EnableTransformsPage/EnableTransformsCard";
 import { Button, Center, Flex, Text, Title } from "metabase/ui";
 import { reload } from "metabase/utils/dom";
-import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api/cloud-add-ons";
 
 import { TransformsSettingUpModal } from "../../components/TransformsSettingUpModal";
 import { useTransformsBilling } from "../../hooks/useTransformsBilling";

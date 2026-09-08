@@ -3,12 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { isEmpty } from "underscore";
 
+import { useUpdateAIControlsGroupLimitMutation } from "metabase-enterprise/api";
+import type { GroupInfo } from "metabase-types/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { isDefaultGroup } from "metabase/common/utils/groups";
 import { Box, Group, NumberInput, Stack, Text } from "metabase/ui";
-import { useUpdateAIControlsGroupLimitMutation } from "metabase-enterprise/api";
-import type { GroupInfo } from "metabase-types/api";
 
 import { AllUsersHigherAccessTooltipIcon } from "./AllUsersHigherAccessTooltipIcon";
 import S from "./GroupLimitsTab.module.css";

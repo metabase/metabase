@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { Box, Stack, Tabs } from "metabase/ui";
-import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 
 import BrandColorSettings from "../BrandColorSettings";
 import ChartColorPreview from "../ChartColorPreview";

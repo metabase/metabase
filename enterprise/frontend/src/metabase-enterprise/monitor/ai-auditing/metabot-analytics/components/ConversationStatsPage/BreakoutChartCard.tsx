@@ -1,9 +1,9 @@
 import cx from "classnames";
 
+import type { VisualizationDisplay } from "metabase-types/api";
 import { Card, Skeleton, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { ClickActionsMode } from "metabase/visualizations/types";
-import type { VisualizationDisplay } from "metabase-types/api";
 
 import S from "./ChartCard.module.css";
 import type { DimensionClickHandler } from "./types";

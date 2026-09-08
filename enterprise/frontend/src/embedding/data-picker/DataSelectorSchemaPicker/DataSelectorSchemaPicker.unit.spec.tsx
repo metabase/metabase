@@ -1,10 +1,10 @@
 import { createMockEntitiesState } from "__support__/store";
 import { render, screen } from "__support__/ui";
+import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { getMetadata } from "metabase/metadata-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
-import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { DataSelectorSchemaPicker } from "./DataSelectorSchemaPicker";
 

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Modal } from "metabase/ui";
 import { useDisableMfaMutation } from "metabase-enterprise/api";
+import { Modal } from "metabase/ui";
 
 import { ConfirmCodeForm } from "../ConfirmCodeForm";
 

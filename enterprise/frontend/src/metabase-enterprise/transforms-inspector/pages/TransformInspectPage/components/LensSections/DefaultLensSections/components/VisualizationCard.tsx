@@ -1,11 +1,5 @@
 import { memo } from "react";
 
-import { useGetAdhocQueryMetadataQuery } from "metabase/api";
-import { useSnapshotSelector } from "metabase/common/hooks";
-import { getMetadata } from "metabase/metadata-store";
-import { Box, Card, Loader, Stack } from "metabase/ui";
-import * as Urls from "metabase/urls";
-import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { defaultDisplay } from "metabase-lib/query/display";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -18,6 +12,12 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
+import { useGetAdhocQueryMetadataQuery } from "metabase/api";
+import { useSnapshotSelector } from "metabase/common/hooks";
+import { getMetadata } from "metabase/metadata-store";
+import { Box, Card, Loader, Stack } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import Visualization from "metabase/visualizations/components/Visualization";
 
 import { useLensCardLoader } from "../../../../hooks";
 import { CardAlerts } from "../../../CardAlerts";

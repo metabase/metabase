@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { useGetAdminSettingsDetailsQuery } from "metabase/settings";
 import type { RemoteSyncEntity } from "metabase-types/api";
+import { useGetAdminSettingsDetailsQuery } from "metabase/settings";
 
 import { BRANCH_KEY } from "../../constants";
 import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";

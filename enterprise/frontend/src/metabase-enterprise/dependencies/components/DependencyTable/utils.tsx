@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import type { TreeTableColumnDef } from "metabase/ui";
 import type { DependencyNode, DependencySortColumn } from "metabase-types/api";
+import type { TreeTableColumnDef } from "metabase/ui";
 
 import {
   getDependentErrorNodesCount,

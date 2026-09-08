@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { type RouteObject, toRouteObjects } from "metabase/router";
 import {
   getAiControlsRoutes,
   getAiControlsUpsellRoutes,
@@ -16,6 +15,7 @@ import {
   getInspectorUpsellRoutes,
 } from "metabase-enterprise/transforms-inspector/routes";
 import { getPythonTransformsRoutes } from "metabase-enterprise/transforms-python/routes";
+import { type RouteObject, toRouteObjects } from "metabase/router";
 
 /**
  * A plugin route factory names its page in an `import()` rather than importing

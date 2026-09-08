@@ -1,10 +1,10 @@
-import { formatNumber } from "metabase/utils/formatting";
-import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { BillingInfoLineItem } from "metabase-types/api";
 import {
   supportedDisplayTypes,
   supportedFormatTypes,
 } from "metabase-types/api";
+import { formatNumber } from "metabase/utils/formatting";
+import { formatDateTimeWithUnit } from "metabase/value-formatting";
 
 const supportedFormatTypesSet = new Set<string>(supportedFormatTypes);
 const supportedDisplayTypesSet = new Set<string | undefined>(

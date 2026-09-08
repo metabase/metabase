@@ -7,9 +7,9 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { EnterpriseSettings } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 
 import { HelpLinkSettings } from "./HelpLinkSettings";
 

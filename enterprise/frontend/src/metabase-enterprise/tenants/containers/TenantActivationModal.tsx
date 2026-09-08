@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { useDispatch } from "metabase/redux";
-import { addUndo } from "metabase/redux/undo";
 import {
   useGetTenantQuery,
   useUpdateTenantMutation,
 } from "metabase-enterprise/api";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { useDispatch } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
 
 interface UserActivationModalInnerProps {
   params: { tenantId: string };

@@ -6,10 +6,10 @@ import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/S
 import { useQuestionAlertModalContext } from "embedding-sdk-bundle/components/private/notifications/context/QuestionAlertModalProvider";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
+import { isInstanceAnalyticsCollection } from "metabase-enterprise/collections/utils";
 import { useHasEmailSetup } from "metabase/common/hooks";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/current-user";
 import type { QuestionAlertsButtonProps } from "metabase/plugins";
-import { isInstanceAnalyticsCollection } from "metabase-enterprise/collections/utils";
 
 /**
  * @internal Do not import this component directly, use either SDK or EAJS EE plugins instead.

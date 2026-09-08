@@ -1,14 +1,14 @@
 import type {
-  OmniPickerCollectionItem,
-  OmniPickerItem,
-} from "metabase/common/components/Pickers";
-import type {
   Collection,
   CollectionId,
   CollectionNamespace,
   Group,
   User,
 } from "metabase-types/api";
+import type {
+  OmniPickerCollectionItem,
+  OmniPickerItem,
+} from "metabase/common/components/Pickers";
 
 import {
   SHARED_TENANT_NAMESPACE,

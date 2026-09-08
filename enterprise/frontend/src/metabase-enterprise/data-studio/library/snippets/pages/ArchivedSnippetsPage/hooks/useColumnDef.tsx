@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import type { CollectionItem } from "metabase-types/api";
 import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import {
@@ -15,8 +17,6 @@ import {
   Tooltip,
   type TreeTableColumnDef,
 } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { CollectionItem } from "metabase-types/api";
 
 type ColumnDefProps = {
   handleUnarchiveClick: (item: Pick<CollectionItem, "id" | "name">) => void;

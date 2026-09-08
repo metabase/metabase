@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { getErrorMessage } from "metabase/api/utils";
-import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useRemoveUserMfaMutation } from "metabase-enterprise/api";
 import type { MfaEnrolledUser } from "metabase-types/api";
+import { getErrorMessage } from "metabase/api/utils";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 
 interface RemoveMfaModalProps {
   user: MfaEnrolledUser;

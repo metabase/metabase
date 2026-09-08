@@ -1,5 +1,5 @@
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 
 import { getInspectorRoutes, getInspectorUpsellRoutes } from "./routes";
 

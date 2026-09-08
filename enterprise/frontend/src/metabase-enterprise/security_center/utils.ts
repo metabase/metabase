@@ -1,9 +1,9 @@
-import { compareVersions, getMajorVersion } from "metabase/utils/version";
 import type {
   Advisory,
   AdvisoryDownloadJarUrl,
   AdvisorySeverity,
 } from "metabase-types/api";
+import { compareVersions, getMajorVersion } from "metabase/utils/version";
 
 import type { AdvisoryFilter } from "./types";
 

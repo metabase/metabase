@@ -3,18 +3,18 @@ import { useCallback, useMemo } from "react";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
-import { useLocale } from "metabase/common/hooks";
-import type {
-  ContentTranslationFunction,
-  TranslatableSingleSeries,
-} from "metabase/content-translation/types";
-import { type HoveredObject, isCartesianChart } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type {
   DictionaryArray,
   RowValue,
   SeriesSettings,
 } from "metabase-types/api";
+import { useLocale } from "metabase/common/hooks";
+import type {
+  ContentTranslationFunction,
+  TranslatableSingleSeries,
+} from "metabase/content-translation/types";
+import { type HoveredObject, isCartesianChart } from "metabase/viz-core";
 
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
 

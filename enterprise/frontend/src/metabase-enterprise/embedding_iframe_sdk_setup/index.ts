@@ -1,5 +1,5 @@
-import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 
 /**
  * Initialize embedding iframe SDK setup plugin features that depend on hasPremiumFeature.

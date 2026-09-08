@@ -4,6 +4,11 @@ import { jt, t } from "ttag";
 import * as Yup from "yup";
 
 import {
+  useConfirmMfaEnrollmentMutation,
+  useEnrollMfaMutation,
+} from "metabase-enterprise/api";
+import type { MfaEnrollResponse } from "metabase-types/api";
+import {
   Form,
   FormErrorMessage,
   FormProvider,
@@ -12,11 +17,6 @@ import {
 } from "metabase/forms";
 import { Box, Button, Center, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import {
-  useConfirmMfaEnrollmentMutation,
-  useEnrollMfaMutation,
-} from "metabase-enterprise/api";
-import type { MfaEnrollResponse } from "metabase-types/api";
 
 import { TOTP_CODE_LENGTH } from "../../../constants";
 import { withTotpCodeRules } from "../../../schemas";

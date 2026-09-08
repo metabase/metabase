@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef } from "react";
 
-import { useUserKeyValue } from "metabase/current-user";
-import { useLocation, useNavigate } from "metabase/router";
-import type * as Urls from "metabase/urls";
 import { DependencyDiagnostics } from "metabase-enterprise/monitor/dependency-diagnostics/components";
 import type {
   DependencyDiagnosticsMode,
   DependencyDiagnosticsParamsOptions,
 } from "metabase-enterprise/monitor/dependency-diagnostics/components/types";
+import { useUserKeyValue } from "metabase/current-user";
+import { useLocation, useNavigate } from "metabase/router";
+import type * as Urls from "metabase/urls";
 
 import {
   getPageUrl,

@@ -1,12 +1,12 @@
 import { useRef } from "react";
 import { t } from "ttag";
 
-import { getErrorMessage } from "metabase/api/utils";
 import { useExecutePythonMutation } from "metabase-enterprise/api/transform-python";
 import type {
   PythonTransformSourceDraft,
   TestPythonTransformResponse,
 } from "metabase-types/api";
+import { getErrorMessage } from "metabase/api/utils";
 
 import { canRunPythonTransformSource } from "../../utils";
 

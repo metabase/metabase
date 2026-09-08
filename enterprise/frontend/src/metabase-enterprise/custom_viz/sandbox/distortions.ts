@@ -1,5 +1,5 @@
-import { makeSandboxDistortionCallback } from "metabase/utils/scripts-sandbox";
 import type { CustomVizPluginId } from "metabase-types/api";
+import { makeSandboxDistortionCallback } from "metabase/utils/scripts-sandbox";
 
 import {
   ACTIVE_ELEMENT_GETTER,

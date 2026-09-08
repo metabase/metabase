@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import {
+  useImportChangesMutation,
+  useLazyGetRemoteSyncChangesQuery,
+} from "metabase-enterprise/api/remote-sync";
+import type { RemoteSyncEntity } from "metabase-types/api";
 import { useToast } from "metabase/common/hooks";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
@@ -13,11 +18,6 @@ import {
   Text,
   useCombobox,
 } from "metabase/ui";
-import {
-  useImportChangesMutation,
-  useLazyGetRemoteSyncChangesQuery,
-} from "metabase-enterprise/api/remote-sync";
-import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { trackBranchSwitched } from "../../analytics";
 import { type SyncError, parseSyncError } from "../../utils";

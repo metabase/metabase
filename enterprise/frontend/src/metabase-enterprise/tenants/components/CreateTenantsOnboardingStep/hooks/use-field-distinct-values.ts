@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 
+import type { FieldId, LocalFieldReference } from "metabase-types/api";
 import {
   skipToken,
   useGetAdhocQueryQuery,
   useGetFieldQuery,
 } from "metabase/api";
-import type { FieldId, LocalFieldReference } from "metabase-types/api";
 
 /** How many distinct values to fetch from the field. */
 const DISTINCT_VALUES_LIMIT = 100;

@@ -9,8 +9,6 @@ import {
   adminAppLinkText,
   mainAppLinkText,
 } from "e2e/support/helpers";
-import { b64hash_to_utf8 } from "metabase/utils/encoding";
-import { checkNotNull } from "metabase/utils/types";
 import type {
   CardId,
   CustomVizPlugin,
@@ -19,6 +17,8 @@ import type {
   Parameter,
   UnsavedCard,
 } from "metabase-types/api";
+import { b64hash_to_utf8 } from "metabase/utils/encoding";
+import { checkNotNull } from "metabase/utils/types";
 
 const { H } = cy;
 

@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   NumberInput,
@@ -8,7 +9,6 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 
 import S from "./GeneralLimitsSettingsSection.module.css";
 import {

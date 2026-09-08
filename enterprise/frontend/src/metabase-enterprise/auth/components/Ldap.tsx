@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import { provisioningOptions } from "metabase-enterprise/auth/utils";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import { FormTextInput } from "metabase/forms";
 import { useAdminSetting } from "metabase/settings";
-import { provisioningOptions } from "metabase-enterprise/auth/utils";
 
 export function LdapUserProvisioning() {
   return (

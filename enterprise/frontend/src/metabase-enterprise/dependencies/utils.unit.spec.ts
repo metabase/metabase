@@ -1,4 +1,3 @@
-import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   AnalysisFindingError,
   AnalysisFindingErrorType,
@@ -29,6 +28,7 @@ import {
   createMockTransformDependencyNode,
   createMockUserInfo,
 } from "metabase-types/api/mocks";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import type {
   DependencyError,

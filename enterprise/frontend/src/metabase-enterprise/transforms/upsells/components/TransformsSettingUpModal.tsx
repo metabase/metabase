@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { useTokenRefreshUntil } from "metabase/api/utils";
 import {
   Box,
@@ -13,7 +14,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 interface TransformsSettingUpModalProps extends Pick<
   ModalProps,

@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
+import type { CollectionItem, CollectionType } from "metabase-types/api";
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import type {
   OmniPickerCollectionItem,
@@ -12,8 +14,6 @@ import type {
   GetEntityPickerSyntheticLibraryItemFunction,
   LibrarySubCollectionType,
 } from "metabase/plugins/oss/library";
-import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
-import type { CollectionItem, CollectionType } from "metabase-types/api";
 
 const isLibrary = (
   collection: CollectionItem | { data: null } | undefined,

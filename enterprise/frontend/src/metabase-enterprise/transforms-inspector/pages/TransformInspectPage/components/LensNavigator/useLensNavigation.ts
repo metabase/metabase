@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { InspectorLensMetadata } from "metabase-types/api";
 import type { Location } from "metabase/router";
 import { queryToSearch, useNavigate } from "metabase/router";
-import type { InspectorLensMetadata } from "metabase-types/api";
 
 import type { LensHandle, RouteParams } from "../../types";
 

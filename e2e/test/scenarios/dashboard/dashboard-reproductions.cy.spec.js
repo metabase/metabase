@@ -8,11 +8,11 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
   createMockDashboardCard,
   createMockParameter,
 } from "metabase-types/api/mocks";
+import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 
 const { SAMPLE_DATABASE } = require("e2e/support/cypress_sample_database");
 

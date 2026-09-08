@@ -10,13 +10,13 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { Route } from "metabase/router";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import { SchemaPickerInput } from "./SchemaPickerInput";
 

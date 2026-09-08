@@ -1,9 +1,9 @@
 import { createSlice } from "@reduxjs/toolkit";
 
+import type { UserAttributeKey } from "metabase-types/api";
 import { userApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createAsyncThunk } from "metabase/redux/utils";
-import type { UserAttributeKey } from "metabase-types/api";
 
 export const fetchUserAttributes = createAsyncThunk(
   "metabase-enterprise/shared/FETCH_USER_ATTRIBUTES",

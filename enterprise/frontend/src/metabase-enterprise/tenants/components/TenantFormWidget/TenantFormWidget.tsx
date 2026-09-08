@@ -1,9 +1,9 @@
 import { useField } from "formik";
 import { t } from "ttag";
 
-import { Select, type SelectProps } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 import type { Tenant } from "metabase-types/api";
+import { Select, type SelectProps } from "metabase/ui";
 
 interface FormTenantWidget extends Partial<SelectProps> {
   name: string;

@@ -9,11 +9,11 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
 import {
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
+import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
 
 const { H } = cy;
 

@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { getGroupTableAccessPolicy } from "metabase-enterprise/sandboxes/selectors";
+import type { GroupTableAccessPolicy } from "metabase-types/api";
 import { GROUPS_BASE_PATH } from "metabase/admin/permissions/utils/urls";
 import {
   skipToken,
@@ -10,8 +12,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useDispatch, useSelector } from "metabase/redux";
 import { parseIntParam } from "metabase/urls";
-import { getGroupTableAccessPolicy } from "metabase-enterprise/sandboxes/selectors";
-import type { GroupTableAccessPolicy } from "metabase-types/api";
 
 import { updatePolicy, updateTableSandboxingPermission } from "../actions";
 import EditSandboxingModal from "../components/EditSandboxingModal";

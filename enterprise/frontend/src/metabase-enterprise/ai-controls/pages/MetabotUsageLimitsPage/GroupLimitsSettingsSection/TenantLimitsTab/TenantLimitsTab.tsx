@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 import { isEmpty } from "underscore";
 
+import { useUpdateAIControlsTenantLimitMutation } from "metabase-enterprise/api";
+import type { Tenant } from "metabase-types/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/common/hooks";
 import {
@@ -14,8 +16,6 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import { useUpdateAIControlsTenantLimitMutation } from "metabase-enterprise/api";
-import type { Tenant } from "metabase-types/api";
 
 import S from "../GroupLimitsTab/GroupLimitsTab.module.css";
 

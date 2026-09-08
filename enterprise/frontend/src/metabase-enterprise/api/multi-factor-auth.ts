@@ -1,4 +1,3 @@
-import { provideUserListTags } from "metabase/api/tags";
 import type {
   MfaAdminOverview,
   MfaAdminUser,
@@ -9,6 +8,7 @@ import type {
   MfaUserListResponse,
   UserId,
 } from "metabase-types/api";
+import { provideUserListTags } from "metabase/api/tags";
 
 import { EnterpriseApi } from "./api";
 import {

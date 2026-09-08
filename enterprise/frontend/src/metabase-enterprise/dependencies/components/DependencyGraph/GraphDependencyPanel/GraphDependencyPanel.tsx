@@ -2,15 +2,15 @@ import { useDebouncedValue } from "@mantine/hooks";
 import { useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
-import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { Box, Card } from "metabase/ui";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
 import type {
   DependencyEntry,
   DependencyGroupType,
   DependencyNode,
 } from "metabase-types/api";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { Box, Card } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import { DEPENDENTS_SEARCH_THRESHOLD } from "../../../constants";
 import type {

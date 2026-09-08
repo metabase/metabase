@@ -1,5 +1,5 @@
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { createMockCollection } from "metabase-types/api/mocks";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 import { canCleanUp } from "./utils";
 

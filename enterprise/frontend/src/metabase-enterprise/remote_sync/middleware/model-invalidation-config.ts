@@ -1,7 +1,7 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 
-import type { State } from "metabase/redux/store";
 import type { Collection, CollectionId } from "metabase-types/api";
+import type { State } from "metabase/redux/store";
 
 /**
  * Invalidation strategies for remote sync model mutations.

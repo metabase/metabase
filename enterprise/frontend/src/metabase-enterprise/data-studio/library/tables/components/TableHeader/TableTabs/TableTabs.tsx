@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { Table } from "metabase-types/api";
 import {
   type PillTab,
   PillTabNavigation,
@@ -7,7 +8,6 @@ import {
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { type Location, useLocation } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { Table } from "metabase-types/api";
 
 type TableTabsProps = {
   table: Table;

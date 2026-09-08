@@ -14,10 +14,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route, redirect } from "metabase/router";
-import * as Urls from "metabase/urls";
-import { registerVisualizations } from "metabase/visualizations/register";
 import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/constants";
 import type { Database, Dataset, Field } from "metabase-types/api";
 import {
@@ -31,6 +27,10 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route, redirect } from "metabase/router";
+import * as Urls from "metabase/urls";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { McpAnalyticsSectionLayout } from "./McpAnalyticsSectionLayout";
 import { McpEventsPage } from "./McpEventsPage";

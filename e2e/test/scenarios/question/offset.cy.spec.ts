@@ -1,13 +1,13 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
-import { uuid } from "metabase/utils/uuid";
 import type {
   Aggregation,
   Breakout,
   FieldReference,
   StructuredQuery,
 } from "metabase-types/api";
+import { uuid } from "metabase/utils/uuid";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 

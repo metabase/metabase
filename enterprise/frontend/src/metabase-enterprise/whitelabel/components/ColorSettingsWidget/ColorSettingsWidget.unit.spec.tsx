@@ -1,12 +1,12 @@
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import type { SettingKey } from "metabase-types/api";
 import {
   deriveChartShadeColor,
   deriveChartTintColor,
 } from "metabase/ui/colors/accents";
 import MetabaseSettings from "metabase/utils/settings";
-import type { SettingKey } from "metabase-types/api";
 
 import { ColorSettingsWidget } from "./ColorSettingsWidget";
 

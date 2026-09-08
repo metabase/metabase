@@ -9,17 +9,17 @@ import {
   setupRemoteSyncDirtyEndpoint,
   setupUpdateCollectionEndpoint,
 } from "__support__/server-mocks";
-import { Api } from "metabase/api";
-import { cardApi } from "metabase/api/card";
-import { collectionApi } from "metabase/api/collection";
-import { dashboardApi } from "metabase/api/dashboard";
-import { seedApiQueryCache } from "metabase/redux/store/mocks";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockCollection,
   createMockSettings,
 } from "metabase-types/api/mocks";
+import { Api } from "metabase/api";
+import { cardApi } from "metabase/api/card";
+import { collectionApi } from "metabase/api/collection";
+import { dashboardApi } from "metabase/api/dashboard";
+import { seedApiQueryCache } from "metabase/redux/store/mocks";
 
 import { initialState, remoteSyncReducer } from "../sync-task-slice";
 

@@ -1,11 +1,11 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import type { Card } from "metabase-types/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Card } from "metabase-types/api";
 
 import S from "./SidebarHeader.module.css";
 

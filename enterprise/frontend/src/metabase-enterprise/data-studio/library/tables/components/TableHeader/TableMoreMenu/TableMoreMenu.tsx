@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { c, t } from "ttag";
 
+import type { CollectionId, CollectionItem, Table } from "metabase-types/api";
 import { collectionApi } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { CollectionPickerModal } from "metabase/common/components/Pickers";
@@ -10,7 +11,6 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { ActionIcon, Box, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { CollectionId, CollectionItem, Table } from "metabase-types/api";
 
 type TableModalType = "unpublish" | "move";
 

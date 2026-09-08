@@ -1,6 +1,8 @@
 import { assocIn } from "icepick";
 import { t } from "ttag";
 
+import { applicationPermissionsApi } from "metabase-enterprise/api";
+import type { GroupId } from "metabase-types/api";
 import { permissionApi } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -11,8 +13,6 @@ import {
   handleActions,
 } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { applicationPermissionsApi } from "metabase-enterprise/api";
-import type { GroupId } from "metabase-types/api";
 
 import type {
   ApplicationPermissionKey,

@@ -2,13 +2,13 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
+import { TransformsSettingUpModal } from "metabase-enterprise/transforms/upsells/components/TransformsSettingUpModal";
+import type { ICloudAddOnProduct } from "metabase-types/api/store";
 import { trackUpsellClicked } from "metabase/common/components/upsells/components/analytics";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { Button, Stack, Text } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
-import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
-import { TransformsSettingUpModal } from "metabase-enterprise/transforms/upsells/components/TransformsSettingUpModal";
-import type { ICloudAddOnProduct } from "metabase-types/api/store";
 
 import { CAMPAIGN, LOCATION } from "./constants";
 

@@ -1,9 +1,9 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 
+import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
 import { useMantineTheme } from "metabase/ui";
-import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 
 import { ColorSettings } from "../ColorSettings";
 

@@ -2,12 +2,12 @@ import { useDebouncedCallback } from "@mantine/hooks";
 import { useCallback } from "react";
 import { c } from "ttag";
 
-import { useMetadataToasts } from "metabase/common/hooks";
-import { useAdminSetting } from "metabase/settings";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
 } from "metabase-types/api";
+import { useMetadataToasts } from "metabase/common/hooks";
+import { useAdminSetting } from "metabase/settings";
 
 import { useHydratedInput } from "./useHydratedInput";
 

@@ -1,5 +1,5 @@
-import { trackSimpleEvent } from "metabase/analytics";
 import type { CustomVizPluginWarning } from "metabase-types/api";
+import { trackSimpleEvent } from "metabase/analytics";
 
 export const trackCustomVizPluginCreated = (
   result: "success" | "failure",

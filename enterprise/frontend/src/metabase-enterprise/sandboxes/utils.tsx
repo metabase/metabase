@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { Group, Icon, type SelectProps, Tooltip } from "metabase/ui";
 import type {
   GroupTableAccessPolicy,
   StructuredUserAttributes,
@@ -9,6 +8,7 @@ import type {
   Tenant,
   UnsavedCard,
 } from "metabase-types/api";
+import { Group, Icon, type SelectProps, Tooltip } from "metabase/ui";
 
 import type {
   GroupTableAccessPolicyParams,

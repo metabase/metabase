@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import type { NativeQuerySnippet } from "metabase-types/api";
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { isRootCollection } from "metabase/common/collections/utils";
@@ -20,7 +21,6 @@ import { useToast } from "metabase/common/hooks";
 import { PLUGIN_DEPENDENCIES, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
-import type { NativeQuerySnippet } from "metabase-types/api";
 
 import { SnippetMoreMenu } from "../SnippetMoreMenu";
 

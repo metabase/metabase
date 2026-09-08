@@ -1,9 +1,9 @@
 import { memo } from "react";
 
+import type { CardId } from "metabase-types/api";
 import { skipToken, useGetCardQuery, useGetDatabaseQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Box, Center, Stack } from "metabase/ui";
-import type { CardId } from "metabase-types/api";
 
 import { ActionSection } from "./ActionSection";
 import { DependentsSection } from "./DependentsSection";

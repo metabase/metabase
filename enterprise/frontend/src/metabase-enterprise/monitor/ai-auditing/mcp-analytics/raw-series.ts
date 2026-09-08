@@ -1,5 +1,5 @@
-import type { ColorName } from "metabase/ui/colors/types";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
+import type { ColorName } from "metabase/ui/colors/types";
 
 type GetColor = (name: ColorName) => string;
 

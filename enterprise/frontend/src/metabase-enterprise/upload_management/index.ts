@@ -1,6 +1,6 @@
-import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { StorageSetupProvider } from "metabase-enterprise/storage/StorageSetupProvider";
+import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 
 import {
   FileUploadErrorModal,

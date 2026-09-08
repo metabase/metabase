@@ -1,9 +1,5 @@
 import { useCallback, useEffect } from "react";
 
-import { ApplicationPermissionsHelp } from "metabase/admin/permissions/components/ApplicationPermissionsHelp";
-import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
-import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
-import { connect } from "metabase/redux";
 import {
   initializeApplicationPermissions,
   saveApplicationPermissions,
@@ -15,6 +11,10 @@ import {
 } from "metabase-enterprise/application_permissions/selectors";
 import type { ApplicationPermissionsState } from "metabase-enterprise/application_permissions/types/state";
 import type { GroupId } from "metabase-types/api";
+import { ApplicationPermissionsHelp } from "metabase/admin/permissions/components/ApplicationPermissionsHelp";
+import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
+import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
+import { connect } from "metabase/redux";
 
 const mapDispatchToProps = {
   initialize: initializeApplicationPermissions,

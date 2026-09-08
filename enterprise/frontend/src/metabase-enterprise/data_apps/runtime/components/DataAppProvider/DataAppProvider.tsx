@@ -5,10 +5,10 @@ import { type ReactNode, useMemo, useState } from "react";
 import { SCOPED_CSS_RESET } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
 import { PortalContainer } from "embedding-sdk-bundle/components/private/SdkPortalContainer";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
+import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data_apps/sandbox/types";
 import { setDataApp } from "metabase/embedding/config";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { getCspNonce } from "metabase/utils/csp";
-import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data_apps/sandbox/types";
 
 import { useHostSdkStore } from "../../lib/use-host-sdk-store";
 import { DataAppErrorState } from "../DataAppErrorState/DataAppErrorState";

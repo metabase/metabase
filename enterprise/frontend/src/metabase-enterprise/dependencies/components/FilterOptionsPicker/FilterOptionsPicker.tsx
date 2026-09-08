@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import type { DependencyGroupType } from "metabase-types/api";
 import {
   ActionIcon,
   Box,
@@ -10,7 +11,6 @@ import {
   Popover,
   Stack,
 } from "metabase/ui";
-import type { DependencyGroupType } from "metabase-types/api";
 
 import type { DependencyFilterOptions } from "../../types";
 

@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import CS from "metabase/css/core/index.css";
 import { Box, FixedSizeIcon, Group, Stack, Text, Title } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
-import * as Lib from "metabase-lib";
-import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import {
   canNodeHaveOwner,

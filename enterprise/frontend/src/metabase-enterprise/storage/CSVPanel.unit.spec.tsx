@@ -16,10 +16,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { useListDatabasesQuery } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { CSVPanel } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/CSVPanel";
-import { createMockState } from "metabase/redux/store/mocks";
 import type {
   Database,
   ICloudAddOnProduct,
@@ -33,6 +29,10 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { mockStorageCloudAddOn } from "metabase-types/api/mocks/add-ons";
+import { useListDatabasesQuery } from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { CSVPanel } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/CSVPanel";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { StorageSetupProvider } from "./StorageSetupProvider";
 import {

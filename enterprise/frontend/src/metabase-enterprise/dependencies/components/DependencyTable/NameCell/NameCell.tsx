@@ -1,5 +1,5 @@
-import { Ellipsified, FixedSizeIcon, Group } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
+import { Ellipsified, FixedSizeIcon, Group } from "metabase/ui";
 
 import { getNodeIcon, getNodeLabel } from "../../../utils";
 

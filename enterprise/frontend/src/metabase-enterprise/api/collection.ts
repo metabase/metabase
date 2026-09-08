@@ -1,8 +1,8 @@
-import { provideCollectionItemListTags } from "metabase/api/tags";
 import type {
   ListStaleCollectionItemsRequest,
   ListStaleCollectionItemsResponse,
 } from "metabase-enterprise/clean_up/types";
+import { provideCollectionItemListTags } from "metabase/api/tags";
 
 import { EnterpriseApi } from "./api";
 

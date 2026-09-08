@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { modalRoute } from "metabase/common/components/ModalRoute";
@@ -7,8 +9,6 @@ import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen"
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Badge, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { CleanupCollectionModal } from "./CleanupCollectionModal";
 import { getDateFilterValue } from "./CleanupCollectionModal/utils";

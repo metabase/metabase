@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { Database, Table } from "metabase-types/api";
 import type { DataSourcePart } from "metabase/query_builder";
 import { HeadBreadcrumbs, ViewHeading } from "metabase/query_builder";
 import * as Urls from "metabase/urls";
-import type { Database, Table } from "metabase-types/api";
 
 type TableBreadcrumbsProps = {
   database: Database;

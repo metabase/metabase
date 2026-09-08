@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { type TreeTableColumnDef, useTreeTableInstance } from "metabase/ui";
 import {
   AIToolKey,
   type GroupInfo,
   type MetabotGroupPermission,
 } from "metabase-types/api";
+import { type TreeTableColumnDef, useTreeTableInstance } from "metabase/ui";
 
 import { AiFeaturesCell } from "./AiFeaturesCell";
 import { AiToolCell } from "./AiToolCell";

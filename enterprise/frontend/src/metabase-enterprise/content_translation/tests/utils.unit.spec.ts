@@ -1,6 +1,6 @@
-import type { HoveredObject } from "metabase/viz-core";
 import type { DatasetColumn, DictionaryArray } from "metabase-types/api";
 import { createMockColumn, createMockSeries } from "metabase-types/api/mocks";
+import type { HoveredObject } from "metabase/viz-core";
 
 import { leaveUntranslated } from "../use-translate-content";
 import {

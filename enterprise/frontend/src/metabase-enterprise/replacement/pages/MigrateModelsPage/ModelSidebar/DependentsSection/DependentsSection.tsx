@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Badge, Group, Skeleton, Stack, Title } from "metabase/ui";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
 import { DependencyList } from "metabase-enterprise/dependencies/components/DependencyList";
 import { FilterOptionsPicker } from "metabase-enterprise/dependencies/components/FilterOptionsPicker";
@@ -13,6 +12,7 @@ import type {
 } from "metabase-enterprise/dependencies/types";
 import { areFilterOptionsEqual } from "metabase-enterprise/dependencies/utils";
 import type { CardId } from "metabase-types/api";
+import { Badge, Group, Skeleton, Stack, Title } from "metabase/ui";
 
 import { DEPENDENTS_GROUP_TYPES, DEPENDENTS_SORT_COLUMNS } from "./constants";
 import {
