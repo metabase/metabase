@@ -40,7 +40,8 @@ export const ChartSettingColorPicker = ({
   return (
     <Box
       className={cx(CS.flex, CS.alignCenter, className)}
-      p={bordered ? "sm" : undefined}
+      py={bordered ? "md" : undefined}
+      px={bordered ? "lg" : undefined}
       bd={bordered ? "1px solid var(--mb-color-border-neutral)" : undefined}
       bdrs={bordered ? "sm" : undefined}
     >
@@ -51,7 +52,7 @@ export const ChartSettingColorPicker = ({
         onChange={onChange}
         pillSize={pillSize}
       />
-      {title && <h4 className={CS.ml1}>{title}</h4>}
+      {title && <h4 className={bordered ? CS.ml2 : CS.ml1}>{title}</h4>}
     </Box>
   );
 };

@@ -483,7 +483,11 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.trendline_color": {
     getSection: () => t`Display`,
     widget: "color",
-    getProps: () => ({ title: t`Trend line color`, bordered: true }),
+    getProps: () => ({
+      title: t`Trend line color`,
+      bordered: true,
+      pillSize: "small" as const,
+    }),
     getDefault: (_series, vizSettings) => {
       const seriesColors: Record<string, string> =
         vizSettings[SERIES_COLORS_SETTING_KEY] ?? {};
