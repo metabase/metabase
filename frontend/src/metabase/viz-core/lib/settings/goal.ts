@@ -19,13 +19,12 @@ export const getChartGoal = (
     return null;
   }
 
-  // an unset goal has always drawn the line at 0
-  const goalValue =
-    settings["graph.goal_value"] == null ? 0 : getNumericGoalValue(settings);
+  const goalValue = getNumericGoalValue(settings);
 
   if (goalValue == null) {
     return null;
   }
+
   const isPercent = getStackOffset(settings) === "expand";
 
   return {
