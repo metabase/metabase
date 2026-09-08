@@ -98,3 +98,13 @@
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::api-keys.schema/api-key.update [:key :key_prefix :updated_by_id])]
   (t2/update! :model/ApiKey :id id changes))
+
+(defn update-api-key-last-used-at!
+  "Stamp `last_used_at` of the ApiKey with `id` to now, without touching `updated_at`. A plain UPDATE
+  rather than [[update-api-key!]] on purpose: the model's `before-update` hook hydrates the key and
+  publishes an `:event/api-key-update` audit event, which a usage stamp must not do."
+  [id]
+  (t2/query {:update [(t2/table-name :model/ApiKey)]
+             :where  [:= :id id]
+             :set    {:last_used_at :%now
+                      :updated_at   :updated_at}}))
