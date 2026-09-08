@@ -6,6 +6,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase-enterprise.remote-sync.source :as source]
@@ -65,7 +66,8 @@
 
 (deftest sync-creates-stable-permission-resources-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (let [files (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})]
+    (let [database-id (mt/id)
+          files (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})]
       (data-app.sync/import-from-snapshot! (snapshot files))
       (let [{:keys [resource_collection_id permission_group_id]}
             (t2/select-one :model/DataApp :name "sales")]
@@ -84,6 +86,7 @@
                                :object (perms/collection-readwrite-path resource_collection_id))))
           (let [permissions (t2/select-fn-vec :perm_value :model/DataPermissions
                                               :group_id permission_group_id
+                                              :db_id database-id
                                               :perm_type :perms/create-queries)]
             (is (seq permissions))
             (is (every? #(= :no %) permissions))))
@@ -313,3 +316,49 @@
         (is (= 1 (count (:config-errors result))))
         (is (str/includes? (first (:config-errors result)) "data_apps/ghost/data_app.yaml"))
         (is (empty? (t2/select-fn-set :name :model/DataApp)))))))
+
+(deftest resource-failure-rolls-back-only-that-app-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (let [files (merge (app-files "broken" {:name "Broken" :path "index.js" :bundle "OLD"})
+                       (app-files "working" {:name "Working" :path "index.js" :bundle "OLD"}))
+          ensure-resources! data-app.resources/ensure-resources!]
+      (data-app.sync/import-from-snapshot! (snapshot files))
+      (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :name "broken")
+            old-name (t2/select-one-fn :name :model/Collection :id collection-id)]
+        ; inject an error into `ensure-resources!` for the "broken" app
+        (with-redefs [data-app.resources/ensure-resources!
+                      (fn [app]
+                        (ensure-resources! app)
+                        (when (= "broken" (:name app))
+                          (t2/update! :model/Collection :id collection-id {:name "Partial update"})
+                          (throw (ex-info "Resource provisioning failed." {}))))]
+          (data-app.sync/import-from-snapshot!
+           (snapshot (assoc files "data_apps/broken/index.js" "NEW" "data_apps/working/index.js" "NEW"))))
+        ; the "broken" app bundle with sync error should be rolled back to "OLD"
+        (is (= "OLD" (String. ^bytes (t2/select-one-fn :bundle :model/DataApp :name "broken") "UTF-8")))
+        ; the collection name should be rolled back to the old name
+        (is (= old-name (t2/select-one-fn :name :model/Collection :id collection-id)))
+        ; the thrown exception in ensure-resources! should be reported in the sync error
+        (is (= "Resource provisioning failed." (t2/select-one-fn :sync_error :model/DataApp :name "broken")))
+        ; the "working" app without sync errors should not be rolled back to "OLD"
+        (is (= "NEW" (String. ^bytes (t2/select-one-fn :bundle :model/DataApp :name "working") "UTF-8")))))))
+
+(deftest pruning-failure-does-not-roll-back-synced-apps-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (let [working-files (app-files "working" {:name "Working" :path "index.js" :bundle "OLD"})
+            files (merge working-files (app-files "removed" {:name "Removed" :path "index.js" :bundle "OLD"}))
+            prune! data-apps.db/delete-data-apps-not-named!]
+        (data-app.sync/import-from-snapshot! (snapshot files))
+        ; inject an error into deleting data apps
+        (with-redefs [data-apps.db/delete-data-apps-not-named!
+                      (fn [slugs]
+                        (prune! slugs)
+                        (throw (ex-info "Pruning failed." {})))]
+        ; sync should report the error from pruning step
+          (is (=? {:synced 1 :changed 1 :removed 0 :pruning-error "Pruning failed."}
+                  (data-app.sync/sync-from-snapshot!
+                   (snapshot (assoc working-files "data_apps/working/index.js" "NEW"))))))
+        ; a pruning failure should not roll back the updated app's bundle
+        (is (= "NEW" (String. ^bytes (t2/select-one-fn :bundle :model/DataApp :name "working") "UTF-8")))
+        (is (t2/exists? :model/DataApp :name "removed"))))))

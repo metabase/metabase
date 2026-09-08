@@ -46,8 +46,9 @@ remote-sync import  →  snapshot  →  sync-from-snapshot!  →  discover confi
 layer and are counted separately in the pull summary (see `fold-data-app-changes` in
 `remote_sync/impl.clj` — without it, a pull whose only change is a data app reports "no changes").
 
-Apps are synced independently: each app's row and its resource links commit together, and pruning
-runs in its own transaction, so one failing app cannot roll back the others.
+Apps are synced independently. Each app's row and its resource links commit together, and pruning
+runs in its own transaction. A database or resource setup error rolls back that app's update, then
+records `sync_error` separately.
 
 ## The repository is the source of truth
 
