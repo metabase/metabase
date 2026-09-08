@@ -31,6 +31,10 @@
       (agent-error!
        (tru "No saved question found with id `{0}` that you can read. Find questions with `search` first."
             card-id)))
+    (when (:dashboard_id card)
+      (agent-error!
+       (tru "Question `{0}` belongs to dashboard {1} and cannot be placed on another dashboard. Use a question saved in a collection, or rebuild it as a chart in this conversation."
+            card-id (:dashboard_id card))))
     card))
 
 (defn- validate-tile! [{chart-id :chart_id query-id :query_id card-id :card_id :as tile}]
@@ -144,7 +148,7 @@
   You CANNOT edit a dashboard after creating it, so choose carefully what to include
   and get the order and sizing right in this single call.
 
-  The dashboard is NOT saved anywhere yet — like charts, it exists only in this
+  The dashboard is NOT saved anywhere yet — it exists only in this
   conversation until the user asks to save it; then call `save_entity` with the
   dashboard id this tool returns. Do not invent a URL for it; the dashboard is shown
   to the user in the conversation automatically."

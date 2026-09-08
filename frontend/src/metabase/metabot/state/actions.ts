@@ -596,13 +596,17 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .with({ type: "data-entity_saved" }, (part) => {
                 dispatch(
-                  markEntitySaved({
-                    entityId: part.data.chart_id,
-                    savedId:
-                      "card_id" in part.data
-                        ? part.data.card_id
-                        : part.data.dashboard_id,
-                  }),
+                  markEntitySaved(
+                    "card_id" in part.data
+                      ? {
+                          entityId: part.data.chart_id,
+                          savedId: part.data.card_id,
+                        }
+                      : {
+                          entityId: part.data.generated_dashboard_id,
+                          savedId: part.data.dashboard_id,
+                        },
+                  ),
                 );
                 const { tool_call_id, title } = part.data;
                 if (tool_call_id && title) {

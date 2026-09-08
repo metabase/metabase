@@ -143,9 +143,11 @@
 
 (defn entity-saved-part
   "Create an ENTITY_SAVED data part for streaming. `value` is a map describing where a
-  previously-generated inline chart was persisted: `{:chart_id <generated chart id>,
-  :card_id <saved card id>, :destination {:type :id}}`. The FE resolves the card's
-  and the destination's display names at render time."
+  previously-generated inline entity was persisted: `{:chart_id <generated chart id>,
+  :card_id <saved card id>, :destination {:type :id}}` for a chart, or
+  `{:generated_dashboard_id <generated dashboard id>, :dashboard_id <saved dashboard id>,
+  :destination ...}` for a dashboard. The FE resolves the entity's and the
+  destination's display names at render time."
   [value]
   {:type :data
    :data-type entity-saved-type
