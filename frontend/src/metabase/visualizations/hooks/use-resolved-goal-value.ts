@@ -1,8 +1,7 @@
-import { resolveGoalValue } from "metabase/viz-core";
 import type { DatasetData, DatasetQuery, GoalValue } from "metabase-types/api";
 
 import type { GoalResolution } from "./use-answered-goal-data";
-import { useAnsweredGoalDataForValues } from "./use-answered-goal-data-for-values";
+import { useAnsweredGoalValue } from "./use-answered-goal-value";
 
 export type GoalValueResolution = GoalResolution<{ value: number | null }>;
 
@@ -11,14 +10,15 @@ export function useResolvedGoalValue(
   data: DatasetData,
   value: GoalValue | null | undefined,
 ): GoalValueResolution {
-  const answered = useAnsweredGoalDataForValues(datasetQuery, data, [value]);
+  const resolved = useAnsweredGoalValue(datasetQuery, data, value);
 
-  if (answered.status !== "resolved") {
-    return answered;
+  if (resolved.isUnanswered === true) {
+    return { status: "resolving" };
   }
 
-  return {
-    status: "resolved",
-    value: resolveGoalValue(answered.data, value).value,
-  };
+  if (resolved.error != null) {
+    return { status: "failed" };
+  }
+
+  return { status: "resolved", value: resolved.value };
 }

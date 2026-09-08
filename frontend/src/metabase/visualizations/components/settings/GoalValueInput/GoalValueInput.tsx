@@ -15,6 +15,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import { useAnsweredGoalValue } from "metabase/visualizations/hooks/use-answered-goal-value";
 import { type GoalRefError, resolveGoalValue } from "metabase/viz-core";
 import type {
   CardId,
@@ -39,7 +40,6 @@ import { GoalValuePill } from "./GoalValuePill";
 import { StaticGoalValueInput } from "./StaticGoalValueInput";
 import { ICON_BUTTON_SIZE } from "./constants";
 import type { ColumnOption, PickedItem } from "./types";
-import { useAnsweredGoalValue } from "./use-answered-goal-value";
 import { useEntityColumnValues } from "./use-entity-column-values";
 import { useReferencedEntity } from "./use-referenced-entity";
 import { getNumericColumnOptions } from "./utils";

@@ -1,7 +1,6 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useAnsweredGoalData } from "metabase/visualizations/hooks/use-answered-goal-data";
 import {
   type ResolvedGoalValue,
   getUnansweredGoalEntities,
@@ -17,6 +16,8 @@ import type {
 } from "metabase-types/api";
 import { isGoalForeignColumnRef } from "metabase-types/guards";
 
+import { useAnsweredGoalData } from "./use-answered-goal-data";
+
 const RESOLVING: ResolvedGoalValue = {
   value: null,
   isUnanswered: true,
@@ -25,9 +26,10 @@ const RESOLVING: ResolvedGoalValue = {
 /**
  * Like `resolveGoalValue`, but a foreign reference the query can't answer is
  * answered by re-running the question's query with the references attached.
- * Keeps the error detail the input shows; charts use `useResolvedGoalValue`.
- * `referencedEntities` lets a caller with several inputs answer them all in
- * one query; by default only `value`'s own entity is asked for.
+ * Keeps the error detail the goal input shows; `useResolvedGoalValue` reduces
+ * it to a status for charts. `referencedEntities` lets a caller with several
+ * inputs answer them all in one query; by default only `value`'s own entity is
+ * asked for.
  */
 export function useAnsweredGoalValue(
   datasetQuery: DatasetQuery | undefined,
