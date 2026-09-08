@@ -32,3 +32,14 @@ jobs:
           fail: true
           args: docs --config ./.lychee/config.toml --offline
           format: markdown
+
+      - name: Install bun
+        if: ${{ !cancelled() }}
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+          token: ${{ github.token }}
+
+      - name: Check nav.yml links
+        if: ${{ !cancelled() }}
+        run: bun docs/util/check-nav-links.ts
