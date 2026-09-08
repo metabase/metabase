@@ -240,8 +240,8 @@ export {
 export type {
   GoalData,
   GoalRefError,
+  GoalValueResult,
   ResolvedGoalSegment,
-  ResolvedGoalValue,
 } from "./lib/dynamic-goals";
 export type { GoalSettingKind } from "./lib/dynamic-goal-settings";
 export {

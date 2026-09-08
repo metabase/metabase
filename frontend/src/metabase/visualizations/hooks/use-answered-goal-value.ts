@@ -2,7 +2,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
-  type ResolvedGoalValue,
+  type GoalValueResult,
   getUnansweredGoalEntities,
   needsAnswer,
   resolveGoalValue,
@@ -18,7 +18,7 @@ import { isGoalForeignColumnRef } from "metabase-types/guards";
 
 import { useAnsweredGoalData } from "./use-answered-goal-data";
 
-const RESOLVING: ResolvedGoalValue = {
+const RESOLVING: GoalValueResult = {
   value: null,
   isUnanswered: true,
 };
@@ -38,7 +38,7 @@ export function useAnsweredGoalValue(
   referencedEntities: ReferencedEntity[] = getUnansweredGoalEntities(data, [
     value,
   ]),
-): ResolvedGoalValue {
+): GoalValueResult {
   const resolved = resolveGoalValue(data, value);
   const unansweredRef =
     needsAnswer(resolved) && isGoalForeignColumnRef(value) ? value : null;
@@ -69,7 +69,7 @@ function queryFailed({
   type,
   id,
   column,
-}: GoalForeignColumnRef): ResolvedGoalValue {
+}: GoalForeignColumnRef): GoalValueResult {
   return {
     value: null,
     error: {

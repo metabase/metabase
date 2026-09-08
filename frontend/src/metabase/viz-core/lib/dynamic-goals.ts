@@ -67,7 +67,7 @@ export type GoalRefError =
       message?: string;
     };
 
-export type ResolvedGoalValue = {
+export type GoalValueResult = {
   value: number | null;
   error?: GoalRefError;
   isUnanswered?: boolean;
@@ -76,7 +76,7 @@ export type ResolvedGoalValue = {
 export function resolveGoalValue(
   data: GoalData,
   goalValue: GoalValue | null | undefined,
-): ResolvedGoalValue {
+): GoalValueResult {
   if (goalValue == null) {
     return { value: null };
   }
@@ -95,7 +95,7 @@ export function resolveGoalValue(
 function resolveSelfColumnValue(
   data: GoalData,
   columnName: string,
-): ResolvedGoalValue {
+): GoalValueResult {
   const columnIndex = data.cols.findIndex(
     (column) => column.name === columnName,
   );
@@ -128,7 +128,7 @@ function resolveSelfColumnValue(
 function resolveForeignColumnRef(
   data: GoalData,
   ref: GoalForeignColumnRef,
-): ResolvedGoalValue {
+): GoalValueResult {
   const { type, id, column } = ref;
   const result = data.referenced_entities?.[type]?.[id];
 
@@ -379,7 +379,7 @@ export function getReferencedEntities(card: GoalCard): ReferencedEntity[] {
 function hasGoalReferencesWhere(
   card: GoalCard,
   data: GoalData | undefined,
-  predicate: (resolved: ResolvedGoalValue) => boolean,
+  predicate: (resolved: GoalValueResult) => boolean,
 ): boolean {
   return getGoalForeignColumnRefs(card).some(
     (ref) => data == null || predicate(resolveGoalValue(data, ref)),
@@ -403,26 +403,26 @@ export function cardHasUnresolvedGoalReferences(
 }
 
 // Missing columns are worth re-running for - failed queries would just fail again.
-export function needsAnswer(resolved: ResolvedGoalValue): boolean {
+export function needsAnswer(resolved: GoalValueResult): boolean {
   return (
     isUnanswered(resolved) || resolved.error?.reason === "column-not-found"
   );
 }
 
 // The result has no answer for the referenced entity.
-function isUnanswered(resolved: ResolvedGoalValue): boolean {
+function isUnanswered(resolved: GoalValueResult): boolean {
   return resolved.isUnanswered === true;
 }
 
 // Unanswered, or answered with an error.
-function isUnresolved(resolved: ResolvedGoalValue): boolean {
+function isUnresolved(resolved: GoalValueResult): boolean {
   return isUnanswered(resolved) || resolved.error != null;
 }
 
 // Only a foreign reference gets re-asked (see needsAnswer) - every other error is final.
 function isFailed(
   value: GoalValue | null | undefined,
-  resolved: ResolvedGoalValue,
+  resolved: GoalValueResult,
 ): boolean {
   return (
     resolved.error != null &&

@@ -7,23 +7,17 @@ import type { Card, DatasetData } from "metabase-types/api";
 import type { GoalResolutionStatus } from "./use-answered-goal-data";
 import { useResolvedGoalValue } from "./use-resolved-goal-value";
 
-// Not a `GoalResolution`: the chart model is built while the goal still
-// resolves, so the settings are always present, with `graph.goal_value` a
-// number or null until resolved.
-export type GoalSettingsResolution = {
-  status: GoalResolutionStatus;
-  settings: ComputedVisualizationSettings;
-};
-
 /**
  * Resolves `graph.goal_value` to a number so the chart model only ever sees
  * numbers. Returns the given settings untouched when there is nothing to resolve.
+ * The settings are present in every status: the chart model is built while the
+ * goal still resolves, with `graph.goal_value` null until it does.
  */
 export function useResolvedGoalSettings(
   card: Pick<Card, "display" | "dataset_query">,
   data: DatasetData,
   settings: ComputedVisualizationSettings,
-): GoalSettingsResolution {
+): { status: GoalResolutionStatus; settings: ComputedVisualizationSettings } {
   const needsResolving = needsGraphGoalResolution(card.display, settings);
 
   const goal = useResolvedGoalValue(
