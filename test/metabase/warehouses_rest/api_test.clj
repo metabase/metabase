@@ -2573,6 +2573,33 @@
                                                     :access-token                  secret/protected-password
                                                     :refresh-token                 secret/protected-password})))))
 
+(deftest update-database-engine-changed-details-not-merged-test
+  (let [existing-details {:host "localhost",
+                          :port 5432,
+                          :dbname "postgres",
+                          :user "postgres"
+                          :password "password",
+                          :schema-filters-type "all"
+                          :ssl false,
+                          :tunnel-enabled false,
+                          :advanced-options false}
+        new-details      {:service-account-json "{\"type\": \"service_account\", \"project_id\": \"bigquery-project\"}",
+                          :dataset-filters-type "inclusion",
+                          :dataset-filters-patterns "dev",
+                          :project-id nil
+                          :advanced-options false}]
+    (with-redefs [driver/can-connect? (constantly true)]
+      (testing "when the engine changes, the existing details are not merged into the new ones (#77480)"
+        (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details existing-details}]
+          (api-update-database! 200 db-id {:engine :bigquery-cloud-sdk, :details new-details})
+          (is (= new-details
+                 (t2/select-one-fn :details :model/Database :id db-id))))
+        (testing "without an engine change, existing details are still merged into partial updates"
+          (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres :details existing-details}]
+            (api-update-database! 200 db-id {:details {:port 5433}})
+            (is (= (assoc existing-details :port 5433)
+                   (t2/select-one-fn :details :model/Database :id db-id)))))))))
+
 (deftest ^:parallel secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver
     (testing "File path values for secrets are returned as plaintext in the API (#20030)"

@@ -212,6 +212,78 @@
                                                          {}
                                                          {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
 
+(def ^:private header-alignment-cols
+  "A remapped pair (`rating` -> `rating_desc`) followed by another column, so a shift in the headers is visible. The
+  two halves have different display names so the assertions can tell which one supplied a title."
+  [{:name "id"          :display_name "ID"          :base_type :type/Integer
+    :visibility_type :normal :semantic_type nil}
+   {:name "rating"      :display_name "Rating"      :base_type :type/Integer
+    :visibility_type :normal :semantic_type :type/Category :remapped_to "rating_desc"}
+   {:name "rating_desc" :display_name "Rating Desc" :base_type :type/Text
+    :visibility_type :normal :semantic_type nil :remapped_from "rating"}
+   {:name "title"       :display_name "Title"       :base_type :type/Text
+    :visibility_type :normal :semantic_type nil}])
+
+(def ^:private equal-display-name-cols
+  "[[header-alignment-cols]] with both halves of the pair named `Rating`, as on a real instance. This is the fixture
+  that reproduces the reported symptom (#71069)."
+  (mapv (fn [col]
+          (cond-> col
+            (= "rating_desc" (:name col)) (assoc :display_name "Rating")))
+        header-alignment-cols))
+
+(def ^:private header-alignment-rows [[1 3 "Good" "Widget"]])
+
+(def ^:private header-alignment-table-columns
+  "Viz settings naming every column, in result order. Their presence masked the bug (#71069)."
+  {:metabase.models.visualization-settings/table-columns
+   (vec (for [col-name (map :name header-alignment-cols)]
+          {:metabase.models.visualization-settings/table-column-name    col-name
+           :metabase.models.visualization-settings/table-column-enabled true}))})
+
+(defn- rendered-table-headers
+  "The titles actually rendered into the <th> cells of a `:table` part."
+  ([viz-settings] (rendered-table-headers viz-settings header-alignment-cols))
+  ([viz-settings cols]
+   (let [data {:cols cols :rows header-alignment-rows :viz-settings viz-settings}
+         part (body/render :table :inline pacific-tz {:visualization_settings {}} nil data)]
+     (map last (render.tu/nodes-with-tag (:content part) :th)))))
+
+(deftest ^:parallel remapped-column-header-alignment-test
+  (testing "the header row itself drops the remapped source column and takes its name from the target"
+    (is (= [(number "ID" "ID") "Rating Desc" "Title"]
+           (:row (first (#'body/prep-for-html-rendering
+                         pacific-tz {} {:cols header-alignment-cols
+                                        :rows header-alignment-rows}))))))
+  (testing "rendered <th> titles line up with that header row (#71069)"
+    (is (= ["ID" "Rating Desc" "Title"]
+           (rendered-table-headers {}))))
+  (testing "and are the same with table-columns viz settings present (#71069)"
+    (is (= ["ID" "Rating Desc" "Title"]
+           (rendered-table-headers header-alignment-table-columns))))
+  (testing "with both halves named alike, the reported symptom (#71069)"
+    (is (= ["ID" "Rating" "Title"]
+           (rendered-table-headers {} equal-display-name-cols)))))
+
+(defn- rendered-th-titles
+  "The `:title` attribute of each rendered <th>; the cell text is truncated."
+  [part]
+  (map (comp :title second) (render.tu/nodes-with-tag (:content part) :th)))
+
+;; A real FK remapping and query, so the hand-written remap metadata above matches what the QP emits. Does not
+;; reproduce #71069 by itself: the QP appends the remap target last, so nothing follows it to shift.
+(deftest ^:synchronized remapped-column-header-alignment-e2e-test
+  (mt/with-column-remappings [orders.product_id products.title]
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders {:limit 1})}]
+      (testing "a real remapped FK column renders its remapped title, currency suffix intact (#71069)"
+        (let [data (:data (:result (notification.execute/execute-card (mt/user->id :crowberto)
+                                                                      (:id card))))
+              part (body/render :table :inline pacific-tz card nil data)]
+          ;; "Product ID [external remap]" is the Dimension name `with-column-remappings` creates
+          (is (= ["ID" "User ID" "Product ID [external remap]" "Subtotal" "Tax" "Total"
+                  "Discount ($)" "Created At" "Quantity"]
+                 (rendered-th-titles part))))))))
+
 ;; There should be no truncation warning if the number of rows/cols is fewer than the row/column limit
 (deftest no-truncation-warnig
   (is (= ""

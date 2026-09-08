@@ -916,19 +916,26 @@
 
 (defn- upsert-sensitive-fields
   "Replace any sensitive values not overridden in the PUT with the original values.
-  `details-key` is the key in the database map to use (e.g., :details or :write_data_details)."
-  ([database details]
-   (upsert-sensitive-fields database details :details))
-  ([database details details-key]
-   (when details
-     (merge (get database details-key)
-            (reduce
-             (fn [details k]
-               (if (= secret/protected-password (get details k))
-                 (m/update-existing details k (constantly (get-in database [details-key k])))
-                 details))
-             details
-             (database/sensitive-fields-for-db database))))))
+  `details-key` is the key in the database map to use (e.g., :details or :write_data_details).
+  When `engine-changed?` is truthy, the existing details belong to a different driver, so they are not merged into the
+  new details (#77480)."
+  ([database new-details]
+   (upsert-sensitive-fields database new-details :details false))
+  ([database new-details details-key]
+   (upsert-sensitive-fields database new-details details-key false))
+  ([database new-details details-key engine-changed?]
+   (when new-details
+     (let [existing-details (get database details-key)
+           details (reduce
+                    (fn [details k]
+                      (if (= secret/protected-password (get details k))
+                        (m/update-existing details k (constantly (get-in database [details-key k])))
+                        details))
+                    new-details
+                    (database/sensitive-fields-for-db database))]
+       (if engine-changed?
+         details
+         (merge existing-details details))))))
 
 (def ^:private connection-marker-key->details-column
   {:write-data-connection "write_data_details"})
@@ -1019,14 +1026,14 @@
                                           (validate-write-data-details! existing-database write_data_details))
         incoming-details                details
         incoming-write-data-details     write_data_details
-        details-with-secrets            (some->> details
-                                                 (upsert-sensitive-fields existing-database))
-        write-data-details-with-secrets (when write_data_details
-                                          (upsert-sensitive-fields existing-database write_data_details :write_data_details))
+        engine-changed?                 (some-> engine keyword (not= (:engine existing-database)))
+        details-with-secrets            (when incoming-details
+                                          (upsert-sensitive-fields existing-database incoming-details :details engine-changed?))
+        write-data-details-with-secrets (when  write_data_details
+                                          (upsert-sensitive-fields existing-database write_data_details :write_data_details engine-changed?))
         ;; verify that we can connect to the database if details OR `:engine` have changed.
         details-changed?                (some-> details-with-secrets (not= (:details existing-database)))
         write-details-changed?          (some-> write-data-details-with-secrets (not= (:write_data_details existing-database)))
-        engine-changed?                 (some-> engine keyword (not= (:engine existing-database)))
         main-conn-error                 (when (or details-changed? engine-changed?)
                                           (warehouses/test-database-connection (or engine (:engine existing-database))
                                                                                (or details-with-secrets (driver.conn/default-details existing-database))))
