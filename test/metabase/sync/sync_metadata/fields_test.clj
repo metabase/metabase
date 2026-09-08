@@ -591,3 +591,70 @@
             {a "A", b "B"} (u/index-by :name (t2/select :model/Field :table_id (:id table)))]
         (is (true? (:database_is_nullable a)))
         (is (false? (:database_is_nullable b)))))))
+
+(deftest data-sensitivity-survives-sync-test
+  (testing "a user-set data_sensitivity is untouched by a full sync and by bare Field updates"
+    (mt/with-temp-test-data [["sens_table"
+                              [{:field-name "email", :base-type :type/Text}]
+                              [["ngoc@metabase.com"]]]]
+      (let [db       (mt/db)
+            field-id (mt/id :sens_table :email)
+            field    #(t2/select-one-fn :data_sensitivity :model/Field :id field-id)
+            mirror   #(t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)]
+        (testing "a freshly synced field is unclassified and has no user-settings row"
+          (is (nil? (field)))
+          (is (not (t2/exists? :model/FieldUserSettings :field_id field-id))))
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity "PII"})
+        (testing "after a full sync"
+          (sync/sync-database! db)
+          (is (= :PII (field)))
+          (is (= :PII (mirror))))
+        (testing "after a bare update to the Field with a different label"
+          (t2/update! :model/Field field-id {:data_sensitivity :SEC_KEY})
+          (is (= :PII (field)))
+          (is (= :PII (mirror))))))))
+
+(deftest data-sensitivity-classifier-respects-user-label-test
+  (testing "a user-set data_sensitivity wins over the classifier's inference while sibling fields get labeled"
+    (mt/with-temp-test-data [["app_users"
+                              [{:field-name "email", :base-type :type/Text}
+                               {:field-name "ssn", :base-type :type/Text}
+                               {:field-name "notes", :base-type :type/Text}]
+                              [["ngoc@metabase.com" "123-45-6789" "called back twice"]]]]
+      (let [field  #(t2/select-one-fn :data_sensitivity :model/Field :id (mt/id :app_users %))
+            mirror #(t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id (mt/id :app_users %))]
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :app_users :email)) {:data_sensitivity "PUBLIC"})
+        (is (nil? (field :ssn)))
+        (mt/with-temporary-setting-values [data-sensitivity-scan-enabled true]
+          (sync/sync-database! (mt/db)))
+        (testing "the user's PUBLIC on email survives even though the rules say PII"
+          (is (= :PUBLIC (field :email)))
+          (is (= :PUBLIC (mirror :email))))
+        (testing "the classifier labels the unlabeled siblings without creating mirror rows"
+          (is (= :PII (field :ssn)))
+          (is (= :PUBLIC (field :notes)))
+          (is (nil? (mirror :ssn)))
+          (is (nil? (mirror :notes))))))))
+
+(deftest data-sensitivity-survives-column-drop-and-readd-test
+  (testing "a user-set data_sensitivity survives the warehouse column being dropped and added back"
+    (mt/with-temp-test-data [["readd_table"
+                              [{:field-name "email", :base-type :type/Text}]
+                              [["ngoc@metabase.com"]]]]
+      (try
+        (let [db       (mt/db)
+              db-spec  (sql-jdbc.conn/db->pooled-connection-spec db)
+              field-id (mt/id :readd_table :email)
+              field    #(t2/select-one [:model/Field :active :data_sensitivity] :id field-id)]
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity "PHI"})
+          (jdbc/execute! db-spec ["ALTER TABLE \"READD_TABLE\" DROP COLUMN \"EMAIL\";"])
+          (sync/sync-database! db)
+          (testing "the field is inactive while the column is gone"
+            (is (=? {:active false, :data_sensitivity :PHI} (field))))
+          (jdbc/execute! db-spec ["ALTER TABLE \"READD_TABLE\" ADD COLUMN \"EMAIL\" VARCHAR;"])
+          (sync/sync-database! db)
+          (testing "the same Field row is reactivated and keeps its label"
+            (is (=? {:active true, :data_sensitivity :PHI} (field)))
+            (is (= :PHI (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)))))
+        (finally
+          (t2/delete! :model/Database (mt/id)))))))

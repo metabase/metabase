@@ -439,6 +439,19 @@ Should custom visualizations be enabled for this instance?
 
 Whether dashboards should default to a user's last used parameters on load.
 
+### `MB_DATA_SENSITIVITY_SCAN_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+When true, the analyze phase of sync labels every unlabeled field with a data_sensitivity category inferred from
+  its name, types, and fingerprint, writing PUBLIC when nothing matches. Metadata only: the label does not mask or
+  restrict anything. Labels set by a user are never overwritten.
+
+Scans run with the scheduled analyze pass and with Sync database schema now on a database's admin
+  page. Fields that already carry a label, including PUBLIC, are not rescanned.
+
 ### `MB_DB_CONNECTION_TIMEOUT_MS`
 
 - Type: integer
@@ -1786,17 +1799,6 @@ Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vs
 
 Whether the AI feature access admin page shows granular, per-tool group permissions instead of a single on/off toggle per group.
 
-### `MB_METABOT_CHAT_SYSTEM_PROMPT`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
-- Type: string
-- Default: ``
-- [Exported as](../installation-and-operation/serialization.md): `metabot-chat-system-prompt`.
-- [Configuration file name](./config-file.md): `metabot-chat-system-prompt`
-
-Custom instructions appended to Metabot's system prompt for the chat experience (the AI sidebar and embedded Metabot).
-
 ### `MB_METABOT_ENABLED`
 
 - Type: boolean
@@ -1817,28 +1819,6 @@ Whether Metabot is enabled for regular usage.
 
 The icon for Metabot. Set to `metabot` for the default icon, or a data URI for a custom uploaded image (up to 1MB).
 
-### `MB_METABOT_LIMIT_RESET_RATE`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
-- Type: keyword
-- Default: `monthly`
-- [Exported as](../installation-and-operation/serialization.md): `metabot-limit-reset-rate`.
-- [Configuration file name](./config-file.md): `metabot-limit-reset-rate`
-
-How often Metabot usage limits reset: `daily`, `weekly`, or `monthly`.
-
-### `MB_METABOT_LIMIT_UNIT`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
-- Type: keyword
-- Default: `tokens`
-- [Exported as](../installation-and-operation/serialization.md): `metabot-limit-unit`.
-- [Configuration file name](./config-file.md): `metabot-limit-unit`
-
-The unit used for Metabot usage limits: `tokens` or `messages`.
-
 ### `MB_METABOT_NAME`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -1849,28 +1829,6 @@ The unit used for Metabot usage limits: `tokens` or `messages`.
 - [Configuration file name](./config-file.md): `metabot-name`
 
 The display name for Metabot, shown throughout the Metabase UI.
-
-### `MB_METABOT_NLQ_SYSTEM_PROMPT`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
-- Type: string
-- Default: ``
-- [Exported as](../installation-and-operation/serialization.md): `metabot-nlq-system-prompt`.
-- [Configuration file name](./config-file.md): `metabot-nlq-system-prompt`
-
-Custom instructions appended to Metabot's system prompt for the natural language query (AI exploration) experience.
-
-### `MB_METABOT_QUOTA_REACHED_MESSAGE`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
-- Type: string
-- Default: `You have reached your AI usage limit for the current period. Please contact your administrator.`
-- [Exported as](../installation-and-operation/serialization.md): `metabot-quota-reached-message`.
-- [Configuration file name](./config-file.md): `metabot-quota-reached-message`
-
-The message shown to users when they reach their usage quota.
 
 ### `MB_METABOT_RECENT_VIEWS_ENABLED`
 
@@ -1897,17 +1855,6 @@ Whether to show Metabot illustrations in the UI.
 - [Configuration file name](./config-file.md): `metabot-slack-signing-secret`
 
 Signing secret for verifying requests from the Metabot Slack app.
-
-### `MB_METABOT_SQL_SYSTEM_PROMPT`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
-- Type: string
-- Default: ``
-- [Exported as](../installation-and-operation/serialization.md): `metabot-sql-system-prompt`.
-- [Configuration file name](./config-file.md): `metabot-sql-system-prompt`
-
-Custom instructions appended to Metabot's system prompt for the SQL generation experience.
 
 ### `MB_MFA_CHALLENGE_SIGNING_KEY`
 
