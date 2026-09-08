@@ -199,7 +199,6 @@
                        (connection "azure" "azure")
                        (connection "zai" "zai")
                        (connection "openrouter" "openrouter")
-                       (connection "google" "google")
                        (connection "mistral" "mistral")
                        (connection "moonshot" "moonshot")]
       (doseq [[model-ref expected]
