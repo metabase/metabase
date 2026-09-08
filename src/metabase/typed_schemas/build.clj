@@ -8,6 +8,7 @@
   docstring for the pipeline shape and the separation rules."
   (:require
    [clojure.set :as set]
+   [medley.core :as m]
    [metabase.system.core :as system]
    [metabase.typed-schemas.common :as common]
    [metabase.typed-schemas.source :as source]
@@ -55,11 +56,14 @@
   "Fetched schema entities, ready for pure assembly by [[create-schema]].
 
   Each entry holds entity maps shaped by the `metabase.typed-schemas.schema.*`
-  builders; `:key` on each entity seeds the generated object keys."
+  builders; `:key` on each entity seeds the generated object keys. `:errors`
+  describes entities that could not be built (currently only models), so one
+  broken entity does not fail the whole response."
   [:map {:closed true}
    [:models    [:sequential :map]]
    [:tables    [:sequential :map]]
-   [:metrics   [:sequential :map]]])
+   [:metrics   [:sequential :map]]
+   [:errors    [:sequential :map]]])
 
 (defn- invalid-options!
   [message]
@@ -90,12 +94,13 @@
      :metrics metrics}))
 
 (defn- models-for-scope
-  "Returns model schemas scoped to `database-ids`, or all readable models when requested without a database scope."
+  "Returns `{:models [...] :errors [...]}` scoped to `database-ids`, or all readable
+  models when requested without a database scope."
   [source database-ids include-models?]
   (cond
     database-ids    (source/models source database-ids)
     include-models? (source/models source nil)
-    :else           []))
+    :else           {:models [] :errors []}))
 
 (defn fetch-items
   "Fetches the schema entities selected by [[SemanticSchemaOptions]].
@@ -124,17 +129,20 @@
                                                           :include-data-library? include-data-library?
                                                           :include-metric-library? include-metric-library?})
            database-ids            (source/database-ids source database)
-           models                  (models-for-scope source database-ids include-models?)]
+           {model-schemas :models
+            model-errors  :errors} (models-for-scope source database-ids include-models?)]
        (if (or library-scope
                (and include-models? (nil? database-ids)))
          (let [{:keys [tables metrics]} (when library-scope
                                           (library-items source library-scope))]
-           {:models    (vec models)
+           {:models    (vec model-schemas)
             :tables    (vec tables)
-            :metrics   (vec metrics)})
-         {:models    (vec models)
+            :metrics   (vec metrics)
+            :errors    (vec model-errors)})
+         {:models    (vec model-schemas)
           :tables    (source/tables source database-ids nil)
-          :metrics   (source/metrics source database-ids nil)})))))
+          :metrics   (source/metrics source database-ids nil)
+          :errors    (vec model-errors)})))))
 
 (defn create-schema
   "Assembles fetched [[Items]] into the semantic schema value rendered by
@@ -144,11 +152,14 @@
   to the current time and the configured site URL."
   ([items]
    (create-schema items nil))
-  ([{:keys [models tables metrics]} {:keys [generated-at instance-url]}]
-   (array-map
-    :schemaVersion 2
-    :generatedAt   (str (or generated-at (Instant/now)))
-    :metabase      {:instanceUrl (or instance-url (system/site-url))}
-    :models        (common/keyed-model-map models)
-    :tables        (common/keyed-map tables)
-    :metrics       (common/keyed-map metrics))))
+  ([{:keys [models tables metrics errors]} {:keys [generated-at instance-url]}]
+   (m/assoc-some
+    (array-map
+     :schemaVersion 2
+     :generatedAt   (str (or generated-at (Instant/now)))
+     :metabase      {:instanceUrl (or instance-url (system/site-url))}
+     :models        (common/keyed-model-map models)
+     :tables        (common/keyed-map tables)
+     :metrics       (common/keyed-map metrics))
+    ;; Omit when empty so healthy responses carry no `errors` key.
+    :errors (not-empty (vec errors)))))

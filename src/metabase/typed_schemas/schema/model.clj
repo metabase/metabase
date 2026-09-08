@@ -242,19 +242,63 @@
       :keyDisambiguator id
       :actions          (common/keyed-map action-schemas)})))
 
+(defn- model-error-entry
+  "Returns a schema error entry describing a model that could not be built, so a
+  single broken model surfaces as data instead of failing the whole response."
+  [model exception]
+  (m/assoc-some
+   {:type    "modelError"
+    :modelId (:id model)
+    :message (ex-message exception)}
+   :modelName (:name model)))
+
+(defn- bulk-action-schema-builder
+  "Returns a `model -> action-schemas` function backed by one bulk action lookup,
+  or nil when that bulk lookup fails.
+
+  A nil return tells [[model-schemas]] to resolve each model's actions on its
+  own, so a single broken model whose data poisons the bulk lookup cannot hide
+  every other model's actions."
+  [models model-ids]
+  (try
+    (let [action-rows-by-model-id    (group-by :model_id (action-rows model-ids))
+          action-details-by-model-id (group-by :model_id (resolved-action-details-for-models models))]
+      (fn [model]
+        (model-action-schemas model
+                              (get action-rows-by-model-id (:id model))
+                              (get action-details-by-model-id (:id model)))))
+    (catch Exception _
+      nil)))
+
+(defn- collect-model-schema
+  "Reduces one model into `{:models [...] :errors [...]}`, converting a build
+  failure into an error entry instead of throwing."
+  [acc build-action-schemas model]
+  (let [{:keys [schema error]}
+        (try
+          {:schema (model-schema model (build-action-schemas model))}
+          (catch Exception exception
+            {:error (model-error-entry model exception)}))]
+    (cond-> acc
+      schema (update :models conj schema)
+      error  (update :errors conj error))))
+
 (defn model-schemas
-  "Returns model schemas, with optional database and collection scopes."
+  "Returns `{:models [...] :errors [...]}`, with optional database and collection scopes.
+
+  A model that cannot be built becomes an entry in `:errors` rather than failing
+  generation for every other model. `:models` holds the schemas for models with
+  executable actions; `:errors` describes the models that could not be built."
   [database-ids collection-ids]
   (let [models (schema.common/select-schema-cards :model database-ids collection-ids)]
     (if (seq models)
-      (let [model-ids                  (set (map :id models))
-            action-rows-by-model-id    (group-by :model_id (action-rows model-ids))
-            action-details-by-model-id (group-by :model_id (resolved-action-details-for-models models))]
-        (for [model models
-              :let [action-schemas (model-action-schemas model
-                                                         (get action-rows-by-model-id (:id model))
-                                                         (get action-details-by-model-id (:id model)))
-                    schema         (model-schema model action-schemas)]
-              :when schema]
-          schema))
-      [])))
+      (let [model-ids            (set (map :id models))
+            ;; The bulk lookup avoids N+1s; when a broken model makes it throw we
+            ;; fall back to resolving each model's actions on its own.
+            build-action-schemas (or (bulk-action-schema-builder models model-ids)
+                                     model-action-schemas)]
+        (reduce (fn [acc model]
+                  (collect-model-schema acc build-action-schemas model))
+                {:models [] :errors []}
+                models))
+      {:models [] :errors []})))
