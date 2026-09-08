@@ -48,9 +48,7 @@ jobs:
           name: instrumented-uberjar
           path: target/uberjar/metabase.jar
           retention-days: 1
-      # Generate the OpenAPI spec from this SHA's defendpoint definitions so
-      # route normalization in the merge job matches the endpoints that served
-      # this run.
+      # Generate routes from the same revision that served this run.
       - name: Generate OpenAPI route table
         run: bun run openapi:generate
       - name: Upload OpenAPI route table
@@ -143,9 +141,7 @@ jobs:
       - name: Unzip previous manifest
         if: steps.prev.outputs.found == 'true'
         run: unzip -o prev-manifest.zip -d prev-manifest
-      # Places this run's generated document where the coverage builder reads
-      # its route table. If the artifact is missing, route normalization falls
-      # back to its regex-only behavior.
+      # A missing artifact leaves route normalisation using its regex fallback.
       - name: Download OpenAPI route table
         continue-on-error: true
         uses: actions/download-artifact@v8

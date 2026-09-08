@@ -60,7 +60,6 @@ function routeKey(method: string, path: string): string {
   return `${method.toUpperCase()} ${path.replace(/\{[^}]+\}|:[\w-]+/g, "{}")}`;
 }
 
-/** Explain up to five disagreements; TypeScript remains the authority on assignability. */
 function mismatchDetail(
   checker: ts.TypeChecker,
   from: ts.Type,
@@ -174,7 +173,6 @@ function operations(
   return result;
 }
 
-/** Locate an unresolved or unconstrained contract instead of counting it as compatible. */
 function looseType(
   checker: ts.TypeChecker,
   type: ts.Type,
@@ -205,7 +203,7 @@ function looseType(
     return undefined;
   }
   if (checker.isArrayType(type) || checker.isTupleType(type)) {
-    // isArrayType/isTupleType identify TypeReferences; TS doesn't expose them as type predicates.
+    // TypeScript's array and tuple checks don't narrow the type to TypeReference.
     const reference = type as ts.TypeReference;
     for (const element of checker.getTypeArguments(reference)) {
       const gap = looseType(checker, element, at, `${path}[]`, seen);
@@ -285,7 +283,7 @@ function parseUrl(
       url.templateSpans.map((span) => `{param}${span.literal.text}`).join(""),
     parameters: url.templateSpans.map((span) => {
       const expression = unwrap(span.expression);
-      // URL encoding preserves the parameter's contract; compare its input, not the encoded string.
+      // Compare the value before URL encoding converts it to a string.
       if (
         ts.isCallExpression(expression) &&
         ts.isIdentifier(expression.expression) &&

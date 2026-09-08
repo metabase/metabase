@@ -295,8 +295,7 @@ serialization_baseline:
   - ".github/workflows/serialization.yml"
   - "test_resources/serialization_baseline/**"
 
-# Backend contracts can change through shared schemas; frontend aliases can change
-# outside the RTK definitions. Include both complete source trees.
+# Shared schemas and frontend aliases can change outside endpoint definitions.
 openapi:
   - ".github/file-paths.yaml"
   - ".github/workflows/lint.yml"

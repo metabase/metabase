@@ -7,7 +7,6 @@ export default defineConfig({
     path: ".tmp/openapi/types",
     entryFile: false,
     clean: true,
-    // Keep recursive legacy MBQL declarations behind the existing skipLibCheck boundary.
     fileName: { suffix: ".gen.d" },
   },
   plugins: ["@hey-api/typescript"],

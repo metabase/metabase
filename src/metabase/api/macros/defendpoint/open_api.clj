@@ -143,8 +143,7 @@
 
 (mu/defn- schema->params* :- [:sequential :metabase.api.open-api/parameter]
   [schema in-fn renames]
-  ;; Resolve a top-level registry reference to expose its map entries as OpenAPI parameters. The resolved map
-  ;; retains child references, which are emitted as shared schemas under `#/components/schemas/`.
+  ;; Named parameter schemas need dereferencing before their map entries are visible.
   (let [schema                        (-> schema mc/schema mc/deref-all)
         {:keys [properties required]} (mjs-collect-definitions schema)
         required                      (set required)]
