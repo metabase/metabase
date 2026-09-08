@@ -34,6 +34,12 @@
               [nil :location]
               :dataset_query
               :card_schema
+              ;; :type is read by `queries/model?` when labelling the row; the rest are here only
+              ;; because :dataset_query is schema-governed and the Card schema upgrade needs them.
+              :type
+              :result_metadata
+              :dimensions
+              :dimension_mappings
               :last_used_at
               [^:allow-subquery
                {:select   [:status]

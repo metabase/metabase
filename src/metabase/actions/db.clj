@@ -4,6 +4,7 @@
   (:require
    [metabase.actions.schema :as actions.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -224,9 +225,12 @@
              :where  [:in :action.id action-ids]}))
 
 (mu/defn card-scope-columns
-  "The query, Collection id, Database id, and display of the Card with `card-id`, or nil."
+  "The query-relevant columns of the Card with `card-id`, plus its Collection id and display, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :dataset_query :collection_id :database_id :display] card-id))
+  ;; Spelled out rather than calling `metabase.queries.core/card-query-info`: `queries` loads `actions` (via
+  ;; `driver-api`), so requiring its API namespace back from here is a cyclic load. `queries.card-schema` is the
+  ;; dependency-free namespace that exists for exactly this.
+  (t2/select-one (queries.card-schema/selection [:collection_id :display]) :id card-id))
 
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."

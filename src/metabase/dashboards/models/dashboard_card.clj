@@ -135,7 +135,12 @@
           dashcard-id->series (when (seq dashcard-ids)
                                 (as-> (dashboards.db/series-cards-for-dashcards dashcard-ids) series
                                   (group-by :dashboardcard_id series)
-                                  (update-vals series #(map (fn [card] (dissoc card :dashboardcard_id)) %))))]
+                                  ;; :result_metadata, :dimensions and :dimension_mappings are selected only so the
+                                  ;; Card schema upgrade can run; they are not part of the series payload.
+                                  (update-vals series #(map (fn [card]
+                                                              (dissoc card :dashboardcard_id :result_metadata
+                                                                      :dimensions :dimension_mappings))
+                                                            %))))]
       (map (fn [dashcard]
              (assoc dashcard :series (get dashcard-id->series (:id dashcard) [])))
            dashcards))))

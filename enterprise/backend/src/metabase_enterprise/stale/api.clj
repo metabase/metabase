@@ -63,7 +63,9 @@
               (-> card
                   (assoc :model (if (queries/model? card) "dataset" "card"))
                   (assoc :fully_parameterized (queries/fully-parameterized? card))
-                  (dissoc :dataset_query))))))
+                  ;; Selected so `queries/model?` above can read :type and so the Card schema upgrade
+                  ;; can run; none of them are part of the listing payload.
+                  (dissoc :dataset_query :type :result_metadata :dimensions :dimension_mappings))))))
 
 (defn- annotate-dashboard-with-collection-info
   "For dashboards, we want `here` and `location` since they can contain cards as children."

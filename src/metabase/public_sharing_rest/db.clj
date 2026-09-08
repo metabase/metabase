@@ -15,7 +15,7 @@
   [card-id :- [:maybe ::lib.schema.id/card]
    & {:keys [enable-embedding?]} :- [:maybe [:map {:closed true} [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (t2/select-one [:model/Card :id :dataset_query :description :display :name :parameters :visualization_settings
-                  :card_schema]
+                  :card_schema :type :database_id :result_metadata :dimensions :dimension_mappings]
                  {:where [:and
                           [:= :id card-id]
                           [:= :archived false]

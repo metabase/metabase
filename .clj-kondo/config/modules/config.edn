@@ -2002,7 +2002,8 @@
 
   queries
   {:team "Graphy"
-   :api  #{metabase.queries.core
+   :api  #{metabase.queries.card-schema
+           metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
            metabase.queries.schema}
@@ -2926,6 +2927,7 @@
            metrics
            models
            permissions
+           queries
            system
            util
            warehouse-schema-overlay}
