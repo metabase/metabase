@@ -196,10 +196,6 @@ function BoxPlotInner({
 
   const hasValidOption = option !== null;
 
-  if (goalStatus !== "resolved") {
-    return <GoalResolutionState height={height} status={goalStatus} />;
-  }
-
   return (
     <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
       {showTitle && (
@@ -219,28 +215,32 @@ function BoxPlotInner({
           titleMenuItems={titleMenuItems}
         />
       )}
-      <CartesianChartLegendLayout
-        isReversed={settings["legend.is_reversed"]}
-        hasLegend={hasLegend}
-        items={legendItems}
-        actionButtons={!showTitle ? actionButtons : undefined}
-        hovered={hovered}
-        isFullscreen={isFullscreen}
-        isQueryBuilder={isQueryBuilder}
-        onToggleSeriesVisibility={handleToggleSeriesVisibility}
-        onHoverChange={onHoverChange}
-        width={width}
-        height={height}
-      >
-        <ResponsiveEChartsRenderer
-          key={hasValidOption ? "chart" : "measuring"}
-          ref={containerRef}
-          option={option ?? {}}
-          eventHandlers={hasValidOption ? eventHandlers : undefined}
-          onInit={handleInit}
-          onResize={handleResize}
-        />
-      </CartesianChartLegendLayout>
+      {goalStatus !== "resolved" ? (
+        <GoalResolutionState height={height} status={goalStatus} />
+      ) : (
+        <CartesianChartLegendLayout
+          isReversed={settings["legend.is_reversed"]}
+          hasLegend={hasLegend}
+          items={legendItems}
+          actionButtons={!showTitle ? actionButtons : undefined}
+          hovered={hovered}
+          isFullscreen={isFullscreen}
+          isQueryBuilder={isQueryBuilder}
+          onToggleSeriesVisibility={handleToggleSeriesVisibility}
+          onHoverChange={onHoverChange}
+          width={width}
+          height={height}
+        >
+          <ResponsiveEChartsRenderer
+            key={hasValidOption ? "chart" : "measuring"}
+            ref={containerRef}
+            option={option ?? {}}
+            eventHandlers={hasValidOption ? eventHandlers : undefined}
+            onInit={handleInit}
+            onResize={handleResize}
+          />
+        </CartesianChartLegendLayout>
+      )}
     </CartesianChartRoot>
   );
 }

@@ -218,16 +218,6 @@ function CartesianChartInner(props: VisualizationProps) {
 
   useCloseTooltipOnScroll(chartRef);
 
-  if (goalStatus !== "resolved") {
-    return (
-      <GoalResolutionState
-        className="CardVisualization"
-        height={outerHeight}
-        status={goalStatus}
-      />
-    );
-  }
-
   return (
     <CartesianChartRoot
       isQueryBuilder={isQueryBuilder}
@@ -248,50 +238,54 @@ function CartesianChartInner(props: VisualizationProps) {
           titleMenuItems={titleMenuItems}
         />
       )}
-      <CartesianChartLegendLayout
-        isReversed={settings["legend.is_reversed"]}
-        hasLegend={hasLegend}
-        items={legendItems}
-        actionButtons={!showTitle ? actionButtons : undefined}
-        hovered={hovered}
-        isFullscreen={isFullscreen}
-        isQueryBuilder={isQueryBuilder}
-        onSelectSeries={onSelectSeries}
-        onToggleSeriesVisibility={
-          canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
-        }
-        onHoverChange={onHoverChange}
-        width={outerWidth}
-        height={outerHeight}
-      >
-        <ResponsiveEChartsRenderer
-          ref={containerRef}
-          option={option}
-          eventHandlers={eventHandlers}
-          onResize={handleResize}
-          onInit={handleInit}
+      {goalStatus !== "resolved" ? (
+        <GoalResolutionState height={outerHeight} status={goalStatus} />
+      ) : (
+        <CartesianChartLegendLayout
+          isReversed={settings["legend.is_reversed"]}
+          hasLegend={hasLegend}
+          items={legendItems}
+          actionButtons={!showTitle ? actionButtons : undefined}
+          hovered={hovered}
+          isFullscreen={isFullscreen}
+          isQueryBuilder={isQueryBuilder}
+          onSelectSeries={onSelectSeries}
+          onToggleSeriesVisibility={
+            canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
+          }
+          onHoverChange={onHoverChange}
+          width={outerWidth}
+          height={outerHeight}
         >
-          <DataPointsVisiblePopover
-            isDashboard={isDashboard}
-            isVisualizer={isVisualizer}
-            chartModel={chartModel}
-            settings={settings}
-          />
-          <TimelineEventsBand
-            chartInstance={chartInstance}
-            chartSize={chartSize}
-            timelineEventsModel={timelineEventsModel}
-            chartLayout={chartLayout}
-            xAxisIndex={timelineEventsXAxisIndex}
-            selectedTimelineEventIds={selectedTimelineEventIds}
-            onGroupHover={setHoveredTimelineEventGroup}
-            onOpenTimelines={onOpenTimelines}
-            onSelectTimelineEvents={onSelectTimelineEvents}
-            onDeselectTimelineEvents={onDeselectTimelineEvents}
-            onSeeAllEvents={onSeeAllEvents}
-          />
-        </ResponsiveEChartsRenderer>
-      </CartesianChartLegendLayout>
+          <ResponsiveEChartsRenderer
+            ref={containerRef}
+            option={option}
+            eventHandlers={eventHandlers}
+            onResize={handleResize}
+            onInit={handleInit}
+          >
+            <DataPointsVisiblePopover
+              isDashboard={isDashboard}
+              isVisualizer={isVisualizer}
+              chartModel={chartModel}
+              settings={settings}
+            />
+            <TimelineEventsBand
+              chartInstance={chartInstance}
+              chartSize={chartSize}
+              timelineEventsModel={timelineEventsModel}
+              chartLayout={chartLayout}
+              xAxisIndex={timelineEventsXAxisIndex}
+              selectedTimelineEventIds={selectedTimelineEventIds}
+              onGroupHover={setHoveredTimelineEventGroup}
+              onOpenTimelines={onOpenTimelines}
+              onSelectTimelineEvents={onSelectTimelineEvents}
+              onDeselectTimelineEvents={onDeselectTimelineEvents}
+              onSeeAllEvents={onSeeAllEvents}
+            />
+          </ResponsiveEChartsRenderer>
+        </CartesianChartLegendLayout>
+      )}
       {seriesColorsCss}
     </CartesianChartRoot>
   );

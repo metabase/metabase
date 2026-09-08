@@ -256,16 +256,6 @@ const RowChartVisualization = ({
     settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
   const hasLegend = !hideLegend && (series.length > 1 || hasBreakout);
 
-  if (goalStatus !== "resolved") {
-    return (
-      <GoalResolutionState
-        className={className}
-        height={outerHeight}
-        status={goalStatus}
-      />
-    );
-  }
-
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
       {hasTitle && (
@@ -279,42 +269,46 @@ const RowChartVisualization = ({
           getHref={getHref}
         />
       )}
-      <RowChartLegendLayout
-        width={outerWidth}
-        height={outerHeight}
-        hasLegend={hasLegend}
-        items={legendItems}
-        actionButtons={!hasTitle ? actionButtons : undefined}
-        hovered={hovered}
-        onHoverChange={onHoverChange}
-        isFullscreen={isFullscreen}
-        isQueryBuilder={isQueryBuilder}
-        onSelectSeries={handleSelectSeries}
-      >
-        <RowChartRenderer
-          className={CS.flexFull}
-          data={groupedData}
-          trimData={trimData}
-          series={series}
-          seriesColors={seriesColors}
-          goal={goal}
-          theme={theme}
-          stackOffset={stackOffset}
-          tickFormatters={tickFormatters}
-          labelsFormatter={labelsFormatter}
-          measureTextWidth={textMeasurer}
-          hoveredData={hoverData}
-          onClick={handleClick}
-          onHover={handleHover}
-          xLabel={xLabel}
-          yLabel={yLabel}
-          xScaleType={settings["graph.y_axis.scale"]}
-          xValueRange={xValueRange}
-          labelledSeries={labelledSeries}
-          hasXAxis={hasXAxis}
-          hasYAxis={hasYAxis}
-        />
-      </RowChartLegendLayout>
+      {goalStatus !== "resolved" ? (
+        <GoalResolutionState height={outerHeight} status={goalStatus} />
+      ) : (
+        <RowChartLegendLayout
+          width={outerWidth}
+          height={outerHeight}
+          hasLegend={hasLegend}
+          items={legendItems}
+          actionButtons={!hasTitle ? actionButtons : undefined}
+          hovered={hovered}
+          onHoverChange={onHoverChange}
+          isFullscreen={isFullscreen}
+          isQueryBuilder={isQueryBuilder}
+          onSelectSeries={handleSelectSeries}
+        >
+          <RowChartRenderer
+            className={CS.flexFull}
+            data={groupedData}
+            trimData={trimData}
+            series={series}
+            seriesColors={seriesColors}
+            goal={goal}
+            theme={theme}
+            stackOffset={stackOffset}
+            tickFormatters={tickFormatters}
+            labelsFormatter={labelsFormatter}
+            measureTextWidth={textMeasurer}
+            hoveredData={hoverData}
+            onClick={handleClick}
+            onHover={handleHover}
+            xLabel={xLabel}
+            yLabel={yLabel}
+            xScaleType={settings["graph.y_axis.scale"]}
+            xValueRange={xValueRange}
+            labelledSeries={labelledSeries}
+            hasXAxis={hasXAxis}
+            hasYAxis={hasYAxis}
+          />
+        </RowChartLegendLayout>
+      )}
     </RowVisualizationRoot>
   );
 };
