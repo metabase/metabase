@@ -11,7 +11,10 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- nest-expressions-mbql5 [query]
   (driver/with-driver (or driver/*driver* :h2)
