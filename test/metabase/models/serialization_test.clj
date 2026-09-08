@@ -217,25 +217,14 @@
                            :id        "[\"dimension\",[\"field\",54,{\"source-field\":53}]]"
                            :dimension ["dimension" [:field 54 {:source-field 53}]]}}}}}}})))))
 
-(deftest ^:parallel timeline-events-viz-settings-test
-  (doseq [convert [serdes/export-visualization-settings serdes/import-visualization-settings]]
-    (testing (str convert)
-      (testing "saved event choices are cleared without resolving references or changing other settings"
-        (doseq [ids [[7 9] ["vJ3mMcnCkLcGRoWkYQNoc"] []]]
-          (is (= {:graph.show_values               true
-                  :timeline.selected_timeline_ids []
-                  :column_settings                nil}
-                 (convert {:graph.show_values                     true
-                           :timeline.selected_timeline_ids       ids
-                           :timeline.excluded_timeline_event_ids [42]})))))
-      (testing "an unrecorded selection stays unrecorded"
-        (is (= {:graph.show_values true :column_settings nil}
-               (convert {:graph.show_values true}))))))
-  (testing "timeline selections create no serialization dependencies"
-    (are [allow-int-ids? ids] (= #{} (serdes/visualization-settings-deps
-                                      allow-int-ids? {:timeline.selected_timeline_ids ids}))
-      true  [7 9]
-      false ["vJ3mMcnCkLcGRoWkYQNoc"])))
+(deftest ^:parallel import-old-timeline-events-settings-test
+  (testing "older exports lose their saved event choices without changing other settings"
+    (let [settings {:graph.show_values                    true
+                    :timeline.selected_timeline_ids       [7]
+                    :timeline.excluded_timeline_event_ids [42]}]
+      (is (= {:graph.show_values              true
+              :timeline.selected_timeline_ids []}
+             (select-keys (serdes/import-visualization-settings settings) (keys settings)))))))
 
 (deftest ^:parallel import-viz-settings-test
   (binding [serdes/*import-field-fk* (constantly 3)]

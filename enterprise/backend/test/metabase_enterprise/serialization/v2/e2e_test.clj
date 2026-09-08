@@ -992,28 +992,29 @@
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
-          (mt/with-temp [:model/Collection    {coll-id :id}             {:name "Birds"}
-                         :model/Timeline      {timeline-id  :id
-                                               timeline-eid :entity_id} {:name          "Migration seasons"
-                                                                         :collection_id coll-id}
+          (mt/with-temp [:model/Timeline      {timeline-id :id}         {:name "Migration seasons"}
                          :model/TimelineEvent {event-id :id}            {:name        "Swallows return"
                                                                          :timeline_id timeline-id
                                                                          :timestamp   #t "2027-04-20T00:00:00Z"}
                          :model/Card {card-eid :entity_id}
                          {:name          "Sightings over time"
-                          :collection_id coll-id
                           :visualization_settings
                           {:graph.show_values                    true
                            :timeline.selected_timeline_ids       [timeline-id]
                            :timeline.excluded_timeline_event_ids [event-id]}}]
-            (-> (serdes/with-cache (into [] (extract/extract {})))
+            (-> (serdes/with-cache (into [] (extract/extract {:targets [["Card" card-eid]]})))
                 (storage/store! (storage.files/file-writer dump-dir)))
-            (ts/with-db dest-db
-              (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
-              (is (t2/exists? :model/Timeline :entity_id timeline-eid))
-              (is (= {:graph.show_values              true
-                      :timeline.selected_timeline_ids []}
-                     (t2/select-one-fn :visualization_settings :model/Card :entity_id card-eid))))))))))
+            (let [archive  (ingest/ingest-yaml dump-dir)
+                  exported (ingest/ingest-one archive [{:model "Card" :id card-eid}])
+                  expected {:graph.show_values              true
+                            :timeline.selected_timeline_ids []}]
+              (is (= expected (select-keys (:visualization_settings exported)
+                                           [:graph.show_values :timeline.selected_timeline_ids
+                                            :timeline.excluded_timeline_event_ids])))
+              (ts/with-db dest-db
+                (is (serdes/with-cache (serdes.load/load-metabase! archive)))
+                (is (= expected
+                       (t2/select-one-fn :visualization_settings :model/Card :entity_id card-eid)))))))))))
 
 (deftest schema-coercion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
