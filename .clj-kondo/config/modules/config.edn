@@ -3266,10 +3266,12 @@
            permissions
            premium-features
            util}
-   :model-imports #{:model/Collection
+   :model-imports #{:model/AuditLog
+                    :model/Collection
                     :model/Dimension
                     :model/Field
-                    :model/Table}}
+                    :model/Table
+                    :model/User}}
 
   enterprise/database-replication
   {:team "Cloud"
