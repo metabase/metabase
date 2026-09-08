@@ -1,0 +1,71 @@
+name: Metabase Security Lint
+
+on:
+#  push:
+#    branches:
+#      - "master"
+#  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  files-changed:
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 10
+    outputs:
+      metabase_security_lint: ${{ steps.changes.outputs.metabase_security_lint }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test which files changed
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  metabase-security-lint:
+    needs: files-changed
+    if: github.event_name != 'pull_request' || needs.files-changed.outputs.metabase_security_lint == 'true'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
+    name: Metabase security lint (${{ github.event_name == 'pull_request' && 'branch' || 'whole tree' }})
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # On a pull request HEAD is GitHub's merge commit -- the base tip merged with the branch -- so its
+          # first parent is the base tip, and `HEAD^1...HEAD` is exactly the pull request's changes. Two commits
+          # of history is what that needs.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Scan a pull request
+        if: github.event_name == 'pull_request'
+        run: ./bin/mage security-lint --warn-only --branch --base 'HEAD^1' --sarif metabase-security-lint.sarif
+
+      - name: Scan the whole tree
+        if: github.event_name != 'pull_request'
+        run: ./bin/mage security-lint --warn-only --sarif metabase-security-lint.sarif
+
+      - name: Upload results to GitHub code scanning
+        # a pull request from a fork runs with a read-only token and cannot upload; its findings are still in the
+        # job log and the artifact
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: metabase-security-lint.sarif
+          category: metabase-security-lint
+
+      - name: Keep the report with the run
+        uses: actions/upload-artifact@v7
+        with:
+          name: metabase-security-lint-sarif
+          path: metabase-security-lint.sarif
+          retention-days: 14

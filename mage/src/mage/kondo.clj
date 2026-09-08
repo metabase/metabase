@@ -31,7 +31,7 @@
     (str/trim (slurp saved-deps-edn-hash-filename))
     (catch Exception _ nil)))
 
-(defn- copy-configs-if-needed!
+(defn copy-configs-if-needed!
   "Copy Kondo configs for dependencies only if `deps.edn` has changed since last time we did it."
   []
   (let [current-hash (current-deps-edn-hash)]

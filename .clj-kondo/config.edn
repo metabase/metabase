@@ -587,6 +587,7 @@
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
    clojure.core/with-redefs                                                                                                  hooks.clojure.core.with-redefs/lint-with-redefs
    clojure.core/-                                                                                                            hooks.metabase.util.timing/discourage-millis-duration
+   dev.security-lint.rule/defrule                                                                                            hooks.dev.security-lint/defrule
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
    clojure.test/testing                                                                                                      hooks.clojure.test/testing
