@@ -12,13 +12,13 @@
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
    [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,8 +26,8 @@
   (throw (ex-info msg {:agent-error? true :status-code 400})))
 
 (defn- readable-card [card-id]
-  (let [card (t2/select-one :model/Card :id card-id :archived false)]
-    (when-not (and card (mi/can-read? card))
+  (let [card (metabot.db/card card-id)]
+    (when-not (and card (not (:archived card)) (mi/can-read? card))
       (agent-error!
        (tru "No saved question found with id `{0}` that you can read. Find questions with `search` first."
             card-id)))
