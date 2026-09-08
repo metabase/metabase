@@ -119,45 +119,70 @@
               c (range col (+ col size_x))]
           [r c])))
 
+(defn- cells-free? [occupied rows cols]
+  (not-any? occupied (for [r rows c cols] [r c])))
+
 (defn- free-columns-right-of [occupied rows right-edge]
-  (count (take-while (fn [c] (not-any? #(occupied [% c]) rows))
+  (count (take-while #(cells-free? occupied rows [%])
                      (range right-edge autoplace/default-grid-width))))
 
 (defn- contiguous? [tiles]
   (every? (fn [[left right]] (= (+ (:col left) (:size_x left)) (:col right)))
           (partition 2 1 tiles)))
 
+(defn- widen-row
+  "Widen the side-by-side `tiles` into the free columns to their right, preserving
+  their relative widths."
+  [others tiles]
+  (let [last-tile (peek tiles)
+        top       (:row last-tile)
+        height    (transduce (map :size_y) max 0 tiles)
+        extra     (free-columns-right-of others
+                                         (range top (+ top height))
+                                         (+ (:col last-tile) (:size_x last-tile)))
+        total     (transduce (map :size_x) + 0 tiles)
+        grow      (map #(quot (* extra (:size_x %)) total) tiles)
+        leftover  (- extra (reduce + grow))]
+    (first (reduce (fn [[out col] [tile g bonus]]
+                     (let [width (+ (:size_x tile) g bonus)]
+                       [(conj out (assoc tile :col col :size_x width)) (+ col width)]))
+                   [[] (:col (first tiles))]
+                   (map vector tiles grow (concat (repeat leftover 1) (repeat 0)))))))
+
+(defn- equalize-heights
+  "Grow the shorter `tiles` of a row down to the row's tallest tile wherever the
+  cells below them are free."
+  [others tiles]
+  (let [target (transduce (map :size_y) max 0 tiles)
+        taken  (into others (occupied-cells tiles))]
+    (mapv (fn [{:keys [row col size_x size_y] :as tile}]
+            (if (and (< size_y target)
+                     (cells-free? taken (range (+ row size_y) (+ row target)) (range col (+ col size_x))))
+              (assoc tile :size_y target)
+              tile))
+          tiles)))
+
 (defn- stretch-row
-  "Widen the tiles that start on the same row so they span the free columns to their
-  right, preserving their relative widths. Tiles packed under a taller neighbour or
-  otherwise not side by side are left as placed."
-  [occupied tiles]
-  (let [tiles      (vec (sort-by :col tiles))
-        last-tile  (peek tiles)
-        rows       (range (:row last-tile)
-                          (+ (:row last-tile) (transduce (map :size_y) max 0 tiles)))
-        extra      (free-columns-right-of occupied rows (+ (:col last-tile) (:size_x last-tile)))
-        total      (transduce (map :size_x) + 0 tiles)
-        grow       (map #(quot (* extra (:size_x %)) total) tiles)
-        leftover   (- extra (reduce + grow))]
-    (if (or (zero? extra) (not (contiguous? tiles)))
-      tiles
-      (first (reduce (fn [[out col] [tile g bonus]]
-                       (let [width (+ (:size_x tile) g bonus)]
-                         [(conj out (assoc tile :col col :size_x width)) (+ col width)]))
-                     [[] (:col (first tiles))]
-                     (map vector tiles grow (concat (repeat leftover 1) (repeat 0))))))))
+  "Tiles that start on the same row and sit side by side span the free width to
+  their right and share the row's height. Tiles packed under a taller neighbour are
+  left as placed."
+  [others tiles]
+  (let [tiles (vec (sort-by :col tiles))]
+    (if (contiguous? tiles)
+      (equalize-heights others (widen-row others tiles))
+      tiles)))
 
 (defn- stretch-rows
-  "Post-pass over autoplaced tiles: fill each row's trailing gap, row by row, so the
-  dashboard spans the full grid width wherever the placement allows."
+  "Post-pass over autoplaced tiles, row by row, so the dashboard spans the full grid
+  width without holes wherever the placement allows."
   [tiles]
   (loop [groups   (sort-by key (group-by :row tiles))
          occupied (occupied-cells tiles)
          out      []]
     (if-let [[_ group] (first groups)]
-      (let [stretched (stretch-row occupied group)]
-        (recur (rest groups) (into occupied (occupied-cells stretched)) (into out stretched)))
+      (let [others    (reduce disj occupied (occupied-cells group))
+            stretched (stretch-row others group)]
+        (recur (rest groups) (into others (occupied-cells stretched)) (into out stretched)))
       out)))
 
 (defn- tile->state [{chart-id :chart_id query-id :query_id card-id :card_id :as tile}]
@@ -185,7 +210,7 @@
 
   Tiles are sized automatically from their chart type (e.g. a single number is small,
   a table is tall) and placed on the 24-column grid in your order, then each row is
-  stretched to span the full width, so sizes are relative. Optionally give a tile a
+  stretched to span the full width and its tiles share a height, so sizes are relative. Optionally give a tile a
   coarse `size` hint when it deserves more room than its neighbours: `wide` (18
   columns), `tall` (9 columns, 12 rows), or `full` (a row of its own). You cannot
   control exact positions.
