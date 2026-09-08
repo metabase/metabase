@@ -3,44 +3,48 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn router-database-id
+(mu/defn router-database-id :- [:maybe ms/PositiveInt]
   "The router Database id of the Database with `database-id`, or nil."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/select-one-fn :router_database_id :model/Database :id database-id))
 
-(defn database
+(mu/defn database :- [:maybe (ms/InstanceOf :model/Database)]
   "The Database with `database-id`, or nil."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/select-one :model/Database :id database-id))
 
-(defn non-destination-database
+(mu/defn non-destination-database :- [:maybe (ms/InstanceOf :model/Database)]
   "The Database with `database-id` if it is not a routing destination, or nil."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/select-one :model/Database :id database-id :router_database_id nil))
 
-(defn databases
+(mu/defn databases :- [:sequential (ms/InstanceOf :model/Database)]
   "The Databases with `database-ids`."
-  [database-ids]
+  [database-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/Database :id [:in database-ids]))
 
-(defn database-by-name
+(mu/defn database-by-name :- [:maybe (ms/InstanceOf :model/Database)]
   "The Database named `database-name`, or nil."
-  [database-name]
+  [database-name :- :string]
   (t2/select-one :model/Database :name database-name))
 
-(defn set-database-details!
-  "Set the connection details of the Database with `database-id`."
-  [database-id details]
+(mu/defn set-database-details! :- :int
+  "Set the connection details of the Database with `database-id`, returning the number updated."
+  [database-id :- ms/PositiveInt
+   details     :- :map]
   (t2/update! :model/Database database-id {:details details}))
 
-(defn set-database-provider-name!
-  "Set the provider name of the Database with `database-id`."
-  [database-id provider-name]
+(mu/defn set-database-provider-name! :- :int
+  "Set the provider name of the Database with `database-id`, returning the number updated."
+  [database-id    :- ms/PositiveInt
+   provider-name  :- :string]
   (t2/update! :model/Database database-id {:provider_name provider-name}))
 
-(defn health-check-candidate-ids
+(mu/defn health-check-candidate-ids :- [:sequential [:map {:closed true} [:id ms/PositiveInt]]]
   "The `:id` of the lowest-id non-audit, non-sample, non-destination Database of each engine."
   []
   (t2/query {:select   [[:%min.id :id]]
@@ -55,14 +59,14 @@
   [database-id]
   ^:allow-subquery {:from [(t2/table-name :model/Table)], :select [:id], :where [:= :db_id database-id]})
 
-(defn fields-exist-for-database?
+(mu/defn fields-exist-for-database? :- :boolean
   "Whether any Field belongs to a Table of the Database with `database-id`."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/exists? :model/Field :table_id [:in (table-ids-of-database-query database-id)]))
 
-(defn delete-childless-fields-for-database!
+(mu/defn delete-childless-fields-for-database! :- :int
   "Delete the childless Fields of the Tables of the Database with `database-id`, returning the number deleted."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (let [table-ids-query (table-ids-of-database-query database-id)
         extra-clause    (if (= (mdb/db-type) :mysql)
                           ;; double-wrapped subquery to work around the MySQL restriction on selecting from the
@@ -82,60 +86,60 @@
                                  [:in :table_id table-ids-query]
                                  extra-clause]})))
 
-(defn delete-cards-for-database-returning-ids-reducible
+(mu/defn delete-cards-for-database-returning-ids-reducible
   "A reducible that deletes the Cards of the Database with `database-id` and yields their `:id`s (Postgres only)."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/reducible-query {:delete-from (t2/table-name :model/Card)
                        :where       [:= :database_id database-id]
                        :returning   [:id]}))
 
-(defn card-ids-for-database-reducible
+(mu/defn card-ids-for-database-reducible
   "A reducible of the `:id`s of the Cards of the Database with `database-id`."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/reducible-query {:from   [(t2/table-name :model/Card)]
                        :select [:id]
                        :where  [:= :database_id database-id]}))
 
-(defn delete-cards-for-database!
+(mu/defn delete-cards-for-database! :- [:sequential :int]
   "Delete the Cards of the Database with `database-id`."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/query {:delete-from (t2/table-name :model/Card)
              :where       [:= :database_id database-id]}))
 
-(defn disable-uploads-for-all-databases!
-  "Disable uploads on every Database that has them enabled."
+(mu/defn disable-uploads-for-all-databases! :- :int
+  "Disable uploads on every Database that has them enabled, returning the number updated."
   []
   (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
 
-(defn active-tables-for-database
+(mu/defn active-tables-for-database :- [:sequential (ms/InstanceOf :model/Table)]
   "The active Tables of the Database with `database-id`, in case-insensitive display name order."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/select :model/Table :db_id database-id :active true {:order-by [[:%lower.display_name :asc]]}))
 
-(defn active-tables-for-databases
+(mu/defn active-tables-for-databases :- [:sequential (ms/InstanceOf :model/Table)]
   "The active Tables of the Databases with `database-ids`, in database then display name order."
-  [database-ids]
+  [database-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/Table
              :db_id  [:in database-ids]
              :active true
              {:order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
 
-(defn active-table-ids-for-database
+(mu/defn active-table-ids-for-database :- [:maybe [:set ms/PositiveInt]]
   "The ids of the active Tables of the Database with `database-id`, or nil."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/select-pks-set :model/Table, :db_id database-id, :active true))
 
-(defn pk-fields-for-tables
+(mu/defn pk-fields-for-tables :- [:sequential (ms/InstanceOf :model/Field)]
   "The primary-key Fields of the Tables with `table-ids`."
-  [table-ids]
+  [table-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/Field, :table_id [:in table-ids], :semantic_type (mdb/isa :type/PK)))
 
-(defn databases-reducible
+(mu/defn databases-reducible
   "A reducible of the Databases matching the Honey SQL `where` clause."
-  [where]
+  [where :- :any]
   (t2/reducible-select :model/Database {:where where}))
 
-(defn table-database-id
+(mu/defn table-database-id :- [:maybe ms/PositiveInt]
   "The Database id of the Table with `table-id`, or nil."
-  [table-id]
+  [table-id :- ms/PositiveInt]
   (t2/select-one-fn :db_id :model/Table, :id table-id))

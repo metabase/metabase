@@ -7,6 +7,8 @@
    [metabase.app-db.core :as app-db]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
@@ -14,36 +16,151 @@
   "Honey SQL clause selecting the Tables that take part in sync: active and not hidden."
   [:and [:= :active true] [:= :visibility_type nil]])
 
+(def ^:private DatabaseChanges
+  "A subset of a Database row for `t2/update!`; values are `:any` because Toucan transforms make precise typing
+  unreliable."
+  [:map {:closed true}
+   [:name                        {:optional true} :any]
+   [:description                 {:optional true} :any]
+   [:details                     {:optional true} :any]
+   [:engine                      {:optional true} :any]
+   [:is_sample                   {:optional true} :any]
+   [:is_full_sync                {:optional true} :any]
+   [:points_of_interest          {:optional true} :any]
+   [:caveats                     {:optional true} :any]
+   [:metadata_sync_schedule      {:optional true} :any]
+   [:cache_field_values_schedule {:optional true} :any]
+   [:timezone                    {:optional true} :any]
+   [:is_on_demand                {:optional true} :any]
+   [:auto_run_queries            {:optional true} :any]
+   [:refingerprint               {:optional true} :any]
+   [:cache_ttl                   {:optional true} :any]
+   [:initial_sync_status         {:optional true} :any]
+   [:creator_id                  {:optional true} :any]
+   [:settings                    {:optional true} :any]
+   [:dbms_version                {:optional true} :any]
+   [:is_audit                    {:optional true} :any]
+   [:uploads_enabled             {:optional true} :any]
+   [:uploads_schema_name         {:optional true} :any]
+   [:uploads_table_prefix        {:optional true} :any]
+   [:is_attached_dwh             {:optional true} :any]
+   [:router_database_id          {:optional true} :any]
+   [:provider_name               {:optional true} :any]
+   [:write_data_details          {:optional true} :any]
+   [:admin_details               {:optional true} :any]
+   [:is_stub                     {:optional true} :any]])
+
+(def ^:private TableChanges
+  "A subset of a Table row for `t2/update!`; values are `:any` because Toucan transforms make precise typing
+  unreliable."
+  [:map {:closed true}
+   [:name                     {:optional true} :any]
+   [:description              {:optional true} :any]
+   [:entity_type              {:optional true} :any]
+   [:active                   {:optional true} :any]
+   [:db_id                    {:optional true} :any]
+   [:display_name             {:optional true} :any]
+   [:visibility_type          {:optional true} :any]
+   [:schema                   {:optional true} :any]
+   [:points_of_interest       {:optional true} :any]
+   [:caveats                  {:optional true} :any]
+   [:show_in_getting_started  {:optional true} :any]
+   [:field_order              {:optional true} :any]
+   [:initial_sync_status      {:optional true} :any]
+   [:is_upload                {:optional true} :any]
+   [:database_require_filter  {:optional true} :any]
+   [:estimated_row_count      {:optional true} :any]
+   [:view_count               {:optional true} :any]
+   [:is_defective_duplicate   {:optional true} :any]
+   [:unique_table_helper      {:optional true} :any]
+   [:deactivated_at           {:optional true} :any]
+   [:archived_at              {:optional true} :any]
+   [:is_writable              {:optional true} :any]
+   [:data_authority           {:optional true} :any]
+   [:data_source              {:optional true} :any]
+   [:data_layer               {:optional true} :any]
+   [:owner_email              {:optional true} :any]
+   [:owner_user_id            {:optional true} :any]
+   [:collection_id            {:optional true} :any]
+   [:is_published             {:optional true} :any]
+   [:transform_id             {:optional true} :any]
+   [:transform_target         {:optional true} :any]])
+
+(def ^:private FieldChanges
+  "A subset of a Field row for `t2/update!`; values are `:any` because Toucan transforms make precise typing
+  unreliable."
+  [:map {:closed true}
+   [:name                       {:optional true} :any]
+   [:base_type                  {:optional true} :any]
+   [:semantic_type              {:optional true} :any]
+   [:active                     {:optional true} :any]
+   [:description                {:optional true} :any]
+   [:preview_display            {:optional true} :any]
+   [:position                   {:optional true} :any]
+   [:table_id                   {:optional true} :any]
+   [:parent_id                  {:optional true} :any]
+   [:display_name               {:optional true} :any]
+   [:visibility_type            {:optional true} :any]
+   [:fk_target_field_id         {:optional true} :any]
+   [:last_analyzed              {:optional true} :any]
+   [:points_of_interest         {:optional true} :any]
+   [:caveats                    {:optional true} :any]
+   [:fingerprint                {:optional true} :any]
+   [:fingerprint_version        {:optional true} :any]
+   [:database_type              {:optional true} :any]
+   [:has_field_values           {:optional true} :any]
+   [:settings                   {:optional true} :any]
+   [:database_position          {:optional true} :any]
+   [:custom_position            {:optional true} :any]
+   [:effective_type             {:optional true} :any]
+   [:coercion_strategy          {:optional true} :any]
+   [:nfc_path                   {:optional true} :any]
+   [:database_required          {:optional true} :any]
+   [:json_unfolding             {:optional true} :any]
+   [:database_is_auto_increment {:optional true} :any]
+   [:database_indexed           {:optional true} :any]
+   [:database_partitioned       {:optional true} :any]
+   [:is_defective_duplicate     {:optional true} :any]
+   [:unique_field_helper        {:optional true} :any]
+   [:database_is_pk             {:optional true} :any]
+   [:database_is_nullable       {:optional true} :any]
+   [:database_is_generated      {:optional true} :any]
+   [:database_default           {:optional true} :any]
+   [:dimension_interestingness  {:optional true} :any]
+   [:data_sensitivity           {:optional true} :any]])
+
 ;;; ------------------------------------------------ Database ------------------------------------------------
 
-(defn database
+(mu/defn database :- [:maybe (ms/InstanceOf :model/Database)]
   "The Database with `database-id`, or nil."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/select-one :model/Database :id database-id))
 
-(defn attached-dwh-database
+(mu/defn attached-dwh-database :- [:maybe (ms/InstanceOf :model/Database)]
   "The attached data warehouse Database, or nil."
   []
   (t2/select-one :model/Database :is_attached_dwh true))
 
-(defn database-stub?
+(mu/defn database-stub? :- [:maybe :boolean]
   "Whether the Database with `database-id` is a stub."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/select-one-fn :is_stub :model/Database :id database-id))
 
-(defn database-on-demand-flags
+(mu/defn database-on-demand-flags :- [:map-of ms/PositiveInt [:maybe :boolean]]
   "A map of Database ID to its `:is_on_demand` flag for `database-ids`."
-  [database-ids]
+  [database-ids :- [:seqable ms/PositiveInt]]
   (t2/select-pk->fn :is_on_demand :model/Database :id [:in database-ids]))
 
-(defn synced-user-database-exists?
+(mu/defn synced-user-database-exists? :- :boolean
   "Whether any non-sample, non-audit Database has completed its initial sync."
   []
   (t2/exists? :model/Database :is_sample false :is_audit false :initial_sync_status "complete"))
 
-(defn databases-with-schedules-reducible
+(mu/defn databases-with-schedules-reducible
   "Reducible raw Database rows whose sync schedules are the sample or default ones."
-  [old-sample-metadata-cron metadata-crons cache-field-values-crons]
+  [old-sample-metadata-cron  :- :string
+   metadata-crons            :- [:seqable :string]
+   cache-field-values-crons  :- [:seqable :string]]
   (t2/reducible-query {:select [:*]
                        :from   [:metabase_database]
                        :where  [:or
@@ -53,61 +170,74 @@
                                 [:in :metadata_sync_schedule metadata-crons]
                                 [:in :cache_field_values_schedule cache-field-values-crons]]}))
 
-(defn update-database!
-  "Apply `changes` to the Database with `database-id`."
-  [database-id changes]
+(mu/defn update-database! :- :int
+  "Apply `changes` to the Database with `database-id`, returning the number updated."
+  [database-id :- ms/PositiveInt
+   changes     :- DatabaseChanges]
   (t2/update! :model/Database database-id changes))
 
 ;;; ------------------------------------------------- Table -------------------------------------------------
 
-(defn table
+(mu/defn table :- [:maybe (ms/InstanceOf :model/Table)]
   "The Table with `table-id`, or nil."
-  [table-id]
+  [table-id :- ms/PositiveInt]
   (t2/select-one :model/Table :id table-id))
 
-(defn table-in-database
+(mu/defn table-in-database :- [:maybe (ms/InstanceOf :model/Table)]
   "The Table with `table-id` in the Database with `database-id`, or nil."
-  [database-id table-id]
+  [database-id :- ms/PositiveInt
+   table-id    :- ms/PositiveInt]
   (t2/select-one :model/Table :db_id database-id :id table-id))
 
-(defn table-by-name
+(mu/defn table-by-name :- [:maybe (ms/InstanceOf :model/Table)]
   "The Table named `table-name` in the Database with `database-id`, or nil."
-  [database-id table-name]
+  [database-id :- ms/PositiveInt
+   table-name  :- :string]
   (t2/select-one :model/Table :db_id database-id :name table-name))
 
-(defn table-by-schema-and-name
+(mu/defn table-by-schema-and-name :- [:maybe (ms/InstanceOf :model/Table)]
   "The Table named `table-name` in `schema` of the Database with `database-id`, or nil."
-  [database-id schema table-name]
+  [database-id :- ms/PositiveInt
+   schema      :- [:maybe :string]
+   table-name  :- :string]
   (t2/select-one :model/Table :db_id database-id :name table-name :schema schema))
 
-(defn inactive-table-by-schema-and-name
+(mu/defn inactive-table-by-schema-and-name :- [:maybe (ms/InstanceOf :model/Table)]
   "The inactive Table named `table-name` in `schema` of the Database with `database-id`, or nil."
-  [database-id schema table-name]
+  [database-id :- ms/PositiveInt
+   schema      :- [:maybe :string]
+   table-name  :- :string]
   (t2/select-one :model/Table :db_id database-id :schema schema :name table-name :active false))
 
-(defn active-table-id-by-name
+(mu/defn active-table-id-by-name :- [:maybe ms/PositiveInt]
   "The ID of the active Table named `table-name` in the Database with `database-id`, or nil."
-  [database-id table-name]
+  [database-id :- ms/PositiveInt
+   table-name  :- :string]
   (t2/select-one-pk :model/Table :db_id database-id :name table-name :active true))
 
-(defn sync-tables-by-lower-name-and-schema
+(mu/defn sync-tables-by-lower-name-and-schema :- [:sequential (ms/InstanceOf :model/Table)]
   "The synced Tables of the Database with `database-id` whose lower-cased name and schema match."
-  [database-id lower-name lower-schema]
+  [database-id  :- ms/PositiveInt
+   lower-name   :- :string
+   lower-schema :- [:maybe :string]]
   (t2/select :model/Table
              :db_id database-id
              :%lower.name lower-name
              :%lower.schema lower-schema
              {:where sync-tables-clause}))
 
-(defn tables-by-name
+(mu/defn tables-by-name :- [:sequential (ms/InstanceOf :model/Table)]
   "The `columns` of the Tables of the Database with `database-id` named one of `table-names`."
-  [columns database-id table-names]
+  [columns      :- [:sequential :any]
+   database-id  :- ms/PositiveInt
+   table-names  :- [:seqable :string]]
   (t2/select columns :db_id database-id :name [:in table-names]))
 
-(defn tables-to-archive
+(mu/defn tables-to-archive :- [:sequential (ms/InstanceOf :model/Table)]
   "The inactive, unarchived, non-transform-target Tables of the Database with `database-id` deactivated before the
   SQL expression `deactivated-before`."
-  [database-id deactivated-before]
+  [database-id        :- ms/PositiveInt
+   deactivated-before  :- :any]
   (t2/select :model/Table
              :db_id database-id
              :active false
@@ -115,47 +245,49 @@
              :transform_target false
              :deactivated_at [:< deactivated-before]))
 
-(defn table-database-ids
+(mu/defn table-database-ids :- [:map-of ms/PositiveInt ms/PositiveInt]
   "A map of Table ID to Database ID for `table-ids`."
-  [table-ids]
+  [table-ids :- [:seqable ms/PositiveInt]]
   (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))
 
-(defn table-schemas-reducible
+(mu/defn table-schemas-reducible
   "Reducible `:schema` rows of the Tables of the Database with `database-id`."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/reducible-select [:model/Table :schema] :db_id database-id))
 
-(defn active-table-ids-reducible
+(mu/defn active-table-ids-reducible
   "Reducible `:id` rows of the active Tables of the Database with `database-id`."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/reducible-select [:model/Table :id] :db_id database-id :active true))
 
-(defn active-table-count
+(mu/defn active-table-count :- ms/IntGreaterThanOrEqualToZero
   "The number of active Tables in the Database with `database-id`."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/count :model/Table :db_id database-id :active true))
 
-(defn sync-table-ids
+(mu/defn sync-table-ids :- [:maybe [:sequential ms/PositiveInt]]
   "The IDs of the synced Tables of the Database with `database-id`."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/select-fn-vec :id :model/Table :db_id database-id {:where sync-tables-clause}))
 
-(defn sync-table-schemas
+(mu/defn sync-table-schemas :- [:sequential [:map {:closed true} [:schema [:maybe :string]]]]
   "The distinct `:schema` rows of the synced Tables of the Database with `database-id`."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/query {:select-distinct [:schema]
              :from            [:metabase_table]
              :where           [:and sync-tables-clause [:= :db_id database-id]]}))
 
-(defn sync-tables-count
+(mu/defn sync-tables-count :- ms/IntGreaterThanOrEqualToZero
   "The number of synced Tables in the Database with `database-id`."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/count :model/Table :db_id database-id {:where sync-tables-clause}))
 
-(defn sync-tables-reducible
+(mu/defn sync-tables-reducible
   "Reducible synced Tables of the Database with `database-id` ordered by schema and name, optionally narrowed to
   `schema-names` and/or `table-names`."
-  [database-id schema-names table-names]
+  [database-id  :- ms/PositiveInt
+   schema-names :- [:maybe [:seqable :string]]
+   table-names  :- [:maybe [:seqable :string]]]
   (t2/reducible-select :model/Table
                        :db_id database-id
                        {:where    [:and sync-tables-clause
@@ -163,9 +295,9 @@
                                    (when (seq table-names) [:in :name table-names])]
                         :order-by [[:schema :asc] [:name :asc]]}))
 
-(defn sync-tables-by-earliest-analyzed-reducible
+(mu/defn sync-tables-by-earliest-analyzed-reducible
   "Reducible synced Tables of the Database with `database-id` ordered by the earliest `last_analyzed` of their Fields."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/reducible-select :model/Table
                        {:select    [:t.*]
                         :from      [[(t2/table-name :model/Table) :t]]
@@ -177,46 +309,52 @@
                         :where     [:and sync-tables-clause [:= :t.db_id database-id]]
                         :order-by  [[:sub.earliest_last_analyzed :asc]]}))
 
-(defn insert-table!
+(mu/defn insert-table! :- (ms/InstanceOf :model/Table)
   "Insert `table` and return the new instance."
-  [table]
+  [table :- TableChanges]
   (t2/insert-returning-instance! :model/Table table))
 
-(defn update-table!
-  "Apply `changes` to the Table with `table-id`."
-  [table-id changes]
+(mu/defn update-table! :- :int
+  "Apply `changes` to the Table with `table-id`, returning the number updated."
+  [table-id :- ms/PositiveInt
+   changes  :- TableChanges]
   (t2/update! :model/Table table-id changes))
 
-(defn update-tables!
-  "Apply `changes` to the Tables with `table-ids`."
-  [table-ids changes]
+(mu/defn update-tables! :- :int
+  "Apply `changes` to the Tables with `table-ids`, returning the number updated."
+  [table-ids :- [:seqable ms/PositiveInt]
+   changes   :- TableChanges]
   (t2/update! :model/Table :id [:in table-ids] changes))
 
-(defn deactivate-tables!
-  "Mark the active Tables among `table-ids` inactive."
-  [table-ids]
+(mu/defn deactivate-tables! :- :int
+  "Mark the active Tables among `table-ids` inactive, returning the number updated."
+  [table-ids :- [:seqable ms/PositiveInt]]
   (t2/update! :model/Table {:id [:in table-ids] :active true} {:active false}))
 
-(defn rename-table-schema!
-  "Move the Tables of the Database with `database-id` from `schema` to `new-schema`."
-  [database-id schema new-schema]
+(mu/defn rename-table-schema! :- :int
+  "Move the Tables of the Database with `database-id` from `schema` to `new-schema`, returning the number updated."
+  [database-id :- ms/PositiveInt
+   schema      :- [:maybe :string]
+   new-schema  :- [:maybe :string]]
   (t2/update! :model/Table :db_id database-id :schema schema {:schema new-schema}))
 
-(defn archive-inactive-table!
+(mu/defn archive-inactive-table! :- :int
   "Archive the inactive Table with `table-id` at `archived-at` under `new-name`, returning the number of rows updated."
-  [table-id archived-at new-name]
+  [table-id    :- ms/PositiveInt
+   archived-at :- :any
+   new-name    :- :string]
   (t2/update! :model/Table {:id table-id :active false} {:archived_at archived-at :name new-name}))
 
 ;;; ------------------------------------------------- Field -------------------------------------------------
 
-(defn fields
+(mu/defn fields :- [:sequential (ms/InstanceOf :model/Field)]
   "The Fields with `field-ids`."
-  [field-ids]
+  [field-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/Field :id [:in field-ids]))
 
-(defn fields-for-field-values
+(mu/defn fields-for-field-values :- [:sequential (ms/InstanceOf :model/Field)]
   "The columns needed to scan FieldValues of the Fields with `field-ids`."
-  [field-ids]
+  [field-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:model/Field :name :id :base_type :effective_type :coercion_strategy :semantic_type :visibility_type
               :table_id :has_field_values]
              :id [:in field-ids]))
@@ -266,10 +404,13 @@
   (cond-> fields-to-fingerprint-base-clause
     (not refingerprint?) (conj (fingerprint-version-clauses version->base-types))))
 
-(defn fields-needing-fingerprint-update
+(mu/defn fields-needing-fingerprint-update :- [:sequential (ms/InstanceOf :model/Field)]
   "Up to `limit` active, visible Fields of the Table with `table-id` whose fingerprint needs to be re-calculated,
   ordered by ID. See [[needs-fingerprint-update-clause]] for the full matching criteria."
-  [table-id refingerprint? version->base-types limit]
+  [table-id           :- ms/PositiveInt
+   refingerprint?     :- :boolean
+   version->base-types :- [:map-of :int [:set :any]]
+   limit              :- ms/PositiveInt]
   (t2/select :model/Field
              {:where    [:and
                          [:= :table_id table-id]
@@ -277,14 +418,14 @@
               :order-by [[:id :asc]]
               :limit    limit}))
 
-(defn field-fingerprint
+(mu/defn field-fingerprint :- :any
   "The fingerprint of the Field with `field-id`."
-  [field-id]
+  [field-id :- ms/PositiveInt]
   (t2/select-one-fn :fingerprint :model/Field :id field-id))
 
-(defn active-fields-metadata-for-table
+(mu/defn active-fields-metadata-for-table :- [:sequential (ms/InstanceOf :model/Field)]
   "The sync metadata columns of the active Fields of the Table with `table-id`, in field order."
-  [table-id]
+  [table-id :- ms/PositiveInt]
   (t2/select [:model/Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
               :parent_id :id :description :database_position :nfc_path
               :database_is_auto_increment :database_required
@@ -294,27 +435,31 @@
              :active true
              {:order-by table/field-order-rule}))
 
-(defn normal-fields-for-table
+(mu/defn normal-fields-for-table :- [:sequential (ms/InstanceOf :model/Field)]
   "Up to `limit` active, normal-visibility Fields of the Table with `table-id`, ordered by ID."
-  [table-id limit]
+  [table-id :- ms/PositiveInt
+   limit    :- ms/PositiveInt]
   (t2/select :model/Field
              :table_id table-id
              :active true
              :visibility_type "normal"
              {:order-by [[:id :asc]], :limit limit}))
 
-(defn inactive-fields-by-lower-name
+(mu/defn inactive-fields-by-lower-name :- [:sequential (ms/InstanceOf :model/Field)]
   "The inactive Fields of the Table with `table-id` under `parent-id` whose lower-cased name is one of `lower-names`."
-  [table-id parent-id lower-names]
+  [table-id    :- ms/PositiveInt
+   parent-id   :- [:maybe ms/PositiveInt]
+   lower-names :- [:seqable :string]]
   (t2/select :model/Field
              :table_id table-id
              :%lower.name [:in lower-names]
              :parent_id parent-id
              :active false))
 
-(defn incomplete-analysis-fields-for-table
+(mu/defn incomplete-analysis-fields-for-table :- [:sequential (ms/InstanceOf :model/Field)]
   "The active, visible Fields of the Table with `table-id` fingerprinted at `fingerprint-version` but not yet analyzed."
-  [table-id fingerprint-version]
+  [table-id            :- ms/PositiveInt
+   fingerprint-version :- :int]
   (t2/select :model/Field
              :table_id table-id
              :active true
@@ -322,18 +467,18 @@
              :fingerprint_version fingerprint-version
              :last_analyzed nil))
 
-(defn name-field-count-for-table
+(mu/defn name-field-count-for-table :- ms/IntGreaterThanOrEqualToZero
   "The number of active, visible Fields of the Table with `table-id` whose semantic type is `:type/Name`."
-  [table-id]
+  [table-id :- ms/PositiveInt]
   (t2/count :model/Field
             :table_id table-id
             :active true
             :visibility_type [:not-in ["sensitive" "retired"]]
             :semantic_type :type/Name))
 
-(defn unscored-fields-for-database-reducible
+(mu/defn unscored-fields-for-database-reducible
   "Reducible active, visible Fields of the Database with `database-id` without a dimension interestingness score."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/reducible-select :model/Field
                        {:where [:and
                                 [:= :active true]
@@ -343,15 +488,17 @@
                                                                  :from   [(t2/table-name :model/Table)]
                                                                  :where  [:= :db_id database-id]}]]}))
 
-(defn top-level-field-ids-by-name
+(mu/defn top-level-field-ids-by-name :- [:maybe [:sequential ms/PositiveInt]]
   "The IDs of the top-level Fields of the Table with `table-id` named one of `field-names`."
-  [table-id field-names]
+  [table-id    :- ms/PositiveInt
+   field-names :- [:seqable :string]]
   (t2/select-pks-vec :model/Field :name [:in field-names] :table_id table-id :parent_id nil))
 
-(defn top-level-field-ids-by-schema-table-and-name-reducible
+(mu/defn top-level-field-ids-by-schema-table-and-name-reducible
   "Reducible `:id` rows of the top-level Fields of the Database with `database-id` matching one of the
   `[schema table-name field-name]` triples in `schema+table+names`, with a nil schema spelled `\"__null__\"`."
-  [database-id schema+table+names]
+  [database-id        :- ms/PositiveInt
+   schema+table+names :- [:seqable [:tuple :string :string :string]]]
   (t2/reducible-query {:select     [[:f.id]]
                        :from       [[(t2/table-name :model/Field) :f]]
                        :inner-join [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
@@ -360,14 +507,14 @@
                                     [:= :t.db_id database-id]
                                     [:= :parent_id nil]]}))
 
-(defn indexed-field-ids-for-table
+(mu/defn indexed-field-ids-for-table :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the Fields of the Table with `table-id` marked as indexed."
-  [table-id]
+  [table-id :- ms/PositiveInt]
   (t2/select-pks-set :model/Field :table_id table-id :database_indexed true))
 
-(defn indexed-top-level-field-ids-for-database
+(mu/defn indexed-top-level-field-ids-for-database :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the top-level Fields of the Database with `database-id` marked as indexed."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/select-pks-set :model/Field
                      :table_id [:in ^:allow-subquery {:select [[:t.id]]
                                                       :from   [[(t2/table-name :model/Table) :t]]
@@ -375,57 +522,65 @@
                      :parent_id nil
                      :database_indexed true))
 
-(defn insert-fields!
+(mu/defn insert-fields! :- [:sequential ms/PositiveInt]
   "Insert the Field `rows` and return their IDs."
-  [rows]
+  [rows :- [:seqable FieldChanges]]
   (t2/insert-returning-pks! :model/Field rows))
 
-(defn update-field!
-  "Apply `changes` to the Field with `field-id`."
-  [field-id changes]
+(mu/defn update-field! :- :int
+  "Apply `changes` to the Field with `field-id`, returning the number updated."
+  [field-id :- ms/PositiveInt
+   changes  :- FieldChanges]
   (t2/update! :model/Field field-id changes))
 
-(defn update-field-by-name!
-  "Apply `changes` to the Field named `field-name` of the Table with `table-id`."
-  [table-id field-name changes]
+(mu/defn update-field-by-name! :- :int
+  "Apply `changes` to the Field named `field-name` of the Table with `table-id`, returning the number updated."
+  [table-id   :- ms/PositiveInt
+   field-name :- :string
+   changes    :- FieldChanges]
   (t2/update! :model/Field {:name field-name, :table_id table-id} changes))
 
-(defn reactivate-fields!
-  "Mark the Fields with `field-ids` active."
-  [field-ids]
+(mu/defn reactivate-fields! :- :int
+  "Mark the Fields with `field-ids` active, returning the number updated."
+  [field-ids :- [:seqable ms/PositiveInt]]
   (t2/update! :model/Field {:id [:in field-ids]} {:active true}))
 
-(defn set-fields-fingerprint-version!
-  "Set the fingerprint version of the Fields with `field-ids` to `fingerprint-version`."
-  [field-ids fingerprint-version]
+(mu/defn set-fields-fingerprint-version! :- :int
+  "Set the fingerprint version of the Fields with `field-ids` to `fingerprint-version`, returning the number updated."
+  [field-ids           :- [:seqable ms/PositiveInt]
+   fingerprint-version :- :int]
   (t2/update! :model/Field :id [:in field-ids] {:fingerprint_version fingerprint-version}))
 
-(defn set-table-fields-indexed!
+(mu/defn set-table-fields-indexed! :- :int
   "Mark the Fields of the Table with `table-id` whose id is in `indexed-field-ids` as indexed, and all its other
-  Fields as not indexed."
-  [table-id indexed-field-ids]
+  Fields as not indexed, returning the number updated."
+  [table-id          :- ms/PositiveInt
+   indexed-field-ids :- [:maybe [:seqable ms/PositiveInt]]]
   (t2/update! :model/Field {:table_id table-id}
               {:database_indexed (if (seq indexed-field-ids)
                                    [:case [:in :id indexed-field-ids] true :else false]
                                    false)}))
 
-(defn set-top-level-fields-indexed!
-  "Set `database_indexed` of the top-level Fields with `field-ids` to `indexed?`."
-  [field-ids indexed?]
+(mu/defn set-top-level-fields-indexed! :- :int
+  "Set `database_indexed` of the top-level Fields with `field-ids` to `indexed?`, returning the number updated."
+  [field-ids :- [:seqable ms/PositiveInt]
+   indexed?  :- :boolean]
   (t2/update! :model/Field :parent_id nil :id [:in field-ids] {:database_indexed indexed?}))
 
-(defn mark-incomplete-fields-analyzed-for-table!
+(mu/defn mark-incomplete-fields-analyzed-for-table! :- :int
   "Stamp `last_analyzed` on the Fields of the Table with `table-id` fingerprinted at `fingerprint-version` but not
-  yet analyzed."
-  [table-id fingerprint-version]
+  yet analyzed, returning the number updated."
+  [table-id            :- ms/PositiveInt
+   fingerprint-version :- :int]
   (t2/update! :model/Field
               {:table_id table-id, :fingerprint_version fingerprint-version, :last_analyzed nil}
               {:last_analyzed :%now}))
 
-(defn mark-incomplete-fields-analyzed-for-database!
+(mu/defn mark-incomplete-fields-analyzed-for-database! :- :int
   "Stamp `last_analyzed` on the Fields of the synced Tables of the Database with `database-id` fingerprinted at
-  `fingerprint-version` but not yet analyzed."
-  [database-id fingerprint-version]
+  `fingerprint-version` but not yet analyzed, returning the number updated."
+  [database-id         :- ms/PositiveInt
+   fingerprint-version :- :int]
   (t2/update! :model/Field
               {:fingerprint_version fingerprint-version
                :last_analyzed       nil
@@ -505,11 +660,17 @@
                       (fk-target-changed-clause pk-field-id-query)]})]
     (sql/format q :dialect (app-db/quoting-style (app-db/db-type)))))
 
-(defn mark-fk!
+(mu/defn mark-fk! :- :int
   "Set the `fk_target_field_id` of the Field at `[fk-table-schema fk-table-name fk-column-name]` in the Database with
   `db-id` to the id of the Field at `[pk-table-schema pk-table-name pk-column-name]`, unless it already points there.
   Returns 1 if a Field was updated, 0 otherwise."
-  [db-id fk-table-schema fk-table-name fk-column-name pk-table-schema pk-table-name pk-column-name]
+  [db-id            :- ms/PositiveInt
+   fk-table-schema  :- [:maybe :string]
+   fk-table-name    :- :string
+   fk-column-name   :- :string
+   pk-table-schema  :- [:maybe :string]
+   pk-table-name    :- :string
+   pk-column-name   :- :string]
   (t2/query-one (mark-fk-statement db-id fk-table-schema fk-table-name fk-column-name
                                    pk-table-schema pk-table-name pk-column-name)))
 
@@ -523,10 +684,11 @@
     [:or [:= :data_sensitivity nil] [:= :data_sensitivity "PUBLIC"]]
     [:= :data_sensitivity nil]))
 
-(defn fields-to-scan-for-data-sensitivity
+(mu/defn fields-to-scan-for-data-sensitivity :- [:sequential (ms/InstanceOf :model/Field)]
   "The active, non-retired Fields of the Table with `table-id` that the data-sensitivity classifier still has to scan
   (see [[data-sensitivity-to-scan-clause]]), ordered by ID."
-  [table-id rescan-public?]
+  [table-id       :- ms/PositiveInt
+   rescan-public? :- [:maybe :boolean]]
   (t2/select :model/Field
              {:where    [:and
                          [:= :table_id table-id]
@@ -535,10 +697,11 @@
                          (data-sensitivity-to-scan-clause rescan-public?)]
               :order-by [[:id :asc]]}))
 
-(defn table-ids-with-fields-to-scan-for-data-sensitivity
+(mu/defn table-ids-with-fields-to-scan-for-data-sensitivity :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the active Tables of the Database with `database-id` that have active, non-retired Fields the
   data-sensitivity classifier still has to scan (see [[data-sensitivity-to-scan-clause]])."
-  [database-id rescan-public?]
+  [database-id    :- ms/PositiveInt
+   rescan-public? :- [:maybe :boolean]]
   (t2/select-fn-set :table_id :model/Field
                     {:select   [[:metabase_field.table_id :table_id]]
                      :from     [:metabase_field]
@@ -551,14 +714,15 @@
                                 (data-sensitivity-to-scan-clause rescan-public?)]
                      :group-by [:metabase_field.table_id]}))
 
-(defn tables-by-schema-and-name-reducible
+(mu/defn tables-by-schema-and-name-reducible
   "Reducible Tables with `table-ids`, ordered by schema and name."
-  [table-ids]
+  [table-ids :- [:seqable ms/PositiveInt]]
   (t2/reducible-select :model/Table :id [:in table-ids] {:order-by [[:schema :asc] [:name :asc]]}))
 
-(defn update-field-data-sensitivity!
-  "Set the `data_sensitivity` of the Field with `field-id` to `data-sensitivity`."
-  [field-id data-sensitivity]
+(mu/defn update-field-data-sensitivity! :- :int
+  "Set the `data_sensitivity` of the Field with `field-id` to `data-sensitivity`, returning the number updated."
+  [field-id         :- ms/PositiveInt
+   data-sensitivity :- [:or :keyword :string]]
   (t2/update! :model/Field field-id {:data_sensitivity data-sensitivity}))
 
 (def ^:private classifier-data-sensitivity-clause
@@ -572,18 +736,18 @@
                                              [:= :s.field_id :metabase_field.id]
                                              [:not= :s.data_sensitivity nil]]}]]])
 
-(defn reset-classifier-data-sensitivity-for-table!
+(mu/defn reset-classifier-data-sensitivity-for-table! :- :int
   "Clear the classifier-written `data_sensitivity` (see [[classifier-data-sensitivity-clause]]) of the Fields of the
   Table with `table-id`. Returns the number of Fields cleared."
-  [table-id]
+  [table-id :- ms/PositiveInt]
   (t2/query-one {:update :metabase_field
                  :set    {:data_sensitivity nil}
                  :where  [:and [:= :table_id table-id] classifier-data-sensitivity-clause]}))
 
-(defn reset-classifier-data-sensitivity-for-database!
+(mu/defn reset-classifier-data-sensitivity-for-database! :- :int
   "Clear the classifier-written `data_sensitivity` (see [[classifier-data-sensitivity-clause]]) of the Fields of every
   Table of the Database with `database-id`. Returns the number of Fields cleared."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/query-one {:update :metabase_field
                  :set    {:data_sensitivity nil}
                  :where  [:and
@@ -594,9 +758,9 @@
 
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
 
-(defn field-values-exist?
+(mu/defn field-values-exist? :- :boolean
   "Whether the Field with `field-id` has FieldValues."
-  [field-id]
+  [field-id :- ms/PositiveInt]
   (t2/exists? :model/FieldValues :field_id field-id))
 
 (defn- before-max-age-value
@@ -604,14 +768,18 @@
   [max-age-days]
   [:< (h2x/add-interval-honeysql-form (app-db/db-type) :%now (- max-age-days) :day)])
 
-(defn advanced-field-values-count-before
+(mu/defn advanced-field-values-count-before :- ms/IntGreaterThanOrEqualToZero
   "The number of FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago."
-  [field-id types max-age-days]
+  [field-id     :- ms/PositiveInt
+   types        :- [:seqable :keyword]
+   max-age-days :- :int]
   (t2/count :model/FieldValues :field_id field-id :type [:in types]
             :created_at (before-max-age-value max-age-days)))
 
-(defn delete-advanced-field-values-before!
+(mu/defn delete-advanced-field-values-before! :- :int
   "Delete the FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago."
-  [field-id types max-age-days]
+  [field-id     :- ms/PositiveInt
+   types        :- [:seqable :keyword]
+   max-age-days :- :int]
   (t2/delete! :model/FieldValues :field_id field-id :type [:in types]
               :created_at (before-max-age-value max-age-days)))

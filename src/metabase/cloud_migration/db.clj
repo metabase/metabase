@@ -3,42 +3,55 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn cloud-migration-not-in-states
+(mu/defn cloud-migration-not-in-states :- [:maybe (ms/InstanceOf :model/CloudMigration)]
   "A CloudMigration whose state is not one of `states`, or nil."
-  [states]
+  [states :- [:seqable [:or :keyword :string]]]
   (t2/select-one :model/CloudMigration :state [:not-in states]))
 
-(defn insert-cloud-migration!
+(mu/defn insert-cloud-migration! :- (ms/InstanceOf :model/CloudMigration)
   "Insert the CloudMigration `row` and return the inserted instance."
-  [row]
+  [row :- [:map {:closed true}
+           [:id          {:optional true} ms/PositiveInt]
+           [:external_id {:optional true} [:maybe [:or :string :int]]]
+           [:upload_url  {:optional true} [:maybe :string]]
+           [:state       {:optional true} [:or :keyword :string]]
+           [:progress    {:optional true} [:maybe :int]]
+           [:created_at  {:optional true} ms/TemporalInstant]
+           [:updated_at  {:optional true} ms/TemporalInstant]]]
   (t2/insert-returning-instance! :model/CloudMigration row))
 
-(defn latest-cloud-migration
+(mu/defn latest-cloud-migration :- [:maybe (ms/InstanceOf :model/CloudMigration)]
   "The most recently created CloudMigration, or nil."
   []
   (t2/select-one :model/CloudMigration {:order-by [[:created_at :desc]]}))
 
-(defn cancel-cloud-migrations-not-in-states!
+(mu/defn cancel-cloud-migrations-not-in-states! :- :int
   "Cancel every CloudMigration whose state is not one of `states`."
-  [states]
+  [states :- [:seqable [:or :keyword :string]]]
   (t2/update! :model/CloudMigration {:state [:not-in states]} {:state :cancelled}))
 
-(defn quartz-node-count
+(mu/defn quartz-node-count :- ms/IntGreaterThanOrEqualToZero
   "The number of Quartz scheduler nodes recorded in the app DB."
   []
   (t2/count (if (= (mdb/db-type) :postgres)
               "qrtz_scheduler_state"
               "QRTZ_SCHEDULER_STATE")))
 
-(defn set-cloud-migration-progress-if-not-in-states!
+(mu/defn set-cloud-migration-progress-if-not-in-states! :- :int
   "Set the state and progress of the CloudMigration with `id` unless its state is one of `states`, returning the
   number of rows updated."
-  [id states state progress]
+  [id       :- ms/PositiveInt
+   states   :- [:seqable [:or :keyword :string]]
+   state    :- [:or :keyword :string]
+   progress :- :int]
   (t2/update! :model/CloudMigration :id id :state [:not-in states] {:state state :progress progress}))
 
-(defn set-cloud-migration-state!
+(mu/defn set-cloud-migration-state! :- :int
   "Set the state of the CloudMigration with `id`."
-  [id state]
+  [id    :- ms/PositiveInt
+   state :- [:or :keyword :string]]
   (t2/update! :model/CloudMigration :id id {:state state}))

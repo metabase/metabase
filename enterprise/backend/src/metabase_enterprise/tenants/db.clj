@@ -2,32 +2,36 @@
   "Application database queries for the tenants module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn tenant
+(mu/defn tenant :- [:maybe (ms/InstanceOf :model/Tenant)]
   "The Tenant with `tenant-id`, or nil."
-  [tenant-id]
+  [tenant-id :- ms/PositiveInt]
   (t2/select-one :model/Tenant :id tenant-id))
 
-(defn tenant-by-slug
+(mu/defn tenant-by-slug :- [:maybe (ms/InstanceOf :model/Tenant)]
   "The Tenant with `slug`, or nil."
-  [slug]
+  [slug :- :string]
   (t2/select-one :model/Tenant :slug slug))
 
-(defn tenant-slug
+(mu/defn tenant-slug :- [:maybe :string]
   "The slug of the Tenant with `tenant-id`."
-  [tenant-id]
+  [tenant-id :- ms/PositiveInt]
   (t2/select-one-fn :slug :model/Tenant :id tenant-id))
 
-(defn tenant-collection-id
+(mu/defn tenant-collection-id :- [:maybe ms/PositiveInt]
   "The root Collection ID of the Tenant with `tenant-id`."
-  [tenant-id]
+  [tenant-id :- ms/PositiveInt]
   (t2/select-one-fn :tenant_collection_id :model/Tenant :id tenant-id))
 
-(defn tenants-page
+(mu/defn tenants-page :- [:sequential (ms/InstanceOf :model/Tenant)]
   "The Tenants in ID order, restricted by `status` (`\"all\"`, `\"active\"`, or `\"deactivated\"`) and paged by the
   optional `limit` and `offset`."
-  [status limit offset]
+  [status :- [:enum "all" "active" "deactivated"]
+   limit  :- [:maybe ms/PositiveInt]
+   offset :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/Tenant (cond-> {:order-by [[:id :asc]]
                                     :where    (case status
                                                 "all"         [:= [:inline 1] [:inline 1]]
@@ -35,7 +39,7 @@
                                                 "deactivated" [:= :is_active false])}
                              limit (assoc :limit limit :offset offset))))
 
-(defn tenant-attributes-reducible
+(mu/defn tenant-attributes-reducible
   "Reducible attribute maps of the Tenants that have attributes."
   []
   (t2/select-fn-reducible :attributes [:model/Tenant :attributes]
@@ -43,41 +47,50 @@
                                    [:not= :attributes nil]
                                    [:not= :attributes "{}"]]}))
 
-(defn tenant-names-and-ids-by-collection
+(mu/defn tenant-names-and-ids-by-collection :- [:map-of ms/PositiveInt [:tuple :string ms/PositiveInt]]
   "A map of root Collection ID to `[name id]` for the Tenants owning `collection-ids`."
-  [collection-ids]
+  [collection-ids :- [:seqable ms/PositiveInt]]
   (t2/select-fn->fn :tenant_collection_id (juxt :name :id) :model/Tenant :tenant_collection_id [:in collection-ids]))
 
-(defn active-tenant-exists?
+(mu/defn active-tenant-exists? :- :boolean
   "Whether the Tenant with `tenant-id` exists and is active."
-  [tenant-id]
+  [tenant-id :- ms/PositiveInt]
   (t2/exists? :model/Tenant :id tenant-id :is_active true))
 
-(defn tenant-name-or-slug-exists?
+(mu/defn tenant-name-or-slug-exists? :- :boolean
   "Whether a Tenant named `tenant-name` or with `slug` exists."
-  [tenant-name slug]
+  [tenant-name :- :string
+   slug        :- :string]
   (t2/exists? :model/Tenant {:where [:or
                                      [:= :slug slug]
                                      [:= :name tenant-name]]}))
 
-(defn other-tenant-named?
+(mu/defn other-tenant-named? :- :boolean
   "Whether a Tenant other than `tenant-id` is named `tenant-name`."
-  [tenant-name tenant-id]
+  [tenant-name :- :string
+   tenant-id   :- ms/PositiveInt]
   (t2/exists? :model/Tenant :name tenant-name :id [:not= tenant-id]))
 
-(defn insert-tenant!
+(mu/defn insert-tenant! :- (ms/InstanceOf :model/Tenant)
   "Insert `tenant` and return the new instance."
-  [tenant]
+  [tenant :- [:map {:closed true}
+              [:name       :string]
+              [:slug       :string]
+              [:attributes {:optional true} [:maybe :map]]]]
   (t2/insert-returning-instance! :model/Tenant tenant))
 
-(defn update-tenant!
-  "Apply `changes` to the Tenant with `tenant-id`."
-  [tenant-id changes]
+(mu/defn update-tenant! :- :int
+  "Apply `changes` to the Tenant with `tenant-id`, returning the number updated."
+  [tenant-id :- ms/PositiveInt
+   changes   :- [:map {:closed true}
+                 [:name       {:optional true} [:maybe :string]]
+                 [:attributes {:optional true} [:maybe :map]]
+                 [:is_active  {:optional true} [:maybe :boolean]]]]
   (t2/update! :model/Tenant {:id tenant-id} changes))
 
-(defn active-member-counts
+(mu/defn active-member-counts :- [:sequential [:map {:closed true} [:tenant_id ms/PositiveInt] [:count :int]]]
   "Rows of `:tenant_id` and `:count` of active personal Users for `tenant-ids`."
-  [tenant-ids]
+  [tenant-ids :- [:seqable ms/PositiveInt]]
   (t2/query {:select   [[:tenant_id] [[:count :*] :count]]
              :from     [(t2/table-name :model/User)]
              :where    [:and
@@ -86,39 +99,57 @@
                         :is_active]
              :group-by [:tenant_id]}))
 
-(defn deactivate-tenant-users!
-  "Deactivate the active Users of the Tenant with `tenant-id`, marking them as deactivated with it."
-  [tenant-id]
+(mu/defn deactivate-tenant-users! :- :int
+  "Deactivate the active Users of the Tenant with `tenant-id`, marking them as deactivated with it, returning the
+  number updated."
+  [tenant-id :- ms/PositiveInt]
   (t2/update! :model/User {:is_active true :tenant_id tenant-id} {:is_active false :deactivated_with_tenant true}))
 
-(defn reactivate-tenant-users!
-  "Reactivate the Users of the Tenant with `tenant-id` that were deactivated with it."
-  [tenant-id]
+(mu/defn reactivate-tenant-users! :- :int
+  "Reactivate the Users of the Tenant with `tenant-id` that were deactivated with it, returning the number updated."
+  [tenant-id :- ms/PositiveInt]
   (t2/update! :model/User {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
               {:is_active true :deactivated_with_tenant nil}))
 
-(defn user-tenant-id
+(mu/defn user-tenant-id :- [:maybe ms/PositiveInt]
   "The Tenant ID of the User with `user-id`."
-  [user-id]
+  [user-id :- ms/PositiveInt]
   (t2/select-one-fn :tenant_id :model/User :id user-id))
 
-(defn collection-with-archived-state
+(mu/defn collection-with-archived-state :- [:maybe (ms/InstanceOf :model/Collection)]
   "The Collection with `collection-id` if its archived flag is `archived?`, or nil."
-  [collection-id archived?]
+  [collection-id :- ms/PositiveInt
+   archived?     :- :boolean]
   (t2/select-one :model/Collection :id collection-id :archived archived?))
 
-(defn descendant-collection-ids
+(mu/defn descendant-collection-ids :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the Collections under the Collection with `collection-id`."
-  [collection-id]
+  [collection-id :- ms/PositiveInt]
   (t2/select-pks-set :model/Collection :location [:like (str "/" collection-id "/%")]))
 
-(defn insert-collection!
+(mu/defn insert-collection! :- ms/PositiveInt
   "Insert `collection` and return its ID."
-  [collection]
+  [collection :- [:map {:closed true}
+                  [:id                    {:optional true} :any]
+                  [:name                  {:optional true} :any]
+                  [:description           {:optional true} :any]
+                  [:archived              {:optional true} :any]
+                  [:location              {:optional true} :any]
+                  [:personal_owner_id     {:optional true} :any]
+                  [:slug                  {:optional true} :any]
+                  [:namespace             {:optional true} :any]
+                  [:authority_level       {:optional true} :any]
+                  [:entity_id             {:optional true} :any]
+                  [:created_at            {:optional true} :any]
+                  [:type                  {:optional true} :any]
+                  [:is_sample             {:optional true} :any]
+                  [:archive_operation_id  {:optional true} :any]
+                  [:archived_directly     {:optional true} :any]
+                  [:is_remote_synced      {:optional true} :any]]]
   (t2/insert-returning-pk! :model/Collection collection))
 
-(defn delete-permissions-with-objects!
-  "Delete the Permissions rows for `objects`."
-  [objects]
+(mu/defn delete-permissions-with-objects! :- :int
+  "Delete the Permissions rows for `objects`, returning the number deleted."
+  [objects :- [:seqable :string]]
   (t2/query-one {:delete-from :permissions
                  :where       [:in :object objects]}))

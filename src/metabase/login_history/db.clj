@@ -4,35 +4,46 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn login-history-for-user
+(mu/defn login-history-for-user :- [:sequential :map]
   "The timestamp, session id, device description, and IP address of the LoginHistory of the User with `user-id`,
   newest first."
-  [user-id]
+  [user-id :- ms/PositiveInt]
   (t2/select [:model/LoginHistory :timestamp :session_id :device_description :ip_address]
              :user_id user-id
              {:order-by [[:timestamp :desc]]}))
 
-(defn insert-login-history!
-  "Insert the LoginHistory `row`."
-  [row]
+(mu/defn insert-login-history! :- :int
+  "Insert the LoginHistory `row`, returning the number of rows inserted."
+  [row :- [:map {:closed true}
+           [:user_id            {:optional true} ms/PositiveInt]
+           [:session_id         {:optional true} :string]
+           [:device_id          {:optional true} :string]
+           [:device_description {:optional true} :string]
+           [:ip_address         {:optional true} :string]]]
   (t2/insert! :model/LoginHistory row))
 
-(defn login-history-ids-for-user
+(mu/defn login-history-ids-for-user :- [:sequential [:map {:closed true} [:id ms/PositiveInt]]]
   "Up to `limit` LoginHistory ids of the User with `user-id`."
-  [user-id limit]
+  [user-id :- ms/PositiveInt
+   limit   :- ms/PositiveInt]
   (t2/select [:model/LoginHistory :id] :user_id user-id {:limit limit}))
 
-(defn login-history-ids-for-user-device
+(mu/defn login-history-ids-for-user-device :- [:sequential [:map {:closed true} [:id ms/PositiveInt]]]
   "Up to `limit` LoginHistory ids of the User with `user-id` on the device with `device-id`."
-  [user-id device-id limit]
+  [user-id   :- ms/PositiveInt
+   device-id :- :string
+   limit     :- ms/PositiveInt]
   (t2/select [:model/LoginHistory :id] :user_id user-id, :device_id device-id, {:limit limit}))
 
-(defn first-device-login-count-since
+(mu/defn first-device-login-count-since :- ms/IntGreaterThanOrEqualToZero
   "The number of LoginHistory rows of the User with `user-id` in the last `window-hours` that are the first
   login on their device."
-  [user-id window-hours]
+  [user-id      :- ms/PositiveInt
+   window-hours :- ms/PositiveInt]
   (t2/count :model/LoginHistory
             {:where [:and
                      [:= :user_id user-id]

@@ -4,79 +4,114 @@
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn dashboards
+(mu/defn dashboards :- [:sequential (ms/InstanceOf :model/Dashboard)]
   "The archived or unarchived (`archived?`) Dashboards, restricted to those created by `creator-id` when given, in
   case-insensitive name order."
-  [archived? creator-id]
+  [archived?  :- :boolean
+   creator-id :- [:maybe ms/PositiveInt]]
   (t2/select :model/Dashboard {:where    [:and
                                           (when creator-id [:= :creator_id creator-id])
                                           [:= :archived archived?]]
                                :order-by [:%lower.name]}))
 
-(defn dashboard
+(mu/defn dashboard :- [:maybe (ms/InstanceOf :model/Dashboard)]
   "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id]
+  [dashboard-id :- ms/PositiveInt]
   (t2/select-one :model/Dashboard :id dashboard-id))
 
-(defn dashboard-parameters
+(mu/defn dashboard-parameters :- [:maybe (ms/InstanceOf :model/Dashboard)]
   "The id and parameters of the Dashboard with `dashboard-id`, or nil."
-  [dashboard-id]
+  [dashboard-id :- ms/PositiveInt]
   (t2/select-one [:model/Dashboard :id :parameters] dashboard-id))
 
-(defn dashboard-name-columns
+(mu/defn dashboard-name-columns :- [:maybe (ms/InstanceOf :model/Dashboard)]
   "The name, description, and creator of the Dashboard with `dashboard-id`, or nil."
-  [dashboard-id]
+  [dashboard-id :- ms/PositiveInt]
   (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id))
 
-(defn dashboard-public-uuid
+(mu/defn dashboard-public-uuid :- [:maybe :string]
   "The public uuid of the Dashboard with `dashboard-id`, or nil."
-  [dashboard-id]
+  [dashboard-id :- ms/PositiveInt]
   (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id))
 
-(defn public-dashboards
+(mu/defn public-dashboards :- [:sequential (ms/InstanceOf :model/Dashboard)]
   "The name, id, and public uuid of the unarchived Dashboards that are publicly shared."
   []
   (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
-(defn embeddable-dashboards
+(mu/defn embeddable-dashboards :- [:sequential (ms/InstanceOf :model/Dashboard)]
   "The name and id of the unarchived Dashboards with embedding enabled."
   []
   (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
 
-(defn insert-dashboard!
+(mu/defn insert-dashboard! :- (ms/InstanceOf :model/Dashboard)
   "Insert the Dashboard `row` and return the inserted instance."
-  [row]
+  [row :- [:map {:closed true}
+           [:name                :string]
+           [:description         {:optional true} [:maybe :string]]
+           [:parameters          {:optional true} :any]
+           [:creator_id          {:optional true} ms/PositiveInt]
+           [:cache_ttl           {:optional true} [:maybe ms/PositiveInt]]
+           [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+           [:collection_position {:optional true} [:maybe ms/PositiveInt]]
+           [:width               {:optional true} [:maybe [:or :keyword :string]]]]]
   (t2/insert-returning-instance! :model/Dashboard row))
 
-(defn update-dashboard!
+(mu/defn update-dashboard! :- :int
   "Apply `changes` to the Dashboard with `dashboard-id`."
-  [dashboard-id changes]
+  [dashboard-id :- ms/PositiveInt
+   changes      :- [:map {:closed true}
+                    [:description             {:optional true} [:maybe :string]]
+                    [:position                {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+                    [:width                   {:optional true} [:maybe [:or :keyword :string]]]
+                    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
+                    [:collection_position     {:optional true} [:maybe ms/PositiveInt]]
+                    [:cache_ttl               {:optional true} [:maybe ms/PositiveInt]]
+                    [:archived_directly       {:optional true} [:maybe :boolean]]
+                    [:embedding_type          {:optional true} [:maybe [:or :keyword :string]]]
+                    [:name                    {:optional true} :string]
+                    [:parameters              {:optional true} :any]
+                    [:caveats                 {:optional true} [:maybe :string]]
+                    [:points_of_interest      {:optional true} [:maybe :string]]
+                    [:show_in_getting_started {:optional true} :boolean]
+                    [:enable_embedding        {:optional true} :boolean]
+                    [:embedding_params        {:optional true} :any]
+                    [:archived                {:optional true} :boolean]
+                    [:auto_apply_filters      {:optional true} :boolean]
+                    [:public_uuid             {:optional true} [:maybe :string]]
+                    [:made_public_by_id       {:optional true} [:maybe ms/PositiveInt]]]]
   (t2/update! :model/Dashboard dashboard-id changes))
 
-(defn delete-dashboard!
+(mu/defn delete-dashboard! :- :int
   "Delete the Dashboard with `dashboard-id`."
-  [dashboard-id]
+  [dashboard-id :- ms/PositiveInt]
   (t2/delete! :model/Dashboard :id dashboard-id))
 
-(defn parameter-card-ids
+(mu/defn parameter-card-ids :- [:maybe [:sequential ms/PositiveInt]]
   "The Card ids of the ParameterCards of the `parameterized-object-type` with `parameterized-object-id`."
-  [parameterized-object-type parameterized-object-id]
+  [parameterized-object-type :- [:or :keyword :string]
+   parameterized-object-id   :- ms/PositiveInt]
   (t2/select-fn-vec :card_id :model/ParameterCard
                     :parameterized_object_type parameterized-object-type
                     :parameterized_object_id   parameterized-object-id))
 
-(defn dashboard-card-ids
+(mu/defn dashboard-card-ids :- [:maybe [:sequential [:maybe ms/PositiveInt]]]
   "The Card ids of the DashboardCards of the Dashboard with `dashboard-id`."
-  [dashboard-id]
+  [dashboard-id :- ms/PositiveInt]
   (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id dashboard-id))
 
-(defn dashboard-item-cards
+(mu/defn dashboard-item-cards :- [:sequential :map]
   "The card items of the Dashboard with `dashboard-id`, for the `/:id/items` endpoint: id, name, description, entity
   id, collection position, display, collection preview, last-used-at, collection id, archived flags, database id,
   and moderated status. Paged by `limit`/`offset` when `paged?`."
-  [dashboard-id paged? limit offset]
+  [dashboard-id :- ms/PositiveInt
+   paged?       :- :boolean
+   limit        :- [:maybe ms/PositiveInt]
+   offset       :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (app-db/query
    (cond-> {:select [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                      :last_used_at :c.collection_id :c.archived_directly :c.archived :c.database_id
@@ -103,116 +138,122 @@
                     [:= :c.archived false]]}
      paged? (merge {:limit limit :offset offset}))))
 
-(defn dashboard-series-card-ids
+(mu/defn dashboard-series-card-ids :- [:maybe [:sequential [:maybe ms/PositiveInt]]]
   "The Card ids of the DashboardCardSeries of the Dashboard with `dashboard-id`."
-  [dashboard-id]
+  [dashboard-id :- ms/PositiveInt]
   (t2/select-fn-vec :card_id :model/DashboardCardSeries
                     {:where [:in :dashboardcard_id
                              ^:allow-subquery {:select [:id]
                                                :from   [(t2/table-name :model/DashboardCard)]
                                                :where  [:= :dashboard_id dashboard-id]}]}))
 
-(defn dashboard-action-ids
+(mu/defn dashboard-action-ids :- [:maybe [:sequential [:maybe ms/PositiveInt]]]
   "The Action ids of the DashboardCards of the Dashboard with `dashboard-id`."
-  [dashboard-id]
+  [dashboard-id :- ms/PositiveInt]
   (t2/select-fn-vec :action_id :model/DashboardCard :dashboard_id dashboard-id))
 
-(defn query-average-execution-times
+(mu/defn query-average-execution-times :- [:map-of bytes? [:maybe number?]]
   "A map of query hash to average execution time for the Queries with `query-hashes`."
-  [query-hashes]
+  [query-hashes :- [:seqable bytes?]]
   (t2/select-fn->fn :query_hash :average_execution_time :model/Query :query_hash [:in query-hashes]))
 
-(defn card
+(mu/defn card :- [:maybe (ms/InstanceOf :model/Card)]
   "The Card with `card-id`, or nil."
-  [card-id]
+  [card-id :- ms/PositiveInt]
   (t2/select-one :model/Card :id card-id))
 
-(defn card-query
-  "The query of the Card with `card-id`, or nil."
-  [card-id]
+(mu/defn card-query :- :any
+  "The query of the Card with `card-id`, or nil (also nil for virtual dashcards, which have no Card id)."
+  [card-id :- [:maybe ms/PositiveInt]]
   (t2/select-one-fn :dataset_query :model/Card :id card-id))
 
-(defn card-queries
+(mu/defn card-queries :- [:map-of ms/PositiveInt :any]
   "A map of Card id to query for the Cards with `card-ids`."
-  [card-ids]
+  [card-ids :- [:seqable ms/PositiveInt]]
   (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
 
-(defn unarchived-dashboard-question-exists?
+(mu/defn unarchived-dashboard-question-exists? :- :boolean
   "Whether an unarchived Card internal to the Dashboard with `dashboard-id` exists."
-  [dashboard-id]
+  [dashboard-id :- ms/PositiveInt]
   (t2/exists? :model/Card :dashboard_id dashboard-id :archived false))
 
-(defn card-internal-to-other-dashboard-exists?
+(mu/defn card-internal-to-other-dashboard-exists? :- :boolean
   "Whether any of the Cards with `card-ids` is internal to a Dashboard other than `dashboard-id`."
-  [dashboard-id card-ids]
+  [dashboard-id :- ms/PositiveInt
+   card-ids     :- [:seqable ms/PositiveInt]]
   (t2/exists? :model/Card
               {:where [:and
                        [:not= :dashboard_id dashboard-id]
                        [:not= :dashboard_id nil]
                        [:in :id card-ids]]}))
 
-(defn insert-dashboard-tabs!
+(mu/defn insert-dashboard-tabs! :- [:sequential ms/PositiveInt]
   "Insert the DashboardTab `rows` and return their ids."
-  [rows]
+  [rows :- [:sequential [:map {:closed true}
+                         [:dashboard_id ms/PositiveInt]
+                         [:name         :string]
+                         [:position     ms/IntGreaterThanOrEqualToZero]]]]
   (t2/insert-returning-pks! :model/DashboardTab rows))
 
-(defn collection
+(mu/defn collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "The Collection with `collection-id`, or nil."
-  [collection-id]
+  [collection-id :- ms/PositiveInt]
   (t2/select-one :model/Collection :id collection-id))
 
-(defn personal-collection-for-user
+(mu/defn personal-collection-for-user :- [:maybe (ms/InstanceOf :model/Collection)]
   "The personal Collection of the User with `user-id`, or nil."
-  [user-id]
+  [user-id :- ms/PositiveInt]
   (t2/select-one :model/Collection :personal_owner_id user-id))
 
-(defn dashcard
+(mu/defn dashcard :- [:maybe (ms/InstanceOf :model/DashboardCard)]
   "The DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id]
+  [dashcard-id :- ms/PositiveInt]
   (t2/select-one :model/DashboardCard dashcard-id))
 
-(defn dashcard-in-dashboard
+(mu/defn dashcard-in-dashboard :- [:maybe (ms/InstanceOf :model/DashboardCard)]
   "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
-  [dashcard-id dashboard-id]
+  [dashcard-id  :- ms/PositiveInt
+   dashboard-id :- ms/PositiveInt]
   (t2/select-one :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
 
-(defn dashcards-by-ids
+(mu/defn dashcards-by-ids :- [:sequential (ms/InstanceOf :model/DashboardCard)]
   "The DashboardCards with `dashcard-ids`."
-  [dashcard-ids]
+  [dashcard-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/DashboardCard :id [:in dashcard-ids]))
 
-(defn dashcard-parameter-mappings
+(mu/defn dashcard-parameter-mappings :- [:map-of ms/PositiveInt :any]
   "A map of DashboardCard id to parameter mappings for the DashboardCards of the Dashboard with `dashboard-id`."
-  [dashboard-id]
+  [dashboard-id :- ms/PositiveInt]
   (t2/select-pk->fn :parameter_mappings :model/DashboardCard :dashboard_id dashboard-id))
 
-(defn dashcard-card-ids-by-id
+(mu/defn dashcard-card-ids-by-id :- [:map-of ms/PositiveInt [:maybe ms/PositiveInt]]
   "A map of DashboardCard id to Card id for the DashboardCards with `dashcard-ids` of the Dashboard with
   `dashboard-id`."
-  [dashboard-id dashcard-ids]
+  [dashboard-id :- ms/PositiveInt
+   dashcard-ids :- [:seqable ms/PositiveInt]]
   (t2/select-pk->fn :card_id :model/DashboardCard :dashboard_id dashboard-id :id [:in dashcard-ids]))
 
-(defn user-name-and-email
+(mu/defn user-name-and-email :- [:maybe (ms/InstanceOf :model/User)]
   "The name and email of the User with `user-id`, or nil."
-  [user-id]
+  [user-id :- ms/PositiveInt]
   (t2/select-one [:model/User :first_name :last_name :email] user-id))
 
-(defn user-names-and-emails
+(mu/defn user-names-and-emails :- [:sequential (ms/InstanceOf :model/User)]
   "The names and emails of the Users with `user-ids`."
-  [user-ids]
+  [user-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:model/User :first_name :last_name :email] :id [:in user-ids]))
 
-(defn pulse-channels-for-pulse
+(mu/defn pulse-channels-for-pulse :- [:sequential (ms/InstanceOf :model/PulseChannel)]
   "The id, type, and details of the PulseChannels of the Pulse with `pulse-id`."
-  [pulse-id]
+  [pulse-id :- ms/PositiveInt]
   (t2/select [:model/PulseChannel :id :channel_type :details] :pulse_id [:= pulse-id]))
 
-(defn pulse-channel-recipients
+(mu/defn pulse-channel-recipients :- [:sequential (ms/InstanceOf :model/PulseChannelRecipient)]
   "The PulseChannelRecipients of the PulseChannel with `pulse-channel-id`."
-  [pulse-channel-id]
+  [pulse-channel-id :- ms/PositiveInt]
   (t2/select :model/PulseChannelRecipient :pulse_channel_id pulse-channel-id))
 
-(defn unarchived-pulses-for-dashboard
+(mu/defn unarchived-pulses-for-dashboard :- [:sequential (ms/InstanceOf :model/Pulse)]
   "The unarchived Pulses of the Dashboard with `dashboard-id`, in id order."
-  [dashboard-id]
+  [dashboard-id :- ms/PositiveInt]
   (t2/select :model/Pulse :dashboard_id dashboard-id :archived false {:order-by [[:id :asc]]}))

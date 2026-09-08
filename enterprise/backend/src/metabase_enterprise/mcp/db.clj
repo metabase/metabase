@@ -2,39 +2,60 @@
   "Application database queries for the mcp module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn session-log-exists?
+(mu/defn session-log-exists? :- :boolean
   "Whether an McpSessionLog with `session-id` exists."
-  [session-id]
+  [session-id :- :string]
   (t2/exists? :model/McpSessionLog :id session-id))
 
-(defn session-client-identity
+(mu/defn session-client-identity :- [:maybe :map]
   "The client name and version of the McpSessionLog with `session-id`, or nil."
-  [session-id]
+  [session-id :- :string]
   (t2/select-one [:model/McpSessionLog :client_name :client_version] :id session-id))
 
-(defn insert-session-log!
+(mu/defn insert-session-log! :- :int
   "Insert the McpSessionLog `row`."
-  [row]
+  [row :- [:map {:closed true}
+           [:id             {:optional true} :string]
+           [:user_id        {:optional true} [:maybe ms/PositiveInt]]
+           [:tenant_id      {:optional true} [:maybe ms/PositiveInt]]
+           [:client_name    {:optional true} [:maybe :string]]
+           [:client_version {:optional true} [:maybe :string]]
+           [:ip_address     {:optional true} [:maybe :string]]
+           [:user_agent     {:optional true} [:maybe :string]]]]
   (t2/insert! :model/McpSessionLog row))
 
-(defn end-session-log!
+(mu/defn end-session-log! :- :int
   "Stamp `ended_at` on the McpSessionLog with `session-id`."
-  [session-id]
+  [session-id :- :string]
   (t2/update! :model/McpSessionLog :id session-id {:ended_at :%now}))
 
-(defn insert-tool-call-log!
+(mu/defn insert-tool-call-log! :- :int
   "Insert the McpToolCallLog `row`."
-  [row]
+  [row :- [:map {:closed true}
+           [:user_id               {:optional true} [:maybe ms/PositiveInt]]
+           [:tool_name             {:optional true} [:maybe :string]]
+           [:status                {:optional true} [:maybe :string]]
+           [:duration_ms           {:optional true} [:maybe :int]]
+           [:error_code            {:optional true} [:maybe :int]]
+           [:error_message         {:optional true} [:maybe :string]]
+           [:client_name           {:optional true} [:maybe :string]]
+           [:client_version        {:optional true} [:maybe :string]]
+           [:tenant_id             {:optional true} [:maybe ms/PositiveInt]]
+           [:ip_address            {:optional true} [:maybe :string]]
+           [:user_agent            {:optional true} [:maybe :string]]
+           [:sanitized_user_agent  {:optional true} [:maybe :string]]]]
   (t2/insert! :model/McpToolCallLog row))
 
-(defn delete-tool-call-logs-created-before!
+(mu/defn delete-tool-call-logs-created-before! :- :int
   "Delete the McpToolCallLogs created before `cutoff`, returning the number deleted."
-  [cutoff]
+  [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/McpToolCallLog {:where [:< :created_at cutoff]}))
 
-(defn delete-session-logs-created-before!
+(mu/defn delete-session-logs-created-before! :- :int
   "Delete the McpSessionLogs created before `cutoff`, returning the number deleted."
-  [cutoff]
+  [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/McpSessionLog {:where [:< :created_at cutoff]}))

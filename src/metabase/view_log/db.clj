@@ -3,6 +3,8 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [java-time.api :as t]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- increment-view-counts-of-model!
@@ -16,42 +18,65 @@
                                                                 count->ids))]}
              :where  [:in :id (apply concat (vals count->ids))]}))
 
-(defn increment-card-view-counts!
+(def ^:private count->ids-schema
+  [:map-of ms/PositiveInt [:sequential ms/PositiveInt]])
+
+(mu/defn increment-card-view-counts! :- [:sequential :int]
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Cards with `ids`."
-  [count->ids]
+  [count->ids :- count->ids-schema]
   (increment-view-counts-of-model! :model/Card count->ids))
 
-(defn increment-dashboard-view-counts!
+(mu/defn increment-dashboard-view-counts! :- [:sequential :int]
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Dashboards with `ids`."
-  [count->ids]
+  [count->ids :- count->ids-schema]
   (increment-view-counts-of-model! :model/Dashboard count->ids))
 
-(defn increment-table-view-counts!
+(mu/defn increment-table-view-counts! :- [:sequential :int]
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Tables with `ids`."
-  [count->ids]
+  [count->ids :- count->ids-schema]
   (increment-view-counts-of-model! :model/Table count->ids))
 
-(defn increment-document-view-counts!
+(mu/defn increment-document-view-counts! :- [:sequential :int]
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Documents with `ids`."
-  [count->ids]
+  [count->ids :- count->ids-schema]
   (increment-view-counts-of-model! :model/Document count->ids))
 
-(defn insert-view-logs!
-  "Insert the ViewLog rows `views`."
-  [views]
+(mu/defn insert-view-logs! :- :int
+  "Insert the ViewLog rows `views`, returning the number inserted."
+  [views :- [:seqable [:map {:closed true}
+                       [:id                          {:optional true} :any]
+                       [:user_id                     {:optional true} :any]
+                       [:model                       {:optional true} :any]
+                       [:model_id                    {:optional true} :any]
+                       [:timestamp                   {:optional true} :any]
+                       [:metadata                    {:optional true} :any]
+                       [:has_access                  {:optional true} :any]
+                       [:context                     {:optional true} :any]
+                       [:embedding_client            {:optional true} :any]
+                       [:embedding_sdk_version       {:optional true} :any]
+                       [:auth_method                 {:optional true} :any]
+                       [:tenant_id                   {:optional true} :any]
+                       [:embedding_hostname          {:optional true} :any]
+                       [:embedding_path              {:optional true} :any]
+                       [:user_agent                  {:optional true} :any]
+                       [:ip_address                  {:optional true} :any]
+                       [:sanitized_user_agent        {:optional true} :any]
+                       [:embedding_route             {:optional true} :any]
+                       [:metabase_version            {:optional true} :any]
+                       [:embedding_client_identifier {:optional true} :any]]]]
   (t2/insert! :model/ViewLog views))
 
-(defn card-type
+(mu/defn card-type :- [:maybe :keyword]
   "The `:type` of the Card with `card-id`, or nil."
-  [card-id]
+  [card-id :- ms/PositiveInt]
   (t2/select-one-fn :type :model/Card :id card-id))
 
-(defn update-dashboards-last-viewed-at!
+(mu/defn update-dashboards-last-viewed-at! :- [:sequential :int]
   "Move `last_viewed_at` of each Dashboard in `dashboard-id->timestamp` forward to its timestamp, without touching
   `updated_at`, via a raw update that bypasses Toucan 2 model hooks (specifically the :hook/search-index
   after-update; the search index can tolerate staleness on this field, catching up on the next re-index cycle or
   when the dashboard is edited)."
-  [dashboard-id->timestamp]
+  [dashboard-id->timestamp :- [:map-of ms/PositiveInt ms/TemporalInstant]]
   (t2/query {:update (t2/table-name :model/Dashboard)
              :set    {:last_viewed_at (into [:case]
                                             (mapcat (fn [[id timestamp]]

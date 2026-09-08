@@ -3,24 +3,88 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase.collections.core :as collections]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn eligible-children
+(def ^:private Conditions
+  "A map of column to value or Toucan 2 operator-vector value, or nil for none."
+  [:maybe [:map-of :keyword :any]])
+
+(def ^:private RemovalOpts
+  "The `:scope-key`, `:synced-collection-ids`, `:entity-ids`, and `:removal-conditions` describing which rows an
+  import removes (see [[removal-exprs]])."
+  [:map {:closed true}
+   [:scope-key             [:maybe :keyword]]
+   [:synced-collection-ids [:maybe [:seqable ms/PositiveInt]]]
+   [:entity-ids            [:maybe [:seqable :string]]]
+   [:removal-conditions    Conditions]])
+
+(def ^:private ModelId
+  "A `:model_id`: the primary key of the referenced entity, or the `-1` sentinel
+  (`metabase-enterprise.remote-sync.settings/transforms-root-id`) standing in for the virtual Transforms root
+  Collection."
+  [:or ms/PositiveInt [:= -1]])
+
+(def ^:private RemoteSyncObjectRow
+  "A whole-entity row for `:model/RemoteSyncObject`, e.g. for `t2/insert!`/`t2/update!`."
+  [:map {:closed true}
+   [:model_type          {:optional true} :any]
+   [:model_id             {:optional true} :any]
+   [:status                {:optional true} :any]
+   [:status_changed_at     {:optional true} :any]
+   [:model_name            {:optional true} :any]
+   [:model_collection_id   {:optional true} :any]
+   [:model_display         {:optional true} :any]
+   [:model_table_id        {:optional true} :any]
+   [:model_table_name      {:optional true} :any]
+   [:file_path             {:optional true} :any]
+   [:content_hash          {:optional true} :any]])
+
+(def ^:private RemoteSyncTaskRow
+  "A whole-entity row/changes map for `:model/RemoteSyncTask`, e.g. for `t2/insert-returning-instance!`/`t2/update!`."
+  [:map {:closed true}
+   [:sync_task_type          {:optional true} :any]
+   [:progress                {:optional true} :any]
+   [:cancelled               {:optional true} :any]
+   [:started_at              {:optional true} :any]
+   [:ended_at                {:optional true} :any]
+   [:last_progress_report_at {:optional true} :any]
+   [:initiated_by            {:optional true} :any]
+   [:error_message           {:optional true} :any]
+   [:version                 {:optional true} :any]
+   [:conflicts               {:optional true} :any]
+   [:outcome                 {:optional true} :any]])
+
+(def ^:private Path
+  "A `{:db_name :schema :table_name :field_name}` path used to locate a Table or Field."
+  [:map
+   [:db_name    :string]
+   [:schema     {:optional true} [:maybe :string]]
+   [:table_name :string]
+   [:field_name {:optional true} :string]])
+
+(mu/defn eligible-children :- [:sequential :map]
   "The instances of `model-key` whose `fk` column equals `model-id`, additionally matching `conditions` (a map of
   column to value or Toucan 2 operator-vector value, or nil for none)."
-  [model-key fk model-id conditions]
+  [model-key   :- :keyword
+   fk          :- :keyword
+   model-id    :- ms/PositiveInt
+   conditions  :- Conditions]
   (apply t2/select model-key fk model-id (mapcat identity conditions)))
 
-(defn ids-where
+(mu/defn ids-where :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the instances of `model-key` matching `conditions` (a map of column to value or Toucan 2
   operator-vector value, or nil for every instance)."
-  [model-key conditions]
+  [model-key  :- :keyword
+   conditions :- Conditions]
   (apply t2/select-fn-set :id model-key (mapcat identity conditions)))
 
-(defn count-where
+(mu/defn count-where :- ms/IntGreaterThanOrEqualToZero
   "The number of instances of `model-key` matching `conditions` (a map of column to value or Toucan 2
   operator-vector value, or nil for every instance)."
-  [model-key conditions]
+  [model-key  :- :keyword
+   conditions :- Conditions]
   (apply t2/count model-key (mapcat identity conditions)))
 
 (defn- removal-condition-exprs
@@ -45,10 +109,11 @@
       (seq entity-ids) (conj [:not-in :entity_id entity-ids])
       :always          (into (removal-condition-exprs removal-conditions)))))
 
-(defn delete-removed-instances!
+(mu/defn delete-removed-instances! :- [:maybe :int]
   "Deletes the `model-key` rows an import removes (see [[removal-exprs]]); a no-op for a scoped model with no
   synced collections, and a delete of every row when nothing restricts it."
-  [model-key removal-opts]
+  [model-key    :- :keyword
+   removal-opts :- RemovalOpts]
   (when-let [exprs (removal-exprs removal-opts)]
     (if (seq exprs)
       (t2/delete! model-key {:where (if (= 1 (count exprs)) (first exprs) (into [:and] exprs))})
@@ -71,50 +136,64 @@
   (let [id-column (keyword (str (name (t2/table-name model-key)) ".id"))]
     (into [:and (unsynced-anti-join-expr model-type id-column)] (removal-exprs removal-opts))))
 
-(defn unsynced-instance-count
+(mu/defn unsynced-instance-count :- ms/IntGreaterThanOrEqualToZero
   "The number of `model-key` rows [[delete-removed-instances!]] would remove (see [[removal-exprs]]) that also
   have no RemoteSyncObject of `model-type` in synced status — unsynced local work an import would otherwise wipe
   out."
-  [model-key model-type removal-opts]
+  [model-key    :- :keyword
+   model-type   :- :string
+   removal-opts :- RemovalOpts]
   (t2/count model-key {:where (unsynced-instance-expr model-key model-type removal-opts)}))
 
-(defn unsynced-instance-names
+(mu/defn unsynced-instance-names :- [:maybe [:sequential :string]]
   "Up to `limit` names of the rows [[unsynced-instance-count]] counts."
-  [model-key model-type removal-opts limit]
+  [model-key    :- :keyword
+   model-type   :- :string
+   removal-opts :- RemovalOpts
+   limit        :- ms/PositiveInt]
   (t2/select-fn-vec :name model-key {:where (unsynced-instance-expr model-key model-type removal-opts)
                                      :limit limit}))
 
-(defn instance
+(mu/defn instance :- [:maybe :map]
   "The instance of `model` with `id`, or nil."
-  [model id]
+  [model :- :keyword
+   id    :- ms/PositiveInt]
   (t2/select-one model :id id))
 
-(defn instance-with-columns
+(mu/defn instance-with-columns :- [:maybe :map]
   "The `columns` of the instance of `model` with `id`, or nil."
-  [model columns id]
+  [model   :- :keyword
+   columns :- [:seqable :keyword]
+   id      :- ms/PositiveInt]
   (t2/select-one (into [model] columns) :id id))
 
-(defn instance-names
+(mu/defn instance-names :- [:sequential :map]
   "The `:id` and `:name` of the instances of `model` with `ids`."
-  [model ids]
+  [model :- :keyword
+   ids   :- [:seqable ms/PositiveInt]]
   (t2/select [model :id :name] :id [:in ids]))
 
-(defn instances-in-collections
+(mu/defn instances-in-collections :- [:sequential :map]
   "The instances of `model` in the Collections with `collection-ids`, excluding those archived under the optional
   `archived-key` column."
-  [model collection-ids archived-key]
+  [model          :- :keyword
+   collection-ids :- [:seqable ms/PositiveInt]
+   archived-key   :- [:maybe :keyword]]
   (t2/select model {:where [:and
                             [:in :collection_id collection-ids]
                             (when archived-key [:= archived-key false])]}))
 
-(defn instances-with-columns-by-entity-ids
+(mu/defn instances-with-columns-by-entity-ids :- [:sequential :map]
   "The `columns` of the instances of `model` with `entity-ids`."
-  [model columns entity-ids]
+  [model      :- :keyword
+   columns    :- [:seqable :keyword]
+   entity-ids :- [:seqable :string]]
   (t2/select (into [model] columns) :entity_id [:in entity-ids]))
 
-(defn delete-instances!
+(mu/defn delete-instances! :- :int
   "Delete the instances of `model` with `ids`."
-  [model ids]
+  [model :- :keyword
+   ids   :- [:seqable ms/PositiveInt]]
   (t2/delete! model :id [:in ids]))
 
 (defn- tracking-select-parts
@@ -136,17 +215,19 @@
                     :from   [[:measure :s]]
                     :join   [[:metabase_table :t] [:= :s.table_id :t.id]]}))
 
-(defn tracking-details-by-id
+(mu/defn tracking-details-by-id :- [:maybe :map]
   "The name, table id, collection id, and table name of the `model-key` (Field, Segment, or Measure) instance with
   `model-id`, or nil."
-  [model-key model-id]
+  [model-key :- :keyword
+   model-id  :- ms/PositiveInt]
   (let [{:keys [alias select from join]} (tracking-select-parts model-key)]
     (first (t2/query {:select select :from from :join join :where [:= (keyword alias "id") model-id]}))))
 
-(defn tracking-details-by-entity-ids
+(mu/defn tracking-details-by-entity-ids :- [:sequential :map]
   "The `:id`, name, table id, collection id, and table name of the `model-key` (Segment or Measure) instances with
   `entity-ids`."
-  [model-key entity-ids]
+  [model-key  :- :keyword
+   entity-ids :- [:seqable :string]]
   (let [{:keys [alias select from join]} (tracking-select-parts model-key)
         id-column (keyword alias "id")]
     (t2/query {:select (into [id-column] select)
@@ -154,24 +235,28 @@
                :join   join
                :where  [:in (keyword alias "entity_id") entity-ids]})))
 
-(defn entity-id
+(mu/defn entity-id :- [:maybe :string]
   "The entity ID of the instance of `model` with `id`."
-  [model id]
+  [model :- :keyword
+   id    :- ms/PositiveInt]
   (t2/select-one-fn :entity_id model :id id))
 
-(defn entity-ids-by-id
+(mu/defn entity-ids-by-id :- [:map-of ms/PositiveInt :string]
   "A map of ID to entity ID for the instances of `model` with `ids`."
-  [model ids]
+  [model :- :keyword
+   ids   :- [:seqable ms/PositiveInt]]
   (t2/select-pk->fn :entity_id model :id [:in ids]))
 
-(defn existing-entity-ids
+(mu/defn existing-entity-ids :- [:maybe [:set :string]]
   "The subset of `entity-ids` that instances of `model` have."
-  [model entity-ids]
+  [model      :- :keyword
+   entity-ids :- [:seqable :string]]
   (t2/select-fn-set :entity_id model :entity_id [:in entity-ids]))
 
-(defn ids-by-entity-ids
+(mu/defn ids-by-entity-ids :- [:maybe [:sequential ms/PositiveInt]]
   "The IDs of the instances of `model` with `entity-ids`."
-  [model entity-ids]
+  [model      :- :keyword
+   entity-ids :- [:seqable :string]]
   (t2/select-pks-vec model :entity_id [:in entity-ids]))
 
 (defn- path-expr
@@ -188,35 +273,41 @@
               (and has-field? field_name)
               (conj [:= :f.name field_name]))))))
 
-(defn tables-at-paths
+(mu/defn tables-at-paths :- [:sequential [:map {:closed true} [:id ms/PositiveInt] [:name :string] [:collection_id [:maybe ms/PositiveInt]]]]
   "The `:id`, `:name`, and `:collection_id` rows of the Tables at `paths` (`{:db_name :schema :table_name}`)."
-  [paths]
+  [paths :- [:seqable Path]]
   (t2/query {:select [:t.id :t.name :t.collection_id]
              :from   [[:metabase_table :t]]
              :join   [[:metabase_database :db] [:= :db.id :t.db_id]]
              :where  (path-expr paths false)}))
 
-(defn fields-at-paths
+(mu/defn fields-at-paths :- [:sequential
+                             [:map {:closed true}
+                              [:id ms/PositiveInt]
+                              [:name :string]
+                              [:table_id ms/PositiveInt]
+                              [:collection_id [:maybe ms/PositiveInt]]
+                              [:table_name :string]]]
   "The `:id`, `:name`, `:table_id`, `:collection_id`, and `:table_name` rows of the Fields at `paths`
   (`{:db_name :schema :table_name :field_name}`)."
-  [paths]
+  [paths :- [:seqable Path]]
   (t2/query {:select [:f.id :f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
              :from   [[:metabase_field :f]]
              :join   [[:metabase_table :t] [:= :t.id :f.table_id]
                       [:metabase_database :db] [:= :db.id :t.db_id]]
              :where  (path-expr paths true)}))
 
-(defn card-types
+(mu/defn card-types :- [:sequential (ms/InstanceOf :model/Card)]
   "The `:id`, `:type`, and `:card_schema` of the Cards with `card-ids`."
-  [card-ids]
+  [card-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:model/Card :id :type :card_schema] :id [:in card-ids]))
 
-(defn field-user-settings-exist?
+(mu/defn field-user-settings-exist? :- :boolean
   "Whether the Field with `field-id` has FieldUserSettings."
-  [field-id]
+  [field-id :- ms/PositiveInt]
   (t2/exists? :model/FieldUserSettings :field_id field-id))
 
-(defn snippets
+(mu/defn snippets :- [:sequential (ms/InstanceOf :model/NativeQuerySnippet)]
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."
   []
   (t2/select [:model/NativeQuerySnippet :id :name :collection_id]))
@@ -228,57 +319,57 @@
         (for [collection collections]
           [:like :location (str (collections/location-path collection) "%")])))
 
-(defn collections
+(mu/defn collections :- [:sequential (ms/InstanceOf :model/Collection)]
   "The Collections with `collection-ids`."
-  [collection-ids]
+  [collection-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/Collection :id [:in collection-ids]))
 
-(defn collections-by-id
+(mu/defn collections-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/Collection)]
   "A map of ID to the ID, name, location, and personal owner of the Collections with `collection-ids`."
-  [collection-ids]
+  [collection-ids :- [:seqable ms/PositiveInt]]
   (t2/select-pk->fn identity [:model/Collection :id :name :location :personal_owner_id] :id [:in collection-ids]))
 
-(defn collection-sync-states
+(mu/defn collection-sync-states :- [:sequential (ms/InstanceOf :model/Collection)]
   "The `:id` and `:is_remote_synced` of the Collections with `collection-ids`."
-  [collection-ids]
+  [collection-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:model/Collection :id :is_remote_synced] :id [:in collection-ids]))
 
-(defn collection-name-and-id
+(mu/defn collection-name-and-id :- [:maybe (ms/InstanceOf :model/Collection)]
   "The `:name` and `:collection_id` (its own ID) of the Collection with `collection-id`, or nil."
-  [collection-id]
+  [collection-id :- ms/PositiveInt]
   (t2/select-one [:model/Collection :name [:id :collection_id]] :id collection-id))
 
-(defn library-collection
+(mu/defn library-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "The Library Collection of `library-type`, or nil."
-  [library-type]
+  [library-type :- :string]
   (t2/select-one :model/Collection :type library-type))
 
-(defn snippet-collections
+(mu/defn snippet-collections :- [:sequential (ms/InstanceOf :model/Collection)]
   "The `:id` and `:name` of the Collections of the snippets namespace."
   []
   (t2/select [:model/Collection :id :name] :namespace "snippets"))
 
-(defn snippet-collection-ids
+(mu/defn snippet-collection-ids :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the Collections of the snippets namespace."
   []
   (t2/select-pks-set :model/Collection :namespace "snippets"))
 
-(defn collections-in-namespace
+(mu/defn collections-in-namespace :- [:sequential (ms/InstanceOf :model/Collection)]
   "The `:id` and `:entity_id` of the Collections of `namespace-name`."
-  [namespace-name]
+  [namespace-name :- :string]
   (t2/select [:model/Collection :id :entity_id] :namespace namespace-name))
 
-(defn collection-ids-in-namespace
+(mu/defn collection-ids-in-namespace :- [:maybe [:sequential ms/PositiveInt]]
   "The IDs of the Collections of `namespace-name`."
-  [namespace-name]
+  [namespace-name :- :string]
   (t2/select-pks-vec :model/Collection :namespace namespace-name))
 
-(defn remote-synced-collection-ids
+(mu/defn remote-synced-collection-ids :- [:maybe [:sequential ms/PositiveInt]]
   "The IDs of the remote-synced Collections."
   []
   (t2/select-pks-vec :model/Collection :is_remote_synced true))
 
-(defn unarchived-remote-synced-root-collection-ids
+(mu/defn unarchived-remote-synced-root-collection-ids :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the unarchived remote-synced root Collections."
   []
   (t2/select-fn-set :id :model/Collection
@@ -287,40 +378,40 @@
                              [:= :location "/"]
                              [:not :archived]]}))
 
-(defn unarchived-root-collection-ids-in-namespace
+(mu/defn unarchived-root-collection-ids-in-namespace :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the unarchived root Collections of `namespace-name`."
-  [namespace-name]
+  [namespace-name :- :string]
   (t2/select-fn-set :id :model/Collection
                     {:where [:and
                              [:= :namespace namespace-name]
                              [:= :location "/"]
                              [:not :archived]]}))
 
-(defn subtree-collection-ids
+(mu/defn subtree-collection-ids :- [:maybe [:set ms/PositiveInt]]
   "The IDs of `collections` and all of their descendants."
-  [collections]
+  [collections :- [:seqable (ms/InstanceOf :model/Collection)]]
   (t2/select-pks-set :model/Collection {:where (subtree-expr collections)}))
 
-(defn remote-synced-subtree-collection-ids
+(mu/defn remote-synced-subtree-collection-ids :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the remote-synced Collections among `collections` and their descendants."
-  [collections]
+  [collections :- [:seqable (ms/InstanceOf :model/Collection)]]
   (t2/select-pks-set :model/Collection
                      {:where [:and
                               [:= :is_remote_synced true]
                               (subtree-expr collections)]}))
 
-(defn mark-subtree-remote-synced!
+(mu/defn mark-subtree-remote-synced! :- [:sequential :int]
   "Mark `collections` and all of their descendants as remote-synced."
-  [collections]
+  [collections :- [:seqable (ms/InstanceOf :model/Collection)]]
   (t2/query {:update (t2/table-name :model/Collection)
              :set    {:is_remote_synced true}
              :where  [:and
                       [:= :is_remote_synced false]
                       (subtree-expr collections)]}))
 
-(defn unmark-collections-remote-synced!
+(mu/defn unmark-collections-remote-synced! :- [:sequential :int]
   "Mark the Collections with `collection-ids` as not remote-synced."
-  [collection-ids]
+  [collection-ids :- [:seqable ms/PositiveInt]]
   (t2/query {:update (t2/table-name :model/Collection)
              :set    {:is_remote_synced false}
              :where  [:in :id collection-ids]}))
@@ -339,137 +430,151 @@
                      [:and [:= :model_type model_type] [:= :model_id model_id]]))
         rows))
 
-(defn rso
+(mu/defn rso :- [:maybe (ms/InstanceOf :model/RemoteSyncObject)]
   "The RemoteSyncObject of the entity `model-type` `model-id`, or nil."
-  [model-type model-id]
+  [model-type :- :string
+   model-id   :- ModelId]
   (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id))
 
-(defn lock-rso
+(mu/defn lock-rso :- [:maybe (ms/InstanceOf :model/RemoteSyncObject)]
   "The RemoteSyncObject of the entity `model-type` `model-id`, locked for update, or nil."
-  [model-type model-id]
+  [model-type :- :string
+   model-id   :- ModelId]
   (t2/select-one :model/RemoteSyncObject
                  {:where [:and [:= :model_type model-type] [:= :model_id model-id]]
                   :for   :update}))
 
-(defn rso-by-file-path
+(mu/defn rso-by-file-path :- [:maybe (ms/InstanceOf :model/RemoteSyncObject)]
   "The RemoteSyncObject at `file-path`, or nil."
-  [file-path]
+  [file-path :- :string]
   (t2/select-one :model/RemoteSyncObject :file_path file-path))
 
-(defn rso-exists?
+(mu/defn rso-exists? :- :boolean
   "Whether the entity `model-type` `model-id` has a RemoteSyncObject."
-  [model-type model-id]
+  [model-type :- :string
+   model-id   :- ModelId]
   (t2/exists? :model/RemoteSyncObject :model_type model-type :model_id model-id))
 
-(defn rso-of-type-exists?
+(mu/defn rso-of-type-exists? :- :boolean
   "Whether any entity of `model-type` has a RemoteSyncObject."
-  [model-type]
+  [model-type :- :string]
   (t2/exists? :model/RemoteSyncObject :model_type model-type))
 
-(defn rso-count-of-type
+(mu/defn rso-count-of-type :- ms/IntGreaterThanOrEqualToZero
   "The number of RemoteSyncObjects of `model-type`."
-  [model-type]
+  [model-type :- :string]
   (t2/count :model/RemoteSyncObject :model_type model-type))
 
-(defn rso-keys
+(mu/defn rso-keys :- [:sequential (ms/InstanceOf :model/RemoteSyncObject)]
   "The `:id`, `:model_type`, and `:model_id` of every RemoteSyncObject."
   []
   (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))
 
-(defn departed-rso-keys
+(mu/defn departed-rso-keys :- [:sequential (ms/InstanceOf :model/RemoteSyncObject)]
   "The `:id`, `:model_type`, and `:model_id` of the RemoteSyncObjects pending removal or deletion."
   []
   (t2/select [:model/RemoteSyncObject :id :model_type :model_id] :status [:in ["removed" "delete"]]))
 
-(defn all-rso-ids
+(mu/defn all-rso-ids :- [:maybe [:set ms/PositiveInt]]
   "The IDs of every RemoteSyncObject."
   []
   (t2/select-pks-set :model/RemoteSyncObject))
 
-(defn unsynced-rsos
+(mu/defn unsynced-rsos :- [:sequential (ms/InstanceOf :model/RemoteSyncObject)]
   "The RemoteSyncObjects whose status is not synced."
   []
   (t2/select :model/RemoteSyncObject {:where [:not= :status "synced"]}))
 
-(defn dirty-rso-exists?
+(mu/defn dirty-rso-exists? :- :boolean
   "Whether a RemoteSyncObject of a model type other than `excluded-model-types` is not synced."
-  [excluded-model-types]
+  [excluded-model-types :- [:seqable :string]]
   (t2/exists? :model/RemoteSyncObject
               {:where [:and
                        [:not= :status "synced"]
                        (when (seq excluded-model-types)
                          [:not-in :model_type excluded-model-types])]}))
 
-(defn dirty-rsos
+(mu/defn dirty-rsos :- [:sequential (ms/InstanceOf :model/RemoteSyncObject)]
   "The RemoteSyncObjects of model types other than `excluded-model-types` that are not synced."
-  [excluded-model-types]
+  [excluded-model-types :- [:seqable :string]]
   (t2/select :model/RemoteSyncObject
              {:where [:and
                       [:not= :status "synced"]
                       (when (seq excluded-model-types)
                         [:not-in :model_type excluded-model-types])]}))
 
-(defn tracked-model-ids
+(mu/defn tracked-model-ids :- [:maybe [:set ms/PositiveInt]]
   "The model IDs of the RemoteSyncObjects of `model-type`."
-  [model-type]
+  [model-type :- :string]
   (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type model-type))
 
-(defn rsos-of-models
+(mu/defn rsos-of-models :- [:sequential (ms/InstanceOf :model/RemoteSyncObject)]
   "The RemoteSyncObjects of the entities of `model-type` with `model-ids`."
-  [model-type model-ids]
+  [model-type :- :string
+   model-ids  :- [:seqable ms/PositiveInt]]
   (t2/select :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
 
-(defn active-child-rsos
+(mu/defn active-child-rsos :- [:sequential (ms/InstanceOf :model/RemoteSyncObject)]
   "The RemoteSyncObjects of `model-type` under the Table with `table-id` that are not pending removal or deletion."
-  [model-type table-id]
+  [model-type :- :string
+   table-id   :- ms/PositiveInt]
   (t2/select :model/RemoteSyncObject
              :model_type model-type
              :model_table_id table-id
              :status [:not-in ["removed" "delete"]]))
 
-(defn content-rso-statuses
+(mu/defn content-rso-statuses :- [:sequential (ms/InstanceOf :model/RemoteSyncObject)]
   "The `:id` and `:status` of the RemoteSyncObjects of the Collections with `collection-ids` and their contents."
-  [collection-ids]
+  [collection-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:model/RemoteSyncObject :id :status] {:where (contents-rso-expr collection-ids)}))
 
-(defn removed-content-rso-ids
+(mu/defn removed-content-rso-ids :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the RemoteSyncObjects pending removal among those of the Collections with `collection-ids` and their
   contents."
-  [collection-ids]
+  [collection-ids :- [:seqable ms/PositiveInt]]
   (t2/select-pks-set :model/RemoteSyncObject
                      {:where [:and
                               [:= :status "removed"]
                               (contents-rso-expr collection-ids)]}))
 
-(defn insert-rso!
+(mu/defn insert-rso! :- :int
   "Insert the RemoteSyncObject `row`."
-  [row]
+  [row :- RemoteSyncObjectRow]
   (t2/insert! :model/RemoteSyncObject row))
 
-(defn insert-rsos!
+(mu/defn insert-rsos! :- :int
   "Insert the RemoteSyncObject `rows`."
-  [rows]
+  [rows :- [:seqable RemoteSyncObjectRow]]
   (t2/insert! :model/RemoteSyncObject rows))
 
-(defn update-rso!
+(mu/defn update-rso! :- :int
   "Apply `changes` to the RemoteSyncObject with `rso-id`."
-  [rso-id changes]
+  [rso-id  :- ms/PositiveInt
+   changes :- RemoteSyncObjectRow]
   (t2/update! :model/RemoteSyncObject rso-id changes))
 
-(defn set-rsos-status!
+(mu/defn set-rsos-status! :- :int
   "Set the status of the RemoteSyncObjects with `rso-ids` to `status` as of `timestamp`."
-  [rso-ids status timestamp]
+  [rso-ids   :- [:seqable ms/PositiveInt]
+   status    :- :string
+   timestamp :- ms/TemporalInstant]
   (t2/update! :model/RemoteSyncObject :id [:in rso-ids] {:status status :status_changed_at timestamp}))
 
-(defn mark-all-rsos-synced!
+(mu/defn mark-all-rsos-synced! :- :int
   "Mark every RemoteSyncObject as synced as of `timestamp`."
-  [timestamp]
+  [timestamp :- ms/TemporalInstant]
   (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at timestamp}))
 
-(defn mark-rsos-synced!
+(mu/defn mark-rsos-synced! :- :int
   "Mark the RemoteSyncObjects with `rso-ids` as synced as of `timestamp`, writing the `:file_path` and
   `:content_hash` of those in `metadata-by-id` and keeping the existing values of the others."
-  [rso-ids metadata-by-id timestamp]
+  [rso-ids        :- [:seqable ms/PositiveInt]
+   metadata-by-id :- [:map-of ms/PositiveInt
+                      [:map {:closed true}
+                       [:id           {:optional true} :any]
+                       [:file_path    {:optional true} :any]
+                       [:content_hash {:optional true} :any]]]
+   timestamp      :- ms/TemporalInstant]
   (t2/update! :model/RemoteSyncObject
               {:id [:in (vec rso-ids)]}
               (cond-> {:status "synced" :status_changed_at timestamp}
@@ -487,59 +592,61 @@
                                                     metadata-by-id)
                                             [:else :content_hash]))))))
 
-(defn delete-rso!
+(mu/defn delete-rso! :- :int
   "Delete the RemoteSyncObject with `rso-id`."
-  [rso-id]
+  [rso-id :- ms/PositiveInt]
   (t2/delete! :model/RemoteSyncObject rso-id))
 
-(defn delete-rsos!
+(mu/defn delete-rsos! :- :int
   "Delete the RemoteSyncObjects with `rso-ids`."
-  [rso-ids]
+  [rso-ids :- [:seqable ms/PositiveInt]]
   (t2/delete! :model/RemoteSyncObject :id [:in rso-ids]))
 
-(defn delete-rso-of!
+(mu/defn delete-rso-of! :- :int
   "Delete the RemoteSyncObject of the entity `model-type` `model-id`."
-  [model-type model-id]
+  [model-type :- :string
+   model-id   :- ModelId]
   (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id model-id))
 
-(defn delete-rsos-of-type!
+(mu/defn delete-rsos-of-type! :- :int
   "Delete the RemoteSyncObjects of `model-type`."
-  [model-type]
+  [model-type :- :string]
   (t2/delete! :model/RemoteSyncObject :model_type model-type))
 
-(defn delete-rsos-of-models!
+(mu/defn delete-rsos-of-models! :- :int
   "Delete the RemoteSyncObjects of the entities of `model-type` with `model-ids`."
-  [model-type model-ids]
+  [model-type :- :string
+   model-ids  :- [:seqable ms/PositiveInt]]
   (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
 
-(defn delete-rsos-of-keys!
+(mu/defn delete-rsos-of-keys! :- :int
   "Delete the RemoteSyncObjects of the `[{:model_type :model_id}]` `rows`."
-  [rows]
+  [rows :- [:seqable [:map {:closed true} [:model_type :string] [:model_id ms/PositiveInt]]]]
   (t2/delete! :model/RemoteSyncObject {:where (rso-keys-expr rows)}))
 
-(defn delete-all-rsos!
+(mu/defn delete-all-rsos! :- :int
   "Delete every RemoteSyncObject."
   []
   (t2/delete! :model/RemoteSyncObject))
 
-(defn task
+(mu/defn task :- [:maybe (ms/InstanceOf :model/RemoteSyncTask)]
   "The RemoteSyncTask with `task-id`, or nil."
-  [task-id]
+  [task-id :- ms/PositiveInt]
   (t2/select-one :model/RemoteSyncTask task-id))
 
-(defn lock-task
+(mu/defn lock-task :- [:maybe (ms/InstanceOf :model/RemoteSyncTask)]
   "The RemoteSyncTask with `task-id`, locked for update, or nil."
-  [task-id]
+  [task-id :- ms/PositiveInt]
   (t2/select-one :model/RemoteSyncTask :id task-id {:for :update}))
 
-(defn task-cancelled?
+(mu/defn task-cancelled? :- [:maybe :boolean]
   "The cancelled flag of the RemoteSyncTask with `task-id`."
-  [task-id]
+  [task-id :- ms/PositiveInt]
   (t2/select-one-fn :cancelled :model/RemoteSyncTask :id task-id))
 
-(defn current-task
+(mu/defn current-task :- [:maybe (ms/InstanceOf :model/RemoteSyncTask)]
   "The newest started, unfinished RemoteSyncTask that reported progress after `progress-cutoff`, or nil."
-  [progress-cutoff]
+  [progress-cutoff :- ms/TemporalInstant]
   (t2/select-one :model/RemoteSyncTask
                  {:where    [:and
                              [:<> :started_at nil]
@@ -549,7 +656,7 @@
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
 
-(defn most-recent-task
+(mu/defn most-recent-task :- [:maybe (ms/InstanceOf :model/RemoteSyncTask)]
   "The newest started RemoteSyncTask, or nil."
   []
   (t2/select-one :model/RemoteSyncTask
@@ -559,7 +666,7 @@
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
 
-(defn last-successful-task
+(mu/defn last-successful-task :- [:maybe (ms/InstanceOf :model/RemoteSyncTask)]
   "The newest finished RemoteSyncTask that was neither cancelled nor failed and recorded a version, or nil."
   []
   (t2/select-one :model/RemoteSyncTask
@@ -572,19 +679,23 @@
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
 
-(defn insert-task!
+(mu/defn insert-task! :- (ms/InstanceOf :model/RemoteSyncTask)
   "Insert `task` and return the new instance."
-  [task]
+  [task :- RemoteSyncTaskRow]
   (t2/insert-returning-instance! :model/RemoteSyncTask task))
 
-(defn update-task!
+(mu/defn update-task! :- :int
   "Apply `changes` to the RemoteSyncTask with `task-id`."
-  [task-id changes]
+  [task-id :- ms/PositiveInt
+   changes :- RemoteSyncTaskRow]
   (t2/update! :model/RemoteSyncTask task-id changes))
 
-(defn supersede-stale-tasks!
+(mu/defn supersede-stale-tasks! :- [:sequential :int]
   "Cancel and end at `now` the started, unfinished RemoteSyncTasks that last reported progress before `cutoff`."
-  [cutoff now]
+  [cutoff :- ms/TemporalInstant
+   ;; `now` is usually a real instant, but callers may also pass a HoneySQL raw form (e.g. `(mi/now)`), which is
+   ;; plugged straight into the update's `:set` map rather than compared, so it isn't constrained to a real instant.
+   now    :- :any]
   (t2/query {:update (t2/table-name :model/RemoteSyncTask)
              :set    {:cancelled     true
                       :ended_at      now
@@ -594,12 +705,12 @@
                       [:= :ended_at nil]
                       [:< :last_progress_report_at cutoff]]}))
 
-(defn delete-tasks-started-before!
+(mu/defn delete-tasks-started-before! :- :int
   "Delete the RemoteSyncTasks started before `cutoff`, returning the number deleted."
-  [cutoff]
+  [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/RemoteSyncTask {:where [:< :started_at cutoff]}))
 
-(defn users-by-id
+(mu/defn users-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/User)]
   "A map of User ID to User for `user-ids`."
-  [user-ids]
+  [user-ids :- [:seqable [:maybe ms/PositiveInt]]]
   (t2/select-pk->fn identity :model/User :id [:in user-ids]))

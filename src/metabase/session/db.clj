@@ -7,22 +7,25 @@
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn delete-session-by-key-hashed!
+(mu/defn delete-session-by-key-hashed! :- :int
   "Delete the Session with `key-hashed`, returning the number of rows deleted."
-  [key-hashed]
+  [key-hashed :- :string]
   (t2/delete! :model/Session :key_hashed key-hashed))
 
-(defn delete-sessions-for-user!
+(mu/defn delete-sessions-for-user! :- :int
   "Delete every Session of the User with `user-id`."
-  [user-id]
+  [user-id :- ms/PositiveInt]
   (t2/delete! :model/Session :user_id user-id))
 
-(defn delete-expired-sessions!
+(mu/defn delete-expired-sessions! :- :int
   "Delete Sessions older than `max-age-minutes`, past their own `expires_at`, or (when `idle-timeout-seconds` is
   given) idle longer than `idle-timeout-seconds`. Returns the number of rows deleted."
-  [max-age-minutes idle-timeout-seconds]
+  [max-age-minutes      :- ms/PositiveInt
+   idle-timeout-seconds :- [:maybe ms/PositiveInt]]
   (let [db-type        (mdb/db-type)
         now            (h2x/current-datetime-honeysql-form db-type)
         oldest-allowed (h2x/add-interval-honeysql-form db-type now (- max-age-minutes) :minute)
@@ -37,38 +40,41 @@
     (tracing/with-span :tasks "task.session-cleanup.delete" {:db/statement (tracing/best-effort-sanitize-sql hsql)}
       (t2/query-one hsql))))
 
-(defn auth-identity-for-provider
+(mu/defn auth-identity-for-provider :- [:maybe (ms/InstanceOf :model/AuthIdentity)]
   "The AuthIdentity of the User with `user-id` at `provider`, or nil. See `metabase.auth-identity.db/auth-identity`,
   which owns the AuthIdentity table."
-  [user-id provider]
+  [user-id  :- ms/PositiveInt
+   provider :- :string]
   (auth-identity.db/auth-identity user-id provider))
 
-(defn auth-identity-exists?
+(mu/defn auth-identity-exists? :- :boolean
   "Whether the User with `user-id` has an AuthIdentity at `provider`."
-  [user-id provider]
+  [user-id  :- ms/PositiveInt
+   provider :- :string]
   (auth-identity.db/auth-identity-exists? user-id provider))
 
-(defn set-auth-identity-credentials!
+(mu/defn set-auth-identity-credentials! :- :int
   "Set the `credentials` of the AuthIdentity with `auth-identity-id`."
-  [auth-identity-id credentials]
+  [auth-identity-id :- ms/PositiveInt
+   credentials      :- :any]
   (t2/update! :model/AuthIdentity auth-identity-id {:credentials credentials}))
 
-(defn auth-identity-provider
+(mu/defn auth-identity-provider :- [:maybe (ms/InstanceOf :model/AuthIdentity)]
   "The `:provider` of the AuthIdentity with `auth-identity-id`, or nil."
-  [auth-identity-id]
+  [auth-identity-id :- ms/PositiveInt]
   (t2/select-one [:model/AuthIdentity :provider] :id auth-identity-id))
 
-(defn user-by-email
+(mu/defn user-by-email :- [:maybe (ms/InstanceOf :model/User)]
   "The id, SSO source, and active flag of the User whose email matches `email` case-insensitively, or nil."
-  [email]
+  [email :- :string]
   (t2/select-one [:model/User :id :sso_source :is_active] :%lower.email (u/lower-case-en email)))
 
-(defn user
+(mu/defn user :- [:maybe (ms/InstanceOf :model/User)]
   "The User with `user-id`, or nil."
-  [user-id]
+  [user-id :- ms/PositiveInt]
   (t2/select-one :model/User :id user-id))
 
-(defn user-login-status
+(mu/defn user-login-status :- [:maybe (ms/InstanceOf :model/User)]
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
-  [user-id]
+  [user-id :- ms/PositiveInt]
   (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))

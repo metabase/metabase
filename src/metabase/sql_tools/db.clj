@@ -3,12 +3,15 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn active-visible-table-ids-by-name
+(mu/defn active-visible-table-ids-by-name :- [:maybe [:set ms/PositiveInt]]
   "Ids of the active, non-hidden Tables of Database `database-id` whose name case-insensitively matches one of
   `table-names`, or nil."
-  [database-id table-names]
+  [database-id :- ms/PositiveInt
+   table-names :- [:seqable :string]]
   (t2/select-pks-set :model/Table
                      {:where [:and
                               [:= :db_id database-id]

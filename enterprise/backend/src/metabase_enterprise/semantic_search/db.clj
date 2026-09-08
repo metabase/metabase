@@ -4,19 +4,21 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.search.scoring :as search.scoring]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn library-root-collections
+(mu/defn library-root-collections :- [:sequential (ms/InstanceOf :model/Collection)]
   "The ID and type of the top-level Collections whose type is one of `types`."
-  [types]
+  [types :- [:seqable :string]]
   (t2/select [:model/Collection :id :type] :type [:in types] :location "/"))
 
-(defn descendant-collection-ids
+(mu/defn descendant-collection-ids :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the Collections under the top-level Collection with `root-id`."
-  [root-id]
+  [root-id :- ms/PositiveInt]
   (t2/select-pks-set :model/Collection :location [:like (str "/" root-id "/%")]))
 
-(defn curated-tables-reducible
+(mu/defn curated-tables-reducible
   "Reducible ID, published flag, data layer, and data authority of the active Tables that are published or
   authoritative."
   []
@@ -26,38 +28,39 @@
                                 [:or [:= :is_published true]
                                  [:= :data_authority ^:allow-raw-sql [:inline "authoritative"]]]]}))
 
-(defn official-collection-ids
+(mu/defn official-collection-ids :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the official Collections."
   []
   (t2/select-pks-set :model/Collection :authority_level :official))
 
-(defn unarchived-dashboard-ids-in-collections-reducible
+(mu/defn unarchived-dashboard-ids-in-collections-reducible
   "Reducible `:id` rows of the unarchived Dashboards in the Collections with `collection-ids`."
-  [collection-ids]
+  [collection-ids :- [:seqable ms/PositiveInt]]
   (t2/reducible-select [:model/Dashboard :id]
                        {:where [:and [:= :archived false]
                                 [:in :collection_id collection-ids]]}))
 
-(defn collection-owners-and-locations
+(mu/defn collection-owners-and-locations :- [:sequential (ms/InstanceOf :model/Collection)]
   "The ID, owner, and location of the Collections with `collection-ids`."
-  [collection-ids]
+  [collection-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:model/Collection :id :personal_owner_id :location] :id [:in collection-ids]))
 
-(defn personal-collection-owners
+(mu/defn personal-collection-owners :- [:sequential (ms/InstanceOf :model/Collection)]
   "The ID and owner of the personal Collections among `collection-ids`."
-  [collection-ids]
+  [collection-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:model/Collection :id :personal_owner_id]
              :id [:in collection-ids]
              :personal_owner_id [:not= nil]))
 
-(defn collection-locations
+(mu/defn collection-locations :- [:sequential :map]
   "The ID and location of the raw collection rows with `collection-ids`."
-  [collection-ids]
+  [collection-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:collection :id :location] :id [:in collection-ids]))
 
-(defn instances
+(mu/defn instances :- [:sequential :map]
   "The instances of `model` with `ids`."
-  [model ids]
+  [model :- :keyword
+   ids   :- [:seqable ms/PositiveInt]]
   (t2/select model :id [:in ids]))
 
 (defn- search-doc-select
@@ -78,21 +81,26 @@
             [:search_index.model :model]]
    :from   [:search_index]})
 
-(defn appdb-scored-rows
+(mu/defn appdb-scored-rows :- [:sequential :map]
   "The `:id`/`:model` rows of `search-results` (each `{:id :model}`) augmented with the SELECT expressions of
   `scorers` (a map of scorer key to SELECT expression, see
   `metabase-enterprise.semantic-search.scoring/appdb-scorers`) evaluated under `search-ctx`, joining bookmark
   tables when `:bookmarked` is among `scorers`."
-  [search-results search-ctx scorers]
+  [search-results :- [:seqable :map]
+   search-ctx     :- :map
+   scorers        :- :map]
   (t2/query (cond-> (search.scoring/with-scores search-ctx scorers (search-index-select search-results))
               (:bookmarked scorers) (search.scoring/join-bookmarks (:current-user-id search-ctx)))))
 
-(defn insert-token-tracking!
+(mu/defn insert-token-tracking! :- :int
   "Insert the SemanticSearchTokenTracking `row`."
-  [row]
+  [row :- [:map {:closed true}
+           [:model_name   {:optional true} :any]
+           [:request_type {:optional true} :any]
+           [:total_tokens {:optional true} [:maybe :int]]]]
   (t2/insert! :model/SemanticSearchTokenTracking row))
 
-(defn delete-token-tracking-created-before!
+(mu/defn delete-token-tracking-created-before! :- :int
   "Delete the SemanticSearchTokenTracking rows created before `cutoff`."
-  [cutoff]
+  [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/SemanticSearchTokenTracking {:where [:< :created_at cutoff]}))

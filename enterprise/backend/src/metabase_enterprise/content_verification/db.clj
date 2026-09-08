@@ -2,14 +2,16 @@
   "Application database queries for the content-verification module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn card-exists?
+(mu/defn card-exists? :- :boolean
   "Whether a Card with `id` exists."
-  [id]
+  [id :- ms/PositiveInt]
   (t2/exists? :model/Card id))
 
-(defn dashboard-exists?
+(mu/defn dashboard-exists? :- :boolean
   "Whether a Dashboard with `id` exists."
-  [id]
+  [id :- ms/PositiveInt]
   (t2/exists? :model/Dashboard id))

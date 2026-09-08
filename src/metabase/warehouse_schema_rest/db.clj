@@ -5,11 +5,16 @@
    [clojure.string :as str]
    [metabase.app-db.core :as app-db]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn field-and-target-database-ids
+(mu/defn field-and-target-database-ids :- [:sequential [:map {:closed true}
+                                                        [:source_db_id [:maybe ms/PositiveInt]]
+                                                        [:target_db_id [:maybe ms/PositiveInt]]]]
   "The `:source_db_id` and `:target_db_id` of the Fields with `source-field-id` and `target-field-id`."
-  [source-field-id target-field-id]
+  [source-field-id :- ms/PositiveInt
+   target-field-id :- ms/PositiveInt]
   (t2/query {:select [[:source_t.db_id :source_db_id]
                       [:target_t.db_id :target_db_id]]
              :from   [[(t2/table-name :model/Field) :sf]]
@@ -18,60 +23,97 @@
                       [(t2/table-name :model/Table) :target_t] [:= :tf.table_id :target_t.id]]
              :where  [:= :sf.id source-field-id]}))
 
-(defn field
+(mu/defn field :- [:maybe (ms/InstanceOf :model/Field)]
   "The Field with `field-id`, or nil."
-  [field-id]
+  [field-id :- ms/PositiveInt]
   (t2/select-one :model/Field :id field-id))
 
-(defn update-field!
+(mu/defn update-field! :- :int
   "Apply `changes` to the Field with `field-id`."
-  [field-id changes]
+  [field-id :- ms/PositiveInt
+   changes  :- [:map {:closed true}
+                [:caveats            {:optional true} [:maybe :string]]
+                [:description        {:optional true} [:maybe :string]]
+                [:fk_target_field_id {:optional true} [:maybe ms/PositiveInt]]
+                [:points_of_interest {:optional true} [:maybe :string]]
+                [:semantic_type      {:optional true} [:maybe [:or :keyword :string]]]
+                [:coercion_strategy  {:optional true} [:maybe [:or :keyword :string]]]
+                [:effective_type     {:optional true} [:maybe [:or :keyword :string]]]
+                [:has_field_values   {:optional true} [:maybe [:or :keyword :string]]]
+                [:nfc_path           {:optional true} [:maybe [:sequential :string]]]
+                [:json_unfolding     {:optional true} [:maybe :boolean]]
+                [:data_sensitivity   {:optional true} [:maybe [:or :keyword :string]]]
+                [:display_name       {:optional true} [:maybe :string]]
+                [:visibility_type    {:optional true} [:maybe [:or :keyword :string]]]
+                [:settings           {:optional true} [:maybe :map]]]]
   (t2/update! :model/Field field-id changes))
 
-(defn set-nested-fields-active!
+(mu/defn set-nested-fields-active! :- :int
   "Set the active flag of the Fields of the Table with `table-id` whose NFC path matches the SQL LIKE
   `nfc-path-pattern`, returning the number updated."
-  [table-id nfc-path-pattern active?]
+  [table-id          :- ms/PositiveInt
+   nfc-path-pattern  :- :string
+   active?           :- :boolean]
   (t2/update! :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern] {:active active?}))
 
-(defn dimension-for-field
+(mu/defn dimension-for-field :- [:maybe (ms/InstanceOf :model/Dimension)]
   "The Dimension of the Field with `field-id`, or nil."
-  [field-id]
+  [field-id :- ms/PositiveInt]
   (t2/select-one :model/Dimension :field_id field-id))
 
-(defn insert-dimension!
+(mu/defn insert-dimension! :- :int
   "Insert the Dimension `row`."
-  [row]
+  [row :- [:map {:closed true}
+           [:field_id                ms/PositiveInt]
+           [:type                    [:or :keyword :string]]
+           [:name                    :string]
+           [:human_readable_field_id [:maybe ms/PositiveInt]]]]
   (t2/insert! :model/Dimension row))
 
-(defn update-dimension!
+(mu/defn update-dimension! :- :int
   "Apply `changes` to the Dimension with `id`."
-  [id changes]
+  [id      :- ms/PositiveInt
+   changes :- [:map {:closed true}
+               [:type                    [:or :keyword :string]]
+               [:name                    :string]
+               [:human_readable_field_id [:maybe ms/PositiveInt]]]]
   (t2/update! :model/Dimension id changes))
 
-(defn rename-dimension-for-field!
+(mu/defn rename-dimension-for-field! :- :int
   "Set the name of the Dimension of the Field with `field-id`."
-  [field-id dimension-name]
+  [field-id       :- ms/PositiveInt
+   dimension-name :- :string]
   (t2/update! :model/Dimension :field_id field-id {:name dimension-name}))
 
-(defn delete-dimension!
+(mu/defn delete-dimension! :- :int
   "Delete the Dimension with `id`."
-  [id]
+  [id :- ms/PositiveInt]
   (t2/delete! :model/Dimension :id id))
 
-(defn delete-dimensions-for-field!
+(mu/defn delete-dimensions-for-field! :- :int
   "Delete the Dimensions of the Field with `field-id`."
-  [field-id]
+  [field-id :- ms/PositiveInt]
   (t2/delete! :model/Dimension :field_id field-id))
 
-(defn matching-tables
+(mu/defn matching-tables :- [:sequential (ms/InstanceOf :model/Table)]
   "The Tables (active, or with `transform_target` when `include-transform-targets?`) matching `term` (a glob pattern
   using `*` as a wildcard, matched against `:name` and `:display_name`), optionally narrowed to `visibility-type`,
   `data-layer`, `data-source`, `owner-user-id`, and/or `owner-email`; restricted to ownerless Tables when
   `orphan-only?`, published Tables when `published-only?`, and (when `check-unused?`) Tables with no dependents,
   ordered by name."
   [{:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only? published-only?
-           check-unused? include-transform-targets?]}]
+           check-unused? include-transform-targets?]}
+   :- [:map {:closed true}
+       [:term                       {:optional true} [:maybe :string]]
+       [:visibility-type            {:optional true} [:maybe :string]]
+       [:data-layer                 {:optional true} [:maybe [:or :keyword :string]]]
+       [:data-source                {:optional true} [:maybe [:or :keyword :string]]]
+       [:owner-user-id              {:optional true} [:maybe :int]]
+       [:owner-email                {:optional true} [:maybe :string]]
+       [:orphan-only?               {:optional true} [:maybe :boolean]]
+       [:published-only?            {:optional true} [:maybe :boolean]]
+       [:check-unused?              {:optional true} [:maybe :boolean]]
+       [:include-transform-targets? {:optional true} [:maybe :boolean]]]]
   (let [db-type    (app-db/db-type)
         glob       (fn [escaped]
                      (-> escaped
@@ -108,60 +150,77 @@
                                                                    [:= :d.to_entity_type "table"]]}]))]
     (t2/select :model/Table {:where where, :order-by [[:name :asc]]})))
 
-(defn tables-by-ids
+(mu/defn tables-by-ids :- [:sequential (ms/InstanceOf :model/Table)]
   "The Tables with `table-ids`."
-  [table-ids]
+  [table-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/Table :id [:in table-ids]))
 
-(defn table
+(mu/defn table :- [:maybe (ms/InstanceOf :model/Table)]
   "The Table with `table-id`, or nil."
-  [table-id]
+  [table-id :- ms/PositiveInt]
   (t2/select-one :model/Table :id table-id))
 
-(defn update-table!
+(mu/defn update-table! :- :int
   "Apply `changes` to the Table with `table-id`."
-  [table-id changes]
+  [table-id :- ms/PositiveInt
+   changes  :- [:map {:closed true}
+                [:display_name             {:optional true} [:maybe :string]]
+                [:show_in_getting_started  {:optional true} [:maybe :boolean]]
+                [:entity_type              {:optional true} [:maybe [:or :keyword :string]]]
+                [:field_order              {:optional true} [:maybe [:or :keyword :string]]]
+                [:collection_id            {:optional true} [:maybe ms/PositiveInt]]
+                [:description              {:optional true} [:maybe :string]]
+                [:caveats                  {:optional true} [:maybe :string]]
+                [:points_of_interest       {:optional true} [:maybe :string]]
+                [:visibility_type          {:optional true} [:maybe [:or :keyword :string]]]
+                [:data_layer               {:optional true} [:maybe [:or :keyword :string]]]
+                [:data_authority           {:optional true} [:maybe [:or :keyword :string]]]
+                [:data_source              {:optional true} [:maybe [:or :keyword :string]]]
+                [:owner_email              {:optional true} [:maybe :string]]
+                [:owner_user_id            {:optional true} [:maybe ms/PositiveInt]]]]
   (t2/update! :model/Table table-id changes))
 
-(defn database
+(mu/defn database :- [:maybe (ms/InstanceOf :model/Database)]
   "The Database with `database-id`, or nil."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/select-one :model/Database database-id))
 
-(defn non-destination-database
+(mu/defn non-destination-database :- [:maybe (ms/InstanceOf :model/Database)]
   "The Database with `database-id` if it is not a routing destination, or nil."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/select-one :model/Database :id database-id :router_database_id nil))
 
-(defn collection
+(mu/defn collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "The Collection with `collection-id`, or nil."
-  [collection-id]
+  [collection-id :- ms/PositiveInt]
   (t2/select-one :model/Collection :id collection-id))
 
-(defn active-unretired-field-ids-for-table
+(mu/defn active-unretired-field-ids-for-table :- [:maybe [:set ms/PositiveInt]]
   "The ids of the active, unretired Fields of the Table with `table-id`, or nil."
-  [table-id]
+  [table-id :- ms/PositiveInt]
   (t2/select-pks-set :model/Field, :table_id table-id, :visibility_type [:not= "retired"], :active true))
 
-(defn field-ids-for-table
+(mu/defn field-ids-for-table :- [:maybe [:set ms/PositiveInt]]
   "The ids of the Fields of the Table with `table-id`, or nil."
-  [table-id]
+  [table-id :- ms/PositiveInt]
   (t2/select-pks-set :model/Field :table_id table-id))
 
-(defn active-fields-targeting
+(mu/defn active-fields-targeting :- [:sequential (ms/InstanceOf :model/Field)]
   "The active Fields whose FK target is one of `field-ids`."
-  [field-ids]
+  [field-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true))
 
-(defn delete-field-values-for-fields!
+(mu/defn delete-field-values-for-fields! :- :int
   "Delete the FieldValues of the Fields with `field-ids`."
-  [field-ids]
+  [field-ids :- [:seqable ms/PositiveInt]]
   (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids]))
 
-(defn update-or-insert-full-field-values!
+(mu/defn update-or-insert-full-field-values! :- ms/PositiveInt
   "Update the full FieldValues of the Field with `field-id` to have `values` and `human-readable-values`, inserting
   one if none exists yet. Returns the number of rows affected."
-  [field-id values human-readable-values]
+  [field-id               :- ms/PositiveInt
+   values                 :- :any
+   human-readable-values  :- :any]
   (app-db/update-or-insert! :model/FieldValues {:field_id field-id, :type :full}
                             (constantly {:values                values
                                          :human_readable_values human-readable-values})))

@@ -7,41 +7,46 @@
    [metabase.users.core :as users]
    [metabase.users.models.user :as user]
    [metabase.users.settings :as users.settings]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn comments-for-target
+(mu/defn comments-for-target :- [:sequential (ms/InstanceOf :model/Comment)]
   "The Comments on the target with `target-type` and `target-id`, oldest first."
-  [target-type target-id]
+  [target-type :- :string
+   target-id   :- ms/PositiveInt]
   (t2/select :model/Comment
              {:where    [:and
                          [:= :target_type target-type]
                          [:= :target_id target-id]]
               :order-by [[:created_at :asc]]}))
 
-(defn active-user-ids
+(mu/defn active-user-ids :- [:maybe [:set ms/PositiveInt]]
   "The ids among `user-ids` of active Users, or nil."
-  [user-ids]
+  [user-ids :- [:seqable ms/PositiveInt]]
   (t2/select-pks-set :model/User :id [:in user-ids] :is_active true))
 
-(defn document
+(mu/defn document :- [:maybe (ms/InstanceOf :model/Document)]
   "The Document with `id`, or nil."
-  [id]
+  [id :- ms/PositiveInt]
   (t2/select-one :model/Document :id id))
 
-(defn exploration
+(mu/defn exploration :- [:maybe (ms/InstanceOf :model/Exploration)]
   "The Exploration with `id`, or nil."
-  [id]
+  [id :- ms/PositiveInt]
   (t2/select-one :model/Exploration :id id))
 
-(defn comment-by-id
+(mu/defn comment-by-id :- [:maybe (ms/InstanceOf :model/Comment)]
   "The Comment with `id`, or nil."
-  [id]
+  [id :- ms/PositiveInt]
   (t2/select-one :model/Comment :id id))
 
-(defn comment-recipient-emails
+(mu/defn comment-recipient-emails :- [:maybe [:set :string]]
   "The emails of the Users to notify about a comment: the authors of the Comment with `parent-comment-id` and of its
   replies, or the User with `creator-id` for a top-level comment, plus the Users with `mention-ids`."
-  [creator-id parent-comment-id mention-ids]
+  [creator-id        :- ms/PositiveInt
+   parent-comment-id :- [:maybe ms/PositiveInt]
+   mention-ids       :- [:maybe [:seqable ms/PositiveInt]]]
   (t2/select-fn-set :email [:model/User :email]
                     {:where [:or
                              (if parent-comment-id
@@ -54,19 +59,35 @@
                              (when (seq mention-ids)
                                [:in :id mention-ids])]}))
 
-(defn insert-comment!
+(mu/defn insert-comment! :- (ms/InstanceOf :model/Comment)
   "Insert the Comment `row` and return the inserted instance."
-  [row]
+  [row :- [:map {:closed true}
+           [:id                {:optional true} :any]
+           [:parent_comment_id {:optional true} :any]
+           [:target_type       {:optional true} :any]
+           [:target_id         {:optional true} :any]
+           [:child_target_id   {:optional true} :any]
+           [:creator_id        {:optional true} :any]
+           [:content           {:optional true} :any]
+           [:is_resolved       {:optional true} :any]
+           [:created_at        {:optional true} :any]
+           [:updated_at        {:optional true} :any]
+           [:deleted_at        {:optional true} :any]
+           [:content_html      {:optional true} :any]
+           [:context           {:optional true} :any]]]
   (t2/insert-returning-instance! :model/Comment row))
 
-(defn update-comment!
-  "Apply `changes` to the Comment with `id`."
-  [id changes]
+(mu/defn update-comment! :- :int
+  "Apply `changes` to the Comment with `id`, returning the number updated."
+  [id      :- ms/PositiveInt
+   changes :- [:map {:closed true}
+               [:content     {:optional true} :any]
+               [:is_resolved {:optional true} :boolean]]]
   (t2/update! :model/Comment id changes))
 
-(defn soft-delete-comment!
-  "Mark the Comment with `id` deleted now."
-  [id]
+(mu/defn soft-delete-comment! :- :int
+  "Mark the Comment with `id` deleted now, returning the number updated."
+  [id :- ms/PositiveInt]
   (t2/update! :model/Comment id {:deleted_at [:now]}))
 
 (defn- restrict-to-visible-users
@@ -84,10 +105,11 @@
                                                                  (conj api/*current-user-id*))])
         :none  (sql.helpers/where clauses [:= :core_user.id api/*current-user-id*])))))
 
-(defn mentionable-users
+(mu/defn mentionable-users :- [:sequential (ms/InstanceOf :model/User)]
   "The id, first name, last name, and email of the active Users the current user may @mention, ordered by name
   then id, limited to `limit` starting at `offset`."
-  [limit offset]
+  [limit  :- [:maybe ms/PositiveInt]
+   offset :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select [:model/User :id :first_name :last_name :email]
              (-> (user/filter-clauses {:limit limit :offset offset})
                  restrict-to-visible-users
@@ -95,7 +117,7 @@
                                        [:%lower.last_name :asc]
                                        [:id :asc]))))
 
-(defn mentionable-user-count
+(mu/defn mentionable-user-count :- [:map {:closed true} [:count :int]]
   "The `:count` of the active Users the current user may @mention."
   []
   (t2/query-one (merge {:select [[[:count [:distinct :core_user.id]] :count]]
@@ -104,29 +126,36 @@
                            restrict-to-visible-users
                            users/filter-clauses-without-paging))))
 
-(defn users-by-id
+(mu/defn users-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/User)]
   "A map of User id to the id, email, and name of the Users with `user-ids`."
-  [user-ids]
+  [user-ids :- [:seqable ms/PositiveInt]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
-(defn reaction-exists?
+(mu/defn reaction-exists? :- :boolean
   "Whether the User with `user-id` has reacted to the Comment with `comment-id` with `emoji`."
-  [comment-id user-id emoji]
+  [comment-id :- ms/PositiveInt
+   user-id    :- ms/PositiveInt
+   emoji      :- :string]
   (t2/exists? :model/CommentReaction :comment_id comment-id :user_id user-id :emoji emoji))
 
-(defn insert-reaction!
+(mu/defn insert-reaction! :- :int
   "Insert a CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`."
-  [comment-id user-id emoji]
+  [comment-id :- ms/PositiveInt
+   user-id    :- ms/PositiveInt
+   emoji      :- :string]
   (t2/insert! :model/CommentReaction {:comment_id comment-id, :user_id user-id, :emoji emoji}))
 
-(defn delete-reaction!
-  "Delete the CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`."
-  [comment-id user-id emoji]
+(mu/defn delete-reaction! :- :int
+  "Delete the CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`, returning
+  the number deleted."
+  [comment-id :- ms/PositiveInt
+   user-id    :- ms/PositiveInt
+   emoji      :- :string]
   (t2/delete! :model/CommentReaction :comment_id comment-id :user_id user-id :emoji emoji))
 
-(defn reactions-for-comments
+(mu/defn reactions-for-comments :- [:sequential (ms/InstanceOf :model/CommentReaction)]
   "The CommentReactions on the Comments with `comment-ids`, ordered by comment, time, and emoji."
-  [comment-ids]
+  [comment-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/CommentReaction
              {:where    [:in :comment_id comment-ids]
               :order-by [[:comment_id :asc] [:created_at :asc] [:emoji :asc]]}))

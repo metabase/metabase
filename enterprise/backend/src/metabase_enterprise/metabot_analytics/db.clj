@@ -6,11 +6,13 @@
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn conversation
+(mu/defn conversation :- [:maybe (ms/InstanceOf :model/MetabotConversation)]
   "The MetabotConversation with `conversation-id`, or nil."
-  [conversation-id]
+  [conversation-id :- ms/PositiveInt]
   (t2/select-one :model/MetabotConversation :id conversation-id))
 
 (defn- date-range-expr
@@ -104,11 +106,20 @@
                [:core_user :u]       [:= :u.id :c.user_id]]
    :group-by  [:c.id]})
 
-(defn list-conversations
+(mu/defn list-conversations :- [:sequential (ms/InstanceOf :model/MetabotConversation)]
   "A page of conversation summary rows (see [[conversation-list-select]]), restricted to `user-id`, `group-id`,
   `tenant-id`, and `date` (each nil for no restriction), sorted by the allow-listed `sort-by` column name in
   `sort-direction` (`:asc` or `:desc`), skipping `offset` and returning up to `limit`."
-  [{:keys [user-id group-id tenant-id date sort-by sort-direction offset limit]}]
+  [{:keys [user-id group-id tenant-id date sort-by sort-direction offset limit]}
+   :- [:map {:closed true}
+       [:user-id        {:optional true} [:maybe ms/PositiveInt]]
+       [:group-id       {:optional true} [:maybe ms/PositiveInt]]
+       [:tenant-id      {:optional true} [:maybe ms/PositiveInt]]
+       [:date           {:optional true} [:maybe :string]]
+       [:sort-by        {:optional true} [:maybe :string]]
+       [:sort-direction {:optional true} [:enum :asc :desc]]
+       [:offset         {:optional true} ms/IntGreaterThanOrEqualToZero]
+       [:limit          {:optional true} ms/PositiveInt]]]
   (let [where      (conversation-list-expr {:user-id user-id :group-id group-id :tenant-id tenant-id :date date})
         sort-exprs (get sort-columns sort-by [:c.created_at])
         order-by   (conj (mapv #(vector % sort-direction) sort-exprs)
@@ -120,29 +131,34 @@
                               :offset   offset)
                  where (assoc :where where)))))
 
-(defn conversation-count
+(mu/defn conversation-count :- ms/IntGreaterThanOrEqualToZero
   "The total count of conversations matching the same criteria as [[list-conversations]] (ignoring sort, offset,
   and limit)."
-  [{:keys [user-id group-id tenant-id date]}]
+  [{:keys [user-id group-id tenant-id date]}
+   :- [:map {:closed true}
+       [:user-id   {:optional true} [:maybe ms/PositiveInt]]
+       [:group-id  {:optional true} [:maybe ms/PositiveInt]]
+       [:tenant-id {:optional true} [:maybe ms/PositiveInt]]
+       [:date      {:optional true} [:maybe :string]]]]
   (let [where (conversation-list-expr {:user-id user-id :group-id group-id :tenant-id tenant-id :date date})]
     (:count (t2/query-one (cond-> {:select [[[:count :*] :count]]
                                    :from   [[:metabot_conversation :c]]}
                             where (assoc :where where))))))
 
-(defn messages-for-conversation
+(mu/defn messages-for-conversation :- [:sequential (ms/InstanceOf :model/MetabotMessage)]
   "The MetabotMessages of the MetabotConversation with `conversation-id`, oldest first."
-  [conversation-id]
+  [conversation-id :- ms/PositiveInt]
   (t2/select :model/MetabotMessage :conversation_id conversation-id {:order-by [[:created_at :asc] [:id :asc]]}))
 
-(defn message-data-for-conversations
+(mu/defn message-data-for-conversations :- [:sequential (ms/InstanceOf :model/MetabotMessage)]
   "The conversation, data, and data version of the MetabotMessages of the MetabotConversations with
   `conversation-ids`."
-  [conversation-ids]
+  [conversation-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:model/MetabotMessage :conversation_id :data :data_version] :conversation_id [:in conversation-ids]))
 
-(defn feedback-for-conversation
+(mu/defn feedback-for-conversation :- [:sequential (ms/InstanceOf :model/MetabotFeedback)]
   "The MetabotFeedback rows on the messages of the MetabotConversation with `conversation-id`, oldest first."
-  [conversation-id]
+  [conversation-id :- ms/PositiveInt]
   (t2/select :model/MetabotFeedback
              {:select   [:metabot_feedback.id
                          :metabot_feedback.message_id

@@ -2,12 +2,29 @@
   "Application database queries for the cache module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn card-cache-config
+(def ^:private DurationScope
+  "One `{:model :model-id :rerun-cutoff}` scope, as built by `duration-scopes`."
+  [:map {:closed true}
+   [:model         :string]
+   [:model-id      ms/PositiveInt]
+   [:rerun-cutoff  ms/TemporalInstant]])
+
+(def ^:private CacheConfigChanges
+  "The keys callers pass to [[update-cache-config!]]."
+  [:map {:closed true}
+   [:next_run_at    {:optional true} [:maybe ms/TemporalInstant]]
+   [:invalidated_at {:optional true} ms/TemporalInstant]])
+
+(mu/defn card-cache-config :- [:maybe (ms/InstanceOf :model/CacheConfig)]
   "The most specific CacheConfig applying to the Card with `card-id` on the Dashboard with `dashboard-id` in the
   Database with `database-id`, or nil."
-  [card-id dashboard-id database-id]
+  [card-id      :- ms/PositiveInt
+   dashboard-id :- [:maybe ms/PositiveInt]
+   database-id  :- [:maybe ms/PositiveInt]]
   (let [qs (for [[i model model-id] [[1 "question"  card-id]
                                      [2 "dashboard" dashboard-id]
                                      [3 "database"  database-id]
@@ -26,25 +43,27 @@
                                          :order-by :ordering
                                          :limit    [:inline 1]})))
 
-(defn cards-by-id
+(mu/defn cards-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/Card)]
   "A map of ID to Card for `card-ids`."
-  [card-ids]
+  [card-ids :- [:seqable ms/PositiveInt]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
 
-(defn router-database-ids
+(mu/defn router-database-ids :- [:maybe [:set ms/PositiveInt]]
   "The subset of `database-ids` that are database routers."
-  [database-ids]
+  [database-ids :- [:seqable ms/PositiveInt]]
   (t2/select-fn-set :database_id :model/DatabaseRouter :database_id [:in database-ids]))
 
-(defn duration-cache-configs
+(mu/defn duration-cache-configs :- [:sequential (ms/InstanceOf :model/CacheConfig)]
   "The duration CacheConfigs that refresh automatically."
   []
   (t2/select :model/CacheConfig :strategy :duration :refresh_automatically true))
 
-(defn duration-queries-to-rerun
+(mu/defn duration-queries-to-rerun :- [:sequential (ms/InstanceOf :model/Query)]
   "The query definitions to rerun for the duration cache `scopes`, each `{:model :model-id :rerun-cutoff}`, counting
   only executions started after `started-after`; `parameterized?` selects parameterized or plain queries."
-  [scopes started-after parameterized?]
+  [scopes         :- [:sequential DurationScope]
+   started-after  :- ms/TemporalInstant
+   parameterized? :- :boolean]
   (t2/select
    :model/Query
    {:select [:u.query :u.cache-hash :u.card-id :u.dashboard-id :u.count]
@@ -82,10 +101,11 @@
                           :group-by [:q.query_hash :q.query :qc.query_hash :qe.card_id :qe.dashboard_id]}})}
               :u]]}))
 
-(defn scheduled-base-query-to-rerun
+(mu/defn scheduled-base-query-to-rerun :- [:maybe (ms/InstanceOf :model/Query)]
   "The unparameterized query definition of the Card with `card-id` executed most recently after `started-after`, or
   nil."
-  [card-id started-after]
+  [card-id       :- ms/PositiveInt
+   started-after :- ms/TemporalInstant]
   (t2/select-one :model/Query
                  {:select   [:q.query [:qe.card_id :card-id]]
                   :from     [[(t2/table-name :model/Query) :q]]
@@ -99,9 +119,11 @@
                   :order-by [[:qe.started_at :desc]]
                   :limit    1}))
 
-(defn scheduled-parameterized-queries-to-rerun
+(mu/defn scheduled-parameterized-queries-to-rerun :- [:sequential (ms/InstanceOf :model/Query)]
   "The `limit` most common parameterized query definitions of the Card with `card-id` executed after `rerun-cutoff`."
-  [card-id rerun-cutoff limit]
+  [card-id      :- ms/PositiveInt
+   rerun-cutoff :- ms/TemporalInstant
+   limit        :- ms/PositiveInt]
   (t2/select :model/Query
              {:select   [:q.query [:qe.card_id :card-id]]
               :from     [[(t2/table-name :model/Query) :q]]
@@ -119,26 +141,28 @@
                          [[:min :qe.started_at] :asc]]
               :limit    limit}))
 
-(defn delete-query-caches!
+(mu/defn delete-query-caches! :- :int
   "Delete the QueryCache entries with `query-hashes`."
-  [query-hashes]
+  [query-hashes :- [:seqable bytes?]]
   (t2/delete! :model/QueryCache :query_hash [:in query-hashes]))
 
-(defn dashboard
+(mu/defn dashboard :- [:maybe (ms/InstanceOf :model/Dashboard)]
   "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id]
+  [dashboard-id :- ms/PositiveInt]
   (t2/select-one :model/Dashboard :id dashboard-id))
 
-(defn cache-configs-ready-to-run
+(mu/defn cache-configs-ready-to-run :- [:sequential (ms/InstanceOf :model/CacheConfig)]
   "The CacheConfigs of `strategy` whose next run is unset or due at `now`."
-  [strategy now]
+  [strategy :- :keyword
+   now      :- ms/TemporalInstant]
   (t2/select :model/CacheConfig
              :strategy strategy
              {:where [:or
                       [:= :next_run_at nil]
                       [:<= :next_run_at now]]}))
 
-(defn update-cache-config!
+(mu/defn update-cache-config! :- :int
   "Apply `changes` to the CacheConfig with `cache-config-id`."
-  [cache-config-id changes]
+  [cache-config-id :- ms/PositiveInt
+   changes         :- CacheConfigChanges]
   (t2/update! :model/CacheConfig {:id cache-config-id} changes))

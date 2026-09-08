@@ -5,44 +5,46 @@
    [metabase.app-db.core :as mdb]
    [metabase.internal-stats.util :as u]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn enabled-data-app-count
+(mu/defn enabled-data-app-count :- ms/IntGreaterThanOrEqualToZero
   "The number of enabled data apps without a sync error."
   []
   (t2/count :data_app :enabled true :sync_error nil))
 
-(defn embedded-dashboard-count
+(mu/defn embedded-dashboard-count :- ms/IntGreaterThanOrEqualToZero
   "The number of unarchived Dashboards with embedding enabled."
   []
   (t2/count :model/Dashboard :enable_embedding true :archived false))
 
-(defn embedded-question-count
+(mu/defn embedded-question-count :- ms/IntGreaterThanOrEqualToZero
   "The number of unarchived question Cards with embedding enabled."
   []
   (t2/count :model/Card :enable_embedding true :archived false :type :question))
 
-(defn proxied-ai-usage-tokens-by-model
+(mu/defn proxied-ai-usage-tokens-by-model :- [:sequential (ms/InstanceOf :model/AiUsageLog)]
   "The model and total tokens of the proxied AiUsageLog rows on `date`, grouped by model."
-  [date]
+  [date :- ms/TemporalInstant]
   (t2/select [:model/AiUsageLog :model [:%sum.total_tokens :tokens]]
              {:where    [:and
                          :ai_proxied
                          [:= [:cast :created_at :date] [:cast date :date]]]
               :group-by [:model]}))
 
-(defn proxied-ai-usage-tokens-on
+(mu/defn proxied-ai-usage-tokens-on :- [:maybe :int]
   "The total tokens of the proxied AiUsageLog rows on `date`, or nil."
-  [date]
+  [date :- ms/TemporalInstant]
   (t2/select-one-fn :sum
                     [:model/AiUsageLog [:%sum.total_tokens :sum]]
                     {:where [:and
                              :ai_proxied
                              [:= [:cast :created_at :date] [:cast date :date]]]}))
 
-(defn proxied-metabot-user-message-count-on
+(mu/defn proxied-metabot-user-message-count-on :- [:maybe ms/IntGreaterThanOrEqualToZero]
   "The number of proxied, unforked user MetabotMessages on `date`."
-  [date]
+  [date :- ms/TemporalInstant]
   (t2/select-one-fn :cnt
                     [:model/MetabotMessage [:%count.id :cnt]]
                     :role "user"
@@ -51,9 +53,9 @@
                              :ai_proxied
                              [:= [:cast :created_at :date] [:cast date :date]]]}))
 
-(defn proxied-metabot-user-count-on
+(mu/defn proxied-metabot-user-count-on :- [:map {:closed true} [:cnt :int]]
   "The `:cnt` of distinct Users with proxied, unforked MetabotMessages on `date`."
-  [date]
+  [date :- ms/TemporalInstant]
   ;; New rows stamp `metabot_message.user_id`; legacy rows fall back to the conversation's user.
   (t2/query-one {:select [[[:count [:distinct [:coalesce :m.user_id :c.user_id]]] :cnt]]
                  :from   [[:metabot_message :m]]
@@ -105,19 +107,19 @@
                                     public-link-condition]
                          [:inline false]]]) :internal]])
 
-(defn query-execution-statistics-all-time
+(mu/defn query-execution-statistics-all-time :- [:maybe (ms/InstanceOf :model/QueryExecution)]
   "The QueryExecution counts per embedding client over all time."
   []
   (t2/select-one query-execution-statistics))
 
-(defn query-execution-statistics-since
+(mu/defn query-execution-statistics-since :- [:maybe (ms/InstanceOf :model/QueryExecution)]
   "The QueryExecution counts per embedding client for executions started after `started-after`."
-  [started-after]
+  [started-after :- ms/TemporalInstant]
   (t2/select-one query-execution-statistics {:where [:> :started_at started-after]}))
 
-(defn query-execution-statistics-on
+(mu/defn query-execution-statistics-on :- [:maybe (ms/InstanceOf :model/QueryExecution)]
   "The QueryExecution counts per embedding client for executions started on the day of `date`."
-  [date]
+  [date :- ms/TemporalInstant]
   (t2/select-one query-execution-statistics {:where [:= [:cast :started_at :date] [:cast date :date]]}))
 
 (defn- and-not-nil
@@ -153,7 +155,7 @@
 
 (def ^:private embedding-on [:= :enable_embedding [:inline true]])
 
-(defn question-statistics-all-time
+(mu/defn question-statistics-all-time :- [:maybe (ms/InstanceOf :model/Card)]
   "Aggregate counts of unarchived, non-internal Cards over all time: totals, native vs GUI, dashboard
   questions, embedded, publicly shared, and (where the app db supports JSON path queries) counts
   broken down by template-tag parameters and embedding-parameter locking."
@@ -193,7 +195,7 @@
                                :with_disabled_params])))
      {:where (mi/exclude-internal-content-hsql :model/Card)})))
 
-(defn active-personal-user-email-domain-count
+(mu/defn active-personal-user-email-domain-count :- [:map {:closed true} [:count :int]]
   "The `:count` of distinct email domains of active personal Users."
   []
   (let [domain-expr (condp contains? (mdb/db-type)
@@ -207,21 +209,21 @@
                                     [:= :is_active true]
                                     [:= :type "personal"]]} :distinct_emails]]})))
 
-(defn active-jwt-user-count
+(mu/defn active-jwt-user-count :- ms/IntGreaterThanOrEqualToZero
   "The number of active personal Users whose SSO source is JWT."
   []
   ;; Because this count is needed *during* token checks, it uses `t2/table-name` to avoid the `after-select` method on
   ;; users, which calls an EE method that needs ... a token check :|
   (t2/count (t2/table-name :model/User) :is_active true :sso_source "jwt" :type "personal"))
 
-(defn active-tenant-user-count
+(mu/defn active-tenant-user-count :- ms/IntGreaterThanOrEqualToZero
   "The number of active personal Users belonging to a Tenant."
   []
   ;; Because this count is needed *during* token checks, it uses `t2/table-name` to avoid the `after-select` method on
   ;; users, which calls an EE method that needs ... a token check :|
   (t2/count (t2/table-name :model/User) :is_active true :tenant_id [:not= nil] :type "personal"))
 
-(defn tenants-with-active-users-count
+(mu/defn tenants-with-active-users-count :- [:map {:closed true} [:count :int]]
   "The `:count` of Tenants with at least one active personal User."
   []
   (t2/query-one {:select [[[:count [:distinct :tenant_id]] :count]]

@@ -3,9 +3,11 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn user-id-and-active-by-email
+(mu/defn user-id-and-active-by-email :- [:maybe (ms/InstanceOf :model/User)]
   "The `:id` and `:is_active` of the User whose email matches `email` case-insensitively, or nil."
-  [email]
+  [email :- :string]
   (t2/select-one [:model/User :id :is_active] :%lower.email (u/lower-case-en email)))

@@ -2,14 +2,17 @@
   "Application database queries for the public sharing REST module. Every function here is a direct Toucan 2 call with
   no additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------------ Cards -------------------------------------------------------
 
-(defn public-card
+(mu/defn public-card :- [:maybe (ms/InstanceOf :model/Card)]
   "The non-archived Card with `card-id`, restricted to the columns safe to expose publicly, or nil. With
   `:enable-embedding? true`, additionally requires embedding to be enabled."
-  [card-id & {:keys [enable-embedding?]}]
+  [card-id :- ms/PositiveInt
+   & {:keys [enable-embedding?]} :- [:maybe [:map {:closed true} [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (t2/select-one [:model/Card :id :dataset_query :description :display :name :parameters :visualization_settings
                   :card_schema]
                  {:where [:and
@@ -17,47 +20,50 @@
                           [:= :archived false]
                           (when enable-embedding? [:= :enable_embedding true])]}))
 
-(defn active-card
+(mu/defn active-card :- [:maybe (ms/InstanceOf :model/Card)]
   "The non-archived Card with `card-id`, or nil."
-  [card-id]
+  [card-id :- ms/PositiveInt]
   (t2/select-one :model/Card :id card-id :archived false))
 
-(defn active-card-in-document
+(mu/defn active-card-in-document :- [:maybe (ms/InstanceOf :model/Card)]
   "The non-archived Card with `card-id` that belongs to the Document with `document-id`, or nil."
-  [card-id document-id]
+  [card-id     :- ms/PositiveInt
+   document-id :- ms/PositiveInt]
   (t2/select-one :model/Card :id card-id :document_id document-id :archived false))
 
 ;;; ---------------------------------------------------- Dashboards ----------------------------------------------------
 
-(defn public-dashboard
+(mu/defn public-dashboard :- [:maybe (ms/InstanceOf :model/Dashboard)]
   "The non-archived Dashboard with `dashboard-id`, restricted to the columns safe to expose publicly, or nil. With
   `:enable-embedding? true`, additionally requires embedding to be enabled."
-  [dashboard-id & {:keys [enable-embedding?]}]
+  [dashboard-id :- ms/PositiveInt
+   & {:keys [enable-embedding?]} :- [:maybe [:map {:closed true} [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (t2/select-one [:model/Dashboard :name :description :id :parameters :auto_apply_filters :width]
                  {:where [:and
                           [:= :id dashboard-id]
                           [:= :archived false]
                           (when enable-embedding? [:= :enable_embedding true])]}))
 
-(defn dashcard
+(mu/defn dashcard :- [:maybe (ms/InstanceOf :model/DashboardCard)]
   "The DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id]
+  [dashcard-id :- ms/PositiveInt]
   (t2/select-one :model/DashboardCard :id dashcard-id))
 
-(defn dashcard-id-in-dashboard
+(mu/defn dashcard-id-in-dashboard :- [:maybe ms/PositiveInt]
   "`dashcard-id` if that DashboardCard belongs to the Dashboard with `dashboard-id`, otherwise nil."
-  [dashcard-id dashboard-id]
+  [dashcard-id  :- ms/PositiveInt
+   dashboard-id :- ms/PositiveInt]
   (t2/select-one-pk :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
 
 ;;; ----------------------------------------------------- Documents ----------------------------------------------------
 
-(defn public-document
+(mu/defn public-document :- [:maybe (ms/InstanceOf :model/Document)]
   "The non-archived Document with `document-id`, restricted to the columns safe to expose publicly."
-  [document-id]
+  [document-id :- ms/PositiveInt]
   (t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
                  :id document-id, :archived false))
 
-(defn document-content
+(mu/defn document-content :- [:maybe (ms/InstanceOf :model/Document)]
   "The id, content, and content type of the Document with `document-id`, or nil."
-  [document-id]
+  [document-id :- ms/PositiveInt]
   (t2/select-one [:model/Document :id :document :content_type] :id document-id))

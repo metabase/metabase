@@ -6,13 +6,15 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.queries.core :as queries]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Exploration -----------------------------------------------
 
-(defn exploration
+(mu/defn exploration :- [:maybe (ms/InstanceOf :model/Exploration)]
   "The Exploration with `exploration-id`, or nil."
-  [exploration-id]
+  [exploration-id :- ms/PositiveInt]
   (t2/select-one :model/Exploration :id exploration-id))
 
 (defn- my-explorations-query
@@ -68,139 +70,183 @@
       limit  (assoc :limit limit)
       offset (assoc :offset offset))))
 
-(defn my-explorations
+(mu/defn my-explorations :- [:sequential (ms/InstanceOf :model/Exploration)]
   "The Explorations `user-id` created or edited, most-recently-touched first, each carrying
   `:current_user_last_touched_at` and a `:total_count` window column; paginated by `limit`/`offset`."
-  [user-id limit offset]
+  [user-id :- ms/PositiveInt
+   limit   :- [:maybe ms/PositiveInt]
+   offset  :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/Exploration (my-explorations-query user-id limit offset)))
 
-(defn exploration-creator-id-for-thread
+(mu/defn exploration-creator-id-for-thread :- [:maybe ms/PositiveInt]
   "The creator of the Exploration owning the ExplorationThread with `thread-id`."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/select-one-fn :creator_id :model/Exploration
                     {:join  [:exploration_thread [:= :exploration_thread.exploration_id :exploration.id]]
                      :where [:= :exploration_thread.id thread-id]}))
 
-(defn insert-exploration!
+(mu/defn insert-exploration! :- (ms/InstanceOf :model/Exploration)
   "Insert `exploration` and return the new instance."
-  [exploration]
+  [exploration :- [:map {:closed true}
+                   [:id                  {:optional true} :any]
+                   [:name                {:optional true} :any]
+                   [:description         {:optional true} :any]
+                   [:creator_id          {:optional true} :any]
+                   [:collection_id       {:optional true} :any]
+                   [:archived            {:optional true} :any]
+                   [:archived_directly   {:optional true} :any]
+                   [:collection_position {:optional true} :any]
+                   [:entity_id           {:optional true} :any]
+                   [:created_at          {:optional true} :any]
+                   [:updated_at          {:optional true} :any]]]
   (first (t2/insert-returning-instances! :model/Exploration exploration)))
 
-(defn update-exploration!
+(mu/defn update-exploration! :- :int
   "Apply `changes` to the Exploration with `exploration-id`."
-  [exploration-id changes]
+  [exploration-id :- ms/PositiveInt
+   changes        :- [:map {:closed true}
+                      [:name                {:optional true} :string]
+                      [:description         {:optional true} [:maybe :string]]
+                      [:archived            {:optional true} :boolean]
+                      [:archived_directly   {:optional true} :boolean]
+                      [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+                      [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
   (t2/update! :model/Exploration exploration-id changes))
 
-(defn delete-exploration!
+(mu/defn delete-exploration! :- :int
   "Delete the Exploration with `exploration-id`."
-  [exploration-id]
+  [exploration-id :- ms/PositiveInt]
   (t2/delete! :model/Exploration :id exploration-id))
 
 ;;; ------------------------------------------------- Threads -------------------------------------------------
 
-(defn thread
+(mu/defn thread :- [:maybe (ms/InstanceOf :model/ExplorationThread)]
   "The ExplorationThread with `thread-id`, or nil."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationThread :id thread-id))
 
-(defn thread-exploration-id-row
+(mu/defn thread-exploration-id-row :- [:maybe (ms/InstanceOf :model/ExplorationThread)]
   "The `:exploration_id` row of the ExplorationThread with `thread-id`, or nil."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/select-one [:model/ExplorationThread :exploration_id] :id thread-id))
 
-(defn thread-terminal-state
+(mu/defn thread-terminal-state :- [:maybe (ms/InstanceOf :model/ExplorationThread)]
   "The ID, cancel time, and completion time of the ExplorationThread with `thread-id`."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/select-one [:model/ExplorationThread :id :canceled_at :completed_at] :id thread-id))
 
-(defn thread-planning-state
+(mu/defn thread-planning-state :- [:maybe (ms/InstanceOf :model/ExplorationThread)]
   "The ID, cancel time, and analysis start time of the ExplorationThread with `thread-id`, or nil."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/select-one [:model/ExplorationThread :id :canceled_at :analysis_started_at] :id thread-id))
 
-(defn thread-exploration-id
+(mu/defn thread-exploration-id :- [:maybe ms/PositiveInt]
   "The Exploration ID of the ExplorationThread with `thread-id`."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id))
 
-(defn thread-prompt
+(mu/defn thread-prompt :- [:maybe :string]
   "The prompt of the ExplorationThread with `thread-id`."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/select-one-fn :prompt :model/ExplorationThread :id thread-id))
 
-(defn thread-transcript
+(mu/defn thread-transcript :- :any
   "The query-plan transcript of the ExplorationThread with `thread-id`."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/select-one-fn :query_plan_transcript :model/ExplorationThread :id thread-id))
 
-(defn thread-in-exploration?
+(mu/defn thread-in-exploration? :- :boolean
   "Whether the ExplorationThread with `thread-id` belongs to the Exploration with `exploration-id`."
-  [thread-id exploration-id]
+  [thread-id      :- ms/PositiveInt
+   exploration-id :- ms/PositiveInt]
   (t2/exists? :model/ExplorationThread :id thread-id :exploration_id exploration-id))
 
-(defn thread-canceled?
+(mu/defn thread-canceled? :- :boolean
   "Whether the ExplorationThread with `thread-id` has been canceled."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/exists? :model/ExplorationThread :id thread-id :canceled_at [:not= nil]))
 
-(defn threads-for-explorations
+(mu/defn threads-for-explorations :- [:sequential (ms/InstanceOf :model/ExplorationThread)]
   "The ExplorationThreads of the Explorations with `exploration-ids`, in position order."
-  [exploration-ids]
+  [exploration-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/ExplorationThread
              :exploration_id [:in exploration-ids]
              {:order-by [[:position :asc] [:id :asc]]}))
 
-(defn thread-ids-for-exploration
+(mu/defn thread-ids-for-exploration :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the ExplorationThreads of the Exploration with `exploration-id`."
-  [exploration-id]
+  [exploration-id :- ms/PositiveInt]
   (t2/select-pks-set :model/ExplorationThread :exploration_id exploration-id))
 
-(defn lens-stamped-threads
+(mu/defn lens-stamped-threads :- [:sequential (ms/InstanceOf :model/ExplorationThread)]
   "The ID and data-access token of the ExplorationThreads among `thread-ids` that carry a token."
-  [thread-ids]
+  [thread-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:model/ExplorationThread :id :data_access_token]
              :id [:in thread-ids]
              :data_access_token [:not= nil]))
 
-(defn last-thread-position
+(mu/defn last-thread-position :- [:maybe :int]
   "The highest position among the ExplorationThreads of the Exploration with `exploration-id`."
-  [exploration-id]
+  [exploration-id :- ms/PositiveInt]
   (t2/select-one-fn :position :model/ExplorationThread
                     :exploration_id exploration-id
                     {:order-by [[:position :desc] [:id :desc]]}))
 
-(defn lock-thread
+(mu/defn lock-thread :- [:sequential [:map {:closed true} [:id ms/PositiveInt]]]
   "The `:id` row of the ExplorationThread with `thread-id`, locked for update."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/query {:select [:id]
              :from   [:exploration_thread]
              :where  [:= :id thread-id]
              :for    [:update]}))
 
-(defn insert-thread!
+(mu/defn insert-thread! :- (ms/InstanceOf :model/ExplorationThread)
   "Insert `thread` and return the new instance."
-  [thread]
+  [thread :- [:map {:closed true}
+              [:id                    {:optional true} :any]
+              [:exploration_id        {:optional true} :any]
+              [:name                  {:optional true} :any]
+              [:prompt                {:optional true} :any]
+              [:position              {:optional true} :any]
+              [:source_page_id        {:optional true} :any]
+              [:started_at            {:optional true} :any]
+              [:entity_id             {:optional true} :any]
+              [:created_at            {:optional true} :any]
+              [:updated_at            {:optional true} :any]
+              [:completed_at          {:optional true} :any]
+              [:analysis_started_at   {:optional true} :any]
+              [:query_plan_started_at {:optional true} :any]
+              [:query_plan_transcript {:optional true} :any]
+              [:canceled_at           {:optional true} :any]
+              [:data_access_token     {:optional true} :any]]]
   (first (t2/insert-returning-instances! :model/ExplorationThread thread)))
 
-(defn update-thread!
+(mu/defn update-thread! :- :int
   "Apply `changes` to the ExplorationThread with `thread-id`."
-  [thread-id changes]
+  [thread-id :- ms/PositiveInt
+   changes   :- [:map {:closed true}
+                 [:started_at            {:optional true} ms/TemporalInstant]
+                 [:analysis_started_at   {:optional true} ms/TemporalInstant]
+                 [:completed_at          {:optional true} ms/TemporalInstant]
+                 [:query_plan_transcript {:optional true} :any]]]
   (t2/update! :model/ExplorationThread thread-id changes))
 
-(defn cancel-thread!
+(mu/defn cancel-thread! :- :int
   "Mark the uncompleted ExplorationThread with `thread-id` canceled and completed at `now`, returning the number of
   rows updated."
-  [thread-id now]
+  [thread-id :- ms/PositiveInt
+   now       :- ms/TemporalInstant]
   (t2/update! :model/ExplorationThread
               :id           thread-id
               :completed_at nil
               {:canceled_at  now
                :completed_at now}))
 
-(defn reset-terminal-thread!
+(mu/defn reset-terminal-thread! :- :int
   "Reset the terminal ExplorationThread with `thread-id` to freshly started at `started-at`, if no query of it is
   still running. Returns the number of rows updated."
-  [thread-id started-at]
+  [thread-id  :- ms/PositiveInt
+   started-at :- ms/TemporalInstant]
   (t2/query-one {:update :exploration_thread
                  :set    {:started_at            started-at
                           :query_plan_started_at nil
@@ -217,10 +263,11 @@
                                                                   [:= :exploration_thread_id thread-id]
                                                                   [:= :status "running"]]}]]}))
 
-(defn claim-thread-analysis!
+(mu/defn claim-thread-analysis! :- :int
   "Stamp the analysis start and completion of the ExplorationThread with `thread-id` at `now` if it has not been
   claimed, canceled, or left with pending queries. Returns the number of rows updated."
-  [thread-id now]
+  [thread-id :- ms/PositiveInt
+   now       :- ms/TemporalInstant]
   (t2/query-one {:update :exploration_thread
                  :set    {:analysis_started_at now
                           :completed_at        now}
@@ -236,153 +283,177 @@
 
 ;;; ------------------------------------------------- Blocks -------------------------------------------------
 
-(defn block
+(mu/defn block :- [:maybe (ms/InstanceOf :model/ExplorationBlock)]
   "The ExplorationBlock with `block-id`, or nil."
-  [block-id]
+  [block-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationBlock :id block-id))
 
-(defn block-thread-id-row
+(mu/defn block-thread-id-row :- [:maybe (ms/InstanceOf :model/ExplorationBlock)]
   "The `:exploration_thread_id` row of the ExplorationBlock with `block-id`, or nil."
-  [block-id]
+  [block-id :- ms/PositiveInt]
   (t2/select-one [:model/ExplorationBlock :exploration_thread_id] :id block-id))
 
-(defn block-metrics
+(mu/defn block-metrics :- :any
   "The metric selections of the ExplorationBlock with `block-id`."
-  [block-id]
+  [block-id :- ms/PositiveInt]
   (t2/select-one-fn :metrics :model/ExplorationBlock :id block-id))
 
-(defn block-for-page
+(mu/defn block-for-page :- [:maybe (ms/InstanceOf :model/ExplorationBlock)]
   "The ExplorationBlock owning the ExplorationPage with `page-id`, or nil."
-  [page-id]
+  [page-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationBlock
                  {:join  [[:exploration_page :p] [:= :p.exploration_block_id :exploration_block.id]]
                   :where [:= :p.id page-id]}))
 
-(defn blocks-for-thread
+(mu/defn blocks-for-thread :- [:sequential (ms/InstanceOf :model/ExplorationBlock)]
   "The ExplorationBlocks of the ExplorationThread with `thread-id`, in position order."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/select :model/ExplorationBlock :exploration_thread_id thread-id {:order-by [[:position :asc] [:id :asc]]}))
 
-(defn blocks-for-threads
+(mu/defn blocks-for-threads :- [:sequential (ms/InstanceOf :model/ExplorationBlock)]
   "The ExplorationBlocks of the ExplorationThreads with `thread-ids`, in position order."
-  [thread-ids]
+  [thread-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/ExplorationBlock
              :exploration_thread_id [:in thread-ids]
              {:order-by [[:position :asc] [:id :asc]]}))
 
-(defn block-metrics-for-threads-newest-first
+(mu/defn block-metrics-for-threads-newest-first :- [:sequential (ms/InstanceOf :model/ExplorationBlock)]
   "The thread ID and metric selections of the ExplorationBlocks of the ExplorationThreads with `thread-ids`, in
   reverse position order."
-  [thread-ids]
+  [thread-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:model/ExplorationBlock :exploration_thread_id :metrics]
              :exploration_thread_id [:in thread-ids]
              {:order-by [[:position :desc] [:id :desc]]}))
 
-(defn block-ids-for-thread
+(mu/defn block-ids-for-thread :- [:maybe [:sequential ms/PositiveInt]]
   "The IDs of the ExplorationBlocks of the ExplorationThread with `thread-id`."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/select-pks-vec :model/ExplorationBlock :exploration_thread_id thread-id))
 
-(defn insert-blocks!
+(mu/defn insert-blocks! :- :int
   "Insert one ExplorationBlock map or a sequence of them."
-  [blocks]
+  [blocks :- (let [row [:map {:closed true}
+                        [:id                    {:optional true} :any]
+                        [:exploration_thread_id {:optional true} :any]
+                        [:metrics               {:optional true} :any]
+                        [:dimensions            {:optional true} :any]
+                        [:position              {:optional true} :any]
+                        [:created_at            {:optional true} :any]
+                        [:updated_at            {:optional true} :any]]]
+               [:or row [:seqable row]])]
   (t2/insert! :model/ExplorationBlock blocks))
 
 ;;; -------------------------------------------------- Pages --------------------------------------------------
 
-(defn page
+(mu/defn page :- [:maybe (ms/InstanceOf :model/ExplorationPage)]
   "The ExplorationPage with `page-id`, or nil."
-  [page-id]
+  [page-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationPage :id page-id))
 
-(defn page-block-id-row
+(mu/defn page-block-id-row :- [:maybe (ms/InstanceOf :model/ExplorationPage)]
   "The `:exploration_block_id` row of the ExplorationPage with `page-id`, or nil."
-  [page-id]
+  [page-id :- ms/PositiveInt]
   (t2/select-one [:model/ExplorationPage :exploration_block_id] :id page-id))
 
-(defn page-block-id
+(mu/defn page-block-id :- [:maybe ms/PositiveInt]
   "The block ID of the ExplorationPage with `page-id`."
-  [page-id]
+  [page-id :- ms/PositiveInt]
   (t2/select-one-fn :exploration_block_id :model/ExplorationPage :id page-id))
 
-(defn page-id-for-key
+(mu/defn page-id-for-key :- [:maybe ms/PositiveInt]
   "The ID of the ExplorationPage of the given block, Card, dimension, and query type, or nil."
-  [block-id card-id dimension-id query-type]
+  [block-id     :- ms/PositiveInt
+   card-id      :- [:maybe ms/PositiveInt]
+   dimension-id :- :any
+   query-type   :- [:maybe :string]]
   (t2/select-one-pk :model/ExplorationPage
                     :exploration_block_id block-id
                     :card_id              card-id
                     :dimension_id         dimension-id
                     :query_type           query-type))
 
-(defn pages-for-blocks
+(mu/defn pages-for-blocks :- [:sequential (ms/InstanceOf :model/ExplorationPage)]
   "The ExplorationPages of the ExplorationBlocks with `block-ids`."
-  [block-ids]
+  [block-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/ExplorationPage :exploration_block_id [:in block-ids]))
 
-(defn page-ids-for-blocks
+(mu/defn page-ids-for-blocks :- [:maybe [:sequential ms/PositiveInt]]
   "The IDs of the ExplorationPages of the ExplorationBlocks with `block-ids`."
-  [block-ids]
+  [block-ids :- [:seqable ms/PositiveInt]]
   (t2/select-pks-vec :model/ExplorationPage :exploration_block_id [:in block-ids]))
 
-(defn starred-page-ids
+(mu/defn starred-page-ids :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the starred ExplorationPages among `page-ids`."
-  [page-ids]
+  [page-ids :- [:seqable ms/PositiveInt]]
   (t2/select-pks-set :model/ExplorationPage :id [:in page-ids] :starred true))
 
-(defn page-thread-ids
+(mu/defn page-thread-ids :- [:sequential [:map {:closed true} [:id ms/PositiveInt] [:thread_id ms/PositiveInt]]]
   "Rows of ExplorationPage `:id` and the `:thread_id` of its block, for the ExplorationThreads with `thread-ids`."
-  [thread-ids]
+  [thread-ids :- [:seqable ms/PositiveInt]]
   (t2/query {:select [[:p.id :id] [:b.exploration_thread_id :thread_id]]
              :from   [[:exploration_page :p]]
              :join   [[:exploration_block :b] [:= :b.id :p.exploration_block_id]]
              :where  [:in :b.exploration_thread_id thread-ids]}))
 
-(defn insert-page!
+(mu/defn insert-page! :- ms/PositiveInt
   "Insert `page` and return its ID."
-  [page]
+  [page :- [:map {:closed true}
+            [:id                    {:optional true} :any]
+            [:entity_id             {:optional true} :any]
+            [:exploration_block_id  {:optional true} :any]
+            [:card_id               {:optional true} :any]
+            [:dimension_id          {:optional true} :any]
+            [:query_type            {:optional true} :any]
+            [:position              {:optional true} :any]
+            [:starred               {:optional true} :any]
+            [:hidden                {:optional true} :any]
+            [:created_at            {:optional true} :any]
+            [:updated_at            {:optional true} :any]]]
   (t2/insert-returning-pk! :model/ExplorationPage page))
 
-(defn update-page!
+(mu/defn update-page! :- :int
   "Apply `changes` to the ExplorationPage with `page-id`."
-  [page-id changes]
+  [page-id :- ms/PositiveInt
+   changes :- [:map {:closed true} [:starred :boolean]]]
   (t2/update! :model/ExplorationPage page-id changes))
 
-(defn update-pages!
+(mu/defn update-pages! :- :int
   "Apply `changes` to the ExplorationPages with `page-ids`."
-  [page-ids changes]
+  [page-ids :- [:seqable ms/PositiveInt]
+   changes  :- [:map {:closed true} [:hidden :boolean]]]
   (t2/update! :model/ExplorationPage :id [:in page-ids] changes))
 
-(defn delete-pages!
+(mu/defn delete-pages! :- :int
   "Delete the ExplorationPages with `page-ids`."
-  [page-ids]
+  [page-ids :- [:seqable ms/PositiveInt]]
   (t2/delete! :model/ExplorationPage :id [:in page-ids]))
 
 ;;; ------------------------------------------------- Queries -------------------------------------------------
 
-(defn query
+(mu/defn query :- [:maybe (ms/InstanceOf :model/ExplorationQuery)]
   "The ExplorationQuery with `query-id`, or nil."
-  [query-id]
+  [query-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationQuery :id query-id))
 
-(defn query-thread-id-row
+(mu/defn query-thread-id-row :- [:maybe (ms/InstanceOf :model/ExplorationQuery)]
   "The `:exploration_thread_id` row of the ExplorationQuery with `query-id`, or nil."
-  [query-id]
+  [query-id :- ms/PositiveInt]
   (t2/select-one [:model/ExplorationQuery :exploration_thread_id] :id query-id))
 
-(defn query-thread-id
+(mu/defn query-thread-id :- [:maybe ms/PositiveInt]
   "The thread ID of the ExplorationQuery with `query-id`."
-  [query-id]
+  [query-id :- ms/PositiveInt]
   (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery :id query-id))
 
-(defn finished-query-thread-id
+(mu/defn finished-query-thread-id :- [:maybe ms/PositiveInt]
   "The thread ID of the ExplorationQuery with `query-id` if it has finished, or nil."
-  [query-id]
+  [query-id :- ms/PositiveInt]
   (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery
                     :id query-id :status [:in ["done" "error" "canceled"]]))
 
-(defn runnable-query
+(mu/defn runnable-query :- [:maybe (ms/InstanceOf :model/ExplorationQuery)]
   "The pending ExplorationQuery with `query-id` on an uncanceled thread, or nil."
-  [query-id]
+  [query-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationQuery
                  {:select [:eq.*]
                   :from   [[:exploration_query :eq]]
@@ -392,30 +463,31 @@
                            [:= :eq.status "pending"]
                            [:= :et.canceled_at nil]]}))
 
-(defn queries-for-threads
+(mu/defn queries-for-threads :- [:sequential (ms/InstanceOf :model/ExplorationQuery)]
   "The ExplorationQueries of the ExplorationThreads with `thread-ids`, in position order."
-  [thread-ids]
+  [thread-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/ExplorationQuery
              :exploration_thread_id [:in thread-ids]
              {:order-by [[:position :asc] [:id :asc]]}))
 
-(defn lens-stamped-queries
+(mu/defn lens-stamped-queries :- [:sequential (ms/InstanceOf :model/ExplorationQuery)]
   "The ID, thread, Database, query, and data-access token of the ExplorationQueries with a query on the
   ExplorationThreads with `thread-ids`, in ID order."
-  [thread-ids]
+  [thread-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:model/ExplorationQuery :id :exploration_thread_id :database_id :dataset_query :data_access_token]
              :exploration_thread_id [:in thread-ids]
              :dataset_query [:not= nil]
              {:order-by [[:id :asc]]}))
 
-(defn thread-has-queries?
+(mu/defn thread-has-queries? :- :boolean
   "Whether the ExplorationThread with `thread-id` has any ExplorationQuery."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/exists? :model/ExplorationQuery :exploration_thread_id thread-id))
 
-(defn query-count-in-exploration
+(mu/defn query-count-in-exploration :- ms/IntGreaterThanOrEqualToZero
   "The number of ExplorationQueries among `query-ids` belonging to the Exploration with `exploration-id`."
-  [exploration-id query-ids]
+  [exploration-id :- ms/PositiveInt
+   query-ids      :- [:seqable ms/PositiveInt]]
   (t2/count :model/ExplorationQuery
             {:where [:and
                      [:in :id query-ids]
@@ -424,12 +496,12 @@
                                         :from   [:exploration_thread]
                                         :where  [:= :exploration_id exploration-id]}]]}))
 
-(defn pending-query-count
+(mu/defn pending-query-count :- ms/IntGreaterThanOrEqualToZero
   "The number of pending ExplorationQueries."
   []
   (t2/count :model/ExplorationQuery :status "pending"))
 
-(defn oldest-pending-query-created-at
+(mu/defn oldest-pending-query-created-at :- [:maybe ms/TemporalInstant]
   "The creation time of the oldest pending ExplorationQuery, or nil."
   []
   (t2/select-one-fn :created_at :model/ExplorationQuery
@@ -437,15 +509,15 @@
                      :order-by [[:created_at :asc]]
                      :limit    1}))
 
-(defn pending-query-ids-for-thread
+(mu/defn pending-query-ids-for-thread :- [:maybe [:sequential ms/PositiveInt]]
   "The IDs of the pending ExplorationQueries of the ExplorationThread with `thread-id`."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/select-pks-vec :model/ExplorationQuery :exploration_thread_id thread-id :status "pending"))
 
-(defn lock-pending-query-ids-for-thread
+(mu/defn lock-pending-query-ids-for-thread :- [:sequential ms/PositiveInt]
   "The ids of the pending ExplorationQueries of the ExplorationThread with `thread-id`, locked for
   update (`SKIP LOCKED` outside H2, whose single-worker model neither needs nor supports it)."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (map :id (t2/query (cond-> {:select [:id]
                               :from   [:exploration_query]
                               :where  [:and
@@ -453,98 +525,141 @@
                                        [:= :status "pending"]]}
                        (not= :h2 (mdb/db-type)) (assoc :for [:update :skip-locked])))))
 
-(defn page-ids-with-queries
+(mu/defn page-ids-with-queries :- [:maybe [:set ms/PositiveInt]]
   "The subset of `page-ids` that some ExplorationQuery points at."
-  [page-ids]
+  [page-ids :- [:seqable ms/PositiveInt]]
   (t2/select-fn-set :page_id :model/ExplorationQuery :page_id [:in page-ids]))
 
-(defn insert-queries!
+(mu/defn insert-queries! :- :int
   "Insert the ExplorationQuery `rows`."
-  [rows]
+  [rows :- [:seqable
+            [:map {:closed true}
+             [:id                     {:optional true} :any]
+             [:exploration_thread_id  {:optional true} :any]
+             [:page_id                {:optional true} :any]
+             [:name                   {:optional true} :any]
+             [:card_id                {:optional true} :any]
+             [:database_id            {:optional true} :any]
+             [:segment_id             {:optional true} :any]
+             [:dimension_id           {:optional true} :any]
+             [:query_type             {:optional true} :any]
+             [:display                {:optional true} :any]
+             [:visualization_settings {:optional true} :any]
+             [:dataset_query          {:optional true} :any]
+             [:params                 {:optional true} :any]
+             [:position               {:optional true} :any]
+             [:status                 {:optional true} :any]
+             [:error_message          {:optional true} :any]
+             [:started_at             {:optional true} :any]
+             [:finished_at            {:optional true} :any]
+             [:entity_id              {:optional true} :any]
+             [:created_at             {:optional true} :any]
+             [:updated_at             {:optional true} :any]
+             [:data_access_token      {:optional true} :any]]]]
   (t2/insert! :model/ExplorationQuery rows))
 
-(defn update-query!
+(mu/defn update-query! :- :int
   "Apply `changes` to the ExplorationQuery with `query-id`."
-  [query-id changes]
+  [query-id :- ms/PositiveInt
+   changes  :- [:map {:closed true}
+                [:dataset_query      {:optional true} :any]
+                [:name               {:optional true} :string]
+                [:data_access_token  {:optional true} :string]
+                [:status             {:optional true} :string]
+                [:started_at         {:optional true} ms/TemporalInstant]
+                [:finished_at        {:optional true} ms/TemporalInstant]]]
   (t2/update! :model/ExplorationQuery query-id changes))
 
-(defn fail-pending-query!
+(mu/defn fail-pending-query! :- :int
   "Mark the pending ExplorationQuery with `query-id` as errored with `message` at `finished-at`, returning the number
   of rows updated."
-  [query-id message finished-at]
+  [query-id    :- ms/PositiveInt
+   message     :- :string
+   finished-at :- ms/TemporalInstant]
   (t2/update! :model/ExplorationQuery
               {:id query-id, :status "pending"}
               {:status        "error"
                :error_message message
                :finished_at   finished-at}))
 
-(defn cancel-pending-queries-for-thread!
+(mu/defn cancel-pending-queries-for-thread! :- :int
   "Mark the pending ExplorationQueries of the ExplorationThread with `thread-id` canceled."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/update! :model/ExplorationQuery
               {:exploration_thread_id thread-id, :status "pending"}
               {:status "canceled"}))
 
-(defn cancel-queries!
-  "Mark the ExplorationQueries with `query-ids` canceled."
-  [query-ids]
+(mu/defn cancel-queries! :- [:sequential :int]
+  "Mark the ExplorationQueries with `query-ids` canceled, returning the affected-row count in a one-element vector."
+  [query-ids :- [:seqable ms/PositiveInt]]
   (t2/query {:update (t2/table-name :model/ExplorationQuery)
              :set    {:status "canceled"}
              :where  [:in :id query-ids]}))
 
-(defn delete-queries-for-thread!
+(mu/defn delete-queries-for-thread! :- :int
   "Delete the ExplorationQueries of the ExplorationThread with `thread-id`."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/delete! :model/ExplorationQuery :exploration_thread_id thread-id))
 
 ;;; ---------------------------------------------- Query results ----------------------------------------------
 
-(defn query-result
+(mu/defn query-result :- [:maybe (ms/InstanceOf :model/ExplorationQueryResult)]
   "The ExplorationQueryResult of the ExplorationQuery with `query-id`, or nil."
-  [query-id]
+  [query-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationQueryResult :exploration_query_id query-id))
 
-(defn query-result-stored-result-id
+(mu/defn query-result-stored-result-id :- [:maybe ms/PositiveInt]
   "The stored result ID of the ExplorationQueryResult of the ExplorationQuery with `query-id`."
-  [query-id]
+  [query-id :- ms/PositiveInt]
   (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult :exploration_query_id query-id))
 
-(defn query-result-exists?
+(mu/defn query-result-exists? :- :boolean
   "Whether the ExplorationQuery with `query-id` has an ExplorationQueryResult."
-  [query-id]
+  [query-id :- ms/PositiveInt]
   (t2/exists? :model/ExplorationQueryResult :exploration_query_id query-id))
 
-(defn query-result-scores
+(mu/defn query-result-scores :- [:sequential (ms/InstanceOf :model/ExplorationQueryResult)]
   "The query ID and `score-column` of the ExplorationQueryResults of the ExplorationQueries with `query-ids`."
-  [score-column query-ids]
+  [score-column :- :keyword
+   query-ids    :- [:seqable ms/PositiveInt]]
   (t2/select [:model/ExplorationQueryResult :exploration_query_id score-column]
              :exploration_query_id [:in query-ids]))
 
-(defn query-result-row-counts
+(mu/defn query-result-row-counts :- [:sequential (ms/InstanceOf :model/ExplorationQueryResult)]
   "The query ID and stored row count of the ExplorationQueryResults of the ExplorationQueries with `query-ids`."
-  [query-ids]
+  [query-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:model/ExplorationQueryResult
               :exploration_query_result.exploration_query_id
               [:stored_result.row_count :row_count]]
              {:join  [:stored_result [:= :stored_result.id :exploration_query_result.stored_result_id]]
               :where [:in :exploration_query_result.exploration_query_id query-ids]}))
 
-(defn insert-query-result!
+(mu/defn insert-query-result! :- :int
   "Insert `query-result`."
-  [query-result]
+  [query-result :- [:map {:closed true}
+                    [:id                                {:optional true} :any]
+                    [:exploration_query_id               {:optional true} :any]
+                    [:stored_result_id                   {:optional true} :any]
+                    [:created_at                         {:optional true} :any]
+                    [:interestingness_score               {:optional true} :any]
+                    [:contextual_interestingness_score    {:optional true} :any]
+                    [:chart_stats                         {:optional true} :any]
+                    [:metric_description                  {:optional true} :any]
+                    [:chart_description                   {:optional true} :any]]]
   (t2/insert! :model/ExplorationQueryResult query-result))
 
 ;;; ---------------------------------------------- Stored results ----------------------------------------------
 
-(defn stored-result
+(mu/defn stored-result :- [:maybe (ms/InstanceOf :model/StoredResult)]
   "The StoredResult with `stored-result-id`, or nil."
-  [stored-result-id]
+  [stored-result-id :- ms/PositiveInt]
   (t2/select-one :model/StoredResult :id stored-result-id))
 
-(defn orphaned-stored-result-ids
+(mu/defn orphaned-stored-result-ids :- [:sequential [:map {:closed true} [:id ms/PositiveInt]]]
   "Up to `limit` `:id` rows of the StoredResults created before `created-before` that no ExplorationQueryResult or
   Card embed reaches, in ID order."
-  [created-before limit]
+  [created-before :- ms/TemporalInstant
+   limit          :- ms/PositiveInt]
   (t2/query {:select   [:sr.id]
              :from     [[:stored_result :sr]]
              :where    [:and
@@ -560,55 +675,70 @@
              :order-by [[:sr.id :asc]]
              :limit    limit}))
 
-(defn insert-stored-result!
+(mu/defn insert-stored-result! :- ms/PositiveInt
   "Insert `stored-result` and return its ID."
-  [stored-result]
+  [stored-result :- [:map {:closed true}
+                     [:id                {:optional true} :any]
+                     [:result_data       {:optional true} :any]
+                     [:creator_id        {:optional true} :any]
+                     [:database_id       {:optional true} :any]
+                     [:dataset_query     {:optional true} :any]
+                     [:data_access_token {:optional true} :any]
+                     [:row_count         {:optional true} :any]
+                     [:created_at        {:optional true} :any]
+                     [:updated_at        {:optional true} :any]]]
   (first (t2/insert-returning-pks! :model/StoredResult stored-result)))
 
-(defn insert-stored-result-use!
+(mu/defn insert-stored-result-use! :- :int
   "Insert `stored-result-use`."
-  [stored-result-use]
+  [stored-result-use :- [:map {:closed true}
+                         [:id                {:optional true} :any]
+                         [:stored_result_id   {:optional true} :any]
+                         [:exploration_id     {:optional true} :any]
+                         [:created_at         {:optional true} :any]
+                         [:updated_at         {:optional true} :any]
+                         [:card_id            {:optional true} :any]]]
   (t2/insert! :model/StoredResultUse stored-result-use))
 
-(defn delete-stored-results!
+(mu/defn delete-stored-results! :- :int
   "Delete the StoredResults with `stored-result-ids`, returning the number deleted."
-  [stored-result-ids]
+  [stored-result-ids :- [:seqable ms/PositiveInt]]
   (t2/delete! :model/StoredResult :id [:in stored-result-ids]))
 
 ;;; ------------------------------------------------ Timelines ------------------------------------------------
 
-(defn timelines
+(mu/defn timelines :- [:sequential (ms/InstanceOf :model/Timeline)]
   "The Timelines with `timeline-ids`."
-  [timeline-ids]
+  [timeline-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/Timeline :id [:in timeline-ids]))
 
-(defn thread-timelines-for-threads
+(mu/defn thread-timelines-for-threads :- [:sequential (ms/InstanceOf :model/ExplorationThreadTimeline)]
   "The ExplorationThreadTimelines of the ExplorationThreads with `thread-ids`, in position order."
-  [thread-ids]
+  [thread-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/ExplorationThreadTimeline
              :exploration_thread_id [:in thread-ids]
              {:order-by [[:position :asc] [:id :asc]]}))
 
-(defn thread-timeline-ids
+(mu/defn thread-timeline-ids :- [:maybe [:sequential ms/PositiveInt]]
   "The Timeline IDs selected on the ExplorationThread with `thread-id`, in position order."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/select-fn-vec :timeline_id :model/ExplorationThreadTimeline
                     :exploration_thread_id thread-id
                     {:order-by [[:position :asc] [:id :asc]]}))
 
-(defn thread-timeline-names
+(mu/defn thread-timeline-names :- [:sequential [:map {:closed true} [:name [:maybe :string]]]]
   "The `:name` rows of the Timelines selected on the ExplorationThread with `thread-id`, in position order."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/query {:select    [[:t.name :name]]
              :from      [[:exploration_thread_timeline :ett]]
              :left-join [[:timeline :t] [:= :t.id :ett.timeline_id]]
              :where     [:= :ett.exploration_thread_id thread-id]
              :order-by  [[:ett.position :asc]]}))
 
-(defn thread-timeline-event-rows
+(mu/defn thread-timeline-event-rows :- [:sequential :map]
   "The Timelines selected on the ExplorationThread with `thread-id` joined to their unarchived events, ordered by
   position and event timestamp."
-  [thread-id]
+  [thread-id :- ms/PositiveInt]
   (t2/query {:select    [[:t.id :timeline_id]
                          [:t.name :timeline_name]
                          [:t.description :timeline_description]
@@ -626,61 +756,88 @@
              :where     [:= :ett.exploration_thread_id thread-id]
              :order-by  [[:ett.position :asc] [:te.timestamp :asc]]}))
 
-(defn insert-thread-timelines!
+(mu/defn insert-thread-timelines! :- :int
   "Insert the ExplorationThreadTimeline `rows`."
-  [rows]
+  [rows :- [:seqable
+            [:map {:closed true}
+             [:id                    {:optional true} :any]
+             [:exploration_thread_id {:optional true} :any]
+             [:timeline_id           {:optional true} :any]
+             [:position              {:optional true} :any]
+             [:created_at            {:optional true} :any]
+             [:updated_at            {:optional true} :any]]]]
   (t2/insert! :model/ExplorationThreadTimeline rows))
 
 ;;; ------------------------------------------------ Documents ------------------------------------------------
 
-(defn summary-document-columns
+(mu/defn summary-document-columns :- [:maybe (ms/InstanceOf :model/Document)]
   "The wire-shape columns of the Document with `document-id`, or nil."
-  [document-id]
+  [document-id :- ms/PositiveInt]
   (t2/select-one [:model/Document
                   :id :name :exploration_id :creator_id :content_type
                   :created_at :updated_at :archived :is_placeholder]
                  :id document-id))
 
-(defn summary-documents-for-explorations
+(mu/defn summary-documents-for-explorations :- [:sequential (ms/InstanceOf :model/Document)]
   "The wire-shape columns of the Summary Documents of the Explorations with `exploration-ids`, oldest first."
-  [exploration-ids]
+  [exploration-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:model/Document
               :id :name :exploration_id :creator_id :content_type
               :created_at :updated_at :archived :is_placeholder]
              :exploration_id [:in exploration-ids]
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
-(defn unarchived-summary-document
+(mu/defn unarchived-summary-document :- [:maybe (ms/InstanceOf :model/Document)]
   "The unarchived Summary Document of the Exploration with `exploration-id`, or nil."
-  [exploration-id]
+  [exploration-id :- ms/PositiveInt]
   (t2/select-one :model/Document :exploration_id exploration-id :archived false))
 
-(defn document-exploration-id
+(mu/defn document-exploration-id :- [:maybe ms/PositiveInt]
   "The Exploration ID of the Document with `document-id`."
-  [document-id]
+  [document-id :- ms/PositiveInt]
   (t2/select-one-fn :exploration_id :model/Document :id document-id))
 
-(defn insert-document!
+(mu/defn insert-document! :- :int
   "Insert `document`."
-  [document]
+  [document :- [:map {:closed true}
+                [:id                  {:optional true} :any]
+                [:name                {:optional true} :any]
+                [:created_at          {:optional true} :any]
+                [:document            {:optional true} :any]
+                [:content_type        {:optional true} :any]
+                [:creator_id          {:optional true} :any]
+                [:updated_at          {:optional true} :any]
+                [:collection_id       {:optional true} :any]
+                [:archived            {:optional true} :any]
+                [:archived_directly   {:optional true} :any]
+                [:entity_id           {:optional true} :any]
+                [:last_viewed_at      {:optional true} :any]
+                [:view_count          {:optional true} :any]
+                [:collection_position {:optional true} :any]
+                [:public_uuid         {:optional true} :any]
+                [:made_public_by_id   {:optional true} :any]
+                [:public_uuid_prefix  {:optional true} :any]
+                [:exploration_id      {:optional true} :any]
+                [:is_placeholder      {:optional true} :any]]]
   (t2/insert! :model/Document document))
 
-(defn move-summary-documents!
+(mu/defn move-summary-documents! :- :int
   "Move the Summary Documents of the Exploration with `exploration-id` to the Collection with `collection-id`."
-  [exploration-id collection-id]
+  [exploration-id :- ms/PositiveInt
+   collection-id  :- [:maybe ms/PositiveInt]]
   (t2/update! :model/Document :exploration_id exploration-id {:collection_id collection-id}))
 
-(defn archive-summary-documents!
+(mu/defn archive-summary-documents! :- :int
   "Archive the unarchived Summary Documents of the Exploration with `exploration-id` as not archived directly."
-  [exploration-id]
+  [exploration-id :- ms/PositiveInt]
   (t2/update! :model/Document
               :exploration_id exploration-id
               :archived       false
               {:archived true, :archived_directly false}))
 
-(defn unarchive-summary-documents!
+(mu/defn unarchive-summary-documents! :- :int
   "Unarchive the Summary Documents of the Exploration with `exploration-id` that were archived with it."
-  [exploration-id]
+  [exploration-id :- ms/PositiveInt]
   (t2/update! :model/Document
               :exploration_id    exploration-id
               :archived          true
@@ -689,43 +846,44 @@
 
 ;;; ------------------------------------------------ Other models ------------------------------------------------
 
-(defn card
+(mu/defn card :- [:maybe (ms/InstanceOf :model/Card)]
   "The Card with `card-id`, or nil."
-  [card-id]
+  [card-id :- ms/PositiveInt]
   (t2/select-one :model/Card :id card-id))
 
-(defn card-names
+(mu/defn card-names :- [:sequential (ms/InstanceOf :model/Card)]
   "The ID and name of the Cards with `card-ids`."
-  [card-ids]
+  [card-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:model/Card :id :name] :id [:in card-ids]))
 
-(defn card-description
+(mu/defn card-description :- [:maybe :string]
   "The description of the Card with `card-id`."
-  [card-id]
+  [card-id :- ms/PositiveInt]
   (t2/select-one-fn :description :model/Card :id card-id))
 
-(defn card-presentation
+(mu/defn card-presentation :- [:maybe (ms/InstanceOf :model/Card)]
   "The name, description, display, and visualization settings of the Card with `card-id`, or nil."
-  [card-id]
+  [card-id :- ms/PositiveInt]
   (t2/select-one [:model/Card :name :description :display :visualization_settings] :id card-id))
 
-(defn card-queries
+(mu/defn card-queries :- [:sequential (ms/InstanceOf :model/Card)]
   "The ID, schema, Database, and query of the Cards with `card-ids`."
-  [card-ids]
+  [card-ids :- [:seqable ms/PositiveInt]]
   (t2/select [:model/Card :id :card_schema :database_id :dataset_query] :id [:in card-ids]))
 
-(defn metric-cards-by-id
+(mu/defn metric-cards-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/Card)]
   "A map of ID to the planner columns of the Cards with `card-ids`."
-  [card-ids]
+  [card-ids :- [:seqable ms/PositiveInt]]
   (t2/select-pk->fn identity
                     [:model/Card :id :name :description :database_id :dataset_query :card_schema :dimensions
                      :dimension_mappings]
                     :id [:in card-ids]))
 
-(defn metric-card-ids
+(mu/defn metric-card-ids :- [:sequential (ms/InstanceOf :model/Card)]
   "The `:id`s of the Cards visible to the current user as metrics, restricted to `metric-ids` when
   non-empty, with those in `library-collection-ids` sorted first and then alphabetically by name."
-  [metric-ids library-collection-ids]
+  [metric-ids             :- [:maybe [:seqable ms/PositiveInt]]
+   library-collection-ids :- [:maybe [:seqable ms/PositiveInt]]]
   (t2/select [:model/Card :id]
              {:where    (cond-> (queries/visible-metric-cards-where-clause)
                           (seq metric-ids) (as-> where [:and where [:in :id (vec metric-ids)]]))
@@ -741,39 +899,39 @@
   [:id :name :description :collection_id :database_id :table_id :type :entity_id
    :card_schema :dataset_query :dimensions :dimension_mappings])
 
-(defn metric-cards-for-explorations
+(mu/defn metric-cards-for-explorations :- [:sequential (ms/InstanceOf :model/Card)]
   "The exploration-relevant columns of the metric Cards with `card-ids`."
-  [card-ids]
+  [card-ids :- [:seqable ms/PositiveInt]]
   (t2/select (into [:model/Card] exploration-card-columns) :id [:in card-ids] :type "metric"))
 
-(defn cards-for-explorations
+(mu/defn cards-for-explorations :- [:sequential (ms/InstanceOf :model/Card)]
   "The exploration-relevant columns of the Cards with `card-ids`."
-  [card-ids]
+  [card-ids :- [:seqable ms/PositiveInt]]
   (t2/select (into [:model/Card] exploration-card-columns) :id [:in card-ids]))
 
-(defn library-metrics-root-collection
+(mu/defn library-metrics-root-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "The ID and location of the library metrics Collection of `type`, or nil."
-  [type]
+  [type :- :string]
   (t2/select-one [:model/Collection :id :location] :type type))
 
-(defn segment-names
+(mu/defn segment-names :- [:map-of ms/PositiveInt [:maybe :string]]
   "A map of ID to name for the Segments with `segment-ids`."
-  [segment-ids]
+  [segment-ids :- [:seqable ms/PositiveInt]]
   (t2/select-pk->fn :name [:model/Segment :id :name] :id [:in segment-ids]))
 
-(defn segment-name
+(mu/defn segment-name :- [:maybe :string]
   "The name of the Segment with `segment-id`."
-  [segment-id]
+  [segment-id :- ms/PositiveInt]
   (t2/select-one-fn :name :model/Segment :id segment-id))
 
-(defn user-summaries-by-id
+(mu/defn user-summaries-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/User)]
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
-  [user-ids]
+  [user-ids :- [:seqable ms/PositiveInt]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
-(defn live-comment-targets
+(mu/defn live-comment-targets :- [:maybe [:set :string]]
   "The child target IDs of the live exploration Comments anchored to one of `child-target-ids`."
-  [child-target-ids]
+  [child-target-ids :- [:seqable :string]]
   (t2/select-fn-set :child_target_id :model/Comment
                     :target_type     "exploration"
                     :child_target_id [:in child-target-ids]

@@ -2,56 +2,66 @@
   "Application database queries for the sample data module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn sample-database-exists?
+(mu/defn sample-database-exists? :- :boolean
   "Whether a sample Database exists."
   []
   (t2/exists? :model/Database :is_sample true))
 
-(defn sample-database
+(mu/defn sample-database :- [:maybe (ms/InstanceOf :model/Database)]
   "The sample Database, or nil."
   []
   (t2/select-one :model/Database :is_sample true))
 
-(defn sample-database-id
+(mu/defn sample-database-id :- [:maybe ms/PositiveInt]
   "The id of the sample Database, or nil."
   []
   (t2/select-one-pk :model/Database :is_sample true))
 
-(defn database
+(mu/defn database :- [:maybe (ms/InstanceOf :model/Database)]
   "The Database with `database-id`, or nil."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/select-one :model/Database database-id))
 
-(defn set-sample-database-details!
+(mu/defn set-sample-database-details! :- [:sequential ms/PositiveInt]
   "Set the `details` of the sample Database, returning the ids of the updated rows."
-  [details]
+  [details :- :map]
   (t2/update-returning-pks! :model/Database :is_sample true {:details details}))
 
-(defn insert-sample-database!
+(mu/defn insert-sample-database! :- (ms/InstanceOf :model/Database)
   "Insert the sample Database and return the inserted instance."
-  [database-name details engine]
+  [database-name :- :string
+   details       :- :map
+   engine        :- :keyword]
   (t2/insert-returning-instance! :model/Database
                                  :name      database-name
                                  :details   details
                                  :engine    engine
                                  :is_sample true))
 
-(defn update-database!
-  "Apply `changes` to the Database with `database-id`."
-  [database-id changes]
+(mu/defn update-database! :- :int
+  "Apply `changes` to the Database with `database-id`, returning the number updated."
+  [database-id :- ms/PositiveInt
+   changes     :- [:map {:closed true}
+                   [:engine   {:optional true} :keyword]
+                   [:details  {:optional true} :map]
+                   [:settings {:optional true} [:maybe :map]]]]
   (t2/update! :model/Database database-id changes))
 
-(defn set-database-tables-schema!
-  "Set the `schema` of every Table of the Database with `database-id`."
-  [database-id schema]
+(mu/defn set-database-tables-schema! :- :int
+  "Set the `schema` of every Table of the Database with `database-id`, returning the number updated."
+  [database-id :- ms/PositiveInt
+   schema      :- [:maybe :string]]
   (t2/update! :model/Table :db_id database-id {:schema schema}))
 
-(defn set-database-table-permissions-schema-name!
+(mu/defn set-database-table-permissions-schema-name! :- [:sequential :int]
   "Set the `schema_name` of the table-level DataPermissions rows of the Database with `database-id`, via a raw table
   update because the model's before-update rejects all updates."
-  [database-id schema-name]
+  [database-id :- ms/PositiveInt
+   schema-name :- [:maybe :string]]
   (t2/query {:update (t2/table-name :model/DataPermissions)
              :set    {:schema_name schema-name}
              :where  [:and

@@ -4,6 +4,8 @@
   (:require
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- default-group-ids
@@ -19,19 +21,20 @@
     [:not-in :group_id (default-group-ids)]
     [:in :group_id (conj (default-group-ids) (u/the-id (perms/admin-group)))]))
 
-(defn all-groups
+(mu/defn all-groups :- [:sequential (ms/InstanceOf :model/PermissionsGroup)]
   "Every PermissionsGroup, in ID order."
   []
   (t2/select :model/PermissionsGroup {:order-by [[:id :asc]]}))
 
-(defn all-stored-permissions
+(mu/defn all-stored-permissions :- [:sequential (ms/InstanceOf :model/MetabotPermissions)]
   "Every MetabotPermissions row, ordered by group and permission type."
   []
   (t2/select :model/MetabotPermissions {:order-by [[:group_id :asc] [:perm_type :asc]]}))
 
-(defn visible-permissions-for-user
+(mu/defn visible-permissions-for-user :- [:sequential (ms/InstanceOf :model/MetabotPermissions)]
   "The MetabotPermissions rows of the groups of the User with `user-id` that the mode selected by `advanced?` shows."
-  [user-id advanced?]
+  [user-id   :- ms/PositiveInt
+   advanced? :- :boolean]
   (t2/select :model/MetabotPermissions
              {:where [:and
                       [:in :group_id
@@ -41,40 +44,47 @@
                         :where  [:= :user_id user-id]}]
                       (visible-groups-expr advanced?)]}))
 
-(defn permission-exists?
+(mu/defn permission-exists? :- :boolean
   "Whether the group with `group-id` has a MetabotPermissions row of `perm-type`."
-  [group-id perm-type]
+  [group-id  :- ms/PositiveInt
+   perm-type :- :keyword]
   (t2/exists? :model/MetabotPermissions :group_id group-id :perm_type perm-type))
 
-(defn update-permission-value!
+(mu/defn update-permission-value! :- :int
   "Set the value of the MetabotPermissions row of `perm-type` for the group with `group-id`."
-  [group-id perm-type perm-value]
+  [group-id   :- ms/PositiveInt
+   perm-type  :- :keyword
+   perm-value :- :keyword]
   (t2/update! :model/MetabotPermissions {:group_id group-id :perm_type perm-type} {:perm_value perm-value}))
 
-(defn insert-permission!
+(mu/defn insert-permission! :- :int
   "Insert the MetabotPermissions `row`."
-  [row]
+  [row :- [:map {:closed true}
+           [:id         {:optional true} :any]
+           [:group_id   {:optional true} :any]
+           [:perm_type  {:optional true} :any]
+           [:perm_value {:optional true} :any]]]
   (t2/insert! :model/MetabotPermissions row))
 
-(defn delete-hidden-group-permissions!
+(mu/defn delete-hidden-group-permissions! :- :int
   "Delete the MetabotPermissions rows of the groups the mode selected by `advanced?` hides."
-  [advanced?]
+  [advanced? :- :boolean]
   (t2/delete! :model/MetabotPermissions {:where [:not (visible-groups-expr advanced?)]}))
 
-(defn group-limits
+(mu/defn group-limits :- [:sequential (ms/InstanceOf :model/MetabotGroupLimit)]
   "Every MetabotGroupLimit, in group order."
   []
   (t2/select :model/MetabotGroupLimit {:order-by [[:group_id :asc]]}))
 
-(defn group-limit
+(mu/defn group-limit :- [:maybe (ms/InstanceOf :model/MetabotGroupLimit)]
   "The MetabotGroupLimit of the group with `group-id`, or nil."
-  [group-id]
+  [group-id :- ms/PositiveInt]
   (t2/select-one :model/MetabotGroupLimit :group_id group-id))
 
-(defn max-usage-for-user
+(mu/defn max-usage-for-user :- [:map {:closed true} [:max_usage [:maybe :int]]]
   "The `:max_usage` row holding the largest group limit of the User with `user-id`, or nil if any of their groups
   is unlimited."
-  [user-id]
+  [user-id :- ms/PositiveInt]
   (t2/query-one {:select    [[[:case
                                [:= [[:count :*]] [[:count :gl.max_usage]]]
                                [[:max :gl.max_usage]]]
@@ -83,49 +93,72 @@
                  :left-join [[:metabot_group_limit :gl] [:= :pgm.group_id :gl.group_id]]
                  :where     [:= :pgm.user_id user-id]}))
 
-(defn insert-group-limit!
+(mu/defn insert-group-limit! :- :int
   "Insert the MetabotGroupLimit `row`."
-  [row]
+  [row :- [:map {:closed true}
+           [:id        {:optional true} :any]
+           [:group_id  {:optional true} :any]
+           [:max_usage {:optional true} :any]]]
   (t2/insert! :model/MetabotGroupLimit row))
 
-(defn update-group-limit!
+(mu/defn update-group-limit! :- :int
   "Set the maximum usage of the MetabotGroupLimit with `limit-id`."
-  [limit-id max-usage]
+  [limit-id  :- ms/PositiveInt
+   max-usage :- [:maybe :int]]
   (t2/update! :model/MetabotGroupLimit limit-id {:max_usage max-usage}))
 
-(defn delete-group-limit!
+(mu/defn delete-group-limit! :- :int
   "Delete the MetabotGroupLimit of the group with `group-id`."
-  [group-id]
+  [group-id :- ms/PositiveInt]
   (t2/delete! :model/MetabotGroupLimit :group_id group-id))
 
-(defn instance-limit
+(mu/defn instance-limit :- [:maybe (ms/InstanceOf :model/MetabotInstanceLimit)]
   "The MetabotInstanceLimit of the Tenant with `tenant-id` (nil for the instance-wide limit), or nil."
-  [tenant-id]
+  [tenant-id :- [:maybe ms/PositiveInt]]
   (t2/select-one :model/MetabotInstanceLimit :tenant_id tenant-id))
 
-(defn tenant-limits
+(mu/defn tenant-limits :- [:sequential (ms/InstanceOf :model/MetabotInstanceLimit)]
   "The MetabotInstanceLimits of tenants, ordered by tenant."
   []
   (t2/select :model/MetabotInstanceLimit :tenant_id [:not= nil] {:order-by [[:tenant_id :asc]]}))
 
-(defn insert-instance-limit!
+(mu/defn insert-instance-limit! :- :int
   "Insert the MetabotInstanceLimit `row`."
-  [row]
+  [row :- [:map {:closed true}
+           [:id        {:optional true} :any]
+           [:tenant_id {:optional true} :any]
+           [:max_usage {:optional true} :any]]]
   (t2/insert! :model/MetabotInstanceLimit row))
 
-(defn update-instance-limit!
+(mu/defn update-instance-limit! :- :int
   "Set the maximum usage of the MetabotInstanceLimit with `limit-id`."
-  [limit-id max-usage]
+  [limit-id  :- ms/PositiveInt
+   max-usage :- [:maybe :int]]
   (t2/update! :model/MetabotInstanceLimit limit-id {:max_usage max-usage}))
 
-(defn delete-instance-limit!
+(mu/defn delete-instance-limit! :- :int
   "Delete the MetabotInstanceLimit of the Tenant with `tenant-id`."
-  [tenant-id]
+  [tenant-id :- [:maybe ms/PositiveInt]]
   (t2/delete! :model/MetabotInstanceLimit :tenant_id tenant-id))
 
-(defn insert-usage-log!
+(mu/defn insert-usage-log! :- :int
   "Insert the AiUsageLog `row`."
-  [row]
+  [row :- [:map {:closed true}
+           [:id                    {:optional true} :any]
+           [:created_at            {:optional true} :any]
+           [:source                {:optional true} :any]
+           [:model                 {:optional true} :any]
+           [:prompt_tokens         {:optional true} :any]
+           [:completion_tokens     {:optional true} :any]
+           [:total_tokens          {:optional true} :any]
+           [:user_id               {:optional true} :any]
+           [:tenant_id             {:optional true} :any]
+           [:conversation_id       {:optional true} :any]
+           [:profile_id            {:optional true} :any]
+           [:request_id            {:optional true} :any]
+           [:ai_proxied            {:optional true} :any]
+           [:cache_creation_tokens {:optional true} :any]
+           [:cache_read_tokens     {:optional true} :any]]]
   (t2/insert! :model/AiUsageLog row))
 
 (defn- usage-window-expr
@@ -135,36 +168,40 @@
    (when user-id [:= :user_id user-id])
    (when tenant-id [:= :tenant_id tenant-id])])
 
-(defn usage-token-sum
+(mu/defn usage-token-sum :- [:map {:closed true} [:sum [:maybe :int]]]
   "The `:sum` row of tokens logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`."
-  [period-start user-id tenant-id]
+  [period-start :- ms/TemporalInstant
+   user-id      :- [:maybe ms/PositiveInt]
+   tenant-id    :- [:maybe ms/PositiveInt]]
   (t2/query-one {:select [[[:sum :total_tokens] :sum]]
                  :from   [:ai_usage_log]
                  :where  (usage-window-expr period-start user-id tenant-id)}))
 
-(defn usage-message-count
+(mu/defn usage-message-count :- [:map {:closed true} [:cnt :int]]
   "The `:cnt` row of messages logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`."
-  [period-start user-id tenant-id]
+  [period-start :- ms/TemporalInstant
+   user-id      :- [:maybe ms/PositiveInt]
+   tenant-id    :- [:maybe ms/PositiveInt]]
   (t2/query-one {:select [[[:count :*] :cnt]]
                  :from   [:ai_usage_log]
                  :where  (usage-window-expr period-start user-id tenant-id)}))
 
-(defn delete-usage-logs-created-before!
+(mu/defn delete-usage-logs-created-before! :- :int
   "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."
-  [cutoff]
+  [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/AiUsageLog {:where [:< :created_at cutoff]}))
 
-(defn transform
+(mu/defn transform :- [:maybe (ms/InstanceOf :model/Transform)]
   "The Transform with `transform-id`, or nil."
-  [transform-id]
+  [transform-id :- ms/PositiveInt]
   (t2/select-one :model/Transform :id transform-id))
 
-(defn transforms
+(mu/defn transforms :- [:sequential (ms/InstanceOf :model/Transform)]
   "The Transforms with `transform-ids`."
-  [transform-ids]
+  [transform-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/Transform :id [:in transform-ids]))
 
-(defn cards
+(mu/defn cards :- [:sequential (ms/InstanceOf :model/Card)]
   "The Cards with `card-ids`."
-  [card-ids]
+  [card-ids :- [:seqable ms/PositiveInt]]
   (t2/select :model/Card :id [:in card-ids]))

@@ -3,26 +3,33 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn database-names-by-id
+(mu/defn database-names-by-id :- [:map-of ms/PositiveInt :string]
   "A map of id to name for the Databases with `ids`."
-  [ids]
+  [ids :- [:seqable ms/PositiveInt]]
   (t2/select-pk->fn :name :model/Database :id [:in ids]))
 
-(defn card-names-by-id
+(mu/defn card-names-by-id :- [:map-of ms/PositiveInt :string]
   "A map of id to name for the Cards with `ids`."
-  [ids]
+  [ids :- [:seqable ms/PositiveInt]]
   (t2/select-pk->fn :name :model/Card :id [:in ids]))
 
-(defn dashboard-names-by-id
+(mu/defn dashboard-names-by-id :- [:map-of ms/PositiveInt :string]
   "A map of id to name for the Dashboards with `ids`."
-  [ids]
+  [ids :- [:seqable ms/PositiveInt]]
   (t2/select-pk->fn :name :model/Dashboard :id [:in ids]))
 
-(defn task-counts-for-runs
+(mu/defn task-counts-for-runs :- [:sequential
+                                  [:map {:closed true}
+                                   [:run_id ms/PositiveInt]
+                                   [:task_count :any]
+                                   [:success_count :any]
+                                   [:failed_count :any]]]
   "The total, successful, and failed TaskHistory counts of the TaskRuns with `run-ids`, grouped by run."
-  [run-ids]
+  [run-ids :- [:seqable ms/PositiveInt]]
   (t2/query {:select   [:run_id
                         [[:count :id] :task_count]
                         [[:sum [:case [:= :status (h2x/literal "success")] [:inline 1] :else [:inline 0]]] :success_count]
@@ -74,33 +81,51 @@
 
       {:order-by [[sort-column sort-direction] secondary]})))
 
-(defn task-runs
+(def ^:private RunFilters
+  [:map {:closed true}
+   [:run-type          [:maybe :string]]
+   [:entity-type       [:maybe :string]]
+   [:entity-id         [:maybe ms/PositiveInt]]
+   [:status            [:maybe :string]]
+   [:started-at-start  [:maybe ms/TemporalInstant]]
+   [:started-at-end    [:maybe ms/TemporalInstant]]])
+
+(mu/defn task-runs :- [:sequential (ms/InstanceOf :model/TaskRun)]
   "Up to `limit` (offset by `offset`) TaskRuns matching `filters` (see [[run-where]] for the supported keys), sorted
   by `sort-column`/`sort-direction`."
-  [filters sort-column sort-direction limit offset]
+  [filters        :- RunFilters
+   sort-column    :- [:enum :started_at :ended_at :run_type :status :entity_name :task_count]
+   sort-direction :- [:enum :asc :desc]
+   limit          :- [:maybe ms/PositiveInt]
+   offset         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/TaskRun
              (cond-> (merge (run-where filters) (runs-order-by sort-column sort-direction))
                limit  (assoc :limit limit)
                offset (assoc :offset offset))))
 
-(defn task-run-count
+(mu/defn task-run-count :- ms/IntGreaterThanOrEqualToZero
   "The number of TaskRuns matching `filters` (see [[run-where]] for the supported keys)."
-  [filters]
+  [filters :- RunFilters]
   (t2/count :model/TaskRun (or (run-where filters) {})))
 
-(defn task-run
+(mu/defn task-run :- [:maybe (ms/InstanceOf :model/TaskRun)]
   "The TaskRun with `id`, or nil."
-  [id]
+  [id :- ms/PositiveInt]
   (t2/select-one :model/TaskRun :id id))
 
-(defn tasks-for-run
+(mu/defn tasks-for-run :- [:sequential (ms/InstanceOf :model/TaskHistory)]
   "The TaskHistory rows of the TaskRun with `run-id`, oldest first."
-  [run-id]
+  [run-id :- ms/PositiveInt]
   (t2/select :model/TaskHistory :run_id run-id {:order-by [[:started_at :asc]]}))
 
-(defn distinct-run-entities
+(mu/defn distinct-run-entities :- [:sequential
+                                   [:map {:closed true}
+                                    [:entity_type :string]
+                                    [:entity_id ms/PositiveInt]]]
   "The distinct entity type and id of the TaskRuns of `run-type` started in [`started-at-start`, `started-at-end`)."
-  [run-type started-at-start started-at-end]
+  [run-type          :- :string
+   started-at-start  :- [:maybe ms/TemporalInstant]
+   started-at-end    :- [:maybe ms/TemporalInstant]]
   (t2/query {:select-distinct [:entity_type :entity_id]
              :from            :task_run
              :where           (into [:and [:= :run_type run-type]]
@@ -108,16 +133,16 @@
                                     [(when started-at-start [:>= :started_at started-at-start])
                                      (when started-at-end [:< :started_at started-at-end])])}))
 
-(defn nth-newest-task-history-ended-at
+(mu/defn nth-newest-task-history-ended-at :- [:maybe ms/TemporalInstant]
   "The `ended_at` of the TaskHistory row `offset` rows from the most recently ended, or nil."
-  [offset]
+  [offset :- ms/IntGreaterThanOrEqualToZero]
   (t2/select-one-fn :ended_at :model/TaskHistory {:limit    1
                                                   :offset   offset
                                                   :order-by [[:ended_at :desc]]}))
 
-(defn delete-task-history-ended-before!
+(mu/defn delete-task-history-ended-before! :- :int
   "Delete the TaskHistory rows that ended at or before `ended-before`."
-  [ended-before]
+  [ended-before :- ms/TemporalInstant]
   (t2/delete! (t2/table-name :model/TaskHistory) :ended_at [:<= ended-before]))
 
 (def ^:private join-sort-columns
@@ -133,11 +158,16 @@
       task   (conj [:= :task_history.task task])
       status (conj [:= :task_history.status (name status)]))))
 
-(defn task-histories
+(mu/defn task-histories :- [:sequential (ms/InstanceOf :model/TaskHistory)]
   "Up to `limit` (offset by `offset`) TaskHistory rows, optionally narrowed to `status` and/or `task`, sorted by
   `sort-column` (an allow-listed column, joining to Database for `:db_name`/`:db_engine`) and `sort-direction`, with
   `:id desc` as a stable tiebreaker."
-  [status task sort-column sort-direction limit offset]
+  [status         :- [:maybe [:enum :started :success :failed :unknown]]
+   task           :- [:maybe ms/NonBlankString]
+   sort-column    :- [:enum :started_at :ended_at :duration :task :status :db_name :db_engine]
+   sort-direction :- [:enum :asc :desc]
+   limit          :- [:maybe ms/PositiveInt]
+   offset         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/TaskHistory
              (cond-> (if-let [where (task-history-where status task)]
                        {:where where}
@@ -153,50 +183,74 @@
                limit  (assoc :limit limit)
                offset (assoc :offset offset))))
 
-(defn task-history-count
+(mu/defn task-history-count :- ms/IntGreaterThanOrEqualToZero
   "The number of TaskHistory rows, optionally narrowed to `status` and/or `task`."
-  [status task]
+  [status :- [:maybe [:enum :started :success :failed :unknown]]
+   task   :- [:maybe ms/NonBlankString]]
   (t2/count :model/TaskHistory (if-let [where (task-history-where status task)] {:where where} {})))
 
-(defn distinct-task-names
+(mu/defn distinct-task-names :- [:maybe [:sequential :string]]
   "The distinct task names of the TaskHistory rows, in alphabetical order."
   []
   (t2/select-fn-vec :task [:model/TaskHistory :task] {:group-by [:task]
                                                       :order-by [:task]}))
 
-(defn update-task-history!
+(mu/defn update-task-history! :- :int
   "Apply `changes` to the TaskHistory row with `id`."
-  [id changes]
+  [id      :- ms/PositiveInt
+   changes :- :map]
   (t2/update! :model/TaskHistory id changes))
 
-(defn insert-task-history!
+(mu/defn insert-task-history! :- ms/PositiveInt
   "Insert the TaskHistory `row` and return its id."
-  [row]
+  [row :- [:map {:closed true}
+           [:task         {:optional true} :any]
+           [:db_id        {:optional true} :any]
+           [:started_at   {:optional true} :any]
+           [:ended_at     {:optional true} :any]
+           [:duration     {:optional true} :any]
+           [:task_details {:optional true} :any]
+           [:status       {:optional true} :any]
+           [:run_id       {:optional true} :any]
+           [:logs         {:optional true} :any]]]
   (t2/insert-returning-pk! :model/TaskHistory row))
 
-(defn insert-task-run!
+(mu/defn insert-task-run! :- ms/PositiveInt
   "Insert the TaskRun `row` and return its id."
-  [row]
+  [row :- [:map {:closed true}
+           [:run_type        {:optional true} :any]
+           [:entity_type     {:optional true} :any]
+           [:entity_id       {:optional true} :any]
+           [:started_at      {:optional true} :any]
+           [:ended_at        {:optional true} :any]
+           [:status          {:optional true} :any]
+           [:process_uuid    {:optional true} :any]
+           [:updated_at      {:optional true} :any]
+           [:notification_id {:optional true} :any]]]
   (t2/insert-returning-pk! :model/TaskRun row))
 
-(defn task-statuses-for-run
+(mu/defn task-statuses-for-run :- [:maybe [:set :keyword]]
   "The set of statuses of the TaskHistory rows of the TaskRun with `run-id`."
-  [run-id]
+  [run-id :- ms/PositiveInt]
   (t2/select-fn-set :status :model/TaskHistory :run_id run-id))
 
-(defn finish-started-task-run!
+(mu/defn finish-started-task-run! :- :int
   "Set the status and end time of the started TaskRun with `run-id`."
-  [run-id status ended-at]
+  [run-id   :- ms/PositiveInt
+   status   :- :keyword
+   ended-at :- ms/TemporalInstant]
   (t2/update! :model/TaskRun {:id run-id :status :started} {:status status, :ended_at ended-at}))
 
-(defn heartbeat-started-task-runs!
+(mu/defn heartbeat-started-task-runs! :- :int
   "Touch `updated_at` of the started TaskRuns of `process-uuid`, returning the number updated."
-  [process-uuid updated-at]
+  [process-uuid :- :string
+   updated-at   :- :any]
   (t2/update! :model/TaskRun {:status :started, :process_uuid process-uuid} {:updated_at updated-at}))
 
-(defn mark-started-tasks-unknown!
+(mu/defn mark-started-tasks-unknown! :- :int
   "Set the started TaskHistory rows of the TaskRuns with `run-ids` to unknown, returning the number updated."
-  [run-ids ended-at]
+  [run-ids  :- [:seqable ms/PositiveInt]
+   ended-at :- :any]
   (t2/update! :model/TaskHistory
               {:status :started, :run_id [:in run-ids]}
               {:status :unknown, :ended_at ended-at}))

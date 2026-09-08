@@ -4,11 +4,13 @@
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn other-users-personal-collection-ids
+(mu/defn other-users-personal-collection-ids :- [:maybe [:set ms/PositiveInt]]
   "The ids of the personal Collections owned by Users other than `user-id`."
-  [user-id]
+  [user-id :- ms/PositiveInt]
   (t2/select-fn-set :id :model/Collection
                     {:where [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]}))
 
@@ -23,13 +25,21 @@
      [:not [:like :location (str "%/" collection-id "/%/%/%")]]]
     [:not [:like :location "/%/%/"]]))
 
-(defn collections-for-listing
+(mu/defn collections-for-listing :- [:sequential (ms/InstanceOf :model/Collection)]
   "The Collections the User with `current-user-id` can read, for the listing endpoint: archived or unarchived ones
   (`archived`), only those around `collection-id` when `shallow`, only personal ones when `personal-only`, only the
   user's own personal ones when `exclude-other-user-collections`, library ones only when `include-library?`, and
   those in `namespaces`; official and non-trash Collections first, then by name."
   [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}
-   current-user-id]
+   :- [:map {:closed true}
+       [:archived [:maybe :boolean]]
+       [:exclude-other-user-collections [:maybe :boolean]]
+       [:namespaces [:maybe [:set [:maybe :string]]]]
+       [:shallow [:maybe :boolean]]
+       [:collection-id {:optional true} [:maybe ms/PositiveInt]]
+       [:personal-only {:optional true} [:maybe :boolean]]
+       [:include-library? [:maybe :boolean]]]
+   current-user-id :- ms/PositiveInt]
   (t2/select :model/Collection
              {:where [:and
                       (case archived
@@ -72,42 +82,47 @@
                             :else 2]] :asc]
                          [:%lower.name :asc]]}))
 
-(defn collection
+(mu/defn collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "The Collection with `id`, or nil."
-  [id]
+  [id :- ms/PositiveInt]
   (t2/select-one :model/Collection :id id))
 
-(defn collection-location-columns
+(mu/defn collection-location-columns :- [:maybe (ms/InstanceOf :model/Collection)]
   "The location, id, and type of the Collection with `id`, or nil."
-  [id]
+  [id :- ms/PositiveInt]
   (t2/select-one [:model/Collection :location :id :type] :id id))
 
-(defn directly-archived-descendant-collections
+(mu/defn directly-archived-descendant-collections :- [:sequential (ms/InstanceOf :model/Collection)]
   "The directly archived Collections whose location starts with `location-prefix`."
-  [location-prefix]
+  [location-prefix :- :string]
   (t2/select :model/Collection :location [:like (str location-prefix "%")] :archived_directly true))
 
-(defn update-collection!
+(mu/defn update-collection! :- :int
   "Apply `changes` to the Collection with `id`."
-  [id changes]
+  [id :- ms/PositiveInt
+   changes :- [:map {:closed true}
+               [:name {:optional true} :string]
+               [:description {:optional true} [:maybe :string]]
+               [:authority_level {:optional true} :any]]]
   (t2/update! :model/Collection id changes))
 
-(defn delete-collection!
+(mu/defn delete-collection! :- :int
   "Delete the Collection with `id`."
-  [id]
+  [id :- ms/PositiveInt]
   (t2/delete! :model/Collection :id id))
 
-(defn unarchived-card-collection-types-reducible
+(mu/defn unarchived-card-collection-types-reducible
   "A reducible of the distinct Collection id and type of the unarchived Cards."
   []
   (t2/reducible-query {:select-distinct [:collection_id :type]
                        :from            [:report_card]
                        :where           [:= :archived false]}))
 
-(defn unarchived-card-collection-types-in-reducible
+(mu/defn unarchived-card-collection-types-in-reducible
   "A reducible of the distinct Collection id and type of the unarchived Cards in the Collections with
   `collection-ids`, leaving out dashboard questions when `exclude-dashboard-questions?`."
-  [collection-ids exclude-dashboard-questions?]
+  [collection-ids :- [:seqable ms/PositiveInt]
+   exclude-dashboard-questions? :- :boolean]
   (t2/reducible-query {:select-distinct [:collection_id :type]
                        :from            [:report_card]
                        :where           [:and
@@ -116,7 +131,8 @@
                                          [:= :archived false]
                                          [:in :collection_id collection-ids]]}))
 
-(defn published-table-collection-ids
+(mu/defn published-table-collection-ids :- [:sequential [:map {:closed true}
+                                                         [:collection_id [:maybe ms/PositiveInt]]]]
   "The distinct `:collection_id`s of the published, unarchived Tables."
   []
   (t2/query {:select-distinct [:collection_id]
@@ -125,9 +141,10 @@
                      [:= :is_published true]
                      [:= :archived_at nil]]}))
 
-(defn published-table-collection-ids-in
+(mu/defn published-table-collection-ids-in :- [:sequential [:map {:closed true}
+                                                            [:collection_id [:maybe ms/PositiveInt]]]]
   "The distinct `:collection_id`s of the published, unarchived Tables in the Collections with `collection-ids`."
-  [collection-ids]
+  [collection-ids :- [:seqable ms/PositiveInt]]
   (t2/query {:select-distinct [:collection_id]
              :from :metabase_table
              :where [:and
@@ -135,48 +152,51 @@
                      [:= :archived_at nil]
                      [:in :collection_id collection-ids]]}))
 
-(defn transform-collection-ids-in
+(mu/defn transform-collection-ids-in :- [:sequential [:map {:closed true}
+                                                      [:collection_id [:maybe ms/PositiveInt]]]]
   "The distinct `:collection_id`s of the Transforms with one of `source-types` in the Collections with
   `collection-ids`."
-  [collection-ids source-types]
+  [collection-ids :- [:seqable ms/PositiveInt]
+   source-types :- [:seqable :string]]
   (t2/query {:select-distinct [:collection_id]
              :from :transform
              :where [:and
                      [:in :collection_id collection-ids]
                      [:in :source_type source-types]]}))
 
-(defn unarchived-dashboard-collection-ids-in
+(mu/defn unarchived-dashboard-collection-ids-in :- [:sequential [:map {:closed true}
+                                                                 [:collection_id [:maybe ms/PositiveInt]]]]
   "The distinct `:collection_id`s of the unarchived Dashboards in the Collections with `collection-ids`."
-  [collection-ids]
+  [collection-ids :- [:seqable ms/PositiveInt]]
   (t2/query {:select-distinct [:collection_id]
              :from :report_dashboard
              :where [:and
                      [:= :archived false]
                      [:in :collection_id collection-ids]]}))
 
-(defn top-level-cards-in-collection
+(mu/defn top-level-cards-in-collection :- [:sequential (ms/InstanceOf :model/Card)]
   "The Cards in the Collection with `collection-id` that belong to no Dashboard, newest first."
-  [collection-id]
+  [collection-id :- [:maybe ms/PositiveInt]]
   (t2/select :model/Card {:where [:and
                                   [:= :collection_id collection-id]
                                   [:= :dashboard_id nil]]
                           :order-by [[:id :desc]]}))
 
-(defn cards-in-collection
+(mu/defn cards-in-collection :- [:sequential (ms/InstanceOf :model/Card)]
   "The Cards in the Collection with `collection-id`."
-  [collection-id]
+  [collection-id :- ms/PositiveInt]
   (t2/select :model/Card :collection_id collection-id))
 
-(defn collection-children-rows
+(mu/defn collection-children-rows :- [:sequential :map]
   "The rows matching the collection-children Honey SQL `query`, built by `metabase.collections-rest.api` from the
   per-model item queries for a Collection's paginated child listing. Follows the same exception as
   `metabase.search.db` for spec-driven Honey SQL that can't be reduced to plain-data parameters."
-  [query]
+  [query :- :map]
   (app-db/query query))
 
-(defn collection-filter-metadata-rows
+(mu/defn collection-filter-metadata-rows :- [:sequential :map]
   "The rows matching the collection-filter-metadata Honey SQL `query`, built by `metabase.collections-rest.api` to
   probe which item models have at least one visible child in a Collection. Follows the same exception as
   `metabase.search.db` for spec-driven Honey SQL that can't be reduced to plain-data parameters."
-  [query]
+  [query :- :map]
   (app-db/query query))

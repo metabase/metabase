@@ -1004,7 +1004,7 @@
   {:team "Metabot"
    :api  #{metabase.entity-retrieval.core
            metabase.entity-retrieval.mirror}
-   :uses #{premium-features}
+   :uses #{premium-features util}
    :model-imports #{:model/OsiAiContext}}
 
   events
@@ -1178,8 +1178,7 @@
   internal-stats
   {:team "UX West"
    :api  #{metabase.internal-stats.core}
-   :uses #{app-db
-           models}
+   :uses #{app-db models util}
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
@@ -2041,7 +2040,8 @@
    :uses #{api
            events
            models
-           premium-features}
+           premium-features
+           util}
    :model-imports #{:model/Collection}}
 
   request
@@ -3050,6 +3050,7 @@
    :api  #{}
    :uses #{driver
            premium-features
+           util
            enterprise/advanced-config
            enterprise/mfa
            enterprise/scim
@@ -3368,6 +3369,7 @@
            embedding
            permissions
            premium-features
+           util
            enterprise/sso}
    :model-imports #{:model/Card
                     :model/Collection
@@ -3465,7 +3467,8 @@
    :api  #{metabase-enterprise.library.api}
    :uses #{api
            collections
-           premium-features}
+           premium-features
+           util}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
   enterprise/mcp
