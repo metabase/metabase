@@ -636,7 +636,12 @@
     (auth-identity/set-password! id password)
     ;; after a successful password update go ahead and offer the client a new session that they can use
     (when (= id api/*current-user-id*)
-      (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking! user (request/device-info request) :provider/password)
+      ;; Propagate MFA info from current session so that users aren't auto-logged out
+      (let [mfa-auth-identity-id            (when-let [{:keys [session-id]} request]
+                                              (when-let [session (t2/select-one [:model/Session :mfa_auth_identity_id]
+                                                                                :id session-id)]
+                                                (:mfa_auth_identity_id session)))
+            {session-key :key, :as session} (auth-identity/create-session-with-auth-tracking! user (request/device-info request) :provider/password mfa-auth-identity-id)
             response                        {:success    true
                                              :session_id (str session-key)}]
         (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
