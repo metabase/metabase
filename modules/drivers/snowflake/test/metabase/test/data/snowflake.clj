@@ -256,15 +256,18 @@
 
 (defmethod tx/destroy-db! :snowflake
   [_driver dbdef]
-  (when (= "test-data" (:database-name dbdef))
-    (throw (Exception. "tried to delete test-data dataset.")))
   (let [database-name (qualified-db-name dbdef)
         sql           (format "DROP DATABASE \"%s\";" database-name)]
-    (log/infof "[Snowflake] %s" sql)
-    ;; test-harness cleanup output goes to the CI console, not the app log
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (println "[Snowflake] destroy database " database-name (:database-name dbdef))
-    (jdbc/execute! (no-db-connection-spec) [sql])))
+    ;; static datasets are shared by every CI job; [[get-or-create/create-database!]] calls this on a failed load or
+    ;; sync, and dropping one would take the dataset away from all of them
+    (if (str/starts-with? database-name "sha_")
+      (log/warnf "[Snowflake] refusing to drop static dataset %s" database-name)
+      (do
+        (log/infof "[Snowflake] %s" sql)
+        ;; test-harness cleanup output goes to the CI console, not the app log
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (println "[Snowflake] destroy database " database-name (:database-name dbdef))
+        (jdbc/execute! (no-db-connection-spec) [sql])))))
 
 ;; For reasons I don't understand the Snowflake JDBC driver doesn't seem to work when trying to use parameterized
 ;; INSERT statements, even though the documentation suggests it should. Just go ahead and deparameterize all the

@@ -969,20 +969,22 @@
                                 :schema-name       (:schema table)
                                 :table-prefix      "uploaded_magic_"}
                                identity))]
-            (doseq [[schema-perms can-upload? description]
-                    [[:query-builder               true  "Data permissions on schema should succeed"]
-                     [:no                          false "No data permissions on schema should fail"]
-                     [{(:id table) :query-builder} false "Data permissions on table should fail"]]]
-              (testing description
-                (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
-                                                             :create-queries {"some_schema" :query-builder
-                                                                              schema-name   schema-perms}}}
-                  (if can-upload?
-                    (is (some? (upload-csv!)))
-                    (is (thrown-with-msg?
-                         clojure.lang.ExceptionInfo
-                         #"You don't have permissions to do that\."
-                         (upload-csv!)))))))
+            ;; a second table in the upload schema keeps a table-level grant distinct from a schema-level one
+            (mt/with-temp [:model/Table {} {:db_id db-id :schema schema-name}]
+              (doseq [[schema-perms can-upload? description]
+                      [[:query-builder               true  "Data permissions on schema should succeed"]
+                       [:no                          false "No data permissions on schema should fail"]
+                       [{(:id table) :query-builder} false "Data permissions on table should fail"]]]
+                (testing description
+                  (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                               :create-queries {"some_schema" :query-builder
+                                                                                schema-name   schema-perms}}}
+                    (if can-upload?
+                      (is (some? (upload-csv!)))
+                      (is (thrown-with-msg?
+                           clojure.lang.ExceptionInfo
+                           #"You don't have permissions to do that\."
+                           (upload-csv!))))))))
             (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
                                                          :create-queries :query-builder-and-native}}
               (is (some? (upload-csv!))))))))))
