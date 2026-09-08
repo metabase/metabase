@@ -2223,11 +2223,7 @@
    :ns-prefix "metabase.query-processor.middleware.cache-backend"
    :api       #{metabase.query-processor.middleware.cache-backend.db
                 metabase.query-processor.middleware.cache-backend.interface}
-   :uses      #{app-db
-                premium-features
-                query-processor
-                util}
-   :model-imports #{:model/QueryCache}}
+   :uses      #{premium-features query-processor util}}
 
   query-processor.driver-api
   {:team "Querying Platform"
