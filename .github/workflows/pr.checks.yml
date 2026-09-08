@@ -1,0 +1,75 @@
+# Helpful (and quick) checks that run on PRs.
+
+name: PR Checks
+
+on: pull_request
+
+jobs:
+  checks:
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout: 10
+    permissions:
+      pull-requests: write
+      issues: read
+    steps:
+      # could be sparse, checking out just scripts...
+      # also need root to check for backport script
+      - uses: actions/checkout@v6
+
+      - parallel:
+          - name: Block master branch PRs (from forks)
+            if: github.head_ref == 'master'
+            run: |
+              echo "PRs from \`master\` branches are not allowed, please use a new branch name for your PR."
+              exit 1
+
+          - name: External PR reminder
+            if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+            with:
+            script: | # js
+              const owner = context.repo.owner;
+              const repo = context.repo.repo;
+
+              const pullNumber = '${{ github.event.pull_request.number }}';
+              const author = '${{ github.event.pull_request.user.login }}';
+
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: pullNumber,
+                labels: ["External"],
+              });
+
+              const guideLink = "https://www.notion.so/metabase/Third-Party-PRs-External-contributions-5954061854424c1ea6391d98746646e0";
+              const message = `@${author} Thanks for your contribution! ❤️  We'll try to review it as soon as we can.\n\n
+                Reviewers, make sure to check out our [External PR Review Guide](${guideLink}) when reviewing.
+              `;
+
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: pullNumber,
+                body: message,
+              });
+          
+          - name: Link PR and issues
+            uses: actions/github-script@v9
+            env:
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+              PR_NUMBER: ${{ github.event.pull_request.number }}
+              REPO_OWNER: ${{ github.repository_owner }}
+              REPO_NAME: ${{ github.event.repository.name }}
+            with:
+              script: |
+                const { link_issues } = require('${{ github.workspace }}/.github/scripts/update-pr-with-issues.js');
+                await link_issues(github)
+          
+          - name: Prevent backport.sh from being merged
+            run: |
+              if [ -f "./backport.sh" ]; then
+                echo "backport.sh file exists. Please remove it before merging."
+                exit 1
+              else
+                echo "All good."
+              fi
