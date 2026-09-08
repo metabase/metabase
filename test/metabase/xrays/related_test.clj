@@ -35,7 +35,7 @@
         field (lib.metadata/field metadata-provider field-id)]
     (dissoc (lib/filter query (lib/!= field value)) :lib/metadata)))
 
-(deftest ^:parallel similiarity-test
+(deftest ^:parallel similiarity-test ; TODO
   (mt/with-temp [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query venues
                                                                {:aggregation  [[:sum $price]]
                                                                 :breakout     [$category_id]})}
