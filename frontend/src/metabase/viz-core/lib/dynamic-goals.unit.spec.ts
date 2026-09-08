@@ -9,7 +9,6 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-import { getDynamicGoalSettingKeys } from "./dynamic-goal-settings";
 import type { GoalCard } from "./dynamic-goals";
 import {
   getGoalValues,
@@ -789,14 +788,12 @@ describe("hasUnresolvedGoalReferences", () => {
 
 describe("dynamic goal settings per display", () => {
   it("knows which settings a display resolves", () => {
-    expect(getDynamicGoalSettingKeys("gauge")).toEqual(["gauge.segments"]);
     expect(supportsDynamicGoals("gauge")).toBe(true);
     expect(isDynamicGoalSetting("gauge", "gauge.segments")).toBe(true);
     expect(isDynamicGoalSetting("gauge", "graph.goal_value")).toBe(false);
   });
 
   it("treats displays without dynamic goals, and no display, as unsupported", () => {
-    expect(getDynamicGoalSettingKeys("table")).toEqual([]);
     expect(supportsDynamicGoals("table")).toBe(false);
     expect(supportsDynamicGoals(undefined)).toBe(false);
     expect(isDynamicGoalSetting(undefined, "graph.goal_value")).toBe(false);

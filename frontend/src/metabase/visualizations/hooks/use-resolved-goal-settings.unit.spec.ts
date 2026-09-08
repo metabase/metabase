@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 
+import { mockDynamicGoalSettingKeys } from "__support__/dynamic-goals";
 import { setupCardDataset } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
@@ -11,30 +12,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { useResolvedGoalSettings } from "./use-resolved-goal-settings";
-
-jest.mock("metabase/viz-core/lib/dynamic-goal-settings", () => ({
-  ...jest.requireActual("metabase/viz-core/lib/dynamic-goal-settings"),
-  getDynamicGoalSettingKeys: jest.fn(
-    jest.requireActual("metabase/viz-core/lib/dynamic-goal-settings")
-      .getDynamicGoalSettingKeys,
-  ),
-}));
-
-const getDynamicGoalSettingKeysMock: jest.Mock<string[]> = jest.requireMock(
-  "metabase/viz-core/lib/dynamic-goal-settings",
-).getDynamicGoalSettingKeys;
-
-function resolveGraphGoals() {
-  getDynamicGoalSettingKeysMock.mockReturnValue(["graph.goal_value"]);
-}
-
-function restoreDynamicGoalDisplays() {
-  getDynamicGoalSettingKeysMock.mockReset();
-  getDynamicGoalSettingKeysMock.mockImplementation(
-    jest.requireActual("metabase/viz-core/lib/dynamic-goal-settings")
-      .getDynamicGoalSettingKeys,
-  );
-}
 
 const DATA = createMockDatasetData({
   cols: [createMockColumn({ name: "count" })],
@@ -84,8 +61,7 @@ describe("useResolvedGoalSettings", () => {
   describe("for a display that resolves graph goals", () => {
     const card = createMockCard({ display: "line" });
 
-    beforeEach(resolveGraphGoals);
-    afterEach(restoreDynamicGoalDisplays);
+    mockDynamicGoalSettingKeys(["graph.goal_value"]);
 
     it("leaves a hidden goal line alone", () => {
       const settings = { ...REFERENCED_SETTINGS, "graph.show_goal": false };

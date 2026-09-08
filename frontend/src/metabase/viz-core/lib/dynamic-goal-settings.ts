@@ -17,6 +17,8 @@ export const GOAL_SETTINGS: Record<GoalSettingKey, GoalSettingKind> = {
 };
 
 // A display is listed once its renderers, interactive and static, resolve the setting.
+// Lives in its own module so specs can spy on `getDynamicGoalSettingKeys`
+// (see `__support__/dynamic-goals`) for paths no display reaches yet.
 const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
   Record<VisualizationDisplay, GoalSettingKey[]>
 > = {

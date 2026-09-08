@@ -1,3 +1,4 @@
+import { mockDynamicGoalSettingKeys } from "__support__/dynamic-goals";
 import type {
   Series,
   VisualizationDisplay,
@@ -9,31 +10,7 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
-import { getDynamicGoalSettingKeys } from "../dynamic-goal-settings";
-
 import { validateGoalReferences } from "./validation";
-
-jest.mock("metabase/viz-core/lib/dynamic-goal-settings", () => ({
-  ...jest.requireActual("metabase/viz-core/lib/dynamic-goal-settings"),
-  getDynamicGoalSettingKeys: jest.fn(
-    jest.requireActual("metabase/viz-core/lib/dynamic-goal-settings")
-      .getDynamicGoalSettingKeys,
-  ),
-}));
-
-const getDynamicGoalSettingKeysMock = jest.mocked(getDynamicGoalSettingKeys);
-
-function resolveGraphGoals() {
-  getDynamicGoalSettingKeysMock.mockReturnValue(["graph.goal_value"]);
-}
-
-function restoreDynamicGoalDisplays() {
-  getDynamicGoalSettingKeysMock.mockReset();
-  getDynamicGoalSettingKeysMock.mockImplementation(
-    jest.requireActual("metabase/viz-core/lib/dynamic-goal-settings")
-      .getDynamicGoalSettingKeys,
-  );
-}
 
 const FAILED_DATA = createMockDatasetData({
   cols: [createMockColumn({ name: "count" })],
@@ -70,8 +47,7 @@ describe("validateGoalReferences", () => {
   });
 
   describe("for a display that resolves graph goals", () => {
-    beforeEach(resolveGraphGoals);
-    afterEach(restoreDynamicGoalDisplays);
+    mockDynamicGoalSettingKeys(["graph.goal_value"]);
 
     it("ignores a failed reference when the goal line is hidden", () => {
       expect(() =>
