@@ -6,9 +6,8 @@
    [hooks.metabase.toucan.db-ns :as toucan.db-ns]))
 
 (defn- lint-query-call
-  "Run the hook over `form` as if it appeared in `ns-sym`. `:modules` is the `:metabase/modules` map the module
-  linter would supply; without it the hook falls back to single-segment resolution, which is what a repo with no
-  nested modules declared looks like."
+  "Runs the hook over `form` as if it appeared in `ns-sym`, with optional `filename` and `modules` (the
+  `:metabase/modules` map). Returns the findings it registered."
   [form ns-sym & {:keys [filename modules]}]
   (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/t2-query-namespace {:level :warning}}}
                                         :ignores    (atom nil)
@@ -41,10 +40,13 @@
     (is (=? [{:type :metabase/t2-query-namespace}]
             (lint-query-call '(t2/delete! :model/Card :id 1) 'metabase.queries.dashboards-db))))
   (testing "files in a test source tree are exempt even when the namespace name doesn't look like a test"
-    (is (empty? (lint-query-call '(t2/update! :model/User 1 {:sso_source nil}) 'metabase.sso.test-helpers
+    (is (empty? (lint-query-call '(t2/update! :model/User 1 {:sso_source nil})
+                                 'metabase.sso.test-helpers
                                  :filename "test/metabase/sso/test_helpers.clj")))
-    (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase-enterprise.remote-sync.test-helpers
-                                 :filename "/repo/enterprise/backend/test/metabase_enterprise/remote_sync/test_helpers.clj"))))
+    (is (empty? (lint-query-call '(t2/select :model/Card)
+                                 'metabase-enterprise.remote-sync.test-helpers
+                                 :filename (str "/repo/enterprise/backend/test/metabase_enterprise"
+                                                "/remote_sync/test_helpers.clj")))))
   (testing "app-db wrappers around Toucan 2 are reported the same way"
     (is (=? [{:type    :metabase/t2-query-namespace
               :message #".*`mdb/update-or-insert!`.*"}]
@@ -64,14 +66,15 @@
       (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase.metabot.llm.db :modules modules))))
     (testing "the parent's db namespace stays its own"
       (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase.metabot.db :modules modules))))
-    (testing "a module with an explicit :ns-prefix is resolved through it, not through its dotted name"
+    (testing "a module with an explicit :ns-prefix is resolved through it, not its dotted name"
       (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase.lib-be.db :modules modules)))
       (is (=? [{:type :metabase/t2-query-namespace}]
               (lint-query-call '(t2/select :model/Card) 'metabase.lib.be.db :modules modules))))
-    (testing "a db namespace under a directory that names no module is still a finding"
+    (testing "a db namespace under a directory naming no module is still a finding"
       (is (=? [{:type :metabase/t2-query-namespace}]
               (lint-query-call '(t2/query {:select [:*]}) 'metabase.queries.models.db :modules modules)))
       (is (=? [{:type :metabase/t2-query-namespace}]
               (lint-query-call '(t2/query {:select [:*]}) 'metabase.metabot.llm.models.db :modules modules))))
     (testing "enterprise modules resolve through the metabase-enterprise root"
-      (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase-enterprise.sandbox.db :modules modules))))))
+      (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase-enterprise.sandbox.db
+                                   :modules modules))))))
