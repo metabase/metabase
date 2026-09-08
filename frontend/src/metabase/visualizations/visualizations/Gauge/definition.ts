@@ -80,6 +80,8 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: "segmentsEditor",
       persistDefault: true,
+      // the transformed series drop `data.referenced_entities`
+      useRawSeries: true,
       getProps: ([{ card, data }]) => ({
         data,
         datasetQuery: card.dataset_query,
