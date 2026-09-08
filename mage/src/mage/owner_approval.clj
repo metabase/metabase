@@ -19,8 +19,7 @@
 (set! *warn-on-reflection* true)
 
 (def default-boundary-sha
-  "The first commit where .clj-kondo/config/modules/config.edn carries :team, i.e. the earliest point the
-  module system can attribute a file to an owner team. Default lower bound for the audit."
+  "Default audit boundary: the earliest commit whose module config assigns files to owner teams."
   "b6dff656d7c705c90d45833bd92d69deb4c8f741")
 
 (def ^:private repo "metabase/metabase")
