@@ -329,6 +329,18 @@ describe("BrowseModels", () => {
       );
     });
 
+    it("renders the empty state title as an h2", async () => {
+      setup({ modelCount: 0 });
+
+      const emptyState = await screen.findByTestId("empty-state");
+      expect(
+        within(emptyState).getByRole("heading", {
+          level: 2,
+          name: "Create models to clean up and combine tables to make your data easier to explore",
+        }),
+      ).toBeInTheDocument();
+    });
+
     it("should display embedded YouTube video (that doesn't auto play) when no models exist", async () => {
       setup({ modelCount: 0 });
 
@@ -423,6 +435,29 @@ describe("BrowseModels", () => {
       expect(
         within(header).queryByLabelText("Create a new model"),
       ).not.toBeInTheDocument();
+    });
+    it("renders the page title as a single h1", () => {
+      setup({ modelCount: 1 });
+
+      expect(
+        screen.getByRole("heading", { level: 1, name: /Models$/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("renders the explanation banner copy as text, not a heading", async () => {
+      setup({ modelCount: 1 });
+
+      await screen.findByTestId("browse-models-header");
+      expect(
+        screen.queryByRole("heading", {
+          name: "Create models to clean up and combine tables to make your data easier to explore",
+        }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Create models to clean up and combine tables to make your data easier to explore",
+        ),
+      ).toBeInTheDocument();
     });
   });
 
