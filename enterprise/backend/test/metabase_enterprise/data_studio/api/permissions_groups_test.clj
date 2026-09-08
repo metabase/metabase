@@ -136,3 +136,63 @@
                   (let [original-group (t2/select-one :model/PermissionsGroup :id original-group-id)]
                     (is (str/starts-with? (:name original-group) "Data Analysts (converted)"))
                     (is (nil? (:magic_group_type original-group)))))))))))))
+
+;;; ---------------------------------------- Data Studio entry tests ----------------------------------------
+
+(def ^:private no-permissions-message "You don't have permissions to do that.")
+
+(deftest grandfathered-member-loses-data-studio-access-without-the-feature-test
+  (testing "a Data Analysts member added under the feature is refused Data Studio once the feature is gone"
+    (mt/with-temp [:model/User     {analyst-id :id} {}
+                   :model/Database {db-id :id}      {}
+                   :model/Table    {table-id :id}   {:db_id db-id}]
+      (add-member! analyst-id (:id (perms-group/data-analyst)))
+      (mt/with-premium-features #{}
+        (is (= no-permissions-message
+               (mt/user-http-request analyst-id :post 403 "data-studio/table/edit"
+                                     {:table_ids  [table-id]
+                                      :data_layer "final"})))
+        (is (= no-permissions-message
+               (mt/user-http-request analyst-id :post 403 "data-studio/table/selection"
+                                     {:table_ids [table-id]})))
+        (is (not= :final (t2/select-one-fn :data_layer :model/Table :id table-id)))))))
+
+(deftest superuser-keeps-data-studio-access-without-the-feature-test
+  (testing "a superuser reaches Data Studio on a feature-less instance"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id}]
+      (mt/with-premium-features #{}
+        (is (= {} (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
+                                        {:table_ids  [table-id]
+                                         :data_layer "final"})))
+        (is (= :final (t2/select-one-fn :data_layer :model/Table :id table-id)))
+        (is (map? (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
+                                        {:table_ids [table-id]})))))))
+
+(deftest member-keeps-data-studio-access-with-the-feature-test
+  (testing "a Data Analysts member reaches Data Studio while the feature is present"
+    (mt/with-temp [:model/User     {analyst-id :id} {}
+                   :model/Database {db-id :id}      {}
+                   :model/Table    {table-id :id}   {:db_id db-id}]
+      (add-member! analyst-id (:id (perms-group/data-analyst)))
+      (mt/with-premium-features #{:advanced-permissions}
+        (is (= {} (mt/user-http-request analyst-id :post 200 "data-studio/table/edit"
+                                        {:table_ids  [table-id]
+                                         :data_layer "final"})))
+        (is (= :final (t2/select-one-fn :data_layer :model/Table :id table-id)))
+        (is (map? (mt/user-http-request analyst-id :post 200 "data-studio/table/selection"
+                                        {:table_ids [table-id]})))))))
+
+(deftest non-member-has-no-data-studio-access-without-the-feature-test
+  (testing "a non-member gets no Data Studio access on a feature-less instance"
+    (mt/with-temp [:model/User     {user-id :id}  {}
+                   :model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id}]
+      (mt/with-premium-features #{}
+        (is (= no-permissions-message
+               (mt/user-http-request user-id :post 403 "data-studio/table/edit"
+                                     {:table_ids  [table-id]
+                                      :data_layer "final"})))
+        (is (= no-permissions-message
+               (mt/user-http-request user-id :post 403 "data-studio/table/selection"
+                                     {:table_ids [table-id]})))))))

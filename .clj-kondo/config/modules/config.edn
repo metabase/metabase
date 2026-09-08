@@ -262,6 +262,7 @@
            events
            lib.schema
            models
+           premium-features
            settings
            util
            util.config}
