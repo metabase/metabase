@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as app-db]
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
@@ -276,28 +275,29 @@
     (t2/with-transaction [_conn]
       (when (seq delete-message-ids)
         (soft-delete-messages! {:id [:in delete-message-ids]} originator-id))
-      (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                                (fn [existing]
-                                  ;; `:user_id` is the originator — set on insert, never overwritten.
-                                  (cond-> {}
-                                    (nil? existing)
-                                    (assoc :user_id originator-id)
-                                    (and hostname (nil? (:embedding_hostname existing)))
-                                    (assoc :embedding_hostname hostname)
-                                    (and (:embedding_path pii-info) (nil? (:embedding_path existing)))
-                                    (assoc :embedding_path (:embedding_path pii-info))
-                                    (and (:user_agent pii-info) (nil? (:user_agent existing)))
-                                    (assoc :user_agent (:user_agent pii-info))
-                                    (and (:sanitized_user_agent pii-info) (nil? (:sanitized_user_agent existing)))
-                                    (assoc :sanitized_user_agent (:sanitized_user_agent pii-info))
-                                    (and (:ip_address pii-info) (nil? (:ip_address existing)))
-                                    (assoc :ip_address (:ip_address pii-info))
-                                    (and slack-team-id (nil? (:slack_team_id existing)))
-                                    (assoc :slack_team_id slack-team-id)
-                                    (and channel-id (nil? (:slack_channel_id existing)))
-                                    (assoc :slack_channel_id channel-id)
-                                    (and slack-thread-ts (nil? (:slack_thread_ts existing)))
-                                    (assoc :slack_thread_ts slack-thread-ts))))
+      (metabot.db/upsert-conversation!
+       conversation-id
+       (fn [existing]
+         ;; `:user_id` is the originator — set on insert, never overwritten.
+         (cond-> {}
+           (nil? existing)
+           (assoc :user_id originator-id)
+           (and hostname (nil? (:embedding_hostname existing)))
+           (assoc :embedding_hostname hostname)
+           (and (:embedding_path pii-info) (nil? (:embedding_path existing)))
+           (assoc :embedding_path (:embedding_path pii-info))
+           (and (:user_agent pii-info) (nil? (:user_agent existing)))
+           (assoc :user_agent (:user_agent pii-info))
+           (and (:sanitized_user_agent pii-info) (nil? (:sanitized_user_agent existing)))
+           (assoc :sanitized_user_agent (:sanitized_user_agent pii-info))
+           (and (:ip_address pii-info) (nil? (:ip_address existing)))
+           (assoc :ip_address (:ip_address pii-info))
+           (and slack-team-id (nil? (:slack_team_id existing)))
+           (assoc :slack_team_id slack-team-id)
+           (and channel-id (nil? (:slack_channel_id existing)))
+           (assoc :slack_channel_id channel-id)
+           (and slack-thread-ts (nil? (:slack_thread_ts existing)))
+           (assoc :slack_thread_ts slack-thread-ts))))
       (metabot.db/insert-messages!
        (cond-> {:conversation_id conversation-id
                 :data            (schema.v2/check-message-data "metabot_message.data"

@@ -2,6 +2,7 @@
   "Application database queries for the collections REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
    [toucan2.core :as t2]))
 
@@ -165,3 +166,17 @@
   "The Cards in the Collection with `collection-id`."
   [collection-id]
   (t2/select :model/Card :collection_id collection-id))
+
+(defn collection-children-rows
+  "The rows matching the collection-children Honey SQL `query`, built by `metabase.collections-rest.api` from the
+  per-model item queries for a Collection's paginated child listing. Follows the same exception as
+  `metabase.search.db` for spec-driven Honey SQL that can't be reduced to plain-data parameters."
+  [query]
+  (app-db/query query))
+
+(defn collection-filter-metadata-rows
+  "The rows matching the collection-filter-metadata Honey SQL `query`, built by `metabase.collections-rest.api` to
+  probe which item models have at least one visible child in a Collection. Follows the same exception as
+  `metabase.search.db` for spec-driven Honey SQL that can't be reduced to plain-data parameters."
+  [query]
+  (app-db/query query))

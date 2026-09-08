@@ -2,6 +2,7 @@
   "Application database queries for the content verification module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as app-db]
    [toucan2.core :as t2]))
 
 (defn moderation-reviews-for-items
@@ -16,6 +17,16 @@
   "The Users with `user-ids`."
   [user-ids]
   (t2/select :model/User :id [:in user-ids]))
+
+(defn moderation-review-ids-for-item
+  "The ids of the ModerationReviews of the item with `item-id` and `item-type`, newest first."
+  [item-id item-type]
+  (app-db/query {:select   [:id]
+                 :from     [:moderation_review]
+                 :where    [:and
+                            [:= :moderated_item_id item-id]
+                            [:= :moderated_item_type item-type]]
+                 :order-by [[:id :desc]]}))
 
 (defn most-recent-moderation-review-statuses
   "The item id, item type, and status of the most recent ModerationReviews of the items with `item-types` and

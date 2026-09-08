@@ -22,12 +22,13 @@ import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal"
 import { getSemanticTypeIcon } from "metabase/common/utils/fields";
 import CS from "metabase/css/core/index.css";
 import { getMetadata } from "metabase/metadata-store";
+import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
+import { TagEditorSidebar } from "metabase/parameters/components/TagEditor/TagEditorSidebar";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { getInitialEditorHeight } from "metabase/querying/components/NativeQueryEditor/utils";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
-import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import { connect, useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
@@ -768,6 +769,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
                   className={CS.spread}
                   noHeader
                   queryBuilderMode="dataset"
+                  hasColumnReordering
                   onHeaderColumnReorder={handleHeaderColumnReorder}
                   isShowingDetailsOnlyColumns={datasetEditorTab !== "metadata"}
                   hasMetadataPopovers={false}
@@ -778,6 +780,11 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
                   renderTableHeader={renderTableHeader}
                   scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
                   renderEmptyMessage={isEditingColumns}
+                  noResultsAction={
+                    !isModelQueryDirty && (
+                      <HasResultsAlertPrompt question={question} />
+                    )
+                  }
                 />
               )}
             </DebouncedFrame>

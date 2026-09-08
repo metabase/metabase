@@ -293,7 +293,6 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
           onChange={(event) =>
             setUseContextualInterestingness(event.currentTarget.checked)
           }
-          size="sm"
           label={t`Use AI to analyze and order results`}
         />
         <Button
