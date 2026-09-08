@@ -33,6 +33,7 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 
 ## Type modeling
 
+- **API contract mismatches and endpoint adoption.** Use [fix-api-contract](../fix-api-contract/SKILL.md) to investigate checker diagnostics or bring an RTK request/response contract under enforcement.
 - **Reuse existing types; don't re-declare them.** Use canonical IDs and domain entity types from `metabase-types/api` (`FieldId`, `TableId`, `ConcreteTableId`, `SchemaName`, …) and key data structures by them (`new Map<ConcreteTableId, …>()`). Don't duplicate generated/API types — compose or derive (`Pick`, `Omit`, indexed access `SomeType["field"]`, `ReturnType`).
 - **Generics must make promises the implementation can keep.** A caller-selected `get<T>(): T` must not disguise an unchecked assertion about external data. Return `unknown` and validate, or accept a validator that establishes `T`. A factory such as `function empty<T>(): T[] { return []; }` is valid; judge the implementation, not how often `T` appears in the signature.
 - **Prefer an honest type over false precision.** Use generics when they express a real relationship. If a complex type cannot model the behaviour accurately, choose a simpler type or `unknown` with narrowing instead of asserting an unsupported guarantee.
