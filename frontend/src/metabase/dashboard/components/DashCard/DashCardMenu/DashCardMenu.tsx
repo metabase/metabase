@@ -14,6 +14,7 @@ import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import { useStore } from "metabase/redux";
 import { Icon, Menu, type MenuProps } from "metabase/ui";
+import { isAdhocDashboardId } from "metabase/utils/dashboard";
 import { checkNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
@@ -66,12 +67,17 @@ export const DashCardMenu = ({
   const dashcardId = dashcard.id;
   const { dashboard, dashboardId, dashcardMenu, downloadsEnabled } =
     useDashboardContext();
+  const isAdhocDashboard = isAdhocDashboardId(dashboard?.id ?? dashboardId);
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
     question,
     result,
-    // dashboardId can be an entityId and the download endpoint expects a numeric id
-    dashboardId: checkNotNull(dashboard?.id ?? dashboardId),
-    dashcardId,
+    // dashboardId can be an entityId and the download endpoint expects a numeric id;
+    // an unsaved ad-hoc dashboard has no dashcard endpoint, so its tiles download
+    // as questions (saved card) or ad-hoc queries (generated tile)
+    dashboardId: isAdhocDashboard
+      ? undefined
+      : checkNotNull(dashboard?.id ?? dashboardId),
+    dashcardId: isAdhocDashboard ? undefined : dashcardId,
     uuid,
     token,
     params: getParameterValuesBySlugMap(store.getState()),
