@@ -119,19 +119,26 @@
   (map (comp keyword u/lower-case-en :table_name)
        (search.db/orphan-index-table-names)))
 
-(defn- delete-obsolete-tables! []
-  ;; Delete metadata around indexes that are no longer needed.
-  (search-index-metadata/delete-obsolete! (search.spec/index-version-hash))
-  ;; Drop any indexes that are no longer referenced.
-  (let [dropped (volatile! [])]
-    (doseq [table (orphan-indexes)]
-      (try
-        (search.db/drop-search-index-table! table)
-        (vswap! dropped conj table)
-        ;; Deletion could fail if it races with other instances
-        (catch Exception e
-          (log/warnf "Failed to drop stale index %s: %s" table (ex-message e)))))
-    (log/infof "Dropped %d stale indexes: %s" (count @dropped) @dropped)))
+(defn delete-obsolete-tables!
+  "Drop index tables that are no longer needed. Best effort: failures are logged and never propagate. Does nothing
+  while mocking tables, where the pending table is tracked in an atom and has no metadata row to find it by."
+  []
+  (when-not *mocking-tables*
+    (try
+      ;; Delete metadata around indexes that are no longer needed.
+      (search-index-metadata/delete-obsolete! (search.spec/index-version-hash))
+      ;; Drop any indexes that are no longer referenced.
+      (let [dropped (volatile! [])]
+        (doseq [table (orphan-indexes)]
+          (try
+            (search.db/drop-search-index-table! table)
+            (vswap! dropped conj table)
+            ;; Deletion could fail if it races with other instances
+            (catch Exception e
+              (log/warnf "Failed to drop stale index %s: %s" table (ex-message e)))))
+        (log/infof "Dropped %d stale indexes: %s" (count @dropped) @dropped))
+      (catch Exception e
+        (log/warnf "Failed to clean up obsolete indexes: %s" (ex-message e))))))
 
 (defn- ->db-type [t]
   (get {:pk :int, :timestamp :timestamp-with-time-zone} t t))
