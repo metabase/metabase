@@ -108,8 +108,9 @@
           (testing "all six methods invoke read-check exactly once"
             (is (= 6 (count @calls)))))))))
 
-(deftest collapses-read-check-403-to-nil-test
-  (testing (str "a read-check denial comes back as nil rather than propagating the 403.\n\n"
+(deftest collapses-read-check-403-for-numeric-lookups-test
+  (testing (str "a read-check denial on a NUMERIC-id lookup comes back as nil rather than
+                propagating the 403; an entity_id lookup still throws.\n\n"
                 "Callers translate nil into their own `:unknown-…` error, which is what a missing\n"
                 "id already produces — so \"exists but you may not read it\" and \"does not exist\"\n"
                 "are indistinguishable to the caller. Letting the 403 escape made the status code\n"
@@ -121,11 +122,16 @@
       (mt/with-dynamic-fn-redefs [api/read-check (fn [_]
                                                    (throw (ex-info "Forbidden" {:status-code 403})))]
         (binding [api/*current-user-id* 1]
-          (testing "import-direction branch"
-            (is (nil? (resolve.mp/card-by-entity-id gated "x"))))
-          (testing "export-direction lookups"
+          (testing "numeric-id lookups collapse the denial to nil"
             (doseq [lookup [resolve.mp/card-by-id resolve.mp/measure-by-id]]
-              (is (nil? (lookup gated 1))))))))))
+              (is (nil? (lookup gated 1)))))
+          (testing "entity_id lookups keep the 403 — a NanoID is not guessable, so there is no
+                    oracle to close, and callers depend on the accurate status"
+            (try
+              (resolve.mp/card-by-entity-id gated "x")
+              (is false "expected the 403 to propagate for an entity_id lookup")
+              (catch clojure.lang.ExceptionInfo e
+                (is (= 403 (:status-code (ex-data e))))))))))))
 
 (deftest non-403-exceptions-still-propagate-test
   (testing (str "only the 403 is collapsed. A read-check failing for any other reason is a real\n"
