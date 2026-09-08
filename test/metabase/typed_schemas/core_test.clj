@@ -73,13 +73,13 @@
   "A [[source/SchemaSource]] over literal values. `tables` are filtered by the
   requested table ids so tests can see which tables fetching asked for."
   [{:keys [database-ids collection-ids library-scope library-tables
-           questions models metrics tables]}]
+           questions models model-errors metrics tables]}]
   (reify source/SchemaSource
     (database-ids [_ _] database-ids)
     (collection-ids [_ _] collection-ids)
     (library-scope [_ _] library-scope)
     (questions [_ _ _] (vec questions))
-    (models [_ _] (vec models))
+    (models [_ _] {:models (vec models) :errors (vec model-errors)})
     (metrics [_ _ _] (vec metrics))
     (tables [_ _ table-ids] (cond->> (vec tables)
                               table-ids (filterv #(contains? table-ids (:id %)))))
@@ -100,8 +100,35 @@
             :models    []
             :tables    [{:id 10, :type "table", :key "publishedTable"}
                         {:id 42, :type "table", :key "mappedTable"}]
-            :metrics   [{:type "metric", :key "revenue", :id 1, :mappedTableIds [42]}]}
+            :metrics   [{:type "metric", :key "revenue", :id 1, :mappedTableIds [42]}]
+            :errors    []}
            (build/fetch-items {:include-data-library? true} source)))))
+
+(deftest fetch-items-threads-model-errors-test
+  (testing "model errors from the source land in Items :errors alongside the built models"
+    (let [source (literal-source
+                  {:models       [{:key "orders", :name "Orders"
+                                   :actions {"create" {:kind "action", :id 9}}}]
+                   :model-errors [{:type "modelError", :modelId 7, :modelName "Broken"
+                                   :message "Failed to build action schemas for model \"Broken\" (card 7): boom"}]})]
+      (is (= {:questions []
+              :models    [{:key "orders", :name "Orders"
+                           :actions {"create" {:kind "action", :id 9}}}]
+              :tables    []
+              :metrics   []
+              :errors    [{:type "modelError", :modelId 7, :modelName "Broken"
+                           :message "Failed to build action schemas for model \"Broken\" (card 7): boom"}]}
+             (build/fetch-items {:include-models? true} source))))))
+
+(deftest create-schema-includes-errors-when-present-test
+  (testing "errors are omitted from a healthy schema and included when present"
+    (let [base-items {:questions [], :models [], :tables [], :metrics []}]
+      (is (not (contains? (build/create-schema base-items test-info) :errors)))
+      (is (= [{:type "modelError", :modelId 7, :modelName "Broken", :message "boom"}]
+             (:errors (build/create-schema
+                       (assoc base-items :errors [{:type "modelError", :modelId 7
+                                                   :modelName "Broken", :message "boom"}])
+                       test-info)))))))
 
 ;; One end-to-end test over the real test-data dataset: cards for every entity
 ;; kind on real synced tables, run through the whole pipeline to TypeScript.

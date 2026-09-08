@@ -17,7 +17,8 @@
 
   All methods return the shaped schema entities produced by the
   `metabase.typed-schemas.schema.*` builders, except [[library-tables]], which
-  returns raw table rows (only `:id` is consumed).
+  returns raw table rows (only `:id` is consumed), and [[models]], which returns
+  `{:models [...] :errors [...]}` so broken models surface as data.
 
   When the pipeline needs to read something new, add a protocol method and its
   [[app-db-source]] implementation here — do not call `t2`/`metabot` directly
@@ -49,7 +50,9 @@
   (questions [source database-ids collection-ids]
     "Question schema entities.")
   (models [source database-ids]
-    "Model schema entities that have executable actions.")
+    "Model schemas as `{:models [...] :errors [...]}`: `:models` holds the entities
+    for models with executable actions; `:errors` describes models that could not
+    be built, so one broken model does not fail the whole response.")
   (metrics [source database-ids collection-ids]
     "Metric schema entities.")
   (tables [source database-ids table-ids]
@@ -69,7 +72,7 @@
     (questions [_ database-ids collection-ids]
       (vec (schema.question/question-schemas database-ids collection-ids)))
     (models [_ database-ids]
-      (vec (schema.model/model-schemas database-ids nil)))
+      (schema.model/model-schemas database-ids nil))
     (metrics [_ database-ids collection-ids]
       (vec (schema.metric/metric-schemas database-ids collection-ids)))
     (tables [_ database-ids table-ids]
