@@ -28,13 +28,13 @@
                 {:id api/*current-user-id*}
                 :delay-event
                 false))]
-    (t2/insert! :model/DashboardCard
-                {:dashboard_id dashboard-id
-                 :card_id      (or card-id (:id card))
-                 :row          row
-                 :col          col
-                 :size_x       size-x
-                 :size_y       size-y})
+    (metabot.db/insert-dashcard!
+     {:dashboard_id dashboard-id
+      :card_id      (or card-id (:id card))
+      :row          row
+      :col          col
+      :size_x       size-x
+      :size_y       size-y})
     (when (and card conversation-id chart-id)
       (metabot.db/link-card-to-conversation! (:id card) conversation-id chart-id))
     card))
@@ -60,13 +60,12 @@
   (run! check-tile-permissions! tiles)
   (api/create-check :model/Dashboard {:collection_id collection-id})
   (let [[dash cards] (t2/with-transaction [_conn]
-                       (let [dash (first (t2/insert-returning-instances!
-                                          :model/Dashboard
-                                          {:name          name
-                                           :description   description
-                                           :parameters    []
-                                           :creator_id    api/*current-user-id*
-                                           :collection_id collection-id}))]
+                       (let [dash (metabot.db/insert-dashboard!
+                                   {:name          name
+                                    :description   description
+                                    :parameters    []
+                                    :creator_id    api/*current-user-id*
+                                    :collection_id collection-id})]
                          (when (and conversation-id generated-id)
                            (metabot.db/link-dashboard-to-conversation! (:id dash) conversation-id generated-id))
                          [dash (vec (keep #(place-tile! (:id dash) conversation-id %) tiles))]))]

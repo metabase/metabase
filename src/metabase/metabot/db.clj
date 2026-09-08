@@ -821,6 +821,16 @@
   (t2/update! (t2/table-name :model/Dashboard) dashboard-id {:metabot_conversation_id conversation-id
                                                              :metabot_dashboard_id    generated-id}))
 
+(defn insert-dashboard!
+  "Insert `dashboard` and return the created Dashboard row."
+  [dashboard]
+  (first (t2/insert-returning-instances! :model/Dashboard dashboard)))
+
+(defn insert-dashcard!
+  "Insert the DashboardCard `dashcard`."
+  [dashcard]
+  (t2/insert! :model/DashboardCard dashcard))
+
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
 (mu/defn collection
