@@ -6,7 +6,9 @@
    [metabase.util.json :as json])
   (:import
    (com.google.common.net InetAddresses)
-   (java.net Inet6Address InetAddress URI URL)))
+   (java.net Inet6Address InetAddress URI)
+   (org.apache.http.conn DnsResolver)
+   (org.apache.http.impl.conn SystemDefaultDnsResolver)))
 
 (set! *warn-on-reflection* true)
 
@@ -20,29 +22,6 @@
                   (string? headers) parse-http-headers)
         response (http/get url (m/assoc-some {:as :json} :headers headers))]
     (:body response)))
-
-(def ^:private invalid-hosts
-  #{"metadata.google.internal"}) ; internal metadata for GCP
-
-(defn valid-host?
-  "Check whether url is valid based on the given strategy:
-   :external-only - only external hosts
-   :allow-private - external + private networks but not localhost/loopback
-   :allow-all - no restrictions"
-  [strategy url]
-  (case strategy
-    :allow-all true
-    ;; For both :external-only and :allow-private, we need to check the host
-    (let [^URL url   (if (string? url) (URL. url) url)
-          host       (.getHost url)
-          host-name  (InetAddress/getByName host)]
-      (and
-       (not (contains? invalid-hosts host))
-       (not (.isLinkLocalAddress host-name))
-       (not (.isLoopbackAddress host-name))
-       ;; Only block site-local (private) addresses for :external-only
-       (or (= strategy :allow-private)
-           (not (.isSiteLocalAddress host-name)))))))
 
 (defn public-address?
   "True only for globally-routable unicast IP addresses (rejects loopback, link-local, site-local,
@@ -121,7 +100,7 @@
   (boolean (when-let [host (not-empty (str/trim (str host)))]
              (InetAddresses/isInetAddress (str/replace host #"^\[|\]$" "")))))
 
-(defn- host->inet-addresses
+(defn host->inet-addresses
   "Resolve `host` to its `InetAddress`es, returning nil if it is blank or cannot be resolved. Strips the brackets
   around an IPv6 literal (`[::1]`), which `InetAddress` accepts but which we may also see already stripped."
   [host]
@@ -146,3 +125,24 @@
        (when-let [hostname (->hostname host)]
          (every? #(address-allowed-for-network-policy? policy %)
                  (host->inet-addresses hostname))))))
+
+(def ^DnsResolver ^:dynamic *system-dns-resolver*
+  "The underlying system DNS resolver. Exposed as a dynamic var so tests can inject a fake
+  host->address mapping"
+  (SystemDefaultDnsResolver.))
+
+(defn network-policy-dns-resolver
+  "A clj-http `:dns-resolver` that resolves `host` normally but throws unless *every* resolved address is
+  permitted by `policy`.
+
+  Returns nil for `:allow-all`, which restricts nothing: callers should omit `:dns-resolver` in that case
+  and let clj-http use its default resolver."
+  ^DnsResolver [policy]
+  (when-not (= policy :allow-all)
+    (reify DnsResolver
+      (^"[Ljava.net.InetAddress;" resolve [_ ^String host]
+        (let [addrs (.resolve *system-dns-resolver* host)]
+          (if (every? #(address-allowed-for-network-policy? policy %) addrs)
+            addrs
+            (throw (ex-info "Refusing to connect to a non-permitted network address"
+                            {:ssrf true :policy policy :host host}))))))))
