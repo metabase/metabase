@@ -45,9 +45,17 @@ for (const [alias, subpath] of Object.entries(SDK_ENTERPRISE_ALIASES)) {
   }
 }
 
-for (const [name, snapshot, full] of [
-  ["app", light.app, require("../../../../rspack.main.config")],
-  ["sdk", light.sdk, require("../../../../rspack.embedding-sdk-bundle.config")],
+for (const { name, snapshot, full } of [
+  {
+    name: "app",
+    snapshot: light.app,
+    full: require("../../../../rspack.main.config"),
+  },
+  {
+    name: "sdk",
+    snapshot: light.sdk,
+    full: require("../../../../rspack.embedding-sdk-bundle.config"),
+  },
 ]) {
   assert.deepEqual(snapshot.resolve, full.resolve, `${name}: resolve`);
   assert.deepEqual(snapshot.externals, full.externals, `${name}: externals`);

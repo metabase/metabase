@@ -1,15 +1,10 @@
 import path from "path";
 
-import { RuleTester } from "oxlint/plugins-dev";
-
 import rule from "../eslint-plugin-metabase/rules/no-module-side-effects";
 
-const ruleTester = new RuleTester({
-  languageOptions: {
-    parserOptions: { lang: "tsx" },
-    sourceType: "module",
-  },
-});
+import { createRuleTester } from "./rule-tester";
+
+const ruleTester = createRuleTester();
 
 const FILENAME = "/repo/frontend/src/metabase/widgets/Widget/Widget.tsx";
 const REGISTRATION_FILE =
@@ -19,7 +14,8 @@ const REGISTRATION_DIR = "/repo/frontend/src/metabase/widgets/api/";
 
 const options = [{ sideEffectPaths: [REGISTRATION_FILE, REGISTRATION_DIR] }];
 
-// Import checks read the resolved files before consulting the side-effect registry.
+// The import checks resolve each specifier on disk before consulting the registry,
+// so these cases point at real fixture files.
 const FIXTURES = path.resolve(__dirname, "fixtures/side-effect-files");
 const IMPORTER = path.join(FIXTURES, "importer/Widget.tsx");
 const registryOptions = {
