@@ -50,8 +50,8 @@
       (try
         ;; Discard the resolved query: it is a large nested map and these tests only care
         ;; whether the call was permitted.
-        (do (construct/execute-representations-query query)
-            {:outcome :resolved})
+        (construct/execute-representations-query query)
+        {:outcome :resolved}
         (catch clojure.lang.ExceptionInfo e
           {:outcome   :threw
            :status    (:status-code (ex-data e))
