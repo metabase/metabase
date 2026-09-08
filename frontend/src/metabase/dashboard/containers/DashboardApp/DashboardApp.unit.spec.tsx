@@ -352,7 +352,7 @@ describe("DashboardApp ad-hoc dashboards", () => {
 
     return renderWithProviders(
       <>
-        <Route path="/dashboard/adhoc" element={<DashboardApp />} />
+        <Route path="/dashboard" element={<DashboardApp />} />
         <Route path="/dashboard/:slug" element={<div>saved dashboard</div>} />
       </>,
       {
