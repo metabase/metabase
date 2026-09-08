@@ -112,12 +112,13 @@
 (deftest numeric-source-card-readable-resolves-through-the-store-test
   (testing (str "the check is not over-broad: a card the caller CAN read resolves through the same\n"
                 "read-checked store that denies an unreadable one.\n\n"
-                "Asserted at the store/resolver layer rather than end-to-end: the full pipeline call\n"
-                "chain plus `mu/defn` instrumentation puts `permissions.util/PathSchema` — a nested-\n"
-                "quantifier regex, `^/(<char>*/)*$` — deep enough on the stack to overflow it on the\n"
-                "SUCCESS path. That is pre-existing and unrelated to this fix (a plain `read-check`\n"
-                "on the same card outside the pipeline succeeds), so this pins the behavior that\n"
-                "matters here without depending on it.")
+                "Asserted at the store/resolver layer rather than end-to-end. End-to-end, the\n"
+                "success path runs `permissions.util/PathSchema` (a `mu/defn` return schema, so\n"
+                "dev/test only) on top of the already-deep pipeline call chain; java.util.regex\n"
+                "recurses once per quantifier iteration, and the combined depth overflows the\n"
+                "stack. Pre-existing and unrelated to this fix — the same `read-check` outside the\n"
+                "pipeline succeeds — so this pins the behavior that matters without depending on\n"
+                "it. Only the success path reaches there; the denial tests above are unaffected.")
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card readable {:collection_id nil
                                            :database_id   (mt/id)
