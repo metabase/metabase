@@ -38,7 +38,7 @@ function main(): void {
     args.length === 2 && args[0] === "--explain" ? args[1] : undefined;
   if (args.length && !updateBaseline && !explain) {
     throw new Error(
-      "Usage: bun run api-contracts-pure [--update-baseline | --explain <endpoint>]",
+      "Usage: bun run api-contract-check-pure [--update-baseline | --explain <endpoint>]",
     );
   }
   const configPath = resolve(root, "tsconfig.json");
