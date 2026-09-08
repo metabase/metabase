@@ -38,8 +38,45 @@ export const getErrorMessage = (
     return getErrorMessage(payload.data, fallback);
   }
 
+  // Malli param-validation failures (see [[metabase.api.macros/decode-and-validate-params]])
+  // don't carry a `message` -- just a field -> description map, e.g.
+  // { source_tables: ["should have at least 1 elements, received: []"] }.
+  // Without this, requests rejected for a validation reason (as opposed to a
+  // thrown business-logic error) all collapse to the generic fallback.
+  if (
+    "specific-errors" in payload &&
+    isErrorDetailMap(payload["specific-errors"])
+  ) {
+    return formatErrorDetailMap(payload["specific-errors"]);
+  }
+
+  if ("errors" in payload && isErrorDetailMap(payload.errors)) {
+    return formatErrorDetailMap(payload.errors);
+  }
+
   return fallback;
 };
+
+type ErrorDetailMap = Record<string, string | string[] | ErrorDetailMap>;
+
+function isErrorDetailMap(value: unknown): value is ErrorDetailMap {
+  return (
+    typeof value === "object" && value !== null && Object.keys(value).length > 0
+  );
+}
+
+function formatErrorDetailMap(errors: ErrorDetailMap): string {
+  return Object.entries(errors)
+    .map(([field, detail]) => {
+      const message = Array.isArray(detail)
+        ? detail.join(", ")
+        : typeof detail === "object"
+          ? formatErrorDetailMap(detail)
+          : detail;
+      return `${field}: ${message}`;
+    })
+    .join("; ");
+}
 
 type RequestError = {
   status?: number;
