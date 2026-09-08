@@ -61,9 +61,9 @@
 (def ^:private thinking-only-models
   "Models that reject `thinking {:type \"disabled\"}` outright.
 
-  glm-5.3's thinking cannot be turned off (error 1210 \"always engages in thinking\", probed
-  2026-09-03); it takes `reasoning_effort` low|high|max instead, which this adapter does not send
-  while the model stays off the [[supported-models]] whitelist."
+  glm-5.3 thinking cannot be turned off (error 1210 \"always engages in thinking\", probed
+  2026-09-03); it accepts `reasoning_effort` low|high|max instead. `glm-5.3-flash`
+  remains outside the [[supported-models]] whitelist."
   #{"glm-5.3" "glm-5.3-flash"})
 
 (defn- list-all-models
