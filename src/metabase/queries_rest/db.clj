@@ -63,14 +63,14 @@
                           :order-by [[[:lower :c.name] :asc]]}))
 
 (mu/defn public-cards
-  "The name, id, public uuid, and schema of the unarchived Cards that are publicly shared."
+  "The name, id, and public uuid of the unarchived Cards that are publicly shared."
   []
-  (t2/select [:model/Card :name :id :public_uuid :card_schema], :public_uuid [:not= nil], :archived false))
+  (t2/select [:model/Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 (mu/defn embeddable-cards
-  "The name, id, and schema of the unarchived Cards with embedding enabled."
+  "The name and id of the unarchived Cards with embedding enabled."
   []
-  (t2/select [:model/Card :name :id :card_schema], :enable_embedding true, :archived false))
+  (t2/select [:model/Card :name :id], :enable_embedding true, :archived false))
 
 (mu/defn segment-database-id
   "The Database id of the Table of the Segment with `segment-id`, or nil."
@@ -101,9 +101,9 @@
   (t2/select-one-fn :dataset_query :model/Card :id card-id))
 
 (mu/defn card-public-uuid-columns
-  "The public uuid and schema of the Card with `card-id`, or nil."
+  "The public uuid of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id))
+  (t2/select-one [:model/Card :public_uuid] :id card-id))
 
 (mu/defn compatible-series-cards
   "The unarchived Cards other than `excluded-card-id` displayed as one of `display-types`, newest first, whose id is
@@ -158,7 +158,8 @@
   `new-collection-id-or-nil`."
   [card-ids :- [:set ::lib.schema.id/card]
    new-collection-id-or-nil :- [:maybe ms/PositiveInt]]
-  (t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema]
+  (t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema :type
+              :result_metadata :dimensions :dimension_mappings]
              {:where [:and [:in :id card-ids]
                       [:or [:not= :collection_id new-collection-id-or-nil]
                        (when new-collection-id-or-nil
