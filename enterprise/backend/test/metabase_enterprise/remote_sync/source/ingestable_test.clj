@@ -5,13 +5,9 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase-enterprise.serialization.core :as serialization]
-   ;; for side effects: derives the :event/group-membership-* topics that creating a user publishes.
-   ;; Loaded in production via metabase.core.init -> metabase.audit-app.init.
    [metabase.audit-app.events.audit-log]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as mt]
-   ;; for side effects: defines last-acknowledged-version, which creating a user sets by name.
-   ;; Loaded in production via metabase.core.init -> metabase.users.init.
    [metabase.users.settings]
    [toucan2.core :as t2]))
 

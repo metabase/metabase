@@ -1,8 +1,6 @@
 (ns metabase.settings.models.setting.multi-setting-test
   (:require
    [clojure.test :refer :all]
-   ;; for side effects: derives :event/setting-update, which writing a setting publishes.
-   ;; Loaded in production via metabase.core.init -> metabase.audit-app.init.
    [metabase.audit-app.events.audit-log]
    [metabase.settings.models.setting :as setting]
    [metabase.settings.models.setting.multi-setting :as multi-setting]
