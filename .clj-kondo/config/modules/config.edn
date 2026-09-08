@@ -2161,7 +2161,7 @@
   secrets
   {:team "Graphy"
    :api  #{metabase.secrets.core}
-   :uses #{api driver models premium-features util}}
+   :uses #{api driver models system premium-features util}}
 
   segments
   {:team "Graphy"
@@ -2419,7 +2419,7 @@
   {:team "UX West"
    :api  #{metabase.system.core
            metabase.system.init}
-   :uses #{appearance settings util}}
+   :uses #{appearance premium-features settings util}}
 
   task
   {:team "UX West"
