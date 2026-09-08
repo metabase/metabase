@@ -469,6 +469,7 @@
   metabase-enterprise.serialization.metadata-file-import.wire-format-test/with-tiny-fixture! clojure.core/fn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
+  metabase-enterprise.tenants.pulse-api-test/with-tenant-pulse-fixture!                 clojure.core/fn
   metabase-enterprise.workspaces.test-util/with-resources!                              clojure.core/let
   metabase-enterprise.workspaces.test-util/with-workspaces!                             clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let

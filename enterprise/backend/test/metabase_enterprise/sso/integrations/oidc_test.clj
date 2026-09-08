@@ -17,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :web-server :test-users))
+(use-fixtures :once (fixtures/initialize :test-users :web-server))
 
 (def ^:private test-encryption-key
   "Test encryption key for OIDC state encryption."
