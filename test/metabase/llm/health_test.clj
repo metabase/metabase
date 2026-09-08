@@ -1,7 +1,9 @@
 (ns metabase.llm.health-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [metabase.llm.health :as llm.health]))
+   [metabase.llm.health :as llm.health]
+   [metabase.util.log.capture :as log.capture]))
 
 (set! *warn-on-reflection* true)
 
@@ -79,6 +81,21 @@
       (llm.health/forget-superseded! {"moved-conn" config "other-conn" config}
                                      {"other-conn" config "moved-conn" config})
       (is (some? (llm.health/failure "moved-conn"))))))
+
+(deftest recording-an-exception-keeps-the-response-body-out-of-the-log-test
+  (testing "the ex-data deliberately carries the raw response body, which a 401 can echo the credential into — the
+            log gets the sanitized message, never the rendered throwable"
+    (log.capture/with-log-messages-for-level [messages [metabase.llm.health :warn]]
+      (llm.health/record-exception! "logged-conn"
+                                    (ex-info "anthropic API request failed (HTTP 401)"
+                                             {:status 401
+                                              :body   "{\"error\":\"invalid x-api-key sk-ant-secret-echoed\"}"}))
+      (let [logged (messages)]
+        (is (seq logged))
+        (is (every? #(nil? (:e %)) logged)
+            "the throwable itself must not be handed to the logger")
+        (is (not-any? #(str/includes? (str %) "sk-ant-secret-echoed") logged)
+            "nothing rendered into the log may carry the response body")))))
 
 (deftest forget-clears-without-a-success-test
   (testing "an explicit forget drops even a fatal failure — the admin re-saving a connection is an ask to try again"
