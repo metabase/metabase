@@ -1084,8 +1084,6 @@ export const CombinedWithInvalidSettings = {
 export const StackedNormalizedCustomYAxisRange = {
   render: Template,
   args: {
-    // metabase#75156: raw values are 10 and 15, so neither falls inside 40-60.
-    // No warning should appear.
     // Unjustified type cast. FIXME
     rawSeries: updateIn(
       data.stackedChartCustomYAxisRange,

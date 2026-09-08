@@ -6,12 +6,6 @@ import {
   isDataVisibilityResult,
 } from "metabase/viz-core";
 
-/**
- * Asks a rendered chart whether it actually painted anything inside the plot
- * area. Call it after `renderToSVGString` and before `dispose`: the reply
- * arrives synchronously, since `dispatchAction` runs the handler and triggers
- * the event before returning.
- */
 export const readAllPointsOutOfRange = (chart: EChartsType) => {
   let allPointsOutOfRange = false;
 

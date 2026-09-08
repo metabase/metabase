@@ -3,7 +3,7 @@ import { registerAction } from "echarts/core";
 export const DATA_VISIBILITY_ACTION = "metabaseCheckDataVisibility";
 export const DATA_VISIBILITY_EVENT = "metabaseDataVisibility";
 
-export type DataVisibilityResult = {
+type DataVisibilityResult = {
   anythingRendered: boolean;
 };
 
@@ -16,8 +16,6 @@ export const isDataVisibilityResult = (
   "anythingRendered" in value &&
   typeof value.anythingRendered === "boolean";
 
-// `GlobalModel` / `ExtensionAPI` are internal to ECharts and not exported, so the
-// handler's parameter types are derived from the registration function instead.
 type ActionHandler = Parameters<typeof registerAction>[1];
 type ExtensionApi = Parameters<NonNullable<ActionHandler>>[2];
 type CoordinateSystem = ReturnType<
@@ -40,8 +38,6 @@ const isCartesianAxis = (
   axis: CoordinateAxis,
 ): axis is CoordinateAxis & CartesianAxis => "toGlobalCoord" in axis;
 
-// `getRect()` lives on the concrete Grid but not on the CoordinateSystemMaster
-// interface, so the plot box is rebuilt from the span of its two axes.
 const getPlotArea = (coordinateSystem: CoordinateSystem): PlotArea | null => {
   const axes = coordinateSystem.getAxes?.();
   const xAxis = axes?.find((axis) => axis.dim === "x");
@@ -75,7 +71,7 @@ const hasMarkInsidePlotArea = (view: SeriesView, plotArea: PlotArea) => {
       return;
     }
 
-    // Groups aggregate their children's bounds, so only leaves are real marks.
+    // Groups aggregate their children's bounds, so we compare against children instead
     if (element.isGroup || element.ignore) {
       return;
     }
