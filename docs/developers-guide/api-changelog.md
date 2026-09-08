@@ -177,7 +177,7 @@ title: API changelog
 
 - `/api/metric`
 
-  The `/api/metric` endpoints have been renamed to `/api/legacy-metric` to reflect the fact that it will not be used for the new version of metrics. The new version uses the `/api/card` endpoints.
+  The `/api/metric` endpoints have been renamed to `/api/legacy-metric`. The new metrics use the `/api/card` endpoints.
 
 - `GET /api/permissions/graph` and `PUT /api/permissions/graph`
 
