@@ -159,6 +159,7 @@ export type MetabaseColorKey =
   | "illustration-secondary-brand"
   | "illustration-tertiary-brand"
   | "input-focus"
+  | "input-background"
   | "modal-overlay"
   | "shadow-default"
   | "switch-off"

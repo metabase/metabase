@@ -165,6 +165,7 @@ const actualColors = {
   "feedback-warning-strong": baseColors.mango[60],
   "illustration-secondary-brand": baseColors.brand[10],
   "illustration-tertiary-brand": baseColors.brand[5],
+  "input-background": baseColors.orionAlpha[5],
   "input-focus": baseColors.blue[20],
   "modal-overlay": baseColors.orionAlpha[60],
   "navbar-admin": baseColors.octopus[60],

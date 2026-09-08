@@ -107,10 +107,11 @@ const STATES = [
   focus?: boolean;
 }[];
 
-// Forces the "Focused" rows via storybook-addon-pseudo-states. Currently, a
-// no-op visually: PasswordInput.module.css has no focus-specific styling yet,
-// so this accurately reflects the component's current, pre-restyle behavior.
-const focusSelector = (id: string) => `[data-state-row="${id}"]`;
+// Forces the "Focused" rows via storybook-addon-pseudo-states. Mantine forwards
+// data-state-row to the inner <input>, but the focus styles live on the .input
+// div around it, so the selector targets that parent and the story uses
+// `focusWithin` to match the component's :focus-within rules.
+const focusSelector = (id: string) => `:has(> [data-state-row="${id}"])`;
 
 const OverviewTemplate: StoryFn<PasswordInputProps> = () => (
   <StoryShowcase title="PasswordInput">
@@ -153,7 +154,7 @@ export const Overview = {
   render: OverviewTemplate,
   parameters: {
     pseudo: {
-      focus: STATES.filter((state) => state.focus).map((state) =>
+      focusWithin: STATES.filter((state) => state.focus).map((state) =>
         focusSelector(state.id),
       ),
     },
