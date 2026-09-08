@@ -13,7 +13,7 @@ import { getQuestionWithDefaultVisualizationSettings } from "./viz-settings";
 
 registerVisualizations();
 
-const PREFIX = "custom-viz:demo-viz:";
+const PREFIX = "custom:demo-viz:";
 const METADATA = createMockMetadata({ databases: [createSampleDatabase()] });
 
 function setup(visualization_settings: VisualizationSettings) {

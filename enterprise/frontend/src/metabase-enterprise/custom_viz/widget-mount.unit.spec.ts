@@ -10,7 +10,7 @@ import {
 } from "./widget-mount";
 
 const PLUGIN = createMockCustomVizPluginRuntime();
-const PREFIX = "custom-viz:demo-viz:";
+const PREFIX = "custom:demo-viz:";
 
 type WidgetProps = Record<string, unknown>;
 

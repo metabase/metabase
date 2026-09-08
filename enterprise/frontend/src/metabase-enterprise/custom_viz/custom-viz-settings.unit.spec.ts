@@ -34,7 +34,7 @@ const SERIES: Series = [
 const SETTINGS = {
   "card.title": "Title",
   [`${PREFIX}threshold`]: 1,
-  "custom-viz:other:threshold": 2,
+  "custom:other:threshold": 2,
 };
 
 function setupMount() {

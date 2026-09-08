@@ -23,7 +23,7 @@ describe("applyDefaultVisualizationProps", () => {
     applyDefaultVisualizationProps(COMPONENT, vizDef, {
       identifier: "custom:demo-viz",
       plugin: PLUGIN,
-      prefix: "custom-viz:demo-viz:",
+      prefix: "custom:demo-viz:",
     }).checkRenderable?.([], {});
 
     expect(checkRenderable).toHaveBeenCalledTimes(1);
@@ -38,7 +38,7 @@ describe("applyDefaultVisualizationProps", () => {
       {
         identifier: "custom:demo-viz",
         plugin: PLUGIN,
-        prefix: "custom-viz:demo-viz:",
+        prefix: "custom:demo-viz:",
       },
     );
 
@@ -51,7 +51,7 @@ describe("applyDefaultVisualizationProps", () => {
     const { getUiName } = applyDefaultVisualizationProps(COMPONENT, vizDef, {
       identifier: "custom:demo-viz",
       plugin: PLUGIN,
-      prefix: "custom-viz:demo-viz:",
+      prefix: "custom:demo-viz:",
     });
 
     expect(getUiName()).toBe("Localized demo");
@@ -66,7 +66,7 @@ describe("applyDefaultVisualizationProps", () => {
     const { getUiName } = applyDefaultVisualizationProps(COMPONENT, vizDef, {
       identifier: "custom:demo-viz",
       plugin,
-      prefix: "custom-viz:demo-viz:",
+      prefix: "custom:demo-viz:",
     });
 
     expect(getUiName()).toBe("Manifest name");
@@ -82,7 +82,7 @@ describe("applyDefaultVisualizationProps", () => {
     const { getUiName } = applyDefaultVisualizationProps(COMPONENT, vizDef, {
       identifier: "custom:demo-viz",
       plugin,
-      prefix: "custom-viz:demo-viz:",
+      prefix: "custom:demo-viz:",
     });
 
     expect(getUiName()).toBe("Manifest name");
@@ -97,7 +97,7 @@ describe("applyDefaultVisualizationProps", () => {
     const { getUiName } = applyDefaultVisualizationProps(COMPONENT, vizDef, {
       identifier: "custom:demo-viz",
       plugin,
-      prefix: "custom-viz:demo-viz:",
+      prefix: "custom:demo-viz:",
     });
 
     expect(getUiName()).toBe("Manifest name");
@@ -113,7 +113,7 @@ describe("applyDefaultVisualizationProps", () => {
       applyDefaultVisualizationProps(COMPONENT, vizDef, {
         identifier: "custom:demo-viz",
         plugin: PLUGIN,
-        prefix: "custom-viz:demo-viz:",
+        prefix: "custom:demo-viz:",
       }),
     ).toThrow("boom");
     expect(getName).toHaveBeenCalledTimes(1);

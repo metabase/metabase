@@ -9,7 +9,7 @@ import { useChartSettingsState } from "./hooks";
 
 registerVisualizations();
 
-const PREFIX = "custom-viz:demo-viz:";
+const PREFIX = "custom:demo-viz:";
 
 interface SetupOpts {
   series: Series;
@@ -134,14 +134,14 @@ describe("useChartSettingsState", () => {
       getUiName: () => "Late viz",
       checkRenderable: () => undefined,
       settings: {
-        "custom-viz:late-viz:threshold": { widget: "number" },
+        "custom:late-viz:threshold": { widget: "number" },
       },
     });
 
     rerender();
 
     expect(result.current.chartSettings).toEqual({
-      "custom-viz:late-viz:threshold": 5,
+      "custom:late-viz:threshold": 5,
     });
   });
 });

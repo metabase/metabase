@@ -221,7 +221,7 @@ describe("extendCardWithDashcardSettings", () => {
   });
 
   describe("custom viz settings saved before namespacing", () => {
-    const PREFIX = "custom-viz:demo-viz:";
+    const PREFIX = "custom:demo-viz:";
 
     it("keeps a dashcard override over the card's namespaced value", () => {
       const card = createMockCard({

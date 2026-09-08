@@ -13,7 +13,7 @@ import { CustomVizSettingWidget } from "./CustomVizSettingWidget";
 type TestWidgetProps = PluginWidgetProps & { title?: string };
 
 const WIDGET_PROPS: CustomVizSettingWidgetProps = {
-  id: "custom-viz:demo-viz:setting",
+  id: "custom:demo-viz:setting",
   value: 1,
   onChange: jest.fn(),
   onChangeSettings: jest.fn(),
@@ -61,7 +61,7 @@ function prepareWidget(pluginId = 1) {
   const mount = wrapPluginWidget(
     widgetMount,
     createMockCustomVizPluginRuntime({ id: pluginId }),
-    "custom-viz:demo-viz:",
+    "custom:demo-viz:",
   );
   return {
     mount,

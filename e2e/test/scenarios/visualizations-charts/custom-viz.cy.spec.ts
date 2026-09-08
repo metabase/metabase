@@ -625,7 +625,7 @@ describe("admin > custom visualizations", () => {
       cy.get("@questionId").then((id) => {
         cy.request("GET", `/api/card/${id}`).then(({ body }) => {
           expect(body.visualization_settings).to.have.property(
-            `custom-viz:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
+            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
             42,
           );
           expect(body.visualization_settings).not.to.have.property("threshold");
@@ -670,7 +670,7 @@ describe("admin > custom visualizations", () => {
       cy.get("@legacyQuestionId").then((id) => {
         cy.request("GET", `/api/card/${id}`).then(({ body }) => {
           expect(body.visualization_settings).to.have.property(
-            `custom-viz:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
+            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
             43,
           );
           expect(body.visualization_settings).not.to.have.property("threshold");
@@ -692,11 +692,11 @@ describe("admin > custom visualizations", () => {
       cy.get("@questionId").then((id) => {
         cy.request("GET", `/api/card/${id}`).then(({ body }) => {
           expect(body.visualization_settings).to.have.property(
-            `custom-viz:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
+            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
             7,
           );
           expect(body.visualization_settings).to.have.property(
-            `custom-viz:${H.CUSTOM_VIZ_IDENTIFIER}:card.title`,
+            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:card.title`,
             "Plugin title",
           );
           expect(body.visualization_settings).not.to.have.property(
@@ -729,7 +729,7 @@ describe("admin > custom visualizations", () => {
       cy.get("@questionId").then((id) => {
         cy.request("GET", `/api/card/${id}`).then(({ body }) => {
           expect(body.visualization_settings).to.have.deep.property(
-            `custom-viz:${H.CUSTOM_VIZ_IDENTIFIER}:columns`,
+            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:columns`,
             ["count", "extra"],
           );
         });

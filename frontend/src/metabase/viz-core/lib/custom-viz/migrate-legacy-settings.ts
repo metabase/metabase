@@ -19,7 +19,7 @@ const EXTRA_HOST_SETTING_KEYS: ReadonlySet<string> = new Set([
 
 /**
  * Custom viz settings used to be stored under the plugin's bare setting ids.
- * Now they live under `custom-viz:<plugin>:<id>` keys.
+ * Now they live under `custom:<plugin>:<id>` keys.
  */
 export function migrateStoredCustomVizSettings(
   display: VisualizationDisplay | undefined,

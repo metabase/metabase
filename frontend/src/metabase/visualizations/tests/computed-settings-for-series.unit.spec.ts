@@ -393,7 +393,7 @@ const cardWithTimeseriesBreakoutAndTwoMetrics = ({
 
 describe("getStoredSettingsForSeries", () => {
   describe("custom viz settings saved before namespacing", () => {
-    const PREFIX = "custom-viz:demo-viz:";
+    const PREFIX = "custom:demo-viz:";
 
     beforeAll(() => {
       registerVisualization({

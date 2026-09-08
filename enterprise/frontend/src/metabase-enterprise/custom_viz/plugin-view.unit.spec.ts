@@ -7,7 +7,7 @@ import {
   toPluginSettings,
 } from "./plugin-view";
 
-const PREFIX = "custom-viz:demo-viz:";
+const PREFIX = "custom:demo-viz:";
 
 describe("toPluginSeries", () => {
   it("hands the plugin a copy of only the documented series fields", () => {
@@ -33,7 +33,7 @@ describe("toPluginSeries", () => {
   it("gives each plugin its own copy of the data", () => {
     const series = [createMockSingleSeries({})];
 
-    const other = toPluginSeries(series, "custom-viz:other:");
+    const other = toPluginSeries(series, "custom:other:");
     other[0].data.rows.push([1]);
 
     expect(toPluginSeries(series, PREFIX)[0].data.rows).toEqual([]);
@@ -98,9 +98,9 @@ describe("toPluginSettings", () => {
   });
 
   it("drops other plugins' settings", () => {
-    expect(
-      toPluginSettings({ "custom-viz:other:threshold": 1 }, PREFIX),
-    ).toEqual({});
+    expect(toPluginSettings({ "custom:other:threshold": 1 }, PREFIX)).toEqual(
+      {},
+    );
   });
 
   it("lets a plugin setting shadow a same-named host setting", () => {
@@ -230,7 +230,7 @@ describe("toPluginSettings", () => {
     expect(toPluginSettings(settings, PREFIX)).toBe(
       toPluginSettings(settings, PREFIX),
     );
-    expect(toPluginSettings(settings, "custom-viz:other:")).not.toBe(
+    expect(toPluginSettings(settings, "custom:other:")).not.toBe(
       toPluginSettings(settings, PREFIX),
     );
     expect(toPluginSettings({ ...settings }, PREFIX)).not.toBe(
