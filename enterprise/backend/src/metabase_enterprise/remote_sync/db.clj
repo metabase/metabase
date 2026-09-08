@@ -36,13 +36,16 @@
 
 (defn- removal-exprs
   "The `:where` fragments (see [[removal-condition-exprs]]) selecting the `model-key` rows an import removes:
-  scoped to `synced-collection-ids` (when `scope-key` is given), excluding `entity-ids`, and matching
-  `removal-conditions`. Returns nil for a scoped model with no synced collections (removes nothing)."
-  [{:keys [scope-key synced-collection-ids entity-ids removal-conditions]}]
+  scoped to `synced-collection-ids` (when `scope-key` is given), excluding `entity-ids`, restricted to the
+  `worktree-id` in scope (when `worktree-scoped?`, i.e. the model's table has a `worktree_id` column; nil is the
+  main app), and matching `removal-conditions`. Returns nil for a scoped model with no synced collections (removes
+  nothing)."
+  [{:keys [scope-key synced-collection-ids entity-ids removal-conditions worktree-scoped? worktree-id]}]
   (when-not (and scope-key (empty? synced-collection-ids))
     (cond-> []
       scope-key        (conj [:in scope-key synced-collection-ids])
       (seq entity-ids) (conj [:not-in :entity_id entity-ids])
+      worktree-scoped? (conj [:= :worktree_id worktree-id])
       :always          (into (removal-condition-exprs removal-conditions)))))
 
 (defn delete-removed-instances!
@@ -56,20 +59,21 @@
 
 (defn- unsynced-anti-join-expr
   "A `[:not [:exists ...]]` fragment keeping only rows with no RemoteSyncObject of `model-type` in 'synced'
-  status — i.e. unsynced local work (an already-synced entity's removal is a normal reconcile, not data loss).
-  `id-column` is the qualified id column of the model's own table."
-  [model-type id-column]
+  status within `worktree-id` (nil is the main app) — i.e. unsynced local work (an already-synced entity's
+  removal is a normal reconcile, not data loss). `id-column` is the qualified id column of the model's own table."
+  [model-type id-column worktree-id]
   [:not [:exists ^:allow-subquery {:select [1]
                                    :from   [:remote_sync_object]
                                    :where  [:and
                                             [:= :remote_sync_object.model_type model-type]
                                             [:= :remote_sync_object.model_id id-column]
+                                            [:= :remote_sync_object.worktree_id worktree-id]
                                             [:= :remote_sync_object.status "synced"]]}]])
 
 (defn- unsynced-instance-expr
-  [model-key model-type removal-opts]
+  [model-key model-type {:keys [worktree-id] :as removal-opts}]
   (let [id-column (keyword (str (name (t2/table-name model-key)) ".id"))]
-    (into [:and (unsynced-anti-join-expr model-type id-column)] (removal-exprs removal-opts))))
+    (into [:and (unsynced-anti-join-expr model-type id-column worktree-id)] (removal-exprs removal-opts))))
 
 (defn unsynced-instance-count
   "The number of `model-key` rows [[delete-removed-instances!]] would remove (see [[removal-exprs]]) that also
@@ -108,9 +112,12 @@
                             (when archived-key [:= archived-key false])]}))
 
 (defn instances-with-columns-by-entity-ids
-  "The `columns` of the instances of `model` with `entity-ids`."
-  [model columns entity-ids]
-  (t2/select (into [model] columns) :entity_id [:in entity-ids]))
+  "The `columns` of the instances of `model` with `entity-ids`; the 4-arity restricts them to the rows of
+  `worktree-id` (nil is the main app), for models whose table has a `worktree_id` column."
+  ([model columns entity-ids]
+   (t2/select (into [model] columns) :entity_id [:in entity-ids]))
+  ([model columns entity-ids worktree-id]
+   (t2/select (into [model] columns) :entity_id [:in entity-ids] :worktree_id worktree-id)))
 
 (defn delete-instances!
   "Delete the instances of `model` with `ids`."
@@ -217,9 +224,52 @@
   (t2/exists? :model/FieldUserSettings :field_id field-id))
 
 (defn snippets
-  "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."
+  "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet, or of those of `worktree-id` (nil is the
+  main app)."
+  ([]
+   (t2/select [:model/NativeQuerySnippet :id :name :collection_id]))
+  ([worktree-id]
+   (t2/select [:model/NativeQuerySnippet :id :name :collection_id] :worktree_id worktree-id)))
+
+(defn worktree-id-of
+  "The `:worktree_id` of the instance of `model` with `id`, or nil."
+  [model id]
+  (t2/select-one-fn :worktree_id model :id id))
+
+(defn worktree-exists?
+  "Whether a Worktree with `worktree-id` exists."
+  [worktree-id]
+  (t2/exists? :model/Worktree :id worktree-id))
+
+(defn worktree-branch-taken?
+  "Whether a Worktree already tracks `branch`."
+  [branch]
+  (t2/exists? :model/Worktree :branch branch))
+
+(defn worktree-branch
+  "The branch of the Worktree with `worktree-id`, or nil."
+  [worktree-id]
+  (t2/select-one-fn :branch :model/Worktree :id worktree-id))
+
+(defn worktrees
+  "Every Worktree, oldest first."
   []
-  (t2/select [:model/NativeQuerySnippet :id :name :collection_id]))
+  (t2/select :model/Worktree {:order-by [[:id :asc]]}))
+
+(defn insert-worktree!
+  "Insert the Worktree `row` and return the new instance."
+  [row]
+  (t2/insert-returning-instance! :model/Worktree row))
+
+(defn delete-worktree-row!
+  "Delete the Worktree with `worktree-id` itself (not its content; see [[delete-in-worktree!]])."
+  [worktree-id]
+  (t2/delete! :model/Worktree :id worktree-id))
+
+(defn delete-in-worktree!
+  "Delete every instance of `model` checked out into `worktree-id`."
+  [model worktree-id]
+  (t2/delete! model :worktree_id worktree-id))
 
 (defn- subtree-expr
   "Matches `collections` and all of their descendants."
@@ -249,52 +299,83 @@
   (t2/select-one [:model/Collection :name [:id :collection_id]] :id collection-id))
 
 (defn library-collection
-  "The Library Collection of `library-type`, or nil."
-  [library-type]
-  (t2/select-one :model/Collection :type library-type))
+  "The Library Collection of `library-type`, or nil; the 2-arity looks in `worktree-id` (nil is the main app)."
+  ([library-type]
+   (t2/select-one :model/Collection :type library-type))
+  ([library-type worktree-id]
+   (t2/select-one :model/Collection :type library-type :worktree_id worktree-id)))
 
 (defn snippet-collections
-  "The `:id` and `:name` of the Collections of the snippets namespace."
-  []
-  (t2/select [:model/Collection :id :name] :namespace "snippets"))
+  "The `:id` and `:name` of the Collections of the snippets namespace, all of them or those of `worktree-id` (nil is
+  the main app)."
+  ([]
+   (t2/select [:model/Collection :id :name] :namespace "snippets"))
+  ([worktree-id]
+   (t2/select [:model/Collection :id :name] :namespace "snippets" :worktree_id worktree-id)))
 
 (defn snippet-collection-ids
-  "The IDs of the Collections of the snippets namespace."
-  []
-  (t2/select-pks-set :model/Collection :namespace "snippets"))
+  "The IDs of the Collections of the snippets namespace, all of them or those of `worktree-id` (nil is the main
+  app)."
+  ([]
+   (t2/select-pks-set :model/Collection :namespace "snippets"))
+  ([worktree-id]
+   (t2/select-pks-set :model/Collection :namespace "snippets" :worktree_id worktree-id)))
 
 (defn collections-in-namespace
-  "The `:id` and `:entity_id` of the Collections of `namespace-name`."
-  [namespace-name]
-  (t2/select [:model/Collection :id :entity_id] :namespace namespace-name))
+  "The `:id` and `:entity_id` of the Collections of `namespace-name`, all of them or those of `worktree-id` (nil is
+  the main app)."
+  ([namespace-name]
+   (t2/select [:model/Collection :id :entity_id] :namespace namespace-name))
+  ([namespace-name worktree-id]
+   (t2/select [:model/Collection :id :entity_id] :namespace namespace-name :worktree_id worktree-id)))
 
 (defn collection-ids-in-namespace
-  "The IDs of the Collections of `namespace-name`."
-  [namespace-name]
-  (t2/select-pks-vec :model/Collection :namespace namespace-name))
+  "The IDs of the Collections of `namespace-name`, all of them or those of `worktree-id` (nil is the main app)."
+  ([namespace-name]
+   (t2/select-pks-vec :model/Collection :namespace namespace-name))
+  ([namespace-name worktree-id]
+   (t2/select-pks-vec :model/Collection :namespace namespace-name :worktree_id worktree-id)))
 
 (defn remote-synced-collection-ids
-  "The IDs of the remote-synced Collections."
-  []
-  (t2/select-pks-vec :model/Collection :is_remote_synced true))
+  "The IDs of the remote-synced Collections, all of them or those of `worktree-id` (nil is the main app)."
+  ([]
+   (t2/select-pks-vec :model/Collection :is_remote_synced true))
+  ([worktree-id]
+   (t2/select-pks-vec :model/Collection :is_remote_synced true :worktree_id worktree-id)))
 
 (defn unarchived-remote-synced-root-collection-ids
-  "The IDs of the unarchived remote-synced root Collections."
-  []
-  (t2/select-fn-set :id :model/Collection
-                    {:where [:and
-                             [:= :is_remote_synced true]
-                             [:= :location "/"]
-                             [:not :archived]]}))
+  "The IDs of the unarchived remote-synced root Collections, all of them or those of `worktree-id` (nil is the main
+  app)."
+  ([]
+   (t2/select-fn-set :id :model/Collection
+                     {:where [:and
+                              [:= :is_remote_synced true]
+                              [:= :location "/"]
+                              [:not :archived]]}))
+  ([worktree-id]
+   (t2/select-fn-set :id :model/Collection
+                     {:where [:and
+                              [:= :is_remote_synced true]
+                              [:= :location "/"]
+                              [:= :worktree_id worktree-id]
+                              [:not :archived]]})))
 
 (defn unarchived-root-collection-ids-in-namespace
-  "The IDs of the unarchived root Collections of `namespace-name`."
-  [namespace-name]
-  (t2/select-fn-set :id :model/Collection
-                    {:where [:and
-                             [:= :namespace namespace-name]
-                             [:= :location "/"]
-                             [:not :archived]]}))
+  "The IDs of the unarchived root Collections of `namespace-name`, all of them or those of `worktree-id` (nil is
+  the main app)."
+  ([namespace-name]
+   (t2/select-fn-set :id :model/Collection
+                     {:where [:and
+                              [:= :namespace namespace-name]
+                              [:= :location "/"]
+                              [:not :archived]]}))
+  ([namespace-name worktree-id]
+   (t2/select-fn-set :id :model/Collection
+                     {:where [:and
+                              [:= :namespace namespace-name]
+                              [:= :location "/"]
+                              [:= :worktree_id worktree-id]
+                              [:not :archived]]})))
 
 (defn subtree-collection-ids
   "The IDs of `collections` and all of their descendants."
@@ -340,9 +421,12 @@
         rows))
 
 (defn rso
-  "The RemoteSyncObject of the entity `model-type` `model-id`, or nil."
-  [model-type model-id]
-  (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id))
+  "The RemoteSyncObject of the entity `model-type` `model-id`, or nil; the 3-arity looks only among the rows of
+  `worktree-id` (nil is the main app)."
+  ([model-type model-id]
+   (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id))
+  ([model-type model-id worktree-id]
+   (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id :worktree_id worktree-id)))
 
 (defn lock-rso
   "The RemoteSyncObject of the entity `model-type` `model-id`, locked for update, or nil."
@@ -352,62 +436,103 @@
                   :for   :update}))
 
 (defn rso-by-file-path
-  "The RemoteSyncObject at `file-path`, or nil."
-  [file-path]
-  (t2/select-one :model/RemoteSyncObject :file_path file-path))
+  "The RemoteSyncObject at `file-path`, or nil; the 2-arity looks only among the rows of `worktree-id` (nil is the
+  main app)."
+  ([file-path]
+   (t2/select-one :model/RemoteSyncObject :file_path file-path))
+  ([file-path worktree-id]
+   (t2/select-one :model/RemoteSyncObject :file_path file-path :worktree_id worktree-id)))
 
 (defn rso-exists?
-  "Whether the entity `model-type` `model-id` has a RemoteSyncObject."
-  [model-type model-id]
-  (t2/exists? :model/RemoteSyncObject :model_type model-type :model_id model-id))
+  "Whether the entity `model-type` `model-id` has a RemoteSyncObject; the 3-arity looks only among the rows of
+  `worktree-id` (nil is the main app)."
+  ([model-type model-id]
+   (t2/exists? :model/RemoteSyncObject :model_type model-type :model_id model-id))
+  ([model-type model-id worktree-id]
+   (t2/exists? :model/RemoteSyncObject :model_type model-type :model_id model-id :worktree_id worktree-id)))
 
 (defn rso-of-type-exists?
-  "Whether any entity of `model-type` has a RemoteSyncObject."
-  [model-type]
-  (t2/exists? :model/RemoteSyncObject :model_type model-type))
+  "Whether any entity of `model-type` has a RemoteSyncObject; the 2-arity looks only among the rows of
+  `worktree-id` (nil is the main app)."
+  ([model-type]
+   (t2/exists? :model/RemoteSyncObject :model_type model-type))
+  ([model-type worktree-id]
+   (t2/exists? :model/RemoteSyncObject :model_type model-type :worktree_id worktree-id)))
 
 (defn rso-count-of-type
-  "The number of RemoteSyncObjects of `model-type`."
-  [model-type]
-  (t2/count :model/RemoteSyncObject :model_type model-type))
+  "The number of RemoteSyncObjects of `model-type`, all of them or those of `worktree-id` (nil is the main app)."
+  ([model-type]
+   (t2/count :model/RemoteSyncObject :model_type model-type))
+  ([model-type worktree-id]
+   (t2/count :model/RemoteSyncObject :model_type model-type :worktree_id worktree-id)))
 
 (defn rso-keys
-  "The `:id`, `:model_type`, and `:model_id` of every RemoteSyncObject."
-  []
-  (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))
+  "The `:id`, `:model_type`, and `:model_id` of every RemoteSyncObject, or of those of `worktree-id` (nil is the
+  main app)."
+  ([]
+   (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))
+  ([worktree-id]
+   (t2/select [:model/RemoteSyncObject :id :model_type :model_id] :worktree_id worktree-id)))
 
 (defn departed-rso-keys
-  "The `:id`, `:model_type`, and `:model_id` of the RemoteSyncObjects pending removal or deletion."
-  []
-  (t2/select [:model/RemoteSyncObject :id :model_type :model_id] :status [:in ["removed" "delete"]]))
+  "The `:id`, `:model_type`, and `:model_id` of the RemoteSyncObjects pending removal or deletion, all of them or
+  those of `worktree-id` (nil is the main app)."
+  ([]
+   (t2/select [:model/RemoteSyncObject :id :model_type :model_id] :status [:in ["removed" "delete"]]))
+  ([worktree-id]
+   (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
+              :status [:in ["removed" "delete"]]
+              :worktree_id worktree-id)))
 
 (defn all-rso-ids
-  "The IDs of every RemoteSyncObject."
-  []
-  (t2/select-pks-set :model/RemoteSyncObject))
+  "The IDs of every RemoteSyncObject, or of those of `worktree-id` (nil is the main app)."
+  ([]
+   (t2/select-pks-set :model/RemoteSyncObject))
+  ([worktree-id]
+   (t2/select-pks-set :model/RemoteSyncObject :worktree_id worktree-id)))
 
 (defn unsynced-rsos
-  "The RemoteSyncObjects whose status is not synced."
-  []
-  (t2/select :model/RemoteSyncObject {:where [:not= :status "synced"]}))
+  "The RemoteSyncObjects whose status is not synced, all of them or those of `worktree-id` (nil is the main app)."
+  ([]
+   (t2/select :model/RemoteSyncObject {:where [:not= :status "synced"]}))
+  ([worktree-id]
+   (t2/select :model/RemoteSyncObject {:where [:and
+                                               [:not= :status "synced"]
+                                               [:= :worktree_id worktree-id]]})))
 
 (defn dirty-rso-exists?
-  "Whether a RemoteSyncObject of a model type other than `excluded-model-types` is not synced."
-  [excluded-model-types]
-  (t2/exists? :model/RemoteSyncObject
+  "Whether a RemoteSyncObject of a model type other than `excluded-model-types` is not synced; the 2-arity looks
+  only among the rows of `worktree-id` (nil is the main app)."
+  ([excluded-model-types]
+   (t2/exists? :model/RemoteSyncObject
+               {:where [:and
+                        [:not= :status "synced"]
+                        (when (seq excluded-model-types)
+                          [:not-in :model_type excluded-model-types])]}))
+  ([excluded-model-types worktree-id]
+   (t2/exists? :model/RemoteSyncObject
+               {:where [:and
+                        [:not= :status "synced"]
+                        [:= :worktree_id worktree-id]
+                        (when (seq excluded-model-types)
+                          [:not-in :model_type excluded-model-types])]})))
+
+(defn dirty-rsos
+  "The RemoteSyncObjects of model types other than `excluded-model-types` that are not synced; the 2-arity looks
+  only among the rows of `worktree-id` (nil is the main app)."
+  ([excluded-model-types]
+   (t2/select :model/RemoteSyncObject
               {:where [:and
                        [:not= :status "synced"]
                        (when (seq excluded-model-types)
                          [:not-in :model_type excluded-model-types])]}))
-
-(defn dirty-rsos
-  "The RemoteSyncObjects of model types other than `excluded-model-types` that are not synced."
-  [excluded-model-types]
-  (t2/select :model/RemoteSyncObject
-             {:where [:and
-                      [:not= :status "synced"]
-                      (when (seq excluded-model-types)
-                        [:not-in :model_type excluded-model-types])]}))
+  ([excluded-model-types worktree-id]
+   (t2/select :model/RemoteSyncObject
+              {:where [:and
+                       [:not= :status "synced"]
+                       [:= :worktree_id worktree-id]
+                       (when (seq excluded-model-types)
+                         [:not-in :model_type excluded-model-types])]})))
 
 (defn tracked-model-ids
   "The model IDs of the RemoteSyncObjects of `model-type`."
@@ -462,9 +587,14 @@
   (t2/update! :model/RemoteSyncObject :id [:in rso-ids] {:status status :status_changed_at timestamp}))
 
 (defn mark-all-rsos-synced!
-  "Mark every RemoteSyncObject as synced as of `timestamp`."
-  [timestamp]
-  (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at timestamp}))
+  "Mark every RemoteSyncObject as synced as of `timestamp`; the 2-arity marks only the rows of `worktree-id` (nil is
+  the main app)."
+  ([timestamp]
+   (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at timestamp}))
+  ([timestamp worktree-id]
+   (t2/update! :model/RemoteSyncObject
+               {:worktree_id worktree-id}
+               {:status "synced" :status_changed_at timestamp})))
 
 (defn mark-rsos-synced!
   "Mark the RemoteSyncObjects with `rso-ids` as synced as of `timestamp`, writing the `:file_path` and
@@ -508,9 +638,15 @@
   (t2/delete! :model/RemoteSyncObject :model_type model-type))
 
 (defn delete-rsos-of-models!
-  "Delete the RemoteSyncObjects of the entities of `model-type` with `model-ids`."
-  [model-type model-ids]
-  (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
+  "Delete the RemoteSyncObjects of the entities of `model-type` with `model-ids`; the 3-arity deletes only among
+  the rows of `worktree-id` (nil is the main app)."
+  ([model-type model-ids]
+   (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
+  ([model-type model-ids worktree-id]
+   (t2/delete! :model/RemoteSyncObject
+               :model_type model-type
+               :model_id [:in model-ids]
+               :worktree_id worktree-id)))
 
 (defn delete-rsos-of-keys!
   "Delete the RemoteSyncObjects of the `[{:model_type :model_id}]` `rows`."
@@ -518,9 +654,11 @@
   (t2/delete! :model/RemoteSyncObject {:where (rso-keys-expr rows)}))
 
 (defn delete-all-rsos!
-  "Delete every RemoteSyncObject."
-  []
-  (t2/delete! :model/RemoteSyncObject))
+  "Delete every RemoteSyncObject, or every one of `worktree-id` (nil is the main app)."
+  ([]
+   (t2/delete! :model/RemoteSyncObject))
+  ([worktree-id]
+   (t2/delete! :model/RemoteSyncObject :worktree_id worktree-id)))
 
 (defn task
   "The RemoteSyncTask with `task-id`, or nil."
@@ -550,27 +688,48 @@
                              [:id :desc]]}))
 
 (defn most-recent-task
-  "The newest started RemoteSyncTask, or nil."
-  []
-  (t2/select-one :model/RemoteSyncTask
-                 {:where    [:and
-                             [:<> :started_at nil]]
-                  :limit    1
-                  :order-by [[:started_at :desc]
-                             [:id :desc]]}))
+  "The newest started RemoteSyncTask, or nil; the 1-arity looks only among the tasks of `worktree-id` (nil is the
+  main app)."
+  ([]
+   (t2/select-one :model/RemoteSyncTask
+                  {:where    [:and
+                              [:<> :started_at nil]]
+                   :limit    1
+                   :order-by [[:started_at :desc]
+                              [:id :desc]]}))
+  ([worktree-id]
+   (t2/select-one :model/RemoteSyncTask
+                  {:where    [:and
+                              [:<> :started_at nil]
+                              [:= :worktree_id worktree-id]]
+                   :limit    1
+                   :order-by [[:started_at :desc]
+                              [:id :desc]]})))
 
 (defn last-successful-task
-  "The newest finished RemoteSyncTask that was neither cancelled nor failed and recorded a version, or nil."
-  []
-  (t2/select-one :model/RemoteSyncTask
-                 {:where    [:and
-                             [:<> nil :ended_at]
-                             [:= false :cancelled]
-                             [:= nil :error_message]
-                             [:<> nil :version]]
-                  :limit    1
-                  :order-by [[:started_at :desc]
-                             [:id :desc]]}))
+  "The newest finished RemoteSyncTask that was neither cancelled nor failed and recorded a version, or nil; the
+  1-arity looks only among the tasks of `worktree-id` (nil is the main app)."
+  ([]
+   (t2/select-one :model/RemoteSyncTask
+                  {:where    [:and
+                              [:<> nil :ended_at]
+                              [:= false :cancelled]
+                              [:= nil :error_message]
+                              [:<> nil :version]]
+                   :limit    1
+                   :order-by [[:started_at :desc]
+                              [:id :desc]]}))
+  ([worktree-id]
+   (t2/select-one :model/RemoteSyncTask
+                  {:where    [:and
+                              [:<> nil :ended_at]
+                              [:= false :cancelled]
+                              [:= nil :error_message]
+                              [:<> nil :version]
+                              [:= :worktree_id worktree-id]]
+                   :limit    1
+                   :order-by [[:started_at :desc]
+                              [:id :desc]]})))
 
 (defn insert-task!
   "Insert `task` and return the new instance."
@@ -603,3 +762,10 @@
   "A map of User ID to User for `user-ids`."
   [user-ids]
   (t2/select-pk->fn identity :model/User :id [:in user-ids]))
+
+(defn user-summaries
+  "The display columns of the Users with `user-ids`."
+  [user-ids]
+  (t2/select [:model/User :id :first_name :last_name :email
+              :date_joined :last_login :is_superuser :is_qbnewb :is_active]
+             :id [:in user-ids]))

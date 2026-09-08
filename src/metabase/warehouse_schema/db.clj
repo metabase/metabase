@@ -356,20 +356,26 @@
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
 (defn cards-with-moderated-status
-  "The query-metadata columns of the Cards with `card-ids`, with their latest moderation status."
-  [card-ids]
-  (t2/select :model/Card
-             {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
-                          :c.description :c.collection_id :c.database_id :c.type
-                          :c.source_card_id :c.created_at :c.entity_id :c.card_schema
-                          [:r.status :moderated_status]]
-              :from      [[:report_card :c]]
-              :left-join [[^:allow-subquery {:select   [:moderated_item_id :status]
-                                             :from     [:moderation_review]
-                                             :where    [:and
-                                                        [:= :moderated_item_type "card"]
-                                                        [:= :most_recent true]]
-                                             :order-by [[:id :desc]]
-                                             :limit    1} :r]
-                          [:= :r.moderated_item_id :c.id]]
-              :where     [:in :c.id card-ids]}))
+  "The query-metadata columns of the Cards with `card-ids` in the remote-sync worktree `worktree-id` (nil for the main
+  app), with their latest moderation status. `:c.worktree_id` is selected because `mi/can-read?` reads it."
+  ([card-ids]
+   (cards-with-moderated-status card-ids nil))
+  ([card-ids worktree-id]
+   (t2/select :model/Card
+              {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
+                           :c.description :c.collection_id :c.database_id :c.type
+                           :c.source_card_id :c.created_at :c.entity_id :c.card_schema
+                           :c.worktree_id
+                           [:r.status :moderated_status]]
+               :from      [[:report_card :c]]
+               :left-join [[^:allow-subquery {:select   [:moderated_item_id :status]
+                                              :from     [:moderation_review]
+                                              :where    [:and
+                                                         [:= :moderated_item_type "card"]
+                                                         [:= :most_recent true]]
+                                              :order-by [[:id :desc]]
+                                              :limit    1} :r]
+                           [:= :r.moderated_item_id :c.id]]
+               :where     [:and
+                           [:in :c.id card-ids]
+                           [:= :c.worktree_id worktree-id]]})))

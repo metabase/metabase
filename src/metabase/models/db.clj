@@ -241,6 +241,53 @@
   [segment-id]
   (t2/select-one [:model/Segment :id :entity_id :table_id] :id segment-id))
 
+(defn worktree-remapping-source-entity-id
+  "The source entity id -- the one the branch knows the entity by -- that the remote-sync worktree with `worktree-id`
+  maps the `model-name` row with `local-entity-id` to, or nil."
+  [worktree-id model-name local-entity-id]
+  (t2/select-one-fn :source_entity_id :model/WorktreeRemapping
+                    :worktree_id     worktree-id
+                    :type            model-name
+                    :local_entity_id local-entity-id))
+
+(defn worktree-remapping-local-entity-id
+  "The entity id of the `model-name` row the remote-sync worktree with `worktree-id` checked out for the branch's
+  `source-entity-id`, or nil."
+  [worktree-id model-name source-entity-id]
+  (t2/select-one-fn :local_entity_id :model/WorktreeRemapping
+                    :worktree_id      worktree-id
+                    :type             model-name
+                    :source_entity_id source-entity-id))
+
+(defn worktree-remapping-source->local
+  "A map of source entity id to local entity id for the `model-name` rows the remote-sync worktree with `worktree-id`
+  checked out for `source-entity-ids`."
+  [worktree-id model-name source-entity-ids]
+  (t2/select-fn->fn :source_entity_id :local_entity_id
+                    :model/WorktreeRemapping
+                    :worktree_id      worktree-id
+                    :type             model-name
+                    :source_entity_id [:in source-entity-ids]))
+
+(defn worktree-remapping-source-exists?
+  "Whether `source-entity-id` is already a source entity id of a `model-name` remapping in the remote-sync worktree
+  with `worktree-id`."
+  [worktree-id model-name source-entity-id]
+  (t2/exists? :model/WorktreeRemapping
+              :worktree_id      worktree-id
+              :type             model-name
+              :source_entity_id source-entity-id))
+
+(defn insert-worktree-remapping!
+  "Record that the remote-sync worktree with `worktree-id` holds the branch's `model-name` entity `source-entity-id`
+  as the local row with `local-entity-id`."
+  [worktree-id model-name source-entity-id local-entity-id]
+  (t2/insert! :model/WorktreeRemapping
+              {:worktree_id      worktree-id
+               :type             model-name
+               :source_entity_id source-entity-id
+               :local_entity_id  local-entity-id}))
+
 (defn entity-by-own-pk
   "The `model` row identified by `id`, using whatever column is that model's own primary key."
   [model id]

@@ -27,6 +27,7 @@ export const createSyntheticTopLevel = (): ExpandedCollection => ({
   can_write: false,
   can_restore: false,
   can_delete: false,
+  worktree_id: null,
   namespace: null,
   location: null,
   path: [],

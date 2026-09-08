@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { Box, FixedSizeIcon, Flex, Text, Tooltip } from "metabase/ui";
+import { Box, Ellipsified, FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import S from "./AreaLayout.module.css";
@@ -53,7 +53,19 @@ export function AreaTab({
         justify={showLabel ? "start" : "center"}
       >
         <FixedSizeIcon name={icon} display="block" className={S.icon} />
-        {showLabel && <Text lh="sm">{label}</Text>}
+        {showLabel && (
+          <Ellipsified
+            c="text-primary"
+            fz="md"
+            lh="sm"
+            tooltipProps={{
+              position: "right",
+              openDelay: TOOLTIP_OPEN_DELAY,
+            }}
+          >
+            {label}
+          </Ellipsified>
+        )}
         {effectiveRightSection && (
           <Box
             className={showLabel ? undefined : S.badgeOverlay}

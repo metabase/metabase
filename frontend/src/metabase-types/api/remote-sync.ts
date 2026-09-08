@@ -2,6 +2,7 @@ import type { CollectionItemModel } from "./collection";
 import type { EnterpriseSettings } from "./settings";
 import type { UserId } from "./user";
 import type { CardDisplayType } from "./visualization";
+import type { WorktreeId } from "./worktree";
 
 export type RemoteSyncEntityModel =
   | "card"
@@ -60,6 +61,8 @@ export type ExportChangesRequest = {
   force?: boolean;
   /** Perform a 3-way merge when the remote branch has advanced (instead of refusing). */
   merge?: boolean;
+  /** Export a remote-sync worktree instead of the main app. */
+  worktree_id?: WorktreeId | null;
 };
 
 export type ExportChangesResponse = {
@@ -108,6 +111,8 @@ export type ImportFromBranchRequest = {
    * on a branch switch, where `branch` is the target and this is the branch being switched away from.
    */
   expected_branch: string;
+  /** Import into a remote-sync worktree instead of the main app. */
+  worktree_id?: WorktreeId | null;
 };
 
 export type ImportFromBranchResponse = {
@@ -202,6 +207,7 @@ export type RemoteSyncOutcome =
 
 export type RemoteSyncTask = {
   id: number;
+  worktree_id: WorktreeId | null;
   sync_task_type: RemoteSyncTaskType;
   status: RemoteSyncTaskStatus;
   progress: number | null;
@@ -227,6 +233,7 @@ export type GetBranchesResponse = {
 export type CreateBranchRequest = {
   name: string;
   baseBranch?: string;
+  checkout?: boolean;
 };
 
 export type CreateBranchResponse = {

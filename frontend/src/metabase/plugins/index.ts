@@ -190,6 +190,10 @@ export type {
   PluginGroupManagersType,
   SyncedCollectionsSidebarSectionProps,
 } from "./types";
+export type {
+  DataStudioWorktreesSectionProps,
+  WorktreeBreadcrumb,
+} from "./oss/remote-sync";
 
 import { reinitializeRequestHandlers } from "metabase/api/client";
 

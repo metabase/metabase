@@ -23,7 +23,11 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useLocation, useParams } from "metabase/router";
 import { Button, Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { Collection, CollectionNamespace } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionNamespace,
+  WorktreeId,
+} from "metabase-types/api";
 
 import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelFieldContainer";
 
@@ -43,6 +47,7 @@ export interface CreateCollectionProperties {
   description: string | null;
   parent_id: Collection["id"] | null;
   namespace?: CollectionNamespace;
+  worktree_id?: WorktreeId;
 }
 
 export interface CreateCollectionFormOwnProps {
@@ -55,6 +60,8 @@ export interface CreateCollectionFormOwnProps {
   pickerOptions?: EntityPickerOptions;
   namespaces?: CollectionNamespace[];
   showAuthorityLevelPicker?: boolean;
+  /** Scopes the parent picker and root-level creation to a remote-sync worktree */
+  worktreeId?: WorktreeId;
 }
 
 type Props = CreateCollectionFormOwnProps;
@@ -69,6 +76,7 @@ function CreateCollectionForm({
   pickerOptions,
   namespaces,
   showAuthorityLevelPicker = true,
+  worktreeId,
 }: Props) {
   const location = useLocation();
   const params = useParams();
@@ -105,9 +113,20 @@ function CreateCollectionForm({
       onSubmit({
         ...values,
         namespace: namespace ?? undefined,
+        // A parented collection inherits the parent's worktree, so only
+        // root-level creation needs the explicit scope.
+        ...(worktreeId != null && values.parent_id == null
+          ? { worktree_id: worktreeId }
+          : {}),
       });
     },
-    [initialCollection, namespaces, onSubmit, selectedParentCollection],
+    [
+      initialCollection,
+      namespaces,
+      onSubmit,
+      selectedParentCollection,
+      worktreeId,
+    ],
   );
 
   return (
@@ -148,6 +167,7 @@ function CreateCollectionForm({
                 collectionPickerModalProps={{
                   options: pickerOptions,
                   namespaces,
+                  worktreeId,
                 }}
                 entityType="collection"
                 filterPersonalCollections={filterPersonalCollections}

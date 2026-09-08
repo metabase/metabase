@@ -7,6 +7,7 @@ import {
   useListTransformTagsQuery,
 } from "metabase/api/transform-tag";
 import { useMetadataToasts } from "metabase/common/hooks";
+import { useWorktreeId } from "metabase/common/worktrees";
 import {
   ActionIcon,
   Icon,
@@ -40,7 +41,10 @@ export function TagMultiSelect({
   readOnly,
   requireTransformWriteAccess,
 }: TagMultiSelectProps) {
-  const { data: tags = [], isLoading } = useListTransformTagsQuery();
+  const worktreeId = useWorktreeId();
+  const { data: tags = [], isLoading } = useListTransformTagsQuery({
+    "worktree-id": worktreeId,
+  });
   const [createTag, { isLoading: isCreating }] =
     useCreateTransformTagMutation();
   const tagById = getTagById(tags);
@@ -54,7 +58,10 @@ export function TagMultiSelect({
     if (isCreating) {
       return;
     }
-    const { data: tag } = await createTag({ name: trimmedSearchValue });
+    const { data: tag } = await createTag({
+      name: trimmedSearchValue,
+      worktree_id: worktreeId,
+    });
     if (!tag) {
       sendErrorToast(t`Failed to create a tag`);
     } else {

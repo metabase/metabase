@@ -5,6 +5,7 @@ import {
   useCreateSnippetMutation,
   useUpdateSnippetMutation,
 } from "metabase/api";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { Flex, Modal } from "metabase/ui";
 import type {
   CreateSnippetRequest,
@@ -31,6 +32,7 @@ export function SnippetFormModal({
   onClose,
 }: SnippetModalProps) {
   const [snippet, setSnippet] = useState(initialSnippet);
+  const worktreeId = useWorktreeId();
   const [createSnippet] = useCreateSnippetMutation();
   const [updateSnippet] = useUpdateSnippetMutation();
   const isEditing = isSavedSnippet(snippet);
@@ -40,11 +42,14 @@ export function SnippetFormModal({
 
   const handleCreate = useCallback(
     async (values: CreateSnippetRequest) => {
-      const created = await createSnippet(values).unwrap();
+      const created = await createSnippet({
+        ...values,
+        worktree_id: worktreeId,
+      }).unwrap();
       onCreate?.(created);
       onClose?.();
     },
-    [createSnippet, onCreate, onClose],
+    [createSnippet, worktreeId, onCreate, onClose],
   );
 
   const handleUpdate = useCallback(

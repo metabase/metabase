@@ -6,7 +6,11 @@ import {
 } from "metabase/common/collections/utils";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { createEmptyStateItem } from "metabase/data-studio/common/utils";
-import type { Collection, NativeQuerySnippet } from "metabase-types/api";
+import type {
+  Collection,
+  NativeQuerySnippet,
+  WorktreeId,
+} from "metabase-types/api";
 
 function createSnippetNode(snippet: NativeQuerySnippet): TreeItem {
   return {
@@ -55,6 +59,7 @@ export function buildActiveSnippetTree(
   snippetCollections: Collection[],
   snippets: NativeQuerySnippet[],
   canWriteSnippets: boolean,
+  worktreeId?: WorktreeId | null,
 ): TreeItem[] {
   const collections = snippetCollections.filter((c) => !c.archived);
   const activeSnippets = snippets.filter((s) => !s.archived);
@@ -75,7 +80,14 @@ export function buildActiveSnippetTree(
   const hasContent = activeSnippets.length > 0 || nonRootCollections.length > 0;
   const children = hasContent
     ? rootNode.children
-    : [createEmptyStateItem("snippets", undefined, !canWriteSnippets)];
+    : [
+        createEmptyStateItem(
+          "snippets",
+          undefined,
+          !canWriteSnippets,
+          worktreeId,
+        ),
+      ];
 
   return [{ ...rootNode, name: t`SQL snippets`, children }];
 }

@@ -24,6 +24,7 @@
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
@@ -47,12 +48,14 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
    ;; Dashboards in audit collection should be read only
-   (and (not (and
+   (and (remote-sync/worktree-accessible? instance)
+        (not (and
               ;; We want to make sure there's an existing audit collection before doing the equality check below.
               ;; If there is no audit collection, this will be nil:
               (some? (:id (audit/default-audit-collection)))
@@ -63,6 +66,10 @@
    (mi/can-write? (dashboards.db/dashboard pk))))
 
 (perms/define-collection-based-visibility! :model/Dashboard)
+
+(defmethod mi/visible-filter-clause :model/Dashboard
+  [_model column-or-exp user-info _perm-type->perm-level & [opts]]
+  {:clause [:in column-or-exp (collection/visible-collection-content-select :report_dashboard user-info opts)]})
 
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})
@@ -81,7 +88,8 @@
 (t2/define-before-insert :model/Dashboard
   [dashboard]
   (let [defaults  {:parameters []}
-        dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
+        dashboard (collection/inherit-worktree-id
+                   (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard)))]
     (u/prog1 (public-sharing/add-public-uuid-prefix dashboard)
       (collection/check-allowed-content :model/Dashboard (:collection_id dashboard))
       (params/assert-valid-parameters dashboard)
@@ -99,6 +107,7 @@
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]
     (collection/check-allowed-content :model/Dashboard (:collection_id changes))
     (u/prog1 (-> dashboard
+                 (cond-> (contains? changes :collection_id) collection/check-same-worktree)
                  maybe-populate-initially-published-at
                  public-sharing/add-public-uuid-prefix-if-changed)
       (params/assert-valid-parameters dashboard)
@@ -431,7 +440,8 @@
                ;; this is deprecated
                :cache_ttl
                ;; always re-derived from public_uuid on import
-               :public_uuid_prefix]
+               :public_uuid_prefix
+               :worktree_id]
    :transform {:created_at             (serdes/date)
                :initially_published_at (serdes/date)
                :collection_id          (serdes/fk :model/Collection)
@@ -514,6 +524,7 @@
    :attrs        {:archived       true
                   :collection-id  true
                   :creator-id     true
+                  :worktree-id    true
                   :database-id    false
                   :last-editor-id :r.user_id
                   :last-edited-at :r.timestamp

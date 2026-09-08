@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics";
 import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
+import { useWorktreeId } from "metabase/common/worktrees";
 import {
   EntityList,
   EntityListItem,
@@ -16,6 +17,7 @@ type TableSegmentsProps = {
 };
 
 export function TableSegments({ table }: TableSegmentsProps) {
+  const worktreeId = useWorktreeId();
   const canWriteSegments = useSelector((state) =>
     getUserCanWriteSegments(state, table.is_published),
   );
@@ -35,7 +37,9 @@ export function TableSegments({ table }: TableSegmentsProps) {
           canWriteSegments
             ? {
                 label: t`New segment`,
-                url: Urls.dataStudioPublishedTableSegmentNew(table.id),
+                url: Urls.dataStudioPublishedTableSegmentNew(table.id, {
+                  worktreeId,
+                }),
                 trackClickEvent: () =>
                   trackSegmentCreateStarted(
                     "data_studio_segments",
@@ -51,7 +55,9 @@ export function TableSegments({ table }: TableSegmentsProps) {
             name={segment.name}
             description={segment.definition_description}
             icon="segment"
-            href={Urls.dataStudioPublishedTableSegment(table.id, segment.id)}
+            href={Urls.dataStudioPublishedTableSegment(table.id, segment.id, {
+              worktreeId,
+            })}
           />
         )}
       />

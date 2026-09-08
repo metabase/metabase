@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
@@ -37,18 +38,23 @@
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
-  "Create a new `Segment`. The Segment's table is derived from its `definition`."
+  "Create a new `Segment`. The Segment's table is derived from its `definition`. Pass `worktree_id` to create it
+  inside a remote-sync worktree, which is admin-only; the table itself is shared with the main app."
   [_route-params
    _query-params
-   {:keys [name description definition], :as body} :- [:map
-                                                       [:name        ms/NonBlankString]
-                                                       [:definition  ::segments.schema/definition]
-                                                       [:description {:optional true} [:maybe :string]]]]
+   {:keys [name description definition worktree_id], :as body} :- [:map
+                                                                   [:name        ms/NonBlankString]
+                                                                   [:definition  ::segments.schema/definition]
+                                                                   [:description {:optional true} [:maybe :string]]
+                                                                   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
+  (when worktree_id
+    (api/check-superuser)
+    (remote-sync/check-worktree-exists! worktree_id))
   (let [table-id (definition-table-id definition)]
     (api/create-check :model/Segment (assoc body :table_id table-id))
     (let [segment (api/check-500
-                   (segments.db/insert-segment! table-id api/*current-user-id* name description definition))]
+                   (segments.db/insert-segment! table-id api/*current-user-id* name description definition worktree_id))]
       (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
       (t2/hydrate segment :creator))))
 
@@ -71,9 +77,13 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
-  "Fetch *all* `Segments`."
-  []
-  (let [segments  (segments.db/unarchived-segments)
+  "Fetch *all* `Segments`. `worktree-id` lists the segments checked out into a remote-sync worktree instead of
+  the main app (admin only)."
+  [_route-params
+   {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser))
+  (let [segments  (segments.db/unarchived-segments worktree-id)
         table-ids (into #{} (keep :table_id) segments)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
                                                  (segments.db/table-database-ids table-ids))

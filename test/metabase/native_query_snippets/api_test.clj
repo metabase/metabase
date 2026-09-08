@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.schema :as ms]
@@ -215,3 +216,23 @@
           (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id}]
             (is (= {:errors {:collection_id "Collection does not exist."}}
                    (mt/user-http-request :rasta :put 404 (snippet-url snippet-id) {:collection_id Integer/MAX_VALUE})))))))))
+
+;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+;;; A worktree is an enterprise concept, so this needs `:model/Worktree` on the classpath. The endpoint it
+;;; covers is OSS.
+
+(deftest worktree-content-is-excluded-from-the-list-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}
+                   :model/NativeQuerySnippet {main-id :id} {:name "main snippet" :content "WHERE 1=1"}
+                   :model/NativeQuerySnippet {wt-content-id :id} {:name "worktree snippet" :content "WHERE 1=1" :worktree_id wt-id}]
+      (testing "the main-app list leaves worktree content out"
+        (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "native-query-snippet"))]
+          (is (contains? ids main-id))
+          (is (not (contains? ids wt-content-id)))))
+      (testing "worktree-id returns only that worktree's content"
+        (is (= [wt-content-id]
+               (mapv :id (mt/user-http-request :crowberto :get 200 "native-query-snippet" :worktree-id wt-id)))))
+      (testing "worktree-id is admin-only"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "native-query-snippet" :worktree-id wt-id)))))))

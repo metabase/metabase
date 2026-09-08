@@ -42,6 +42,9 @@ export function initializePlugin() {
               pickerOptions: SNIPPET_COLLECTION_PICKER_OPTIONS,
               showAuthorityLevelPicker: false,
               shouldNavigateOnCreate: false,
+              // The redux-opened modal renders outside the WorktreeProvider
+              // subtree, so the worktree scope must travel with the props.
+              worktreeId: snippetSidebar.props.worktreeId,
             },
           }),
         );

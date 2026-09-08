@@ -14,6 +14,7 @@ import {
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { getMetadata } from "metabase/metadata-store";
 import { loadQueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
@@ -118,6 +119,7 @@ function NewTransformPageBody({
     useDisclosure();
   const [isLeaveWarningOpen, setIsLeaveWarningOpen] = useState(false);
   const navigate = useNavigate();
+  const worktreeId = useWorktreeId();
   const [dryRunError, setDryRunError] = useState<string | undefined>(undefined);
   useRegisterMetabotTransformContext(undefined, source, dryRunError);
 
@@ -131,11 +133,11 @@ function NewTransformPageBody({
 
   const handleCreate = (transform: Transform) => {
     isSavedRef.current = true;
-    navigate(Urls.transform(transform.id));
+    navigate(Urls.transform(transform.id, { worktreeId }));
   };
 
   const handleCancel = () => {
-    navigate(Urls.transformList());
+    navigate(Urls.transformList({ worktreeId }));
   };
 
   const isLocationAllowed = useCallback(
@@ -167,7 +169,10 @@ function NewTransformPageBody({
           }
           breadcrumbs={
             <DataStudioBreadcrumbs>
-              <Link key="transform-list" to={Urls.transformList()}>
+              <Link
+                key="transform-list"
+                to={Urls.transformList({ worktreeId })}
+              >
                 {t`Data transformation`}
               </Link>
               {t`New transform`}

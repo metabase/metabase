@@ -1,4 +1,4 @@
-import type { RemoteSyncTask } from "metabase-types/api";
+import { createMockRemoteSyncTask } from "metabase-types/api/mocks";
 
 import {
   initialState,
@@ -26,7 +26,7 @@ describe("sync-task-slice", () => {
       expect(state.showModal).toBe(true);
 
       // Try to update with export task data
-      const exportTaskUpdate: RemoteSyncTask = {
+      const exportTaskUpdate = createMockRemoteSyncTask({
         id: 1,
         sync_task_type: "export",
         status: "successful",
@@ -34,9 +34,8 @@ describe("sync-task-slice", () => {
         started_at: new Date().toISOString(),
         ended_at: new Date().toISOString(),
         last_progress_report_at: new Date().toISOString(),
-        error_message: null,
         initiated_by: 1,
-      };
+      });
 
       state = remoteSyncReducer(state, taskUpdated(exportTaskUpdate));
 
@@ -56,7 +55,7 @@ describe("sync-task-slice", () => {
       expect(state.currentTask?.sync_task_type).toBe("import");
 
       // Update import task with new data
-      const importTaskUpdate: RemoteSyncTask = {
+      const importTaskUpdate = createMockRemoteSyncTask({
         id: 1,
         sync_task_type: "import",
         status: "successful",
@@ -64,9 +63,8 @@ describe("sync-task-slice", () => {
         started_at: new Date().toISOString(),
         ended_at: new Date().toISOString(),
         last_progress_report_at: new Date().toISOString(),
-        error_message: null,
         initiated_by: 1,
-      };
+      });
 
       state = remoteSyncReducer(state, taskUpdated(importTaskUpdate));
 
@@ -77,6 +75,74 @@ describe("sync-task-slice", () => {
       expect(state.currentTask?.progress).toBe(100);
     });
 
+    it("should keep the worktree_id passed to taskStarted", () => {
+      const state = remoteSyncReducer(
+        initialState,
+        taskStarted({ taskType: "import", worktreeId: 5 }),
+      );
+
+      expect(state.currentTask?.worktree_id).toBe(5);
+      expect(state.showModal).toBe(true);
+    });
+
+    it("should not update a worktree task from a main-app task of the same type", () => {
+      let state = remoteSyncReducer(
+        initialState,
+        taskStarted({ taskType: "import", worktreeId: 5 }),
+      );
+
+      const mainAppTaskUpdate = createMockRemoteSyncTask({
+        id: 1,
+        sync_task_type: "import",
+        worktree_id: null,
+        status: "successful",
+      });
+
+      state = remoteSyncReducer(state, taskUpdated(mainAppTaskUpdate));
+
+      expect(state.currentTask?.worktree_id).toBe(5);
+      expect(state.currentTask?.status).toBe("running");
+    });
+
+    it("should not update a main-app task from a worktree task of the same type", () => {
+      let state = remoteSyncReducer(
+        initialState,
+        taskStarted({ taskType: "import" }),
+      );
+
+      const worktreeTaskUpdate = createMockRemoteSyncTask({
+        id: 1,
+        sync_task_type: "import",
+        worktree_id: 5,
+        status: "successful",
+      });
+
+      state = remoteSyncReducer(state, taskUpdated(worktreeTaskUpdate));
+
+      expect(state.currentTask?.worktree_id).toBeNull();
+      expect(state.currentTask?.status).toBe("running");
+    });
+
+    it("should update a worktree task from a poll result for the same worktree", () => {
+      let state = remoteSyncReducer(
+        initialState,
+        taskStarted({ taskType: "import", worktreeId: 5 }),
+      );
+
+      const worktreeTaskUpdate = createMockRemoteSyncTask({
+        id: 1,
+        sync_task_type: "import",
+        worktree_id: 5,
+        status: "successful",
+        progress: 1,
+      });
+
+      state = remoteSyncReducer(state, taskUpdated(worktreeTaskUpdate));
+
+      expect(state.currentTask?.id).toBe(1);
+      expect(state.currentTask?.status).toBe("successful");
+    });
+
     it("should update currentTask when there is no current task", () => {
       // Start with no current task
       let state = initialState;
@@ -84,7 +150,7 @@ describe("sync-task-slice", () => {
       expect(state.currentTask).toBeNull();
 
       // Update with export task data
-      const exportTaskUpdate: RemoteSyncTask = {
+      const exportTaskUpdate = createMockRemoteSyncTask({
         id: 1,
         sync_task_type: "export",
         status: "successful",
@@ -92,9 +158,8 @@ describe("sync-task-slice", () => {
         started_at: new Date().toISOString(),
         ended_at: new Date().toISOString(),
         last_progress_report_at: new Date().toISOString(),
-        error_message: null,
         initiated_by: 1,
-      };
+      });
 
       state = remoteSyncReducer(state, taskUpdated(exportTaskUpdate));
 

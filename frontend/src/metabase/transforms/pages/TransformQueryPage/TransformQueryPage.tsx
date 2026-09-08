@@ -15,6 +15,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useMetadataToasts } from "metabase/common/hooks";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { useMetadataProviderFactory } from "metabase/metadata-store";
 import { loadQueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
@@ -123,6 +124,7 @@ function TransformQueryPageBody({
     initialSource: transform.source,
   });
   const navigate = useNavigate();
+  const worktreeId = useWorktreeId();
   const getMetadataProvider = useMetadataProviderFactory();
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateTransform, { isLoading: isSaving }] =
@@ -167,9 +169,9 @@ function TransformQueryPageBody({
   useEffect(() => {
     if (isEditRoute && remoteSyncReadOnly) {
       // If remote sync is set up to read-only mode, user can't edit transforms
-      navigate(Urls.transform(transform.id));
+      navigate(Urls.transform(transform.id, { worktreeId }));
     }
-  }, [remoteSyncReadOnly, isEditRoute, transform.id, navigate]);
+  }, [remoteSyncReadOnly, isEditRoute, transform.id, navigate, worktreeId]);
 
   const handleSave = async (request: UpdateTransformRequest) => {
     const { error } = await updateTransform(request);
@@ -184,7 +186,7 @@ function TransformQueryPageBody({
       sendSuccessToast(t`Transform query updated`);
 
       if (isEditMode) {
-        navigate(Urls.transform(transform.id));
+        navigate(Urls.transform(transform.id, { worktreeId }));
       }
     }
   };
@@ -218,7 +220,7 @@ function TransformQueryPageBody({
 
   const handleCancel = () => {
     if (isEditMode) {
-      navigate(Urls.transform(transform.id));
+      navigate(Urls.transform(transform.id, { worktreeId }));
     }
   };
 

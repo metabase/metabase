@@ -7,9 +7,12 @@
    [toucan2.core :as t2]))
 
 (defn snippets-by-archived
-  "The NativeQuerySnippets whose archived flag is `archived`, in case-insensitive name order."
-  [archived]
-  (t2/select :model/NativeQuerySnippet :archived archived {:order-by [[:%lower.name :asc]]}))
+  "The NativeQuerySnippets whose archived flag is `archived` in the remote-sync worktree `worktree-id` (nil for the
+  main app), in case-insensitive name order."
+  ([archived]
+   (snippets-by-archived archived nil))
+  ([archived worktree-id]
+   (t2/select :model/NativeQuerySnippet :archived archived :worktree_id worktree-id {:order-by [[:%lower.name :asc]]})))
 
 (defn snippet
   "The NativeQuerySnippet with `id`, or nil."
@@ -17,14 +20,20 @@
   (t2/select-one :model/NativeQuerySnippet :id id))
 
 (defn snippet-name-exists?
-  "Whether a NativeQuerySnippet named `snippet-name` exists."
-  [snippet-name]
-  (t2/exists? :model/NativeQuerySnippet :name snippet-name))
+  "Whether a NativeQuerySnippet named `snippet-name` exists in the remote-sync worktree `worktree-id` (nil for the
+  main app). Snippet names are unique per worktree, not globally."
+  ([snippet-name]
+   (snippet-name-exists? snippet-name nil))
+  ([snippet-name worktree-id]
+   (t2/exists? :model/NativeQuerySnippet :name snippet-name :worktree_id worktree-id)))
 
 (defn other-snippet-with-name-exists?
-  "Whether a NativeQuerySnippet named `snippet-name` with an entity id other than `entity-id` exists."
-  [snippet-name entity-id]
-  (t2/exists? :model/NativeQuerySnippet :name snippet-name :entity_id [:!= entity-id]))
+  "Whether a NativeQuerySnippet named `snippet-name` with an entity id other than `entity-id` exists in the
+  remote-sync worktree `worktree-id` (nil for the main app)."
+  ([snippet-name entity-id]
+   (other-snippet-with-name-exists? snippet-name entity-id nil))
+  ([snippet-name entity-id worktree-id]
+   (t2/exists? :model/NativeQuerySnippet :name snippet-name :entity_id [:!= entity-id] :worktree_id worktree-id)))
 
 (defn insert-snippet!
   "Insert the NativeQuerySnippet `row` and return the inserted instance."
@@ -37,9 +46,12 @@
   (t2/update! :model/NativeQuerySnippet id changes))
 
 (defn snippet-id-by-name
-  "The id of the NativeQuerySnippet named `snippet-name`, or nil."
-  [snippet-name]
-  (t2/select-one-fn :id :model/NativeQuerySnippet :name snippet-name))
+  "The id of the NativeQuerySnippet named `snippet-name` in the remote-sync worktree `worktree-id` (nil for the main
+  app), or nil."
+  ([snippet-name]
+   (snippet-id-by-name snippet-name nil))
+  ([snippet-name worktree-id]
+   (t2/select-one-fn :id :model/NativeQuerySnippet :name snippet-name :worktree_id worktree-id)))
 
 (defn snippet-collection-id
   "The Collection id of the NativeQuerySnippet with `id`, or nil."

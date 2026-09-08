@@ -230,7 +230,9 @@
                                        source-tables)
         run-timeout-secs         (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
         payload                  {:code                code
-                                  :library             (transforms-python.db/library-sources-by-path)
+                                  ;; only main-app libraries: worktree transforms never run, so a worktree's
+                                  ;; checked-out copy must not shadow the main app's here
+                                  :library             (transforms-python.db/library-sources-by-path nil)
                                   :timeout             run-timeout-secs
                                   :request_id          (or request-id run-id)
                                   :output_url          (:url output)

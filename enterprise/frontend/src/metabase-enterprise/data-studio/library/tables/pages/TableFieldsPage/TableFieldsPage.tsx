@@ -6,6 +6,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer/PageContainer";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
+import { useWorktreeId } from "metabase/common/worktrees";
 import {
   FieldEmptyState,
   FieldSection,
@@ -42,6 +43,7 @@ export function TableFieldsPage() {
   const params = useParams<TableFieldsPageParams>();
   const tableId = Urls.extractEntityId(params.tableId);
   const fieldId = Urls.extractEntityId(params.fieldId);
+  const worktreeId = useWorktreeId();
   const { table, isLoading, error } = useLoadTableWithMetadata(tableId);
   const field = table?.fields?.find((field) => field.id === fieldId);
   const [previewType, setPreviewType] = useState<PreviewType>("table");
@@ -80,7 +82,7 @@ export function TableFieldsPage() {
             table={table}
             fieldId={fieldId}
             getFieldHref={(fieldId) =>
-              Urls.dataStudioTableFields(tableId, fieldId)
+              Urls.dataStudioTableFields(tableId, fieldId, { worktreeId })
             }
             onSyncOptionsClick={openSyncModal}
             pl="3.5rem"
@@ -111,7 +113,9 @@ export function TableFieldsPage() {
               <Text fw="bold">{t`Field Details`}</Text>
               <Button
                 component={ForwardRefLink}
-                to={Urls.dataStudioTableFields(table.id)}
+                to={Urls.dataStudioTableFields(table.id, undefined, {
+                  worktreeId,
+                })}
                 onClick={closePreview}
                 leftSection={<Icon name="close" c="text-secondary" />}
                 variant="subtle"
@@ -128,7 +132,7 @@ export function TableFieldsPage() {
               field={field}
               table={table}
               getFieldHref={(fieldId) =>
-                Urls.dataStudioTableFields(tableId, fieldId)
+                Urls.dataStudioTableFields(tableId, fieldId, { worktreeId })
               }
               onPreviewClick={togglePreview}
               onFieldValuesClick={openFieldValuesModal}

@@ -5,6 +5,7 @@ import {
   skipToken,
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { useDispatch } from "metabase/redux";
 import type { TableId } from "metabase-types/api";
 
@@ -17,13 +18,14 @@ export function useLoadTableWithMetadata(
   { includeForeignTables = false }: UseLoadTableWithMetadataOptions = {},
 ) {
   const dispatch = useDispatch();
+  const worktreeId = useWorktreeId();
 
   const {
     data: table,
     isLoading,
     error,
   } = useGetTableQueryMetadataQuery(
-    tableId != null ? { id: tableId } : skipToken,
+    tableId != null ? { id: tableId, "worktree-id": worktreeId } : skipToken,
   );
 
   useEffect(() => {

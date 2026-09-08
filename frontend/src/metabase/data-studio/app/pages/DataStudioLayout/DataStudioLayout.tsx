@@ -18,8 +18,10 @@ import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
+import { Box } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import S from "./DataStudioLayout.module.css";
 import { getCurrentTab } from "./utils";
 
 export function DataStudioLayout() {
@@ -60,6 +62,11 @@ export function DataStudioLayout() {
 
   const upperNav = (
     <>
+      {isNavbarOpened && (
+        <Box className={S.branchPicker}>
+          <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
+        </Box>
+      )}
       <AreaTab
         label={t`Guide`}
         icon="book_open"
@@ -136,6 +143,11 @@ export function DataStudioLayout() {
           isGated={!hasDependenciesFeature}
         />
       </AreaTabGroup>
+      {PLUGIN_REMOTE_SYNC.DataStudioWorktreesSection && (
+        <PLUGIN_REMOTE_SYNC.DataStudioWorktreesSection
+          isNavbarOpened={isNavbarOpened}
+        />
+      )}
     </>
   );
 
@@ -189,7 +201,6 @@ export function DataStudioLayout() {
       isLoading={isLoadingNavbarKey}
       isNavbarOpened={isNavbarOpened}
       onNavbarToggle={setIsNavbarOpened}
-      headerControls={<PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />}
       upperNav={upperNav}
       lowerNav={lowerNav}
     >

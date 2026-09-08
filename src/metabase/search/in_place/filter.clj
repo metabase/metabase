@@ -28,6 +28,10 @@
   (:import
    (java.time LocalDate)))
 
+(def ^:private worktree-scoped-models
+  "Search models whose table carries a `worktree_id`."
+  #{"card" "collection" "dashboard" "dataset" "document" "measure" "metric" "segment" "transform"})
+
 (def ^:private true-clause [:= [:inline 1] [:inline 1]])
 (def ^:private false-clause [:= [:inline 0] [:inline 1]])
 
@@ -472,6 +476,10 @@
 
       (some? collection)
       (#(build-optional-filter-query :collection model % collection))
+
+      (contains? worktree-scoped-models model)
+      (sql.helpers/where
+       [:= (search.config/column-with-model-alias model :worktree_id) (:worktree-id search-context)])
 
       (= "table" model)
       (sql.helpers/where

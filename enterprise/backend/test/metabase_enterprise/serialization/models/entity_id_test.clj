@@ -149,6 +149,8 @@
     :model/UserParameterValue
     :model/UserKeyValue
     :model/ViewLog
+    :model/Worktree
+    :model/WorktreeRemapping
     :model/Sandbox
     :model/ConnectionImpersonation
     :model/SecurityAdvisory

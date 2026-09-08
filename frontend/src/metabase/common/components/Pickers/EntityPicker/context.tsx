@@ -32,6 +32,7 @@ export const EntityPickerProvider = ({
     options: value.options,
     namespaces,
     models: getValidCollectionItemModels(value.models),
+    worktreeId: value.worktreeId,
   });
 
   const [previousPath, setPreviousPath] = useState<OmniPickerItem[]>([]);

@@ -1,7 +1,12 @@
 import _ from "underscore";
 
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import type { CollectionId, CollectionItemModel } from "metabase-types/api";
+import type {
+  CollectionId,
+  CollectionItemModel,
+  ListCollectionItemsRequest,
+  WorktreeId,
+} from "metabase-types/api";
 
 import type { OmniPickerCollectionItem, OmniPickerItem } from "./EntityPicker";
 
@@ -66,3 +71,15 @@ export const getCollectionItemsOptions = ({
     include_library: !PLUGIN_LIBRARY.isEnabled,
   };
 };
+
+/**
+ * The root listing has no collection row to infer worktree scope from, so it takes an
+ * explicit `worktree-id`; every other listing scopes to its own collection's worktree.
+ */
+export const getWorktreeIdParam = (
+  collectionId: OmniPickerItem["id"] | CollectionId,
+  worktreeId: WorktreeId | undefined,
+): Pick<ListCollectionItemsRequest, "worktree-id"> =>
+  collectionId === "root" && worktreeId != null
+    ? { "worktree-id": worktreeId }
+    : {};

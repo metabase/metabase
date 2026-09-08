@@ -8,6 +8,7 @@ import {
 } from "metabase/api";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import { useToast } from "metabase/common/hooks/use-toast";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 
@@ -24,6 +25,7 @@ export function usePublishedTableMeasurePage(
   const navigate = useNavigate();
   const [sendToast] = useToast();
   const [updateMeasure] = useUpdateMeasureMutation();
+  const worktreeId = useWorktreeId();
 
   const tableId = Urls.extractEntityId(params.tableId);
   const measureId = Urls.extractEntityId(params.measureId);
@@ -57,9 +59,9 @@ export function usePublishedTableMeasurePage(
       sendToast({ icon: "warning", message: t`Failed to remove measure` });
     } else {
       sendToast({ icon: "check", message: t`Measure removed` });
-      navigate(Urls.dataStudioTableMeasures(tableId));
+      navigate(Urls.dataStudioTableMeasures(tableId, { worktreeId }));
     }
-  }, [measure, tableId, updateMeasure, sendToast, navigate]);
+  }, [measure, tableId, updateMeasure, sendToast, navigate, worktreeId]);
 
   const isLoading = isLoadingMeasure || isLoadingTable;
   const error = measureError ?? tableError;
@@ -69,17 +71,21 @@ export function usePublishedTableMeasurePage(
       return null;
     }
     return {
-      definition: Urls.dataStudioPublishedTableMeasure(tableId, measureId),
+      definition: Urls.dataStudioPublishedTableMeasure(tableId, measureId, {
+        worktreeId,
+      }),
       revisions: Urls.dataStudioPublishedTableMeasureRevisions(
         tableId,
         measureId,
+        { worktreeId },
       ),
       dependencies: Urls.dataStudioPublishedTableMeasureDependencies(
         tableId,
         measureId,
+        { worktreeId },
       ),
     };
-  }, [tableId, measureId]);
+  }, [tableId, measureId, worktreeId]);
 
   return {
     isLoading,

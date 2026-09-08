@@ -1,10 +1,14 @@
+import fetchMock from "fetch-mock";
+
 import {
   setupCollectionsEndpoints,
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, waitFor } from "__support__/ui";
+import { WorktreeProvider } from "metabase/common/worktrees";
 import { useNotebookScreenSize } from "metabase/querying/components/NativeQueryEditor/use-notebook-screen-size";
 import { createMockState } from "metabase/redux/store/mocks";
+import type { WorktreeId } from "metabase-types/api";
 
 import { NativeQueryEditor } from "./NativeQueryEditor";
 
@@ -31,6 +35,7 @@ describe("NativeQueryEditor", () => {
   const createEditor = (
     screenSize: Exclude<UseNotebookScreenSize, undefined>,
     isMetabotSidebarOpen: boolean,
+    worktreeId?: WorktreeId,
   ) => {
     const setIsNativeEditorOpen = jest.fn();
 
@@ -41,7 +46,7 @@ describe("NativeQueryEditor", () => {
 
     useNotebookScreenSizeMock.mockReturnValue(screenSize);
 
-    renderWithProviders(
+    const editor = (
       <NativeQueryEditor
         availableHeight={700}
         isNativeEditorOpen={false}
@@ -51,7 +56,15 @@ describe("NativeQueryEditor", () => {
         setDatasetQuery={jest.fn()}
         setIsNativeEditorOpen={setIsNativeEditorOpen}
         isInitiallyOpen={false}
-      />,
+      />
+    );
+
+    renderWithProviders(
+      worktreeId !== undefined ? (
+        <WorktreeProvider worktreeId={worktreeId}>{editor}</WorktreeProvider>
+      ) : (
+        editor
+      ),
       {
         // Unjustified type cast. FIXME
         storeInitialState: createMockState({
@@ -90,5 +103,44 @@ describe("NativeQueryEditor", () => {
     const setIsNativeEditorOpen = createEditor("large", false);
 
     expect(setIsNativeEditorOpen).toHaveBeenCalledWith(false, true);
+  });
+
+  describe("worktree scoping", () => {
+    const waitForListCalls = async () => {
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.lastCall("path:/api/native-query-snippet"),
+        ).toBeTruthy();
+      });
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.lastCall("path:/api/collection"),
+        ).toBeTruthy();
+      });
+    };
+
+    it("requests snippets and snippet collections scoped to the worktree", async () => {
+      createEditor("large", false, 7);
+      await waitForListCalls();
+
+      expect(
+        fetchMock.callHistory.lastCall("path:/api/native-query-snippet")?.url,
+      ).toContain("worktree-id=7");
+      expect(
+        fetchMock.callHistory.lastCall("path:/api/collection")?.url,
+      ).toContain("worktree-id=7");
+    });
+
+    it("requests unscoped snippets and snippet collections outside a worktree", async () => {
+      createEditor("large", false);
+      await waitForListCalls();
+
+      expect(
+        fetchMock.callHistory.lastCall("path:/api/native-query-snippet")?.url,
+      ).not.toContain("worktree-id");
+      expect(
+        fetchMock.callHistory.lastCall("path:/api/collection")?.url,
+      ).not.toContain("worktree-id");
+    });
   });
 });

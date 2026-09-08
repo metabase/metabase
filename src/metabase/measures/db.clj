@@ -5,13 +5,17 @@
    [toucan2.core :as t2]))
 
 (defn insert-measure!
-  "Insert a Measure and return the inserted instance."
-  [creator-id measure-name description definition]
-  (t2/insert-returning-instance! :model/Measure
-                                 :creator_id  creator-id
-                                 :name        measure-name
-                                 :description description
-                                 :definition  definition))
+  "Insert a Measure and return the inserted instance. `worktree-id` (nil for the main app) is the remote-sync
+  worktree the Measure belongs to."
+  ([creator-id measure-name description definition]
+   (insert-measure! creator-id measure-name description definition nil))
+  ([creator-id measure-name description definition worktree-id]
+   (t2/insert-returning-instance! :model/Measure
+                                  :creator_id  creator-id
+                                  :name        measure-name
+                                  :description description
+                                  :definition  definition
+                                  :worktree_id worktree-id)))
 
 (defn measure
   "The Measure with `id`, or nil."
@@ -19,9 +23,12 @@
   (t2/select-one :model/Measure :id id))
 
 (defn unarchived-measures
-  "The unarchived Measures, in case-insensitive name order."
-  []
-  (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}))
+  "The unarchived Measures in the remote-sync worktree `worktree-id` (nil for the main app), in case-insensitive
+  name order."
+  ([]
+   (unarchived-measures nil))
+  ([worktree-id]
+   (t2/select :model/Measure, :archived false, :worktree_id worktree-id, {:order-by [[:%lower.name :asc]]})))
 
 (defn table-database-ids
   "The set of Database ids of the Tables with `table-ids`."

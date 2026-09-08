@@ -17,12 +17,18 @@
   (t2/select-one :model/Document :id id :archived false))
 
 (defn visible-unarchived-documents
-  "The unarchived Documents not attached to an Exploration, in a Collection visible to the current user."
-  []
-  (t2/select :model/Document {:where [:and
-                                      (collection/visible-collection-filter-clause)
-                                      [:= :archived false]
-                                      [:= :exploration_id nil]]}))
+  "The unarchived Documents not attached to an Exploration, in a Collection visible to the current user. `worktree-id`
+  selects the Documents checked out into that remote-sync worktree; nil selects the main app's."
+  ([]
+   (visible-unarchived-documents nil))
+  ([worktree-id]
+   (t2/select :model/Document {:where [:and
+                                       (collection/visible-collection-filter-clause
+                                        :collection_id
+                                        {:worktree-id worktree-id})
+                                       [:= :archived false]
+                                       [:= :worktree_id worktree-id]
+                                       [:= :exploration_id nil]]})))
 
 (defn insert-document!
   "Insert the Document `row` and return its id."

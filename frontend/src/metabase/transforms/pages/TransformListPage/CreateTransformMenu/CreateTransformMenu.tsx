@@ -5,6 +5,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { useWorktreeId } from "metabase/common/worktrees";
 import {
   useMetabotAgent,
   useUserMetabotPermissions,
@@ -31,6 +32,7 @@ export const CreateTransformMenu = () => {
     { open: openCollectionModal, close: closeCollectionModal },
   ] = useDisclosure();
 
+  const worktreeId = useWorktreeId();
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
   const shouldShowPythonTransformsUpsell = useSelector(
     getShouldShowPythonTransformsUpsell,
@@ -40,7 +42,8 @@ export const CreateTransformMenu = () => {
     include_analytics: true,
   });
   const shouldShowPythonScriptOption =
-    hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
+    worktreeId == null &&
+    (hasPythonTransformsFeature || shouldShowPythonTransformsUpsell);
   const { remoteSyncReadOnly } = useTransformPermissions();
 
   const metabot = useMetabotAgent("omnibot");
@@ -98,7 +101,7 @@ export const CreateTransformMenu = () => {
           ) : (
             <>
               <Menu.Label>{t`Create your transform with…`}</Menu.Label>
-              {hasMetabotAccess && (
+              {hasMetabotAccess && worktreeId == null && (
                 <Menu.Item
                   leftSection={<Icon name="metabot" />}
                   onClick={handleMetabotClick}
@@ -110,7 +113,7 @@ export const CreateTransformMenu = () => {
                 leftSection={<Icon name="notebook" />}
                 onClick={() => {
                   trackTransformCreate({ creationType: "query" });
-                  navigate(Urls.newQueryTransform());
+                  navigate(Urls.newQueryTransform({ worktreeId }));
                 }}
               >
                 {t`Query builder`}
@@ -119,7 +122,7 @@ export const CreateTransformMenu = () => {
                 leftSection={<Icon name="sql" />}
                 onClick={() => {
                   trackTransformCreate({ creationType: "native" });
-                  navigate(Urls.newNativeTransform());
+                  navigate(Urls.newNativeTransform({ worktreeId }));
                 }}
               >
                 {t`SQL query`}
@@ -136,15 +139,17 @@ export const CreateTransformMenu = () => {
                   {t`Python script`}
                 </Menu.Item>
               )}
-              <Menu.Item
-                leftSection={<Icon name="insight" />}
-                onClick={() => {
-                  trackTransformCreate({ creationType: "saved-question" });
-                  openPicker();
-                }}
-              >
-                {t`Copy of a saved question`}
-              </Menu.Item>
+              {worktreeId == null && (
+                <Menu.Item
+                  leftSection={<Icon name="insight" />}
+                  onClick={() => {
+                    trackTransformCreate({ creationType: "saved-question" });
+                    openPicker();
+                  }}
+                >
+                  {t`Copy of a saved question`}
+                </Menu.Item>
+              )}
               <Menu.Divider />
               <Menu.Item
                 leftSection={<Icon name="folder" />}
@@ -163,7 +168,7 @@ export const CreateTransformMenu = () => {
           models={["card", "dataset"]}
           isDisabledItem={(item) => shouldDisableItem(item, databases?.data)}
           onChange={(item) => {
-            navigate(Urls.newTransformFromCard(item.id));
+            navigate(Urls.newTransformFromCard(item.id, { worktreeId }));
             closePicker();
           }}
           onClose={closePicker}

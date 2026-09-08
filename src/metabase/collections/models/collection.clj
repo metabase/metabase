@@ -186,9 +186,27 @@
   (pos-int? (collections.db/remote-synced-collection-count)))
 
 (defn library-collection
-  "Get the 'library' collection, if it exists."
-  []
-  (collections.db/collection-of-type library-collection-type))
+  "Get the 'library' collection, if it exists. With no argument, the main app's; with a `worktree-id`, the copy that
+  remote-sync worktree checked out. A branch holding a Library can be checked out into any number of worktrees, so
+  the two are only ever unambiguous together."
+  ([]
+   (library-collection nil))
+  ([worktree-id]
+   (collections.db/collection-of-type-in-worktree library-collection-type worktree-id)))
+
+(defn worktree-collection-counterpart-ids
+  "Maps each of `collection-ids` -- collections a remote-sync worktree checked out -- to the id of the main-app
+  collection it is a copy of, resolved through the worktree's entity_id remapping. Collections that exist only on
+  the branch are absent from the result.
+
+  Tables are never checked out into a worktree, so a worktree collection holds no tables of its own; the published
+  tables it presents are the ones sitting in its main-app counterpart."
+  [collection-ids]
+  (let [collection-ids (remove nil? collection-ids)]
+    (when (seq collection-ids)
+      (into {}
+            (map (juxt :worktree_collection_id :main_collection_id))
+            (collections.db/worktree-collection-counterpart-rows collection-ids)))))
 
 (def ^{:arglists '([id])} root-collection-type-by-id
   "Return the `:type` of the top-level (root) collection with the given `id`, or `nil` if no
@@ -312,6 +330,7 @@
 (doto :model/Collection
   (derive :metabase/model)
   (derive :hook/entity-id)
+  (derive :hook/worktree-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
@@ -322,20 +341,24 @@
 
 (defmethod mi/can-write? :model/Collection
   ([instance]
-   (and (not (default-audit-collection? instance))
+   (and (remote-sync/worktree-accessible? instance)
+        (not (default-audit-collection? instance))
         (not (is-trash-or-descendant? instance))
         (mi/current-user-has-full-permissions? :write instance)
         (remote-sync/collection-editable? instance)))
   ([_model pk]
-   (mi/can-write? (collections.db/collection pk))))
+   (when-let [collection (collections.db/collection pk)]
+     (mi/can-write? collection))))
 
 (mu/defmethod mi/can-read? :model/Collection
   ([instance]
-   (or (is-trash? instance)
-       (perms/can-read-audit-helper :model/Collection instance)))
+   (and (remote-sync/worktree-accessible? instance)
+        (or (is-trash? instance)
+            (perms/can-read-audit-helper :model/Collection instance))))
   ([_model pk :- pos-int?]
    (or (is-trash? pk)
-       (mi/can-read? (collections.db/collection pk)))))
+       (when-let [collection (collections.db/collection pk)]
+         (mi/can-read? collection)))))
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels."
@@ -772,6 +795,7 @@
    [:include-archived-items {:optional true} [:enum :only :exclude :all]]
    [:archive-operation-id {:optional true} [:maybe :string]]
    [:permission-level {:optional true} [:enum :read :write]]
+   [:worktree-id {:optional true} [:maybe :int]]
    [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]])
 
 (def ^:private UserScope
@@ -783,6 +807,7 @@
   {:cte-name nil
    :include-archived-items :exclude
    :include-trash-collection? false
+   :worktree-id nil
    :effective-child-of nil
    :archive-operation-id nil
    :permission-level :read})
@@ -829,7 +854,8 @@
    :c.archive_operation_id
    :c.archived_directly
    :c.type
-   :c.namespace])
+   :c.namespace
+   :c.worktree_id])
 
 (mu/defn visible-collection-query
   "Given a `CollectionVisibilityConfig`, return a HoneySQL query that selects all visible Collection IDs."
@@ -891,6 +917,9 @@
                                :c])]
                      ;; The `WHERE` clause is where we apply the other criteria we were given:
                      :where [:and
+                             (if-some [worktree-id (:worktree-id visibility-config)]
+                               [:= :c.worktree_id [:inline worktree-id]]
+                               [:= :c.worktree_id nil])
                              ;; hiding the trash collection when desired...
                              (when-not (:include-trash-collection? visibility-config)
                                [:not= [:inline (trash-collection-id)] :c.id])
@@ -942,6 +971,30 @@
        (if cte-name
          ^:allow-subquery {:select :id :from cte-name}
          (visible-collection-query visibility-config user-scope))]])))
+
+(mu/defn visible-collection-content-select
+  "Ids of `table-name`'s rows the current user can see, for a model whose read permission is its collection's:
+  the collection is visible, the archived state matches `:include-archived-items`, and the row is in
+  `:worktree-id`'s scope. Worktree content is admin-only, so anyone but a superuser only ever sees the main app.
+
+  Assumes `table-name` has `collection_id`, `archived` and `worktree_id` columns, which every collection-based
+  content model does. Backs those models' [[metabase.models.interface/visible-filter-clause]]."
+  [table-name :- :keyword
+   {:keys [user-id is-superuser?]} :- perms/UserInfo
+   {:keys [include-archived-items worktree-id] :or {include-archived-items :exclude}}]
+  ^:allow-subquery
+  {:select [:id]
+   :from   [table-name]
+   :where  [:and
+            (visible-collection-filter-clause (u/qualified-key table-name :collection_id)
+                                              {:include-archived-items include-archived-items}
+                                              {:current-user-id user-id
+                                               :is-superuser?   is-superuser?})
+            (case include-archived-items
+              :exclude [:= (u/qualified-key table-name :archived) false]
+              :only    [:= (u/qualified-key table-name :archived) true]
+              :all     nil)
+            [:= (u/qualified-key table-name :worktree_id) (when is-superuser? worktree-id)]]})
 
 (defn- effective-child-of-filter-clause
   [parent-coll collection-table-alias visibility-config]
@@ -1747,11 +1800,15 @@
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (check-allowed-content (:type collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
-  (u/prog1 (-> collection
-               (assoc :slug (slugify collection-name))
-               (cond->
-                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
-    (assert-valid-remote-synced-parent <>)))
+  (let [collection (if-let [parent-id (some-> (:location collection) location-path->parent-id)]
+                     (assoc collection :worktree_id
+                            (collections.db/collection-worktree-id parent-id))
+                     collection)]
+    (u/prog1 (-> collection
+                 (assoc :slug (slugify collection-name))
+                 (cond->
+                  (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
+      (assert-valid-remote-synced-parent <>))))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
@@ -1941,6 +1998,9 @@
       (check-changes-allowed-for-protected-collection collection-before-updates collection-updates))
     ;; (2) make sure the location is valid if we're changing it
     (assert-valid-location collection-updates)
+    (when-let [parent-id (some-> (:location collection-updates) location-path->parent-id)]
+      (remote-sync/check-same-worktree collection
+                                       (collections.db/collection-worktree-id parent-id)))
     ;; (3) make sure Collection namespace is valid
     (when (contains? collection-updates :namespace)
       (when-not (namespace-equals? (:namespace collection-before-updates) (:namespace collection-updates))
@@ -2036,7 +2096,8 @@
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where skip-archived]}]
   (let [not-trash-clause [:or
                           [:= :type nil]
-                          [:not= :type trash-collection-type]]]
+                          [:not= :type trash-collection-type]]
+        worktree-clause  (serdes/worktree-scope-clause "Collection")]
     (if (seq collection-set)
       ;; stable filename de-dup suffixes across exports, see GHY-3754
       (collections.db/collections-for-serdes-reducible
@@ -2046,12 +2107,14 @@
          [:in :id collection-set]
          (when (some nil? collection-set) [:= :id nil])]
         not-trash-clause
+        worktree-clause
         (or where true)])
       (collections.db/collections-for-serdes-reducible
        [:and
         (when skip-archived [:not :archived])
         [:= :personal_owner_id nil]
         not-trash-clause
+        worktree-clause
         (or where true)]))))
 
 (defmethod serdes/deserialization-dependencies "Collection"
@@ -2133,7 +2196,7 @@
           :namespace
           :slug
           :type]
-   :skip []
+   :skip [:worktree_id]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
@@ -2187,6 +2250,44 @@
 (defmethod allowed-namespaces :default
   [_]
   #{nil :analytics :shared-tenant-collection :tenant-specific})
+
+(defn inherit-worktree-id
+  "Set `instance`'s `:worktree_id` from the collection it is going into: content belongs to whichever worktree its
+  collection was checked out into, so the parent answers the question and no caller has to pass an id.
+
+  Content at a root has no parent to ask -- only transforms and snippets can be there, since a worktree checks
+  out real collections and not the root itself -- so there a `:worktree_id` supplied by the caller stands. Every
+  other model rejects the field at the API instead."
+  [instance]
+  (if-let [collection-id (:collection_id instance)]
+    (assoc instance :worktree_id (collections.db/collection-worktree-id collection-id))
+    instance))
+
+(defn check-same-worktree
+  "Guard for content changing collections: throws a 400 when `instance` and the collection it is moving into
+  belong to different worktrees. Returns `instance`, so it threads:
+
+    (cond-> instance
+      (contains? (t2/changes instance) :collection_id)
+      collection/check-same-worktree)
+
+  Only the move needs catching -- `worktree_id` itself can never change, which [[metabase.models.interface]]'s
+  `:hook/worktree-id` blocks outright.
+
+  Moving worktree content to a root is rejected outright: a worktree checks out real collections and not the
+  root itself, so the row would end up outside everything the worktree holds. Transforms and snippets are the
+  two models that can sit at a worktree root, and they skip the call when the move is to one."
+  [instance]
+  (u/prog1 instance
+    (if-let [collection-id (:collection_id instance)]
+      (remote-sync/check-same-worktree
+       instance
+       (collections.db/collection-worktree-id collection-id))
+      (when (:worktree_id instance)
+        (let [msg (tru "Cannot move remote sync worktree content to the root collection.")]
+          (throw (ex-info msg {:status-code 400
+                               :errors      {:collection_id msg}
+                               :worktree-id (:worktree_id instance)})))))))
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
@@ -2404,6 +2505,7 @@
                   :creator-id           false
                   :database-id          false
                   :archived             true
+                  :worktree-id          true
                   :created-at           true
                   ;; intentionally not tracked
                   :updated-at           false}

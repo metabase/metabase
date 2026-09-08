@@ -258,9 +258,9 @@
                      :limit limit}))
 
 (defn transform-count
-  "The number of Transforms."
+  "The number of Transforms in the main app (remote-sync worktree copies are not counted)."
   []
-  (t2/count :model/Transform))
+  (t2/count :model/Transform :worktree_id nil))
 
 (defn transform-run-count-since
   "The number of TransformRuns started at or after `since`."

@@ -23,6 +23,17 @@
   [type]
   (t2/select-one :model/Collection :type type))
 
+(defn collection-of-type-in-worktree
+  "The Collection of `type` belonging to the remote-sync worktree with `worktree-id` (nil for the main app), or nil."
+  [type worktree-id]
+  (t2/select-one :model/Collection :type type :worktree_id worktree-id))
+
+(defn collection-worktree-id
+  "The `:worktree_id` of the Collection with `collection-id`: the remote-sync worktree it was checked out into, or nil
+  for the main app."
+  [collection-id]
+  (t2/select-one-fn :worktree_id :model/Collection :id collection-id))
+
 (defn root-remote-synced-collection
   "The top-level remote-synced Collection, or nil."
   []
@@ -132,6 +143,21 @@
              {:where [:and
                       (into [:or] (map (fn [prefix] [:like :location prefix])) location-prefixes)
                       [:or [:= :personal_owner_id nil] [:= :personal_owner_id current-user-id]]]}))
+
+(defn worktree-collection-counterpart-rows
+  "For each worktree Collection among `collection-ids`, a row of its `:worktree_collection_id` and the
+  `:main_collection_id` of the main-app Collection it is a copy of, resolved through the `worktree_remapping` table.
+  Queries the table rather than `:model/WorktreeRemapping`: the model is enterprise-only, while the table exists on
+  both editions."
+  [collection-ids]
+  (t2/query {:select [[:wt.id :worktree_collection_id] [:mc.id :main_collection_id]]
+             :from   [[:collection :wt]]
+             :join   [[:worktree_remapping :wr] [:= :wr.local_entity_id :wt.entity_id]
+                      [:collection :mc]         [:= :mc.entity_id :wr.source_entity_id]]
+             :where  [:and
+                      [:= :wr.type "Collection"]
+                      [:= :mc.worktree_id nil]
+                      [:in :wt.id collection-ids]]}))
 
 (defn effective-children-where
   "The ID, name, description, and type of the Collections matching the Honey SQL `where`."

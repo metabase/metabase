@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { useWorktreeId } from "metabase/common/worktrees";
 import {
   DataModelBreadcrumbs,
   PublishedTableBreadcrumbs,
@@ -16,12 +17,13 @@ export function PublishedTableMeasureBreadcrumbs({
   table,
   measure,
 }: MeasureBreadcrumbsProps) {
+  const worktreeId = useWorktreeId();
   return (
     <PublishedTableBreadcrumbs
       table={table}
       entityName={measure?.name}
       newEntityLabel={t`New measure`}
-      tableListUrl={Urls.dataStudioTableMeasures(table.id)}
+      tableListUrl={Urls.dataStudioTableMeasures(table.id, { worktreeId })}
     />
   );
 }

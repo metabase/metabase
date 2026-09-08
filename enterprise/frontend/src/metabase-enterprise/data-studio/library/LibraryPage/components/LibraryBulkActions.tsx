@@ -15,6 +15,7 @@ import {
   useMetadataToasts,
   useSetCollection,
 } from "metabase/common/hooks";
+import { useWorktreeId } from "metabase/common/worktrees";
 import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 
 import { UnpublishTablesModal } from "../../components/UnpublishTablesModal";
@@ -222,6 +223,7 @@ function LibraryMoveModal({
   onMove,
   onClose,
 }: LibraryMoveModalProps) {
+  const worktreeId = useWorktreeId();
   const isDisabledItem = useCallback(
     (item: OmniPickerItem) =>
       isMoveDestinationDisabled(item, movingCollectionIds),
@@ -239,6 +241,7 @@ function LibraryMoveModal({
         onClose={onClose}
         namespaces={["snippets"]}
         isDisabledItem={isDisabledItem}
+        worktreeId={worktreeId}
         options={{
           hasPersonalCollections: false,
           canCreateCollections: true,
@@ -263,6 +266,7 @@ function LibraryMoveModal({
       onChange={(destination) => onMove(destination.id)}
       onClose={onClose}
       isDisabledItem={isDisabledItem}
+      worktreeId={worktreeId}
       options={{
         hasLibrary: true,
         hasRootCollection: false,

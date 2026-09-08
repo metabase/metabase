@@ -81,7 +81,10 @@
         {:order (map transforms-by-id complete)
          :deps  dependencies}))))
 
-(defn- get-plan [transform-ids]
+(defn- get-plan
+  "Execution plan for `transform-ids`. Transforms checked out into a remote-sync worktree are never part of a plan —
+  they don't run, and a worktree's copy must never stand in for the main app's transform."
+  [transform-ids]
   (tracing/with-span :tasks "task.transform.plan" {:transform/count (count transform-ids)}
     (let [all-transforms (transforms.db/transform-dependency-rows)
           ;; Walk only the dependency closure of the transforms we're asked to run.
@@ -401,12 +404,15 @@
       (seq (:failures final-state)) {::status :failed ::failures (:failures final-state)}
       :else                         {::status :succeeded})))
 
-(defn- job-transform-ids [job-id]
+(defn- job-transform-ids
+  "Ids of the transforms a job runs. Transforms checked out into a remote-sync worktree are left out: a worktree is a
+  working copy of a branch, and its transforms only run once they are merged into the main app."
+  [job-id]
   (let [tag-ids (transforms.db/job-tag-ids job-id)]
-    (if (seq tag-ids)
-      (or (transforms.db/transform-ids-with-tags tag-ids)
-          #{})
-      #{})))
+    (or (when (seq tag-ids)
+          (when-let [tagged (seq (transforms.db/transform-ids-with-tags tag-ids))]
+            (transforms.db/main-app-transform-ids tagged)))
+        #{})))
 
 (defn job-transforms
   "Return the transforms that are executed when running the job with ID `job-id`, in execution order.

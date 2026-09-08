@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import type { RemoteSyncEntity } from "metabase-types/api";
+import type { RemoteSyncEntity, Worktree } from "metabase-types/api";
 
 export interface RemoteSyncDirtyResponse {
   dirty: RemoteSyncEntity[];
@@ -20,6 +20,30 @@ export const setupRemoteSyncDirtyEndpoint = ({
     { dirty, changedCollections },
     { name: "remote-sync-dirty" },
   );
+};
+
+/**
+ * Setup the remote-sync is-dirty endpoint
+ */
+export const setupRemoteSyncIsDirtyEndpoint = (isDirty = false) => {
+  fetchMock.removeRoute("remote-sync-is-dirty");
+  fetchMock.get(
+    "path:/api/ee/remote-sync/is-dirty",
+    { is_dirty: isDirty },
+    { name: "remote-sync-is-dirty" },
+  );
+};
+
+/**
+ * Setup the remote-sync worktree list endpoint
+ */
+export const setupRemoteSyncWorktreesEndpoint = (
+  worktrees: Worktree[] = [],
+) => {
+  fetchMock.removeRoute("remote-sync-worktrees");
+  fetchMock.get("path:/api/ee/remote-sync/worktree", worktrees, {
+    name: "remote-sync-worktrees",
+  });
 };
 
 /**
@@ -188,8 +212,10 @@ export const setupRemoteSyncTestConnectionEndpoint = ({
  */
 export const setupRemoteSyncEndpoints = ({
   branches = ["main", "develop"],
+  worktrees = [],
   dirty = [],
   changedCollections = {},
+  isDirty = false,
   hasRemoteChanges = false,
   hasRemoteChangesDelay = 0,
   hasRemoteChangesError = false,
@@ -198,8 +224,10 @@ export const setupRemoteSyncEndpoints = ({
   testConnectionError,
 }: {
   branches?: string[];
+  worktrees?: Worktree[];
   dirty?: RemoteSyncEntity[];
   changedCollections?: Record<number, boolean>;
+  isDirty?: boolean;
   hasRemoteChanges?: boolean;
   hasRemoteChangesDelay?: number;
   hasRemoteChangesError?: boolean;
@@ -210,7 +238,9 @@ export const setupRemoteSyncEndpoints = ({
   testConnectionError?: { status: number; message: string };
 } = {}) => {
   setupRemoteSyncBranchesEndpoint(branches);
+  setupRemoteSyncWorktreesEndpoint(worktrees);
   setupRemoteSyncDirtyEndpoint({ dirty, changedCollections });
+  setupRemoteSyncIsDirtyEndpoint(isDirty);
   setupRemoteSyncCurrentTaskEndpoint("idle");
   setupRemoteSyncImportEndpoint();
   setupRemoteSyncExportEndpoint();

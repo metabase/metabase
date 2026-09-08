@@ -11,14 +11,17 @@
   (t2/insert-returning-instance! :model/Timeline row))
 
 (defn timelines-in-collections
-  "The Timelines whose archived flag is `archived` in the Collections matching the Honey SQL `collection-clause`, in
-  case-insensitive name order."
-  [archived collection-clause]
-  (t2/select :model/Timeline
-             {:where    [:and
-                         [:= :archived archived]
-                         collection-clause]
-              :order-by [[:%lower.name :asc]]}))
+  "The Timelines whose archived flag is `archived` in the Collections matching the Honey SQL `collection-clause` and
+  in the remote-sync worktree `worktree-id` (nil for the main app), in case-insensitive name order."
+  ([archived collection-clause]
+   (timelines-in-collections archived collection-clause nil))
+  ([archived collection-clause worktree-id]
+   (t2/select :model/Timeline
+              {:where    [:and
+                          [:= :archived archived]
+                          [:= :worktree_id worktree-id]
+                          collection-clause]
+               :order-by [[:%lower.name :asc]]})))
 
 (defn timeline
   "The Timeline with `id`, or nil."

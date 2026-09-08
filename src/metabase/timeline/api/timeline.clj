@@ -46,11 +46,19 @@
       (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*}))))
 
 (mu/defn list-timelines :- [:sequential (ms/InstanceOf :model/Timeline)]
-  "List timelines visible to the current user with no hydration."
+  "List timelines visible to the current user with no hydration. `worktree-id` lists the timelines checked out
+  into that remote-sync worktree; `nil` (the default) lists the main app's."
   ([]
-   (list-timelines false))
+   (list-timelines false nil))
   ([archived :- ms/BooleanValue]
-   (timeline.db/timelines-in-collections archived (collection/visible-collection-filter-clause))))
+   (list-timelines archived nil))
+  ([archived    :- ms/BooleanValue
+    worktree-id :- [:maybe ms/PositiveInt]]
+   (timeline.db/timelines-in-collections archived
+                                         (collection/visible-collection-filter-clause
+                                          :collection_id
+                                          {:worktree-id worktree-id})
+                                         worktree-id)))
 
 (mu/defn get-timeline :- [:maybe (ms/InstanceOf :model/Timeline)]
   "Fetch a single timeline by ID. Checks read permissions but does not hydrate."
@@ -58,12 +66,16 @@
   (api/read-check (timeline.db/timeline id)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
-  "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines."
+  "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines. `worktree-id` lists
+  the timelines checked out into a remote-sync worktree instead of the main app (admin only)."
   [_route-params
-   {:keys [include], archived? :archived} :- [:map
-                                              [:include  {:optional true} ::include]
-                                              [:archived {:default false} ms/BooleanValue]]]
-  (let [timelines (->> (list-timelines archived?)
+   {:keys [include worktree-id], archived? :archived} :- [:map
+                                                          [:include     {:optional true} ::include]
+                                                          [:archived    {:default false} ms/BooleanValue]
+                                                          [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser))
+  (let [timelines (->> (list-timelines archived? worktree-id)
                        (map collection.root/hydrate-root-collection))]
     (cond->> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)
       (= include :events)

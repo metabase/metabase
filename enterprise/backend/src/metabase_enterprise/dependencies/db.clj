@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -20,109 +19,39 @@
 (defn- visible-entities-expr
   "Matches entities at `entity-type-field`/`entity-id-field` that are readable by the user described by `user-id`,
   `is-superuser?`, and `is-data-analyst?`, honoring `include-archived-items` (`:exclude`, `:all`, or `:only`,
-  default `:exclude`; applies to both archived collections and archived entities).
+  default `:exclude`; applies to both archived collections and archived entities) and `worktree-id`, the remote-sync
+  worktree to scope to (nil is the main app).
 
-  Handles different entity types:
-  - Superuser-only (`:model/Sandbox`): only if `is-superuser?` is true
-  - Collection-based (`:model/Card`, `:model/Dashboard`, `:model/Document`, `:model/NativeQuerySnippet`): filters
-    by collection visibility and archived status. Native query snippets have additional restrictions for
-    sandboxed users.
-  - Table: filters by table visibility permissions. Tables are NOT filtered by active/visibility_type regardless
-    of `include-archived-items`, so dependencies broken by dropped or hidden tables stay visible.
-  - Transform: analysts can view any transform they have source view permission to."
-  [entity-type-field entity-id-field {:keys [user-id is-superuser? is-data-analyst? include-archived-items]
+  Each model answers for itself through [[mi/visible-filter-clause]], so the rules (superuser-only sandboxes,
+  collection visibility plus archived state for cards/dashboards/documents/snippets, source-database permission for
+  transforms, table permission plus archived state for segments/measures, and the worktree scope for every model
+  that carries one) live next to the model's `can-read?` rather than here. Tables are the exception: their shared
+  implementation returns a CTE, which cannot be spliced into these queries, and they are NOT filtered by
+  active/visibility_type, so dependencies broken by dropped or hidden tables stay visible.
+  TODO (ed 2025-12-16): support CTE-based filters in the dependency graph and drop the special case."
+  [entity-type-field entity-id-field {:keys [user-id is-superuser? is-data-analyst? include-archived-items worktree-id]
                                       :or   {include-archived-items :exclude}}]
-  (into [:or]
-        (keep (fn [[entity-type model]]
-                (let [table-name (t2/table-name model)
-                      id-column  (keyword (name table-name) "id")]
-                  (case model
-                    :model/Sandbox
-                    (when is-superuser?
-                      [:and
-                       [:= entity-type-field (name entity-type)]
-                       [:in entity-id-field ^:allow-subquery {:select [:id] :from [table-name]}]])
-
-                    :model/Transform
-                    (cond
-                      is-superuser?
-                      [:and
-                       [:= entity-type-field (name entity-type)]
-                       [:in entity-id-field ^:allow-subquery {:select [:id] :from [table-name]}]]
-
-                      is-data-analyst?
-                      [:and
-                       [:= entity-type-field (name entity-type)]
-                       [:in entity-id-field
-                        ^:allow-subquery
-                        {:select [:id]
-                         :from   [table-name]
-                         :where  [:in :source_database_id
-                                  (perms/visible-database-filter-select
-                                   {:user-id          user-id
-                                    :is-superuser?    is-superuser?
-                                    :is-data-analyst? is-data-analyst?}
-                                   {:perms/create-queries :query-builder})]}]])
-
-                    (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
-                    (let [archived-column (keyword (name table-name) "archived")]
-                      (when-not (and (= model :model/NativeQuerySnippet)
-                                     (or (perms/sandboxed-user?)
-                                         (not (perms/user-has-any-perms-of-type? user-id :perms/create-queries))))
-                        [:and
-                         [:= entity-type-field (name entity-type)]
-                         [:in entity-id-field
-                          ^:allow-subquery
-                          {:select [:id]
-                           :from   [table-name]
-                           :where  [:and
-                                    (collection/visible-collection-filter-clause
-                                     (keyword (name table-name) "collection_id")
-                                     {:include-archived-items include-archived-items}
-                                     {:current-user-id user-id
-                                      :is-superuser?   is-superuser?})
-                                    (case include-archived-items
-                                      :exclude [:= archived-column false]
-                                      :only    [:= archived-column true]
-                                      :all     nil)]}]]))
-
-                    :model/Table
-                    [:and
-                     [:= entity-type-field (name entity-type)]
-                     [:in entity-id-field
-                      ^:allow-subquery
-                      {:select [:id]
-                       :from   [table-name]
-                       :where  [:in id-column
-                                (perms/visible-table-filter-select
-                                 :id
-                                 {:user-id user-id :is-superuser? is-superuser?}
-                                 {:perms/view-data :unrestricted :perms/create-queries :query-builder})]}]]
-
-                    (:model/Segment :model/Measure)
-                    (let [archived-column (keyword (name table-name) "archived")
-                          table-id-column (keyword (name table-name) "table_id")]
-                      [:and
-                       [:= entity-type-field (name entity-type)]
-                       [:in entity-id-field
-                        ^:allow-subquery
-                        {:select [:id]
-                         :from   [table-name]
-                         :where  [:and
-                                  [:in table-id-column
-                                   ^:allow-subquery
-                                   {:select [:metabase_table.id]
-                                    :from   [:metabase_table]
-                                    :where  [:in :metabase_table.id
-                                             (perms/visible-table-filter-select
-                                              :id
-                                              {:user-id user-id :is-superuser? is-superuser?}
-                                              {:perms/view-data :unrestricted :perms/create-queries :query-builder})]}]
-                                  (case include-archived-items
-                                    :exclude [:= archived-column false]
-                                    :only    [:= archived-column true]
-                                    :all     nil)]}]])))))
-        deps.dependency-types/dependency-type->model))
+  (let [user-info {:user-id          user-id
+                   :is-superuser?    (boolean is-superuser?)
+                   :is-data-analyst? (boolean is-data-analyst?)}]
+    (into [:or]
+          (map (fn [[entity-type model]]
+                 [:and
+                  [:= entity-type-field (name entity-type)]
+                  (if (= model :model/Table)
+                    [:in entity-id-field
+                     ^:allow-subquery
+                     {:select [:id]
+                      :from   [(t2/table-name model)]
+                      :where  [:in :metabase_table.id
+                               (perms/visible-table-filter-select
+                                :id
+                                user-info
+                                {:perms/view-data :unrestricted :perms/create-queries :query-builder})]}]
+                    (:clause (mi/visible-filter-clause model entity-id-field user-info nil
+                                                       {:include-archived-items include-archived-items
+                                                        :worktree-id            worktree-id})))]))
+          deps.dependency-types/dependency-type->model)))
 
 (defn- broken-entities-expr
   "Matches entities at `entity-type-field`/`entity-id-field` that have failed analysis (an AnalysisFinding with
@@ -186,20 +115,22 @@
 
 (defn finding-errors-from-sources
   "The AnalysisFindingErrors caused by any of the entities `source-entity-type` `source-entity-ids`, whose analyzed
-  entity is visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`."
-  [source-entity-type source-entity-ids {:keys [user-id is-superuser? is-data-analyst?]}]
+  entity is visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`, in `worktree-id`'s
+  scope (nil is the main app)."
+  [source-entity-type source-entity-ids {:keys [user-id is-superuser? is-data-analyst? worktree-id]}]
   (t2/select :model/AnalysisFindingError
              {:where [:and
                       [:= :source_entity_type (name source-entity-type)]
                       [:in :source_entity_id source-entity-ids]
                       (visible-entities-expr :analyzed_entity_type :analyzed_entity_id
                                              {:user-id user-id :is-superuser? is-superuser?
-                                              :is-data-analyst? is-data-analyst?})]}))
+                                              :is-data-analyst? is-data-analyst? :worktree-id worktree-id})]}))
 
 (defn finding-errors-for-entities-with-visible-sources
   "The AnalysisFindingErrors analyzing any of the entities `entity-type` `entity-ids`, excluding those whose source
-  entity exists but is not visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`."
-  [entity-type entity-ids {:keys [user-id is-superuser? is-data-analyst?]}]
+  entity exists but is not visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`, in
+  `worktree-id`'s scope (nil is the main app)."
+  [entity-type entity-ids {:keys [user-id is-superuser? is-data-analyst? worktree-id]}]
   (t2/select :model/AnalysisFindingError
              {:where [:and
                       [:= :analyzed_entity_type (name entity-type)]
@@ -208,7 +139,7 @@
                        [:= :source_entity_type nil]
                        (visible-entities-expr :source_entity_type :source_entity_id
                                               {:user-id user-id :is-superuser? is-superuser?
-                                               :is-data-analyst? is-data-analyst?})]]}))
+                                               :is-data-analyst? is-data-analyst? :worktree-id worktree-id})]]}))
 
 ;;; ------------------------------------------ Dependency item list queries -------------------------------------------
 ;;; The /graph/unreferenced and /graph/breaking endpoints union together one SELECT per entity type, each producing
@@ -386,14 +317,15 @@
   "The per-entity-type SELECT that [[dependency-item-ids]] and [[dependency-item-count]] union together, matching
   `query-type` (`:unreferenced` or `:breaking`) items of `entity-type`, restricted to `card-types`, `search-text`,
   and `include-personal-collections?`, visible to the user described by `user-id`, `is-superuser?`, and
-  `is-data-analyst?`, with `sort-column`'s expression selected as `:sort_key`. Throws when `user-id` is missing,
-  since the visibility restriction must always be applied."
-  [{:keys [query-type entity-type sort-column user-id is-superuser? is-data-analyst?] :as params}]
+  `is-data-analyst?` in `worktree-id`'s scope (nil is the main app), with `sort-column`'s expression selected as
+  `:sort_key`. Throws when `user-id` is missing, since the visibility restriction must always be applied."
+  [{:keys [query-type entity-type sort-column user-id is-superuser? is-data-analyst? worktree-id] :as params}]
   (when-not user-id
     (throw (ex-info "dependency-item-select requires a user-id so the visibility restriction is always applied"
                     {:query-type query-type :entity-type entity-type})))
   (let [{:keys [table-name name-column location-column] :as config} (entity-type-config entity-type)
-        visible {:user-id user-id :is-superuser? is-superuser? :is-data-analyst? is-data-analyst?}
+        visible {:user-id user-id :is-superuser? is-superuser? :is-data-analyst? is-data-analyst?
+                 :worktree-id worktree-id}
         default-visible-restriction {:visible visible}
         ;; The item's own visibility check includes archived items when listing what's breaking other entities,
         ;; so dependencies broken by an archived source still surface; nothing else is affected by this.
@@ -419,8 +351,8 @@
   `entity-types`, `card-types` (applied only to `:card` entities), `search-text` (nil for none), and
   `include-personal-collections?`; sorted by `sort-column` (`:name`, `:location`, `:dependents-errors`, or
   `:dependents-with-errors`) in `sort-direction`, skipping `offset` and returning up to `limit`. Entities are
-  restricted to those visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`; throws
-  when `user-id` is missing."
+  restricted to those visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?` in
+  `worktree-id`'s scope (nil is the main app); throws when `user-id` is missing."
   [{:keys [entity-types sort-direction offset limit] :as params}]
   (let [union-query ^:allow-subquery {:union-all (mapv #(dependency-item-select (assoc params :entity-type %))
                                                        entity-types)}]
@@ -443,9 +375,10 @@
 (defn broken-entity-pairs
   "The `[:analyzed_entity_type :analyzed_entity_id]` pairs whose analysis failed and were caused by the entity
   `source-entity-type` `source-entity-id`, restricted to `dependent-types` and `dependent-card-types` (each nil
-  for no restriction), visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`."
+  for no restriction), visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?` in
+  `worktree-id`'s scope (nil is the main app)."
   [{:keys [source-entity-type source-entity-id dependent-types dependent-card-types
-           user-id is-superuser? is-data-analyst?]}]
+           user-id is-superuser? is-data-analyst? worktree-id]}]
   (t2/query
    (cond-> {:select-distinct [[:afe.analyzed_entity_type :entity_type] [:afe.analyzed_entity_id :entity_id]]
             :from [[:analysis_finding_error :afe]]
@@ -460,7 +393,8 @@
                             (visible-entities-expr :afe.analyzed_entity_type :afe.analyzed_entity_id
                                                    {:user-id user-id :is-superuser? is-superuser?
                                                     :is-data-analyst? is-data-analyst?
-                                                    :include-archived-items :exclude})]
+                                                    :include-archived-items :exclude
+                                                    :worktree-id worktree-id})]
                      dependent-types      (conj [:in :afe.analyzed_entity_type dependent-types])
                      dependent-card-types (conj [:or
                                                  [:!= :afe.analyzed_entity_type "card"]
@@ -471,6 +405,11 @@
                                               [:= :rc.id :afe.analyzed_entity_id]]]))))
 
 ;;; ---------------------------------------------------- Entities ----------------------------------------------------
+
+(defn instance
+  "The instance of the entity type `entity-type` with `id`, or nil."
+  [entity-type id]
+  (t2/select-one (deps.dependency-types/dependency-type->model entity-type) :id id))
 
 (defn instances
   "The instances of the entity type `entity-type` with `ids`."

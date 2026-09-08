@@ -47,7 +47,8 @@
    [:description     {:optional true} [:maybe ms/NonBlankString]]
    [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
    [:namespace       {:optional true} [:maybe ms/NonBlankString]]
-   [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]])
+   [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]
+   [:worktree_id     {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private NewCollectionArguments
   "What we use internally to actually create a collection — what `t2/insert!` needs."
@@ -56,15 +57,17 @@
       (malli.util/assoc :location [:maybe ms/NonBlankString])
       (malli.util/assoc :namespace [:maybe [:or :keyword ms/NonBlankString]])
       (malli.util/assoc :is_remote_synced [:maybe :boolean])
+      (malli.util/assoc :worktree_id [:maybe ms/PositiveInt])
       (malli.util/assoc :type [:enum "trash" "library" "library-data" "library-metrics"])
-      (malli.util/optional-keys [:location :type])
+      (malli.util/optional-keys [:location :type :worktree_id])
       (malli.util/closed-schema)))
 
 (mu/defn apply-defaults-to-collection :- NewCollectionArguments
   "Converts `CreateCollectionArguments` into `NewCollectionArguments` — i.e. translates what the API
   gets into what toucan needs to create a collection. Inherits `:namespace`, `:type` (only the
-  library family — see `collection/library-collection-types`), and `:is_remote_synced` from the
-  parent collection."
+  library family — see `collection/library-collection-types`), `:is_remote_synced` and `:worktree_id`
+  from the parent collection. A collection in a remote-sync worktree is remote-synced by definition: the
+  whole worktree is its branch's checkout."
   [coll-data :- CreateCollectionArguments]
   (let [parent-coll (parent-or-root coll-data)]
     ;; `api/write-check` handles both branches - a real collection and the root sentinel
@@ -80,7 +83,9 @@
           ;; would mis-tag the child (UXW-4520).
           (contains? collection/library-collection-types (:type parent-coll))
           (assoc :type (:type parent-coll)))
-        (assoc :is_remote_synced (boolean (:is_remote_synced parent-coll)))
+        (cond-> (:parent_id coll-data) (assoc :worktree_id (:worktree_id parent-coll)))
+        (as-> coll (assoc coll :is_remote_synced (boolean (or (:is_remote_synced parent-coll)
+                                                              (:worktree_id coll)))))
         (select-keys (malli.util/keys NewCollectionArguments)))))
 
 (mu/defn create-collection!

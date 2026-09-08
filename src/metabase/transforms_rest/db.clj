@@ -7,9 +7,9 @@
 ;;; ------------------------------------------------- Transforms -------------------------------------------------
 
 (defn transforms-by-id
-  "A map of id to Transform, for every Transform."
-  []
-  (t2/select-pk->fn identity :model/Transform))
+  "A map of id to Transform, for every Transform in the remote-sync worktree `worktree-id` (nil is the main app)."
+  [worktree-id]
+  (t2/select-pk->fn identity :model/Transform :worktree_id worktree-id))
 
 (defn reset-checkpoint!
   "Clear the stored checkpoint value of the Transform with `id`."
@@ -29,9 +29,10 @@
   (t2/select-one :model/TransformTag :id tag-id))
 
 (defn insert-tag!
-  "Insert a TransformTag named `name` and return the inserted instance."
-  [name]
-  (t2/insert-returning-instance! :model/TransformTag {:name name}))
+  "Insert a TransformTag named `name` in the remote-sync worktree `worktree-id` (nil is the main app) and return the
+  inserted instance."
+  [name worktree-id]
+  (t2/insert-returning-instance! :model/TransformTag {:name name :worktree_id worktree-id}))
 
 (defn update-tag!
   "Set the name of the TransformTag with `tag-id`."
@@ -44,9 +45,9 @@
   (t2/delete! :model/TransformTag :id tag-id))
 
 (defn tags
-  "Every TransformTag, in name order."
-  []
-  (t2/select :model/TransformTag {:order-by [[:name :asc]]}))
+  "Every TransformTag in the remote-sync worktree `worktree-id` (nil is the main app), in name order."
+  [worktree-id]
+  (t2/select :model/TransformTag :worktree_id worktree-id {:order-by [[:name :asc]]}))
 
 ;;; ---------------------------------------------------- Jobs ------------------------------------------------------
 

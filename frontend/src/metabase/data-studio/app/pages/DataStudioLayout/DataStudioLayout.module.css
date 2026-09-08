@@ -1,0 +1,10 @@
+.branchPicker {
+  align-self: flex-start;
+  max-width: 100%;
+  margin-bottom: var(--mantine-spacing-xs);
+
+  button {
+    max-width: 100%;
+    border: 1px solid var(--mb-color-border-neutral);
+  }
+}

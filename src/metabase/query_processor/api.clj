@@ -183,14 +183,28 @@
   "Get all of the required query metadata for an ad-hoc query.
 
   You can pass `{:settings {:include-sensitive-fields true}}` in the query to include fields with
-  visibility_type :sensitive in the response."
+  visibility_type :sensitive in the response.
+
+  `worktree_id` describes the query as it would run inside a remote-sync worktree, resolving its source cards
+  from that worktree instead of the main app (admin only)."
   [_route-params
    _query-params
    query :- ::lib-be.schema/maybe-legacy-query]
-  (queries/batch-fetch-query-metadata
-   [query]
-   (when-some [include-sensitive-fields (get-in query [:settings :include-sensitive-fields])]
-     {:include-sensitive-fields? include-sensitive-fields})))
+  ;; `worktree_id` rides along on the query body; query normalization kebab-cases top-level keys, so accept either
+  ;; spelling and strip both before the query is used.
+  (let [worktree-id (or (:worktree_id query) (:worktree-id query))
+        query       (dissoc query :worktree_id :worktree-id)]
+    (when (some? worktree-id)
+      (api/check-400 (pos-int? worktree-id) (tru "worktree_id must be a positive integer."))
+      (api/check-superuser))
+    (queries/batch-fetch-query-metadata
+     [query]
+     (cond-> {}
+       (some? worktree-id)
+       (assoc :worktree-id worktree-id)
+
+       (some? (get-in query [:settings :include-sensitive-fields]))
+       (assoc :include-sensitive-fields? (get-in query [:settings :include-sensitive-fields]))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

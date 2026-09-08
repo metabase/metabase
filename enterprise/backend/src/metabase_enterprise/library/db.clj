@@ -16,20 +16,25 @@
   (t2/exists? :model/Table :is_published true :collection_id [:in collection-ids]))
 
 (defn library-collections
-  "The readable Library, Library-data, and Library-metrics Collections, ordered by name."
-  []
-  (t2/select :model/Collection
-             {:where    [:and
-                         [:in :type [collection/library-collection-type
-                                     collection/library-data-collection-type
-                                     collection/library-metrics-collection-type]]
-                         (collection/visible-collection-filter-clause
-                          :id
-                          {:include-archived-items    :exclude
-                           :include-trash-collection? false
-                           :permission-level          :read
-                           :archive-operation-id      nil})]
-              :order-by [[:%lower.name :asc]]}))
+  "The readable Library, Library-data, and Library-metrics Collections, ordered by name. With a `worktree-id`, the
+  Collections the remote-sync worktree checked out; without one (or with nil), the main app's."
+  ([]
+   (library-collections nil))
+  ([worktree-id]
+   (t2/select :model/Collection
+              {:where    [:and
+                          [:= :worktree_id worktree-id]
+                          [:in :type [collection/library-collection-type
+                                      collection/library-data-collection-type
+                                      collection/library-metrics-collection-type]]
+                          (collection/visible-collection-filter-clause
+                           :id
+                           {:include-archived-items    :exclude
+                            :include-trash-collection? false
+                            :permission-level          :read
+                            :worktree-id               worktree-id
+                            :archive-operation-id      nil})]
+               :order-by [[:%lower.name :asc]]})))
 
 (defn collection-type
   "The type of the Collection with `collection-id`."

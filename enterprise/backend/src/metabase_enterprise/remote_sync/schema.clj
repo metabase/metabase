@@ -144,6 +144,20 @@
    [:status :string]
    [:message :string]])
 
+(def Worktree
+  "Schema for a remote-sync worktree."
+  [:map
+   [:id pos-int?]
+   [:branch :string]
+   [:creator_id {:optional true} [:maybe pos-int?]]
+   [:created_at {:optional true} :any]
+   [:updated_at {:optional true} :any]
+   [:creator {:optional true} [:maybe :map]]])
+
+(def WorktreeList
+  "Schema for GET /worktree response."
+  [:sequential Worktree])
+
 (def StashResponse
   "Schema for POST /stash response."
   [:map

@@ -8,6 +8,7 @@ import {
 } from "metabase/api";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import { useToast } from "metabase/common/hooks/use-toast";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 
@@ -24,6 +25,7 @@ export function usePublishedTableSegmentPage(
   const navigate = useNavigate();
   const [sendToast] = useToast();
   const [updateSegment] = useUpdateSegmentMutation();
+  const worktreeId = useWorktreeId();
 
   const tableId = Urls.extractEntityId(params.tableId);
   const segmentId = Urls.extractEntityId(params.segmentId);
@@ -57,9 +59,9 @@ export function usePublishedTableSegmentPage(
       sendToast({ icon: "warning", message: t`Failed to remove segment` });
     } else {
       sendToast({ icon: "check", message: t`Segment removed` });
-      navigate(Urls.dataStudioTableSegments(tableId));
+      navigate(Urls.dataStudioTableSegments(tableId, { worktreeId }));
     }
-  }, [segment, tableId, updateSegment, sendToast, navigate]);
+  }, [segment, tableId, updateSegment, sendToast, navigate, worktreeId]);
 
   const isLoading = isLoadingSegment || isLoadingTable;
   const error = segmentError ?? tableError;
@@ -69,17 +71,21 @@ export function usePublishedTableSegmentPage(
       return null;
     }
     return {
-      definition: Urls.dataStudioPublishedTableSegment(tableId, segmentId),
+      definition: Urls.dataStudioPublishedTableSegment(tableId, segmentId, {
+        worktreeId,
+      }),
       revisions: Urls.dataStudioPublishedTableSegmentRevisions(
         tableId,
         segmentId,
+        { worktreeId },
       ),
       dependencies: Urls.dataStudioPublishedTableSegmentDependencies(
         tableId,
         segmentId,
+        { worktreeId },
       ),
     };
-  }, [tableId, segmentId]);
+  }, [tableId, segmentId, worktreeId]);
 
   return {
     isLoading,

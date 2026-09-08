@@ -108,6 +108,11 @@
                                                                    [:= :d.to_entity_type "table"]]}]))]
     (t2/select :model/Table {:where where, :order-by [[:name :asc]]})))
 
+(defn card-worktree-id
+  "The remote-sync worktree id of the Card with `card-id` (nil for a main-app card or a missing card)."
+  [card-id]
+  (t2/select-one-fn :worktree_id :model/Card :id card-id))
+
 (defn tables-by-ids
   "The Tables with `table-ids`."
   [table-ids]

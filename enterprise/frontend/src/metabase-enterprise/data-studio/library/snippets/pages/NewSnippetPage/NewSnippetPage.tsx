@@ -17,6 +17,7 @@ import {
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useToast } from "metabase/common/hooks";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
@@ -46,6 +47,7 @@ export function NewSnippetPage() {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const worktreeId = useWorktreeId();
 
   const handleCreateSnippet = async (
     collectionId: RegularCollectionId | null,
@@ -55,6 +57,7 @@ export function NewSnippetPage() {
       content,
       description: description.trim().length > 0 ? description.trim() : null,
       collection_id: collectionId,
+      worktree_id: worktreeId,
     });
 
     if (error) {
@@ -69,9 +72,9 @@ export function NewSnippetPage() {
 
   useEffect(() => {
     if (savedSnippet) {
-      navigate(Urls.dataStudioSnippet(savedSnippet.id));
+      navigate(Urls.dataStudioSnippet(savedSnippet.id, { worktreeId }));
     }
-  }, [savedSnippet, navigate]);
+  }, [savedSnippet, navigate, worktreeId]);
 
   const handleSave = async () => {
     if (!PLUGIN_SNIPPET_FOLDERS.isEnabled) {
@@ -82,7 +85,7 @@ export function NewSnippetPage() {
   };
 
   const handleCancel = () => {
-    navigate(Urls.dataStudioLibrary());
+    navigate(Urls.dataStudioLibrary({ worktreeId }));
   };
 
   const handleCollectionSelected = async (
@@ -122,7 +125,9 @@ export function NewSnippetPage() {
           }
           breadcrumbs={
             <DataStudioBreadcrumbs>
-              <Link to={Urls.dataStudioLibrary()}>{t`SQL snippets`}</Link>
+              <Link to={Urls.dataStudioLibrary({ worktreeId })}>
+                {t`SQL snippets`}
+              </Link>
               {t`New Snippet`}
             </DataStudioBreadcrumbs>
           }

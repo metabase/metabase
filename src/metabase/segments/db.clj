@@ -5,14 +5,18 @@
    [toucan2.core :as t2]))
 
 (defn insert-segment!
-  "Insert a Segment and return the inserted instance."
-  [table-id creator-id segment-name description definition]
-  (t2/insert-returning-instance! :model/Segment
-                                 :table_id    table-id
-                                 :creator_id  creator-id
-                                 :name        segment-name
-                                 :description description
-                                 :definition  definition))
+  "Insert a Segment and return the inserted instance. `worktree-id` (nil for the main app) is the remote-sync
+  worktree the Segment belongs to."
+  ([table-id creator-id segment-name description definition]
+   (insert-segment! table-id creator-id segment-name description definition nil))
+  ([table-id creator-id segment-name description definition worktree-id]
+   (t2/insert-returning-instance! :model/Segment
+                                  :table_id    table-id
+                                  :creator_id  creator-id
+                                  :name        segment-name
+                                  :description description
+                                  :definition  definition
+                                  :worktree_id worktree-id)))
 
 (defn segment
   "The Segment with `id`, or nil."
@@ -20,9 +24,12 @@
   (t2/select-one :model/Segment :id id))
 
 (defn unarchived-segments
-  "The unarchived Segments, in case-insensitive name order."
-  []
-  (t2/select :model/Segment :archived false {:order-by [[:%lower.name :asc]]}))
+  "The unarchived Segments in the remote-sync worktree `worktree-id` (nil for the main app), in case-insensitive
+  name order."
+  ([]
+   (unarchived-segments nil))
+  ([worktree-id]
+   (t2/select :model/Segment :archived false :worktree_id worktree-id {:order-by [[:%lower.name :asc]]})))
 
 (defn table-database-ids
   "The set of Database ids of the Tables with `table-ids`."

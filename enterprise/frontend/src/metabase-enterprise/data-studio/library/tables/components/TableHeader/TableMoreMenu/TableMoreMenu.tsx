@@ -5,6 +5,7 @@ import { collectionApi } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import { useSetCollection } from "metabase/common/hooks/use-set-collection";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
@@ -29,12 +30,13 @@ export function TableMoreMenu({ table, onMoved }: TableMoreMenuProps) {
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const worktreeId = useWorktreeId();
 
   const dbId = "db_id" in table ? table.db_id : table.database_id;
 
   const handleUnpublish = () => {
     setModalType(undefined);
-    navigate(Urls.dataStudioLibrary());
+    navigate(Urls.dataStudioLibrary({ worktreeId }));
   };
 
   const handleMove = async (newCollection: { id: CollectionId }) => {
@@ -128,6 +130,7 @@ export function TableMoreMenu({ table, onMoved }: TableMoreMenuProps) {
           }}
           onChange={handleMove}
           onClose={() => setModalType(undefined)}
+          worktreeId={worktreeId}
           options={{
             hasLibrary: true,
             hasRootCollection: false,

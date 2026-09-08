@@ -8,12 +8,16 @@
 
 (defn dashboards
   "The archived or unarchived (`archived?`) Dashboards, restricted to those created by `creator-id` when given, in
-  case-insensitive name order."
-  [archived? creator-id]
-  (t2/select :model/Dashboard {:where    [:and
-                                          (when creator-id [:= :creator_id creator-id])
-                                          [:= :archived archived?]]
-                               :order-by [:%lower.name]}))
+  case-insensitive name order. `worktree-id` selects the Dashboards checked out into that remote-sync worktree; nil
+  (the default) selects the main app's."
+  ([archived? creator-id]
+   (dashboards archived? creator-id nil))
+  ([archived? creator-id worktree-id]
+   (t2/select :model/Dashboard {:where    [:and
+                                           (when creator-id [:= :creator_id creator-id])
+                                           [:= :archived archived?]
+                                           [:= :worktree_id worktree-id]]
+                                :order-by [:%lower.name]})))
 
 (defn dashboard
   "The Dashboard with `dashboard-id`, or nil."

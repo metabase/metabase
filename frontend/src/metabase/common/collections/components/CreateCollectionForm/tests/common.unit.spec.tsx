@@ -58,4 +58,25 @@ describe("CreateCollectionForm", () => {
       expect.objectContaining({ namespace: "snippets" }),
     );
   });
+
+  it("submits worktree_id for a root-level collection scoped to a worktree", async () => {
+    const { onSubmit } = setup({ worktreeId: 42 });
+
+    await userEvent.type(screen.getByLabelText("Name"), "Worktree folder");
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ parent_id: null, worktree_id: 42 }),
+    );
+  });
+
+  it("submits without worktree_id when not scoped to a worktree", async () => {
+    const { onSubmit } = setup();
+
+    await userEvent.type(screen.getByLabelText("Name"), "Plain folder");
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("worktree_id");
+  });
 });

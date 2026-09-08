@@ -12,6 +12,7 @@ import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { SidebarHeader } from "metabase/common/components/SidebarHeader";
+import { useWorktreeId } from "metabase/common/worktrees";
 import CS from "metabase/css/core/index.css";
 import {
   PLUGIN_REMOTE_SYNC,
@@ -29,6 +30,7 @@ import type {
   CollectionItem,
   CollectionItemModel,
   NativeQuerySnippet,
+  WorktreeId,
 } from "metabase-types/api";
 
 import { SnippetRow } from "./SnippetRow";
@@ -57,6 +59,7 @@ interface SnippetSidebarInnerProps extends SnippetSidebarProps {
   search: CollectionItem[];
   isRemoteSyncReadOnly: boolean;
   dispatch: Dispatch;
+  worktreeId?: WorktreeId;
 }
 
 interface SnippetSidebarInnerState {
@@ -286,6 +289,7 @@ class SnippetSidebarInner extends Component<
 type SnippetSidebarWithSearchProps = Omit<SnippetSidebarInnerProps, "search">;
 
 function SnippetSidebarWithSearch(props: SnippetSidebarWithSearchProps) {
+  const worktreeId = useWorktreeId();
   const collectionId =
     props.snippetCollectionId === null ? "root" : props.snippetCollectionId;
   const {
@@ -295,6 +299,7 @@ function SnippetSidebarWithSearch(props: SnippetSidebarWithSearchProps) {
   } = useListCollectionItemsQuery({
     id: collectionId,
     namespace: "snippets",
+    "worktree-id": worktreeId,
   });
   const search = searchResponse?.data ?? [];
   return (
@@ -309,6 +314,7 @@ export function SnippetSidebar(props: SnippetSidebarProps) {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const worktreeId = useWorktreeId();
   const collectionId =
     props.snippetCollectionId === null ? "root" : props.snippetCollectionId;
 
@@ -316,12 +322,15 @@ export function SnippetSidebar(props: SnippetSidebarProps) {
     data: snippets,
     isLoading: snippetsLoading,
     error: snippetsError,
-  } = useListSnippetsQuery();
+  } = useListSnippetsQuery({ "worktree-id": worktreeId });
   const {
     data: snippetCollections,
     isLoading: collectionsLoading,
     error: collectionsError,
-  } = useListCollectionsQuery({ namespace: "snippets" });
+  } = useListCollectionsQuery({
+    namespace: "snippets",
+    "worktree-id": worktreeId,
+  });
   const {
     data: snippetCollection,
     isLoading: collectionLoading,
@@ -341,6 +350,7 @@ export function SnippetSidebar(props: SnippetSidebarProps) {
           snippetCollection={snippetCollection}
           isRemoteSyncReadOnly={isRemoteSyncReadOnly}
           dispatch={dispatch}
+          worktreeId={worktreeId}
         />
       )}
     </LoadingAndErrorWrapper>
@@ -401,22 +411,30 @@ function ArchivedSnippets(props: { onBack: () => void }) {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const worktreeId = useWorktreeId();
 
   const {
     data: snippets,
     isLoading: snippetsLoading,
     error: snippetsError,
-  } = useListSnippetsQuery({ archived: true });
+  } = useListSnippetsQuery({ archived: true, "worktree-id": worktreeId });
   const {
     data: snippetCollections,
     isLoading: collectionsLoading,
     error: collectionsError,
-  } = useListCollectionsQuery({ namespace: "snippets" });
+  } = useListCollectionsQuery({
+    namespace: "snippets",
+    "worktree-id": worktreeId,
+  });
   const {
     data: archivedSnippetCollections,
     isLoading: archivedCollectionsLoading,
     error: archivedCollectionsError,
-  } = useListCollectionsQuery({ namespace: "snippets", archived: true });
+  } = useListCollectionsQuery({
+    namespace: "snippets",
+    archived: true,
+    "worktree-id": worktreeId,
+  });
 
   const isLoading =
     snippetsLoading || collectionsLoading || archivedCollectionsLoading;

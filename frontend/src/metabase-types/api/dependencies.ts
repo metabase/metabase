@@ -13,6 +13,7 @@ import type { NativeQuerySnippet } from "./snippets";
 import type { SortDirection } from "./sorting";
 import type { ConcreteTableId, Table } from "./table";
 import type { Transform } from "./transform";
+import type { WorktreeId } from "./worktree";
 
 export type DependencyId = number;
 
@@ -277,6 +278,7 @@ export type ListBreakingGraphNodesRequest = PaginationRequest & {
   "include-personal-collections"?: boolean;
   "sort-column"?: DependencySortColumn;
   "sort-direction"?: SortDirection;
+  "worktree-id"?: WorktreeId | null;
 };
 
 export type ListBreakingGraphNodesResponse = PaginationResponse & {
@@ -300,6 +302,7 @@ export type ListUnreferencedGraphNodesRequest = PaginationRequest & {
   "include-personal-collections"?: boolean;
   "sort-column"?: DependencySortColumn;
   "sort-direction"?: SortDirection;
+  "worktree-id"?: WorktreeId | null;
 };
 
 export type ListUnreferencedGraphNodesResponse = PaginationResponse & {

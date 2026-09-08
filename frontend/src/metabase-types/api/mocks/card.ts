@@ -25,6 +25,7 @@ import { createMockUser } from "./user";
 const MOCK_CARD_ENTITY_ID = createMockEntityId();
 export const createMockCard = (opts?: Partial<Card>): Card => ({
   id: 1,
+  worktree_id: null,
   entity_id: MOCK_CARD_ENTITY_ID,
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",

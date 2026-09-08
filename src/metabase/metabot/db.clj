@@ -845,16 +845,17 @@
   (t2/select :model/Document :id [:in document-ids] :archived false))
 
 (defn transforms
-  "The Transforms with `transform-ids`."
+  "The main-app Transforms with `transform-ids`; worktree copies are excluded."
   [transform-ids]
-  (t2/select :model/Transform :id [:in transform-ids]))
+  (t2/select :model/Transform :id [:in transform-ids] :worktree_id nil))
 
 (defn transforms-for-source-database
-  "The ID, name, description, source Database, and source of the Transforms reading from the Database with
-  `database-id`, ordered by name."
+  "The ID, name, description, source Database, and source of the main-app Transforms reading from the Database with
+  `database-id`, ordered by name. Worktree copies are excluded."
   [database-id]
   (t2/select [:model/Transform :id :name :description :source_database_id :source]
              :source_database_id database-id
+             :worktree_id nil
              {:order-by [[:%lower.name :asc]]}))
 
 (defn verified-item-ids

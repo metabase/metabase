@@ -3,7 +3,11 @@ import { msgid, ngettext } from "ttag";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { isEmptyStateData } from "metabase/data-studio/common/utils";
 import * as Urls from "metabase/urls";
-import type { Collection, CollectionType } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionType,
+  WorktreeId,
+} from "metabase-types/api";
 
 export function getArchiveLibraryCollectionsMessage(count: number): string {
   return ngettext(
@@ -30,7 +34,10 @@ export function getWritableCollection(
   return collection?.can_write ? collection : undefined;
 }
 
-export const getTreeRowHref = (row: { original: TreeItem }): string | null => {
+export const getTreeRowHref = (
+  row: { original: TreeItem },
+  worktreeId?: WorktreeId | null,
+): string | null => {
   const treeItem = row.original;
 
   if (treeItem.model === "empty-state" || isEmptyStateData(treeItem.data)) {
@@ -39,13 +46,13 @@ export const getTreeRowHref = (row: { original: TreeItem }): string | null => {
   // Unjustified type cast. FIXME
   const entityId = treeItem.data.id as number;
   if (treeItem.model === "metric") {
-    return Urls.dataStudioMetric(entityId);
+    return Urls.dataStudioMetric(entityId, { worktreeId });
   }
   if (treeItem.model === "snippet") {
-    return Urls.dataStudioSnippet(entityId);
+    return Urls.dataStudioSnippet(entityId, { worktreeId });
   }
   if (treeItem.model === "table") {
-    return Urls.dataStudioTable(entityId);
+    return Urls.dataStudioTable(entityId, { worktreeId });
   }
   return null;
 };

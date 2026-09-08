@@ -5,6 +5,7 @@ import * as Yup from "yup";
 import { useListCollectionsQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useWorktreeId } from "metabase/common/worktrees";
 import {
   Form,
   FormErrorMessage,
@@ -60,6 +61,7 @@ function SnippetFormInner({
   onArchive,
   onCancel,
 }: SnippetFormProps) {
+  const worktreeId = useWorktreeId();
   const hasManyCollections = snippetCollections.length > 1;
 
   const initialValues = useMemo(
@@ -111,7 +113,10 @@ function SnippetFormInner({
             <FormCollectionPicker
               name="collection_id"
               title={t`Folder this should be in`}
-              collectionPickerModalProps={{ namespaces: ["snippets"] }}
+              collectionPickerModalProps={{
+                namespaces: ["snippets"],
+                worktreeId,
+              }}
             />
           )}
           <Flex align="center" justify="space-between">
@@ -152,11 +157,15 @@ function SnippetFormInner({
 }
 
 export function SnippetForm(props: SnippetFormOwnProps) {
+  const worktreeId = useWorktreeId();
   const {
     data: snippetCollections,
     isLoading,
     error,
-  } = useListCollectionsQuery({ namespace: "snippets" });
+  } = useListCollectionsQuery({
+    namespace: "snippets",
+    "worktree-id": worktreeId,
+  });
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
       <SnippetFormInner

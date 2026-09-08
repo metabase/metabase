@@ -99,8 +99,8 @@ const getErrorMessage = (data: ErrorData): string | undefined =>
     ? data.message
     : undefined;
 
-export const parseSyncError = (exportError: SyncError | null): ParsedError => {
-  if (!exportError) {
+export const parseSyncError = (error: unknown): ParsedError => {
+  if (!error || typeof error !== "object") {
     return {
       errorMessage: null,
       hasConflict: false,
@@ -108,6 +108,9 @@ export const parseSyncError = (exportError: SyncError | null): ParsedError => {
       currentBranch: null,
     };
   }
+
+  // safe: SyncError's fields are all optional and every access below re-checks presence and type
+  const exportError = error as SyncError;
 
   if (
     "data" in exportError &&

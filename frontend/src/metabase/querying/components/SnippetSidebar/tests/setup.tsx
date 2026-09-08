@@ -8,8 +8,9 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import { WorktreeProvider } from "metabase/common/worktrees";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { TokenFeatures, User } from "metabase-types/api";
+import type { TokenFeatures, User, WorktreeId } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -27,12 +28,14 @@ export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   user?: Partial<User>;
+  worktreeId?: WorktreeId;
 }
 
 export async function setup({
   tokenFeatures = {},
   enterprisePlugins,
   user = { is_superuser: true },
+  worktreeId,
 }: SetupOpts = {}) {
   setupNativeQuerySnippetEndpoints({ snippets: [MOCK_SNIPPET] });
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
@@ -55,14 +58,22 @@ export async function setup({
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
-  const utils = renderWithProviders(
+  const sidebar = (
     <SnippetSidebar
       onClose={() => null}
       setModalSnippet={() => null}
       openSnippetModalWithSelectedText={() => null}
       insertSnippet={() => null}
       snippetCollectionId={null}
-    />,
+    />
+  );
+
+  const utils = renderWithProviders(
+    worktreeId !== undefined ? (
+      <WorktreeProvider worktreeId={worktreeId}>{sidebar}</WorktreeProvider>
+    ) : (
+      sidebar
+    ),
     {
       storeInitialState: state,
     },

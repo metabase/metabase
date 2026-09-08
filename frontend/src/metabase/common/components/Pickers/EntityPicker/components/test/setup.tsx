@@ -24,6 +24,7 @@ import type {
   LibraryCollection,
   RecentItem,
   SearchResult,
+  TokenFeatures,
 } from "metabase-types/api";
 import {
   createMockCollection,
@@ -356,6 +357,7 @@ export type SetupOpts = Partial<EntityPickerModalProps> & {
   }>;
   libraryCollection?: Collection;
   libraryCollectionItems?: CollectionItem[];
+  tokenFeatures?: Partial<TokenFeatures>;
 };
 
 export const setup = async ({
@@ -364,6 +366,7 @@ export const setup = async ({
   databases,
   libraryCollection,
   libraryCollectionItems,
+  tokenFeatures,
   ...rest
 }: SetupOpts = {}) => {
   process.env.OVERSCAN = "20"; // for VirtualizedList overscan
@@ -379,13 +382,17 @@ export const setup = async ({
     ? createMockLibraryCollectionItem(libraryCollection)
     : undefined;
 
-  const state = libraryCollectionItem
-    ? createMockState({
-        settings: mockSettings({
-          "token-features": createMockTokenFeatures({ library: true }),
-        }),
-      })
-    : undefined;
+  const state =
+    libraryCollectionItem || tokenFeatures
+      ? createMockState({
+          settings: mockSettings({
+            "token-features": createMockTokenFeatures({
+              ...(libraryCollectionItem ? { library: true } : {}),
+              ...tokenFeatures,
+            }),
+          }),
+        })
+      : undefined;
 
   if (libraryCollectionItem) {
     setupEnterpriseOnlyPlugin("library");

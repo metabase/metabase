@@ -22,22 +22,24 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
+   [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (defn enable-snippet-tracking!
-  "Mark all existing snippets and snippets-namespace collections as 'create' for initial sync."
+  "Mark all existing snippets and snippets-namespace collections as 'create' for initial sync. Only the main
+  app's collections: a worktree checks out no snippets, and tracks its own content within its own pull."
   []
   (let [timestamp (t/offset-date-time)
         rows      (concat
-                   (for [coll (remote-sync.db/snippet-collections)]
+                   (for [coll (remote-sync.db/snippet-collections nil)]
                      {:model_type        "Collection"
                       :model_id          (:id coll)
                       :model_name        (:name coll)
                       :status            "create"
                       :status_changed_at timestamp})
-                   (for [snippet (remote-sync.db/snippets)]
+                   (for [snippet (remote-sync.db/snippets nil)]
                      {:model_type          "NativeQuerySnippet"
                       :model_id            (:id snippet)
                       :model_name          (:name snippet)
@@ -50,10 +52,10 @@
 (defn disable-snippet-tracking!
   "Remove all snippet-related tracking entries."
   []
-  (let [snippet-coll-ids (remote-sync.db/snippet-collection-ids)]
+  (let [snippet-coll-ids (remote-sync.db/snippet-collection-ids nil)]
     (remote-sync.db/delete-rsos-of-type! "NativeQuerySnippet")
     (when (seq snippet-coll-ids)
-      (remote-sync.db/delete-rsos-of-models! "Collection" snippet-coll-ids))))
+      (remote-sync.db/delete-rsos-of-models! "Collection" snippet-coll-ids nil))))
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
@@ -73,6 +75,14 @@
 
     :else ;; hash has not changed
     "synced"))
+
+(defn- tracked-row-worktree-id
+  "The worktree the tracked model row belongs to: nil for main-app rows and for models whose table has no
+  `worktree_id` column. Tracking rows must carry their model's worktree so each worktree's dirty state stays
+  separate from the main app's."
+  [model-type model-id]
+  (when (serdes/worktree-scoped? model-type)
+    (remote-sync.db/worktree-id-of (keyword "model" model-type) model-id)))
 
 (defn- create-or-update-remote-sync-object-entry!
   "Creates or updates a remote sync object entry for a model change.
@@ -96,6 +106,7 @@
           :model_display (some-> model-details :display name)
           :model_table_id (:table_id model-details)
           :model_table_name (:table_name model-details)
+          :worktree_id (tracked-row-worktree-id model-type model-id)
           :status status
           :status_changed_at (t/offset-date-time)}))
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
@@ -128,56 +139,62 @@
   "Creates or updates a RemoteSyncObject entry using a spec for field hydration.
    This is the spec-based version of create-or-update-remote-sync-object-entry!.
 
+   `worktree-id` is the worktree the tracked row belongs to when the caller already knows it -- a delete event
+   still carries the row it deleted, which can no longer be read back from the table.
+
    Row-locks the entry for the transaction, so this and a concurrent un-sync of the entity's collection
    settle in a fixed order rather than losing one of the two writes: whichever locks first commits, and
    the other then observes that result — the un-sync re-marking the row, or the eligibility re-check below
    seeing the entity is gone from the synced set."
-  [model-spec model-id status]
-  (t2/with-transaction [_conn]
-    (let [model-type (:model-type model-spec)
-          existing   (remote-sync.db/lock-rso model-type model-id)]
-      (cond
-        ;; No row to lock, so a concurrent un-sync that hasn't inserted yet is invisible here (a phantom the
-        ;; row lock can't cover). Re-check eligibility so a stale tracked-status event does not start tracking
-        ;; an entity that has since left the synced set. This narrows, but cannot fully close, that window.
-        (and (not existing)
-             (not (contains? #{"removed" "delete"} status))
-             (not (still-eligible? model-spec model-id)))
-        nil
+  ([model-spec model-id status]
+   (create-or-update-sync-object-from-spec! model-spec model-id status nil))
+  ([model-spec model-id status worktree-id]
+   (t2/with-transaction [_conn]
+     (let [model-type (:model-type model-spec)
+           existing   (remote-sync.db/lock-rso model-type model-id)]
+       (cond
+         ;; No row to lock, so a concurrent un-sync that hasn't inserted yet is invisible here (a phantom the
+         ;; row lock can't cover). Re-check eligibility so a stale tracked-status event does not start tracking
+         ;; an entity that has since left the synced set. This narrows, but cannot fully close, that window.
+         (and (not existing)
+              (not (contains? #{"removed" "delete"} status))
+              (not (still-eligible? model-spec model-id)))
+         nil
 
-        (not existing)
-        (let [model-details (spec/hydrate-model-details model-spec model-id)
-              fields        (spec/build-sync-object-fields model-spec model-details)]
-          (remote-sync.db/insert-rso!
-           (merge {:model_type        model-type
-                   :model_id          model-id
-                   :status            status
-                   :status_changed_at (t/offset-date-time)}
-                  fields)))
+         (not existing)
+         (let [model-details (spec/hydrate-model-details model-spec model-id)
+               fields        (spec/build-sync-object-fields model-spec model-details)]
+           (remote-sync.db/insert-rso!
+            (merge {:model_type        model-type
+                    :model_id          model-id
+                    :worktree_id       (or worktree-id (tracked-row-worktree-id model-type model-id))
+                    :status            status
+                    :status_changed_at (t/offset-date-time)}
+                   fields)))
 
-        (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
-        (remote-sync.db/delete-rso! (:id existing))
+         (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
+         (remote-sync.db/delete-rso! (:id existing))
 
-        ;; A pending removal must not be resurrected by a tracked-status write whose eligibility check was
-        ;; overtaken by a concurrent un-sync: that check ran against the event payload, well before this
-        ;; write, so re-check against current state and let the removal stand when it no longer holds.
-        (and (contains? #{"removed" "delete"} (:status existing))
-             (not (contains? #{"removed" "delete"} status))
-             (not (still-eligible? model-spec model-id)))
-        nil
+         ;; A pending removal must not be resurrected by a tracked-status write whose eligibility check was
+         ;; overtaken by a concurrent un-sync: that check ran against the event payload, well before this
+         ;; write, so re-check against current state and let the removal stand when it no longer holds.
+         (and (contains? #{"removed" "delete"} (:status existing))
+              (not (contains? #{"removed" "delete"} status))
+              (not (still-eligible? model-spec model-id)))
+         nil
 
-        (= "delete" (:status existing))
-        (remote-sync.db/update-rso! (:id existing)
-                                    {:status            status
-                                     :status_changed_at (t/offset-date-time)})
+         (= "delete" (:status existing))
+         (remote-sync.db/update-rso! (:id existing)
+                                     {:status            status
+                                      :status_changed_at (t/offset-date-time)})
 
-        (not= "create" (:status existing))
-        (let [model-details (spec/hydrate-model-details model-spec model-id)
-              fields        (spec/build-sync-object-fields model-spec model-details)]
-          (remote-sync.db/update-rso! (:id existing)
-                                      (merge {:status            (resolve-status model-type model-id status existing)
-                                              :status_changed_at (t/offset-date-time)}
-                                             fields)))))))
+         (not= "create" (:status existing))
+         (let [model-details (spec/hydrate-model-details model-spec model-id)
+               fields        (spec/build-sync-object-fields model-spec model-details)]
+           (remote-sync.db/update-rso! (:id existing)
+                                       (merge {:status            (resolve-status model-type model-id status existing)
+                                               :status_changed_at (t/offset-date-time)}
+                                              fields))))))))
 
 (defn- cascade-filter
   "Derives the filter conditions for querying eligible children from a child spec."
@@ -217,13 +234,13 @@
       (do
         (log/infof "Creating remote sync object entry for %s %s (status: %s)"
                    model-type model-id status)
-        (create-or-update-sync-object-from-spec! model-spec model-id status)
+        (create-or-update-sync-object-from-spec! model-spec model-id status (:worktree_id object))
         (when (seq (spec/children-specs (:model-key model-spec)))
           (cascade-to-children! model-spec model-id status true)))
       (and existing-entry (not eligible?))
       (do
         (log/infof "%s %s moved out of sync scope, marking as removed" model-type model-id)
-        (create-or-update-sync-object-from-spec! model-spec model-id "removed")
+        (create-or-update-sync-object-from-spec! model-spec model-id "removed" (:worktree_id object))
         (when (seq (spec/children-specs (:model-key model-spec)))
           (cascade-to-children! model-spec model-id "removed" false))))))
 
@@ -265,7 +282,7 @@
   "When the Library collection's is_remote_synced status changes, trigger snippet sync tracking.
    This ensures all snippets are tracked/untracked when Library sync is enabled/disabled."
   [is-now-synced?]
-  (let [snippets-already-tracked? (remote-sync.db/rso-of-type-exists? "NativeQuerySnippet")]
+  (let [snippets-already-tracked? (remote-sync.db/rso-of-type-exists? "NativeQuerySnippet" nil)]
     (cond
       (and is-now-synced? (not snippets-already-tracked?))
       (do

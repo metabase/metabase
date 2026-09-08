@@ -20,10 +20,12 @@ import type {
   CollectionNamespace,
   CollectionType,
   DatabaseId,
+  GetLibraryCollectionRequest,
   GetLibraryCollectionResponse,
   LibraryCollection,
   SchemaId,
   TableId,
+  WorktreeId,
 } from "metabase-types/api";
 
 export type CreateLibraryModalProps = {
@@ -82,7 +84,10 @@ export type GetEntityPickerSyntheticLibraryItemFunction = {
 type LibraryPlugin = {
   isEnabled: boolean;
   getDataStudioLibraryRoutes: (IsAdmin: ComponentType) => ReactNode;
-  useGetLibraryCollection: (params?: { skip?: boolean }) => {
+  useGetLibraryCollection: (params?: {
+    skip?: boolean;
+    worktreeId?: WorktreeId;
+  }) => {
     data: undefined | LibraryCollection;
     isLoading: boolean;
   };
@@ -116,7 +121,12 @@ type LibraryPlugin = {
   PublishTablesModal: ComponentType<PublishTablesModalProps>;
   UnpublishTablesModal: ComponentType<UnpublishTablesModalProps>;
   useGetLibraryCollectionQuery: UseQuery<
-    QueryDefinition<void, BaseQueryFn, TagType, GetLibraryCollectionResponse>
+    QueryDefinition<
+      GetLibraryCollectionRequest | void,
+      BaseQueryFn,
+      TagType,
+      GetLibraryCollectionResponse
+    >
   >;
   getLibraryCollectionEmptyStateMessages: (type: LibrarySubCollectionType) => {
     title: string;

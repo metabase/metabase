@@ -39,6 +39,7 @@
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
@@ -132,7 +133,8 @@
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column
@@ -181,7 +183,7 @@
 ;; so the document check below adds no further queries.
 (defmethod mi/can-read? :model/Card
   ([instance]
-   (and (perms/can-read-via-parent-collection? (:collection_id instance))
+   (and (perms/can-read-via-parent-collection? (:collection_id instance) (:worktree_id instance))
         (parent-document-permits? instance :read)))
   ([_ pk]
    (mi/can-read? (queries.db/card pk))))
@@ -190,6 +192,7 @@
   ([instance]
    ;; Cards in audit collection should not be writable.
    (and
+    (remote-sync/worktree-accessible? instance)
     (not (and
           ;; We want to make sure there's an existing audit collection before doing the equality check below.
           ;; If there is no audit collection, this will be nil:
@@ -200,6 +203,10 @@
     (parent-document-permits? instance :write)))
   ([_ pk]
    (mi/can-write? (queries.db/card pk))))
+
+(defmethod mi/visible-filter-clause :model/Card
+  [_model column-or-exp user-info _perm-type->perm-level & [opts]]
+  {:clause [:in column-or-exp (collection/visible-collection-content-select :report_card user-info opts)]})
 
 (defn model?
   "Returns true if `card` is a model."
@@ -813,6 +820,7 @@
         card.metadata/populate-result-metadata
         pre-insert
         populate-query-fields
+        collection/inherit-worktree-id
         public-sharing/add-public-uuid-prefix)
     (collection/check-allowed-content (:type <>) (:collection_id <>))))
 
@@ -863,6 +871,7 @@
         card    (queries.schema/normalize-card card)]
     (collection/check-allowed-content (:type card) (:collection_id changes))
     (-> card
+        (cond-> (contains? changes :collection_id) collection/check-same-worktree)
         (dissoc :verified-result-metadata?)
         (assoc :card_schema current-schema-version)
         (apply-dashboard-question-updates changes)
@@ -1402,7 +1411,8 @@
           ;; instance-specific Metabot origin (which conversation/chart the card was saved from)
           :metabot_conversation_id :metabot_chart_id
           ;; always re-derived from public_uuid on import
-          :public_uuid_prefix]
+          :public_uuid_prefix
+          :worktree_id]
    :transform
    {:created_at             (serdes/date)
     ;; database_id is usually derivable from dataset_query, but must be kept when the query
@@ -1540,6 +1550,7 @@
                   :display-type         :this.display
                   :collection-type      :collection.type
                   :collection-location  :collection.location
+                  :worktree-id          true
                   :root-collection-type {:fn collection/root-collection-type}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true

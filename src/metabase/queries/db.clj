@@ -184,9 +184,11 @@
   (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))
 
 (defn snippets
-  "The NativeQuerySnippets with `snippet-ids`."
-  [snippet-ids]
-  (t2/select :model/NativeQuerySnippet :id [:in snippet-ids]))
+  "The NativeQuerySnippets with `snippet-ids` in the remote-sync worktree `worktree-id` (nil for the main app)."
+  ([snippet-ids]
+   (snippets snippet-ids nil))
+  ([snippet-ids worktree-id]
+   (t2/select :model/NativeQuerySnippet :id [:in snippet-ids] :worktree_id worktree-id)))
 
 (defn dashboard
   "The Dashboard with `dashboard-id`, or nil."

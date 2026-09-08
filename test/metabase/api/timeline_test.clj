@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.response :as api.response]
+   [metabase.config.core :as config]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -264,3 +265,23 @@
         (testing "Returns all events when archived is true"
           (is (= #{"event-e" "event-f"}
                  (event-names (include-events-request timeline true)))))))))
+
+;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+;;; A worktree is an enterprise concept, so this needs `:model/Worktree` on the classpath. The endpoint it
+;;; covers is OSS.
+
+(deftest worktree-content-is-excluded-from-the-list-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}
+                   :model/Collection wt-coll {:name "worktree collection" :worktree_id wt-id}
+                   :model/Timeline {main-id :id} {:name "main timeline"}
+                   :model/Timeline {wt-content-id :id} {:name "worktree timeline" :collection_id (:id wt-coll) :worktree_id wt-id}]
+      (testing "the main-app list leaves worktree content out"
+        (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "timeline"))]
+          (is (contains? ids main-id))
+          (is (not (contains? ids wt-content-id)))))
+      (testing "worktree-id returns only that worktree's content"
+        (is (= [wt-content-id] (mapv :id (mt/user-http-request :crowberto :get 200 "timeline" :worktree-id wt-id)))))
+      (testing "worktree-id is admin-only"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "timeline" :worktree-id wt-id)))))))

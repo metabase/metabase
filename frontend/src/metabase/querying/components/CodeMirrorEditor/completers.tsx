@@ -9,6 +9,7 @@ import {
   useLazyListCardAutocompleteSuggestionsQuery,
   useListSnippetsQuery,
 } from "metabase/api";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { useSetting } from "metabase/settings";
 import { isNotNull } from "metabase/utils/types";
 import type { Card, CardId, DatabaseId, Field } from "metabase-types/api";
@@ -114,7 +115,10 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
 
 // Completes snippet names when inside a snippet tag
 export function useSnippetCompletion() {
-  const { data: snippets } = useListSnippetsQuery();
+  const worktreeId = useWorktreeId();
+  const { data: snippets } = useListSnippetsQuery({
+    "worktree-id": worktreeId,
+  });
 
   return useCallback(
     function completeSnippetTags(context: CompletionContext) {

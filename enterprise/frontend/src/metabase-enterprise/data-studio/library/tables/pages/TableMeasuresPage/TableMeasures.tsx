@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { trackMeasureCreateStarted } from "metabase/common/data-studio/analytics";
 import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
+import { useWorktreeId } from "metabase/common/worktrees";
 import {
   EntityList,
   EntityListItem,
@@ -16,6 +17,7 @@ type TableMeasuresProps = {
 };
 
 export function TableMeasures({ table }: TableMeasuresProps) {
+  const worktreeId = useWorktreeId();
   const canWriteMeasures = useSelector((state) =>
     getUserCanWriteMeasures(state, table.is_published),
   );
@@ -38,7 +40,9 @@ export function TableMeasures({ table }: TableMeasuresProps) {
                 trackClickEvent: () =>
                   // Unjustified type cast. FIXME
                   trackMeasureCreateStarted(table.id as ConcreteTableId),
-                url: Urls.dataStudioPublishedTableMeasureNew(table.id),
+                url: Urls.dataStudioPublishedTableMeasureNew(table.id, {
+                  worktreeId,
+                }),
               }
             : undefined
         }
@@ -48,7 +52,9 @@ export function TableMeasures({ table }: TableMeasuresProps) {
             name={measure.name}
             description={measure.definition_description}
             icon="ruler"
-            href={Urls.dataStudioPublishedTableMeasure(table.id, measure.id)}
+            href={Urls.dataStudioPublishedTableMeasure(table.id, measure.id, {
+              worktreeId,
+            })}
           />
         )}
       />

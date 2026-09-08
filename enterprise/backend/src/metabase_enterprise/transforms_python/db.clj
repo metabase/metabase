@@ -36,21 +36,30 @@
   (t2/select-one :model/PythonLibrary library-id))
 
 (defn python-library-by-path
-  "The PythonLibrary at `path`, or nil."
-  [path]
-  (t2/select-one :model/PythonLibrary :path path))
+  "The PythonLibrary at `path`, or nil; the 2-arity looks in `worktree-id` (nil is the main app)."
+  ([path]
+   (t2/select-one :model/PythonLibrary :path path))
+  ([path worktree-id]
+   (t2/select-one :model/PythonLibrary :path path :worktree_id worktree-id)))
 
 (defn upsert-python-library-source!
-  "Insert or update the PythonLibrary at `path`, setting its source to `source`. Returns the ID of the row."
-  [path source]
-  (mdb/update-or-insert! :model/PythonLibrary
-                         {:path path}
-                         (constantly {:path path :source source})))
+  "Insert or update the PythonLibrary at `path`, setting its source to `source`. The 3-arity does so within
+  `worktree-id` (nil is the main app). Returns the ID of the row."
+  ([path source]
+   (mdb/update-or-insert! :model/PythonLibrary
+                          {:path path}
+                          (constantly {:path path :source source})))
+  ([path source worktree-id]
+   (mdb/update-or-insert! :model/PythonLibrary
+                          {:path path :worktree_id worktree-id}
+                          (constantly {:path path :source source :worktree_id worktree-id}))))
 
 (defn library-sources-by-path
-  "A map of path to source for every PythonLibrary."
-  []
-  (t2/select-fn->fn :path :source :model/PythonLibrary))
+  "A map of path to source for every PythonLibrary, or for those of `worktree-id` (nil is the main app)."
+  ([]
+   (t2/select-fn->fn :path :source :model/PythonLibrary))
+  ([worktree-id]
+   (t2/select-fn->fn :path :source :model/PythonLibrary :worktree_id worktree-id)))
 
 (defn top-level-fields-metadata
   "The export metadata columns of the active top-level Fields of the Table with `table-id`, in database order."

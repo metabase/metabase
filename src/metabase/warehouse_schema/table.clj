@@ -42,21 +42,28 @@
 
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
-  `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
-  [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
+  `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings.
+  `worktree-id` picks which remote-sync worktree's segments and measures to describe the table with; nil is the
+  main app's."
+  [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model? worktree-id]}]
   (api/check-404 table)
   (if include-editable-data-model?
     (api/write-check table)
     (api/check-403 (can-access-table-for-query-metadata? table)))
   (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                                 [:segments :definition_description] [:measures :definition_description] :metrics :collection]
-                         (premium-features/any-transforms-enabled?) (conj :transform))]
+                         (premium-features/any-transforms-enabled?) (conj :transform))
+        ;; a table is shared between the main app and every worktree that refers to it, so what hangs off it
+        ;; is not: only the worktree being described gets to see its own segments and measures
+        in-worktree?   (fn [x] (= (:worktree_id x) worktree-id))]
     (-> table
         (update :collection nil-if-unreadable)
         (#(apply t2/hydrate % hydration-keys))
         (m/dissoc-in [:db :details])
         format-fields-for-response
         present-table
+        (update :segments #(filterv in-worktree? %))
+        (update :measures #(filterv in-worktree? %))
         (update :fields (partial filter (fn [{visibility-type :visibility_type}]
                                           (case (keyword visibility-type)
                                             :hidden    include-hidden-fields?
@@ -69,7 +76,7 @@
     - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
   ([ids]
    (batch-fetch-query-metadatas* ids nil))
-  ([ids {:keys [include-sensitive-fields?]}]
+  ([ids {:keys [include-sensitive-fields? worktree-id]}]
    (when (seq ids)
      (let [tables (warehouse-schema.db/tables ids)
            _      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
@@ -77,12 +84,17 @@
            tables (filter can-access-table-for-query-metadata? tables)
            tables (t2/hydrate tables [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :measures :metrics)
            excluded-visibility-types (cond-> #{:hidden}
-                                       (not include-sensitive-fields?) (conj :sensitive))]
+                                       (not include-sensitive-fields?) (conj :sensitive))
+           ;; a table is shared between the main app and every worktree that refers to it, so what hangs off it
+           ;; is not: only the worktree being described gets to see its own segments and measures
+           in-worktree?              (fn [x] (= (:worktree_id x) worktree-id))]
        (for [table tables]
          (-> table
              (m/dissoc-in [:db :details])
              format-fields-for-response
              present-table
+             (update :segments #(filterv in-worktree? %))
+             (update :measures #(filterv in-worktree? %))
              (update :fields #(remove (comp excluded-visibility-types :visibility_type) %))))))))
 
 (defenterprise fetch-table-query-metadata
@@ -230,10 +242,14 @@
                                        field))))
 
 (defn batch-fetch-card-query-metadatas
-  "Return metadata for the 'virtual' tables for a Cards. Unreadable cards are silently skipped."
-  [ids {:keys [include-database?]}]
+  "Return metadata for the 'virtual' tables for a Cards. Unreadable cards are silently skipped.
+
+  `worktree-id` scopes the lookup to one remote-sync worktree (nil, the default, is the main app): a query
+  being described only ever resolves source cards from its own worktree. `:c.worktree_id` is selected because
+  `mi/can-read?` reads it -- a projection without it would read as main-app content and skip the admin gate."
+  [ids {:keys [include-database? worktree-id]}]
   (when (seq ids)
-    (let [cards (warehouse-schema.db/cards-with-moderated-status ids)
+    (let [cards (warehouse-schema.db/cards-with-moderated-status ids worktree-id)
           dbs (if (seq cards)
                 (warehouse-schema.db/databases-by-id (into #{} (map :database_id) cards))
                 {})

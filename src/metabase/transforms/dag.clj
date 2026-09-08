@@ -51,7 +51,8 @@
 
 (defn- lean-transforms
   "Transforms with only the columns the ordering walk needs — avoids loading every transform's full
-  row just to compute the dependency graph (full rows are fetched only for the resulting closure)."
+  row just to compute the dependency graph (full rows are fetched only for the resulting closure).
+  Transforms checked out into a remote-sync worktree are left out: a DAG run never runs them."
   []
   (transforms.db/transform-dependency-rows))
 

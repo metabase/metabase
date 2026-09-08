@@ -30,17 +30,33 @@
   (t2/select :model/Transform :id [:in transform-ids]))
 
 (defn transforms-of-source-types
-  "The Transforms whose source type is one of `source-types`, optionally narrowed to `database-id`, ordered by ID."
-  [source-types database-id]
+  "The Transforms whose source type is one of `source-types`, optionally narrowed to `database-id`, ordered by ID.
+  Scoped to the remote-sync worktree `worktree-id` (nil is the main app), so worktree copies never leak into the
+  main app's listing and vice versa."
+  [source-types database-id worktree-id]
   (t2/select :model/Transform {:where    [:and
                                           [:in :source_type source-types]
+                                          [:= :worktree_id worktree-id]
                                           (when database-id [:= :source_database_id database-id])]
                                :order-by [[:id :asc]]}))
 
 (defn transform-dependency-rows
-  "The ID, target, target Table ID, creation time, and table dependencies of every Transform."
+  "The ID, target, target Table ID, creation time, and table dependencies of every main-app Transform. Transforms
+  checked out into a remote-sync worktree are left out: they never run, and a worktree's copy must never stand in
+  for the main app's transform when building a dependency graph."
   []
-  (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]))
+  (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]
+             :worktree_id nil))
+
+(defn main-app-transform-ids
+  "The subset of `transform-ids` that belong to the main app rather than to a remote-sync worktree."
+  [transform-ids]
+  (t2/select-pks-set :model/Transform :id [:in transform-ids] :worktree_id nil))
+
+(defn transform-worktree-id
+  "The remote-sync worktree ID of the Transform with `transform-id` (nil for the main app)."
+  [transform-id]
+  (t2/select-one-fn :worktree_id :model/Transform :id transform-id))
 
 (defn transform-snapshot
   "The name, entity ID, and source type of the Transform with `transform-id`."
@@ -89,20 +105,29 @@
   [tag-id]
   (t2/select-one :model/TransformTag :id tag-id))
 
+(defn tag-worktree-id
+  "The remote-sync worktree id of the TransformTag with `tag-id` (nil for a main-app tag or a missing tag)."
+  [tag-id]
+  (t2/select-one-fn :worktree_id :model/TransformTag :id tag-id))
+
 (defn existing-tag-ids
   "The subset of `tag-ids` that exist."
   [tag-ids]
   (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids]))
 
 (defn tag-name-exists?
-  "Whether a TransformTag named `tag-name` exists."
-  [tag-name]
-  (t2/exists? :model/TransformTag :name tag-name))
+  "Whether a TransformTag named `tag-name` exists within the remote-sync worktree `worktree-id` (nil is the main
+  app). Tag names are unique per worktree, not across the instance."
+  [tag-name worktree-id]
+  (t2/exists? :model/TransformTag :name tag-name :worktree_id worktree-id))
 
 (defn tag-name-exists-excluding?
-  "Whether a TransformTag named `tag-name` other than `tag-id` exists."
+  "Whether a TransformTag named `tag-name` other than `tag-id` exists in the same remote-sync worktree as `tag-id`."
   [tag-name tag-id]
-  (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id]))
+  (t2/exists? :model/TransformTag
+              :name tag-name
+              :id [:not= tag-id]
+              :worktree_id (t2/select-one-fn :worktree_id :model/TransformTag :id tag-id)))
 
 (defn transform-tag-links
   "The tag links of the Transforms with `transform-ids`, ordered by position."
