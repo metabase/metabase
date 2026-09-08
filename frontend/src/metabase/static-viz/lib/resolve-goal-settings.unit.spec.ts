@@ -17,20 +17,18 @@ const REFERENCED_SETTINGS: ComputedVisualizationSettings = {
 describe("resolveGoalSettings", () => {
   it("passes static and unset goals through", () => {
     const settings = { "graph.goal_value": 10 };
+    const series = createSeries(createData({}));
 
-    expect(resolveGoalSettings(createSeries(createData({})), settings)).toBe(
-      settings,
-    );
-    expect(resolveGoalSettings(createSeries(createData({})), {})).toEqual({});
+    expect(resolveGoalSettings(series, settings)).toBe(settings);
+    expect(resolveGoalSettings(series, {})).toEqual({});
   });
 
   it("passes references through for a display that does not resolve graph goals", () => {
-    expect(
-      resolveGoalSettings(
-        createSeries(createData({}), "scalar"),
-        REFERENCED_SETTINGS,
-      ),
-    ).toBe(REFERENCED_SETTINGS);
+    const series = createSeries(createData({}), "scalar");
+
+    expect(resolveGoalSettings(series, REFERENCED_SETTINGS)).toBe(
+      REFERENCED_SETTINGS,
+    );
   });
 
   describe("for a display that resolves graph goals", () => {
@@ -38,10 +36,9 @@ describe("resolveGoalSettings", () => {
 
     it("passes a hidden goal line through", () => {
       const settings = { ...REFERENCED_SETTINGS, "graph.show_goal": false };
+      const series = createSeries(createData({}));
 
-      expect(resolveGoalSettings(createSeries(createData({})), settings)).toBe(
-        settings,
-      );
+      expect(resolveGoalSettings(series, settings)).toBe(settings);
     });
 
     it("substitutes the referenced value", () => {
@@ -53,26 +50,31 @@ describe("resolveGoalSettings", () => {
           },
         },
       });
+      const series = createSeries(answered);
 
-      expect(
-        resolveGoalSettings(createSeries(answered), REFERENCED_SETTINGS),
-      ).toEqual({ ...REFERENCED_SETTINGS, "graph.goal_value": 250 });
+      expect(resolveGoalSettings(series, REFERENCED_SETTINGS)).toEqual({
+        ...REFERENCED_SETTINGS,
+        "graph.goal_value": 250,
+      });
     });
 
     it("throws for an unanswered reference", () => {
-      expect(() =>
-        resolveGoalSettings(createSeries(createData({})), REFERENCED_SETTINGS),
-      ).toThrow("Couldn't load the value this chart's goal line depends on.");
+      const series = createSeries(createData({}));
+
+      expect(() => resolveGoalSettings(series, REFERENCED_SETTINGS)).toThrow(
+        "Couldn't load the value this chart's goal line depends on.",
+      );
     });
 
     it("throws for a failed reference", () => {
       const failed = createData({
         card: { 9: { status: "failed", error: "boom" } },
       });
+      const series = createSeries(failed);
 
-      expect(() =>
-        resolveGoalSettings(createSeries(failed), REFERENCED_SETTINGS),
-      ).toThrow("Couldn't load the value this chart's goal line depends on.");
+      expect(() => resolveGoalSettings(series, REFERENCED_SETTINGS)).toThrow(
+        "Couldn't load the value this chart's goal line depends on.",
+      );
     });
   });
 });
