@@ -660,9 +660,11 @@
    :model-exports #{:model/Comment :model/CommentReaction}
    :model-imports #{:model/Document :model/Exploration :model/User}}
 
-  ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
-  ;; if EE/test code is available; however we can ignore them since they're not real usages.
-
+  ;; this is not actually a real module, but comes from one of our libraries.
+  connection-pool
+  {:team "UX West"
+   :api  #{metabase.connection-pool}
+   :uses #{}}
 
   content-translation
   {:team "UX West"
@@ -3078,6 +3080,8 @@
    :ns-prefix "metabase.classloader"
    :api #{metabase.classloader.core metabase.classloader.init}}
 
+  ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
+  ;; if EE/test code is available; however we can ignore them since they're not real usages.
   util.config
   {:team "DevEx"
    :ns-prefix "metabase.config"
