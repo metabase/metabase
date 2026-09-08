@@ -30,8 +30,9 @@
   (* 5 60 1000))
 
 (def ^:private retryable-statuses
-  "4xx statuses that mean \"try again\" rather than \"this connection is misconfigured\"."
-  #{408 409 429})
+  "4xx statuses that mean \"try again\" rather than \"this connection is misconfigured\". 413 is about the one
+  request that was too large, not the connection — the next, smaller request can succeed."
+  #{408 409 413 429})
 
 (defonce ^:private failures
   (atom {}))
@@ -45,7 +46,9 @@
   (let [{:keys [status status-code]} (ex-data e)]
     (or status status-code)))
 
-(defn- fatal-status?
+(defn fatal-status?
+  "Whether an HTTP `status` from a provider says the connection cannot work as configured, rather than that this
+  one request happened to fail; see the namespace docstring."
   [status]
   (boolean (and (number? status)
                 (<= 400 status 499)
@@ -99,6 +102,15 @@
   [conn-key]
   (when (and conn-key (contains? @failures conn-key))
     (log/info "LLM provider connection recovered" {:connection conn-key})
+    (swap! failures dissoc conn-key))
+  nil)
+
+(defn forget!
+  "Drop what is recorded for `conn-key` without a success proving anything: the admin re-saving the connection is an
+  explicit ask to try it again, e.g. after restoring credit or model access on the provider's side. Worst case the
+  next request fails once and re-records the same failure."
+  [conn-key]
+  (when conn-key
     (swap! failures dissoc conn-key))
   nil)
 

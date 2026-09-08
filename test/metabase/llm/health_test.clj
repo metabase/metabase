@@ -30,6 +30,9 @@
     (llm.health/record-exception! "classified-rejected" (ex-info "invalid x-api-key" {:status 401}))
     (is (= {:message "invalid x-api-key" :fatal? true :status 401} (recorded "classified-rejected"))))
   (testing "a rate limit or an outage is transient — retrying it can work"
+    (llm.health/record-exception! "classified-oversized" (ex-info "request too large" {:status 413}))
+    (is (false? (:fatal? (llm.health/failure "classified-oversized")))
+        "413 is about the one request that was too large, not the connection")
     (llm.health/record-exception! "classified-throttled" (ex-info "rate limited" {:status 429}))
     (is (false? (:fatal? (llm.health/failure "classified-throttled"))))
     (llm.health/record-exception! "classified-down" (ex-info "bad gateway" {:status 502}))
@@ -76,6 +79,13 @@
       (llm.health/forget-superseded! {"moved-conn" config "other-conn" config}
                                      {"other-conn" config "moved-conn" config})
       (is (some? (llm.health/failure "moved-conn"))))))
+
+(deftest forget-clears-without-a-success-test
+  (testing "an explicit forget drops even a fatal failure — the admin re-saving a connection is an ask to try again"
+    (llm.health/record-failure! "forgotten-conn" "no credit" true)
+    (is (some? (llm.health/failure "forgotten-conn")))
+    (llm.health/forget! "forgotten-conn")
+    (is (nil? (llm.health/failure "forgotten-conn")))))
 
 (deftest nil-connection-key-is-ignored-test
   (testing "a call with no connection behind it records nothing rather than a failure against nil"
