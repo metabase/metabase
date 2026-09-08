@@ -151,6 +151,14 @@
               :has_more_values false}
              (chain-filter venues.price {categories.name ["Bakery" "BBQ"]}))))))
 
+(deftest ^:parallel chain-filter-query-requests-large-int-stringification-test
+  (testing (str "The MBQL query chain-filter runs to fetch parameter values asks the QP to stringify large "
+                "integers/decimals, the same way the main dataset and table-data endpoints already do -- "
+                "otherwise a value like a big Snowflake ID loses precision once the frontend JSON.parses it "
+                "(metabase#79752)")
+    (is (true? (get-in (#'chain-filter/chain-filter-mbql-query (mt/id :venues :price) nil nil)
+                       [:middleware :js-int-to-string?])))))
+
 (deftest ^:parallel auto-parse-string-params-test
   (testing "Parameters that come in as strings (i.e., all of them that come in via the API) should work as intended"
     (is (= {:values          [["Baby Blues BBQ"] ["Beachwood BBQ & Brewing"] ["Bludso's BBQ"]]
