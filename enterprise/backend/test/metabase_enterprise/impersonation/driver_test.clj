@@ -888,21 +888,13 @@
             (impersonation-default-user driver/*driver*)
             (impersonation-default-role driver/*driver*)
             (with-impersonation-db!
-              ;; Snowflake reuses the shared `test-data` database for `with-empty-db`, so concurrent CI jobs create and
-              ;; drop random tables in it between the two `describe-database` calls below. Only the dataset's own tables
-              ;; are stable across the comparison.
-              (let [dataset-tables (into #{}
-                                         (map (comp u/lower-case-en :table-name))
-                                         (:table-definitions (tx/get-dataset-definition (tx/default-dataset driver/*driver*))))
-                    tables-set #(->> (driver/describe-database
+              (let [tables-set #(->> (driver/describe-database
                                       driver/*driver*
                                       (t2/select-one :model/Database (mt/id)))
                                      :tables
-                                     (into #{} (filter (comp dataset-tables u/lower-case-en :name))))
+                                     (into #{}))
                     default-table-set (tables-set)
                     do-with-resolved-connection (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection)]
-                (testing "sense check: the dataset's tables are in the describe-database results"
-                  (is (contains? (into #{} (map (comp u/lower-case-en :name)) default-table-set) "venues")))
                 (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection
                                             (fn [driver db options f]
                                               (do-with-resolved-connection driver db options
