@@ -11,9 +11,13 @@ import type {
 } from "metabase-types/api";
 
 import {
+  GOAL_SETTINGS,
+  getDynamicGoalSettingKeys,
+} from "../dynamic-goal-settings";
+import {
+  getGoalValues,
   getUnresolvedGoalMessage,
   hasFailedGoalReferences,
-  isGraphGoalReference,
 } from "../dynamic-goals";
 import { ChartSettingsError, MinRowsError } from "../errors";
 import { getCartesianChartColumns } from "../graph/columns";
@@ -110,10 +114,9 @@ export const validateGoalReferences = (
   // the transformed series drop `data.referenced_entities`
   const [{ card, data }] = getRawSeries(series);
 
-  if (
-    isGraphGoalReference(card.display, settings) &&
-    hasFailedGoalReferences(data, [settings["graph.goal_value"]])
-  ) {
-    throw new Error(getUnresolvedGoalMessage());
-  }
+  getDynamicGoalSettingKeys(card.display).forEach((key) => {
+    if (hasFailedGoalReferences(data, getGoalValues(settings, [key]))) {
+      throw new Error(getUnresolvedGoalMessage(GOAL_SETTINGS[key]));
+    }
+  });
 };

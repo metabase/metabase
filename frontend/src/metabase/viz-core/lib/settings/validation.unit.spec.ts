@@ -46,6 +46,39 @@ describe("validateGoalReferences", () => {
     ).not.toThrow();
   });
 
+  describe("for a gauge", () => {
+    const REFERENCED_RANGES: VisualizationSettings = {
+      "gauge.segments": [
+        { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
+      ],
+    };
+
+    it("accepts static ranges", () => {
+      expect(() =>
+        validateGoalReferences(series(FAILED_DATA, "gauge"), {
+          "gauge.segments": [{ min: 0, max: 100, color: "red" }],
+        }),
+      ).not.toThrow();
+    });
+
+    it("accepts a range bound the data has not answered yet", () => {
+      const data = createMockDatasetData({
+        ...FAILED_DATA,
+        referenced_entities: {},
+      });
+
+      expect(() =>
+        validateGoalReferences(series(data, "gauge"), REFERENCED_RANGES),
+      ).not.toThrow();
+    });
+
+    it("rejects a range bound the data reports as failed", () => {
+      expect(() =>
+        validateGoalReferences(series(FAILED_DATA, "gauge"), REFERENCED_RANGES),
+      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
+    });
+  });
+
   describe("for a display that resolves graph goals", () => {
     mockDynamicGoalSettingKeys(["graph.goal_value"]);
 

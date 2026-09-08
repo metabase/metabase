@@ -2,13 +2,13 @@ import { useMounted } from "@mantine/hooks";
 import cx from "classnames";
 import * as d3 from "d3";
 import { useCallback, useEffect, useRef } from "react";
-import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/value-formatting";
 import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
 import { useResolvedGoalSegments } from "metabase/visualizations/hooks/use-resolved-goal-segments";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { getUnresolvedGoalMessage } from "metabase/viz-core";
 
 import { GaugeArc } from "./GaugeArc";
 import { GaugeNeedle } from "./GaugeNeedle";
@@ -150,7 +150,7 @@ function GaugeComponent({
       <GoalResolutionState
         className={className}
         height={heightProp}
-        message={t`Couldn't load a value one of this gauge's ranges depends on.`}
+        message={getUnresolvedGoalMessage("segments")}
         status={goalSegments.status}
       />
     );

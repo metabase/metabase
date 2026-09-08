@@ -19,7 +19,7 @@ export function resolveGoalSettingsForStaticViz(
   const goal = settings["graph.goal_value"];
 
   if (hasUnresolvedGoalReferences(data, [goal])) {
-    throw new Error(getUnresolvedGoalMessage());
+    throw new Error(getUnresolvedGoalMessage("value"));
   }
 
   return {

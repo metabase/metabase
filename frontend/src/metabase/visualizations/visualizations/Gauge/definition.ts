@@ -4,15 +4,12 @@ import _ from "underscore";
 
 import { color as colorHex } from "metabase/ui/colors";
 import {
-  getGoalSegmentBounds,
-  hasFailedGoalReferences,
-  resolveGoalSegments,
-} from "metabase/viz-core";
-import {
   type VisualizationDefinition,
   columnSettings,
   getDefaultSize,
   getMinSize,
+  resolveGoalSegments,
+  validateGoalReferences,
 } from "metabase/viz-core";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
@@ -28,21 +25,14 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
   isSensible: ({ cols, rows }) => {
     return rows.length === 1 && cols.length === 1;
   },
-  checkRenderable: ([{ data }], settings) => {
+  checkRenderable: (series, settings) => {
+    const [{ data }] = series;
+
     if (!isNumeric(data.cols[0]) || isDate(data.cols[0])) {
       throw new Error(t`Gauge visualization requires a number.`);
     }
 
-    if (
-      hasFailedGoalReferences(
-        data,
-        getGoalSegmentBounds(settings["gauge.segments"]),
-      )
-    ) {
-      throw new Error(
-        t`Couldn't load a value one of this gauge's ranges depends on.`,
-      );
-    }
+    validateGoalReferences(series, settings);
   },
   settings: {
     ...columnSettings({

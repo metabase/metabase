@@ -11,7 +11,7 @@ type GoalResolutionStateProps = {
 export function GoalResolutionState({
   className,
   height,
-  message = getUnresolvedGoalMessage(),
+  message = getUnresolvedGoalMessage("value"),
   status,
 }: GoalResolutionStateProps) {
   return (

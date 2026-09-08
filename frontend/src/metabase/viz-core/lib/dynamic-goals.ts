@@ -29,6 +29,7 @@ import {
 import {
   GOAL_SETTINGS,
   type GoalSettingKey,
+  type GoalSettingKind,
   getDynamicGoalSettingKeys,
 } from "./dynamic-goal-settings";
 import { segmentIsValid } from "./utils";
@@ -200,8 +201,17 @@ export function isDynamicGoalSetting(
   return getDynamicGoalSettingKeys(display).includes(key);
 }
 
-export const getUnresolvedGoalMessage = () =>
-  t`Couldn't load the value this chart's goal line depends on.`;
+export const getUnresolvedGoalMessage = (kind: GoalSettingKind) =>
+  match(kind)
+    .with(
+      "value",
+      () => t`Couldn't load the value this chart's goal line depends on.`,
+    )
+    .with(
+      "segments",
+      () => t`Couldn't load a value one of this chart's ranges depends on.`,
+    )
+    .exhaustive();
 
 // A goal line that is switched off has nothing to resolve.
 function isGoalSettingActive(
