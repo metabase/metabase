@@ -6,6 +6,8 @@
   — see [[user-id->tenant-id]]. It lives here because here is the only place that knows the value reaches
   HoneySQL."
   (:require
+   [metabase.app-db.core :as app-db]
+   [metabase.session.core :as session]
    [toucan2.core :as t2]))
 
 (defn select-one-by-id
@@ -28,6 +30,20 @@
   locks the rest out of a session they already hold — see `metabase.mcp.session/owned-by-user?`."
   [key-hashed]
   (t2/select-fn-set :user_id :core_session :key_hashed key-hashed))
+
+(defn get-or-create-core-session!
+  "The `core_session` row for `key-hashed` and `user-id`, creating one with a freshly generated session id if none
+  exists. Uses the raw `:core_session` table (not `:model/Session`) to bypass the after-insert hook, which would
+  otherwise publish a spurious `:event/user-login` event."
+  [key-hashed user-id]
+  (app-db/select-or-insert!
+   :core_session
+   {:key_hashed key-hashed
+    :user_id    user-id}
+   (fn []
+     {:id              (session/generate-session-id)
+      :anti_csrf_token nil
+      :created_at      :%now})))
 
 (defn insert-query-handle!
   "Insert the McpQueryHandle `row`."

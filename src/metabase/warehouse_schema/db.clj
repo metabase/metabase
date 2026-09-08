@@ -225,6 +225,15 @@
   [field-values-id changes]
   (t2/update! :model/FieldValues field-values-id changes))
 
+(defn find-or-insert-full-field-values!
+  "The full FieldValues of the Field with `field-id`, inserting one with `has-more-values`, `values`, and no
+  `human_readable_values` if none exists yet."
+  [field-id has-more-values values]
+  (app-db/select-or-insert! :model/FieldValues {:field_id field-id, :type :full}
+                            (constantly {:has_more_values       has-more-values
+                                         :values                values
+                                         :human_readable_values nil})))
+
 (defn touch-field-values!
   "Stamp `last_used_at` on the FieldValues with `field-values-id`."
   [field-values-id]

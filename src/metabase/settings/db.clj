@@ -2,6 +2,7 @@
   "Application database queries for the settings module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions."
   (:require
+   [metabase.app-db.core :as mdb]
    [toucan2.core :as t2]))
 
 (defn setting-value
@@ -40,6 +41,11 @@
   [setting-key value value-with-aad]
   (t2/insert! (t2/table-name (t2/resolve-model :model/Setting))
               :key setting-key, :value value, :value_with_aad value-with-aad))
+
+(defn current-timestamp-string
+  "The application DB's own current timestamp, as a string."
+  []
+  (mdb/current-timestamp-string (mdb/db-type)))
 
 (defn update-user-settings!
   "Store `settings-json` as the user-local settings of the User with `user-id`."

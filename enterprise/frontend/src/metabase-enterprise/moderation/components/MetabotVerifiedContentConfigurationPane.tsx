@@ -41,7 +41,6 @@ export function MetabotVerifiedContentConfigurationPane({
         onChange={(e) => handleVerifiedContentToggle(e.target.checked)}
         disabled={isUpdating}
         w="auto"
-        size="sm"
       />
     </Stack>
   );

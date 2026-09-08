@@ -3,7 +3,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
@@ -323,11 +322,11 @@
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                          "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
     (let [human-readable-values? (validate-human-readable-pairs value-pairs)
-          update-map             {:values                (map first value-pairs)
-                                  :human_readable_values (when human-readable-values?
-                                                           (map second value-pairs))}
-          updated-pk             (app-db/update-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
-                                                           (constantly update-map))]
+          values                 (map first value-pairs)
+          human-readable-values  (when human-readable-values?
+                                   (map second value-pairs))
+          updated-pk             (warehouse-schema-rest.db/update-or-insert-full-field-values!
+                                  (u/the-id field) values human-readable-values)]
       (api/check-500 (pos? updated-pk))))
   {:status :success})
 

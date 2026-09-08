@@ -40,6 +40,14 @@
              :dashboard_id [:in dashboard-ids]
              {:order-by [[:dashboard_id :asc] [:position :asc] [:id :asc]]}))
 
+(defn dashboard-collection-authority-levels
+  "The id and Collection `authority_level` of the Dashboards with `dashboard-ids`."
+  [dashboard-ids]
+  (mdb/query {:select    [:dashboard.id :collection.authority_level]
+              :from      [[:report_dashboard :dashboard]]
+              :left-join [[:collection :collection] [:= :collection.id :dashboard.collection_id]]
+              :where     [:in :dashboard.id dashboard-ids]}))
+
 (defn dashcards-with-visible-cards-for-dashboards
   "The DashboardCards of the Dashboards with `dashboard-ids` whose Card is visible (unarchived, a dashboard question
   not archived by itself, or absent), with their Card's Collection authority level, in dashboard then creation order."
@@ -137,6 +145,19 @@
   "The DashboardCard with `dashcard-id`, or nil."
   [dashcard-id]
   (t2/select-one :model/DashboardCard :id dashcard-id))
+
+(defn multi-cards-for-dashcard
+  "The unarchived Cards added to the DashboardCard with `dashcard-id` as series (the 'add series' feature)."
+  [dashcard-id]
+  (mdb/query {:select    [:newcard.*]
+              :from      [[:report_dashboardcard :dashcard]]
+              :left-join [[:dashboardcard_series :dashcardseries]
+                          [:= :dashcard.id :dashcardseries.dashboardcard_id]
+                          [:report_card :newcard]
+                          [:= :dashcardseries.card_id :newcard.id]]
+              :where     [:and
+                          [:= :newcard.archived false]
+                          [:= :dashcard.id dashcard-id]]}))
 
 (defn dashcards-by-ids
   "The DashboardCards with `dashcard-ids`."
