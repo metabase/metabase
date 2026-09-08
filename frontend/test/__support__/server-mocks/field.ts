@@ -22,6 +22,11 @@ export function setupFieldEndpoints(field: Field) {
     {},
     { name: `field-${field.id}-discard-values` },
   );
+  fetchMock.post(
+    `path:/api/field/${field.id}/refingerprint`,
+    {},
+    { name: `field-${field.id}-refingerprint` },
+  );
 }
 
 export function setupFieldValuesEndpoint(fieldValues: GetFieldValuesResponse) {
