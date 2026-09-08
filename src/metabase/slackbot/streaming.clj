@@ -193,22 +193,24 @@
   "Something went wrong. Please try again.")
 
 (def ^:private provider-config-error-codes
-  "Error codes thrown for a misconfigured LLM provider connection, by
-   [[metabase.metabot.self/parse-provider-model]] and the provider adapters'
-   own setup validation, all deserving the same check-your-AI-settings copy."
+  "Error codes that mean the LLM provider connection is misconfigured.
+
+   Thrown by [[metabase.metabot.self/parse-provider-model]] and by the provider
+   adapters' own setup validation; all deserve the same check-your-AI-settings copy."
   #{"llm-not-configured" "api-key-missing" "base-url-missing" "model-missing"
     "proxy-unsupported" "proxy-not-configured" "invalid-service-account-key"
     "not-a-service-account-key" "invalid-location" "project-id-required"
     "invalid-project-id" "invalid-model" "unsupported-model" "invalid-region"})
 
 (defn- known-error-message
-  "User-facing copy for a failure this namespace recognizes by error code (or, for
-   permission denials, the `:type :metabot/permission-denied` tag), or nil.
-   `error` is a streamed `:error` part's payload or a thrown exception's ex-data;
-   errors the agent loop caught nest their ex-data under `:data`. Only whitelisted
-   markers get copy, and only the usage-limit codes pass their server-authored
-   message through: everything else, raw provider errors and permission keywords
-   included, must stay out of shared Slack channels."
+  "User-facing copy for a failure this namespace recognizes, or nil.
+
+   Failures are recognized by error code, and permission denials also by the
+   `:type :metabot/permission-denied` tag. `error` is a streamed `:error` part's
+   payload or a thrown exception's ex-data; errors the agent loop caught nest their
+   ex-data under `:data`. Only whitelisted markers get copy, and only the usage-limit
+   codes pass their server-authored message through: everything else, raw provider
+   errors and permission keywords included, must stay out of shared Slack channels."
   [error]
   (let [code (some-> (or (:error-code error) (get-in error [:data :error-code])) name)]
     (cond
