@@ -793,3 +793,43 @@
                   (format "Expected at most 100 database calls, got %d" num-calls)))
             (finally
               (t2/delete! :model/PermissionsGroup :id [:in group-ids]))))))))
+
+(deftest add-data-analyst-group-membership-requires-advanced-permissions-test
+  (testing "POST /api/permissions/membership for the Data Analysts group"
+    (let [group-id (u/the-id (perms-group/data-analyst))
+          member?  (fn [user-id]
+                     (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id))]
+      (mt/with-temp [:model/User {user-id :id} {}]
+        (testing "is refused without the :advanced-permissions feature"
+          (mt/with-premium-features #{}
+            (is (= (str perms/fail-to-add-data-analyst-msg)
+                   (mt/user-http-request :crowberto :post 402 "permissions/membership"
+                                         {:group_id group-id, :user_id user-id})))
+            (is (not (member? user-id)))
+            (is (not (t2/select-one-fn :is_data_analyst :model/User :id user-id)))))
+        (mt/when-ee-evailable
+         (testing "succeeds with the :advanced-permissions feature"
+           (mt/with-premium-features #{:advanced-permissions}
+             (mt/user-http-request :crowberto :post 200 "permissions/membership"
+                                   {:group_id group-id, :user_id user-id})
+             (is (member? user-id))
+             (is (true? (boolean (t2/select-one-fn :is_data_analyst :model/User :id user-id))))))
+         (testing "and the member can still be removed without the feature"
+           (mt/with-premium-features #{}
+             (let [membership-id (t2/select-one-pk :model/PermissionsGroupMembership
+                                                   :user_id user-id :group_id group-id)]
+               (mt/user-http-request :crowberto :delete 204 (format "permissions/membership/%d" membership-id))
+               (is (not (member? user-id)))
+               (is (not (t2/select-one-fn :is_data_analyst :model/User :id user-id)))))))))))
+
+(mt/when-ee-evailable
+ (deftest clear-data-analyst-group-membership-without-advanced-permissions-test
+   (testing "PUT /api/permissions/membership/:group-id/clear works for the Data Analysts group without the feature"
+     (let [group-id (u/the-id (perms-group/data-analyst))]
+       (mt/with-temp [:model/User {user-id :id} {}]
+         (mt/with-premium-features #{:advanced-permissions}
+           (perms/add-user-to-group! user-id group-id))
+         (mt/with-premium-features #{}
+           (mt/user-http-request :crowberto :put 204 (format "permissions/membership/%d/clear" group-id))
+           (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)))
+           (is (not (t2/select-one-fn :is_data_analyst :model/User :id user-id)))))))))
