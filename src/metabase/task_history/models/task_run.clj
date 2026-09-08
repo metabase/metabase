@@ -93,16 +93,13 @@
 (mu/defn create-task-run! :- ms/PositiveInt
   "Create a new task run record. Returns the run ID."
   [{:keys [run_type entity_type entity_id notification_id]} :- ::TaskRunInfo]
-  (let [now (mi/now)]
-    (task-history.db/insert-task-run!
-     {:run_type        run_type
-      :entity_type     entity_type
-      :entity_id       entity_id
-      :notification_id notification_id
-      :status          :started
-      :started_at      now
-      :updated_at      now
-      :process_uuid    config/local-process-uuid})))
+  (task-history.db/insert-task-run!
+   {:run_type        run_type
+    :entity_type     entity_type
+    :entity_id       entity_id
+    :notification_id notification_id
+    :status          :started
+    :process_uuid    config/local-process-uuid}))
 
 (mu/defn complete-task-run!
   "Mark a task run as complete, deriving status from child tasks.

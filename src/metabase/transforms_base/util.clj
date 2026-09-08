@@ -677,8 +677,7 @@
     (if (= :delete-row status)
       (transforms-base.db/delete-table-indexes! (map :id rows))
       (transforms-base.db/update-table-indexes! (map :id rows)
-                                                (cond-> {:status           status
-                                                         :last_executed_at :%now}
+                                                (cond-> {:status status}
                                                   (= status :succeeded)
                                                   (assoc :error_message nil)
                                                   (= status :failed)

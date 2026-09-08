@@ -314,13 +314,12 @@
   (t2/delete! :model/TableIndex :id [:in ids]))
 
 (mu/defn update-table-indexes! :- :int
-  "Apply `changes` to the TableIndexes with `ids`."
+  "Apply `changes` to the TableIndexes with `ids`, stamping `last_executed_at` with the app DB's now."
   [ids     :- [:sequential ms/PositiveInt]
    changes :- [:map {:closed true}
-               [:status           {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
-               [:last_executed_at {:optional true} [:maybe ms/TemporalInstant]]
-               [:error_message    {:optional true} [:maybe [:or :string :map sequential?]]]]]
-  (t2/update! :model/TableIndex :id [:in ids] changes))
+               [:status        {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+               [:error_message {:optional true} [:maybe [:or :string :map sequential?]]]]]
+  (t2/update! :model/TableIndex :id [:in ids] (merge {:last_executed_at :%now} changes)))
 
 (mu/defn active-field-names-for-table :- [:maybe [:sequential :string]]
   "The names of the active Fields of the Table with `table-id`, in position order."

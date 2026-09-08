@@ -218,9 +218,9 @@
   (t2/insert-returning-pk! :model/TaskHistory row))
 
 (mu/defn insert-task-run! :- ms/PositiveInt
-  "Insert the TaskRun `row` and return its id."
+  "Insert the TaskRun `row`, with `started_at` and `updated_at` defaulting to the app DB's now, and return its id."
   [row :- ::task-history.schema/task-run.update]
-  (t2/insert-returning-pk! :model/TaskRun row))
+  (t2/insert-returning-pk! :model/TaskRun (merge {:started_at :%now, :updated_at :%now} row)))
 
 (mu/defn task-statuses-for-run :- [:maybe [:set :keyword]]
   "The set of statuses of the TaskHistory rows of the TaskRun with `run-id`."
@@ -235,15 +235,14 @@
   (t2/update! :model/TaskRun {:id run-id :status :started} {:status status, :ended_at ended-at}))
 
 (mu/defn heartbeat-started-task-runs! :- :int
-  "Touch `updated_at` of the started TaskRuns of `process-uuid`, returning the number updated."
-  [process-uuid :- :string
-   updated-at   :- ms/TemporalInstant]
-  (t2/update! :model/TaskRun {:status :started, :process_uuid process-uuid} {:updated_at updated-at}))
+  "Touch `updated_at` of the started TaskRuns of `process-uuid` with the app DB's now, returning the number updated."
+  [process-uuid :- :string]
+  (t2/update! :model/TaskRun {:status :started, :process_uuid process-uuid} {:updated_at :%now}))
 
 (mu/defn mark-started-tasks-unknown! :- :int
-  "Set the started TaskHistory rows of the TaskRuns with `run-ids` to unknown, returning the number updated."
-  [run-ids  :- [:set ms/PositiveInt]
-   ended-at :- ms/TemporalInstant]
+  "Set the started TaskHistory rows of the TaskRuns with `run-ids` to unknown, ended at the app DB's now, returning
+  the number updated."
+  [run-ids :- [:set ms/PositiveInt]]
   (t2/update! :model/TaskHistory
               {:status :started, :run_id [:in run-ids]}
-              {:status :unknown, :ended_at ended-at}))
+              {:status :unknown, :ended_at :%now}))

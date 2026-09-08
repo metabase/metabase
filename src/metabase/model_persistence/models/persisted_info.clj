@@ -152,10 +152,8 @@
      :question_slug   slug
      :table_name      (format "model_%s_%s" card-id slug)
      :active          false
-     :refresh_begin   :%now
      :refresh_end     nil
      :state           default-state
-     :state_change_at :%now
      :creator_id      user-id}))
 
 (defn ready-unpersisted-models!
