@@ -39,8 +39,8 @@ jobs:
 
       - id: build
         env:
-          # Push is a test trigger for this workflow, so limit it to a single version (not "all")
-          BRANCHES_INPUT: ${{ github.event_name == 'push' && 'release-x.58.x,release-x.63.x,master' || inputs.branches }}
+          # Push is a test trigger for this workflow
+          BRANCHES_INPUT: ${{ github.event_name == 'push' && 'all' || inputs.branches }}
         run: echo "matrix=$(bun .github/scripts/docs-nav-seed-matrix.ts)" >> "$GITHUB_OUTPUT"
 
   seed-nav-file:
@@ -130,7 +130,6 @@ jobs:
             --title "Add docs/util/data/nav.yml for $TARGET_BRANCH" \
             --body "One-off seed of \`docs/util/data/nav.yml\`, migrated from docs.metabase.github.io's \`$SOURCE_FILE\` with the \`$URL_PREFIX\` URL prefix stripped so links are relative to the docs root. Auto-generated via https://github.com/metabase/metabase/pull/81703." \
             --label "no-backport" \
-            --label "ci:skip" \
             --assignee bpander)
 
           echo "number=${PR_URL##*/}" >> "$GITHUB_OUTPUT"
