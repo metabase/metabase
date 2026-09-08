@@ -60,6 +60,7 @@
             (is (= (:id coll) (:collection_id card))))
           (testing "emits an entity_saved data part pointing at the chart and destination"
             (is (= "entity_saved" (:data-type part)))
+            (is (= "card" (get-in part [:data :type])))
             (is (= "c-1" (get-in part [:data :chart_id])))
             (is (= (:id card) (get-in part [:data :card_id])))
             (is (= {:type "collection" :id (:id coll)}
@@ -281,6 +282,7 @@
           (testing "emits an entity_saved data part pointing at the saved dashboard"
             (let [part (first (:data-parts result))]
               (is (= "entity_saved" (:data-type part)))
+              (is (= "dashboard" (get-in part [:data :type])))
               (is (= "d-1" (get-in part [:data :generated_dashboard_id])))
               (is (= dash-id (get-in part [:data :dashboard_id])))
               (is (= {:type "collection" :id (:id coll)}
