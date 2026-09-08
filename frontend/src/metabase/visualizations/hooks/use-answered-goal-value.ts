@@ -51,17 +51,22 @@ export function useAnsweredGoalValue(
 
   return match(answered)
     .with({ status: "resolving" }, () => RESOLVING)
-    .with({ status: "failed" }, () =>
-      resolved.error != null ? resolved : queryFailed(unansweredRef),
-    )
+    .with({ status: "failed" }, () => {
+      return resolved.error != null
+        ? resolved
+        : getFailedGoalValueResult(unansweredRef);
+    })
     .with({ status: "resolved" }, ({ data: freshData }) => {
       const fresh = resolveGoalValue(freshData, unansweredRef);
-      return fresh.isUnanswered === true ? queryFailed(unansweredRef) : fresh;
+
+      return fresh.isUnanswered === true
+        ? getFailedGoalValueResult(unansweredRef)
+        : fresh;
     })
     .exhaustive();
 }
 
-function queryFailed({
+function getFailedGoalValueResult({
   type,
   id,
   column,
