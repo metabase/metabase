@@ -110,9 +110,10 @@
 
 ;;; --------------------------------- Session schema ----------------------------------
 ;;;
-;;; Every dataset gets its own database, but tests that create tables outside the dataset loader (uploads, renames,
-;;; transforms) write into whichever database `(mt/id)` points at, usually the shared static `test-data` one. Each CI
-;;; job gets its own schema there so those tables never appear in another job's `describe-database`.
+;;; Every dataset gets its own database. Separately, tests whose contract is to write into the current database
+;;; (uploads, atomic renames, transforms) ask [[sql.tx/session-schema]] where to put their tables; on H2 and Postgres
+;;; that is the default schema of `test-data`. Static `sha_` databases are shared by every CI job, so as on Redshift
+;;; each job gets its own `temp_` schema there and [[driver/describe-database*]] below hides the other jobs' schemas.
 
 (defn unique-session-schema
   "Schema for tables this test run creates outside the dataset loader. See [[sql.tx/session-schema]]."

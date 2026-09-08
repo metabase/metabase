@@ -853,11 +853,11 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "changing the partition option should be updated during sync"
       (mt/with-model-cleanup [:model/Table]
-        (let [table-name "partitioned_table"]
+        (let [table-name (format "partitioned_table_%s" (mt/random-name))]
           (try
             (bigquery.tx/execute! (format "CREATE TABLE %s (customer_id INT64)
                                            PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10));"
-                                          (fmt-table-name "partitioned_table")))
+                                          (fmt-table-name table-name)))
             (testing "sanity check that it's not required at first"
               (sync/sync-database! (mt/db) {:scan :schema})
               (is (false? (t2/select-one-fn :database_require_filter :model/Table :name table-name))))

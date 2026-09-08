@@ -302,8 +302,9 @@
               ;; the whole test database setup, which is what we want for drivers whose table listing is authoritative.
               ;; Redshift and BigQuery list tables from metadata that lags the tables themselves, so a table dropped by
               ;; a concurrent CI job can still appear in the listing and then 404 when sync reads it. Snowflake's listing
-              ;; is accurate, but it shares one `test-data` database across all CI jobs and `with-empty-db` writes into
-              ;; it, so a table another job drops mid-sync fails fingerprinting the same way.
+              ;; is accurate, but its static `sha_` databases are content-hashed and so shared with every branch. Jobs
+              ;; on branches without a per-job session schema still write random tables into `PUBLIC` there, and one
+              ;; of those dropped mid-sync fails fingerprinting the same way.
               (binding [sync-util/*log-exceptions-and-continue?* (contains? #{:redshift :bigquery-cloud-sdk :snowflake} driver)]
                 (sync/sync-database! db {:scan scan}))
               ;; add extra metadata for fields
