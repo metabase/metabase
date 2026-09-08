@@ -8,7 +8,11 @@
   Response shape: a flat identity (`id, finding_type, entity_type, entity_kind, card_type?, entity_id,
   detected_at, entity_display_name, collection_name`) plus a nested typed `details` merging the stored
   verdict with live-hydrated `collection`, `description`, `owner`, `creator`, and `view_count` (the
-  entity's usage counter, present for card/dashboard/document; not collection or transform)."
+  entity's usage counter, present for card/dashboard/document; not collection or transform).
+
+  Request params are strict: a query or body key no endpoint here declares is a 400, not a silent drop. See
+  `:api/undeclared-keys` in [[metabase.api.macros/undeclared-keys-policy]]."
+  {:api/undeclared-keys :reject}
   (:require
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]

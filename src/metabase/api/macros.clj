@@ -26,6 +26,7 @@
    [malli.transform :as mtx]
    [malli.util]
    [medley.core :as m]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common.internal]
    [metabase.api.macros.defendpoint.open-api]
    [metabase.api.macros.scope]
@@ -57,6 +58,10 @@
 
 (mr/def ::param-type
   [:enum :route :query :body :request :respond :raise])
+
+(mr/def ::undeclared-keys-policy
+  "What an endpoint does with request keys its schema does not declare. See [[undeclared-keys-policy]]."
+  [:enum :strip :report :reject])
 
 (mr/def ::params
   [:map-of
@@ -310,13 +315,19 @@
        (str/replace #" " "-")
        (str/replace #":" ""))))
 
-(def ^:private decode-transformer
+(def ^:private lenient-decode-transformer
+  "The request decode pipeline without the final strip step, so undeclared keys survive decoding and can be reported
+  on."
   (mtx/transformer
    (mtx/string-transformer)
    (mtx/json-transformer)
    (mtx/default-value-transformer)
    {:name :api}
-   {:name :normalize}
+   {:name :normalize}))
+
+(def ^:private decode-transformer
+  (mtx/transformer
+   lenient-decode-transformer
    ;; A param map drops the keys it doesn't declare instead of rejecting them, so a client sending a field the
    ;; endpoint has no use for is still served -- which in turn means every key an endpoint reads has to be declared,
    ;; at every level of nesting. `ms/Map` (and any other `{:closed false}` map) opts out, for values we deliberately
@@ -336,6 +347,21 @@
 
 (defn- encoder [schema]
   (mr/cached ::encoder schema #(mc/encoder schema encode-transformer)))
+
+(defn- lenient-decoder [schema]
+  (mr/cached ::lenient-decoder schema #(mc/decoder schema lenient-decode-transformer)))
+
+(defn- strip-decoder [schema]
+  (mr/cached ::strip-decoder schema #(mc/decoder schema (mtx/strip-extra-keys-transformer))))
+
+(defn- closed-explainer
+  "Explainer for `schema` with every implicitly-open map closed, so undeclared keys explain as
+  `:malli.core/extra-key` instead of being ignored. `{:closed false}` maps (`ms/Map` and friends) stay open, so a
+  schema that passes a bag of keys through still does.
+
+  Cached under the *original* schema: the closed one is derived per call and would never hit the cache itself."
+  [schema]
+  (mr/cached ::closed-explainer schema #(mr/explainer (malli.util/closed-schema (mc/schema schema)))))
 
 (def ^:dynamic *enable-response-validation*
   "Whether to validate responses against Malli schemas in [[defendpoint]]... normally enabled for dev/test and disabled
@@ -407,41 +433,160 @@
    {}
    (:errors explanation)))
 
+(defn- invalid-params-ex
+  "The 400 thrown when request params don't match the endpoint schema."
+  [params-type explanation]
+  (ex-info (format "Invalid %s" (case params-type
+                                  :route   "route parameters"
+                                  :query   "query parameters"
+                                  :body    "body"
+                                  :request "request"
+                                  ;; fall back to the keyword name for any other validated
+                                  ;; params-type so we never throw "No matching clause" here
+                                  (name params-type)))
+           (let [specific-errors (invalid-params-specific-errors explanation)
+                 errors          (invalid-params-errors explanation)]
+             {:status-code     400
+              #_:api/debug     #_{:params-type params-type
+                                  :schema      (mc/form (:schema explanation))
+                                  :value       (:value explanation)}
+              :specific-errors specific-errors
+              :errors          errors})))
+
+(def ^:private max-logged-undeclared-keys
+  "Cap on how many key locations one log line carries; [[max-logged-key-length]] caps the size of each."
+  20)
+
+(def ^:private max-logged-key-length
+  "Cap on each key name inside a logged pointer, so one long key can't turn a warn line into a megabyte."
+  64)
+
+(defn- undeclared-key-pointer
+  "RFC 6901-style pointer for where an undeclared key was found, e.g. `/entity-types/0/whoops`. Locations only --
+  request values can hold tokens and passwords, so they are never logged."
+  [{:keys [in]}]
+  (letfn [(segment [x] (u/truncate (if (keyword? x) (name x) (str x)) max-logged-key-length))]
+    (str "/" (str/join "/" (map segment in)))))
+
+(defn- record-undeclared-keys!
+  "Count and log one request that carried keys its endpoint schema doesn't declare. `outcome` is what happened to the
+  request: `\"dropped\"` (served without them) or `\"rejected\"` (a 400 is about to be thrown)."
+  [params-type endpoint outcome errors]
+  (analytics/inc! :metabase-api/undeclared-request-keys
+                  {:param-type (name params-type), :outcome outcome})
+  (log/warnf "%s: %d undeclared %s key(s) %s: %s"
+             ;; always supplied by the macro; nil only for a direct call, e.g. from a test or the REPL
+             (or endpoint "unlabeled endpoint")
+             (count errors)
+             (name params-type)
+             outcome
+             (str/join ", " (map undeclared-key-pointer (take max-logged-undeclared-keys errors)))))
+
+(defn- extra-key-error? [error]
+  (= ::mc/extra-key (:type error)))
+
+(defn- decode-and-validate-params-strictly
+  "[[decode-and-validate-params]] under the `:report` and `:reject` policies: explain against the closed schema, so
+  keys the schema doesn't declare surface as errors instead of vanishing."
+  [params-type schema params {:keys [undeclared-keys endpoint]}]
+  (let [raw         ((lenient-decoder schema) (or params {}))
+        explanation ((closed-explainer schema) raw)
+        extra       (not-empty (filterv extra-key-error? (:errors explanation)))
+        ;; `:reject` treats an undeclared key as an error like any other, so every error is fatal and they land in one
+        ;; 400 together. `:report` drops them as it always did, but anything else still fails the request.
+        fatal       (if (= undeclared-keys :reject)
+                      (:errors explanation)
+                      (not-empty (filterv (complement extra-key-error?) (:errors explanation))))]
+    (when extra
+      ;; what happened to the request, not what the policy would have done in isolation: a `:report` request that
+      ;; fails for an unrelated reason was never served, so it is a rejection rather than a drop
+      (record-undeclared-keys! params-type endpoint (if fatal "rejected" "dropped") extra))
+    (cond
+      fatal                       (throw (invalid-params-ex params-type (assoc explanation :errors fatal)))
+      ;; `:reject` got here only with nothing to strip, so `raw` is what the strip decoder would have returned
+      (= undeclared-keys :reject) raw
+      :else                       ((strip-decoder schema) raw))))
+
+(defn- invalid-policy-ex
+  "Thrown when an `:api/undeclared-keys` value isn't one of the three policies -- at macroexpansion for a bad
+  declaration, at call time for a direct caller, whose arg schema is compiled out in prod."
+  [policy extra]
+  (ex-info (format "Invalid :api/undeclared-keys policy %s: must be :strip, :report, or :reject" (pr-str policy))
+           (assoc extra :policy policy)))
+
 (mu/defn decode-and-validate-params
-  "Impl for [[defendpoint]]."
-  [params-type :- ::param-type
-   schema      :- some?
-   params]
-  (let [params  (or params {})
-        decoded ((decoder schema) params)]
-    (when-not (mr/validate schema decoded)
-      (throw (ex-info (format "Invalid %s" (case params-type
-                                             :route   "route parameters"
-                                             :query   "query parameters"
-                                             :body    "body"
-                                             :request "request"
-                                             ;; fall back to the keyword name for any other validated
-                                             ;; params-type so we never throw "No matching clause" here
-                                             (name params-type)))
-                      (let [explanation     (mr/explain schema decoded)
-                            specific-errors (invalid-params-specific-errors explanation)
-                            errors          (invalid-params-errors explanation)]
-                        {:status-code     400
-                         #_:api/debug     #_{:params-type params-type
-                                             :schema      (mc/form schema)
-                                             :params      params
-                                             :decoded     decoded}
-                         :specific-errors specific-errors
-                         :errors          errors}))))
-    decoded))
+  "Impl for [[defendpoint]]. `opts` decides what happens to keys `schema` doesn't declare, via `:undeclared-keys`
+  (see [[undeclared-keys-policy]] for how an endpoint picks one); the 3-arity keeps the historical `:strip`
+  behaviour."
+  ([params-type schema params]
+   (decode-and-validate-params params-type schema params nil))
+
+  ([params-type :- ::param-type
+    schema      :- some?
+    params
+    opts        :- [:maybe [:map
+                            [:undeclared-keys {:optional true} ::undeclared-keys-policy]
+                            [:endpoint        {:optional true} :string]]]]
+   (case (:undeclared-keys opts :strip)
+     :strip
+     (let [params  (or params {})
+           decoded ((decoder schema) params)]
+       (when-not (mr/validate schema decoded)
+         (throw (invalid-params-ex params-type (mr/explain schema decoded))))
+       decoded)
+
+     (:report :reject)
+     (decode-and-validate-params-strictly params-type schema params opts)
+
+     (throw (invalid-policy-ex (:undeclared-keys opts) {})))))
+
+(def ^:private strict-params-types
+  "The param types a `:report`/`:reject` policy applies to. Route params can't carry an undeclared key -- Clout binds
+  only the segments the route names -- and `:request` is the raw Ring request map, not a caller-supplied bag."
+  #{:query :body})
+
+(mu/defn- undeclared-keys-policy :- ::undeclared-keys-policy
+  "The `:api/undeclared-keys` policy for the endpoint being expanded: its own `defendpoint` metadata, else the
+  namespace's, else `:strip`.
+
+    (ns my.api {:api/undeclared-keys :reject} ...)               ; whole namespace
+    (api.macros/defendpoint :get \"/\" {:api/undeclared-keys :strip} ...)  ; one endpoint opts back out"
+  [args :- ::parsed-args]
+  (let [policy (or (get-in args [:metadata :api/undeclared-keys])
+                   (:api/undeclared-keys (meta *ns*))
+                   :strip)]
+    (when-not (mr/validate ::undeclared-keys-policy policy)
+      (throw (invalid-policy-ex policy {:namespace (ns-name *ns*)})))
+    policy))
+
+(mu/defn- endpoint-label :- :string
+  "Identifies an endpoint in the log line [[record-undeclared-keys!]] emits, e.g.
+  `GET /stale (metabase-enterprise.content-diagnostics.api)`. Namespace-qualified rather than URL-qualified: the
+  prefix a namespace is mounted under isn't known here."
+  [{:keys [method route]} :- ::parsed-args]
+  (format "%s %s (%s)" (u/upper-case-en (name method)) (:path route) (ns-name *ns*)))
 
 (mu/defn- decode-and-validate-params-form
   [args        :- ::parsed-args
    params-type :- ::param-type
    form]
-  (if-let [schema (get-in args [:params params-type :schema])]
-    `(decode-and-validate-params ~params-type ~schema ~form)
-    form))
+  (let [policy  (undeclared-keys-policy args)
+        strict? (and (not= policy :strip)
+                     (contains? strict-params-types params-type))
+        schema  (or (get-in args [:params params-type :schema])
+                    ;; under a strict policy a param type the endpoint doesn't bind at all is still checked, against
+                    ;; an empty closed map -- otherwise `POST /scan?whoops=1` would sail through unnoticed
+                    (when strict? default-params-schema))]
+    (cond
+      (and schema strict?)
+      `(decode-and-validate-params ~params-type ~schema ~form ~{:undeclared-keys policy
+                                                                :endpoint        (endpoint-label args)})
+
+      schema
+      `(decode-and-validate-params ~params-type ~schema ~form)
+
+      :else
+      form)))
 
 (defn- render-response [response request]
   (-> response
@@ -843,6 +988,9 @@
   "NEW macro for defining REST API endpoints. See
   [Cam's tech design doc](https://www.notion.so/metabase/defendpoint-2-0-16169354c901806ca10cf45be6d91891) for
   motivation behind it.
+
+  The optional metadata map takes `:api/undeclared-keys` to say what this endpoint does with request keys its
+  schemas do not declare -- see [[undeclared-keys-policy]]. A whole namespace can set it instead, in its `ns` form.
 
   REPL Tip: use [[call-core-fn]] to call the core-fn directly."
   {:added "0.53.0", :arglists '([method
