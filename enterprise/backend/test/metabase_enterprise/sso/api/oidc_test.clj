@@ -114,3 +114,26 @@
       (mt/with-temporary-setting-values [oidc-providers [(assoc test-provider :enabled false)]]
         (testing "oidc-enabled is false when no provider is enabled"
           (is (false? (sso-settings/oidc-enabled))))))))
+
+(deftest issuer-change-requires-the-client-secret-again-test
+  (testing "moving a provider to a new issuer while the stored client secret would be reused is refused (SEC:
+           credential redirection). The refusal lands before check-oidc-connection!, which is what would otherwise
+           have presented the secret to the new issuer."
+    (mt/with-premium-features #{:sso-oidc}
+      (mt/with-temporary-setting-values [oidc-providers [test-provider]]
+        (let [attempted (atom [])]
+          (mt/with-dynamic-fn-redefs [oidc.check/check-oidc-configuration (fn [& args]
+                                                                            (swap! attempted conj args)
+                                                                            successful-check-result)]
+            (testing "a new issuer with the secret omitted"
+              (let [resp (mt/user-http-request :crowberto :put 400 "ee/sso/oidc/test-okta"
+                                               {:issuer-uri "https://evil.example.com"})]
+                (is (= "oidc-issuer-change-requires-client-secret" (:error-code resp)))
+                (is (= [] @attempted) "the issuer was never contacted, so the secret never left")))
+            (testing "the stored provider is untouched"
+              (is (= (:issuer-uri test-provider) (:issuer-uri (first (sso-settings/oidc-providers))))))
+            (testing "a freshly supplied secret authorizes the move"
+              (reset! attempted [])
+              (mt/user-http-request :crowberto :put 200 "ee/sso/oidc/test-okta"
+                                    {:issuer-uri "https://new.example.com" :client-secret "brand-new"})
+              (is (= "https://new.example.com" (:issuer-uri (first (sso-settings/oidc-providers))))))))))))

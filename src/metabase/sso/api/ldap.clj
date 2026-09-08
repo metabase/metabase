@@ -50,6 +50,9 @@
                 [:ldap-group-membership-filter {:optional true} [:maybe :string]]
                 [:ldap-group-mappings          {:optional true} [:maybe ::sso.schema/group-mappings]]]]
   (api/check-superuser)
+  ;; ahead of the connection test, not just the write: the test binds to whatever host was supplied, so a moved
+  ;; audience would deliver the stored bind password there before anything is persisted
+  (setting/assert-audience-writes-authorized! settings)
   (let [ldap-settings (-> settings
                           (update :ldap-password update-password-if-needed)
                           (dissoc :ldap-enabled))

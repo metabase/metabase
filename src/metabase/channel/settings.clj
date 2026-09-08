@@ -205,6 +205,12 @@
   :encryption :when-encryption-key-set
   :visibility :settings-manager
   :sensitive? true
+  ;; the SMTP password must not follow the server to a new address, or to the same one over a weaker channel:
+  ;; `email-smtp-security` :none and port 587 -> 25 both put it on the wire in the clear
+  :audience   {:email-smtp-host     :metabase.util.secret/hostname
+               :email-smtp-port     :int
+               :email-smtp-security :keyword
+               :email-smtp-username :string}
   :audit      :getter)
 
 (defsetting email-smtp-password-override
@@ -214,6 +220,11 @@
   :visibility :settings-manager
   :sensitive? true
   :export?    false
+  ;; see [[email-smtp-password]] -- the Cloud custom-SMTP credential needs the same coupling
+  :audience   {:email-smtp-host-override     :metabase.util.secret/hostname
+               :email-smtp-port-override     :int
+               :email-smtp-security-override :keyword
+               :email-smtp-username-override :string}
   :audit      :getter)
 
 (defsetting email-smtp-port

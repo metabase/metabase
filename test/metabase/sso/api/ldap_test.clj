@@ -63,8 +63,17 @@
                                      (assoc (ldap-test-details) :ldap-port ""))))
           (is (= 389 (sso.settings/ldap-port)))))
       (testing "Could update with obfuscated password"
+        ;; the block above left the port at its default; put the real settings back first, because reusing the stored
+        ;; password is only legitimate while the audience is unchanged
+        (mt/user-http-request :crowberto :put 200 "ldap/settings" (ldap-test-details))
         (mt/user-http-request :crowberto :put 200 "ldap/settings"
                               (update (ldap-test-details) :ldap-password setting/obfuscate-value)))
+      (testing "...but not while also moving the server, which is what would deliver the stored password to it"
+        (is (= "ldap-password must be provided again when changing where it is sent."
+               (:message (mt/user-http-request :crowberto :put 400 "ldap/settings"
+                                               (-> (ldap-test-details)
+                                                   (assoc :ldap-host "elsewhere.example.com")
+                                                   (update :ldap-password setting/obfuscate-value)))))))
       (testing "Requires superusers"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 "ldap/settings"
@@ -79,3 +88,35 @@
         (mt/user-http-request :crowberto :put 200 "ldap/settings" {:ldap-host nil :ldap-enabled false}))
       (is (not (sso.settings/ldap-enabled)))
       (is (nil? (sso.settings/ldap-host))))))
+
+(deftest ldap-host-change-requires-the-bind-password-again-test
+  (testing "moving the directory server while the stored bind password would be reused is refused (SEC: credential
+           redirection). The refusal has to land before the connection test, which is what would have delivered the
+           password to the new host."
+    (mt/with-temporary-setting-values [ldap-host     "ldap.example.com"
+                                       ldap-port     636
+                                       ldap-security "ssl"
+                                       ldap-password "bind-secret"]
+      (let [attempted (atom [])]
+        (with-redefs [ldap/test-ldap-connection (fn [details]
+                                                  (swap! attempted conj details)
+                                                  {:status :SUCCESS})]
+          (testing "pointing it at another host without re-entering the password"
+            (mt/user-http-request :crowberto :put 400 "ldap/settings"
+                                  {:ldap-host "evil.example.com"})
+            (is (= [] @attempted) "no bind was attempted, so the password never left"))
+          (testing "same host, weaker channel -- the downgrade case"
+            (reset! attempted [])
+            (mt/user-http-request :crowberto :put 400 "ldap/settings"
+                                  {:ldap-security "none" :ldap-port 389})
+            (is (= [] @attempted)))
+          (testing "the stored password and host are untouched"
+            (is (= "bind-secret" (sso.settings/ldap-password)))
+            (is (= "ldap.example.com" (sso.settings/ldap-host))))
+          (testing "supplying a fresh password authorizes the move"
+            (reset! attempted [])
+            (mt/user-http-request :crowberto :put 200 "ldap/settings"
+                                  {:ldap-host "new.example.com" :ldap-password "brand-new"})
+            (is (= 1 (count @attempted)))
+            (is (= "new.example.com" (sso.settings/ldap-host)))
+            (is (= "brand-new" (sso.settings/ldap-password)))))))))

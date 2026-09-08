@@ -38,6 +38,9 @@
   :export? false
   :sensitive? true
   :encryption :when-encryption-key-set
+  ;; the git PAT must not follow the repository to a different URL. Compared as an opaque :string rather than
+  ;; decomposed: a git remote can be https, ssh or a path, and comparing the whole thing exactly fails closed.
+  :audience {:remote-sync-url :string}
   :audit :getter
   :can-read-from-env? true)
 
@@ -207,6 +210,9 @@
   Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
   (guards/ensure-no-active-task!)
+  ;; ahead of check-git-settings!, not just the write: that reaches the repository at whatever URL was supplied, so a
+  ;; moved audience would deliver the stored PAT there before anything is persisted
+  (setting/assert-audience-writes-authorized! settings)
   (let [git-related-keys #{:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch}
         updating-git-settings? (some git-related-keys (keys settings))
         env-set-url    (= :env (setting/get-raw-value-source :remote-sync-url))
@@ -228,11 +234,16 @@
                              (if obfuscated? current-token remote-sync-token))]
         (when updating-git-settings?
           (check-git-settings! (assoc settings :remote-sync-token token-to-check)))
-        (t2/with-transaction [_conn]
-          (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
-            (when (and (not= :env (setting/get-raw-value-source k)) (contains? settings k)
-                       (not (and (= k :remote-sync-token) obfuscated?)))
-              (setting/set! k (k settings)))))))))
+        ;; one batched write rather than a per-key loop: the audience coupling is checked across a whole write, so
+        ;; setting the URL and the token separately would look like moving the repository without re-supplying the PAT
+        (setting/set-many!
+         (into {}
+               (for [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch
+                        :remote-sync-auto-import :remote-sync-transforms]
+                     :when (and (not= :env (setting/get-raw-value-source k))
+                                (contains? settings k)
+                                (not (and (= k :remote-sync-token) obfuscated?)))]
+                 [k (k settings)])))))))
 
 (defn library-is-remote-synced?
   "Returns true if the Library collection exists and is remote-synced.

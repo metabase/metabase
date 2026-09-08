@@ -214,6 +214,9 @@
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]]]
   (api/check-superuser)
+  ;; this endpoint mixes a request-supplied URL with the stored token, so the same coupling applies even though it
+  ;; persists nothing
+  (setting/assert-audience-writes-authorized! body)
   (let [current-token   (settings/remote-sync-token)
         obfuscated?     (and remote-sync-token
                              (= remote-sync-token (setting/obfuscate-value current-token)))

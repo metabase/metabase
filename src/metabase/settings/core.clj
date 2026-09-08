@@ -104,6 +104,7 @@
   log-deprecated-env-var-usage!
   get-value-of-type
   has-advanced-setting-access?
+  assert-audience-writes-authorized!
   obfuscate-value
   obfuscated-value?
   read-setting

@@ -10,7 +10,8 @@
    [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.secret :as u.secret]))
 
 (set! *warn-on-reflection* true)
 
@@ -136,6 +137,14 @@
                       (dissoc body :client-secret)
                       body)
           updated   (merge existing body)]
+      ;; the client secret must not follow the provider to a new issuer. This has to land before
+      ;; check-oidc-connection!, which is what would otherwise present the stored secret to the new one.
+      (when (and (some? (:client-secret existing))
+                 (not (contains? body :client-secret))
+                 (not (u.secret/same-audience? [:map [:issuer-uri :string]] existing updated)))
+        (throw (ex-info (tru "The client secret must be entered again when changing the issuer URI.")
+                        {:status-code 400
+                         :error-code  :oidc-issuer-change-requires-client-secret})))
       (check-oidc-connection! (:issuer-uri updated) (:client-id updated) (:client-secret updated) (:scopes updated))
       (let [providers (assoc (vec providers) idx updated)]
         (sso-settings/oidc-providers! providers)

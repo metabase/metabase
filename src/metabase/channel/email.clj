@@ -356,6 +356,9 @@
   "Check the provided settings against the SMTP server and update the Metabase settings if the connection is successful."
   [settings mb-to-smtp-map current-smtp-password]
   (perms/check-has-application-permission :setting)
+  ;; ahead of the connection test, not just the write: the test connects to whatever host was supplied, so a moved
+  ;; audience would deliver the stored password there before anything is persisted
+  (setting/assert-audience-writes-authorized! settings)
   (let [smtp-settings (-> settings
                           (select-keys (keys mb-to-smtp-map))
                           (set/rename-keys mb-to-smtp-map))

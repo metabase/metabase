@@ -962,8 +962,11 @@
                                            remote-sync-branch "main"
                                            remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"]
-          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+          (let [;; the token has to come along because the URL is changing: a stored PAT does not follow the
+                ;; repository to a new address without being re-supplied
+                response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:remote-sync-url "file://repo.git"
+                                                :remote-sync-token "test-token"
                                                 :remote-sync-type :read-only})
                 task (wait-for-task-completion (:task_id response))]
             (is (=? {:success true} response))
@@ -1845,3 +1848,27 @@
                 "no new branch should be pushed to the source when the guard fires")
             (is (= tasks-before (t2/count :model/RemoteSyncTask))
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
+
+(deftest settings-url-change-requires-the-token-again-test
+  (testing "moving the repository while the stored PAT would be reused is refused (SEC: credential redirection). The
+           refusal lands before check-git-settings!, which is what would otherwise have reached the new URL with the
+           stored token."
+    (let [attempted (atom [])]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [s] (swap! attempted conj s) nil)]
+        (mt/with-temporary-setting-values [remote-sync-url   "https://github.com/test/repo.git"
+                                           remote-sync-token "pat-secret"
+                                           remote-sync-type  :read-write]
+          (testing "a new URL with the mask echoed back"
+            (let [resp (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                             {:remote-sync-url   "https://evil.example.com/repo.git"
+                                              :remote-sync-token (setting/obfuscate-value "pat-secret")})]
+              (is (= "remote-sync-token must be provided again when changing where it is sent." (:message resp)))
+              (is (= [] @attempted) "the repository was never reached, so the token never left")))
+          (testing "and with the token simply omitted"
+            (reset! attempted [])
+            (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                  {:remote-sync-url "https://evil.example.com/repo.git"})
+            (is (= [] @attempted)))
+          (testing "the stored token and URL are untouched"
+            (is (= "pat-secret" (settings/remote-sync-token)))
+            (is (= "https://github.com/test/repo.git" (settings/remote-sync-url)))))))))

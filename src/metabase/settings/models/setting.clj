@@ -23,6 +23,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.secret :as u.secret]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -211,6 +212,9 @@
    [:tag :symbol]
    ;; is this sensitive (never show in plaintext), like a password? (default: false)
    [:sensitive? :boolean]
+   ;; for a secret, the settings that make up the audience it is sent to, as {setting-name malli-schema}. See
+   ;; [[assert-audience-writes-authorized!]]. nil for settings that are not credentials.
+   [:audience [:maybe [:map-of :keyword :any]]]
    ;; where this setting should be visible (default: :admin)
    [:visibility Visibility]
    ;; should this setting be encrypted. Available options are `:no` or `:when-encryption-key-set` (the setting will be
@@ -1062,6 +1066,73 @@
                          :database-id (:id database)
                          :reasons     reasons}))))))
 
+(def ^:private ^:dynamic *audience-checked?*
+  "Bound while [[set-many!]] applies its batch-wide audience check, so the per-setting writes it makes underneath do
+  not re-check each key in isolation and refuse a batch that is in fact supplying the secret alongside the move."
+  false)
+
+(defn- audience-fields
+  "Current values of `setting`'s audience settings, with anything in `proposed` layered over them."
+  [audience proposed]
+  (into {}
+        (map (fn [k] [k (if (contains? proposed k) (core/get proposed k) (get k))]))
+        (keys audience)))
+
+(defn- fresh-secret-supplied?
+  "Whether `proposed` supplies a genuinely new value for `secret-key` -- or clears it, which leaves nothing to leak.
+  A client echoing back the mask it was handed is not supplying a new secret."
+  [secret-key proposed]
+  (and (contains? proposed secret-key)
+       (let [v (core/get proposed secret-key)]
+         (or (nil? v)
+             (and (string? v) (str/blank? v))
+             (not (obfuscated-value? v))))))
+
+(defn assert-audience-writes-authorized!
+  "Refuse a write that moves a secret's audience while leaving the stored secret in place.
+
+  Metabase hands the client a mask rather than a credential, and substitutes the stored value back on save. Because
+  the audience -- the host, port and transport the credential is sent to -- is editable in the same breath, a caller
+  could otherwise point a connection at a host they control and have Metabase deliver the real credential to it,
+  usually during a connection test that runs before anything is persisted.
+
+  The check is on the *audience field write itself*, not on a mask being echoed: `PUT /api/setting/ldap-host` carries
+  no secret at all and would slip through a mask-shaped check. Because the stored audience is derived rather than
+  recorded, every single-field write differs from it at that field, so there is no sequence of individually
+  innocuous changes.
+
+  Only user-initiated writes are checked. Startup, config-file provisioning and other internal callers have no current
+  user and are the deployment's own configuration, which is trusted -- the same provenance split the network policies
+  use.
+
+  Call this explicitly, ahead of any connection test, from an endpoint that verifies credentials before persisting
+  them: the exfiltration happens at the test, not at the write, so relying on the [[set-many!]] hook alone would let
+  the credential reach the new audience first."
+  [proposed]
+  (when (some? api/*current-user-id*)
+    (let [proposed (into {} (map (fn [[k v]] [(keyword k) v])) proposed)]
+      (doseq [{:keys [audience name]} (vals @registered-settings)
+              :when (and audience
+                         ;; nothing being written touches this audience
+                         (seq (select-keys proposed (keys audience)))
+                         ;; nothing stored to exfiltrate
+                         (some? (get name)))]
+        (let [schema   (into [:map] (map (fn [[k schema]] [k {:optional true} schema])) audience)
+              stored   (u.secret/canonical-audience schema (audience-fields audience {}))
+              want     (u.secret/canonical-audience schema (audience-fields audience proposed))
+              changed  (remove #(= (core/get stored %) (core/get want %))
+                               (distinct (concat (keys stored) (keys want))))
+              ;; clearing where a credential points is not moving it: there is nowhere left to send it, and setting a
+              ;; new value later is itself guarded. Only a change that introduces or alters a value is a move.
+              moved?   (boolean (some #(some? (core/get want %)) changed))]
+          (when-not (or (not moved?)
+                        (fresh-secret-supplied? name proposed))
+            (throw (ex-info (tru "{0} must be provided again when changing where it is sent."
+                                 (core/name name))
+                            {:status-code 400
+                             :error-code  :setting-audience-change-requires-secret
+                             :setting     name}))))))))
+
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this
   just updates the Settings cache and writes its value to the DB.
@@ -1075,6 +1146,8 @@
   This method will throw an exception if trying to update a read-only setting, unless `:bypass-read-only?` is set."
   [setting-definition-or-name new-value & {:keys [bypass-read-only?]}]
   (let [{:keys [cache?] :as setting} (resolve-setting setting-definition-or-name)
+        _                            (when-not *audience-checked?*
+                                       (assert-audience-writes-authorized! {(:name setting) new-value}))
         new-value                    (cond-> new-value
                                        (and (= (:type setting) :json) (coll? new-value))
                                        walk/keywordize-keys)]
@@ -1137,6 +1210,7 @@
                  :encryption         (extract-encryption-or-default setting)
                  :export?            false
                  :sensitive?         false
+                 :audience           nil
                  :cache?             true
                  :feature            nil
                  :database-local     :never
@@ -1500,14 +1574,16 @@
 
     (set-many! {:mandrill-api-key \"xyz123\", :another-setting \"ABC\"})"
   [settings]
+  (assert-audience-writes-authorized! settings)
   ;; if setting any of the settings fails, roll back the entire DB transaction and the restore the cache from the DB
   ;; to revert any changes in the cache
   (try
-    (t2/with-transaction [_conn]
-      (doseq [[k v] settings]
-        (if (registered? k)
-          (metabase.settings.models.setting/set! k v)
-          (log/infof "Skipping unregistered setting: %s" (name k)))))
+    (binding [*audience-checked?* true]
+      (t2/with-transaction [_conn]
+        (doseq [[k v] settings]
+          (if (registered? k)
+            (metabase.settings.models.setting/set! k v)
+            (log/infof "Skipping unregistered setting: %s" (name k))))))
     settings
     (catch Throwable e
       (setting.cache/restore-cache!)

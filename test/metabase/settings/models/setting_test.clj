@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [environ.core :as env]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.setting :as mdb.setting]
@@ -2024,3 +2025,104 @@
     (mt/with-temporary-setting-values [test-setting-1 "DB_VALUE"]
       (mt/with-temp-env-var-value! [mb-test-setting-1 "ENV_VALUE"]
         (is (= :env (setting/get-raw-value-source :test-setting-1)))))))
+
+;;; ------------------------------------- audience-coupled secret settings -------------------------------------------
+
+(defsetting test-audience-host
+  "Host for the audience-coupling tests."
+  :encryption :no
+  :visibility :internal)
+
+(defsetting test-audience-port
+  "Port for the audience-coupling tests."
+  :type       :integer
+  :encryption :no
+  :visibility :internal)
+
+(defsetting test-audience-password
+  "Secret bound to the host/port above."
+  :encryption :when-encryption-key-set
+  :visibility :internal
+  :sensitive? true
+  :audience   {:test-audience-host :metabase.util.secret/hostname
+               :test-audience-port :int})
+
+(deftest audience-change-without-fresh-secret-is-refused-test
+  (mt/with-temporary-setting-values [test-audience-host     "db.example.com"
+                                     test-audience-port     5432
+                                     test-audience-password "hunter2"]
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (testing "moving the audience while a bound secret is stored is refused"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"must be provided again"
+             (setting/set-many! {:test-audience-host "evil.example.com"}))))
+      (testing "the refusal covers a single-setting write too -- that is the generic-API bypass"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"must be provided again"
+             (setting/set! :test-audience-host "evil.example.com"))))
+      (testing "and the stored secret is untouched"
+        (is (= "hunter2" (test-audience-password)))
+        (is (= "db.example.com" (test-audience-host)))))))
+
+(deftest audience-change-with-fresh-secret-is-allowed-test
+  (mt/with-temporary-setting-values [test-audience-host     "db.example.com"
+                                     test-audience-port     5432
+                                     test-audience-password "hunter2"]
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (testing "supplying a new secret in the same write authorizes the move"
+        (setting/set-many! {:test-audience-host     "new.example.com"
+                            :test-audience-password "brand-new"})
+        (is (= "new.example.com" (test-audience-host)))
+        (is (= "brand-new" (test-audience-password)))))))
+
+(deftest audience-change-clearing-the-secret-is-allowed-test
+  (mt/with-temporary-setting-values [test-audience-host     "db.example.com"
+                                     test-audience-port     5432
+                                     test-audience-password "hunter2"]
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (testing "clearing the secret alongside the move is fine -- nothing is left to leak"
+        (setting/set-many! {:test-audience-host     "new.example.com"
+                            :test-audience-password nil})
+        (is (= "new.example.com" (test-audience-host)))
+        (is (nil? (test-audience-password)))))))
+
+(deftest echoed-mask-does-not-authorize-an-audience-change-test
+  (mt/with-temporary-setting-values [test-audience-host     "db.example.com"
+                                     test-audience-port     5432
+                                     test-audience-password "hunter2"]
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (testing "echoing the mask back is not supplying a new secret"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"must be provided again"
+             (setting/set-many! {:test-audience-host     "evil.example.com"
+                                 :test-audience-password (setting/obfuscate-value "hunter2")})))))))
+
+(deftest unchanged-audience-is-not-refused-test
+  (mt/with-temporary-setting-values [test-audience-host     "db.example.com"
+                                     test-audience-port     5432
+                                     test-audience-password "hunter2"]
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (testing "a write that leaves the audience alone goes through, including a differently-spelled equal value"
+        (setting/set-many! {:test-audience-host "DB.Example.com" :test-audience-port "5432"})
+        (is (= "hunter2" (test-audience-password))))
+      (testing "and so does a bulk write that only touches unrelated settings"
+        (setting/set-many! {:test-audience-port 5432})
+        (is (= "hunter2" (test-audience-password)))))))
+
+(deftest audience-guard-does-not-apply-with-no-stored-secret-test
+  (mt/with-temporary-setting-values [test-audience-host     "db.example.com"
+                                     test-audience-port     5432
+                                     test-audience-password nil]
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (testing "with nothing stored there is nothing to exfiltrate"
+        (setting/set-many! {:test-audience-host "new.example.com"})
+        (is (= "new.example.com" (test-audience-host)))))))
+
+(deftest audience-guard-does-not-apply-outside-a-request-test
+  (mt/with-temporary-setting-values [test-audience-host     "db.example.com"
+                                     test-audience-port     5432
+                                     test-audience-password "hunter2"]
+    (testing "deployment provisioning (config file, startup) has no current user and is trusted"
+      (binding [api/*current-user-id* nil]
+        (setting/set-many! {:test-audience-host "provisioned.example.com"})
+        (is (= "provisioned.example.com" (test-audience-host)))))))

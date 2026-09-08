@@ -49,6 +49,12 @@
   (deferred-tru "The password to bind with for the lookup user.")
   :encryption :when-encryption-key-set
   :sensitive? true
+  ;; the bind password must not follow the directory server to a new address, or to the same one over a weaker
+  ;; channel: `ldap-security` :none and port 636 -> 389 both put it on the wire in the clear
+  :audience   {:ldap-host       :metabase.util.secret/hostname
+               :ldap-port       :int
+               :ldap-security   :keyword
+               :ldap-trust-store :string}
   :audit     :getter)
 
 (defsetting ldap-user-base

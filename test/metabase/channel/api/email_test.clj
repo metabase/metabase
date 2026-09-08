@@ -168,3 +168,37 @@
     (testing "POST /api/email/test"
       (is (= "Unauthenticated"
              (mt/client :post 401 "email/test"))))))
+
+(deftest smtp-host-change-requires-the-password-again-test
+  (testing "moving the SMTP server, or weakening the channel to it, while the stored password would be reused is
+           refused (SEC: credential redirection). The refusal lands before test-smtp-connection, which is what would
+           otherwise have delivered the password to the new server."
+    (tu/with-temporary-setting-values [email-smtp-host     "smtp.example.com"
+                                       email-smtp-port     587
+                                       email-smtp-security :starttls
+                                       email-smtp-username "mb"
+                                       email-smtp-password "smtp-secret"]
+      (let [attempted (atom [])]
+        (with-redefs [email/test-smtp-connection (fn [settings] (swap! attempted conj settings) settings)]
+          (testing "a new host with the mask echoed back"
+            (let [resp (mt/user-http-request :crowberto :put 400 "email"
+                                             {:email-smtp-host     "evil.example.com"
+                                              :email-smtp-port     587
+                                              :email-smtp-security :starttls
+                                              :email-smtp-username "mb"
+                                              :email-smtp-password (setting/obfuscate-value "smtp-secret")})]
+              (is (= "setting-audience-change-requires-secret" (:error-code resp)))
+              (is (= [] @attempted) "no SMTP connection was attempted, so the password never left")))
+          (testing "the downgrade case: same host, plaintext channel"
+            (reset! attempted [])
+            (let [resp (mt/user-http-request :crowberto :put 400 "email"
+                                             {:email-smtp-host     "smtp.example.com"
+                                              :email-smtp-port     25
+                                              :email-smtp-security :none
+                                              :email-smtp-username "mb"
+                                              :email-smtp-password (setting/obfuscate-value "smtp-secret")})]
+              (is (= "setting-audience-change-requires-secret" (:error-code resp)))
+              (is (= [] @attempted))))
+          (testing "the stored password is untouched"
+            (is (= "smtp-secret" (setting/get :email-smtp-password)))
+            (is (= "smtp.example.com" (setting/get :email-smtp-host)))))))))
