@@ -5,7 +5,7 @@ import { isGraphGoalReference } from "metabase/viz-core";
 import type { Card, DatasetData } from "metabase-types/api";
 
 import type { GoalResolutionStatus } from "./use-answered-goal-data";
-import { useResolvedGoalValue } from "./use-resolved-goal-value";
+import { useGoalValueResolution } from "./use-goal-value-resolution";
 
 export type GoalSettingsResolution = {
   status: GoalResolutionStatus;
@@ -24,7 +24,7 @@ export function useResolvedGoalSettings(
 ): GoalSettingsResolution {
   const needsResolving = isGraphGoalReference(card.display, settings);
 
-  const goal = useResolvedGoalValue(
+  const goal = useGoalValueResolution(
     card.dataset_query,
     data,
     needsResolving ? settings["graph.goal_value"] : null,

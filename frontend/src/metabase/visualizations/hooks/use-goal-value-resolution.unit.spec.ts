@@ -9,7 +9,7 @@ import {
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
-import { useResolvedGoalValue } from "./use-resolved-goal-value";
+import { useGoalValueResolution } from "./use-goal-value-resolution";
 
 const DATASET_QUERY = createMockStructuredDatasetQuery();
 
@@ -38,12 +38,12 @@ function answer(cols: string[], row: (number | string)[]) {
 
 function setup(data: DatasetData, value: GoalValue | null | undefined) {
   return renderHookWithProviders(
-    () => useResolvedGoalValue(DATASET_QUERY, data, value),
+    () => useGoalValueResolution(DATASET_QUERY, data, value),
     {},
   );
 }
 
-describe("useResolvedGoalValue", () => {
+describe("useGoalValueResolution", () => {
   it("resolves a static number without fetching", () => {
     const { result } = setup(DATA, 100);
 
