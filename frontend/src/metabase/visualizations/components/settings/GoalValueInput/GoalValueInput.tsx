@@ -57,7 +57,8 @@ export type GoalValueInputProps = {
   datasetQuery: DatasetQuery | undefined;
   id: string;
   placeholder?: string;
-  referencedEntities: ReferencedEntity[];
+  // lets a caller with several inputs answer them all in one query
+  referencedEntities?: ReferencedEntity[];
   showSelfColumns?: boolean;
   value: GoalValue | null;
   onChange: (value: GoalValue | null) => void;
