@@ -33,8 +33,13 @@ function readBaseline(): Record<string, string> {
 
 function main(): void {
   const args = process.argv.slice(2);
-  if (args.some((arg) => arg !== "--update-baseline")) {
-    throw new Error("Usage: bun run api-contracts:check [--update-baseline]");
+  const updateBaseline = args.length === 1 && args[0] === "--update-baseline";
+  const explain =
+    args.length === 2 && args[0] === "--explain" ? args[1] : undefined;
+  if (args.length && !updateBaseline && !explain) {
+    throw new Error(
+      "Usage: bun run api-contracts:check [--update-baseline | --explain <endpoint>]",
+    );
   }
   const configPath = resolve(root, "tsconfig.json");
   const config = ts.readConfigFile(configPath, ts.sys.readFile);
@@ -55,7 +60,7 @@ function main(): void {
     (file) =>
       /\/frontend\/src\//.test(file) &&
       !/\.(?:spec|test)\./.test(file) &&
-      /builder\.(?:query|mutation)\b/.test(readFileSync(file, "utf8")),
+      /\b(?:query|mutation)\b/.test(readFileSync(file, "utf8")),
   );
   const program = ts.createProgram({
     rootNames: [
@@ -82,7 +87,18 @@ function main(): void {
     reportPath,
     `${JSON.stringify({ endpointCount, counts, responseCounts, results }, null, 2)}\n`,
   );
-  if (args.includes("--update-baseline")) {
+  if (explain) {
+    const matching = results.filter((result) => result.id.includes(explain));
+    if (!matching.length) {
+      throw new Error(`No contract checks match ${JSON.stringify(explain)}.`);
+    }
+    for (const result of matching) {
+      console.log(
+        `${result.file}:${result.line} ${result.id}\n  ${result.status}: ${result.message}`,
+      );
+    }
+  }
+  if (updateBaseline) {
     const exemptions = results.filter(
       (r) => r.status === "mismatch" || r.status === "unverified",
     );

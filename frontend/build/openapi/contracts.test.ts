@@ -23,10 +23,12 @@ function check({
   frontend,
   backend,
   endpoint,
+  options = {},
 }: {
   frontend: string;
   backend: string;
   endpoint: string;
+  options?: ts.CompilerOptions;
 }) {
   const root = mkdtempSync(join(tmpdir(), "api-contracts-"));
   directories.push(root);
@@ -35,13 +37,14 @@ function check({
   writeFileSync(
     file,
     `
-    declare const builder: {
+    type EndpointBuilder = {
       query<Response, Request>(config: {
         query?: (request: Request) => unknown;
         queryFn?: () => unknown;
         transformResponse?: (response: unknown) => Response;
       }): unknown;
     };
+    declare const builder: EndpointBuilder;
     ${frontend}
     const endpoints = { example: ${endpoint} };
   `,
@@ -52,6 +55,7 @@ function check({
     noEmit: true,
     skipLibCheck: true,
     target: ts.ScriptTarget.ESNext,
+    ...options,
   });
   return checkContracts(program, [file], generated, root);
 }
@@ -74,6 +78,107 @@ const frontend = `
 const endpoint = `builder.query<ErdResponse, number>({ query: id => ({ url: \`/api/erd/\${id}\` }) })`;
 
 describe("API contract checks", () => {
+  it("keeps checking a typed EndpointBuilder after its variable is renamed", () => {
+    const results = check({
+      frontend: `${frontend}\ndeclare const renamed: EndpointBuilder;`,
+      backend,
+      endpoint: endpoint.replace("builder.query", "renamed.query"),
+    });
+    assert.equal(results.length, 4);
+    assert.ok(results.every((result) => result.status === "pass"));
+  });
+
+  for (const property of [
+    '["params"]: { schema: 123 },',
+    "get params() { return { schema: 123 }; },",
+  ]) {
+    it(`does not silently ignore request property ${property}`, () => {
+      const results = check({
+        frontend,
+        backend,
+        endpoint: endpoint.replace("url: `", `${property} url: \``),
+      });
+      assert.ok(results.some((result) => result.status === "unverified"));
+    });
+  }
+
+  it("marks a request mapper with a fallthrough return as unverified", () => {
+    const results = check({
+      frontend,
+      backend,
+      endpoint:
+        "builder.query<ErdResponse, number>({ query: id => { if (id) { return { url: `/api/erd/${id}` }; } } })",
+    });
+    assert.ok(results.some((result) => result.status === "unverified"));
+  });
+
+  it("refuses to compare contracts with strict null checking disabled", () => {
+    assert.throws(
+      () =>
+        check({
+          frontend,
+          backend,
+          endpoint,
+          options: { strictNullChecks: false },
+        }),
+      /strictNullChecks/,
+    );
+  });
+
+  it("fails on malformed generated declarations rather than checking a partial AST", () => {
+    assert.throws(
+      () =>
+        check({
+          frontend,
+          backend: `${backend}\nexport type Broken = ;`,
+          endpoint,
+        }),
+      /generated|syntax|Type expected/i,
+    );
+  });
+
+  it("finds multiple independent nested field mismatches", () => {
+    const results = check({
+      frontend: frontend
+        .replace("string | null", "string")
+        .replace("id: number", "id: string"),
+      backend,
+      endpoint,
+    });
+    const message =
+      results.find((r) => r.id.endsWith("response.2XX"))?.message ?? "";
+    assert.match(message, /nodes\[\]\.owner\.email/);
+    assert.match(message, /nodes\[\]\.fields\[\]\.id/);
+  });
+
+  it("explains optional-property presence independently of its value type", () => {
+    const results = check({
+      frontend: "type ErdResponse = { label: string | undefined };",
+      backend: backend.replace(
+        '{ "2XX": { nodes: Node[] } }',
+        '{ "2XX": { label?: string } }',
+      ),
+      endpoint,
+    });
+    const response = results.find((r) => r.id.endsWith("response.2XX"));
+    assert.equal(response?.status, "mismatch");
+    assert.match(response?.message ?? "", /label.*optional.*required/);
+  });
+
+  it("accepts primitive aliases and safe response subsets without copying generated entities", () => {
+    const results = check({
+      frontend: 'type ErdResponse = { schema: "yo" };',
+      backend: backend.replace(
+        'export type GetApiErdResponses = { "2XX": { nodes: Node[] } };',
+        'type XYZ = "yo"; export type GetApiErdResponses = { "2XX": { schema: XYZ; unused: { deep: number } } };',
+      ),
+      endpoint,
+    });
+    assert.equal(
+      results.find((r) => r.id.endsWith("response.2XX"))?.status,
+      "pass",
+    );
+  });
   it("resolves differently named nested entities without importing generated types into the frontend", () => {
     const results = check({ frontend, backend, endpoint });
     assert.deepEqual(
