@@ -254,6 +254,9 @@
   this query may reference: a table in another database (the provider is database-scoped, so it
   is simply absent), an inactive one, or one the warehouse hides."
   [metadata-provider table-id]
+  ;; Any lookup failure — not just a miss — is treated as "not referenceable". This pass decides
+  ;; only what a numeric id is allowed to name; it is deliberately not the place a provider
+  ;; outage is diagnosed, and failing closed here is the safe direction.
   (when-let [table (try
                      (lib.metadata.protocols/table metadata-provider table-id)
                      (catch Exception _ nil))]
@@ -268,6 +271,7 @@
   querying, and the portable dialect cannot name them because they are absent from the by-name
   fetch."
   [metadata-provider field-id]
+  ;; Catch-all, for the same reason as [[visible-table]]: fail closed, diagnose elsewhere.
   (when-let [field (try
                      (lib.metadata.protocols/field metadata-provider field-id)
                      (catch Exception _ nil))]
