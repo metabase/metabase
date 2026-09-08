@@ -1707,25 +1707,11 @@
                                   :else cols)]
                [k updated-cols]))))))
 
-(defn- export-timeline-events [settings]
-  (when (seq (:timeline.excluded_timeline_event_ids settings))
-    (log/warn "Dropping individually hidden timeline events from the export: TimelineEvent has no entity_id"))
+(defn- clear-timeline-events [settings]
   (-> settings
-      (m/update-existing :timeline.selected_timeline_ids
-                         (fn [ids]
-                           (into [] (keep #(fk-elide (*export-fk* % :model/Timeline))) ids)))
-      ;; TimelineEvent has no entity_id, so raw ids would hide unrelated events on the target instance
+      ;; Removing the key would restore collection-default events in the question editor.
+      (m/update-existing :timeline.selected_timeline_ids (constantly []))
       (dissoc :timeline.excluded_timeline_event_ids)))
-
-(defn- import-timeline-events [settings]
-  ;; lenient: a timeline missing from the archive is dropped instead of aborting the import
-  (binding [resolve/*import-resolver*
-            @(requiring-resolve 'metabase.models.serialization.resolve.db/lenient-import-resolver)]
-    (-> settings
-        (m/update-existing :timeline.selected_timeline_ids
-                           (fn [eids]
-                             (into [] (keep #(*import-fk* % :model/Timeline)) eids)))
-        (dissoc :timeline.excluded_timeline_event_ids))))
 
 (defn export-visualization-settings
   "Given the `:visualization_settings` map, convert all its field-ids to portable `[db schema table field]` form."
@@ -1737,7 +1723,7 @@
         export-viz-click-behavior
         export-visualizer-settings
         export-pivot-table
-        export-timeline-events
+        clear-timeline-events
         (update :column_settings export-column-settings))))
 
 (defn- import-viz-link-card
@@ -1829,7 +1815,7 @@
         import-viz-click-behavior
         import-visualizer-settings
         import-pivot-table
-        import-timeline-events
+        clear-timeline-events
         (update :column_settings import-column-settings))))
 
 (defn- viz-link-card-deps
@@ -1843,14 +1829,6 @@
         (raw-ref-id? allow-int-ids? id) #{[{:model "Table" :id id}]})
       #{[{:model (name (link-card-model->toucan-model model))
           :id    id}]})))
-
-(defn- viz-timeline-deps
-  [allow-int-ids? settings]
-  (when-let [ids (seq (:timeline.selected_timeline_ids settings))]
-    (into #{}
-          (comp (filter #(or (portable-id? %) (raw-ref-id? allow-int-ids? %)))
-                (map (fn [id] [{:model "Timeline" :id id}])))
-          ids)))
 
 (defn- viz-click-behavior-deps
   [settings]
@@ -1877,11 +1855,10 @@
                                            vals
                                            (map viz-click-behavior-deps))
         link-card-deps            (viz-link-card-deps allow-int-ids? viz)
-        click-behavior-deps       (viz-click-behavior-deps viz)
-        timeline-deps             (viz-timeline-deps allow-int-ids? viz)]
+        click-behavior-deps       (viz-click-behavior-deps viz)]
     (->> (concat column-settings-keys-deps
                  column-settings-vals-deps
-                 [(mbql-deps allow-int-ids? viz) link-card-deps click-behavior-deps timeline-deps])
+                 [(mbql-deps allow-int-ids? viz) link-card-deps click-behavior-deps])
          (filter some?)
          (reduce set/union #{}))))
 

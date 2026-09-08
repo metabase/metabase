@@ -78,9 +78,8 @@
 (def ^:private structural-content-models
   "Content models whose absence from the archive is tolerated on import, so a reference to one is never a completeness
    failure. A selective export routinely omits the Collection tree an entity lives in; the entity then loads at the
-   root of the target rather than producing a dangling reference. Likewise a Card saved showing a Timeline that is not
-   in the archive imports without it and shows no events."
-  #{"Collection" "Timeline"})
+   root of the target rather than producing a dangling reference."
+  #{"Collection"})
 
 (defn- unsatisfied-dependencies
   "The `deps` that won't be satisfied in the archive, each tagged with a `:reason` (see the namespace docstring for the

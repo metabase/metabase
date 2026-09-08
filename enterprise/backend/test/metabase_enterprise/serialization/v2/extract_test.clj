@@ -2822,12 +2822,11 @@
               "Table/Field should not be dependencies"))))))
 
 (deftest card-export-timeline-events-test
-  (testing "A card saved showing timeline events exports them as portable references"
+  (testing "Exporting a card resets saved timeline event choices"
     (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [:model/Collection {coll-id :id} {:name "Birds"}
-                         :model/Timeline {timeline-id  :id
-                                          timeline-eid :entity_id} {:name          "Migration seasons"
-                                                                    :collection_id coll-id}
+                         :model/Timeline {timeline-id :id} {:name          "Migration seasons"
+                                                            :collection_id coll-id}
                          :model/TimelineEvent {event-id :id} {:timeline_id timeline-id
                                                               :name        "Swallows return"
                                                               :timestamp   #t "2027-04-20T00:00:00Z"}
@@ -2837,15 +2836,15 @@
                                                     {:timeline.selected_timeline_ids       [timeline-id]
                                                      :timeline.excluded_timeline_event_ids [event-id]}}]
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))]
-          (is (= [timeline-eid]
+          (is (= []
                  (get-in ser [:visualization_settings :timeline.selected_timeline_ids]))
-              "the shown timeline travels as its entity id")
+              "selected timelines are reset")
           (is (not (contains? (:visualization_settings ser)
                               :timeline.excluded_timeline_event_ids))
-              "hidden events are dropped: timeline_event has no portable id")
-          (is (contains? (set (serdes/deserialization-dependencies ser))
-                         [{:model "Timeline" :id timeline-eid}])
-              "the timeline is a dependency, so it loads first"))))))
+              "hidden event choices are omitted")
+          (is (not-any? #(some (fn [step] (= "Timeline" (:model step))) %)
+                        (serdes/deserialization-dependencies ser))
+              "saved timeline choices do not add dependencies"))))))
 
 (deftest segment-export-strips-table-id-test
   (testing "Segment export omits table_id — derivable from definition"

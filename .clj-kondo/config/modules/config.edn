@@ -1525,7 +1525,6 @@
                     :model/NativeQuerySnippet
                     :model/Segment
                     :model/Table
-                    :model/Timeline
                     :model/User}}
 
   mq
