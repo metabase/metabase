@@ -43,7 +43,7 @@ export function MappingEditorRow({
 }) {
   const applicationName = useSelector(getApplicationName);
 
-  /** The editor is inside the page form, so Enter must not reach its submit button */
+  // the editor is inside the page form, so Enter must not reach its submit button
   const handleNameKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.preventDefault();

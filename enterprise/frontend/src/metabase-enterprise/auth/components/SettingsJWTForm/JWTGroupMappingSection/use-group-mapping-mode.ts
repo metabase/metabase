@@ -4,8 +4,19 @@ import { t } from "ttag";
 import type { GroupMappingSettingsState } from "./use-group-mapping-settings";
 import type { JWTGroupSyncMode } from "./utils";
 
+type GroupMappingModeState = {
+  mode: JWTGroupSyncMode;
+  hasMappings: boolean;
+  isClearConfirmOpen: boolean;
+  select: (nextMode: JWTGroupSyncMode) => Promise<void>;
+  confirmClear: () => Promise<void>;
+  cancelClear: () => void;
+};
+
 /** The backend stores no mode, so this derives it from the two settings and writes what each switch means */
-export function useGroupMappingMode(groupMapping: GroupMappingSettingsState) {
+export function useGroupMappingMode(
+  groupMapping: GroupMappingSettingsState,
+): GroupMappingModeState {
   // manual without mappings only exists on the client, until the first mapping is saved
   const [isManualPending, setIsManualPending] = useState(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
@@ -64,11 +75,9 @@ export function useGroupMappingMode(groupMapping: GroupMappingSettingsState) {
     setIsManualPending(nextMode === "manual" && !hasMappings);
     if (nextMode === "off") {
       await switchOff();
-    }
-    if (nextMode === "manual") {
+    } else if (nextMode === "manual") {
       await switchToManual();
-    }
-    if (nextMode === "automatic") {
+    } else if (nextMode === "automatic") {
       await switchToAutomatic();
     }
   };

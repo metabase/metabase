@@ -16,9 +16,19 @@ export type GroupMappingSettings = Partial<
   Pick<EnterpriseSettings, "jwt-group-sync" | "jwt-group-mappings">
 >;
 
+export type GroupMappingSettingsState = {
+  syncEnabled: boolean;
+  mappings: MappingsType;
+  isSaving: boolean;
+  saveSettings: (
+    settings: GroupMappingSettings,
+    options?: { successMessage?: string },
+  ) => Promise<boolean>;
+};
+
 const EMPTY_MAPPINGS: MappingsType = {};
 
-export function useGroupMappingSettings() {
+export function useGroupMappingSettings(): GroupMappingSettingsState {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
   const [updateSettings] = useUpdateSettingsMutation();
@@ -65,7 +75,3 @@ export function useGroupMappingSettings() {
 
   return { syncEnabled, mappings, isSaving, saveSettings };
 }
-
-export type GroupMappingSettingsState = ReturnType<
-  typeof useGroupMappingSettings
->;

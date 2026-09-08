@@ -22,13 +22,27 @@ type MappingCascade = {
   groupIds: GroupIds;
 };
 
+type MappingDeletionState = {
+  target: string | null;
+  targetGroupIds: GroupIds;
+  isDeletingLastMapping: boolean;
+  isDeleting: boolean;
+  requestDelete: (name: string) => void;
+  cancelDelete: () => void;
+  confirmDelete: (
+    value: DeleteMappingModalValueType,
+    groupIds: GroupIds,
+    name: string,
+  ) => Promise<void>;
+};
+
 export function useMappingDeletion({
   groupMapping,
   groupLookup,
 }: {
   groupMapping: GroupMappingSettingsState;
   groupLookup: GroupLookup;
-}) {
+}): MappingDeletionState {
   const [sendToast] = useToast();
   const [clearGroupMembership] = useClearGroupMembershipMutation();
   const [deletePermissionsGroup] = useDeletePermissionsGroupMutation();
@@ -42,7 +56,7 @@ export function useMappingDeletion({
   const isDeletingLastMapping =
     target != null && Object.keys(groupMapping.mappings).length === 1;
 
-  /** "nothing, just remove the mapping" arrives as null and touches no group */
+  // "nothing, just remove the mapping" arrives as null and touches no group
   const runCascade = async (cascade: MappingCascade | null) => {
     if (cascade == null) {
       return { failureCount: 0 };
