@@ -1360,21 +1360,24 @@
                       (is (nil? (:sanitized_user_agent convo))))))))))))))
 
 (deftest agent-streaming-returns-free-trial-limit-error-when-managed-provider-is-locked-test
-  (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
-                                     metabot.settings/llm-metabot-provider
-                                     "metabase/anthropic/claude-sonnet-4-6"]
-    (mt/with-dynamic-fn-redefs [premium-features/token-status             (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
-                                                                                                                                     :is-locked   true}}})
-                                metabot.config/check-metabot-enabled!     (constantly nil)
-                                metabot.persistence/start-turn!           (fn [& _]
-                                                                            (throw (ex-info "should not store messages" {})))
-                                api/native-agent-streaming-request        (fn [& _]
-                                                                            (throw (ex-info "should not call agent" {})))]
-      (mt/user-http-request :rasta :post 402 "metabot/agent-streaming"
-                            {:message         "test message"
-                             :context         {}
-                             :conversation_id (str (random-uuid))
-                             :state           {}}))))
+  ;; no premium features: with :ai-controls the fallback would (rightly) move the locked managed selection to a
+  ;; BYOK connection instead of rejecting the request — this test is about the rejection when there is no way out
+  (mt/with-premium-features #{}
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider
+                                       "metabase/anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [premium-features/token-status             (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
+                                                                                                                                       :is-locked   true}}})
+                                  metabot.config/check-metabot-enabled!     (constantly nil)
+                                  metabot.persistence/start-turn!           (fn [& _]
+                                                                              (throw (ex-info "should not store messages" {})))
+                                  api/native-agent-streaming-request        (fn [& _]
+                                                                              (throw (ex-info "should not call agent" {})))]
+        (mt/user-http-request :rasta :post 402 "metabot/agent-streaming"
+                              {:message         "test message"
+                               :context         {}
+                               :conversation_id (str (random-uuid))
+                               :state           {}})))))
 
 (deftest agent-streaming-provider-error-carries-its-code-test
   (testing "a provider that turned the request down reaches the client with its own message and an error code, so
