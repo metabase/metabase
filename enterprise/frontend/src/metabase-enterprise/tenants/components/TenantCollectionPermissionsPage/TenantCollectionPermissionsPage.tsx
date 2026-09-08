@@ -16,8 +16,8 @@ import {
 } from "metabase/admin/permissions/permissions";
 import type { PermissionEditorEntity } from "metabase/admin/permissions/types";
 import { assertNumericId } from "metabase/admin/permissions/types";
-import { getPermissionsBasePath } from "metabase/admin/permissions/utils/base-path";
 import { useListCollectionsTreeQuery } from "metabase/api";
+import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate, useParams } from "metabase/router";
 import type { CollectionId } from "metabase-types/api";

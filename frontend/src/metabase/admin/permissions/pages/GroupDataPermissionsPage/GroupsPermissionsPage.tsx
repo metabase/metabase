@@ -3,6 +3,7 @@ import { useAsync } from "react-use";
 import { t } from "ttag";
 
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
+import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -35,7 +36,6 @@ import type {
   RawGroupRouteParams,
 } from "../../types";
 import { parseGroupRouteParams } from "../../types";
-import { getPermissionsBasePath } from "../../utils/base-path";
 import {
   getGroupFocusPermissionsUrl,
   getGroupsBasePath,

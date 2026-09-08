@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { EmbeddingHubPermissionsBasePath } from "metabase/admin/permissions/components/EmbeddingHubPermissionsBasePath";
+import { EmbeddingHubPermissionsBasePath } from "metabase/embedding-hub/components/EmbeddingHubPermissionsBasePath";
 import { Box, Stack, Title } from "metabase/ui";
 
 const TAB_LABEL_INSET = "2.5rem";
