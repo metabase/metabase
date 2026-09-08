@@ -10,6 +10,7 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -40,7 +41,9 @@
 
 (defn- check-tile-permissions! [{:keys [card-id dataset-query]}]
   (if card-id
-    (api/read-check :model/Card card-id)
+    (let [card (api/read-check :model/Card card-id)]
+      (api/check (nil? (:dashboard_id card))
+                 [400 (tru "Question {0} belongs to another dashboard and cannot be placed on this one." card-id)]))
     (query-perms/check-run-permissions-for-query dataset-query)))
 
 (defn materialize!

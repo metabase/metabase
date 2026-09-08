@@ -371,7 +371,7 @@ export interface SaveMetabotEntityRequest {
   card: CreateCardRequest;
 }
 
-export interface SaveMetabotDashboardTile {
+export interface AdhocDashboardTile {
   title: string;
   display: CardDisplayType;
   dataset_query: DatasetQuery;
@@ -391,7 +391,7 @@ export interface SaveMetabotDashboardRequest {
     name: string;
     description: string | null;
     collection_id: CollectionId | null;
-    tiles: SaveMetabotDashboardTile[];
+    tiles: AdhocDashboardTile[];
   };
 }
 

@@ -114,6 +114,16 @@
              (get-in result [:data-parts 0 :data])))
       (is (re-find #"blank dashboard" (:output result))))))
 
+(deftest create-dashboard-rejects-dashboard-question-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dashboard {owner-id :id} {}
+                   :model/Card card {:dashboard_id owner-id :dataset_query (venues-query)}]
+      (let [result (create! (chart-memory)
+                            {:name  "Borrowed"
+                             :tiles [{:card_id (:id card) :title "Owned elsewhere"}]})]
+        (is (nil? (:data-parts result)))
+        (is (re-find #"belongs to dashboard" (:output result)))))))
+
 (deftest create-dashboard-unknown-card-test
   (mt/with-current-user (mt/user->id :crowberto)
     (let [result (create! (chart-memory)

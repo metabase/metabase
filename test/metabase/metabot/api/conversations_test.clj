@@ -666,7 +666,7 @@
               (is (= {:metabot_conversation_id convo-id :metabot_dashboard_id "d-1"}
                      (t2/select-one [:model/Dashboard :metabot_conversation_id :metabot_dashboard_id]
                                     :id (:id created))))
-              (is (some #{{:dashboard_id (:id created) :chart_id "d-1"}}
+              (is (some #{{:dashboard_id (:id created) :generated_dashboard_id "d-1"}}
                         (:saved_entities
                          (mt/user-http-request :crowberto :get 200
                                                (str "metabot/conversations/" convo-id))))))
@@ -688,6 +688,22 @@
                                                 :tiles [{:title "t" :display "table" :dataset_query (venues-query)
                                                          :row 0 :col 0 :size_x 12 :size_y 6}]}})
           (is (zero? (t2/count :model/Dashboard :name "x"))))))))
+
+(deftest record-saved-dashboard-rejects-dashboard-questions-test
+  (testing "a question internal to another dashboard cannot be placed on the saved dashboard"
+    (let [user-id (mt/user->id :crowberto)]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}
+                       :model/Dashboard {owner-id :id} {}
+                       :model/Card {card-id :id} {:dashboard_id owner-id :dataset_query (venues-query)}]
+          (mt/user-http-request :crowberto :post 400
+                                (str "metabot/conversations/" convo-id "/saved-dashboard")
+                                {:dashboard_id "d-owned"
+                                 :dashboard    {:name  "Borrowed"
+                                                :tiles [{:title "t" :display "table" :dataset_query (venues-query)
+                                                         :row 0 :col 0 :size_x 12 :size_y 6 :card_id card-id}]}})
+          (is (zero? (t2/count :model/Dashboard :name "Borrowed"))))))))
 
 (deftest record-saved-blank-dashboard-test
   (testing "a blank dashboard saves with no cards"
