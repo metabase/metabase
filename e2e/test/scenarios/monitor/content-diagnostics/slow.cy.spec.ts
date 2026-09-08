@@ -23,10 +23,10 @@ const SLOW_QUERY = `SELECT pg_sleep(${SLEEP_SECONDS})`;
 
 const SECONDS_DURATION = /^\d+\.\ds$/;
 
-// EMBEDDED_CARD_NAME is the document's internal copy of its card. Currently internal copies
-// are reported as slow findings, along with the document they embed. This should change
-// once GDGT-3147 lands, but for now we assert existing behavior.
-const SLOW = [CARD_NAME, DASHBOARD_NAME, EMBEDDED_CARD_NAME, DOCUMENT_NAME];
+// EMBEDDED_CARD_NAME is absent by design: embedding copies the card, and a document's own copies
+// are not finding subjects. Only the copy is ever executed below, so the name reaches the slow
+// list through the document roll-up alone.
+const SLOW = [CARD_NAME, DASHBOARD_NAME, DOCUMENT_NAME];
 
 function createSlowQuestion(name: string) {
   return H.createNativeQuestion({
@@ -84,6 +84,11 @@ describe(
           cy.findByText(name).should("be.visible");
         });
       });
+
+      cy.log("the document's own copy of its card is not a finding of its own");
+      cy.findByTestId("slow-content-list")
+        .findByText(EMBEDDED_CARD_NAME)
+        .should("not.exist");
 
       cy.log("each one reports a duration on the scale of the query itself");
       SLOW.forEach((name) => {

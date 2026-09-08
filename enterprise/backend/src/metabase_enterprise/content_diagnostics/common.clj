@@ -146,6 +146,27 @@
     :transform  collection/transforms-ns
     nil))
 
+(defn remove-document-internal-card-findings-xf
+  "Transducer dropping findings whose subject is a card a document owns (`report_card.document_id`
+  non-NULL): the copy an embed makes, a card authored inside the document, a card an exploration Summary
+  materializes. The platform already keeps these out of collection items and out of card search; findings
+  follow suit.
+
+  Only the subject is dropped, never `details` - a document's `slow` finding names these same cards in
+  `slow_entity_ids`, so a wider filter would empty every document roll-up.
+
+  `duplicated` excludes them from its candidate rows too: peers come from that row set, so a copy dropped
+  only here leaves the card it copies flagged against a peer no one can see.
+
+  The owned ids are read once, when the transducer is built, so the caller can fuse this into the pass it
+  already makes over the findings."
+  []
+  ;; the whole owned set rather than the ids a finding mentions, so the filter stays stateless and
+  ;; composable; `idx_repord_card_document_id` serves the predicate. The card after-select still runs per
+  ;; row, but an :id-only projection short-circuits its schema-upgrade and metric-description branches
+  (let [document-owned (t2/select-pks-set [:model/Card :id] {:where [:not= :document_id nil]})]
+    (remove #(and (= (:entity-type %) :card) (contains? document-owned (:entity-id %))))))
+
 (defn attach-entity-attrs
   "Stamp each finding with the denormalized display/sort/filter columns - `:entity-name`,
   `:entity-created-at`, `:entity-creator-id`, `:entity-creator-name`, `:entity-kind`,

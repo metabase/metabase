@@ -69,20 +69,26 @@
 (defn detect
   "Run every checker instance-wide - each as its own `checker.<name>` stage - and return a de-duplicated
   vector of finding maps. De-dupes on (entity-type, entity-id, finding-type): a checker or the stale query's
-  one-to-many joins can emit the same finding twice, and no intra-scan duplicate may reach the DB."
+  one-to-many joins can emit the same finding twice, and no intra-scan duplicate may reach the DB. Also
+  drops findings on document-owned cards, so every checker gets that rule for free."
   []
   (let [findings-per-checker
         (mapv (fn [{checker-name :name :keys [run]}]
                 (run-stage! "checker" (str "checker." checker-name)
                             ;; realize inside the stage, so a lazy checker's work and throws stay its own
                             #(let [findings (vec (run))]
-                               ;; per-checker and pre-dedupe - a different grain from `inserted-finding-count`
+                               ;; per-checker, and before both the dedupe and the document-owned drop - a
+                               ;; different grain from `inserted-finding-count`
                                (tracing/add-span-attrs!
                                 :tasks
                                 {:content-diagnostics/checker-finding-count (count findings)})
                                findings)))
               checkers)]
-    (into [] (comp cat (m/distinct-by (juxt :entity-type :entity-id :finding-type))) findings-per-checker)))
+    (into []
+          (comp cat
+                (m/distinct-by (juxt :entity-type :entity-id :finding-type))
+                (common/remove-document-internal-card-findings-xf))
+          findings-per-checker)))
 
 ;;; ----------------------------------------------- scan ------------------------------------------------
 
