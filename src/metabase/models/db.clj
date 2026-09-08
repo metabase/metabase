@@ -340,9 +340,9 @@
   (t2/select :metadata/table :db_id database-id :schema schema :name table-name))
 
 (mu/defn card-serdes-columns
-  "The id, entity id, Collection id, Database id, and schema of the Card with `card-id`, or nil."
+  "The id, entity id, Collection id, and Database id of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :id :entity_id :collection_id :database_id :card_schema] :id card-id))
+  (t2/select-one [:model/Card :id :entity_id :collection_id :database_id] :id card-id))
 
 (mu/defn measure-serdes-columns
   "The id, entity id, and Table id of the Measure with `measure-id`, or nil."
