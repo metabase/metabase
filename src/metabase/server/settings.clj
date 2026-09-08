@@ -6,8 +6,7 @@
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.system.core :as system]
-   [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.string :as u.str]))
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (def ^:private default-allowed-iframe-hosts
   "youtube.com,
@@ -125,9 +124,7 @@ x.com")
   :encryption :when-encryption-key-set
   :export?    false
   :audit      :no-value
-  :getter     (fn []
-                (-> (setting/get-value-of-type :string :metabot-slack-signing-secret)
-                    (u.str/mask 4))))
+  :sensitive? true)
 
 (defn unobfuscated-metabot-slack-signing-secret
   "Get the unobfuscated value of [[metabot-slack-signing-secret]]."

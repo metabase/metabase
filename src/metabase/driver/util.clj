@@ -885,7 +885,7 @@
   for full details."
   [driver]
   (if-some [conn-prop-fn (get-method driver/connection-properties driver)]
-    (let [all-fields      (conn-prop-fn driver)
+    (let [all-fields      (vals (collect-all-props-by-name (conn-prop-fn driver)))
           password-fields (filter #(contains? #{:password :secret} (keyword (get % :type))) all-fields)]
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))

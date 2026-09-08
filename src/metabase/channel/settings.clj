@@ -6,8 +6,7 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [metabase.util.string :as u.str]))
+   [metabase.util.malli.schema :as ms]))
 
 (defsetting slack-app-token
   (deferred-tru
@@ -15,9 +14,7 @@
         "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
   :encryption :when-encryption-key-set
   :visibility :settings-manager
-  :getter (fn []
-            (-> (setting/get-value-of-type :string :slack-app-token)
-                (u.str/mask 9))))
+  :sensitive? true)
 
 (defn unobfuscated-slack-app-token
   "Get the unobfuscated value of [[slack-app-token]]."

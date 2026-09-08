@@ -3,14 +3,23 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.settings :as channel.settings]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt])
   (:import (clojure.lang ExceptionInfo)))
 
-(deftest slack-app-token-truncation-test
-  (testing "slack-app-token is truncated when fetched by the setting's custom getter"
-    (mt/with-temporary-setting-values [slack-app-token "xoxb-781236542736-2364535789652-GkwFDQoHqzXDVsC6GzqYUypD"]
-      (is (= "xoxb-7812...UypD"
-             (channel.settings/slack-app-token))))))
+(deftest slack-app-token-masking-test
+  (let [token "xoxb-781236542736-2364535789652-GkwFDQoHqzXDVsC6GzqYUypD"]
+    (mt/with-temporary-setting-values [slack-app-token token]
+      (testing "the setting reads back its real value -- masking belongs at the API boundary, not in a custom getter"
+        (is (= token (channel.settings/slack-app-token)))
+        (is (= token (channel.settings/unobfuscated-slack-app-token))))
+      (testing "the API hands the client a mask instead"
+        (is (= (setting/obfuscate-value token)
+               (mt/user-http-request :crowberto :get 200 "setting/slack-app-token"))))
+      (testing "and echoing that mask back does not overwrite the stored token"
+        (mt/user-http-request :crowberto :put 204 "setting/slack-app-token"
+                              {:value (setting/obfuscate-value token)})
+        (is (= token (channel.settings/unobfuscated-slack-app-token)))))))
 
 (deftest slack-cache-updated-at-nil
   (mt/with-temporary-setting-values [slack-channels-and-usernames-last-updated nil]

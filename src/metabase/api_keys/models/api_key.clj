@@ -55,17 +55,20 @@
   {:scope mi/transform-keyword
    :key   (mi/transform-encrypted-text "api_key.key")})
 
-(mu/defn- expose :- :string
-  ^String [s :- [:or ::u.secret/secret :string]]
-  (cond-> s
-    (u.secret/secret? s) u.secret/expose))
+(mu/defn secret-key :- ::api-keys.schema/key.secret
+  "Wrap a raw API key string as a [[u.secret/secret]], declaring how much of it is a non-sensitive lookup prefix.
+  Every API key should be constructed through here so that `mb_1234` stays the only revealable part."
+  [k :- ::api-keys.schema/key.raw]
+  (u.secret/secret k {:prefix-length api-keys.schema/prefix-length}))
 
 (mu/defn prefix :- ::api-keys.schema/prefix
   "Given an API key, returns the standardized prefix for that API key."
   ^String [k :- [:or
                  ::api-keys.schema/key.unhashed-or-secret
                  ::api-keys.schema/prefix]]
-  (subs (expose k) 0 api-keys.schema/prefix-length))
+  (if (u.secret/secret? k)
+    (u.secret/prefix k)
+    (subs k 0 api-keys.schema/prefix-length)))
 
 (mu/defn- add-prefix :- [:map
                          [:key_prefix {:optional true} ::api-keys.schema/prefix]]
@@ -77,7 +80,7 @@
 (mu/defn generate-key :- ::api-keys.schema/key.secret
   "Generates a new API key - a random base64 string prefixed with `mb_`"
   []
-  (u.secret/secret
+  (secret-key
    (str "mb_" (u.random/secure-base64 api-keys.schema/generated-bytes-key-length))))
 
 (mu/defn mask :- ::api-keys.schema/key.masked
@@ -93,7 +96,9 @@
 
 (mu/defn- hash-bcrypt :- ::api-keys.schema/key.hashed
   [k :- ::api-keys.schema/key.unhashed-or-secret]
-  (-> k expose u.password/hash-bcrypt))
+  (if (u.secret/secret? k)
+    (u.secret/derive-with k u.password/hash-bcrypt)
+    (u.password/hash-bcrypt k)))
 
 (mu/defn- add-key
   "Adds the `key` based on the `:metabase.api-keys/unhashed-qkey passed in."
@@ -190,7 +195,7 @@
   []
   (u/auto-retry 5
     (let [api-key (generate-key)
-          prefix (prefix (u.secret/expose api-key))]
+          prefix (prefix api-key)]
       ;; we could make this more efficient by generating 5 API keys up front and doing one select to remove any
       ;; duplicates. But a duplicate should be rare enough to just do multiple queries for now.
       (if-not (api-keys.db/api-key-prefix-exists? prefix)

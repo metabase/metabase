@@ -475,7 +475,11 @@
         all-unset? (and (nil? slack-connect-client-id)
                         (nil? slack-connect-client-secret)
                         (nil? metabot-slack-signing-secret))
+        ;; a client echoing back the mask the API handed it is not supplying a new secret. set-many! below already
+        ;; ignores such a write (the setting is :sensitive?), but the version bump is a side effect of this endpoint
+        ;; and would otherwise invalidate every existing Slack auth identity on a form save that changed nothing.
         signing-secret-changed? (and all-set?
+                                     (not (setting/obfuscated-value? metabot-slack-signing-secret))
                                      (not= metabot-slack-signing-secret
                                            (server.settings/unobfuscated-metabot-slack-signing-secret)))]
     ;; all values must be set together or unset together

@@ -6,8 +6,7 @@
    [metabase.settings.core :as setting :refer [defsetting define-multi-setting define-multi-setting-impl]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.json :as json]
-   [metabase.util.string :as u.str])
+   [metabase.util.json :as json])
   (:import
    (com.unboundid.ldap.sdk DN)))
 
@@ -164,9 +163,7 @@
   :encryption :when-encryption-key-set
   :export?    false
   :audit      :no-value
-  :getter     (fn []
-                (-> (setting/get-value-of-type :string :slack-connect-client-secret)
-                    (u.str/mask 4))))
+  :sensitive? true)
 
 (defn unobfuscated-slack-connect-client-secret
   "Get the unobfuscated value of [[slack-connect-client-secret]]."

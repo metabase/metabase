@@ -8,8 +8,7 @@
    [metabase.permissions.core :as perms]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.secret :as u.secret]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -62,12 +61,14 @@
       (let [group-id     (case group
                            "admin"     (u/the-id (perms/admin-group))
                            "all-users" (u/the-id (perms/all-users-group)))
-            unhashed-key (u.secret/secret key)
+            ;; this check has to run before the key is wrapped: secret-key validates the raw-key schema itself, and
+            ;; would otherwise pre-empt this more specific message (and reject an 11-character key differently)
             _            (when-not (and (<= 11 (count key) 254)
                                         (re-matches #"mb_[A-Za-z0-9+/=]+" key))
                            (throw (ex-info "Invalid API key format. Key must be between 11-254 characters and start with 'mb_'."
                                            {:name name})))
-            prefix       (api-key/prefix (u.secret/expose unhashed-key))
+            unhashed-key (api-key/secret-key key)
+            prefix       (api-key/prefix unhashed-key)
             creator      (get-admin-user-by-email creator)]
         ;; Check if there's an existing API key with the same prefix
         (when (advanced-config.db/api-key-prefix-exists? prefix)

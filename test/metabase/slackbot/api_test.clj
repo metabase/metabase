@@ -760,6 +760,31 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "metabot/slack/settings" creds))))))
 
+(deftest put-slack-settings-echoed-mask-does-not-overwrite-test
+  (testing "echoing back the mask the UI displayed keeps the stored credential rather than persisting the mask.
+           These settings mask via :sensitive? (i.e. at the API boundary), so this exercises the generic
+           set-value-of-type! guard rather than anything slackbot-specific."
+    (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled                true
+                                       server.settings/slack-connect-signing-secret-version 7]
+      (mt/with-temporary-raw-setting-values [slack-connect-client-id      "real-client-id"
+                                             slack-connect-client-secret  "real-client-secret"
+                                             metabot-slack-signing-secret "real-signing-secret"]
+        (let [masked-secret  (mt/user-http-request :crowberto :get 200 "setting/slack-connect-client-secret")
+              masked-signing (mt/user-http-request :crowberto :get 200 "setting/metabot-slack-signing-secret")]
+          (testing "sanity check: the API hands the client a mask, not the credential"
+            (is (not= "real-client-secret" masked-secret))
+            (is (not= "real-signing-secret" masked-signing)))
+          (is (= {:ok true}
+                 (mt/user-http-request :crowberto :put 200 "metabot/slack/settings"
+                                       {:slack-connect-client-id      "real-client-id"
+                                        :slack-connect-client-secret  masked-secret
+                                        :metabot-slack-signing-secret masked-signing})))
+          (testing "the real credentials survive"
+            (is (= "real-client-secret" (sso-settings/unobfuscated-slack-connect-client-secret)))
+            (is (= "real-signing-secret" (server.settings/unobfuscated-metabot-slack-signing-secret))))
+          (testing "and an unchanged signing secret does not rotate the version"
+            (is (= 7 (server.settings/slack-connect-signing-secret-version)))))))))
+
 (deftest put-slack-settings-signing-secret-version-test
   (testing "resaving the same signing secret does not increment the version"
     (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled true

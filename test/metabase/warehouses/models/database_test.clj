@@ -405,6 +405,29 @@
     (is (= driver.u/default-sensitive-fields
            (database/sensitive-fields-for-db {})))))
 
+;; register a dummy "driver" whose :password property is nested inside a :group -- the shape every driver's SSL block
+;; uses (see [[metabase.driver.postgres]])
+(driver/register! :test-nested-sensitive-driver, :parent #{:h2})
+
+(defmethod driver/connection-properties :test-nested-sensitive-driver
+  [_]
+  [{:name         "top-level-field"
+    :display-name "Top Level Field"
+    :type         :string}
+   {:type   :group
+    :fields [{:name         "nested-password"
+              :display-name "Nested Password"
+              :type         :password}
+             {:name         "nested-plain"
+              :display-name "Nested Plain"
+              :type         :string}]}])
+
+(deftest sensitive-fields-includes-nested-group-fields-test
+  (testing "a :password property nested inside a :group is redacted just like a top-level one"
+    (is (contains? (driver.u/sensitive-fields :test-nested-sensitive-driver) :nested-password)))
+  (testing "and non-sensitive nested properties are not swept in"
+    (is (not (contains? (driver.u/sensitive-fields :test-nested-sensitive-driver) :nested-plain)))))
+
 (def ^:private ^:dynamic *secret-can-connect?* (constantly true))
 
 (defmethod driver/can-connect? :secret-test-driver [& args] (apply *secret-can-connect?* args))

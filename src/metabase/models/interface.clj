@@ -32,6 +32,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.secret :as u.secret]
    [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -355,6 +356,28 @@
   [source]
   {:in  encryption/maybe-encrypt
    :out (decrypt-error-context source encryption/maybe-decrypt)})
+
+(defn transform-secret-text
+  "Like [[transform-encrypted-text]], but hands back a [[u.secret/secret]] instead of a bare String, so reading the
+  column does not by itself yield a usable credential — the caller must name an audience to [[u.secret/expose]] it.
+
+  `opts` are passed to [[u.secret/secret]], so a column whose leading characters are a non-sensitive lookup
+  identifier can pass `{:mask [:prefix n]}`. `:audience` is not set here: a Toucan transform sees a column value with
+  no row context, and the audience a secret is bound to is derived from the record it lives in.
+
+  The `:in` half deliberately *refuses* a `Secret` rather than stringifying it. Without that, a forgotten `expose`
+  would silently persist the redaction string over a real credential, because the catch-all `Object` JSON encoder in
+  [[metabase.server.middleware.json]] renders any unknown object with `str`."
+  ([source]
+   (transform-secret-text source nil))
+  ([source opts]
+   {:in  (fn [v]
+           (when (u.secret/secret? v)
+             (throw (ex-info (format "Refusing to write a Secret to %s: call expose with an audience first." source)
+                             {:source source})))
+           (encryption/maybe-encrypt v))
+    :out (comp #(some-> % (u.secret/secret opts))
+               (decrypt-error-context source encryption/maybe-decrypt))}))
 
 ;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
 ;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
