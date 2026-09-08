@@ -9,7 +9,9 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (com.fasterxml.jackson.core JsonParseException)))
 
 (set! *warn-on-reflection* true)
 
@@ -129,19 +131,19 @@
         (mi/encrypted-json-out
          (encryption/encrypt "{\"a\": 1}" {:secret-key (encryption/secret-key->hash "qwe")}))
         (is (=? [{:level   :error
-                  :e       nil
+                  :e       JsonParseException
                   :message "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?"}]
                 (messages)))))
     (testing "Invalid JSON throws correct error"
       (mt/with-log-messages-for-level [messages :error]
         (mi/encrypted-json-out "{\"a\": 1")
-        (is (=? [{:level :error, :e nil, :message #"(?s)^Error parsing JSON: .*"}]
+        (is (=? [{:level :error, :e JsonParseException, :message "Error parsing JSON"}]
                 (messages))))
       (mt/with-log-messages-for-level [messages :error]
         (encryption-test/with-secret-key "qwe"
           (mi/encrypted-json-out
            (encryption/encrypt "{\"a\": 1" {:secret-key (encryption/secret-key->hash "qwe")})))
-        (is (=? [{:level :error, :e nil, :message #"(?s)^Error parsing JSON: .*"}]
+        (is (=? [{:level :error, :e JsonParseException, :message "Error parsing JSON"}]
                 (messages)))))))
 
 (deftest ^:parallel instances-with-hydrated-data-test
