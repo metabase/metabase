@@ -1,9 +1,5 @@
-import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
-import { cardApi } from "metabase/api";
-
-import { avg, breakout, count, filter, orderBy, sum } from "..";
-
-import { TEST_SCHEMA } from "./fixtures";
+// Register mocks before loading the modules under test.
+// oxfmt-ignore
 import {
   createMockStore,
   mockFetchTableMetadata,
@@ -12,6 +8,13 @@ import {
   resetTestState,
   stagesOf,
 } from "./setup";
+
+import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
+import { cardApi } from "metabase/api";
+
+import { avg, breakout, count, filter, orderBy, sum } from "..";
+
+import { TEST_SCHEMA } from "./fixtures";
 
 beforeEach(resetTestState);
 

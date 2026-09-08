@@ -1,3 +1,14 @@
+// Register mocks before loading the modules under test.
+// oxfmt-ignore
+import {
+  TEST_DATASET_QUERY,
+  createDeferred,
+  createMockDatasetQuery,
+  mockUseLazySelector,
+  resetTestState,
+  stubSdkBundle,
+} from "./setup";
+
 import { act, renderHook, waitFor } from "@testing-library/react";
 
 import type { QueryDatasetResult } from "embedding-sdk-bundle/lib/query-dataset";
@@ -7,14 +18,6 @@ import type { DatasetQuery } from "metabase-types/api";
 import { useMetabaseQuery, useMetabaseQueryObject } from "..";
 
 import { TEST_SCHEMA } from "./fixtures";
-import {
-  TEST_DATASET_QUERY,
-  createDeferred,
-  createMockDatasetQuery,
-  mockUseLazySelector,
-  resetTestState,
-  stubSdkBundle,
-} from "./setup";
 
 beforeEach(resetTestState);
 

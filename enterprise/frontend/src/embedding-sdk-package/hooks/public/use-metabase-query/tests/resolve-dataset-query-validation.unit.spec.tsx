@@ -1,9 +1,12 @@
+// Register mocks before loading the modules under test.
+// oxfmt-ignore
+import { createMockStore, resetTestState } from "./setup";
+
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 
 import { avg, breakout, filter, orderBy, sum } from "..";
 
 import { TEST_SCHEMA } from "./fixtures";
-import { createMockStore, resetTestState } from "./setup";
 
 beforeEach(resetTestState);
 
