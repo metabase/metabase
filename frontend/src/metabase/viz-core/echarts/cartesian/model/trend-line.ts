@@ -36,15 +36,10 @@ type TrendFn = (days: number) => number;
 const getTrendKeyForSeries = (dataKey: DataKey) => `${dataKey}_trend`;
 
 const getTrendLineColor = (
-  rawSeries: RawSeries,
   seriesModel: SeriesModel,
+  customColor: string | undefined,
   renderingContext: RenderingContext,
 ) => {
-  // The computed "graph.trendline_color" always has a default based on the first
-  // series, so multi-series charts read the stored setting to keep per-series
-  // trend line colors until the user explicitly picks one color for all of them.
-  const customColor =
-    rawSeries[0].card.visualization_settings?.["graph.trendline_color"];
   if (customColor != null) {
     return renderingContext.getColor(customColor);
   }
@@ -186,12 +181,23 @@ export const getTrendLines = (
     return trendDatum;
   });
 
+  /**
+   * The stored setting is read because the computed one always has a
+   * series-based default. A custom color only applies to a single trend line;
+   * with multiple ones the setting is hidden in the UI, so each trend line
+   * keeps the default shade of its own series color.
+   */
+  const customColor =
+    seriesModelsWithTrends.length === 1
+      ? rawSeries[0].card.visualization_settings?.["graph.trendline_color"]
+      : undefined;
+
   const trendSeriesModels: TrendLineSeriesModel[] = seriesModelsWithTrends.map(
     ([seriesModel]) => ({
       dataKey: getTrendKeyForSeries(seriesModel.dataKey),
       sourceDataKey: seriesModel.dataKey,
       name: `${seriesModel.name}; trend line`, // not used in UI
-      color: getTrendLineColor(rawSeries, seriesModel, renderingContext),
+      color: getTrendLineColor(seriesModel, customColor, renderingContext),
       visible: true,
       column: seriesModel.column,
       columnIndex: seriesModel.columnIndex,

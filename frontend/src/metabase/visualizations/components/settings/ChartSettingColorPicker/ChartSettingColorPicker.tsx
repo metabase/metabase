@@ -13,6 +13,7 @@ interface ChartSettingColorPickerProps {
   value: string;
   title?: string;
   pillSize?: PillSize;
+  bordered?: boolean;
   onChange?: (newValue: string) => void;
   accentColorOptions?: AccentColorOptions;
 }
@@ -22,6 +23,7 @@ export const ChartSettingColorPicker = ({
   value,
   title,
   pillSize,
+  bordered,
   onChange,
   accentColorOptions = {
     main: true,
@@ -36,7 +38,12 @@ export const ChartSettingColorPicker = ({
   const withinPortal = !isEmbeddingSdk();
 
   return (
-    <Box className={cx(CS.flex, CS.alignCenter, className)}>
+    <Box
+      className={cx(CS.flex, CS.alignCenter, className)}
+      p={bordered ? "sm" : undefined}
+      bd={bordered ? "1px solid var(--mb-color-border-neutral)" : undefined}
+      bdrs={bordered ? "sm" : undefined}
+    >
       <ColorSelector
         value={value}
         colors={getAccentColors(accentColorOptions)}
