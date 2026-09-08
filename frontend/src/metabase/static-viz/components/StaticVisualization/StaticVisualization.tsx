@@ -1,4 +1,4 @@
-import { resolveGoalSettingsForStaticViz } from "metabase/static-viz/lib/dynamic-goals";
+import { resolveGoalSettingsForStaticViz } from "metabase/static-viz/lib/resolve-goal-settings";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import {
   type StaticVisualizationProps,

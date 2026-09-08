@@ -6,7 +6,7 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
-import { resolveGoalSettingsForStaticViz } from "./dynamic-goals";
+import { resolveGoalSettingsForStaticViz } from "./resolve-goal-settings";
 
 jest.mock("metabase/viz-core/lib/dynamic-goal-settings", () => ({
   ...jest.requireActual("metabase/viz-core/lib/dynamic-goal-settings"),
