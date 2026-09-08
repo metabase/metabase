@@ -14,29 +14,22 @@ const REFERENCED_SETTINGS: ComputedVisualizationSettings = {
   "graph.goal_value": { type: "card", id: 9, column: "goal" },
 };
 
-function series(data: DatasetData, display: VisualizationDisplay = "line") {
-  return createMockSingleSeries({ display }, { data });
-}
-
-function data(referenced_entities: DatasetData["referenced_entities"]) {
-  return createMockDatasetData({
-    cols: [createMockColumn({ name: "count" })],
-    rows: [[1]],
-    referenced_entities,
-  });
-}
-
 describe("resolveGoalSettings", () => {
   it("passes static and unset goals through", () => {
     const settings = { "graph.goal_value": 10 };
 
-    expect(resolveGoalSettings(series(data({})), settings)).toBe(settings);
-    expect(resolveGoalSettings(series(data({})), {})).toEqual({});
+    expect(resolveGoalSettings(createSeries(createData({})), settings)).toBe(
+      settings,
+    );
+    expect(resolveGoalSettings(createSeries(createData({})), {})).toEqual({});
   });
 
   it("passes references through for a display that does not resolve graph goals", () => {
     expect(
-      resolveGoalSettings(series(data({}), "scalar"), REFERENCED_SETTINGS),
+      resolveGoalSettings(
+        createSeries(createData({}), "scalar"),
+        REFERENCED_SETTINGS,
+      ),
     ).toBe(REFERENCED_SETTINGS);
   });
 
@@ -46,11 +39,13 @@ describe("resolveGoalSettings", () => {
     it("passes a hidden goal line through", () => {
       const settings = { ...REFERENCED_SETTINGS, "graph.show_goal": false };
 
-      expect(resolveGoalSettings(series(data({})), settings)).toBe(settings);
+      expect(resolveGoalSettings(createSeries(createData({})), settings)).toBe(
+        settings,
+      );
     });
 
     it("substitutes the referenced value", () => {
-      const answered = data({
+      const answered = createData({
         card: {
           9: {
             status: "completed",
@@ -60,22 +55,39 @@ describe("resolveGoalSettings", () => {
       });
 
       expect(
-        resolveGoalSettings(series(answered), REFERENCED_SETTINGS),
+        resolveGoalSettings(createSeries(answered), REFERENCED_SETTINGS),
       ).toEqual({ ...REFERENCED_SETTINGS, "graph.goal_value": 250 });
     });
 
     it("throws for an unanswered reference", () => {
       expect(() =>
-        resolveGoalSettings(series(data({})), REFERENCED_SETTINGS),
+        resolveGoalSettings(createSeries(createData({})), REFERENCED_SETTINGS),
       ).toThrow("Couldn't load the value this chart's goal line depends on.");
     });
 
     it("throws for a failed reference", () => {
-      const failed = data({ card: { 9: { status: "failed", error: "boom" } } });
+      const failed = createData({
+        card: { 9: { status: "failed", error: "boom" } },
+      });
 
       expect(() =>
-        resolveGoalSettings(series(failed), REFERENCED_SETTINGS),
+        resolveGoalSettings(createSeries(failed), REFERENCED_SETTINGS),
       ).toThrow("Couldn't load the value this chart's goal line depends on.");
     });
   });
 });
+
+function createSeries(
+  data: DatasetData,
+  display: VisualizationDisplay = "line",
+) {
+  return createMockSingleSeries({ display }, { data });
+}
+
+function createData(referencedEntities: DatasetData["referenced_entities"]) {
+  return createMockDatasetData({
+    cols: [createMockColumn({ name: "count" })],
+    rows: [[1]],
+    referenced_entities: referencedEntities,
+  });
+}
