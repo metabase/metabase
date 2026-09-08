@@ -150,7 +150,15 @@
 
 (defn- render-message-body
   [template message-context attachments]
-  (vec (concat [{:type "text/html; charset=utf-8" :content (render-body template message-context)}] attachments)))
+  (let [parts (vec (concat [{:type "text/html; charset=utf-8" :content (render-body template message-context)}]
+                           attachments))]
+    ;; postal defaults an untagged body to a top-level multipart/mixed, under which some mail clients
+    ;; (e.g. Thunderbird) refuse to resolve cid: references and show the inline images as broken/attached
+    ;; instead. Tagging the body with :related (-> multipart/related, see postal.message/eval-multipart)
+    ;; fixes that, but only makes sense when there's actually an inline part to relate the HTML to.
+    (if (some #(= :inline (:type %)) attachments)
+      (into [:related] parts)
+      parts)))
 
 (defn- make-message-attachment [[content-id url]]
   {:type         :inline
