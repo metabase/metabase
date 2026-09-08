@@ -689,6 +689,22 @@
                                                          :row 0 :col 0 :size_x 12 :size_y 6}]}})
           (is (zero? (t2/count :model/Dashboard :name "x"))))))))
 
+(deftest record-saved-blank-dashboard-test
+  (testing "a blank dashboard saves with no cards"
+    (let [user-id (mt/user->id :crowberto)]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}]
+          (let [created (mt/user-http-request :crowberto :post 200
+                                              (str "metabot/conversations/" convo-id "/saved-dashboard")
+                                              {:dashboard_id "d-blank"
+                                               :dashboard    {:name "Enterprise Sales Dashboard (test)" :tiles []}})]
+            (is (= "Enterprise Sales Dashboard (test)" (:name created)))
+            (is (zero? (t2/count :model/DashboardCard :dashboard_id (:id created))))
+            (is (= {:metabot_conversation_id convo-id :metabot_dashboard_id "d-blank"}
+                   (t2/select-one [:model/Dashboard :metabot_conversation_id :metabot_dashboard_id]
+                                  :id (:id created))))))))))
+
 (deftest record-saved-entity-collection-mismatch-test
   (testing "an explicit collection_id that doesn't match the dashboard's own collection 400s"
     (let [user-id (mt/user->id :crowberto)]

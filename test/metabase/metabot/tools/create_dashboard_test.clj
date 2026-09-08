@@ -102,6 +102,18 @@
           (is (map? (:query (first tiles)))))
         (is (string? dashboard-id))))))
 
+(deftest create-dashboard-blank-test
+  (let [memory       (chart-memory)
+        result       (create! memory {:name "Enterprise Sales Dashboard (test)"})
+        dashboard-id (get-in result [:structured-output :dashboard_id])]
+    (testing "omitting tiles creates a blank dashboard with just the title"
+      (is (string? dashboard-id))
+      (is (= {:dashboard_id dashboard-id :name "Enterprise Sales Dashboard (test)" :tiles []}
+             (get-in @memory [:state :dashboards dashboard-id])))
+      (is (= {:type "dashboard" :id dashboard-id :title "Enterprise Sales Dashboard (test)" :tiles []}
+             (get-in result [:data-parts 0 :data])))
+      (is (re-find #"blank dashboard" (:output result))))))
+
 (deftest create-dashboard-unknown-card-test
   (mt/with-current-user (mt/user->id :crowberto)
     (let [result (create! (chart-memory)

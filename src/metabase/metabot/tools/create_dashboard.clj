@@ -63,7 +63,7 @@
   [:map {:closed true}
    [:name [:string {:min 1}]]
    [:description {:optional true} [:maybe :string]]
-   [:tiles [:vector {:min 1} tile-schema]]])
+   [:tiles {:optional true} [:maybe [:vector tile-schema]]]])
 
 (defn- resolve-generated-chart [chart-id]
   (or (shared/resolve-generated-chart chart-id)
@@ -120,7 +120,8 @@
 (mu/defn ^{:tool-name "create_dashboard"
            :scope     scope/agent-dashboard-create}
   create-dashboard-tool
-  "Create a dashboard from charts and queries you already created in this conversation.
+  "Create a dashboard from charts and queries you already created in this conversation,
+  or a blank dashboard with just a title.
 
   Provide `tiles` in the exact order they should appear on the dashboard — the layout
   fills the grid top-left to bottom-right following your order. Each tile references
@@ -135,6 +136,10 @@
   tile a coarse `size` hint when it deserves more room: `wide` (18 columns), `tall`
   (9 columns, 12 rows), or `full` (the whole width). You cannot control exact
   positions.
+
+  Omit `tiles` to create a blank dashboard when the user wants to start from an empty
+  dashboard with a custom title and add questions later. Once it is saved, you can add
+  charts to it with `save_entity` using a `dashboard` destination.
 
   You CANNOT edit a dashboard after creating it, so choose carefully what to include
   and get the order and sizing right in this single call.
@@ -154,7 +159,7 @@
                          description (assoc :description description))]
       (when shared/*memory-atom*
         (swap! shared/*memory-atom* memory/set-dashboard dashboard-id dashboard))
-      {:output            (str "<result>\nCreated dashboard \"" dashboard-name "\" with "
+      {:output            (str "<result>\nCreated " (if (seq tiles) "dashboard" "blank dashboard") " \"" dashboard-name "\" with "
                                (count tiles) " tiles. Its id is `" dashboard-id "`.\n</result>\n"
                                "<instructions>\nThe dashboard is displayed to the user. It is "
                                "not saved anywhere yet — offer to save it with `save_entity` "
