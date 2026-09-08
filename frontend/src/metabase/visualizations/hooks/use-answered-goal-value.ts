@@ -25,14 +25,10 @@ const RESOLVING: GoalValueResult = {
 
 /**
  * Like `resolveGoalValue`, but a foreign reference the query can't answer is
- * answered by re-running the question's query with the references attached.
- * Keeps the error detail the goal input shows; `useResolvedGoalValue` reduces
- * it to a status for charts. `referencedEntities` lets a caller with several
- * inputs answer them all in one query; by default only `value`'s own entity is
- * asked for.
+ * answered by re-running the query with the referenced entities attached.
  */
 export function useAnsweredGoalValue(
-  datasetQuery: DatasetQuery | undefined,
+  query: DatasetQuery | undefined,
   data: DatasetData,
   value: GoalValue | null | undefined,
   referencedEntities: ReferencedEntity[] = getUnansweredGoalEntities(data, [
@@ -44,7 +40,7 @@ export function useAnsweredGoalValue(
     needsAnswer(resolved) && isGoalForeignColumnRef(value) ? value : null;
 
   const answered = useAnsweredGoalData(
-    datasetQuery,
+    query,
     data,
     unansweredRef != null ? referencedEntities : [],
   );
