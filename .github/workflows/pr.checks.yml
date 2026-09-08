@@ -18,6 +18,9 @@ jobs:
             /.github/scripts/update-pr-with-issues.js
             /backport.sh
           sparse-checkout-cone-mode: false
+          # download repo structure without file contents, fetched on demand since we only need a few files
+          # NOTE: this gets slow if we start accessing more files, remove this filter in that case.
+          filter: blob:none
 
       - parallel:
           - name: Block master branch PRs (from forks)
