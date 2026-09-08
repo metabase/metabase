@@ -277,7 +277,7 @@
     (str "metabase-enterprise." (name m))
     (str "metabase." (name m))))
 
-(defn- module-ns-prefix
+(defn module-ns-prefix
   "Effective namespace prefix for a module: explicit `:ns-prefix` from the
   module's config if set, else the name-derived default."
   [config m]
