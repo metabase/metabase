@@ -463,6 +463,37 @@ jobs:
       - name: Check namespaces
         run: clojure -M:ee:drivers:load-namespaces
 
+  be-extra-tests:
+    if: ${{ !inputs.skip }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
+    name: Extra Tests
+    steps:
+      - uses: actions/checkout@v6
+      - name: Get correct base branch
+        id: get-base-branch
+        env:
+          # A PR carries its target branch in base_ref; a push or dispatch only has ref_name.
+          REF: ${{ github.base_ref || github.ref_name }}
+        run: | # sh
+          # match the release branch, otherwise master
+          if [[ "$REF" =~ ^release-x\.[0-9]+\.x$ ]]; then
+            echo "branch=$REF" >> "$GITHUB_OUTPUT"
+          else
+            echo "branch=master" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v6
+        with:
+          repository: metabase/extra-tests
+          path: extra-tests
+          ref: ${{ steps.get-base-branch.outputs.branch }}
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      - name: Prepare backend
+        uses: ./.github/actions/prepare-backend
+      - name: Check namespaces
+        run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test :only '["extra-tests/"]'
+
   be-cljfmt:
     if: ${{ !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -485,6 +516,7 @@ jobs:
       - be-cljfmt
       - be-check
       - be-tests
+      - be-extra-tests
     if: always() && !cancelled()
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
