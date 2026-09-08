@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { DimensionId, IconName } from "metabase-types/api";
 import type { ExplorationBlock } from "metabase/explorations/hooks";
 import {
   ActionIcon,
@@ -10,7 +11,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { DimensionId, IconName } from "metabase-types/api";
 
 import S from "./NewExplorationData.module.css";
 import { SelectedPills, TogglePill } from "./Pills";

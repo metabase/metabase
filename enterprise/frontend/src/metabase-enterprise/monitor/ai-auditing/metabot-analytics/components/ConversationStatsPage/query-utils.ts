@@ -1,9 +1,6 @@
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import type { DateFilterValue } from "metabase/querying/common/types";
-import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
-import type { ColorName } from "metabase/ui/colors/types";
 import type {
   CardMetadata,
   ColumnMetadata,
@@ -13,6 +10,9 @@ import type {
 } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { VisualizationSettings } from "metabase-types/api";
+import type { DateFilterValue } from "metabase/querying/common/types";
+import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
+import type { ColorName } from "metabase/ui/colors/types";
 
 export type GetColor = (name: ColorName) => string;
 

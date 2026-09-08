@@ -1,5 +1,5 @@
-import { useNativeQueryEditorContext } from "metabase/querying/components/NativeQueryEditor/context/NativeQueryEditorContext";
 import type { ParameterId } from "metabase-types/api";
+import { useNativeQueryEditorContext } from "metabase/querying/components/NativeQueryEditor/context/NativeQueryEditorContext";
 
 import { ResponsiveParametersList } from "./ResponsiveParametersList";
 

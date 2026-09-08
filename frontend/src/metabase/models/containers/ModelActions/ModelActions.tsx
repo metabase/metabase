@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMount } from "react-use";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type Table from "metabase-lib/v1/metadata/Table";
+import type { Card } from "metabase-types/api";
 import {
   skipToken,
   useGetCardQuery,
@@ -18,10 +22,6 @@ import type { State } from "metabase/redux/store";
 import { fetchTableForeignKeys } from "metabase/redux/tables";
 import { Outlet, useNavigate, useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type { Card } from "metabase-types/api";
 
 type ModelActionsParams = {
   slug: string;

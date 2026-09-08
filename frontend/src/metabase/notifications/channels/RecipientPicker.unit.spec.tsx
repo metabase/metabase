@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { createMockUser } from "metabase-types/api/mocks";
+import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 
 const TEST_USERS = [
   { id: 1, common_name: "Barb", email: "barb_holland@hawkins.test" }, // w

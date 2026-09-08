@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { Database } from "metabase-types/api";
 import { useGetTaskQuery, useListDatabasesQuery } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
@@ -27,7 +28,6 @@ import {
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { openSaveDialog } from "metabase/utils/dom";
-import type { Database } from "metabase-types/api";
 
 import { formatTaskDetails, getFilename } from "../../utils";
 import { MonitorBackLink } from "../MonitorBackLink";

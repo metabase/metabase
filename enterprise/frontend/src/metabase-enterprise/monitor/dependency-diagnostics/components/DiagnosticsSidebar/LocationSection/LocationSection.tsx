@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import { getNodeLocationInfo } from "metabase-enterprise/dependencies/utils";
+import type { DependencyNode } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Anchor, Breadcrumbs, FixedSizeIcon, Group } from "metabase/ui";
-import { getNodeLocationInfo } from "metabase-enterprise/dependencies/utils";
-import type { DependencyNode } from "metabase-types/api";
 
 type LocationSectionProps = {
   node: DependencyNode;

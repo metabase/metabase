@@ -3,6 +3,7 @@ import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
+import type { CardId } from "metabase-types/api";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -31,7 +32,6 @@ import {
   isLineXBrushRange,
   useClickedStateTooltipSync,
 } from "metabase/viz-core";
-import type { CardId } from "metabase-types/api";
 
 import type { CartesianHoveredObject } from "./types";
 import { useBrush } from "./use-brush";

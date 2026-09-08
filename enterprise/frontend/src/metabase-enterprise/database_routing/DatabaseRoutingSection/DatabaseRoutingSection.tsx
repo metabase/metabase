@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
+import { renderUserAttributesForSelect } from "metabase-enterprise/sandboxes/utils";
+import * as Urls from "metabase-enterprise/urls";
+import type { Database } from "metabase-types/api";
+import { isEngineKey } from "metabase-types/guards";
 import {
   Error,
   Label,
@@ -34,11 +39,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
-import { renderUserAttributesForSelect } from "metabase-enterprise/sandboxes/utils";
-import * as Urls from "metabase-enterprise/urls";
-import type { Database } from "metabase-types/api";
-import { isEngineKey } from "metabase-types/guards";
 
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 

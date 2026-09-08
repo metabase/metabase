@@ -1,4 +1,3 @@
-import { isNotNull } from "metabase/utils/types";
 import {
   getDimensionReferenceWithoutBaseType,
   isDimensionReferenceWithOptions,
@@ -12,6 +11,7 @@ import type {
   PivotTableCollapsedRowsSetting,
   PivotTableColumnSplitSetting,
 } from "metabase-types/api";
+import { isNotNull } from "metabase/utils/types";
 
 export function isColumnNameColumnSplitSetting(
   setting: PivotTableColumnSplitSetting,

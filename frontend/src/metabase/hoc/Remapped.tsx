@@ -1,10 +1,10 @@
 import { Component, type ComponentType } from "react";
 
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { fetchRemapping, getMetadata } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 type Remapping = [value: unknown, label: unknown];
 

@@ -2,8 +2,8 @@ import cx from "classnames";
 import { type ComponentPropsWithoutRef, forwardRef, useMemo } from "react";
 import { t } from "ttag";
 
-import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import type { Log } from "metabase-types/api";
+import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 
 import S from "./LogsViewer.module.css";
 import { createLogFormatter, getAllProcessUUIDs } from "./utils";

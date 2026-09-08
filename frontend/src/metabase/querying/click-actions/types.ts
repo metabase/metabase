@@ -1,5 +1,5 @@
-import type { LegacyDrill } from "metabase/visualizations/types";
 import type * as Lib from "metabase-lib";
+import type { LegacyDrill } from "metabase/visualizations/types";
 
 export type QueryClickActionsMode = {
   name: string;

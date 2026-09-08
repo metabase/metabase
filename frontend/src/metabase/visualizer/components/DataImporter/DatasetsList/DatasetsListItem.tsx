@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { Box, Button, Ellipsified, Icon, Tooltip } from "metabase/ui";
 import type {
   Field,
   VisualizationDisplay,
   VisualizerDataSource,
 } from "metabase-types/api";
+import { Box, Button, Ellipsified, Icon, Tooltip } from "metabase/ui";
 
 import S from "./DatasetsListItem.module.css";
 

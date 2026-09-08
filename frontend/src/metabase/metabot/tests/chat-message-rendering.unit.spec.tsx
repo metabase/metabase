@@ -11,6 +11,13 @@ import {
   setupGetMetabotConversationEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockDocument,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import type {
   MetabotAgentChatMessage,
@@ -32,13 +39,6 @@ import {
 import type { FetchedChatMessage } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { createMockState } from "metabase/redux/store/mocks";
 import { registerVisualizations } from "metabase/visualizations/register";
-import {
-  createMockCard,
-  createMockCollection,
-  createMockDocument,
-  createMockUser,
-} from "metabase-types/api/mocks";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import {
   AgentMessage,

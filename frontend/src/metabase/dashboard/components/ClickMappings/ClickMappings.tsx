@@ -2,10 +2,10 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
-import { Stack } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetColumn, Parameter } from "metabase-types/api";
+import CS from "metabase/css/core/index.css";
+import { Stack } from "metabase/ui";
 
 import { ClickMappingsTargetWithSource } from "./ClickMappingsTargetWithSource";
 import { ClickMappingsTargetWithoutSource } from "./ClickMappingsTargetWithoutSource";

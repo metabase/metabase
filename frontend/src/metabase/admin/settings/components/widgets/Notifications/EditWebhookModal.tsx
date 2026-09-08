@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { NotificationChannel } from "metabase-types/api";
 import {
   useDeleteChannelMutation,
   useEditChannelMutation,
 } from "metabase/api/channel";
 import { Modal } from "metabase/ui";
-import type { NotificationChannel } from "metabase-types/api";
 
 import {
   WebhookForm,

@@ -12,16 +12,16 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
-import { registerStaticVisualizations } from "metabase/static-viz/register";
-import type { VisualizationProps } from "metabase/visualizations/types";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockEmbedDataset,
   createMockPublicCard,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import { registerStaticVisualizations } from "metabase/static-viz/register";
+import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { PublicOrEmbeddedQuestion } from "../PublicOrEmbeddedQuestion";
 

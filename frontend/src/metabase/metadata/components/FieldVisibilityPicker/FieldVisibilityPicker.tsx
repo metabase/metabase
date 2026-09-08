@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import type { FieldVisibilityType } from "metabase-types/api";
 import { FIELD_VISIBILITY_TYPES } from "metabase/common/utils/fields";
 import {
   Select,
   SelectItemWithDescription,
   type SelectProps,
 } from "metabase/ui";
-import type { FieldVisibilityType } from "metabase-types/api";
 
 const DATA = getData();
 

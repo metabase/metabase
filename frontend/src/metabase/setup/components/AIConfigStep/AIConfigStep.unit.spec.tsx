@@ -12,12 +12,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { reinitialize } from "metabase/plugins";
-import type { SetupStep } from "metabase/redux/store";
-import {
-  createMockSetupState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type {
   EnterpriseSettings,
   LlmProviderConnection,
@@ -34,6 +28,12 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { reinitialize } from "metabase/plugins";
+import type { SetupStep } from "metabase/redux/store";
+import {
+  createMockSetupState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 
 import { AIConfigStep } from "./AIConfigStep";
 

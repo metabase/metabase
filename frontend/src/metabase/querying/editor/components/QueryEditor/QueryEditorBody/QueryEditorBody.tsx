@@ -3,18 +3,18 @@ import { type ReactNode, useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import { ResizeHandle } from "metabase/common/components/ResizeHandle";
-import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
-import { Notebook } from "metabase/querying/notebook/components/Notebook";
-import { useSetting } from "metabase/settings";
-import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   NativeQuerySnippet,
   RecentCollectionItem,
 } from "metabase-types/api";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import { ResizeHandle } from "metabase/common/components/ResizeHandle";
+import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
+import { Notebook } from "metabase/querying/notebook/components/Notebook";
+import { useSetting } from "metabase/settings";
+import { Box } from "metabase/ui";
 
 import type { QueryModalType } from "../../../../constants";
 import type {

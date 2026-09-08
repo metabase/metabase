@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetData, RawSeries } from "metabase-types/api";
 import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
 import {
   BOXPLOT_DATA_SETTINGS,
@@ -12,8 +14,6 @@ import {
   getMinSize,
   validateChartDataSettings,
 } from "metabase/viz-core";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData, RawSeries } from "metabase-types/api";
 
 export const BOXPLOT_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Box Plot`,

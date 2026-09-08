@@ -1,9 +1,9 @@
 import { c } from "ttag";
 
-import { useSetting } from "metabase/settings";
-import { Flex, Stack, Text, Title } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";
+import { useSetting } from "metabase/settings";
+import { Flex, Stack, Text, Title } from "metabase/ui";
 
 import { HeaderLinkGroup } from "./HeaderLinkGroup";
 

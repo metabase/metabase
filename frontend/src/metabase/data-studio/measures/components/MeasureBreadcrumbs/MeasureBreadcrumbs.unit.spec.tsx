@@ -4,8 +4,6 @@ import {
   setupTablesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route } from "metabase/router";
-import { checkNotNull } from "metabase/utils/types";
 import type { Collection, Measure, Table } from "metabase-types/api";
 import {
   createMockCollection,
@@ -13,6 +11,8 @@ import {
   createMockMeasure,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 
 import {
   DataModelMeasureBreadcrumbs,

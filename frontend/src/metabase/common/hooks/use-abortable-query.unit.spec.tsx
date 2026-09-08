@@ -2,10 +2,10 @@ import { QueryStatus, skipToken } from "@reduxjs/toolkit/query";
 import fetchMock from "fetch-mock";
 
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
-import { Api, useLazyListTasksQuery } from "metabase/api";
-import { listTag } from "metabase/api/tags";
 import type { ListTasksRequest, ListTasksResponse } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";
+import { Api, useLazyListTasksQuery } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 
 import { useAbortableQuery } from "./use-abortable-query";
 

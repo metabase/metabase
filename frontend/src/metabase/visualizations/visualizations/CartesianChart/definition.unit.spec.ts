@@ -1,5 +1,5 @@
-import { SERIES_SETTING_KEY } from "metabase/viz-core";
 import type { VisualizationSettings } from "metabase-types/api";
+import { SERIES_SETTING_KEY } from "metabase/viz-core";
 
 import { getCartesianChartDefinition } from "./definition";
 

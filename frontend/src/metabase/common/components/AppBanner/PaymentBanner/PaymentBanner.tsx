@@ -1,12 +1,12 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
+import type { TokenStatus } from "metabase-types/api";
 import { Banner } from "metabase/common/components/Banner";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { Text } from "metabase/ui";
-import type { TokenStatus } from "metabase-types/api";
 
 interface PaymentBannerProps {
   tokenStatus: TokenStatus;

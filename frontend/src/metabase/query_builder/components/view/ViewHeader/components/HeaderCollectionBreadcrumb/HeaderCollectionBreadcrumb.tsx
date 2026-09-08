@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
+import * as Urls from "metabase/urls";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 

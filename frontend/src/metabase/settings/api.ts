@@ -1,5 +1,12 @@
 import _ from "underscore";
 
+import type {
+  EnterpriseSettingKey,
+  EnterpriseSettingValue,
+  EnterpriseSettings,
+  SettingDefinition,
+  SettingDefinitionMap,
+} from "metabase-types/api";
 import { Api } from "metabase/api/api";
 import { invalidateTags, listTag, tag } from "metabase/api/tags";
 import { handleQueryFulfilled } from "metabase/api/utils/lifecycle";
@@ -8,13 +15,6 @@ import {
   setUserColorSchemeAfterUpdate,
 } from "metabase/utils/color-scheme";
 import MetabaseSettings from "metabase/utils/settings";
-import type {
-  EnterpriseSettingKey,
-  EnterpriseSettingValue,
-  EnterpriseSettings,
-  SettingDefinition,
-  SettingDefinitionMap,
-} from "metabase-types/api";
 
 export const sessionPropertiesPath = "/api/session/properties";
 

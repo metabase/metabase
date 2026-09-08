@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import type { Timeline } from "metabase-types/api";
 import {
   Ellipsified,
   Group,
@@ -9,7 +10,6 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type { Timeline } from "metabase-types/api";
 
 import S from "./NewExplorationData.module.css";
 

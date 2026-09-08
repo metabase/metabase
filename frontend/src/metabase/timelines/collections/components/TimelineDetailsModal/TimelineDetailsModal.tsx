@@ -2,6 +2,7 @@ import { type ChangeEventHandler, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getTimelineName } from "metabase/common/utils/timelines";
@@ -10,7 +11,6 @@ import { ActionIcon, Button, Icon, Menu, TextInput } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import EventList from "../EventList";
 import SearchEmptyState from "../SearchEmptyState";

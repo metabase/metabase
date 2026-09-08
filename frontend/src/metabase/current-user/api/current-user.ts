@@ -1,9 +1,9 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
+import type { User, UserId } from "metabase-types/api";
 import { Api } from "metabase/api/api";
 import type { TagType } from "metabase/api/tags";
 import { idTag, invalidateTags } from "metabase/api/tags";
-import type { User, UserId } from "metabase-types/api";
 
 const provideCurrentUserTags = (user: User): TagDescription<TagType>[] => {
   const tags = [idTag("current-user", user.id)];

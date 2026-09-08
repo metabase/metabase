@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import type { ConcreteTableId } from "metabase-types/api";
+import { checkNotNull } from "metabase/utils/types";
 
 import { SchemaViewerContext } from "../../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../../types";

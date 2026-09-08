@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { renderUserAttributesForSelect } from "metabase-enterprise/sandboxes/utils";
+import type { Database, UserAttributeKey } from "metabase-types/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { Link } from "metabase/common/components/Link/Link";
@@ -16,8 +18,6 @@ import {
 } from "metabase/forms";
 import { Alert, Button, Icon, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import { renderUserAttributesForSelect } from "metabase-enterprise/sandboxes/utils";
-import type { Database, UserAttributeKey } from "metabase-types/api";
 
 import { ImpersonationWarning } from "../ImpersonationWarning";
 

@@ -1,3 +1,8 @@
+import type {
+  CreateTimelineEventRequest,
+  Timeline,
+  TimelineEvent,
+} from "metabase-types/api";
 import {
   skipToken,
   useCreateTimelineEventMutation,
@@ -7,11 +12,6 @@ import type { ModalComponentProps } from "metabase/common/components/ModalRoute"
 import { useNavigate } from "metabase/router";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import * as Urls from "metabase/urls";
-import type {
-  CreateTimelineEventRequest,
-  Timeline,
-  TimelineEvent,
-} from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 

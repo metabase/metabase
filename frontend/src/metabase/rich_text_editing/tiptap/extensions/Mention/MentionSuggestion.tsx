@@ -2,13 +2,13 @@ import type { Editor, Range } from "@tiptap/core";
 import { forwardRef, useCallback, useImperativeHandle } from "react";
 import { t } from "ttag";
 
+import type { SearchResult } from "metabase-types/api";
 import { useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import {
   LoadingSuggestionPaper,
   SuggestionPaper,
 } from "metabase/rich_text_editing/tiptap/extensions/shared/SuggestionPaper";
-import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";
 import type { SuggestionModel } from "../shared/types";

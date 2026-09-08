@@ -4,12 +4,6 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { useSelector } from "metabase/redux";
-import type { DashboardState } from "metabase/redux/store/dashboard";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -19,6 +13,12 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { useSelector } from "metabase/redux";
+import type { DashboardState } from "metabase/redux/store/dashboard";
+import {
+  createMockDashboardState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 
 import { DashboardSharingMenu } from "../DashboardSharingMenu";
 

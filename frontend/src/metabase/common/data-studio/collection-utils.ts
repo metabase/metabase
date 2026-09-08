@@ -1,5 +1,5 @@
-import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { CollectionItemModel, CollectionType } from "metabase-types/api";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 
 export function canPlaceEntityInCollection(
   entityType: CollectionItemModel,

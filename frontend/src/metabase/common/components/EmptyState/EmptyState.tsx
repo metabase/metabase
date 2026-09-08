@@ -1,10 +1,10 @@
 import cx from "classnames";
 
+import type { IconName } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import type { ButtonProps } from "metabase/ui";
 import { Box, Button, Flex, Icon, Text, isValidIconName } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./EmptyState.module.css";
 

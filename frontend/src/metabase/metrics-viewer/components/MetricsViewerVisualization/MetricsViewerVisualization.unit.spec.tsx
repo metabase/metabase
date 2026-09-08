@@ -1,12 +1,12 @@
 import { screen } from "@testing-library/react";
 
 import { renderWithProviders } from "__support__/ui";
+import { createMockColumn } from "metabase-types/api/mocks";
+import { createMockSingleSeries } from "metabase-types/api/mocks/series";
 import type { DimensionPillBarItem } from "metabase/metrics-viewer/components/DimensionPillBar";
 import { MetricsViewerProvider } from "metabase/metrics-viewer/context";
 import { createMockMetricsViewerResult } from "metabase/metrics-viewer/test-utils";
 import type { MetricsViewerDimensionBreakoutState } from "metabase/metrics-viewer/types/viewer-state";
-import { createMockColumn } from "metabase-types/api/mocks";
-import { createMockSingleSeries } from "metabase-types/api/mocks/series";
 
 import { MetricsViewerVisualization } from "./MetricsViewerVisualization";
 

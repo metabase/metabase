@@ -1,5 +1,5 @@
-import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import { isNotNull } from "metabase/utils/types";
 
 import { OPERATORS } from "./constants";
 import type { NumberFilterOperatorOption, NumberOrEmptyValue } from "./types";

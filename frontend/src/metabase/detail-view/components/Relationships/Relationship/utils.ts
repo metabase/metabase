@@ -1,9 +1,9 @@
-import * as Urls from "metabase/urls";
-import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { ForeignKey, RowValue } from "metabase-types/api";
+import * as Urls from "metabase/urls";
+import { parseNumber } from "metabase/utils/number";
 
 const STAGE_INDEX = 0;
 

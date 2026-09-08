@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { Dataset } from "metabase-types/api";
 import {
   type FormatPreference,
   QuestionDownloadWidget,
@@ -18,7 +19,6 @@ import {
   Popover,
   Tooltip,
 } from "metabase/ui";
-import type { Dataset } from "metabase-types/api";
 
 import S from "./QuestionDownloadPopover.module.css";
 

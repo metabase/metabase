@@ -8,6 +8,18 @@ import { memo, useEffect } from "react";
 import { t } from "ttag";
 import { isObject } from "underscore";
 
+import type {
+  Card,
+  Collection,
+  Dashboard,
+  Database,
+  Document,
+  MentionableUser,
+  Segment,
+  Table,
+  Transform,
+  WritebackAction,
+} from "metabase-types/api";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Link } from "metabase/common/components/Link";
 import type { IconModel, ObjectWithModel } from "metabase/common/utils/icon";
@@ -21,18 +33,6 @@ import {
 } from "metabase/urls";
 import { modelToUrl } from "metabase/urls/modelToUrl";
 import { extractEntityId } from "metabase/urls/utils";
-import type {
-  Card,
-  Collection,
-  Dashboard,
-  Database,
-  Document,
-  MentionableUser,
-  Segment,
-  Table,
-  Transform,
-  WritebackAction,
-} from "metabase-types/api";
 
 import {
   entityToUrlableModel,

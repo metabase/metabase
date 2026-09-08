@@ -1,14 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { SearchModel, SearchResult, TableId } from "metabase-types/api";
+import type { SortingOptions } from "metabase-types/api/sorting";
 import { useSearchQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type { SimpleDataPickerProps } from "metabase/plugins";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import { Box, Popover } from "metabase/ui";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { SearchModel, SearchResult, TableId } from "metabase-types/api";
-import type { SortingOptions } from "metabase-types/api/sorting";
 
 import { SimpleDataPickerView } from "./SimpleDataPickerView";
 

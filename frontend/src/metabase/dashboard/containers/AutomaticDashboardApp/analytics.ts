@@ -1,5 +1,5 @@
-import { trackSimpleEvent } from "metabase/analytics";
 import type { RelatedDashboardXRays } from "metabase-types/api";
+import { trackSimpleEvent } from "metabase/analytics";
 
 export const trackSuggestedXRayClicked = (
   action: keyof RelatedDashboardXRays,

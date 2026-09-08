@@ -1,9 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
-import { isActionDashCard } from "metabase/utils/dashboard";
-import { getIframeDomainName } from "metabase/viz-core";
 import type {
   DashCardId,
   Dashboard,
@@ -11,6 +8,9 @@ import type {
   DashboardId,
   DashboardTabId,
 } from "metabase-types/api";
+import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
+import { isActionDashCard } from "metabase/utils/dashboard";
+import { getIframeDomainName } from "metabase/viz-core";
 
 import { trackIFrameDashcardsSaved } from "../analytics";
 import { isIFrameDashCard } from "../utils";

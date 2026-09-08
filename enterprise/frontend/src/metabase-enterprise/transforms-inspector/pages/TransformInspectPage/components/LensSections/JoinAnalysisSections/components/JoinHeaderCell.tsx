@@ -1,12 +1,12 @@
 import { match } from "ts-pattern";
 
-import { trackTransformInspectAlertClicked } from "metabase/transforms/analytics";
-import { ActionIcon, Icon } from "metabase/ui";
 import type {
   InspectorAlertTrigger,
   InspectorCard,
   TransformId,
 } from "metabase-types/api";
+import { trackTransformInspectAlertClicked } from "metabase/transforms/analytics";
+import { ActionIcon, Icon } from "metabase/ui";
 
 import { useLensCardLoader } from "../../../../hooks";
 

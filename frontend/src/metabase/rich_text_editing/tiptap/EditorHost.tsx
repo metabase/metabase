@@ -1,7 +1,6 @@
 import type { Editor } from "@tiptap/react";
 import { type ReactNode, createContext, useContext } from "react";
 
-import type { State } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -12,6 +11,7 @@ import type {
   TimelineEvent,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { State } from "metabase/redux/store";
 
 /**
  * Result returned by the card-data hooks the host provides to the CardEmbed

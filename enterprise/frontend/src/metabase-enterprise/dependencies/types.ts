@@ -1,4 +1,3 @@
-import type { ColorName } from "metabase/ui/colors/types";
 import type {
   AnalysisFindingErrorType,
   DependencyGroupType,
@@ -6,6 +5,7 @@ import type {
   IconName,
   SortDirection,
 } from "metabase-types/api";
+import type { ColorName } from "metabase/ui/colors/types";
 
 export type NodeId = string;
 

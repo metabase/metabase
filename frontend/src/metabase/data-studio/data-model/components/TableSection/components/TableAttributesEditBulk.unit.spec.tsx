@@ -9,12 +9,12 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { TableId } from "metabase-types/api";
+import { createMockTable, createMockUser } from "metabase-types/api/mocks";
 import {
   SelectionProvider,
   useSelection,
 } from "metabase/data-studio/data-model/pages/DataModel/contexts/SelectionContext";
-import type { TableId } from "metabase-types/api";
-import { createMockTable, createMockUser } from "metabase-types/api/mocks";
 
 import { TableAttributesEditBulk } from "./TableAttributesEditBulk";
 

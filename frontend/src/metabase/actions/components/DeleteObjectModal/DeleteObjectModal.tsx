@@ -1,12 +1,12 @@
 import type { FunctionComponent } from "react";
 import { t } from "ttag";
 
+import type { WritebackActionId } from "metabase-types/api";
 import { getActionErrorMessage } from "metabase/actions/utils";
 import { useExecuteActionMutation } from "metabase/api";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { Button } from "metabase/ui";
-import type { WritebackActionId } from "metabase-types/api";
 
 interface Props {
   actionId: WritebackActionId | undefined;

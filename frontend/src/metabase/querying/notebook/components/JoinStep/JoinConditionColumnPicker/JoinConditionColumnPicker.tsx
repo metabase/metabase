@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 
+import type * as Lib from "metabase-lib";
 import { prefetchExpressionWidget } from "metabase/querying/components/expressions/ExpressionWidget";
 import { Popover } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 
 import { JoinColumnButton } from "./JoinColumnButton";
 import { JoinColumnDropdown } from "./JoinColumnDropdown";

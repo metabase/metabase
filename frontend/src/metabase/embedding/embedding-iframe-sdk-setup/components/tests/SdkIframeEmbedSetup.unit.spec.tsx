@@ -5,8 +5,6 @@ import {
   setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { fireEvent, screen, waitFor } from "__support__/ui";
-import * as Analytics from "metabase/analytics";
-import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -14,6 +12,8 @@ import {
   createMockDashboardCard,
   createMockDatabase,
 } from "metabase-types/api/mocks";
+import * as Analytics from "metabase/analytics";
+import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 
 import { setup } from "./test-setup";
 

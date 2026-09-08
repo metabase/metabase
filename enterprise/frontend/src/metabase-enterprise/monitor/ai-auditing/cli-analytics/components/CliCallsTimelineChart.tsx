@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Skeleton } from "metabase/ui";
 import type { CliFilters } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
 import { buildCallsByDayByClientQuery } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
 import { toSeriesByBreakoutRawSeries } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/raw-series";
@@ -13,6 +12,7 @@ import type {
   Query,
   TableMetadata,
 } from "metabase-lib";
+import { Skeleton } from "metabase/ui";
 
 const CHART_HEIGHT = 320;
 

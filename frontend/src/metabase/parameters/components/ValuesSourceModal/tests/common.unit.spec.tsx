@@ -2,13 +2,13 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import { screen } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import {
   createMockCard,
   createMockField,
   createMockParameterValues,
 } from "metabase-types/api/mocks";
+import { checkNotNull } from "metabase/utils/types";
 
 import { setup } from "./setup";
 

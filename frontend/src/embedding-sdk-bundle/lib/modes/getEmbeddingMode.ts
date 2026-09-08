@@ -1,3 +1,4 @@
+import type Question from "metabase-lib/v1/Question";
 import { transformClickedDataPoint } from "metabase/embedding-sdk/lib/transform-clicked";
 import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { Mode } from "metabase/querying/click-actions/Mode";
@@ -7,7 +8,6 @@ import type {
   ClickActionsMode,
   ClickObject,
 } from "metabase/visualizations/types";
-import type Question from "metabase-lib/v1/Question";
 
 export function getEmbeddingMode({
   queryMode,

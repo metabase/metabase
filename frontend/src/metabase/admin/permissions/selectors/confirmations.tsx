@@ -1,6 +1,14 @@
 import { c, t } from "ttag";
 import _ from "underscore";
 
+import type {
+  DatabaseEntityId,
+  Group,
+  GroupsPermissions,
+  PermissionEntityId,
+  PermissionsDatabase,
+  SchemaEntityId,
+} from "metabase-types/api";
 import {
   isSchemaEntityId,
   isTableEntityId,
@@ -12,14 +20,6 @@ import {
 } from "metabase/admin/permissions/utils/graph";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { Alert, Flex, Icon, Text } from "metabase/ui";
-import type {
-  DatabaseEntityId,
-  Group,
-  GroupsPermissions,
-  PermissionEntityId,
-  PermissionsDatabase,
-  SchemaEntityId,
-} from "metabase-types/api";
 
 import { DataPermission, DataPermissionValue } from "../types";
 import { tableToTableEntityId } from "../utils/metadata";

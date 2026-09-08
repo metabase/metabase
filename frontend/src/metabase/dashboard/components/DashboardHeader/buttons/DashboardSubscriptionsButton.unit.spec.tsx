@@ -4,10 +4,6 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import { getIsSharing } from "metabase/dashboard/selectors";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import {
   createMockCard,
   createMockDashboard,
@@ -16,6 +12,10 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { getIsSharing } from "metabase/dashboard/selectors";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { DashboardSubscriptionsButton } from "./DashboardSubscriptionsButton";
 

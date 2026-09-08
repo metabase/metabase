@@ -1,11 +1,3 @@
-import {
-  type QueryParam,
-  type UrlStateConfig,
-  getFirstParamValue,
-  parsePage,
-  parseSortColumn,
-  parseSortDirection,
-} from "metabase/common/hooks/use-url-state";
 import type {
   ListTaskRunsSortColumn,
   SortDirection,
@@ -15,6 +7,14 @@ import type {
   TaskRunStatus,
   TaskRunType,
 } from "metabase-types/api";
+import {
+  type QueryParam,
+  type UrlStateConfig,
+  getFirstParamValue,
+  parsePage,
+  parseSortColumn,
+  parseSortDirection,
+} from "metabase/common/hooks/use-url-state";
 
 import {
   guardTaskRunEntityType,

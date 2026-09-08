@@ -2,6 +2,14 @@ import cx from "classnames";
 import { type FocusEvent, type MouseEvent, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  Bookmark,
+  Collection,
+  CollectionItem,
+  CollectionItemModel,
+  Database,
+  RecentCollectionItem,
+} from "metabase-types/api";
 import { ActionMenu } from "metabase/common/collections/components/ActionMenu";
 import type {
   CreateBookmark,
@@ -16,14 +24,6 @@ import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Card, Checkbox, Ellipsified, Group } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
-import type {
-  Bookmark,
-  Collection,
-  CollectionItem,
-  CollectionItemModel,
-  Database,
-  RecentCollectionItem,
-} from "metabase-types/api";
 
 import S from "./CompactPinnedItemCard.module.css";
 import { SelectModeCardWrapper } from "./SelectModeCardWrapper";

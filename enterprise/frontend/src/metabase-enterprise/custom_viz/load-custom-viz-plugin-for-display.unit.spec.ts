@@ -2,8 +2,8 @@ import { waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
-import { Api } from "metabase/api";
 import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
+import { Api } from "metabase/api";
 
 import { loadCustomVizPluginForDisplay } from "./custom-viz-plugins";
 

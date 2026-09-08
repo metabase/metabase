@@ -1,8 +1,8 @@
+import type { MfaMethod } from "metabase-types/api";
 import {
   PluginPlaceholder,
   pluginPlaceholderRoute,
 } from "metabase/plugins/components/PluginPlaceholder";
-import type { MfaMethod } from "metabase-types/api";
 
 export type AuthChallengeFormProps = {
   challengeToken: string;

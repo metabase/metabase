@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
 import {
@@ -21,7 +22,6 @@ import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { useParams } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { extractRemappedColumns } from "metabase/viz-core";
-import * as Lib from "metabase-lib";
 
 export function TableDetailPage() {
   const { tableId: tableIdParam = "", rowId = "" } = useParams<{

@@ -1,13 +1,13 @@
 import type { FormikHelpers } from "formik";
 import { useCallback, useMemo } from "react";
 
-import ActionForm from "metabase/actions/components/ActionForm";
 import type {
   OnSubmitActionForm,
   ParametersForActionExecution,
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
+import ActionForm from "metabase/actions/components/ActionForm";
 
 export interface ActionParametersInputFormProps {
   action: WritebackAction;

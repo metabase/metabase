@@ -1,8 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
-import { serializeCardForUrl } from "metabase/common/utils/card";
-import { createMockLocation } from "metabase/redux/store/mocks";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
@@ -15,6 +12,9 @@ import {
   PRODUCTS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { serializeCardForUrl } from "metabase/common/utils/card";
+import { createMockLocation } from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 
 import { getTableUrlForPristineQuestion, isNavigationAllowed } from ".";
 

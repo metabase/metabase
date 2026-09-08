@@ -1,8 +1,8 @@
+import type { RecentContexts } from "metabase-types/api";
 import type {
   EntityPickerModalProps,
   EntityPickerOptions,
 } from "metabase/common/components/Pickers";
-import type { RecentContexts } from "metabase-types/api";
 
 export const DOCUMENT_LINK_MODELS: EntityPickerModalProps["models"] = [
   "card",

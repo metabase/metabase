@@ -1,10 +1,10 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { color } from "metabase/ui/colors";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Series, VisualizationDisplay } from "metabase-types/api";
+import { color } from "metabase/ui/colors";
 
 import {
   STACKABLE_SERIES_DISPLAY_TYPES,

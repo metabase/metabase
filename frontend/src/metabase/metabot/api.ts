@@ -1,5 +1,3 @@
-import { Api } from "metabase/api";
-import { idTag, invalidateTags, listTag } from "metabase/api/tags";
 import type {
   Card,
   DeleteSuggestedMetabotPromptRequest,
@@ -20,6 +18,8 @@ import type {
   SuggestedMetabotPromptsResponse,
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
+import { Api } from "metabase/api";
+import { idTag, invalidateTags, listTag } from "metabase/api/tags";
 
 import type { MetabotConversationDetail } from "./utils/normalize-fetched-chat-messages";
 

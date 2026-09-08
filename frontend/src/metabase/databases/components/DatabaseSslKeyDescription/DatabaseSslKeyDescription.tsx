@@ -1,9 +1,9 @@
 import { useFormikContext } from "formik";
 import { jt, t } from "ttag";
 
+import type { DatabaseData } from "metabase-types/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import type { DatabaseData } from "metabase-types/api";
 
 const DatabaseSslKeyDescription = (): JSX.Element | null => {
   const { values } = useFormikContext<DatabaseData>();

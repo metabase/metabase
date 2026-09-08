@@ -3,12 +3,12 @@ import type React from "react";
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
+import type { EnterpriseSettingKey } from "metabase-types/api";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import CS from "metabase/css/core/index.css";
 import { useAdminSetting } from "metabase/settings";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
-import type { EnterpriseSettingKey } from "metabase-types/api";
 
 import { PreviewImage } from "./IllustrationWidget.styled";
 

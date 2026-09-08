@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
+import type { User } from "metabase-types/api";
 import { useUpdatePasswordMutation } from "metabase/api";
 import {
   Form,
@@ -13,7 +14,6 @@ import {
   requiredErrorMessage,
 } from "metabase/forms";
 import { Group, Stack } from "metabase/ui";
-import type { User } from "metabase-types/api";
 
 import type { UserPasswordData } from "../../types";
 

@@ -3,6 +3,14 @@ import { type ReactNode, useRef, useState } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
+import type Question from "metabase-lib/v1/Question";
+import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type {
+  Dashboard,
+  Parameter,
+  ParameterId,
+  ParameterValuesMap,
+} from "metabase-types/api";
 import { TitleAndDescription } from "metabase/common/components/TitleAndDescription";
 import CS from "metabase/css/core/index.css";
 import TransitionS from "metabase/css/core/transitions.module.css";
@@ -11,13 +19,13 @@ import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Das
 import { ExportAsPdfButton } from "metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton";
 import { FilterApplyToast } from "metabase/dashboard/components/FilterApplyToast";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   ActionButtonsContainer,
   type FooterVariant,
 } from "metabase/embedding/components/EmbedFooter.styled";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import EmbedThemeS from "metabase/embedding/theme.module.css";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { SyncedParametersList } from "metabase/parameters/components/SyncedParametersList";
 import { useSyncUrlParameters } from "metabase/parameters/components/use-sync-url-parameters";
@@ -33,14 +41,6 @@ import {
   DASHBOARD_PDF_EXPORT_ROOT_ID,
 } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/viz-core";
-import type Question from "metabase-lib/v1/Question";
-import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type {
-  Dashboard,
-  Parameter,
-  ParameterId,
-  ParameterValuesMap,
-} from "metabase-types/api";
 
 import type { DashboardUrlHashOptions } from "../../../dashboard/types";
 

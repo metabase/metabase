@@ -1,6 +1,6 @@
-import { asNotNull } from "metabase/utils/types";
 import type { FieldId } from "metabase-types/api";
 import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
+import { asNotNull } from "metabase/utils/types";
 
 import {
   LISTABLE_FIELD_WITH_MANY_VALUES_ID,

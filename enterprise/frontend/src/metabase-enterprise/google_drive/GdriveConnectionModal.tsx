@@ -1,6 +1,11 @@
 import { type FormEvent, useState } from "react";
 import { c, t } from "ttag";
 
+import {
+  useGetGsheetsFolderQuery,
+  useGetServiceAccountQuery,
+  useSaveGsheetsFolderLinkMutation,
+} from "metabase-enterprise/api";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -18,11 +23,6 @@ import {
   TextInput,
 } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
-import {
-  useGetGsheetsFolderQuery,
-  useGetServiceAccountQuery,
-  useSaveGsheetsFolderLinkMutation,
-} from "metabase-enterprise/api";
 
 import Styles from "./Gdrive.module.css";
 import {

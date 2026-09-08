@@ -1,9 +1,9 @@
+import type { ColumnSettings, RawSeries, RowValue } from "metabase-types/api";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import type {
   TextHeightMeasurer,
   TextWidthMeasurer,
 } from "metabase/utils/measure-text";
-import type { ColumnSettings, RawSeries, RowValue } from "metabase-types/api";
 
 export interface Padding {
   top: number;

@@ -1,5 +1,5 @@
-import { Grid } from "metabase/ui";
 import type { VisualizationDisplay } from "metabase-types/api";
+import { Grid } from "metabase/ui";
 
 import { ChartTypeOption, type ChartTypeOptionProps } from "../ChartTypeOption";
 

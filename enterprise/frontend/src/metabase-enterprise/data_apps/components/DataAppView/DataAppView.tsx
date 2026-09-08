@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { useGetDataAppQuery } from "metabase-enterprise/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ErrorDetails } from "metabase/common/components/ErrorDetails/ErrorDetails";
 import { GenericError, NotFound } from "metabase/common/components/ErrorPages";
@@ -10,7 +11,6 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useParams } from "metabase/router";
 import { Box, Flex } from "metabase/ui";
-import { useGetDataAppQuery } from "metabase-enterprise/api";
 
 import {
   DATA_APP_ERROR_MESSAGE_TYPE,

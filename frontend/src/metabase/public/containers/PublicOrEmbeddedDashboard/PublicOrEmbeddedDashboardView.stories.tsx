@@ -9,6 +9,21 @@ import { getPublicStore } from "__support__/entities-store";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import type {
+  Dashboard,
+  DashboardCard,
+  DashboardTab,
+} from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDashboard,
+  createMockDashboardCard,
+  createMockDatabase,
+  createMockDataset,
+  createMockDatasetData,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import {
   MockDashboardContext,
@@ -26,21 +41,6 @@ import { ObjectDetail } from "metabase/visualizations/visualizations/ObjectDetai
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
 import { registerVisualization } from "metabase/viz-core";
-import type {
-  Dashboard,
-  DashboardCard,
-  DashboardTab,
-} from "metabase-types/api";
-import {
-  createMockCard,
-  createMockColumn,
-  createMockDashboard,
-  createMockDashboardCard,
-  createMockDatabase,
-  createMockDataset,
-  createMockDatasetData,
-  createMockParameter,
-} from "metabase-types/api/mocks";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 

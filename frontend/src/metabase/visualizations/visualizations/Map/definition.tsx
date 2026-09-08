@@ -1,6 +1,16 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  hasLatitudeAndLongitudeColumns,
+  isCountry,
+  isLatitude,
+  isLongitude,
+  isMetric,
+  isNumeric,
+  isState,
+} from "metabase-lib/v1/types/utils/isa";
+import type { CustomGeoJSONMap } from "metabase-types/api";
 import { getAccentColors, getPreferredColor } from "metabase/ui/colors/groups";
 import MetabaseSettings from "metabase/utils/settings";
 import {
@@ -15,16 +25,6 @@ import {
   getMinSize,
   metricSetting,
 } from "metabase/viz-core";
-import {
-  hasLatitudeAndLongitudeColumns,
-  isCountry,
-  isLatitude,
-  isLongitude,
-  isMetric,
-  isNumeric,
-  isState,
-} from "metabase-lib/v1/types/utils/isa";
-import type { CustomGeoJSONMap } from "metabase-types/api";
 
 import { CustomMapFooter } from "./CustomMapFooter";
 import { getColorplethColorScale } from "./map-color-scale";

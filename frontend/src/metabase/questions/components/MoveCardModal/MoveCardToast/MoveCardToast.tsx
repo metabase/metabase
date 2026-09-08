@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
+import type { Card, CollectionId, DashboardId } from "metabase-types/api";
 import {
   skipToken,
   useGetCollectionQuery,
@@ -11,7 +12,6 @@ import { coerceCollectionId } from "metabase/common/collections/utils";
 import { Link } from "metabase/common/components/Link";
 import { Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Card, CollectionId, DashboardId } from "metabase-types/api";
 
 import S from "./MoveCardToast.module.css";
 

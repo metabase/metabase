@@ -3,15 +3,15 @@ import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getErrorMessage } from "metabase/api/utils/errors";
-import { useToast } from "metabase/common/hooks/use-toast";
-import { useSelector } from "metabase/redux";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
   EnterpriseSettings,
   SettingDefinition,
 } from "metabase-types/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
+import { useToast } from "metabase/common/hooks/use-toast";
+import { useSelector } from "metabase/redux";
 
 import {
   useGetAdminSettingsDetailsQuery,

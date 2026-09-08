@@ -3,11 +3,11 @@ import fetchMock from "fetch-mock";
 
 import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import type { Advisory } from "metabase-types/api";
 import { createMockVersion } from "metabase-types/api/mocks";
 import { createAdvisory } from "metabase-types/api/mocks/security-center";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import * as notificationHook from "../../hooks/use-notification-config";
 import * as advisoriesHook from "../../hooks/use-security-advisories";

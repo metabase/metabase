@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef } from "react";
 
+import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 import {
   TIMELINE_BAND_HEIGHT,
   TIMELINE_EVENTS_BAND,
   type TimelineEventCluster,
   type TimelineEventGroup,
 } from "metabase/viz-core";
-import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import { POPOVER_CLOSE_DELAY_MS, TimelineEventChip } from "./TimelineEventChip";
 import S from "./TimelineEventsBand.module.css";

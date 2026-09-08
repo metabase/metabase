@@ -1,16 +1,16 @@
 import { useCallback } from "react";
 import _ from "underscore";
 
-import {
-  useDeleteCacheConfigsMutation,
-  useUpdateCacheConfigMutation,
-} from "metabase/api";
-import { PLUGIN_CACHING } from "metabase/plugins";
 import type {
   CacheConfig,
   CacheStrategy,
   CacheableModel,
 } from "metabase-types/api";
+import {
+  useDeleteCacheConfigsMutation,
+  useUpdateCacheConfigMutation,
+} from "metabase/api";
+import { PLUGIN_CACHING } from "metabase/plugins";
 
 import { rootId } from "../constants/simple";
 import {

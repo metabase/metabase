@@ -1,10 +1,10 @@
 import type React from "react";
 import { t } from "ttag";
 
-import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
-import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
+import { Box, Flex } from "metabase/ui";
 
 import { ViewHeading, ViewSubHeading } from "../../../ViewSection";
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";

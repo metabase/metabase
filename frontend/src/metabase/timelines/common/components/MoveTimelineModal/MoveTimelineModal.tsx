@@ -1,10 +1,10 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { CollectionId, Timeline } from "metabase-types/api";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { getTimelineName } from "metabase/common/utils/timelines";
-import type { CollectionId, Timeline } from "metabase-types/api";
 
 export interface MoveTimelineModalProps {
   timeline: Timeline;

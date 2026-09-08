@@ -1,6 +1,12 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type {
+  DashboardId,
+  SearchResult,
+  VisualizerDataSource,
+  VisualizerDataSourceId,
+} from "metabase-types/api";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -18,12 +24,6 @@ import {
   addDataSource,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
-import type {
-  DashboardId,
-  SearchResult,
-  VisualizerDataSource,
-  VisualizerDataSourceId,
-} from "metabase-types/api";
 
 import { trackVisualizerDataChanged } from "../../analytics";
 

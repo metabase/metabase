@@ -1,5 +1,5 @@
-import { trackSimpleEvent } from "metabase/analytics";
 import type { DimensionId, MetricId } from "metabase-types/api";
+import { trackSimpleEvent } from "metabase/analytics";
 
 type MetricDimensionResult = "success" | "failure";
 

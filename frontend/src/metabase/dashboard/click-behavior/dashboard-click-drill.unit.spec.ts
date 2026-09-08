@@ -1,4 +1,3 @@
-import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { ClickBehavior } from "metabase-types/api";
 import {
@@ -7,6 +6,7 @@ import {
   createMockDashboard,
   createMockParameter,
 } from "metabase-types/api/mocks";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 
 import { DashboardClickAction } from "./DashboardClickAction";
 import {

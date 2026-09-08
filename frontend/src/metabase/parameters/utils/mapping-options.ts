@@ -2,14 +2,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { tag_names } from "cljs/metabase.parameters.shared";
-import { getColumnIcon } from "metabase/common/utils/columns";
-import { getGroupName } from "metabase/querying/filters/utils/groups";
-import {
-  isActionDashCard,
-  isQuestionDashCard,
-  isVirtualDashCard,
-} from "metabase/utils/dashboard";
-import { getAllowedIframeAttributes } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type { DimensionOptionsSection } from "metabase-lib/v1/DimensionOptions/types";
@@ -42,6 +34,14 @@ import type {
   WritebackParameter,
 } from "metabase-types/api";
 import { isStructuredDimensionTarget } from "metabase-types/guards";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import { getGroupName } from "metabase/querying/filters/utils/groups";
+import {
+  isActionDashCard,
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
+import { getAllowedIframeAttributes } from "metabase/viz-core";
 
 const VARIABLE_ICONS: Record<TemplateTagType, IconName | null> = {
   text: "string",

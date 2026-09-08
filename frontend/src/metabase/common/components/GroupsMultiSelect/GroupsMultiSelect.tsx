@@ -1,6 +1,7 @@
 import { type KeyboardEvent, useState } from "react";
 import { t } from "ttag";
 
+import type { GroupId, GroupInfo } from "metabase-types/api";
 import {
   canEditMembership,
   getGroupNameLocalized,
@@ -21,7 +22,6 @@ import {
   useCombobox,
 } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import type { GroupId, GroupInfo } from "metabase-types/api";
 
 import S from "./GroupsMultiSelect.module.css";
 

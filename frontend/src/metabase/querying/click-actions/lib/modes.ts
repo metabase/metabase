@@ -1,5 +1,5 @@
-import type { ClickActionsMode } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
+import type { ClickActionsMode } from "metabase/visualizations/types";
 
 import { Mode } from "../Mode";
 import { ArchivedMode } from "../modes/ArchivedMode";

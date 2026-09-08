@@ -3,14 +3,6 @@ import { getIn } from "icepick";
 import { memo } from "react";
 import { t } from "ttag";
 
-import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/common/utils/fields";
-import {
-  CurrencyPicker,
-  SemanticTypePicker,
-} from "metabase/metadata/components";
-import { getFieldCurrency } from "metabase/metadata/utils/field";
-import D from "metabase/reference/components/Detail.module.css";
-import { Box } from "metabase/ui";
 import { isTypeCurrency, isTypeFK } from "metabase-lib/v1/types/utils/isa";
 import type {
   Field as ApiField,
@@ -19,6 +11,14 @@ import type {
   FieldId,
   NormalizedField,
 } from "metabase-types/api";
+import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/common/utils/fields";
+import {
+  CurrencyPicker,
+  SemanticTypePicker,
+} from "metabase/metadata/components";
+import { getFieldCurrency } from "metabase/metadata/utils/field";
+import D from "metabase/reference/components/Detail.module.css";
+import { Box } from "metabase/ui";
 
 import type { FormFieldEntry, StubbedField } from "../types";
 

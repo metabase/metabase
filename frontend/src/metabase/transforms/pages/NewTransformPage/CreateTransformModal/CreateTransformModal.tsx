@@ -4,6 +4,11 @@ import { t } from "ttag";
 import _ from "underscore";
 import type * as Yup from "yup";
 
+import type {
+  SchemaName,
+  Transform,
+  TransformSource,
+} from "metabase-types/api";
 import {
   skipToken,
   useGetDatabaseQuery,
@@ -21,11 +26,6 @@ import {
 } from "metabase/forms";
 import { IncrementalTransformSettings } from "metabase/transforms/components/IncrementalTransform/IncrementalTransformSettings";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
-import type {
-  SchemaName,
-  Transform,
-  TransformSource,
-} from "metabase-types/api";
 
 import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
 import { TargetNameInput } from "../../../components/TargetNameInput";

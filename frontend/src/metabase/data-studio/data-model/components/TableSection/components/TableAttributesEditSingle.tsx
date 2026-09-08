@@ -1,6 +1,12 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import type {
+  Table,
+  TableDataLayer,
+  TableDataSource,
+  UserId,
+} from "metabase-types/api";
 import { useUpdateTableMutation } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { useMetadataToasts } from "metabase/common/hooks";
@@ -12,12 +18,6 @@ import {
 } from "metabase/metadata/components";
 import { Box, Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type {
-  Table,
-  TableDataLayer,
-  TableDataSource,
-  UserId,
-} from "metabase-types/api";
 
 import S from "./TableAttributes.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";

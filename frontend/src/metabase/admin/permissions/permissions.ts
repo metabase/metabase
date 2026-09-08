@@ -7,6 +7,17 @@ import {
 import { assocIn, merge } from "icepick";
 import { isBoolean } from "underscore";
 
+import type {
+  Collection,
+  CollectionPermissions,
+  CollectionPermissionsGraph,
+  DatabaseId,
+  GroupId,
+  GroupsPermissions,
+  PermissionEntityId,
+  PermissionsDatabase,
+  PermissionsGraph,
+} from "metabase-types/api";
 import {
   inferAndUpdateEntityPermissions,
   restrictCreateQueriesPermissionsIfNeeded,
@@ -30,17 +41,6 @@ import {
   createThunkAction,
 } from "metabase/redux";
 import { navigate } from "metabase/router";
-import type {
-  Collection,
-  CollectionPermissions,
-  CollectionPermissionsGraph,
-  DatabaseId,
-  GroupId,
-  GroupsPermissions,
-  PermissionEntityId,
-  PermissionsDatabase,
-  PermissionsGraph,
-} from "metabase-types/api";
 
 import {
   DATABASE_TABLES_QUERY,

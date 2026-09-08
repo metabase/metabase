@@ -1,8 +1,8 @@
+import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
+import type { GetTableQueryMetadataRequest, TableId } from "metabase-types/api";
 import { skipToken } from "metabase/api";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/urls";
-import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
-import type { GetTableQueryMetadataRequest, TableId } from "metabase-types/api";
 
 import type { ParsedRouteParams, RouteParams } from "./types";
 

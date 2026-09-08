@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useMetricDefinition } from "metabase/metrics/common/hooks";
 import type { MetricDimension, MetricId } from "metabase-types/api/metric";
+import { useMetricDefinition } from "metabase/metrics/common/hooks";
 
 import { type OverviewDimension, getOverviewDimensions } from "./utils";
 

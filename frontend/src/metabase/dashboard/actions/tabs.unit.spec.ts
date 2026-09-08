@@ -1,12 +1,6 @@
 import _ from "underscore";
 
 import { getMainStore } from "__support__/entities-store";
-import type { StoreDashcard } from "metabase/redux/store";
-import {
-  createMockDashboardState,
-  createMockState,
-  createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
 import type {
   DashCardDataMap,
   Parameter,
@@ -24,6 +18,12 @@ import {
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import { ORDERS, ORDERS_ID, PRODUCTS } from "metabase-types/api/mocks/presets";
+import type { StoreDashcard } from "metabase/redux/store";
+import {
+  createMockDashboardState,
+  createMockState,
+  createMockStoreDashboard,
+} from "metabase/redux/store/mocks";
 
 import { TEST_DASHBOARD_STATE } from "../components/DashboardTabs/test-utils";
 import { getDashboard, getDashcards } from "../selectors";

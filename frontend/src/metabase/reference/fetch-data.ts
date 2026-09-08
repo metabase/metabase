@@ -1,3 +1,4 @@
+import type { SegmentId, TableId } from "metabase-types/api";
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch } from "metabase/redux/store";
@@ -8,7 +9,6 @@ import {
   fetchSegmentTable,
   fetchSegments,
 } from "metabase/reference/segments/thunks";
-import type { SegmentId, TableId } from "metabase-types/api";
 
 /**
  * What each reference page loads. Loading state is reported separately, by

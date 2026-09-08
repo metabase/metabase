@@ -3,15 +3,15 @@ import { userEvent, within } from "@storybook/test";
 
 import { VisualizationWrapper } from "__support__/storybook";
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
-import { Box } from "metabase/ui";
-import Visualization from "metabase/visualizations/components/Visualization";
-import { LineChart } from "metabase/visualizations/visualizations/LineChart";
-import { registerVisualization } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
+import { Box } from "metabase/ui";
+import Visualization from "metabase/visualizations/components/Visualization";
+import { LineChart } from "metabase/visualizations/visualizations/LineChart";
+import { registerVisualization } from "metabase/viz-core";
 
 export default {
   title: "viz/TimelineEventsBand",

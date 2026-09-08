@@ -1,5 +1,8 @@
 import { t } from "ttag";
 
+import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 import type { DimensionDescriptor } from "metabase/common/metrics/utils/dimension-descriptors";
 import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
 import {
@@ -9,9 +12,6 @@ import {
 import { getDimensionIcon } from "metabase/common/utils/columns";
 import { getObjectEntries, objectFromEntries } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
-import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
-import * as LibMetric from "metabase-lib/metric";
-import type { IconName } from "metabase-types/api";
 
 import { MAX_AUTO_DIMENSION_BREAKOUTS } from "../constants";
 import type {

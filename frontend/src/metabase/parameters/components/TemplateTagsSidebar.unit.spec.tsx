@@ -7,8 +7,6 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
-import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
@@ -16,6 +14,8 @@ import {
   createMockNativeDatasetQuery,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
+import { getMetadata } from "metabase/metadata-store";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { TemplateTagsSidebar } from "./TemplateTagsSidebar";
 

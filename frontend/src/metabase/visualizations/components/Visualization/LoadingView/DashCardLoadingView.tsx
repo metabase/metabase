@@ -1,13 +1,13 @@
 import cx from "classnames";
 import { jt, t } from "ttag";
 
+import type { CardDisplayType } from "metabase-types/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
 import { useLearnUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, HoverCard, Icon, Text, Transition } from "metabase/ui";
 import { duration } from "metabase/utils/formatting";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
-import type { CardDisplayType } from "metabase-types/api";
 
 import type { LoadingViewProps } from "./LoadingView";
 

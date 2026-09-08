@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
-import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import { getNodeId } from "metabase-enterprise/dependencies/utils";
 import type { DependencyNode } from "metabase-types/api";
+import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 
 import { getColumns } from "./utils";
 

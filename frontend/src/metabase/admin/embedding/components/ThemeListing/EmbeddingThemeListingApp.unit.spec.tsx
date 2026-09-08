@@ -1,12 +1,12 @@
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import {
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 
 import { EmbeddingThemeListingApp } from "./EmbeddingThemeListingApp";
 

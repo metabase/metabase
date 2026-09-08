@@ -2,6 +2,8 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import type { DatasetColumn } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { Stack, Tabs } from "metabase/ui";
 import {
@@ -13,8 +15,6 @@ import {
   keyForSingleSeries,
   updateSeriesColor,
 } from "metabase/viz-core";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import type { DatasetColumn } from "metabase-types/api";
 
 import ChartSettingsWidgetList from "../../ChartSettingsWidgetList";
 import { ChartSettingsWidgetPopover } from "../../ChartSettingsWidgetPopover";

@@ -1,7 +1,7 @@
-import { formatNativeQuery } from "metabase/databases/utils/engine";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeDatasetResponse } from "metabase-types/api";
+import { formatNativeQuery } from "metabase/databases/utils/engine";
 
 export function createNativeQuestion(
   question: Question,

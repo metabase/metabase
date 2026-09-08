@@ -1,8 +1,8 @@
+import type { SlackChannelOption } from "metabase-types/api";
 import {
   findChannelId,
   getDisplayNames,
 } from "metabase/notifications/channels/utils";
-import type { SlackChannelOption } from "metabase-types/api";
 
 describe("getDisplayNames", () => {
   it("extracts display names from enriched options", () => {

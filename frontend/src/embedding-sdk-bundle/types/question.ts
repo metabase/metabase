@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
 
+import type InternalQuestion from "metabase-lib/v1/Question";
+import type {
+  ParameterValuesMap,
+  SeriesCard,
+  UnsavedCard,
+} from "metabase-types/api";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type {
   MetabaseCard,
@@ -7,12 +13,6 @@ import type {
 } from "metabase/embedding-sdk/types/question";
 import type { QueryParams } from "metabase/query_builder";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
-import type InternalQuestion from "metabase-lib/v1/Question";
-import type {
-  ParameterValuesMap,
-  SeriesCard,
-  UnsavedCard,
-} from "metabase-types/api";
 
 import type { SdkDashboardId } from "./dashboard";
 import type { SdkEntityId, SdkEntityToken } from "./entity";

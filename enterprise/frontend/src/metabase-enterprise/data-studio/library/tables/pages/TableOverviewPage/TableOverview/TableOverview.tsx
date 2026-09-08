@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 
-import { OverviewVisualization } from "metabase/common/data-studio/components/OverviewVisualization";
-import { getMetadata } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
-import { Flex, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Table } from "metabase-types/api";
+import { OverviewVisualization } from "metabase/common/data-studio/components/OverviewVisualization";
+import { getMetadata } from "metabase/metadata-store";
+import { useSelector } from "metabase/redux";
+import { Flex, Stack } from "metabase/ui";
 
 import { DescriptionSection } from "./DescriptionSection";
 import S from "./TableOverview.module.css";

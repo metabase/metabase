@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
+import { useTransformsBilling } from "metabase-enterprise/transforms/upsells/hooks";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { trackUpsellViewed } from "metabase/common/components/upsells/components/analytics";
 import { useStoreUrl } from "metabase/common/hooks";
@@ -19,7 +20,6 @@ import {
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { useTransformsBilling } from "metabase-enterprise/transforms/upsells/hooks";
 
 import { PurchaseAdvancedTransforms } from "./PurchaseAdvancedTransforms";
 import { CAMPAIGN, LOCATION } from "./constants";

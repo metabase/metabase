@@ -3,8 +3,8 @@ import {
   setupDashboardNotFoundEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
 import { createMockDashboard } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import { ArchiveDashboardModalConnectedInner } from "./ArchiveDashboardModal";
 

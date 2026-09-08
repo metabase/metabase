@@ -1,6 +1,7 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
+import type { Document } from "metabase-types/api";
 import {
   useCreateDocumentPublicLinkMutation,
   useDeleteDocumentPublicLinkMutation,
@@ -12,7 +13,6 @@ import {
 } from "metabase/embedding/lib/analytics";
 import { Box, Popover, Title } from "metabase/ui";
 import { publicDocument as getPublicDocumentUrl } from "metabase/urls/documents";
-import type { Document } from "metabase-types/api";
 
 import { DocumentPublicLinkPopoverContent } from "./DocumentPublicLinkPopoverContent";
 

@@ -1,5 +1,5 @@
-import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
 
 import { downloadsEnabledTestData, setup } from "./setup";
 

@@ -4,15 +4,15 @@ import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Schedule } from "metabase/common/components/Schedule";
-import type { ScheduleChangeEvent } from "metabase/common/components/Schedule/types";
-import { FormField } from "metabase/forms";
-import { Box, rem } from "metabase/ui";
 import type {
   DatabaseData,
   ScheduleSettings,
   ScheduleType,
 } from "metabase-types/api";
+import { Schedule } from "metabase/common/components/Schedule";
+import type { ScheduleChangeEvent } from "metabase/common/components/Schedule/types";
+import { FormField } from "metabase/forms";
+import { Box, rem } from "metabase/ui";
 
 import { ScheduleModePicker } from "./ScheduleModePicker";
 import type { ScheduleMode } from "./types";

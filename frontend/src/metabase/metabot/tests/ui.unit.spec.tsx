@@ -9,16 +9,16 @@ import {
   setupGetMetabotConversationEndpointError,
 } from "__support__/server-mocks";
 import { act, fireEvent, screen, waitFor, within } from "__support__/ui";
+import {
+  createMockMetabotConversation,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import { logout } from "metabase/redux/auth";
 import * as domModule from "metabase/utils/dom";
-import {
-  createMockMetabotConversation,
-  createMockUser,
-} from "metabase-types/api/mocks";
 
 import { Metabot } from "../components/Metabot";
 import { MetabotChat } from "../components/MetabotChat";

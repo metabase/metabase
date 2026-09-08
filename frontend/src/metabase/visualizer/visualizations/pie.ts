@@ -1,16 +1,6 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 import _ from "underscore";
 
-import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
-import { isNotNull } from "metabase/utils/types";
-import { DROPPABLE_ID } from "metabase/visualizer/constants";
-import {
-  copyColumn,
-  createVisualizerColumnReference,
-  extractReferencedColumns,
-  isDraggedColumnItem,
-} from "metabase/visualizer/utils";
-import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import {
   isDimension,
   isMetric,
@@ -22,6 +12,16 @@ import type {
   VisualizerColumnReference,
   VisualizerDataSource,
 } from "metabase-types/api";
+import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
+import { isNotNull } from "metabase/utils/types";
+import { DROPPABLE_ID } from "metabase/visualizer/constants";
+import {
+  copyColumn,
+  createVisualizerColumnReference,
+  extractReferencedColumns,
+  isDraggedColumnItem,
+} from "metabase/visualizer/utils";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 
 import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 

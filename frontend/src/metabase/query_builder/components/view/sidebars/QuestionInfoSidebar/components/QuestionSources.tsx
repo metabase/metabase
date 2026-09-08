@@ -1,13 +1,13 @@
 import { Fragment, useMemo } from "react";
 import { c } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
 import { Flex, FixedSizeIcon as Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import { getQuestionWithoutComposing } from "../../../../../store/selectors";
 import { getDataSourceParts } from "../../../ViewHeader/components/QuestionDataSource/utils";

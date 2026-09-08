@@ -3,11 +3,11 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import { Button, Icon, Popover, Tooltip } from "metabase/ui";
-import type * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 
 import ViewTitleHeaderS from "./EditTableDataFilterButton.module.css";
 

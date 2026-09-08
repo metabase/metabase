@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { DatabaseId } from "metabase-types/api";
 import {
   skipToken,
   useGetDatabaseQuery,
   useListDatabasesQuery,
 } from "metabase/api";
 import * as Urls from "metabase/urls";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { DatabaseId } from "metabase-types/api";
 
 export const useDatabaseCrumb = (id: DatabaseId) => {
   // We display what the database list already holds to avoid showing a loading

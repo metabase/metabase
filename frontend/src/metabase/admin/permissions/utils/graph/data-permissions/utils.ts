@@ -1,5 +1,5 @@
-import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { DataPermissionValue } from "metabase-types/api";
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 
 export const isRestrictivePermission = (value: DataPermissionValue) =>
   value === DataPermissionValue.NO ||

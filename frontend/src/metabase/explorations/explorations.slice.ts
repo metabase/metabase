@@ -1,10 +1,10 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
+import type { Exploration } from "metabase-types/api";
 import type {
   ExplorationsState,
   HighlightedCommentState,
 } from "metabase/redux/store/explorations";
-import type { Exploration } from "metabase-types/api";
 
 const initialState: ExplorationsState = {
   currentExploration: undefined,

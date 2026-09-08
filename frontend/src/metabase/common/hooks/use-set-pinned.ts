@@ -1,12 +1,6 @@
 import { useCallback } from "react";
 import { match } from "ts-pattern";
 
-import {
-  useUpdateCardMutation,
-  useUpdateDashboardMutation,
-  useUpdateDocumentMutation,
-  useUpdateExplorationMutation,
-} from "metabase/api";
 import type {
   Card,
   Collection,
@@ -15,6 +9,12 @@ import type {
   Document,
   Exploration,
 } from "metabase-types/api";
+import {
+  useUpdateCardMutation,
+  useUpdateDashboardMutation,
+  useUpdateDocumentMutation,
+  useUpdateExplorationMutation,
+} from "metabase/api";
 
 type Pinnable<M extends string, T extends { id: unknown }> = {
   model: M;

@@ -1,5 +1,8 @@
 import { match } from "ts-pattern";
 
+import * as Lib from "metabase-lib";
+import type { TransformSource } from "metabase-types/api";
+import { isConcreteTableId } from "metabase-types/api/table";
 import {
   skipToken,
   useGetAdhocQueryMetadataQuery,
@@ -8,9 +11,6 @@ import {
 import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { getLibQuery, isMbqlQuery } from "metabase/transforms/utils";
-import * as Lib from "metabase-lib";
-import type { TransformSource } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api/table";
 
 import { getSourceFieldOptions } from "./KeysetColumnSelect";
 import { useNativeHasCheckpointFieldOptions } from "./useNativeCheckpointFieldOptions";

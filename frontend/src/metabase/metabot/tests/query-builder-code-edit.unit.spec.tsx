@@ -6,15 +6,6 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import {
-  aiStreamingQuery,
-  findMatchingInflightAiStreamingRequests,
-} from "metabase/api/ai-streaming";
-import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
-import { getMetadata } from "metabase/metadata-store";
-import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {
@@ -24,6 +15,15 @@ import {
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  aiStreamingQuery,
+  findMatchingInflightAiStreamingRequests,
+} from "metabase/api/ai-streaming";
+import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
+import { getMetadata } from "metabase/metadata-store";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 
 import { MetabotProvider } from "../context";
 import { sendAgentRequest } from "../state/actions";

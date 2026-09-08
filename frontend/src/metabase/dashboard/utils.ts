@@ -2,19 +2,6 @@ import { getIn } from "icepick";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import type { SelectedTabId } from "metabase/redux/store";
-import type { Location } from "metabase/router";
-import {
-  isQuestionDashCard,
-  isVirtualDashCard,
-} from "metabase/utils/dashboard";
-import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
-import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";
-import { hasNoResults } from "metabase/visualizations/lib/no-results";
-import {
-  getDatasetPermissionError,
-  getGenericErrorMessage,
-} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
@@ -43,6 +30,19 @@ import type {
   VirtualDashboardCard,
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
+import type { SelectedTabId } from "metabase/redux/store";
+import type { Location } from "metabase/router";
+import {
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
+import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
+import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";
+import { hasNoResults } from "metabase/visualizations/lib/no-results";
+import {
+  getDatasetPermissionError,
+  getGenericErrorMessage,
+} from "metabase/viz-core";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params && before.enable_embedding) {

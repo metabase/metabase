@@ -1,6 +1,9 @@
 import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Table from "metabase-lib/v1/metadata/Table";
+import type { IconName } from "metabase-types/api";
 import { AccordionList } from "metabase/common/components/AccordionList";
 import {
   HoverParent,
@@ -11,9 +14,6 @@ import { getMetadata } from "metabase/metadata-store";
 import { getQueryAndColumns } from "metabase/querying/common/utils";
 import { useSelector } from "metabase/redux";
 import { Box, DelayGroup, Icon } from "metabase/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type { IconName } from "metabase-types/api";
 
 import { DataSelectorLoading } from "../DataSelectorLoading";
 import { CONTAINER_WIDTH } from "../constants";

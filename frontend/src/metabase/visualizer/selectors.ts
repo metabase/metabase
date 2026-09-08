@@ -1,6 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+import type { DatasetData, RawSeries } from "metabase-types/api";
 import type { VisualizerState } from "metabase/redux/store/visualizer";
 import {
   type ComputedVisualizationSettings,
@@ -10,8 +12,6 @@ import {
   getVisualizationTransformed,
   isCartesianChart,
 } from "metabase/viz-core";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
-import type { DatasetData, RawSeries } from "metabase-types/api";
 
 import {
   createDataSource,

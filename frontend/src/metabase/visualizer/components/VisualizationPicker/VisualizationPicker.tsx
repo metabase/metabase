@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 
+import type { VisualizationDisplay } from "metabase-types/api";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Center, SegmentedControl } from "metabase/ui";
 import { visualizations } from "metabase/viz-core";
-import type { VisualizationDisplay } from "metabase-types/api";
 
 import { trackVisualizerDataChanged } from "../analytics";
 

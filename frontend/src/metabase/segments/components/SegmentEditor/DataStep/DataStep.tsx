@@ -1,19 +1,19 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type { TableId } from "metabase-types/api";
 import { selectTableQueryMetadata } from "metabase/api";
 import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
-import { TableBreadcrumbs } from "metabase/metadata/components";
 import { getMetadata } from "metabase/metadata-store";
+import { TableBreadcrumbs } from "metabase/metadata/components";
 import { useDispatch, useStore } from "metabase/redux";
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
-import type { TableId } from "metabase-types/api";
 
 import { ClauseStep } from "../ClauseStep";
 

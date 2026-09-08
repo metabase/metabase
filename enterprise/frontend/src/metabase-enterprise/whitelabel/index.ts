@@ -1,14 +1,5 @@
 import { t } from "ttag";
 
-import {
-  PLUGIN_APP_INIT_FUNCTIONS,
-  PLUGIN_HOMEPAGE_SETTING,
-  PLUGIN_LANDING_PAGE,
-  PLUGIN_LOGO_ICON_COMPONENTS,
-  PLUGIN_SELECTORS,
-  PLUGIN_WHITELABEL,
-} from "metabase/plugins";
-import MetabaseSettings from "metabase/utils/settings";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
   getApplicationName,
@@ -21,6 +12,15 @@ import {
   getShowMetabaseLinks,
 } from "metabase-enterprise/settings/selectors";
 import type { SettingKey } from "metabase-types/api";
+import {
+  PLUGIN_APP_INIT_FUNCTIONS,
+  PLUGIN_HOMEPAGE_SETTING,
+  PLUGIN_LANDING_PAGE,
+  PLUGIN_LOGO_ICON_COMPONENTS,
+  PLUGIN_SELECTORS,
+  PLUGIN_WHITELABEL,
+} from "metabase/plugins";
+import MetabaseSettings from "metabase/utils/settings";
 
 import { LandingPageUrlField } from "./components/LandingPageUrlField";
 import { LogoIcon } from "./components/LogoIcon";

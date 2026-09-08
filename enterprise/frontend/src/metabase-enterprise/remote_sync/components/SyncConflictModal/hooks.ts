@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import { c, t } from "ttag";
 
-import { useToast } from "metabase/common/hooks";
 import {
   useCreateBranchMutation,
   useExportChangesMutation,
@@ -11,6 +10,7 @@ import {
   type SyncError,
   parseSyncError,
 } from "metabase-enterprise/remote_sync/utils";
+import { useToast } from "metabase/common/hooks";
 
 import { trackBranchCreated, trackPushChanges } from "../../analytics";
 

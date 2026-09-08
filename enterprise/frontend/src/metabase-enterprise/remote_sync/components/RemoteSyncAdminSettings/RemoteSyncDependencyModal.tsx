@@ -2,8 +2,8 @@ import { useFormikContext } from "formik";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Button, Card, Group, Icon, Modal, Stack, Text } from "metabase/ui";
 import type { RemoteSyncDependencyFailure } from "metabase-types/api";
+import { Button, Card, Group, Icon, Modal, Stack, Text } from "metabase/ui";
 
 import { COLLECTIONS_KEY } from "../../constants";
 import type { RemoteSyncSettingsFormState } from "../../types";

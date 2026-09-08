@@ -1,15 +1,15 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { ModalContent } from "metabase/common/components/ModalContent";
-import { getDefaultTimelineIcon } from "metabase/common/utils/timelines";
-import { dayjs } from "metabase/dayjs";
 import type {
   Collection,
   Timeline,
   TimelineEventData,
   TimelineEventSource,
 } from "metabase-types/api";
+import { ModalContent } from "metabase/common/components/ModalContent";
+import { getDefaultTimelineIcon } from "metabase/common/utils/timelines";
+import { dayjs } from "metabase/dayjs";
 
 import EventForm from "../../containers/EventForm";
 

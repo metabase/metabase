@@ -2,6 +2,7 @@ import cx from "classnames";
 import { type ReactElement, type ReactNode, useMemo } from "react";
 import { c, t } from "ttag";
 
+import type { CollectionItem, IconName } from "metabase-types/api";
 import { archiveAndTrack } from "metabase/archive/analytics";
 import type {
   OnArchive,
@@ -17,7 +18,6 @@ import { Link } from "metabase/common/components/Link";
 import { ActionIcon, Flex, Icon, Menu, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
 import * as Urls from "metabase/urls";
-import type { CollectionItem, IconName } from "metabase-types/api";
 
 import S from "./EntityItemMenu.module.css";
 

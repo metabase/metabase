@@ -1,10 +1,10 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import type { User } from "metabase-types/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { User } from "metabase-types/api";
 
 import S from "./ReactivateUserButton.module.css";
 

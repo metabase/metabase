@@ -1,7 +1,5 @@
 import _ from "underscore";
 
-import { isJWT } from "metabase/utils/jwt";
-import { isUuid } from "metabase/utils/uuid";
 import type {
   ActionDashboardCard,
   BaseDashboardCard,
@@ -10,6 +8,8 @@ import type {
   VirtualCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
+import { isJWT } from "metabase/utils/jwt";
+import { isUuid } from "metabase/utils/uuid";
 
 export function isQuestionCard(
   card: SeriesCard | VirtualCard,

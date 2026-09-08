@@ -2,8 +2,6 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
-import { registerVisualizations } from "metabase/visualizations/register";
-import { isPopoverClickAction } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockColumn,
@@ -13,6 +11,8 @@ import {
   createAdHocCard,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { registerVisualizations } from "metabase/visualizations/register";
+import { isPopoverClickAction } from "metabase/visualizations/types";
 
 import {
   ColumnFormattingAction,

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { TableIndexEntry, Transform } from "metabase-types/api";
 import {
   skipToken,
   useDeleteTableIndexMutation,
@@ -19,7 +20,6 @@ import { useTransformPermissions } from "metabase/transforms/hooks/use-transform
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNullOrUndefined } from "metabase/utils/types";
-import type { TableIndexEntry, Transform } from "metabase-types/api";
 
 import { TransformHeader } from "../../components/TransformHeader";
 

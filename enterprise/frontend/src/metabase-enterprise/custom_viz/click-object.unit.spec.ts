@@ -1,5 +1,5 @@
-import type { ClickObject } from "metabase/visualizations/types";
 import { createMockColumn } from "metabase-types/api/mocks";
+import type { ClickObject } from "metabase/visualizations/types";
 
 import { type PluginClickObject, toHostClickObject } from "./click-object";
 

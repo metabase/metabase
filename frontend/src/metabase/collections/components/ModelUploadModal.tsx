@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { CollectionId, TableId } from "metabase-types/api";
 import { useListCollectionItemsQuery } from "metabase/api";
 import type { OnFileUpload } from "metabase/common/collections/types";
 import { UploadMode } from "metabase/redux/store/upload";
@@ -14,7 +15,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { CollectionId, TableId } from "metabase-types/api";
 
 import { findLastEditedCollectionItem } from "./utils";
 

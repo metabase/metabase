@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import Question from "metabase-lib/v1/Question";
 import {
   skipToken,
   useAdminNotificationDetailQuery,
@@ -11,7 +12,6 @@ import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/Cr
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Flex, Stack } from "metabase/ui";
-import Question from "metabase-lib/v1/Question";
 
 import { trackAlertsManagementEditClicked } from "../analytics";
 

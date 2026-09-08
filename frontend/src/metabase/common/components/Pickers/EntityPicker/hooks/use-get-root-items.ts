@@ -2,6 +2,12 @@ import { useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
+import type {
+  Collection,
+  CollectionNamespace,
+  Database,
+  User,
+} from "metabase-types/api";
 import {
   skipToken,
   useListCollectionItemsQuery,
@@ -17,12 +23,6 @@ import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
 import { type DispatchFn, useDispatch, useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
-import type {
-  Collection,
-  CollectionNamespace,
-  Database,
-  User,
-} from "metabase-types/api";
 
 import { useOmniPickerContext } from "../context";
 import type {

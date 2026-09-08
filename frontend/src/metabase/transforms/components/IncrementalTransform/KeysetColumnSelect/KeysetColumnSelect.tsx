@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 
+import * as Lib from "metabase-lib";
 import { FormSelect } from "metabase/forms";
 import {
   type DataAttributes,
   type InputDescriptionProps,
   Loader,
 } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import { useAutoSelectFirstOption } from "../useAutoSelectFirstOption";
 import {

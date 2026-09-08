@@ -3,11 +3,11 @@ import { createSelector } from "@reduxjs/toolkit";
 import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type { CardId, CardType } from "metabase-types/api";
 import { getEngineNativeType } from "metabase/databases/utils/engine";
 import { METAKEY } from "metabase/utils/browser";
 import { isNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
-import type { CardId, CardType } from "metabase-types/api";
 
 import type { Location, SelectionRange as Range } from "../../editor/types";
 

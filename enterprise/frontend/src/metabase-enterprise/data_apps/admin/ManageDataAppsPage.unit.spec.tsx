@@ -3,10 +3,10 @@ import fetchMock from "fetch-mock";
 
 import { setupUserAcknowledgementEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
-import { Route } from "metabase/router";
 import type { DataApp } from "metabase-types/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { Route } from "metabase/router";
 
 import { ManageDataAppsPage } from "./ManageDataAppsPage";
 

@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 
-import { getMetadata } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
 import * as Lib from "metabase-lib";
 import { isConcreteTableId } from "metabase-types/api/table";
+import { getMetadata } from "metabase/metadata-store";
+import { useSelector } from "metabase/redux";
 
 import { getSourceFieldOptions } from "./KeysetColumnSelect/KeysetColumnSelect";
 import type { CheckpointFieldOption } from "./useClearUnsupportedLookback";

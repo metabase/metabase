@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import type { DependencyNode } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_REPLACEMENT } from "metabase/plugins";
 import {
@@ -12,7 +13,6 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import type { DependencyNode } from "metabase-types/api";
 
 import {
   getNodeIcon,

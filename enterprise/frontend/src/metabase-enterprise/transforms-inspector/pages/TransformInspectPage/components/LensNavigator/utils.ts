@@ -1,9 +1,9 @@
-import { getLensKey } from "metabase/api/utils/transform-inspector-lens";
 import type {
   InspectorDrillLensTrigger,
   InspectorLensMetadata,
   LensParams,
 } from "metabase-types/api";
+import { getLensKey } from "metabase/api/utils/transform-inspector-lens";
 
 import type { LensHandle } from "../../types";
 

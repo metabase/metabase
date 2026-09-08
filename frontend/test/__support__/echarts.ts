@@ -1,3 +1,4 @@
+import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
 import type {
   BaseCartesianChartModel,
   BreakoutSeriesModel,
@@ -7,7 +8,6 @@ import type {
   SeriesModel,
   TicksDimensions,
 } from "metabase/viz-core";
-import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
 
 type MockChartLayoutOpts = Partial<
   Omit<ChartLayout, "ticksDimensions" | "padding" | "bounds">

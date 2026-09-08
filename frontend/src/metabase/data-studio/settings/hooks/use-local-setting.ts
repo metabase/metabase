@@ -1,12 +1,12 @@
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useToast } from "metabase/common/hooks";
-import { useUpdateSettingMutation } from "metabase/settings";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
 } from "metabase-types/api";
+import { useToast } from "metabase/common/hooks";
+import { useUpdateSettingMutation } from "metabase/settings";
 
 export function useLocalSetting<
   K extends EnterpriseSettingKey,

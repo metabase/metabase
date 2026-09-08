@@ -1,7 +1,3 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { memoize } from "metabase/utils/memoize";
-import { isEmpty } from "metabase/utils/validate";
-import { formatValue } from "metabase/value-formatting";
 import {
   type CardId,
   type ColumnSettings,
@@ -14,6 +10,10 @@ import {
   type VisualizationSettingKey,
   getRowsForStableKeys,
 } from "metabase-types/api";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { memoize } from "metabase/utils/memoize";
+import { isEmpty } from "metabase/utils/validate";
+import { formatValue } from "metabase/value-formatting";
 
 import { getHexColor } from "../../../lib/color";
 import type { CartesianChartColumns } from "../../../lib/graph/columns";

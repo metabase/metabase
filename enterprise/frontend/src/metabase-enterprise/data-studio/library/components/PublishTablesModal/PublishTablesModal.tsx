@@ -1,5 +1,13 @@
 import { jt, t } from "ttag";
 
+import { usePublishTablesMutation } from "metabase-enterprise/api";
+import type {
+  BulkTableInfo,
+  BulkTableRequest,
+  DatabaseId,
+  SchemaId,
+  TableId,
+} from "metabase-types/api";
 import { useGetTableSelectionInfoQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -24,14 +32,6 @@ import {
   Text,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { usePublishTablesMutation } from "metabase-enterprise/api";
-import type {
-  BulkTableInfo,
-  BulkTableRequest,
-  DatabaseId,
-  SchemaId,
-  TableId,
-} from "metabase-types/api";
 
 export function PublishTablesModal({
   databaseIds,

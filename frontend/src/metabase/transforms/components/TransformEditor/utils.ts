@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import type { QueryEditorUiOptions } from "metabase/querying/editor/types";
 import type { Database } from "metabase-types/api";
+import type { QueryEditorUiOptions } from "metabase/querying/editor/types";
 
 import { doesDatabaseSupportTransforms, validateDatabase } from "../../utils";
 

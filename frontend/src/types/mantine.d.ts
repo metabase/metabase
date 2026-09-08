@@ -1,5 +1,6 @@
 import type { MantineColorsTuple } from "@mantine/core";
 
+import type { ColorSettings } from "metabase-types/api/settings";
 import type { EmbeddingThemeOptions } from "metabase/embedding-sdk/theme/private";
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
@@ -7,7 +8,6 @@ import type {
   ShadowScaleKey,
   SpacingScaleKey,
 } from "metabase/ui/theme";
-import type { ColorSettings } from "metabase-types/api/settings";
 
 interface _EmotionCompatibilityTheme {
   fn: {

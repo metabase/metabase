@@ -2,12 +2,12 @@ import type React from "react";
 import { type MouseEvent, type Ref, forwardRef } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type { IconName } from "metabase-types/api";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { isEmbedding } from "metabase/embedding/config";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import * as Lib from "metabase-lib";
-import type { IconName } from "metabase-types/api";
 
 import { NotebookCell } from "../NotebookCell";
 

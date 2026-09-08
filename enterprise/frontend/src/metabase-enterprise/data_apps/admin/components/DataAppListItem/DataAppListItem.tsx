@@ -1,5 +1,5 @@
-import { Flex, Group } from "metabase/ui";
 import type { DataApp } from "metabase-types/api";
+import { Flex, Group } from "metabase/ui";
 
 import { DataAppActionsMenu } from "../DataAppActionsMenu/DataAppActionsMenu";
 import { DataAppStatusBadge } from "../DataAppStatusBadge/DataAppStatusBadge";

@@ -1,6 +1,9 @@
 import { Fragment } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import type { VisualizationSettings } from "metabase-types/api";
 import { Box } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import {
@@ -12,9 +15,6 @@ import type {
   LegacyDrill,
 } from "metabase/visualizations/types";
 import { getSettingsWidgetsForSeries, updateSettings } from "metabase/viz-core";
-import * as Lib from "metabase-lib";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import type { VisualizationSettings } from "metabase-types/api";
 
 export const POPOVER_TEST_ID = "column-formatting-settings";
 

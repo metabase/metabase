@@ -1,11 +1,11 @@
 import type { EChartsType } from "echarts/core";
 
+import type { IconName, TimelineIcon } from "metabase-types/api";
 import type {
   TimelineEventCluster,
   TimelineEventGroup,
   TimelineEventsModel,
 } from "metabase/viz-core";
-import type { IconName, TimelineIcon } from "metabase-types/api";
 
 export const TIMELINE_ICON_TO_SMALL_ICON_MAP = {
   info: "info",

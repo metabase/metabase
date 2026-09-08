@@ -1,8 +1,8 @@
 import { renderHook } from "@testing-library/react";
 
-import { getSensibleVisualizations } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType, Dataset } from "metabase-types/api";
+import { getSensibleVisualizations } from "metabase/viz-core";
 
 import { useMcpVisualizationSelector } from "./useMcpVisualizationSelector";
 

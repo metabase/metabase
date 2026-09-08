@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 
-import { Box, Popover } from "metabase/ui";
 import type { MetricDefinition } from "metabase-lib/metric";
+import { Box, Popover } from "metabase/ui";
 
 import { trackMetricsViewerFilterAdded } from "../../analytics";
 import type { SourceColorMap } from "../../types/viewer-state";

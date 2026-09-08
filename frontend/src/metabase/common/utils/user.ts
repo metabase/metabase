@@ -1,5 +1,5 @@
-import { isEmail } from "metabase/utils/email";
 import type { BaseUser, Group, Tenant } from "metabase-types/api";
+import { isEmail } from "metabase/utils/email";
 
 // Requires at least an `email` or `common_name` (mirroring `isUser` below), so
 // name-only objects like a tenant's `{ name }` can't be passed as first_name alone.

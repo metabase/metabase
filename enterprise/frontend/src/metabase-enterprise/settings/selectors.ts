@@ -1,11 +1,11 @@
 import noResultsSource from "assets/img/no_results.svg";
-import type { IllustrationValue } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
-import { getSetting, getSettings } from "metabase/settings";
 import type {
   EnterpriseSettings,
   IllustrationSettingValue,
 } from "metabase-types/api";
+import type { IllustrationValue } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
+import { getSetting, getSettings } from "metabase/settings";
 
 import { LOADING_MESSAGE_BY_SETTING } from "../whitelabel/lib/loading-message";
 

@@ -2,6 +2,12 @@ import { useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
+import type {
+  Collection,
+  CollectionNamespace,
+  LibraryCollection,
+  SchemaName,
+} from "metabase-types/api";
 import {
   cardApi,
   collectionApi,
@@ -19,12 +25,6 @@ import {
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { type DispatchFn, useDispatch } from "metabase/redux";
-import type {
-  Collection,
-  CollectionNamespace,
-  LibraryCollection,
-  SchemaName,
-} from "metabase-types/api";
 
 import type {
   EntityPickerOptions,

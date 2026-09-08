@@ -5,6 +5,28 @@ import { merge, updateIn } from "icepick";
 import { shallowEqual } from "react-redux";
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type Table from "metabase-lib/v1/metadata/Table";
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import {
+  normalizeParameterValue,
+  normalizeParameters,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
+import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
+import type {
+  Bookmark,
+  ColumnFormattingSetting,
+  ColumnSettings,
+  Dataset,
+  DatasetColumn,
+  DatasetQuery,
+  Field,
+  Series,
+  Timeline,
+  TimelineEvent,
+} from "metabase-types/api";
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 import { timelineApi } from "metabase/api";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getSortedTimelines } from "metabase/common/utils/timelines";
@@ -31,28 +53,6 @@ import {
   isTimeseries,
   minTimeseriesUnit,
 } from "metabase/viz-core";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type Table from "metabase-lib/v1/metadata/Table";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import {
-  normalizeParameterValue,
-  normalizeParameters,
-} from "metabase-lib/v1/parameters/utils/parameter-values";
-import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
-import type {
-  Bookmark,
-  ColumnFormattingSetting,
-  ColumnSettings,
-  Dataset,
-  DatasetColumn,
-  DatasetQuery,
-  Field,
-  Series,
-  Timeline,
-  TimelineEvent,
-} from "metabase-types/api";
-import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { cleanIndexFlags } from "../model-indexes/actions";
 import { getWritableColumnProperties } from "../utils";

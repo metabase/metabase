@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 import { moveCollectionItemAndTrack } from "metabase/common/collections/analytics";
 import {
@@ -21,7 +22,6 @@ import {
   type RegisterShortcutProps,
   useRegisterShortcut,
 } from "metabase/palette/hooks/useRegisterShortcut";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
 import { UnarchivedBulkActions } from "./UnarchivedBulkActions";

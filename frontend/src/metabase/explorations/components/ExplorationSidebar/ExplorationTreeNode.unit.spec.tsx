@@ -2,6 +2,10 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import type {
+  ExplorationBlockNode,
+  ExplorationQuery,
+} from "metabase-types/api";
 import { dayjs } from "metabase/dayjs";
 import { trackExplorationPageHiddenToggled } from "metabase/explorations/analytics";
 import { DEFAULT_SORT_ORDER } from "metabase/explorations/sidebar-preferences";
@@ -12,10 +16,6 @@ import {
   createQuery,
 } from "metabase/explorations/test-utils";
 import { Route } from "metabase/router";
-import type {
-  ExplorationBlockNode,
-  ExplorationQuery,
-} from "metabase-types/api";
 
 import { ExplorationSidebar } from "./ExplorationSidebar";
 import {

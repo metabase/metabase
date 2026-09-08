@@ -1,10 +1,10 @@
 import * as Snowplow from "@snowplow/browser-tracker";
 
+import type { SchemaEventMap, SchemaType } from "metabase-types/analytics";
+import type { SimpleEventSchema } from "metabase-types/analytics/event";
 import { shouldLogAnalytics } from "metabase/env";
 import { trackMetaplowEvent } from "metabase/utils/metaplow";
 import Settings from "metabase/utils/settings";
-import type { SchemaEventMap, SchemaType } from "metabase-types/analytics";
-import type { SimpleEventSchema } from "metabase-types/analytics/event";
 
 type SchemaVersion = `${number}-${number}-${number}`;
 

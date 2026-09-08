@@ -5,7 +5,6 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupTenantEntpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { GroupId, GroupInfo, Tenant, User } from "metabase-types/api";
 import {
   createMockGroup,
@@ -13,6 +12,7 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { UserForm } from "./UserForm";
 

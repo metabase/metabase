@@ -1,6 +1,6 @@
+import type { IconName } from "metabase-types/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { Anchor, Box, Ellipsified, FixedSizeIcon, Group } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 type TransformOutputItemProps = {
   icon: IconName;

@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 
-import type { SearchFilterKeys } from "metabase/common/search/constants";
 import type { EnabledSearchModel, IconName, UserId } from "metabase-types/api";
+import type { SearchFilterKeys } from "metabase/common/search/constants";
 
 export type TypeFilterProps = EnabledSearchModel[];
 export type CreatedByFilterProps = UserId[];

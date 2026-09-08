@@ -2,13 +2,13 @@ import querystring from "querystring";
 
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { Card, Field, NormalizedField } from "metabase-types/api";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type { Card, Field, NormalizedField } from "metabase-types/api";
 
 interface GetPathNameFromQueryBuilderModeOptions {
   pathname: string;

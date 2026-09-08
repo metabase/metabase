@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type * as Lib from "metabase-lib";
 import { Button } from "metabase/ui";
 import type { ChartSettingTableColumnsProps } from "metabase/viz-core";
-import type * as Lib from "metabase-lib";
 
 import { FieldPanel } from "./FieldPanel";
 import { TableColumnPanel } from "./TableColumnPanel";

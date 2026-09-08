@@ -2,6 +2,13 @@ import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type {
+  CardId,
+  DashboardId,
+  DocumentId,
+  ExplorationId,
+  RegularCollectionId,
+} from "metabase-types/api";
 import {
   useDeleteCardMutation,
   useDeleteCollectionMutation,
@@ -11,13 +18,6 @@ import {
 } from "metabase/api";
 import { TRASHABLE_MODELS } from "metabase/archive/utils";
 import { useToast } from "metabase/common/hooks/use-toast";
-import type {
-  CardId,
-  DashboardId,
-  DocumentId,
-  ExplorationId,
-  RegularCollectionId,
-} from "metabase-types/api";
 
 type Deletable<M extends string, Id> = {
   model: M;

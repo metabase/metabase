@@ -3,12 +3,12 @@ import type { ComponentProps } from "react";
 import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
 import type {
   Channel,
   ChannelSpec,
   SlackChannelOption,
 } from "metabase-types/api";
+import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
 
 type OnChannelPropertyChange = ComponentProps<
   typeof SlackChannelField

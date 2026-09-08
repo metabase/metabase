@@ -9,9 +9,9 @@ import type {
   SdkQuestionId,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
+import type { DatasetColumn, RowValues } from "metabase-types/api";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import { createRawSeries } from "metabase/viz-core";
-import type { DatasetColumn, RowValues } from "metabase-types/api";
 
 export type QueryQuestionParams = {
   questionId: SdkQuestionId;

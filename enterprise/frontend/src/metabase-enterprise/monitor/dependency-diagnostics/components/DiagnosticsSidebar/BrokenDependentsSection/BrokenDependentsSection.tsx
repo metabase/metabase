@@ -1,8 +1,5 @@
 import { useState } from "react";
 
-import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
-import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
-import { Badge, Group, Loader, Stack, Title } from "metabase/ui";
 import { useLazyListBrokenGraphNodesQuery } from "metabase-enterprise/api";
 import { DependencyList } from "metabase-enterprise/dependencies/components/DependencyList";
 import { FilterOptionsPicker } from "metabase-enterprise/dependencies/components/FilterOptionsPicker";
@@ -18,6 +15,9 @@ import {
   getDependentErrorNodesLabel,
 } from "metabase-enterprise/dependencies/utils";
 import type { DependencyNode } from "metabase-types/api";
+import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
+import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
+import { Badge, Group, Loader, Stack, Title } from "metabase/ui";
 
 import {
   BROKEN_DEPENDENTS_GROUP_TYPES,

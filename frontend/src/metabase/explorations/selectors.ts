@@ -1,8 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import type { ExplorationQuery, ExplorationQueryId } from "metabase-types/api";
 import type { State } from "metabase/redux/store";
 import type { HighlightedCommentState } from "metabase/redux/store/explorations";
-import type { ExplorationQuery, ExplorationQueryId } from "metabase-types/api";
 
 export const getCurrentExploration = (state: State) =>
   state.explorations.currentExploration;

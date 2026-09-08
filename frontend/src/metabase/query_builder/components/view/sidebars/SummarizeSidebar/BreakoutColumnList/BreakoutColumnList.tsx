@@ -1,12 +1,12 @@
 import { type ChangeEvent, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Box, DelayGroup, Icon, Input, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { isNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
 
 import {
   type UpdateQueryHookProps,

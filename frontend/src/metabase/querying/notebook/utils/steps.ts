@@ -1,11 +1,11 @@
 import _ from "underscore";
 
-import { hasFeature, supportsJoins } from "metabase/databases";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { CardType } from "metabase-types/api";
+import { hasFeature, supportsJoins } from "metabase/databases";
 
 import type { NotebookStep, OpenSteps } from "../types";
 

@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 import {
   coerceCollectionId,
   isRootCollection,
 } from "metabase/common/collections/utils";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { createEmptyStateItem } from "metabase/data-studio/common/utils";
-import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
 function createSnippetNode(snippet: NativeQuerySnippet): TreeItem {
   return {

@@ -17,8 +17,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -26,6 +24,8 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import type { UploadsSettings } from "metabase-types/api/settings";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import {
   UploadSettingsForm,

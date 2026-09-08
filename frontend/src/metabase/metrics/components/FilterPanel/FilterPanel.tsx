@@ -1,5 +1,5 @@
-import { Stack } from "metabase/ui";
 import type * as LibMetric from "metabase-lib/metric";
+import { Stack } from "metabase/ui";
 
 import { MetricSection } from "./MetricSection";
 

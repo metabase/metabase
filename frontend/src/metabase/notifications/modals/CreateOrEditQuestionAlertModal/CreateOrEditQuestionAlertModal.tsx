@@ -3,6 +3,18 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import { isEqual } from "underscore";
 
+import type Question from "metabase-lib/v1/Question";
+import type {
+  AdminNotification,
+  CreateAlertNotificationRequest,
+  Notification,
+  NotificationCardSendCondition,
+  NotificationCronSubscription,
+  NotificationHandler,
+  UpdateAlertNotificationRequest,
+  UserId,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   useCreateNotificationMutation,
   useGetChannelInfoQuery,
@@ -42,18 +54,6 @@ import {
   rem,
 } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";
-import type Question from "metabase-lib/v1/Question";
-import type {
-  AdminNotification,
-  CreateAlertNotificationRequest,
-  Notification,
-  NotificationCardSendCondition,
-  NotificationCronSubscription,
-  NotificationHandler,
-  UpdateAlertNotificationRequest,
-  UserId,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 import { ChannelSetupModal } from "../ChannelSetupModal";
 import { NotificationChannelsPicker } from "../components/NotificationChannelsPicker";

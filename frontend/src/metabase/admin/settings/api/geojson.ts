@@ -1,9 +1,9 @@
 import type { Feature, FeatureCollection } from "geojson";
 import { t } from "ttag";
 
+import type { GeoJSONData } from "metabase-types/api";
 import { Api } from "metabase/api";
 import { computeMinimalBoundsCoordinates } from "metabase/viz-core";
-import type { GeoJSONData } from "metabase-types/api";
 
 export const geojsonApi = Api.injectEndpoints({
   endpoints: (builder) => ({

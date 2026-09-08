@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { NativeQuerySnippet } from "metabase-types/api";
 import { useUpdateSnippetMutation } from "metabase/api";
 import { EditableText } from "metabase/common/components/EditableText";
 import { useToast } from "metabase/common/hooks";
-import type { NativeQuerySnippet } from "metabase-types/api";
 
 type SnippetDescriptionSectionProps = {
   snippet: NativeQuerySnippet;

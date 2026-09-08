@@ -2,9 +2,9 @@ import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
+import type { ProjectionClause } from "metabase-lib/metric";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { Button, Flex, Icon } from "metabase/ui";
-import type { ProjectionClause } from "metabase-lib/metric";
 
 import type {
   MetricDefinitionEntry,

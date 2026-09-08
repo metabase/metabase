@@ -4,6 +4,13 @@ import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import type { IconName } from "metabase-types/api";
+import {
+  createMockDashboard,
+  createMockDashboardCard,
+  createMockDatabase,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
 import { DASHBOARD_APP_ACTIONS } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
@@ -12,13 +19,6 @@ import {
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import type { IconName } from "metabase-types/api";
-import {
-  createMockDashboard,
-  createMockDashboardCard,
-  createMockDatabase,
-  createMockUser,
-} from "metabase-types/api/mocks";
 
 import { DashboardHeaderButtonRow } from "./DashboardHeaderButtonRow";
 import { DASHBOARD_EDITING_ACTIONS, DASHBOARD_VIEW_ACTIONS } from "./constants";

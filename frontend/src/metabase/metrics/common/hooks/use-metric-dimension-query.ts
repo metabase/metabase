@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 
-import { skipToken, useGetMetricDatasetQuery } from "metabase/api";
-import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import { skipToken, useGetMetricDatasetQuery } from "metabase/api";
+import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
 
 export function useMetricDimensionQuery(
   definition: MetricDefinition | null,

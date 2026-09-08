@@ -1,5 +1,5 @@
-import { Badge } from "metabase/ui";
 import type { Task } from "metabase-types/api";
+import { Badge } from "metabase/ui";
 
 import { formatTaskStatus, getTaskStatusColor } from "../../utils";
 

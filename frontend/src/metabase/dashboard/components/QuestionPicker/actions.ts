@@ -1,8 +1,8 @@
+import type { Dashboard } from "metabase-types/api";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { createThunkAction } from "metabase/redux";
 import { navigate } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { Dashboard } from "metabase-types/api";
 
 const ADD_DASHBOARD_QUESTION = "metabase/dashboard/ADD_DASHBOARD_QUESTION";
 

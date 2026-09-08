@@ -1,5 +1,5 @@
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 import { initializePlugin, resetInitialization } from "./sdk-overrides";
 

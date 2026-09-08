@@ -1,6 +1,4 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
-import * as Urls from "metabase/urls";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 import {
   createMockCardDependencyNode,
@@ -13,6 +11,8 @@ import {
   createMockTransformDependencyNodeData,
   createMockUserInfo,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { PanelBody } from "./PanelBody";
 

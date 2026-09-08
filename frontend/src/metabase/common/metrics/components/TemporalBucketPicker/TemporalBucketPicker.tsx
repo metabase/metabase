@@ -1,12 +1,12 @@
 import { type Ref, forwardRef } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type { TemporalUnit } from "metabase-types/api";
 import type { DimensionWithDefinition } from "metabase/common/metrics/types";
 import { getCommonTemporalUnits } from "metabase/common/metrics/utils/dates";
 import { TemporalUnitPicker } from "metabase/querying/common/components/TemporalUnitPicker";
 import { Button } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type { TemporalUnit } from "metabase-types/api";
 
 type TemporalBucketPickerProps = {
   selectedUnit: TemporalUnit | undefined;

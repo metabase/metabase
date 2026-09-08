@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { Task } from "metabase-types/api";
 import { useListUniqueTasksQuery } from "metabase/api";
 import { Select, type SelectProps } from "metabase/ui";
-import type { Task } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   value: Task["task"] | null;

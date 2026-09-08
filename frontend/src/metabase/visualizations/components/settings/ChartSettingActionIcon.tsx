@@ -1,8 +1,8 @@
 import type { HTMLAttributes } from "react";
 
+import type { IconName } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, type ActionIconProps, Icon } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 type ChartActionIconProps = ActionIconProps & HTMLAttributes<HTMLButtonElement>;
 interface ChartSettingActionIconProps extends ChartActionIconProps {
   icon: IconName;

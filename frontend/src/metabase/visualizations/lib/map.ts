@@ -1,12 +1,12 @@
-import { isEmbedPreview as getIsEmbedPreview } from "metabase/embedding/config";
-import { isJWT } from "metabase/utils/jwt";
-import { isUuid } from "metabase/utils/uuid";
 import type {
   DashboardId,
   JsonQuery,
   NormalizedQueryParameter,
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
+import { isEmbedPreview as getIsEmbedPreview } from "metabase/embedding/config";
+import { isJWT } from "metabase/utils/jwt";
+import { isUuid } from "metabase/utils/uuid";
 
 interface TileCoordinate {
   x: number | string;

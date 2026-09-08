@@ -1,6 +1,12 @@
 import type { Row, SortingState, Updater } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 
+import type { DependencySortOptions } from "metabase-enterprise/dependencies/types";
+import { getNodeId } from "metabase-enterprise/dependencies/utils";
+import {
+  DEPENDENCY_SORT_COLUMNS,
+  type DependencyNode,
+} from "metabase-types/api";
 import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import {
@@ -13,12 +19,6 @@ import {
   getNextOptionalSorting,
   getSortingState,
 } from "metabase/utils/sorting";
-import type { DependencySortOptions } from "metabase-enterprise/dependencies/types";
-import { getNodeId } from "metabase-enterprise/dependencies/utils";
-import {
-  DEPENDENCY_SORT_COLUMNS,
-  type DependencyNode,
-} from "metabase-types/api";
 
 import { DiagnosticsEmptyState } from "../DiagnosticsEmptyState";
 import type { DependencyDiagnosticsMode } from "../types";

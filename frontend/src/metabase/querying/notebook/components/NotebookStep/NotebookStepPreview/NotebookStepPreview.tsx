@@ -2,14 +2,14 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type { Dataset } from "metabase-types/api";
 import { getErrorMessage } from "metabase/api/utils";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Icon } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
 import Visualization from "metabase/visualizations/components/Visualization";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type { Dataset } from "metabase-types/api";
 
 import type { NotebookStep } from "../../../types";
 

@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { ActionDashboardCard } from "metabase-types/api";
 import { isActionDashCard } from "metabase/actions/utils";
 import { FormField } from "metabase/common/components/FormField/FormField";
 import { Sidebar } from "metabase/common/components/Sidebar";
@@ -21,7 +22,6 @@ import {
   Title,
 } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import type { ActionDashboardCard } from "metabase-types/api";
 
 const settings = checkNotNull(ActionViz.settings);
 const buttonVariantOptions = settings["button.variant"].getProps().options;

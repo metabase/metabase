@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
-import { Stack, rem } from "metabase/ui";
 import type { Field } from "metabase-types/api";
+import { Stack, rem } from "metabase/ui";
 
 import { FieldItem } from "./FieldItem";
 

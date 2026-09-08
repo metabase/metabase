@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import type { CacheableDashboard, Dashboard } from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
@@ -11,7 +12,6 @@ import { isDashboardCacheable } from "metabase/dashboard/utils";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Switch, useModalsStack } from "metabase/ui";
-import type { CacheableDashboard, Dashboard } from "metabase-types/api";
 
 export function DashboardSettingsSidebar() {
   const { dashboard, closeSidebar } = useDashboardContext();

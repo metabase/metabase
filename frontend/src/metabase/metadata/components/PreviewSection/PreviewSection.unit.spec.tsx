@@ -3,11 +3,11 @@ import { useState } from "react";
 
 import { setupCardDataset } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createOrdersTable,
   createOrdersTotalField,
 } from "metabase-types/api/mocks/presets";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { PreviewSection } from "./PreviewSection";
 import type { PreviewType } from "./types";

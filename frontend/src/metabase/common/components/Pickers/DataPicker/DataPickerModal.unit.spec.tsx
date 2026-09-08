@@ -14,7 +14,6 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import type {
   Database,
   DatabaseId,
@@ -29,6 +28,7 @@ import {
   createMockRecentTableItem,
   createMockSearchResult,
 } from "metabase-types/api/mocks";
+import { checkNotNull } from "metabase/utils/types";
 
 import { DataPickerModal } from "./DataPickerModal";
 import type { DataPickerValue } from "./types";

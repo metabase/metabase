@@ -3,6 +3,7 @@ import type { RowSelectionState, SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { NotificationId, UserId } from "metabase-types/api";
 import {
   useAdminListNotificationsQuery,
   useBulkNotificationActionMutation,
@@ -26,7 +27,6 @@ import { addUndo } from "metabase/redux/undo";
 import { useLocation, useNavigate, useParams } from "metabase/router";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { NotificationId, UserId } from "metabase-types/api";
 
 import { ChangeOwnerModal } from "../ChangeOwnerModal";
 import { NotificationDetailSidebar } from "../NotificationDetailSidebar";

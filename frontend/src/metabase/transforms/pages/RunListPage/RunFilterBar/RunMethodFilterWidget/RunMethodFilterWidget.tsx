@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { type FormEvent, useState } from "react";
 import { t } from "ttag";
 
+import type { TransformRunMethod } from "metabase-types/api";
 import { formatRunMethod } from "metabase/transforms/utils";
 import {
   Box,
@@ -12,7 +13,6 @@ import {
   Popover,
   Stack,
 } from "metabase/ui";
-import type { TransformRunMethod } from "metabase-types/api";
 
 import { FILTER_WIDGET_MIN_WIDTH } from "../../../../constants";
 import { FilterFieldSet } from "../FilterFieldSet";

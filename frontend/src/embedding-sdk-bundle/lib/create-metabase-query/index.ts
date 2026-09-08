@@ -5,10 +5,6 @@ import {
   isQuestionInput,
   isTableInput,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
-import { cardApi } from "metabase/api";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { getMetadataUnfiltered } from "metabase/metadata-store";
-import { fetchTableMetadata } from "metabase/redux/tables";
 import * as Lib from "metabase-lib";
 import type {
   DatasetQuery,
@@ -18,6 +14,10 @@ import type {
   TestStageWithSourceSpec,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
+import { cardApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { getMetadataUnfiltered } from "metabase/metadata-store";
+import { fetchTableMetadata } from "metabase/redux/tables";
 
 import { loadReferencedMetricMetadata } from "./metric-metadata";
 import { validateQueryInput } from "./validation";

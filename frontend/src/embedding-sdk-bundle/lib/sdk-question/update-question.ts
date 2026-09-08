@@ -1,6 +1,10 @@
 import _ from "underscore";
 
 import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type { ParameterValuesMap } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import { getMetadata } from "metabase/metadata-store";
 import {
   computeQuestionPivotTable,
@@ -9,10 +13,6 @@ import {
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { createRawSeries } from "metabase/viz-core";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type { ParameterValuesMap } from "metabase-types/api";
-import type { EntityToken } from "metabase-types/api/entity";
 
 import { runQuestionQuerySdk } from "./run-question-query";
 

@@ -2,9 +2,9 @@ import type { FormEventHandler } from "react";
 import { useState } from "react";
 import { jt, t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { Box, Button, Flex, Icon, Stack } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../ExpressionWidget/ExpressionWidgetHeader";
 

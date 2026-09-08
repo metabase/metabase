@@ -3,9 +3,9 @@ import cx from "classnames";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { MetabotTodoItem } from "metabase-types/api";
 import { Collapse, Flex, Group, Icon, Paper, Stack, Text } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { MetabotTodoItem } from "metabase-types/api";
 
 import S from "./MetabotAgentTodoMessage.module.css";
 

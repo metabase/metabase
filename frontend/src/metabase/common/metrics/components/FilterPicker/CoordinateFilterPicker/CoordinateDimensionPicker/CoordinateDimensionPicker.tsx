@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 
+import type * as LibMetric from "metabase-lib/metric";
 import { Select, Stack } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import type * as LibMetric from "metabase-lib/metric";
 
 import {
   getDimensionOptions,

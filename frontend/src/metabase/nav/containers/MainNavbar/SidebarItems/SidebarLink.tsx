@@ -2,11 +2,11 @@ import type { MouseEvent, ReactNode } from "react";
 import { isValidElement, useCallback, useMemo } from "react";
 import _ from "underscore";
 
+import type { IconName } from "metabase-types/api";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import type { IconData } from "metabase/common/utils/icon";
 import type { IconProps } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import {
   FullWidthButton,

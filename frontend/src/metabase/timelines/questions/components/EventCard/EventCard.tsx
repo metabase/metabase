@@ -2,10 +2,10 @@ import type { ChangeEvent, SyntheticEvent } from "react";
 import { memo, useCallback } from "react";
 import { t } from "ttag";
 
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 import { TimelineEventInfo } from "metabase/common/components/TimelineEventInfo";
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
 import { ActionIcon, Checkbox, Icon, Menu } from "metabase/ui";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import {
   CardAside,

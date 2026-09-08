@@ -1,15 +1,15 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
+import type { MeasureId } from "metabase-types/api";
+import type { MetricId } from "metabase-types/api/metric";
 import { measureApi, metricApi, segmentApi } from "metabase/api";
 import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useStore } from "metabase/redux";
 import { useLocation } from "metabase/router";
 import { getObjectEntries } from "metabase/utils/objects";
-import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
-import * as LibMetric from "metabase-lib/metric";
-import type { MeasureId } from "metabase-types/api";
-import type { MetricId } from "metabase-types/api/metric";
 
 import type {
   DimensionBreakoutInfo,

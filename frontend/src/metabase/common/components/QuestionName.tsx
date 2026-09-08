@@ -1,7 +1,7 @@
+import type { CardId } from "metabase-types/api";
 import { useGetCardQuery } from "metabase/api";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { getName } from "metabase/utils/name";
-import type { CardId } from "metabase-types/api";
 
 interface QuestionNameProps {
   id: CardId | null | undefined;

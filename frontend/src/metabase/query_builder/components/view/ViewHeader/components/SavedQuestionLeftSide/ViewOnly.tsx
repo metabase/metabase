@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { Flex, HoverCard, Icon, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import { Flex, HoverCard, Icon, Text, rem } from "metabase/ui";
 
 import S from "./SavedQuestionLeftSide.module.css";
 import { useHiddenSourceTables } from "./hooks";

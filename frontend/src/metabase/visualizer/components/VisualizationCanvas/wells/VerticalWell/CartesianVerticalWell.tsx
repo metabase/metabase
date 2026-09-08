@@ -1,6 +1,7 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { useMemo } from "react";
 
+import type { DatasetColumn } from "metabase-types/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Flex, Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
@@ -15,7 +16,6 @@ import {
 } from "metabase/visualizer/selectors";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
 import { getDefaultMetricFilter } from "metabase/viz-core";
-import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
 

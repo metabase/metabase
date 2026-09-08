@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { CustomVizPlugin } from "metabase-types/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Group, Icon, Stack, Text } from "metabase/ui";
-import type { CustomVizPlugin } from "metabase-types/api";
 
 import { CustomVizIcon } from "./CustomVizIcon";
 import {

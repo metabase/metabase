@@ -8,9 +8,6 @@ import {
   screen,
   within,
 } from "__support__/ui";
-import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
-import { Route } from "metabase/router";
-import * as Urls from "metabase/urls";
 import type { TaskInfo } from "metabase-types/api";
 import {
   createMockJob,
@@ -18,6 +15,9 @@ import {
   createMockTrigger,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
+import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { JobInfoApp } from "./JobInfoApp";
 

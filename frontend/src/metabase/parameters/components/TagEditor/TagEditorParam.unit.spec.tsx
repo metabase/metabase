@@ -8,12 +8,6 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
 import type {
@@ -37,6 +31,12 @@ import {
   REVIEWS,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { getMetadata } from "metabase/metadata-store";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 
 import { TagEditorParam } from "./TagEditorParam";
 

@@ -1,6 +1,5 @@
 import { msgid, ngettext } from "ttag";
 
-import { skipToken } from "metabase/api";
 import type {
   Card,
   DatabaseId,
@@ -9,6 +8,7 @@ import type {
   SourceReplacementEntry,
   Table,
 } from "metabase-types/api";
+import { skipToken } from "metabase/api";
 
 import type { EntityItem } from "./types";
 

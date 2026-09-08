@@ -2,6 +2,12 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import type {
+  FormattingSettings,
+  IconName,
+  Timeline,
+  TimelineEventData,
+} from "metabase-types/api";
 import {
   getTimelineIcons,
   getTimelineName,
@@ -20,12 +26,6 @@ import {
 import { Button, Flex, Group, Icon, Stack, TimeInput } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
-import type {
-  FormattingSettings,
-  IconName,
-  Timeline,
-  TimelineEventData,
-} from "metabase-types/api";
 
 import FormArchiveButton from "../FormArchiveButton";
 

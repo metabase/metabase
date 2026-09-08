@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type { DashboardCard } from "metabase-types/api";
 import { AccordionList } from "metabase/common/components/AccordionList";
 import {
   isMappableColumn,
   useUserAttributes,
 } from "metabase/dashboard/components/ClickMappings";
 import { Flex, Icon, Popover, UnstyledButton } from "metabase/ui";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { DashboardCard } from "metabase-types/api";
 
 import S from "./ValuesYouCanReference.module.css";
 

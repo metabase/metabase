@@ -1,3 +1,4 @@
+import type { CollectionId } from "metabase-types/api";
 import {
   useGetCollectionQuery,
   useListBookmarksQuery,
@@ -8,7 +9,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
-import type { CollectionId } from "metabase-types/api";
 
 import { CollectionContentView } from "./CollectionContentView";
 

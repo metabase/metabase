@@ -14,9 +14,6 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
-import * as Urls from "metabase/urls";
 import type {
   TableIndexEntry,
   Transform,
@@ -31,6 +28,9 @@ import {
   createMockTransform,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { TransformIndexesPage } from "./TransformIndexesPage";
 

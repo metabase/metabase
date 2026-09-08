@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 
-import { getColumnIcon } from "metabase/common/utils/columns";
-import { Ellipsified, FixedSizeIcon, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { SourceReplacementColumnInfo } from "metabase-types/api";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import { Ellipsified, FixedSizeIcon, Group } from "metabase/ui";
 
 type NameCellProps = {
   column: SourceReplacementColumnInfo;

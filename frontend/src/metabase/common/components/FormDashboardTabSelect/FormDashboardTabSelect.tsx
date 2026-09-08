@@ -1,9 +1,9 @@
 import { useField } from "formik";
 import { useEffect, useMemo } from "react";
 
+import type { DashboardId } from "metabase-types/api";
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { FormSelect, type FormSelectProps } from "metabase/forms";
-import type { DashboardId } from "metabase-types/api";
 
 export const FormDashboardTabSelect = ({
   dashboardId,

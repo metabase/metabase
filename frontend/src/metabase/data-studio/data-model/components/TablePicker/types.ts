@@ -1,4 +1,3 @@
-import type { TreeNodeData } from "metabase/ui";
 import type {
   DatabaseId,
   SchemaName,
@@ -8,6 +7,7 @@ import type {
   TableId,
   UserId,
 } from "metabase-types/api";
+import type { TreeNodeData } from "metabase/ui";
 
 export type NodeKey = string;
 

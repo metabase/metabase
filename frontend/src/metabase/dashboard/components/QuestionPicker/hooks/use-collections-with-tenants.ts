@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { CollectionId } from "metabase-types/api";
 import { skipToken, useListCollectionsTreeQuery } from "metabase/api";
 import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
 import {
@@ -11,7 +12,6 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { ExpandedCollection } from "metabase/redux/store";
 import { useSetting } from "metabase/settings";
-import type { CollectionId } from "metabase-types/api";
 
 import { flattenCollectionTree } from "../utils/tenant-collection-tree";
 import {

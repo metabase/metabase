@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionValue,
@@ -10,6 +9,7 @@ import {
   type TableId,
 } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 
 import { hasPermissionValueInSubgraph } from "./has";
 

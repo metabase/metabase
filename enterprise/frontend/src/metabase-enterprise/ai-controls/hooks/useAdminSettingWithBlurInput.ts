@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
-import { useAdminSetting } from "metabase/settings";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
 } from "metabase-types/api";
+import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
+import { useAdminSetting } from "metabase/settings";
 
 import { useHydratedInput } from "./useHydratedInput";
 

@@ -2,6 +2,7 @@ import type { SetStateAction } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { DataSegregationStrategy, FieldId } from "metabase-types/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { createEmptyTenantDraft } from "metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/utils";
@@ -17,7 +18,6 @@ import {
   TextInput,
 } from "metabase/ui";
 import { slugify } from "metabase/utils/formatting";
-import type { DataSegregationStrategy, FieldId } from "metabase-types/api";
 
 import { useCreateTenantMutation } from "../../../api/tenants";
 

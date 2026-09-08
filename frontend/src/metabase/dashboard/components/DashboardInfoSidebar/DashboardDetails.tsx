@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { c, t } from "ttag";
 
+import type { Dashboard } from "metabase-types/api";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
@@ -10,7 +11,6 @@ import Styles from "metabase/css/core/index.css";
 import { Box, FixedSizeIcon, Flex, Text } from "metabase/ui";
 import { collection as collectionUrl } from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
-import type { Dashboard } from "metabase-types/api";
 
 import SidebarStyles from "./DashboardInfoSidebar.module.css";
 import { DashboardPublicLinkPopover } from "./DashboardPublicLinkPopover/DashboardPublicLinkPopover";

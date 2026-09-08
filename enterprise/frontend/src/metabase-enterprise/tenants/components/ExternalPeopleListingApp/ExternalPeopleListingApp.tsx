@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { PeopleListingApp } from "metabase/admin/people/containers/PeopleListingApp";
 import { useListTenantsQuery } from "metabase-enterprise/api";
+import { PeopleListingApp } from "metabase/admin/people/containers/PeopleListingApp";
 
 export const ExternalPeopleListingApp = (props: React.PropsWithChildren) => {
   const { data: tenants } = useListTenantsQuery({

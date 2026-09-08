@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { getErrorMessage } from "metabase/api/utils";
 import type { Dataset, Field } from "metabase-types/api";
+import { getErrorMessage } from "metabase/api/utils";
 
 export { is403Error } from "metabase/utils/errors";
 

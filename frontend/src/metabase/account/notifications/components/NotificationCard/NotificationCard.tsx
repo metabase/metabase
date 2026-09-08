@@ -1,6 +1,7 @@
 import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
+import type { User } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link/Link";
 import type { QuestionNotificationListItem } from "metabase/notifications/types";
 import {
@@ -12,7 +13,6 @@ import {
 } from "metabase/notifications/utils";
 import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { User } from "metabase-types/api";
 
 import S from "./DashboardNotificationCard.module.css";
 

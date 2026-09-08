@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useGetMfaStatusQuery } from "metabase-enterprise/api";
+import type { MfaStatus } from "metabase-types/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { Box, Button, Group, Stack } from "metabase/ui";
-import { useGetMfaStatusQuery } from "metabase-enterprise/api";
-import type { MfaStatus } from "metabase-types/api";
 
 import { DisableModal } from "./DisableModal";
 import { RecoveryCodesModal } from "./RecoveryCodesModal";

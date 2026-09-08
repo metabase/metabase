@@ -4,13 +4,13 @@ import { type Ref, forwardRef, useMemo, useRef } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Text } from "metabase/ui";
 import { isTouchDevice } from "metabase/utils/browser";
-import * as Lib from "metabase-lib";
 
 import S from "./JoinColumnButton.module.css";
 

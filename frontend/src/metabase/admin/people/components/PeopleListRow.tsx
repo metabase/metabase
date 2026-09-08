@@ -1,6 +1,13 @@
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
+import type {
+  GroupId,
+  GroupInfo,
+  Member,
+  Membership,
+  User,
+} from "metabase-types/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { dayjs } from "metabase/dayjs";
@@ -18,13 +25,6 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getFullName } from "metabase/utils/user";
-import type {
-  GroupId,
-  GroupInfo,
-  Member,
-  Membership,
-  User,
-} from "metabase-types/api";
 
 import { userToColor } from "../colors";
 

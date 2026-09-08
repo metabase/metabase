@@ -1,6 +1,12 @@
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, waitFor } from "__support__/ui";
+import type { ColumnSettings, RowValue } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockDatasetData,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import MetabaseSettings from "metabase/utils/settings";
 import {
@@ -10,12 +16,6 @@ import {
 import { buildFeatureClickObject } from "metabase/visualizations/components/ChoroplethMap.utils";
 import { createMockVisualizationProps } from "metabase/visualizations/types/mocks";
 import { getLegendTitles } from "metabase/viz-core";
-import type { ColumnSettings, RowValue } from "metabase-types/api";
-import {
-  createMockColumn,
-  createMockDatasetData,
-  createMockSingleSeries,
-} from "metabase-types/api/mocks";
 
 const currencyColumnSettings: ColumnSettings = {
   column: { base_type: "type/Float" },

@@ -8,6 +8,13 @@ import {
 } from "react";
 import { c, t } from "ttag";
 
+import type {
+  DocumentContent,
+  ExplorationId,
+  ExplorationPageNode,
+  Timeline,
+  TimelineId,
+} from "metabase-types/api";
 import { useCreateCommentMutation } from "metabase/api/comment";
 import {
   useAppendChartToSummaryMutation,
@@ -38,13 +45,6 @@ import {
   Tooltip,
 } from "metabase/ui";
 import { getTimelineEventSettings } from "metabase/viz-core";
-import type {
-  DocumentContent,
-  ExplorationId,
-  ExplorationPageNode,
-  Timeline,
-  TimelineId,
-} from "metabase-types/api";
 
 import { useCopyLink } from "../../hooks/useCopyLink";
 import type { CommentDrafts } from "../../types";

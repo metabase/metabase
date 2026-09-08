@@ -1,8 +1,8 @@
 import type { SupportedUnit } from "types/dayjs";
 import _ from "underscore";
 
-import { type OpUnitType, dayjs } from "metabase/dayjs";
 import type { TimelineEvent } from "metabase-types/api";
+import { type OpUnitType, dayjs } from "metabase/dayjs";
 
 import { CHART_STYLE } from "../constants/style";
 import type { ChartLayout } from "../layout/types";

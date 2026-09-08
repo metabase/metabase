@@ -1,7 +1,5 @@
 import _ from "underscore";
 
-import { hasRequiredFeature } from "metabase/databases";
-import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import {
   AGGREGATION_FUNCTIONS,
@@ -11,6 +9,8 @@ import {
   MBQL_CLAUSES,
 } from "metabase-lib";
 import type { Database } from "metabase-types/api";
+import { hasRequiredFeature } from "metabase/databases";
+import { isNotNull } from "metabase/utils/types";
 
 export function isDefinedClause(name: string): name is Lib.DefinedClauseName {
   return name in MBQL_CLAUSES;

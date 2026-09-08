@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { ResizableBox } from "react-resizable";
 
+import type Question from "metabase-lib/v1/Question";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box, Flex } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 
 import S from "./MetricEditorBody.module.css";
 import { MetricEditorSidebar } from "./MetricEditorSidebar";

@@ -1,5 +1,5 @@
-import type { State } from "metabase/redux/store";
 import type { DatabaseId, GroupId } from "metabase-types/api";
+import type { State } from "metabase/redux/store";
 
 import type { AdvancedPermissionsStoreState } from "./types";
 

@@ -1,10 +1,10 @@
 import { msgid, ngettext, t } from "ttag";
 
+import type { Card } from "metabase-types/api";
 import { useUpdateCardMutation } from "metabase/api";
 import { getTrashUndoMessage } from "metabase/archive/utils";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { useToast } from "metabase/common/hooks";
-import type { Card } from "metabase-types/api";
 
 type ArchiveCardModalProps = {
   card: Card;

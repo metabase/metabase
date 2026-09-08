@@ -1,5 +1,6 @@
 import { jt, t } from "ttag";
 
+import type { TemplateTag } from "metabase-types/api";
 import {
   Box,
   Code,
@@ -9,7 +10,6 @@ import {
   Text,
   TextInputBlurChange,
 } from "metabase/ui";
-import type { TemplateTag } from "metabase-types/api";
 
 import { ContainerLabel, InputContainer } from "./TagEditorParam";
 

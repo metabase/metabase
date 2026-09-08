@@ -1,5 +1,17 @@
 import querystring from "querystring";
 
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
+import { getObjectColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
+import type {
+  ClickBehavior,
+  ClickBehaviorParameterMapping,
+  ClickBehaviorSource,
+  DatasetColumn,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 import type { ClickBehaviorExtraData } from "metabase/dashboard/utils/click-behavior";
 import {
   formatSourceForTarget,
@@ -14,18 +26,6 @@ import {
 } from "metabase/value-formatting";
 import type { ClickObject } from "metabase/visualizations/types";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
-import { getObjectColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
-import { isDate } from "metabase-lib/v1/types/utils/isa";
-import type {
-  ClickBehavior,
-  ClickBehaviorParameterMapping,
-  ClickBehaviorSource,
-  DatasetColumn,
-  ParameterValueOrArray,
-} from "metabase-types/api";
 
 import { getStructuredQuestionUrlWithParameters } from "./question-url";
 import type {

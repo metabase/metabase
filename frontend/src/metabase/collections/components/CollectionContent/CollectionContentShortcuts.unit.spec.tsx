@@ -13,12 +13,12 @@ import {
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { Route } from "metabase/router";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import { CollectionContent } from "./CollectionContent";
 

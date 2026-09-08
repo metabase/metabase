@@ -1,8 +1,8 @@
 import { useField } from "formik";
 
+import type { FieldFormattingSettings } from "metabase-types/api";
 import { CurrencyPicker } from "metabase/metadata/components";
 import { getFieldCurrency } from "metabase/metadata/utils/field";
-import type { FieldFormattingSettings } from "metabase-types/api";
 
 type DatasetFieldMetadataCurrencyPickerProps = {
   onChange: (value: FieldFormattingSettings) => void;

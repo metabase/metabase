@@ -1,13 +1,13 @@
-import {
-  type QueryParam,
-  type UrlStateConfig,
-  getFirstParamValue,
-} from "metabase/common/hooks/use-url-state";
 import type {
   Dataset,
   InternalDatasetQuery,
   RowValue,
 } from "metabase-types/api";
+import {
+  type QueryParam,
+  type UrlStateConfig,
+  getFirstParamValue,
+} from "metabase/common/hooks/use-url-state";
 
 import type {
   ErroringCard,

@@ -1,6 +1,8 @@
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Schema from "metabase-lib/v1/metadata/Schema";
 import {
   AccordionList,
   type Section,
@@ -8,8 +10,6 @@ import {
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Schema from "metabase-lib/v1/metadata/Schema";
 
 import { DataSelectorLoading } from "../DataSelectorLoading";
 import { RawDataBackButton } from "../RawDataBackButton";

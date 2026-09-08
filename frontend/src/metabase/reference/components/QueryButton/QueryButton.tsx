@@ -1,10 +1,10 @@
 import cx from "classnames";
 import { memo } from "react";
 
+import type { IconName } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./QueryButton.module.css";
 

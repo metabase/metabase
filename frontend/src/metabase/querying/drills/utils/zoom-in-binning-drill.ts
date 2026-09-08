@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import type { Drill } from "metabase/visualizations/types";
 import type * as Lib from "metabase-lib";
+import type { Drill } from "metabase/visualizations/types";
 
 export const zoomInBinningDrill: Drill<Lib.ZoomDrillThruInfo> = ({
   drill,

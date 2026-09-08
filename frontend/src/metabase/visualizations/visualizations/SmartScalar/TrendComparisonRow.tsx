@@ -1,7 +1,7 @@
+import type { ColumnSettings } from "metabase-types/api";
 import { Badge, Box, Flex, Text, Tooltip } from "metabase/ui";
 import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/viz-core";
-import type { ColumnSettings } from "metabase-types/api";
 
 import { PreviousValueComparisonTooltip } from "./PreviousValueComparisonTooltip";
 import S from "./TrendComparisonRow.module.css";

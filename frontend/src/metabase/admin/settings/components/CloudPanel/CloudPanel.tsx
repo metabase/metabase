@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import type { CloudMigration } from "metabase-types/api/cloud-migration";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useStoreUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
@@ -10,7 +11,6 @@ import {
   useLazyGetSettingsQuery,
 } from "metabase/settings";
 import { Box } from "metabase/ui";
-import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import {
   useCreateCloudMigrationMutation,

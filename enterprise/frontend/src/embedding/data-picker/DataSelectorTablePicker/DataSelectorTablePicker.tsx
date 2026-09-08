@@ -2,6 +2,10 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Schema from "metabase-lib/v1/metadata/Schema";
+import type Table from "metabase-lib/v1/metadata/Table";
+import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 import {
   AccordionList,
   type Section,
@@ -17,10 +21,6 @@ import CS from "metabase/css/core/index.css";
 import { Box, DelayGroup, Flex, Icon, rem } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { isNotNull } from "metabase/utils/types";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Schema from "metabase-lib/v1/metadata/Schema";
-import type Table from "metabase-lib/v1/metadata/Table";
-import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 
 import { DataSelectorSectionHeader } from "../DataSelectorSectionHeader";
 import { CONTAINER_WIDTH } from "../constants";

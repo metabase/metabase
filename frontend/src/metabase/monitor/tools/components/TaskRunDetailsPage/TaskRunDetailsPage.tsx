@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import type { Task } from "metabase-types/api";
 import { useGetTaskRunQuery } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { DateTime } from "metabase/common/components/DateTime";
@@ -15,7 +16,6 @@ import { useNavigate, useParams } from "metabase/router";
 import { Anchor, Box, Flex, Grid, Stack, Text, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import type { Task } from "metabase-types/api";
 
 import {
   formatTaskRunEntityType,

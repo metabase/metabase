@@ -1,11 +1,11 @@
-import { LineChart } from "metabase/visualizations/visualizations/LineChart";
-import { registerVisualization } from "metabase/viz-core";
 import {
   createMockCard,
   createMockColumn,
   createMockDashCardDataSeries,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import { LineChart } from "metabase/visualizations/visualizations/LineChart";
+import { registerVisualization } from "metabase/viz-core";
 
 import { getInitialStateForMultipleSeries } from "./get-initial-state-for-multiple-series";
 

@@ -1,12 +1,12 @@
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
-import { createMockState } from "metabase/redux/store/mocks";
 import {
   ORDERS,
   PRODUCTS,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { getMetadata } from "metabase/metadata-store";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { SemanticTypeLabel } from "./SemanticTypeLabel";
 

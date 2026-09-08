@@ -1,13 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 import { useLayoutEffect, useState } from "react";
 
-import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { trackDependencyDiagnosticsEntitySelected } from "metabase/common/data-studio/analytics";
-import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
-import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
-import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
-import { Center, Flex } from "metabase/ui";
-import type * as Urls from "metabase/urls";
 import {
   useLazyListBreakingGraphNodesQuery,
   useLazyListUnreferencedGraphNodesQuery,
@@ -23,6 +16,13 @@ import {
   isSameNode,
 } from "metabase-enterprise/dependencies/utils";
 import type { DependencyEntry } from "metabase-types/api";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { trackDependencyDiagnosticsEntitySelected } from "metabase/common/data-studio/analytics";
+import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
+import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
+import { Center, Flex } from "metabase/ui";
+import type * as Urls from "metabase/urls";
 
 import { DiagnosticsFilterBar } from "./DiagnosticsFilterBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";

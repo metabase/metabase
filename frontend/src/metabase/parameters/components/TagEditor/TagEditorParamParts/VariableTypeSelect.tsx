@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Select } from "metabase/ui";
 import type { TemplateTagType } from "metabase-types/api";
+import { Select } from "metabase/ui";
 
 import { ContainerLabel, InputContainer } from "./TagEditorParam";
 

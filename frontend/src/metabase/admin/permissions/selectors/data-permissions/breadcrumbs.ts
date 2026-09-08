@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { Group, PermissionsDatabase } from "metabase-types/api";
 import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { isNotFalsy } from "metabase/utils/types";
-import type { Group, PermissionsDatabase } from "metabase-types/api";
 
 import type {
   DataRouteParams,

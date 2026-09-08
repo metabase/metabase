@@ -2,6 +2,13 @@ import { getIn } from "icepick";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMount, usePrevious } from "react-use";
 
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import type {
+  ClickBehavior,
+  DashCardVisualizationSettings,
+  DatasetColumn,
+} from "metabase-types/api";
+import { clickBehaviorIsValid } from "metabase-types/guards";
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import {
@@ -10,13 +17,6 @@ import {
 } from "metabase/dashboard/context";
 import { isTableDisplay } from "metabase/dashboard/utils";
 import { canSaveClickBehavior } from "metabase/dashboard/utils/click-behavior";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import type {
-  ClickBehavior,
-  DashCardVisualizationSettings,
-  DatasetColumn,
-} from "metabase-types/api";
-import { clickBehaviorIsValid } from "metabase-types/guards";
 
 import { ClickBehaviorSidebarContent } from "./ClickBehaviorSidebarContent";
 import { ClickBehaviorSidebarHeader } from "./ClickBehaviorSidebarHeader/ClickBehaviorSidebarHeader";

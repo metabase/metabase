@@ -1,4 +1,8 @@
 import type {
+  BaseRecentItem,
+  SdkIframeEmbedSetupTheme,
+} from "metabase-types/api";
+import type {
   BrowserEmbedOptions,
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
@@ -7,10 +11,6 @@ import type {
   SdkIframeEmbedAuthTypeSettings,
   SdkIframeEmbedBaseSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
-import type {
-  BaseRecentItem,
-  SdkIframeEmbedSetupTheme,
-} from "metabase-types/api";
 
 export type { SdkIframeEmbedSetupTheme } from "metabase-types/api";
 

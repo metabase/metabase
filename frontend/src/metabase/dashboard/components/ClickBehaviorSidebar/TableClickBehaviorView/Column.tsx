@@ -1,7 +1,5 @@
 import { jt, msgid, ngettext, t } from "ttag";
 
-import { DashboardName } from "metabase/common/components/DashboardName";
-import { QuestionName } from "metabase/common/components/QuestionName";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
   CardId,
@@ -11,6 +9,8 @@ import type {
   EntityCustomDestinationClickBehavior,
   IconName,
 } from "metabase-types/api";
+import { DashboardName } from "metabase/common/components/DashboardName";
+import { QuestionName } from "metabase/common/components/QuestionName";
 
 import { SidebarItem } from "../SidebarItem";
 

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { IconName } from "metabase-types/api";
 import { useStorageSetup } from "metabase/common/components/upsells/StoragePurchaseModal";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 import { Box, Icon, Modal, Tabs } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./AddDataModal.module.css";
 import { CSVPanel } from "./Panels/CSVPanel";

@@ -1,5 +1,5 @@
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import type { Database } from "metabase-types/api";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 
 import { doesDatabaseSupportTransforms } from "../../../utils";
 

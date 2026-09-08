@@ -4,6 +4,7 @@ import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
+import type { SearchResponse } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import { trackSearchClick } from "metabase/common/search/analytics";
@@ -20,7 +21,6 @@ import {
   rem,
 } from "metabase/ui";
 import type { SearchQuery } from "metabase/utils/browser";
-import type { SearchResponse } from "metabase-types/api";
 
 import type { PaletteActionImpl } from "../types";
 import { navigateActionIndex, processResults } from "../utils";

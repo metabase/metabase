@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import type { Engine } from "metabase-types/api";
+import { createMockEngine } from "metabase-types/api/mocks";
 import {
   ELEVATED_ENGINES,
   MAX_INITIAL_ENGINES_SHOWN,
@@ -9,8 +11,6 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import type { Engine } from "metabase-types/api";
-import { createMockEngine } from "metabase-types/api/mocks";
 
 import { DatabaseEngineList } from "./DatabaseEngineList";
 

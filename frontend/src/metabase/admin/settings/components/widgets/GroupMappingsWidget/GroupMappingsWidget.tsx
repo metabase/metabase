@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 
+import type { GroupId, GroupInfo } from "metabase-types/api";
 import {
   useClearGroupMembershipMutation,
   useDeletePermissionsGroupMutation,
@@ -11,7 +12,6 @@ import {
   settingsApi,
   useUpdateSettingMutation,
 } from "metabase/settings";
-import type { GroupId, GroupInfo } from "metabase-types/api";
 
 import type { MappingSettingKey } from "./GroupMappingsWidgetView";
 import { GroupMappingsWidgetView } from "./GroupMappingsWidgetView";

@@ -1,5 +1,5 @@
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 
 /**
  * Initialize embedding SDK plugin features that depend on hasPremiumFeature.

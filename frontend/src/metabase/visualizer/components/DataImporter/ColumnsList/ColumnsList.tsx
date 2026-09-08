@@ -1,6 +1,11 @@
 import { useDraggable } from "@dnd-kit/core";
 import { t } from "ttag";
 
+import type {
+  DatasetColumn,
+  VisualizerDataSource,
+  VisualizerDataSourceId,
+} from "metabase-types/api";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Flex, Icon, Loader, Menu, Text } from "metabase/ui";
@@ -24,11 +29,6 @@ import {
   removeColumn,
   setHoveredItems,
 } from "metabase/visualizer/visualizer.slice";
-import type {
-  DatasetColumn,
-  VisualizerDataSource,
-  VisualizerDataSourceId,
-} from "metabase-types/api";
 
 import { trackVisualizerDataChanged } from "../../analytics";
 

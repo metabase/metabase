@@ -2,6 +2,16 @@ import { memo, useMemo, useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type {
+  DatabaseId,
+  Field,
+  FieldId,
+  RawSeries,
+  TableId,
+} from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 import {
   RTK_CACHE_KEY_PARAM,
   skipToken,
@@ -13,16 +23,6 @@ import { getMetadataUnfiltered } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { Repeat, Skeleton, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type {
-  DatabaseId,
-  Field,
-  FieldId,
-  RawSeries,
-  TableId,
-} from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
 
 import { HiddenFieldEmptyStateBlock } from "./EmptyStateBlock";
 import { Error } from "./Error";

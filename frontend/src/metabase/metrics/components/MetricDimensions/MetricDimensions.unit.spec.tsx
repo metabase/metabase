@@ -12,7 +12,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { metricApi } from "metabase/api/metric";
 import type { ListMetricDimensionsResponse } from "metabase-types/api";
 import {
   createMockCardQueryMetadata,
@@ -26,6 +25,7 @@ import {
   createMockMetricDimension,
   createMockMetricDimensionGroup,
 } from "metabase-types/api/mocks/metric";
+import { metricApi } from "metabase/api/metric";
 
 import { MetricDimensions } from "./MetricDimensions";
 

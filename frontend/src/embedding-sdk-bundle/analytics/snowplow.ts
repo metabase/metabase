@@ -6,9 +6,9 @@ import {
 import { version as reactVersion } from "react";
 
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
+import type { SimpleEventSchema } from "metabase-types/analytics/event";
 import { getSettings } from "metabase/settings";
 import { trackMetaplowEvent } from "metabase/utils/metaplow";
-import type { SimpleEventSchema } from "metabase-types/analytics/event";
 
 const SIMPLE_EVENT_SCHEMA_URI =
   "iglu:com.metabase/simple_event/jsonschema/1-0-0";

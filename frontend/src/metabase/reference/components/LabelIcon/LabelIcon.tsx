@@ -1,7 +1,7 @@
 import cx from "classnames";
 
-import { Icon } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { Icon } from "metabase/ui";
 
 import S from "./LabelIcon.module.css";
 

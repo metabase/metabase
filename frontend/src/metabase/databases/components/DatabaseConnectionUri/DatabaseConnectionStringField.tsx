@@ -4,9 +4,9 @@ import { useField } from "formik";
 import { type SetStateAction, useEffect, useRef, useState } from "react";
 import { c, t } from "ttag";
 
-import { Group, Icon, Text, Textarea, Transition } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";
+import { Group, Icon, Text, Textarea, Transition } from "metabase/ui";
 
 import type { FormLocation } from "../../types";
 import { setDatabaseFormValues } from "../../utils/schema";

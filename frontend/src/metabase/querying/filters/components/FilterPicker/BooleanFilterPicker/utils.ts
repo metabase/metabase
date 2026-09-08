@@ -1,5 +1,5 @@
-import type { BooleanFilterValue } from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
+import type { BooleanFilterValue } from "metabase/querying/common/types";
 
 export function getFilterValue(
   query: Lib.Query,

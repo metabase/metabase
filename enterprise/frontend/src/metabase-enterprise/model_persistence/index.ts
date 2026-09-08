@@ -1,5 +1,5 @@
-import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 
 import { ModelCacheToggle } from "./components/ModelCacheControl";
 

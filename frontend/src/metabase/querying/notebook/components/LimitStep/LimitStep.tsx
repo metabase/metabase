@@ -2,8 +2,8 @@ import type { ChangeEvent, FocusEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import * as Lib from "metabase-lib";
+import CS from "metabase/css/core/index.css";
 
 import { LimitInput } from "../../../components/LimitInput";
 import type { NotebookStepProps } from "../../types";

@@ -1,6 +1,10 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
+import type { Dataset } from "metabase-types/api";
 import { isAbortError } from "metabase/api/client";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/querying/run-query";
@@ -9,10 +13,6 @@ import { createThunkAction } from "metabase/redux";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { getSensibleDisplays, visualizations } from "metabase/viz-core";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
-import type { Dataset } from "metabase-types/api";
 
 import {
   CANCEL_QUERY,

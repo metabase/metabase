@@ -1,5 +1,6 @@
 import { c, t } from "ttag";
 
+import type { CollectionId, Dashboard } from "metabase-types/api";
 import {
   skipToken,
   useGetCollectionQuery,
@@ -13,7 +14,6 @@ import { useSetCollection } from "metabase/common/hooks";
 import { Flex, Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import * as Urls from "metabase/urls";
-import type { CollectionId, Dashboard } from "metabase-types/api";
 
 import S from "./DashboardMoveModal.module.css";
 

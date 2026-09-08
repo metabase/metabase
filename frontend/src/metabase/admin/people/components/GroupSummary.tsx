@@ -1,8 +1,8 @@
 import { msgid, ngettext, t } from "ttag";
 
+import type { GroupInfo } from "metabase-types/api";
 import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { Box, type BoxProps } from "metabase/ui";
-import type { GroupInfo } from "metabase-types/api";
 
 interface GroupSummaryProps extends BoxProps {
   groups: GroupInfo[];

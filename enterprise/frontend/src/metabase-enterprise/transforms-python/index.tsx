@@ -1,5 +1,5 @@
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 
 import { PythonTransformEditor } from "./components/PythonTransformEditor/lazy";
 import { SHARED_LIB_IMPORT_PATH } from "./constants";

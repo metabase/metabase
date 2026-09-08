@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { c, jt, t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
+import type { IconName } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { Button, Icon, Stack, Text, Title } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 interface DashboardEmptyStateProps {
   addQuestion?: () => void;
   isDashboardEmpty: boolean;

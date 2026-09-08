@@ -2,6 +2,11 @@ import { useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import {
+  useDeleteCustomVizPluginMutation,
+  useSetCustomVizPluginDevUrlMutation,
+} from "metabase-enterprise/api";
+import type { CustomVizPlugin } from "metabase-types/api";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   Form,
@@ -11,11 +16,6 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { Button, Group, Icon, Stack, Text } from "metabase/ui";
-import {
-  useDeleteCustomVizPluginMutation,
-  useSetCustomVizPluginDevUrlMutation,
-} from "metabase-enterprise/api";
-import type { CustomVizPlugin } from "metabase-types/api";
 
 import { CustomVizIcon } from "./CustomVizIcon";
 

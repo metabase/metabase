@@ -2,7 +2,6 @@
 
 import { schema } from "normalizr";
 
-import { checkNotNull } from "metabase/utils/types";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
@@ -21,6 +20,7 @@ import type {
   Segment,
   Table,
 } from "metabase-types/api";
+import { checkNotNull } from "metabase/utils/types";
 
 import { entityTypeForObject } from "./entity-types";
 

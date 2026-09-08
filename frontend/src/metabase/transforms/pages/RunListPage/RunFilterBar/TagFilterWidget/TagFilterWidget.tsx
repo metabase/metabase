@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { type FormEvent, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import type { TransformTag, TransformTagId } from "metabase-types/api";
 import {
   Box,
   Button,
@@ -11,7 +12,6 @@ import {
   Popover,
   Stack,
 } from "metabase/ui";
-import type { TransformTag, TransformTagId } from "metabase-types/api";
 
 import {
   FILTER_WIDGET_MAX_HEIGHT,

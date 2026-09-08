@@ -9,7 +9,6 @@ import {
 import { setupLlmModelsEndpoint } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
 import type { LlmConnectionModels } from "metabase-types/api";
 import {
   createMockLlmConnectionModels,
@@ -18,6 +17,7 @@ import {
   createMockSettings,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { UndoListing } from "metabase/common/components/UndoListing";
 
 import { AIModelSettingsSection } from "./AIModelSettingsSection";
 

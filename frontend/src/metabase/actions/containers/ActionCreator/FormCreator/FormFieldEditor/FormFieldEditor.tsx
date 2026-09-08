@@ -3,17 +3,17 @@ import type { MutableRefObject } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type {
+  FieldSettings,
+  FieldType,
+  FieldValueOptions,
+} from "metabase-types/api";
 import { ActionFormFieldWidget } from "metabase/actions/components/ActionFormFieldWidget";
 import { getFieldTypes, getInputTypes } from "metabase/actions/constants";
 import type { ActionFormFieldProps } from "metabase/actions/types";
 import { inputTypeHasOptions } from "metabase/actions/utils";
 import { Checkbox, Group, Radio } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import type {
-  FieldSettings,
-  FieldType,
-  FieldValueOptions,
-} from "metabase-types/api";
 
 import { FieldSettingsButtons } from "../FieldSettingsButtons";
 

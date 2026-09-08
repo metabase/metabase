@@ -1,13 +1,13 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import { getObjectKeys } from "metabase/utils/objects";
 import type {
   RequestableIndexes,
   TableIndexEntry,
   TableIndexRequestStatus,
 } from "metabase-types/api";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
+import { getObjectKeys } from "metabase/utils/objects";
 
 export function getKindLabels(
   requestableIndexes: RequestableIndexes | null | undefined,

@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useDeleteDatabaseReplicationMutation } from "metabase-enterprise/api/database-replication";
+import type { Database } from "metabase-types/api";
 import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { useSetting } from "metabase/settings";
 import { Button, Flex, Icon } from "metabase/ui";
-import { useDeleteDatabaseReplicationMutation } from "metabase-enterprise/api/database-replication";
-import type { Database } from "metabase-types/api";
 
 import { DatabaseReplicationModal } from "./DatabaseReplicationModal";
 import { DatabaseReplicationPostgresInfo } from "./DatabaseReplicationPostgresInfo";

@@ -9,6 +9,7 @@ import {
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { DatabaseId } from "metabase-types/api";
 import {
   EntityPickerModal,
   MiniPicker,
@@ -26,7 +27,6 @@ import type {
   BareSuggestionRendererProps,
   BareSuggestionRendererRef,
 } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
-import type { DatabaseId } from "metabase-types/api";
 
 import type { MentionProps } from "./MetabotMentionExtension";
 import styles from "./MetabotSuggestion.module.css";

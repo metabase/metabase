@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import type { Dashboard } from "metabase-types/api";
 import { useGetCollectionQuery } from "metabase/api";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/current-user";
@@ -22,7 +23,6 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { useMaybeLocation } from "metabase/router";
 import { getSetting } from "metabase/settings";
 import { Flex, Loader } from "metabase/ui";
-import type { Dashboard } from "metabase-types/api";
 
 import { SIDEBAR_NAME } from "../../constants";
 

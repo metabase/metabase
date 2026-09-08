@@ -1,6 +1,11 @@
 import type { SortingState } from "@tanstack/react-table";
 import { msgid, ngettext, t } from "ttag";
 
+import {
+  TRANSFORM_GRAPH_RUN_SORT_COLUMNS,
+  type TransformGraphRun,
+  type TransformGraphRunSortColumn,
+} from "metabase-types/api";
 import { TimezoneIndicator } from "metabase/transforms/components/TimezoneIndicator";
 import {
   formatRunMethod,
@@ -23,11 +28,6 @@ import {
 import type { SpacingScaleKey } from "metabase/ui/theme";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatDurationLong } from "metabase/utils/formatting";
-import {
-  TRANSFORM_GRAPH_RUN_SORT_COLUMNS,
-  type TransformGraphRun,
-  type TransformGraphRunSortColumn,
-} from "metabase-types/api";
 
 import type { TransformGraphRunSortOptions } from "../types";
 

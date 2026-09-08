@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 
+import type { Dashboard as IDashboard } from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
@@ -39,7 +40,6 @@ import {
   parseSearchQuery,
   stringifyHashOptions,
 } from "metabase/utils/browser";
-import type { Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
 import { getDocumentTitle, getFavicon } from "../../selectors";

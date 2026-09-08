@@ -1,9 +1,6 @@
 import { getIn } from "icepick";
 import { useMemo } from "react";
 
-import { getDashcardData } from "metabase/dashboard/selectors";
-import { isTableDisplay } from "metabase/dashboard/utils";
-import { useSelector } from "metabase/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   ClickBehavior,
@@ -11,6 +8,9 @@ import type {
   DashboardCard,
   DatasetColumn,
 } from "metabase-types/api";
+import { getDashcardData } from "metabase/dashboard/selectors";
+import { isTableDisplay } from "metabase/dashboard/utils";
+import { useSelector } from "metabase/redux";
 
 import { SidebarContent } from "./ClickBehaviorSidebarComponents";
 import { ClickBehaviorSidebarMainView } from "./ClickBehaviorSidebarMainView/ClickBehaviorSidebarMainView";

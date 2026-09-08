@@ -1,5 +1,5 @@
-import { color } from "metabase/ui/colors";
 import type { GroupId, User } from "metabase-types/api";
+import { color } from "metabase/ui/colors";
 
 export const userToColor = (user: User) => {
   return user.is_superuser ? color("accent2") : color("core-brand");

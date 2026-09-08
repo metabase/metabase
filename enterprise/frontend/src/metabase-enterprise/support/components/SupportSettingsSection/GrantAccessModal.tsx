@@ -1,6 +1,7 @@
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import { useCreateSupportAccessGrantMutation } from "metabase-enterprise/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import {
   Form,
@@ -13,7 +14,6 @@ import {
 } from "metabase/forms";
 import { PLUGIN_SUPPORT } from "metabase/plugins";
 import { Box, Flex, Modal, Stack, Text } from "metabase/ui";
-import { useCreateSupportAccessGrantMutation } from "metabase-enterprise/api";
 
 interface GrantAccessModalProps {
   onClose: VoidFunction;

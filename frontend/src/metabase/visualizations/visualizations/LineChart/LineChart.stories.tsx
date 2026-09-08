@@ -5,15 +5,15 @@ import {
   VisualizationWrapper,
 } from "__support__/storybook";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-import { Box } from "metabase/ui";
-import Visualization from "metabase/visualizations/components/Visualization";
-import { registerVisualization } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import { Box } from "metabase/ui";
+import Visualization from "metabase/visualizations/components/Visualization";
+import { registerVisualization } from "metabase/viz-core";
 
 import { LineChart } from "./LineChart";
 

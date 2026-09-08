@@ -1,5 +1,6 @@
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockUser } from "metabase-types/api/mocks";
 import type { AdminPath } from "metabase/redux/store";
 import {
   createMockAdminAppState,
@@ -10,7 +11,6 @@ import {
 import { Route } from "metabase/router";
 import { setBasename } from "metabase/utils/basename";
 import { replaceLocation } from "metabase/utils/dom";
-import { createMockUser } from "metabase-types/api/mocks";
 
 import {
   CanAccessSettings,

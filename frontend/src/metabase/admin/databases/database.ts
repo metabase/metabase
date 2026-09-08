@@ -1,5 +1,6 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
+import type { DatabaseData, DatabaseId } from "metabase-types/api";
 import { databaseApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { databaseFetched } from "metabase/metadata-store";
@@ -7,7 +8,6 @@ import { combineReducers } from "metabase/redux";
 import { createDatabase } from "metabase/redux/databases";
 import type { Dispatch } from "metabase/redux/store";
 import { navigate } from "metabase/router";
-import type { DatabaseData, DatabaseId } from "metabase-types/api";
 
 const DELETE_DATABASE = createAction<{ databaseId: DatabaseId }>(
   "metabase/admin/databases/DELETE_DATABASE",

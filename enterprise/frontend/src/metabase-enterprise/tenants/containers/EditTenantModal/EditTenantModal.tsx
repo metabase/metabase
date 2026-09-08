@@ -2,16 +2,16 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { skipToken } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useToast } from "metabase/common/hooks";
-import type { Params } from "metabase/router";
-import { Modal } from "metabase/ui";
 import {
   useGetTenantQuery,
   useUpdateTenantMutation,
 } from "metabase-enterprise/api";
 import type { Tenant } from "metabase-types/api";
+import { skipToken } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useToast } from "metabase/common/hooks";
+import type { Params } from "metabase/router";
+import { Modal } from "metabase/ui";
 
 import { TenantForm } from "../../components/TenantForm";
 

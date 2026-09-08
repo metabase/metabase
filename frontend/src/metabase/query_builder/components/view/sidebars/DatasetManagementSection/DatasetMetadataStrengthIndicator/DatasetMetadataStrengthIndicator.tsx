@@ -2,11 +2,11 @@ import { useRef } from "react";
 import { useHoverDirty } from "react-use";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
+import { getDatasetMetadataCompletenessPercentage } from "metabase-lib/v1/metadata/utils/models";
 import CS from "metabase/css/core/index.css";
 import { Box, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import type Question from "metabase-lib/v1/Question";
-import { getDatasetMetadataCompletenessPercentage } from "metabase-lib/v1/metadata/utils/models";
 
 import DatasetMetadataStrengthIndicatorS from "./DatasetMetadataStrengthIndicator.module.css";
 

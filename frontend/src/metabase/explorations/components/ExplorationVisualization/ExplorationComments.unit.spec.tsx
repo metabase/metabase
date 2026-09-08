@@ -8,13 +8,13 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { getHighlightedComment } from "metabase/explorations/selectors";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import type { Comment, CommentContext, Timeline } from "metabase-types/api";
 import { createMockTimeline, createMockUser } from "metabase-types/api/mocks";
 import { createMockComment } from "metabase-types/api/mocks/comment";
 import { createMockDocumentContent } from "metabase-types/api/mocks/document";
+import { getHighlightedComment } from "metabase/explorations/selectors";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { ExplorationComments } from "./ExplorationComments";
 

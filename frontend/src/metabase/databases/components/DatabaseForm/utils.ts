@@ -2,6 +2,7 @@ import { useContext } from "react";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
+import type { DatabaseData, Engine, EngineField } from "metabase-types/api";
 import type { DatabaseFormValues } from "metabase/databases/types";
 import { getDefaultEngineKey } from "metabase/databases/utils/engine";
 import {
@@ -9,7 +10,6 @@ import {
   getValidationSchema,
 } from "metabase/databases/utils/schema";
 import { useFormErrorMessage } from "metabase/forms";
-import type { DatabaseData, Engine, EngineField } from "metabase-types/api";
 
 import { FormDirtyStateContext } from "./context";
 

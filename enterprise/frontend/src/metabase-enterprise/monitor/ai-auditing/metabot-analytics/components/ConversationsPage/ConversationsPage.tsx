@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useLazyListMetabotAnalyticsConversationsQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
+import {
+  ConversationFilters,
+  useFilterOptions,
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
@@ -8,11 +13,6 @@ import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTit
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { useLocation } from "metabase/router";
 import { Flex } from "metabase/ui";
-import { useLazyListMetabotAnalyticsConversationsQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
-import {
-  ConversationFilters,
-  useFilterOptions,
-} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
 
 import { ConversationsTable } from "./ConversationsTable";
 import { PAGE_SIZE, urlStateConfig } from "./utils";

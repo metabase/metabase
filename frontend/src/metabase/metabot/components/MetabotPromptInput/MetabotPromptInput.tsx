@@ -10,6 +10,7 @@ import cx from "classnames";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
 
+import type { DatabaseId } from "metabase-types/api";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import {
   MetabotMentionExtension,
@@ -22,7 +23,6 @@ import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensio
 import { createBareSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/settings";
 import { getCspNonce } from "metabase/utils/csp";
-import type { DatabaseId } from "metabase-types/api";
 
 import S from "./MetabotPromptInput.module.css";
 import {

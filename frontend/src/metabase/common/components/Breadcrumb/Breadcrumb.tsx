@@ -1,11 +1,11 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
+import type { IconName } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import { Ellipsified, Group, Icon } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
 import { color as getColor } from "metabase/ui/utils/colors";
-import type { IconName } from "metabase-types/api";
 
 import S from "./Breadcrumb.module.css";
 

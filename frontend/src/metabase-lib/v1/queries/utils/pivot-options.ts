@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -8,6 +7,7 @@ import type {
   FieldRefColumnSplitSetting,
   PivotTableColumnSplitSetting,
 } from "metabase-types/api";
+import { isNotNull } from "metabase/utils/types";
 
 import { isColumnNameColumnSplitSetting } from "./pivot";
 

@@ -1,4 +1,3 @@
-import type { UpdateDataPermissionParams } from "metabase/admin/permissions/permissions";
 import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
 import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type {
@@ -8,6 +7,7 @@ import type {
   TableId,
   UserAttributeKey,
 } from "metabase-types/api";
+import type { UpdateDataPermissionParams } from "metabase/admin/permissions/permissions";
 
 export type RawGroupTableAccessPolicyParams = Pick<
   UpdateDataPermissionParams,

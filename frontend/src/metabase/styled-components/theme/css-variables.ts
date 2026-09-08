@@ -5,6 +5,7 @@
 import { css } from "@emotion/react";
 import { getIn } from "icepick";
 
+import type { ColorSettings } from "metabase-types/api";
 import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/css-vars-to-sdk-theme";
 import {
   getDynamicCssVariables,
@@ -20,7 +21,6 @@ import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { getFontFamilyValue } from "metabase/utils/fonts";
-import type { ColorSettings } from "metabase-types/api";
 
 const createColorVars = (
   colorScheme: ResolvedColorScheme,

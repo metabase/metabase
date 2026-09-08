@@ -1,12 +1,12 @@
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { SdkActionId } from "embedding-sdk-bundle/types/action";
-import { executeAction as executeActionMutation } from "metabase/api/action";
 import type {
   BaseEntityId,
   ParametersForActionExecution,
   WritebackActionId,
 } from "metabase-types/api";
 import { isBaseEntityID } from "metabase-types/api";
+import { executeAction as executeActionMutation } from "metabase/api/action";
 
 type ActionParametersPayload = Record<string, unknown>;
 

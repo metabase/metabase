@@ -1,9 +1,9 @@
+import type { CardId } from "metabase-types/api";
 import {
   skipToken,
   useGetCardQuery,
   useGetCardQueryMetadataQuery,
 } from "metabase/api";
-import type { CardId } from "metabase-types/api";
 
 export function useLoadCardWithMetadata(cardId: CardId | undefined) {
   const {

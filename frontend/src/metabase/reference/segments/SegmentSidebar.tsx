@@ -2,12 +2,12 @@ import cx from "classnames";
 import { memo } from "react";
 import { t } from "ttag";
 
+import type { User } from "metabase-types/api";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
 import S from "metabase/reference/components/Sidebar.module.css";
 import { SidebarItem } from "metabase/reference/components/SidebarItem";
 import MetabaseSettings from "metabase/utils/settings";
-import type { User } from "metabase-types/api";
 
 import { trackReferenceXRayClicked } from "../analytics";
 import type { StubbedSegment } from "../types";

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { MetabotConversation } from "metabase-types/api";
 import {
   ActionIcon,
   Box,
@@ -15,7 +16,6 @@ import {
   Tooltip,
 } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
-import type { MetabotConversation } from "metabase-types/api";
 
 import { useListMetabotConversationsQuery } from "../../api";
 import {

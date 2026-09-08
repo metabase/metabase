@@ -1,8 +1,8 @@
 import { setupSdkPlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
-import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 
 import {
   captureClickModifierKeys,

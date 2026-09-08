@@ -4,6 +4,9 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { Card, CardId, DatabaseId, Dataset } from "metabase-types/api";
 import { Api, cardApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -25,9 +28,6 @@ import { updateQuestionCard } from "metabase/redux/cards";
 import { questionUpdated } from "metabase/redux/query-builder";
 import type { Dispatch } from "metabase/redux/store";
 import { Flex } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type { Card, CardId, DatabaseId, Dataset } from "metabase-types/api";
 
 import {
   rememberLastUsedDatabase,

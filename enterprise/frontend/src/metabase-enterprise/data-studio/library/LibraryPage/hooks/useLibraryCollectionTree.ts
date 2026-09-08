@@ -1,6 +1,12 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import type {
+  Collection,
+  CollectionId,
+  CollectionItem,
+} from "metabase-types/api";
 import {
   collectionApi,
   skipToken,
@@ -16,12 +22,6 @@ import {
 } from "metabase/data-studio/common/utils";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useDispatch, useSelector } from "metabase/redux";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type {
-  Collection,
-  CollectionId,
-  CollectionItem,
-} from "metabase-types/api";
 
 export function useLibraryCollectionTree(
   collection: Collection | undefined,

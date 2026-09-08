@@ -1,12 +1,12 @@
 import * as Yup from "yup";
 
-import * as Errors from "metabase/utils/errors";
 import type {
   IndexColumn,
   IndexField,
   IndexKind,
   StructuredIndex,
 } from "metabase-types/api";
+import * as Errors from "metabase/utils/errors";
 
 export type IndexFieldValue = string | number | boolean | IndexColumn[] | null;
 

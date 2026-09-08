@@ -1,8 +1,8 @@
+import type { RecentContexts } from "metabase-types/api";
 import type {
   EntityPickerOptions,
   EntityPickerProps,
 } from "metabase/common/components/Pickers";
-import type { RecentContexts } from "metabase-types/api";
 
 export const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
 

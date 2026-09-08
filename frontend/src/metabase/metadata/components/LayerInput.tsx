@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import type { TableDataLayer } from "metabase-types/api";
 import {
   DATA_LAYER_ICONS,
   getDataLayerOptions,
   isDataLayer,
 } from "metabase/metadata/utils/data-layer";
 import { Group, Icon, Select, SelectItem, type SelectProps } from "metabase/ui";
-import type { TableDataLayer } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   value: TableDataLayer | null;

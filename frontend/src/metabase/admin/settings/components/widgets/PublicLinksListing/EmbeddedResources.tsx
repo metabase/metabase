@@ -1,15 +1,15 @@
 import { t } from "ttag";
 
+import type {
+  GetEmbeddableCard,
+  GetEmbeddableDashboard,
+} from "metabase-types/api";
 import {
   useListEmbeddableCardsQuery,
   useListEmbeddableDashboardsQuery,
 } from "metabase/api";
 import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type {
-  GetEmbeddableCard,
-  GetEmbeddableDashboard,
-} from "metabase-types/api";
 
 import { SettingHeader } from "../../SettingHeader";
 

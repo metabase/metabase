@@ -1,14 +1,14 @@
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { DateFilterValue } from "metabase/querying/common/types";
-import { registerVisualizations } from "metabase/visualizations/register";
 import type { Dataset } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import type { DateFilterValue } from "metabase/querying/common/types";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { BreakoutChart } from "./BreakoutChart";
 import { ConversationsByDayChart } from "./ConversationsByDayChart";

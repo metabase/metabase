@@ -1,5 +1,3 @@
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import type { MiniPickerTableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -13,6 +11,8 @@ import type {
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import type { MiniPickerTableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 
 export type Location = {
   row: number;

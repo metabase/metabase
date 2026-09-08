@@ -1,5 +1,5 @@
-import { Flex } from "metabase/ui";
 import type { Comment } from "metabase-types/api";
+import { Flex } from "metabase/ui";
 
 import { Reaction } from "./Reaction";
 

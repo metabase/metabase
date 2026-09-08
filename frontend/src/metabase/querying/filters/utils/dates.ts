@@ -1,3 +1,4 @@
+import * as Lib from "metabase-lib";
 import { dayjs } from "metabase/dayjs";
 import {
   DATE_PICKER_EXTRACTION_UNITS,
@@ -15,7 +16,6 @@ import type {
   RelativeDatePickerValue,
   SpecificDatePickerValue,
 } from "metabase/querying/common/types";
-import * as Lib from "metabase-lib";
 
 export {
   formatDate,

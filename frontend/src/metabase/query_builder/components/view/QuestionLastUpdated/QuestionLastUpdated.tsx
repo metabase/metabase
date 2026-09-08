@@ -1,8 +1,8 @@
 import { c } from "ttag";
 
+import type { Dataset } from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { FixedSizeIcon, Flex, type FlexProps, Tooltip } from "metabase/ui";
-import type { Dataset } from "metabase-types/api";
 
 import { getAbbreviatedRelativeTimeStrings, getTimePassedSince } from "./utils";
 

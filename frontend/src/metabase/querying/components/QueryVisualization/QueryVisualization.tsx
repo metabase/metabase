@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
+import * as Lib from "metabase-lib";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import { Warnings } from "metabase/common/components/Warnings";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Box, Flex, Stack, Text } from "metabase/ui";
@@ -11,8 +13,6 @@ import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
 import { prefetchVisualizationComponent } from "metabase/viz-core";
-import * as Lib from "metabase-lib";
-import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import S from "./QueryVisualization.module.css";
 import { RunButtonWithTooltip } from "./RunButtonWithTooltip";

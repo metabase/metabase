@@ -2,6 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type {
+  Database,
+  DraftTransformSource,
+  Transform,
+} from "metabase-types/api";
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -24,12 +30,6 @@ import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/us
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import * as Lib from "metabase-lib";
-import type {
-  Database,
-  DraftTransformSource,
-  Transform,
-} from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
 import { NAME_MAX_LENGTH } from "../../constants";

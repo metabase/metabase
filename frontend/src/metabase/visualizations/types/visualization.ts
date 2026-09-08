@@ -1,14 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
 
-import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
-import type { IconProps } from "metabase/ui";
-import type {
-  ComputedVisualizationSettings,
-  HighlightedObject,
-  HoveredObject,
-  VisualizationDefinition,
-  VisualizationGridSize,
-} from "metabase/viz-core";
 import type { BrushClickObject } from "metabase-lib/query/types";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -27,6 +18,15 @@ import type {
   TimelineEventId,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
+import type { IconProps } from "metabase/ui";
+import type {
+  ComputedVisualizationSettings,
+  HighlightedObject,
+  HoveredObject,
+  VisualizationDefinition,
+  VisualizationGridSize,
+} from "metabase/viz-core";
 
 import type { ClickActionsMode, ClickObject } from "./click-actions";
 

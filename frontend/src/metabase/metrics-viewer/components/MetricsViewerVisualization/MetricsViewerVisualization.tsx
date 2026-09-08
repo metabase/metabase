@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
 
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
+import type { CardId } from "metabase-types/api";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -16,8 +18,6 @@ import { getGridColumns } from "metabase/metrics-viewer/utils/grid-columns";
 import { Center, Flex, SimpleGrid, Stack, useElementSize } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { OnBrush } from "metabase/visualizations/types";
-import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
-import type { CardId } from "metabase-types/api";
 
 import { useMetricsViewerContext } from "../../context";
 

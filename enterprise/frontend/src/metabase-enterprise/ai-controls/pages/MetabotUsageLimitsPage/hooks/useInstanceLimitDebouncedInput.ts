@@ -2,11 +2,11 @@ import { useDebouncedCallback } from "@mantine/hooks";
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useMetadataToasts } from "metabase/common/hooks";
 import {
   useGetAIControlsInstanceLimitQuery,
   useUpdateAIControlsInstanceLimitMutation,
 } from "metabase-enterprise/api";
+import { useMetadataToasts } from "metabase/common/hooks";
 
 import { SAVE_DEBOUNCE_MS } from "../utils";
 

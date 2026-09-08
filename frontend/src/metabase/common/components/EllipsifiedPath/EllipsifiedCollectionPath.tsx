@@ -1,9 +1,9 @@
+import type { CollectionEssentials } from "metabase-types/api";
 import {
   getCollectionName,
   getCollectionPath,
   getCollectionPathAsString,
 } from "metabase/common/collections/utils";
-import type { CollectionEssentials } from "metabase-types/api";
 
 import { EllipsifiedPath } from "./EllipsifiedPath";
 

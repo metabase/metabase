@@ -1,6 +1,13 @@
 import type { CellContext } from "@tanstack/react-table";
 import { c, t } from "ttag";
 
+import {
+  isDate,
+  isDateWithoutTime,
+  isNumeric,
+  isString,
+} from "metabase-lib/v1/types/utils/isa";
+import type { InspectorField } from "metabase-types/api";
 import { getFormattedTime } from "metabase/common/components/DateTime";
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import {
@@ -11,13 +18,6 @@ import {
   type TreeTableColumnDef,
 } from "metabase/ui";
 import { formatPercent } from "metabase/utils/formatting";
-import {
-  isDate,
-  isDateWithoutTime,
-  isNumeric,
-  isString,
-} from "metabase-lib/v1/types/utils/isa";
-import type { InspectorField } from "metabase-types/api";
 
 import type { FieldTreeNode, TableWithFields } from "./types";
 

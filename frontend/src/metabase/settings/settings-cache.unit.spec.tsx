@@ -3,10 +3,10 @@ import { useState } from "react";
 
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockSettings } from "metabase-types/api/mocks";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
-import { createMockSettings } from "metabase-types/api/mocks";
 
 import {
   settingsApi,

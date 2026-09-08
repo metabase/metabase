@@ -1,3 +1,9 @@
+import type {
+  ListTasksSortColumn,
+  SortDirection,
+  SortingOptions,
+  TaskStatus,
+} from "metabase-types/api";
 import {
   type QueryParam,
   type UrlStateConfig,
@@ -6,12 +12,6 @@ import {
   parseSortColumn,
   parseSortDirection,
 } from "metabase/common/hooks/use-url-state";
-import type {
-  ListTasksSortColumn,
-  SortDirection,
-  SortingOptions,
-  TaskStatus,
-} from "metabase-types/api";
 
 export const TASK_SORT_COLUMNS = [
   "started_at",

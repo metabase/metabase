@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { isSyncAborted, isSyncInProgress } from "metabase/utils/syncing";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
+import { isSyncAborted, isSyncInProgress } from "metabase/utils/syncing";
 
 import StatusSmall from "../StatusSmall";
 import { getIconName, isSpinnerVisible } from "../utils/status";

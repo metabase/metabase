@@ -1,9 +1,9 @@
+import type * as Lib from "metabase-lib";
+import type { TemporalUnit } from "metabase-types/api";
 import type {
   DatePickerUnit,
   DatePickerValue,
 } from "metabase/querying/common/types";
-import type * as Lib from "metabase-lib";
-import type { TemporalUnit } from "metabase-types/api";
 
 import type { TemporalGranularityItem } from "../hooks/useTemporalGranularity";
 

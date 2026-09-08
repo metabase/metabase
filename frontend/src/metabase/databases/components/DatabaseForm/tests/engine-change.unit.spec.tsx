@@ -3,8 +3,8 @@ import { useState } from "react";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { DatabaseData, Engine } from "metabase-types/api";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { DatabaseForm } from "../DatabaseForm";
 

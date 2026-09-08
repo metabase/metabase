@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { Collection, CollectionId } from "metabase-types/api";
 import type { Crumb } from "metabase/common/components/Breadcrumbs";
 import { isNotNull } from "metabase/utils/types";
-import type { Collection, CollectionId } from "metabase-types/api";
 
 export const findCollectionById = (
   collectionsTree?: Collection[],

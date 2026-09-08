@@ -1,5 +1,5 @@
-import { PLUGIN_AI_CONTROLS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_AI_CONTROLS } from "metabase/plugins";
 
 import { getAiControlsNavItems, getAiControlsUpsellNavItems } from "./nav";
 import { getAiControlsRoutes, getAiControlsUpsellRoutes } from "./routes";

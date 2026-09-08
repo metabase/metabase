@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { Button, Group, Stack, Text, Title } from "metabase/ui";
 import type {
   SourceReplacementCheckInfo,
   SourceReplacementEntry,
 } from "metabase-types/api";
+import { Button, Group, Stack, Text, Title } from "metabase/ui";
 
 import type { EntityItem } from "../types";
 import { getEntityDatabaseId } from "../utils";

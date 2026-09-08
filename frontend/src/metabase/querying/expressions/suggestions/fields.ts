@@ -1,7 +1,7 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
 
-import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
+import { getColumnIcon } from "metabase/common/utils/columns";
 
 import { formatIdentifier } from "../identifier";
 import { tokenAtPos } from "../position";

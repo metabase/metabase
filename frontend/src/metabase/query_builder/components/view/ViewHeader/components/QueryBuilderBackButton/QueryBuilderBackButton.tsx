@@ -1,12 +1,12 @@
 import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 
+import type { CollectionItemModel, DashboardId } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { CollectionItemModel, DashboardId } from "metabase-types/api";
 
 import { navigateBackToDashboard } from "../../../../../store/actions";
 import { getParentEntity } from "../../../../../store/selectors";

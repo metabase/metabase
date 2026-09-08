@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo } from "react";
 
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type { OpaqueDatasetQuery } from "metabase-types/api";
 import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import type { Location } from "metabase/router";
 import { useNavigate } from "metabase/router";
 import { b64url_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type { OpaqueDatasetQuery } from "metabase-types/api";
 
 type UseAdHocTableQueryProps = {
   tableId: number;

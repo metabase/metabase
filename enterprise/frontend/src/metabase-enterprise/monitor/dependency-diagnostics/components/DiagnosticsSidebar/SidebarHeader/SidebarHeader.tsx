@@ -1,17 +1,17 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
-import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
-import CS from "metabase/css/core/index.css";
-import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import { TOOLTIP_OPEN_DELAY_MS } from "metabase-enterprise/dependencies/constants";
 import {
   getNodeLabel,
   getNodeLink,
 } from "metabase-enterprise/dependencies/utils";
 import type { DependencyNode } from "metabase-types/api";
+import { ForwardRefLink } from "metabase/common/components/Link";
+import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
+import CS from "metabase/css/core/index.css";
+import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import type { DependencyDiagnosticsMode } from "../../types";
 

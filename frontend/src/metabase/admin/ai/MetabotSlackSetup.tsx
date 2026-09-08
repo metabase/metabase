@@ -4,6 +4,7 @@ import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
+import type { SlackAppInfo } from "metabase-types/api/slack";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -24,7 +25,6 @@ import {
 } from "metabase/settings";
 import { Accordion, Button, Flex, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { SlackAppInfo } from "metabase-types/api/slack";
 
 import {
   useGetSlackAppInfoQuery,

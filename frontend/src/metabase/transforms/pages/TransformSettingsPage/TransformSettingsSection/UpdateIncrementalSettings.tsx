@@ -4,6 +4,7 @@ import { useCallback, useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { Transform } from "metabase-types/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { Form, FormInlineUpdater, FormProvider } from "metabase/forms";
@@ -12,7 +13,6 @@ import {
   IncrementalTransformSettings,
   useUpdateIncrementalSettings,
 } from "metabase/transforms/components/IncrementalTransform";
-import type { Transform } from "metabase-types/api";
 
 import { ResetCheckpointSection } from "./ResetCheckpointSection";
 

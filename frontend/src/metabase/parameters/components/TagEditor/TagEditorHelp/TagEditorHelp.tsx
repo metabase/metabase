@@ -1,13 +1,13 @@
 import cx from "classnames";
 import { jt, t } from "ttag";
 
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { DatabaseId, NativeDatasetQuery } from "metabase-types/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Code } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseId, NativeDatasetQuery } from "metabase-types/api";
 
 const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
   variable: {

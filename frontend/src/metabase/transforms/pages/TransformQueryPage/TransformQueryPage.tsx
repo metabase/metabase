@@ -3,6 +3,13 @@ import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import type {
+  Database,
+  DatasetQuery,
+  DraftTransformSource,
+  Transform,
+  UpdateTransformRequest,
+} from "metabase-types/api";
 import {
   skipToken,
   useGetTransformQuery,
@@ -25,13 +32,6 @@ import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/us
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type {
-  Database,
-  DatasetQuery,
-  DraftTransformSource,
-  Transform,
-  UpdateTransformRequest,
-} from "metabase-types/api";
 
 import {
   buildIncrementalSource,

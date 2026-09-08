@@ -1,5 +1,5 @@
-import { Card, Loader, Stack, Text } from "metabase/ui";
 import type { InspectorCard } from "metabase-types/api";
+import { Card, Loader, Stack, Text } from "metabase/ui";
 
 import { useLensCardLoader } from "../../../../hooks";
 import { CardAlerts } from "../../../CardAlerts";

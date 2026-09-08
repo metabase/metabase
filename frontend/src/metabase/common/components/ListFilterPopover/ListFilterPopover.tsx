@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
+import type { IconName } from "metabase-types/api";
 import {
   Button,
   Flex,
@@ -12,7 +13,6 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 type ListFilterPopoverProps = {
   hasActiveFilters: boolean;

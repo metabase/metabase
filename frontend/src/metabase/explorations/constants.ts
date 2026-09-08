@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { getFormattedTime } from "metabase/common/components/DateTime";
 import type { MetricDimension } from "metabase-types/api";
+import { getFormattedTime } from "metabase/common/components/DateTime";
 
 export const DIMENSION_INTERESTINGNESS_SCORE_THRESHOLD = 0.8;
 

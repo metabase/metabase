@@ -1,9 +1,9 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockDatetimeColumn,
   createMockField,
 } from "metabase-types/api/mocks";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { ColumnSettings, hasColumnSettingsWidgets } from "./ColumnSettings";
 

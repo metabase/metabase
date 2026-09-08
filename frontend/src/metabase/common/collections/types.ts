@@ -1,5 +1,3 @@
-import type { UploadMode } from "metabase/redux/store/upload";
-import type { ColorName } from "metabase/ui/colors/types";
 import type {
   CardId,
   Collection,
@@ -13,6 +11,8 @@ import type {
   IconName,
   TableId,
 } from "metabase-types/api";
+import type { UploadMode } from "metabase/redux/store/upload";
+import type { ColorName } from "metabase/ui/colors/types";
 
 export type CollectionAuthorityLevelConfig = {
   type: CollectionAuthorityLevel;

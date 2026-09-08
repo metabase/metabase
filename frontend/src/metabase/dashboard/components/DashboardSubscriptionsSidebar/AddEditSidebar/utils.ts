@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
-import { formatNotificationScheduleDescription } from "metabase/notifications/utils";
 import type { ChannelSpec, ScheduleSettings } from "metabase-types/api";
+import { formatNotificationScheduleDescription } from "metabase/notifications/utils";
 
 import { CHANNEL_NOUN_PLURAL } from "./constants";
 

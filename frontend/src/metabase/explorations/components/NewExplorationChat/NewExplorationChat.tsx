@@ -3,6 +3,10 @@ import { useCallback, useEffect, useRef } from "react";
 import { t } from "ttag";
 import { once } from "underscore";
 
+import type {
+  AddResearchGroupsResponse,
+  RemoveFromResearchPlanResponse,
+} from "metabase-types/api";
 import { useToast } from "metabase/common/hooks";
 import {
   trackExplorationAgentMessageSent,
@@ -25,10 +29,6 @@ import type {
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state";
 import { Box, Flex, Stack, Text } from "metabase/ui";
-import type {
-  AddResearchGroupsResponse,
-  RemoveFromResearchPlanResponse,
-} from "metabase-types/api";
 
 import S from "./NewExplorationChat.module.css";
 

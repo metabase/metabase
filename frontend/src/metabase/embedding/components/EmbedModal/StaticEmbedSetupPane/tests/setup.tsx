@@ -8,11 +8,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import type {
-  EmbedResource,
-  EmbedResourceType,
-} from "metabase/embedding/types";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
@@ -20,6 +15,11 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import type {
+  EmbedResource,
+  EmbedResourceType,
+} from "metabase/embedding/types";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import type { StaticEmbedSetupPaneProps } from "../StaticEmbedSetupPane";
 import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";

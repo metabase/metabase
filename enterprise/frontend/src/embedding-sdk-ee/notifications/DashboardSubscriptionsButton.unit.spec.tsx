@@ -9,7 +9,6 @@ import {
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { DashboardContextProvider } from "metabase/dashboard/context";
 import type { DashboardCard } from "metabase-types/api";
 import {
   createMockCard,
@@ -23,6 +22,7 @@ import {
   ORDERS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { DashboardContextProvider } from "metabase/dashboard/context";
 
 import { DashboardSubscriptionsButton } from "./DashboardSubscriptionsButton";
 

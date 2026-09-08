@@ -1,7 +1,7 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
 
-import { modelIconMap } from "metabase/common/utils/icon";
 import * as Lib from "metabase-lib";
+import { modelIconMap } from "metabase/common/utils/icon";
 
 import { formatIdentifier } from "../identifier";
 import { tokenAtPos } from "../position";

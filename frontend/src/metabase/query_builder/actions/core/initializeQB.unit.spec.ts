@@ -1,21 +1,6 @@
 import fetchMock from "fetch-mock";
 
 import { createMockEntitiesState } from "__support__/store";
-import { databaseApi, snippetApi } from "metabase/api";
-import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
-import * as CardLib from "metabase/common/utils/card";
-import { getMetadata } from "metabase/metadata-store";
-import * as questionActions from "metabase/questions/actions";
-import { setErrorPage } from "metabase/redux/app";
-import * as sharedQB from "metabase/redux/query-builder";
-import {
-  createMockLocation,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import type { Location } from "metabase/router";
-import * as Urls from "metabase/urls";
-import { defer } from "metabase/utils/promise";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -44,6 +29,21 @@ import {
   createSavedStructuredCard,
   createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
+import { databaseApi, snippetApi } from "metabase/api";
+import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
+import * as CardLib from "metabase/common/utils/card";
+import { getMetadata } from "metabase/metadata-store";
+import * as questionActions from "metabase/questions/actions";
+import { setErrorPage } from "metabase/redux/app";
+import * as sharedQB from "metabase/redux/query-builder";
+import {
+  createMockLocation,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import type { Location } from "metabase/router";
+import * as Urls from "metabase/urls";
+import { defer } from "metabase/utils/promise";
+import { checkNotNull } from "metabase/utils/types";
 
 import * as qbActions from "../../store/actions";
 import * as querying from "../querying";

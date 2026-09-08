@@ -1,8 +1,8 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { ExpandedCollection } from "metabase/redux/store";
 import type { Collection, CollectionId } from "metabase-types/api";
+import type { ExpandedCollection } from "metabase/redux/store";
 
 import {
   PERSONAL_COLLECTION,

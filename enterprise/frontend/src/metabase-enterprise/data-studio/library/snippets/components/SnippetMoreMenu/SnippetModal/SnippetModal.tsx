@@ -1,5 +1,5 @@
-import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import type { NativeQuerySnippet } from "metabase-types/api";
+import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 
 import { ArchiveSnippetModal } from "./ArchiveSnippetModal";
 import { UnarchiveSnippetModal } from "./UnarchiveSnippetModal";

@@ -1,5 +1,5 @@
-import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 
 import { UserProvisioning } from "./components/UserProvisioning";
 

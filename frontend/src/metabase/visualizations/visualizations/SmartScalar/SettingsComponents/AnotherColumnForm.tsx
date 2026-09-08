@@ -2,6 +2,10 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  DatasetColumn,
+  SmartScalarComparisonAnotherColumn,
+} from "metabase-types/api";
 import {
   Box,
   Flex,
@@ -10,10 +14,6 @@ import {
   Stack,
   TextInput,
 } from "metabase/ui";
-import type {
-  DatasetColumn,
-  SmartScalarComparisonAnotherColumn,
-} from "metabase-types/api";
 
 import { COMPARISON_TYPES } from "../constants";
 

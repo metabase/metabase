@@ -1,6 +1,7 @@
 import { skipToken } from "@reduxjs/toolkit/query/react";
 import { useMemo } from "react";
 
+import * as Lib from "metabase-lib";
 import {
   useGetFieldValuesQuery,
   useGetRemappedFieldValueQuery,
@@ -14,7 +15,6 @@ import {
 } from "metabase/querying/common/components/FieldValuePicker";
 import type { ComboboxProps } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
-import * as Lib from "metabase-lib";
 
 import {
   canListFieldValues,

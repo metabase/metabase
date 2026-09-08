@@ -1,8 +1,8 @@
-import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { useOSSGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import { useGetAuditInfoQuery } from "metabase-enterprise/api";
 import { isInstanceAnalyticsCollection } from "metabase-enterprise/collections/utils";
 import type { CollectionId } from "metabase-types/api";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { useOSSGetDefaultCollectionId } from "metabase/common/collections/hooks";
 
 /**
  * if the source collection is in the instance analytics collection, the default save location

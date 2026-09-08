@@ -3,6 +3,9 @@ import type { MouseEventHandler } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { Card, ParameterTarget, VirtualCard } from "metabase-types/api";
 import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import {
@@ -14,9 +17,6 @@ import {
   Popover,
   Tooltip,
 } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type { Card, ParameterTarget, VirtualCard } from "metabase-types/api";
 
 import S from "./DashCardParameterMapper.module.css";
 

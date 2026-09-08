@@ -1,3 +1,4 @@
+import type { CollectionId, Timeline, TimelineEvent } from "metabase-types/api";
 import {
   useGetCollectionQuery,
   useGetTimelineEventQuery,
@@ -8,7 +9,6 @@ import MoveEventModal, {
   type MoveEventModalProps,
 } from "metabase/timelines/common/components/MoveEventModal";
 import { useSetTimeline } from "metabase/timelines/common/hooks";
-import type { CollectionId, Timeline, TimelineEvent } from "metabase-types/api";
 
 type ContainerProps = Omit<
   MoveEventModalProps,

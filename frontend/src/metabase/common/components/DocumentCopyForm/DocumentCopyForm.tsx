@@ -1,6 +1,8 @@
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
+import type { CollectionId } from "metabase-types/api";
+import type { Document } from "metabase-types/api/document";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import {
@@ -10,8 +12,6 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { Button, Stack } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
-import type { Document } from "metabase-types/api/document";
 
 export type CopyDocumentProperties = {
   collection_id: CollectionId | null;

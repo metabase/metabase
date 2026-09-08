@@ -1,8 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import type { TokenStatus, Version } from "metabase-types/api";
 import type { State } from "metabase/redux/store";
 import { getPlan, getSetting } from "metabase/settings";
-import type { TokenStatus, Version } from "metabase-types/api";
 
 export const isSsoEnabled = (state: State) =>
   getSetting(state, "ldap-enabled") ||

@@ -1,5 +1,3 @@
-import { getDataFromClicked } from "metabase/value-formatting";
-import type { EChartsSeriesMouseEvent } from "metabase/viz-core";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   createMockCard,
@@ -9,6 +7,8 @@ import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks/dataset";
+import { getDataFromClicked } from "metabase/value-formatting";
+import type { EChartsSeriesMouseEvent } from "metabase/viz-core";
 
 import { createSankeyClickData } from "./events";
 

@@ -2,6 +2,7 @@ import type { ChangeEvent } from "react";
 import { useMemo, useRef, useState } from "react";
 import { c, t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
 import { skipToken, useListCardsQuery } from "metabase/api";
 import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -14,7 +15,6 @@ import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 import { UploadMode } from "metabase/redux/store/upload";
 import { uploadFile } from "metabase/redux/uploads";
 import { Box, Divider, Icon, Menu } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 
 import { runQuestionQuery } from "../../../../../actions";
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";

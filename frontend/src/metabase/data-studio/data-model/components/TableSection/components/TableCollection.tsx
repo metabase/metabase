@@ -1,11 +1,11 @@
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { Table } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
 import { Box } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Table } from "metabase-types/api";
 
 import S from "./TableCollection.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";

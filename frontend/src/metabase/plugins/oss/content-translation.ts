@@ -1,12 +1,12 @@
 import { useCallback } from "react";
 
+import type { EntityToken } from "metabase-types/api/entity";
 import type {
   ContentTranslationFunction,
   TranslatableSingleSeries,
 } from "metabase/content-translation/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { HoveredObject } from "metabase/viz-core";
-import type { EntityToken } from "metabase-types/api/entity";
 
 const getDefaultPluginContentTranslation = () => ({
   isEnabled: false,

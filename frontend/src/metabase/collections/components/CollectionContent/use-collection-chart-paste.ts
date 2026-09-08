@@ -1,13 +1,13 @@
 import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
+import type { Collection } from "metabase-types/api";
 import { useCreateCardMutation } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { useChartPasteListener } from "metabase/common/hooks/use-chart-paste-listener";
 import type { ChartClipboardPayload } from "metabase/common/utils/chart-clipboard";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import type { Collection } from "metabase-types/api";
 
 const PASTE_TOAST_ID = "collection-chart-paste";
 

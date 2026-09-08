@@ -6,16 +6,16 @@ import { setupPerformanceEndpoints } from "__support__/server-mocks/performance"
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import {
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
+import {
   changeInput,
   getCacheStrategySelect,
   selectCacheStrategy,
 } from "metabase/admin/performance/components/test-utils";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import {
-  createMockSettings,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
 
 import { MetricCachingModal } from "./MetricCachingModal";
 

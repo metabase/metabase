@@ -3,6 +3,13 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type {
+  Collection,
+  CollectionId,
+  CollectionPermissions,
+  DataPermissionValue,
+  Group as GroupType,
+} from "metabase-types/api";
 import { COLLECTION_OPTIONS } from "metabase/admin/permissions/constants/collections-permissions";
 import { Messages } from "metabase/admin/permissions/constants/messages";
 import type {
@@ -28,13 +35,6 @@ import {
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { ExpandedCollection, State } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
-import type {
-  Collection,
-  CollectionId,
-  CollectionPermissions,
-  DataPermissionValue,
-  Group as GroupType,
-} from "metabase-types/api";
 
 export const tenantCollectionsQuery = {
   "exclude-other-user-collections": true,

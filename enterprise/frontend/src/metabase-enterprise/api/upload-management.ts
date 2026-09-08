@@ -1,8 +1,8 @@
-import { invalidateTags, provideTableListTags, tag } from "metabase/api/tags";
 import type {
   DeleteUploadTableRequest,
   UploadManagementResponse,
 } from "metabase-types/api";
+import { invalidateTags, provideTableListTags, tag } from "metabase/api/tags";
 
 import { EnterpriseApi } from "./api";
 

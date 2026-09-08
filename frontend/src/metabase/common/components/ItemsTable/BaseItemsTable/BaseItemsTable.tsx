@@ -1,6 +1,15 @@
 import type { HTMLAttributes, PropsWithChildren } from "react";
 import { useMemo } from "react";
 
+import type {
+  Bookmark,
+  Collection,
+  CollectionItem,
+  Database,
+  ListCollectionItemsSortColumn,
+  SortDirection,
+  SortingOptions,
+} from "metabase-types/api";
 import type { CollectionContentTableColumnsMap } from "metabase/common/collections/columns";
 import type {
   CreateBookmark,
@@ -14,15 +23,6 @@ import { BaseItemsTableBody } from "metabase/common/components/ItemsTable/BaseIt
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
-import type {
-  Bookmark,
-  Collection,
-  CollectionItem,
-  Database,
-  ListCollectionItemsSortColumn,
-  SortDirection,
-  SortingOptions,
-} from "metabase-types/api";
 
 import {
   ColumnHeader,

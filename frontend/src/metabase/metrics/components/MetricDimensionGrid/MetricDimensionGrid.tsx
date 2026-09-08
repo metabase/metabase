@@ -3,11 +3,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { MetricDefinition } from "metabase-lib/metric";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+import type {
+  CardDisplayType,
+  Dataset,
+  MetricDimension,
+  SingleSeries,
+} from "metabase-types/api";
+import type { MetricId } from "metabase-types/api/metric";
+import { exploreMetricDimensionUrl } from "metabase/common/metrics-viewer";
 import {
   DEFAULT_DISPLAY_TYPE_BY_DIMENSION,
   type DefaultDimensionDisplayType,
 } from "metabase/common/metrics/utils/dimension-types";
-import { exploreMetricDimensionUrl } from "metabase/common/metrics-viewer";
 import { trackMetricPageShowMoreClicked } from "metabase/metrics/analytics";
 import { useMetricDimensionQuery } from "metabase/metrics/common/hooks";
 import { useNavigate } from "metabase/router";
@@ -22,15 +31,6 @@ import {
 } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
-import type { MetricDefinition } from "metabase-lib/metric";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
-import type {
-  CardDisplayType,
-  Dataset,
-  MetricDimension,
-  SingleSeries,
-} from "metabase-types/api";
-import type { MetricId } from "metabase-types/api/metric";
 
 import S from "./MetricDimensionGrid.module.css";
 import { useMetricDimensionCards } from "./use-metric-dimension-cards";

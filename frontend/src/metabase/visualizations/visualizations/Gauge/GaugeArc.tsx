@@ -1,13 +1,13 @@
 import * as d3 from "d3";
 import type { MouseEvent } from "react";
 
+import type { DatasetColumn } from "metabase-types/api";
 import { formatValue } from "metabase/value-formatting";
 import type {
   ClickObject,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import type { DatasetColumn } from "metabase-types/api";
 
 import { INNER_RADIUS_RATIO, OUTER_RADIUS } from "./constants";
 import type { GaugeSegment } from "./types";

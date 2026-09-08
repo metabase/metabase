@@ -2,8 +2,6 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
-import MetabaseSettings from "metabase/utils/settings";
-import { createMockVisualizationProps } from "metabase/visualizations/types/mocks";
 import type {
   DatasetData,
   RowValue,
@@ -20,6 +18,8 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import MetabaseSettings from "metabase/utils/settings";
+import { createMockVisualizationProps } from "metabase/visualizations/types/mocks";
 
 import { PinMap, getPoints } from "./PinMap";
 

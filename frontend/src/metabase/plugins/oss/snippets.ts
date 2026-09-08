@@ -1,12 +1,12 @@
 import type { ComponentType } from "react";
 
-import type { Dispatch } from "metabase/redux/store";
 import type {
   Collection,
   CollectionId,
   IconName,
   NativeQuerySnippet,
 } from "metabase-types/api";
+import type { Dispatch } from "metabase/redux/store";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
 

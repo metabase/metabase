@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import type { CollectionId, SearchResult, User } from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import type { DetailViewState } from "metabase/redux/store";
-import type { CollectionId, SearchResult, User } from "metabase-types/api";
 
 import S from "./AppBar.module.css";
 import { AppBarLarge } from "./AppBarLarge";

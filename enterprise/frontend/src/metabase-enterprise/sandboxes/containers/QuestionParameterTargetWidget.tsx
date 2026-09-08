@@ -1,9 +1,9 @@
+import type { CardId, ParameterTarget, UnsavedCard } from "metabase-types/api";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import {
   type QuestionLoaderChildrenProps,
   QuestionLoaderHOC,
 } from "metabase/questions/components/QuestionLoader";
-import type { CardId, ParameterTarget, UnsavedCard } from "metabase-types/api";
 
 import { ParameterTargetWidget } from "../components/ParameterTargetWidget";
 

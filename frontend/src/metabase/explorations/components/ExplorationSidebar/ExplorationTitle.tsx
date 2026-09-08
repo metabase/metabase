@@ -1,12 +1,12 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { Exploration } from "metabase-types/api";
 import { useUpdateExplorationMutation } from "metabase/api/exploration";
 import { EditableText } from "metabase/common/components/EditableText";
 import { useToast } from "metabase/common/hooks";
 import { EXPLORATION_NAME_MAX_LENGTH } from "metabase/explorations/constants";
 import { ActionIcon, Group, Icon, Tooltip } from "metabase/ui";
-import type { Exploration } from "metabase-types/api";
 
 interface ExplorationTitleProps {
   exploration: Exploration;

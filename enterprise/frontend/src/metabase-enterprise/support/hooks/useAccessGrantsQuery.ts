@@ -1,8 +1,8 @@
-import { usePagination } from "metabase/common/hooks/use-pagination";
 import {
   useGetCurrentSupportAccessGrantQuery,
   useListSupportAccessGrantsQuery,
 } from "metabase-enterprise/api";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 
 const PAGE_SIZE = 10;
 

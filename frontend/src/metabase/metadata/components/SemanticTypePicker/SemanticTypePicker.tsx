@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Select, type SelectProps } from "metabase/ui";
 import type { Field } from "metabase-types/api";
+import { Select, type SelectProps } from "metabase/ui";
 
 import { getCompatibleSemanticTypes } from "./utils";
 

@@ -13,6 +13,22 @@ import React, {
 import { t } from "ttag";
 import _ from "underscore";
 
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type {
+  CardId,
+  Dashboard,
+  DashboardCard,
+  IconName,
+  RawSeries,
+  Series,
+  SeriesCard,
+  SingleSeries,
+  TimelineEvent,
+  VirtualCard,
+  VisualizationSettings,
+} from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SmallGenericError } from "metabase/common/components/ErrorPages";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
@@ -58,22 +74,6 @@ import {
   isSameSeries,
   prefetchVisualizationComponent,
 } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type {
-  CardId,
-  Dashboard,
-  DashboardCard,
-  IconName,
-  RawSeries,
-  Series,
-  SeriesCard,
-  SingleSeries,
-  TimelineEvent,
-  VirtualCard,
-  VisualizationSettings,
-} from "metabase-types/api";
-import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import { EmptyVizState } from "../EmptyVizState";
 

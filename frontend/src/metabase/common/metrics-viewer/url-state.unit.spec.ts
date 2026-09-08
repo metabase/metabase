@@ -1,8 +1,8 @@
-import * as Urls from "metabase/urls";
 import {
   createMockMetric,
   createMockMetricDimension,
 } from "metabase-types/api/mocks";
+import * as Urls from "metabase/urls";
 
 import { decodeState, exploreMetricDimensionUrl } from "./url-state";
 

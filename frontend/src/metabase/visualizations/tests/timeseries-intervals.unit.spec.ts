@@ -1,4 +1,14 @@
 import { createMockChartLayout } from "__support__/echarts";
+import {
+  type DateTimeAbsoluteUnit,
+  type RawSeries,
+  type RowValue,
+  dateTimeAbsoluteUnits,
+} from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 import { dayjs } from "metabase/dayjs";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
@@ -13,16 +23,6 @@ import {
   getVisualizationTransformed,
   normalizeDate,
 } from "metabase/viz-core";
-import {
-  type DateTimeAbsoluteUnit,
-  type RawSeries,
-  type RowValue,
-  dateTimeAbsoluteUnits,
-} from "metabase-types/api";
-import {
-  createMockColumn,
-  createMockSingleSeries,
-} from "metabase-types/api/mocks";
 
 registerVisualizations();
 

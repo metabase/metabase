@@ -2,6 +2,12 @@ import { useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type {
+  IndexKind,
+  Table,
+  TableIndexEntry,
+  Transform,
+} from "metabase-types/api";
 import {
   skipToken,
   useCreateTableIndexMutation,
@@ -18,12 +24,6 @@ import {
 } from "metabase/transforms/analytics";
 import { type ComboboxItem, Modal, Text } from "metabase/ui";
 import { getObjectKeys } from "metabase/utils/objects";
-import type {
-  IndexKind,
-  Table,
-  TableIndexEntry,
-  Transform,
-} from "metabase-types/api";
 
 import { IndexEditorForm } from "./IndexEditorForm";
 import type { IndexKindOption } from "./types";

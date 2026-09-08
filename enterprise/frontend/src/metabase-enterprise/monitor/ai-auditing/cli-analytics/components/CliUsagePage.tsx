@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { SimpleGrid, Stack, Title } from "metabase/ui";
 import { buildCallsByDayByStatusQuery } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
+import { SimpleGrid, Stack, Title } from "metabase/ui";
 
 import { CliBreakoutChart } from "./CliBreakoutChart";
 import { CliCallerLivenessTable } from "./CliCallerLivenessTable";

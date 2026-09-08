@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { DefinitionSource } from "metabase/metrics-viewer/utils/definition-sources";
 import * as LibMetric from "metabase-lib/metric";
+import type { DefinitionSource } from "metabase/metrics-viewer/utils/definition-sources";
 
 import { MetricsFilterPills } from "./MetricsFilterPills";
 

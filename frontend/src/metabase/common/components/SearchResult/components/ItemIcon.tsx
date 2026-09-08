@@ -1,7 +1,7 @@
+import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
 import { Flex, Icon, rem } from "metabase/ui";
 import { lighten } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";
-import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
 
 import { CollectionIcon } from "./CollectionIcon";
 import { DefaultIcon } from "./DefaultIcon";

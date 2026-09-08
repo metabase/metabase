@@ -1,5 +1,5 @@
-import { trackSimpleEvent } from "metabase/analytics";
 import type { Document } from "metabase-types/api";
+import { trackSimpleEvent } from "metabase/analytics";
 
 export type DocumentTriggerSource = "standalone" | "exploration";
 

@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
 import { createMockDataApp } from "metabase-types/api/mocks";
+import { UndoListing } from "metabase/common/components/UndoListing";
 
 import { DataAppActionsMenu } from "./DataAppActionsMenu";
 

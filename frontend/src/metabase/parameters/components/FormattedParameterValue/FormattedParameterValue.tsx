@@ -1,10 +1,5 @@
 import { t } from "ttag";
 
-import { useTranslateContent } from "metabase/content-translation/hooks";
-import { ParameterFieldWidgetValue } from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
-import { formatParameterValue } from "metabase/parameters/utils/formatting";
-import { useSetting } from "metabase/settings";
-import { Ellipsified } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   getFields,
@@ -25,6 +20,11 @@ import type {
   ParameterValue,
   RowValue,
 } from "metabase-types/api";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import { ParameterFieldWidgetValue } from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
+import { formatParameterValue } from "metabase/parameters/utils/formatting";
+import { useSetting } from "metabase/settings";
+import { Ellipsified } from "metabase/ui";
 
 export type FormattedParameterValueProps = {
   parameter: UiParameter;

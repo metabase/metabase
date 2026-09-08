@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import type { EngineKey } from "metabase-types/api";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -15,7 +16,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import type { EngineKey } from "metabase-types/api";
 
 import { DatabaseEditConnectionForm } from "../components/DatabaseEditConnectionForm";
 import {

@@ -1,5 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 
+import type {
+  CardType,
+  Collection,
+  CollectionContentModel,
+  CollectionId,
+  DatabaseId,
+} from "metabase-types/api";
 import {
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
@@ -19,13 +26,6 @@ import CS from "metabase/css/core/index.css";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Box, Icon } from "metabase/ui";
-import type {
-  CardType,
-  Collection,
-  CollectionContentModel,
-  CollectionId,
-  DatabaseId,
-} from "metabase-types/api";
 
 import { SavedEntityList } from "./SavedEntityList";
 import SavedEntityPickerS from "./SavedEntityPicker.module.css";

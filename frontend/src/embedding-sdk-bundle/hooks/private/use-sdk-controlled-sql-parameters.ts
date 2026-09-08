@@ -7,12 +7,12 @@ import {
   buildParametersPayload,
 } from "embedding-sdk-bundle/lib/controlled-parameters";
 import type { SqlParameterChangePayload } from "embedding-sdk-bundle/types/question";
-import { getMetadata } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { ParameterValuesMap } from "metabase-types/api";
+import { getMetadata } from "metabase/metadata-store";
+import { useSelector } from "metabase/redux";
 
 import type { SqlParameterValues } from "../../types";
 

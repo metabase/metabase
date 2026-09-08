@@ -1,12 +1,5 @@
 import { useMemo } from "react";
 
-import { getMetadata } from "metabase/metadata-store";
-import { QueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
-import type {
-  QueryEditorUiOptions,
-  QueryEditorUiState,
-} from "metabase/querying/editor/components/QueryEditor";
-import { useSelector } from "metabase/redux";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -14,6 +7,13 @@ import type {
   QueryTransformSource,
   Transform,
 } from "metabase-types/api";
+import { getMetadata } from "metabase/metadata-store";
+import { QueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
+import type {
+  QueryEditorUiOptions,
+  QueryEditorUiState,
+} from "metabase/querying/editor/components/QueryEditor";
+import { useSelector } from "metabase/redux";
 
 import { EditDefinitionButton } from "./EditDefinitionButton";
 import { getEditorOptions } from "./utils";

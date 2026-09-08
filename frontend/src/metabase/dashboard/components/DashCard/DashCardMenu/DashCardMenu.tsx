@@ -2,6 +2,9 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
+import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
+import type { DashboardCard, Dataset } from "metabase-types/api";
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
 import { canDownloadResults } from "metabase/common/utils/dataset";
@@ -15,9 +18,6 @@ import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-quest
 import { useStore } from "metabase/redux";
 import { Icon, Menu, type MenuProps } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import type Question from "metabase-lib/v1/Question";
-import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
-import type { DashboardCard, Dataset } from "metabase-types/api";
 
 import { getDashcardTokenId, getDashcardUuid } from "../dashcard-ids";
 

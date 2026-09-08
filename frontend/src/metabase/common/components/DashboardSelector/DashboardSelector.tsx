@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { DashboardId } from "metabase-types/api";
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
 import { Flex, Group, Icon } from "metabase/ui";
-import type { DashboardId } from "metabase-types/api";
 
 import { DashboardPickerButton } from "./DashboardSelector.styled";
 

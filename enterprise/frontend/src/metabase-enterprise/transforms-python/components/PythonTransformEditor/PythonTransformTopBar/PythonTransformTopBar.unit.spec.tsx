@@ -3,13 +3,13 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import type { Transform } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTransform,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { PythonTransformTopBar } from "./PythonTransformTopBar";
 

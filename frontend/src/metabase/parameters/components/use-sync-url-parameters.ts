@@ -2,9 +2,9 @@ import querystring from "querystring";
 
 import { useEffect, useMemo } from "react";
 
-import { isEmbedPreview } from "metabase/embedding/config";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Parameter } from "metabase-types/api";
+import { isEmbedPreview } from "metabase/embedding/config";
 
 interface UseSyncUrlParametersProps {
   parameters?: Parameter[];

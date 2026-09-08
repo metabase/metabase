@@ -1,14 +1,4 @@
 import { screen, waitFor } from "__support__/ui";
-import { serializeCardForUrl } from "metabase/common/utils/card";
-import {
-  type LoadCustomVizPluginForDisplayResult,
-  PLUGIN_CUSTOM_VIZ,
-} from "metabase/plugins";
-import type { Dispatch } from "metabase/redux/store";
-import { checkNotNull } from "metabase/utils/types";
-import { registerVisualizations } from "metabase/visualizations/register";
-import type { Visualization } from "metabase/visualizations/types/visualization";
-import { registerVisualization, visualizations } from "metabase/viz-core";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   CustomVizDisplayType,
@@ -27,6 +17,16 @@ import {
   SAMPLE_DB_ID,
   createOrdersCreatedAtDatasetColumn,
 } from "metabase-types/api/mocks/presets";
+import { serializeCardForUrl } from "metabase/common/utils/card";
+import {
+  type LoadCustomVizPluginForDisplayResult,
+  PLUGIN_CUSTOM_VIZ,
+} from "metabase/plugins";
+import type { Dispatch } from "metabase/redux/store";
+import { checkNotNull } from "metabase/utils/types";
+import { registerVisualizations } from "metabase/visualizations/register";
+import type { Visualization } from "metabase/visualizations/types/visualization";
+import { registerVisualization, visualizations } from "metabase/viz-core";
 
 import { cancelQuery } from "../actions";
 import { getCard, getFirstQueryResult, getIsRunning } from "../store/selectors";

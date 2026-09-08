@@ -1,7 +1,7 @@
+import { useGetRemoteSyncCurrentTaskQuery } from "metabase-enterprise/api";
 import { dayjs } from "metabase/dayjs";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
-import { useGetRemoteSyncCurrentTaskQuery } from "metabase-enterprise/api";
 
 import { SyncProgressModal } from "../components/SyncProgressModal";
 import { REMOTE_SYNC_KEY } from "../constants";

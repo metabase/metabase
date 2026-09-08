@@ -1,9 +1,9 @@
 import cx from "classnames";
 
+import type { IconName } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Box, FixedSizeIcon, Group } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./GraphLink.module.css";
 

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { ParameterValueOrArray } from "metabase-types/api";
 import { DatePicker } from "metabase/querying/common/components/DatePicker";
 import type {
   DatePickerOperator,
@@ -14,7 +15,6 @@ import {
   serializeDateParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
 import { Button } from "metabase/ui";
-import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateAllOptionsWidgetProps = {
   value: ParameterValueOrArray | null | undefined;

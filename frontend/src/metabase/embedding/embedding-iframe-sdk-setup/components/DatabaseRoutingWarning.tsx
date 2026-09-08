@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { Card, Dashboard } from "metabase-types/api";
 import { useListDatabasesQuery } from "metabase/api";
 import {
   dashboardUsesRoutingEnabledDatabases,
@@ -11,7 +12,6 @@ import type {
   GuestEmbedResourceType,
 } from "metabase/embedding/types";
 import { Alert, Icon } from "metabase/ui";
-import type { Card, Dashboard } from "metabase-types/api";
 
 interface DatabaseRoutingWarningProps {
   resource: EmbedResource;

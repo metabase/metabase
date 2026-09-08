@@ -1,10 +1,10 @@
 import { useCallback } from "react";
 
+import type { CollectionNamespace, CollectionType } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 import type { IconData } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { CollectionNamespace, CollectionType } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
 
 import {
   type EntityPickerProps,

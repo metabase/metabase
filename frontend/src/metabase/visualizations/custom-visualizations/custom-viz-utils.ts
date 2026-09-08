@@ -1,11 +1,11 @@
-import { getSubpathSafeUrl } from "metabase/urls";
-import { formatValue as internalFormatValue } from "metabase/value-formatting";
 import type {
   ColumnSettings,
   CustomVizPluginId,
   CustomVizPluginRuntime,
   VisualizationDisplay,
 } from "metabase-types/api";
+import { getSubpathSafeUrl } from "metabase/urls";
+import { formatValue as internalFormatValue } from "metabase/value-formatting";
 
 export function formatValue(value: unknown, options?: ColumnSettings): string {
   const result = internalFormatValue(value, {

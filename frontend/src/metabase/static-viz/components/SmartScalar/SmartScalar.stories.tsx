@@ -1,3 +1,8 @@
+import type { RowValues, VisualizationSettings } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import {
   measureTextHeight,
@@ -5,11 +10,6 @@ import {
 } from "metabase/static-viz/lib/text";
 import { colors } from "metabase/ui/colors";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/viz-core";
-import type { RowValues, VisualizationSettings } from "metabase-types/api";
-import {
-  createMockColumn,
-  createMockSingleSeries,
-} from "metabase-types/api/mocks";
 
 import { StaticVisualization } from "../StaticVisualization";
 

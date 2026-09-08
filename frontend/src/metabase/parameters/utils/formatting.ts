@@ -1,6 +1,5 @@
 import { msgid, ngettext } from "ttag";
 
-import { formatValue } from "metabase/value-formatting";
 import * as Lib from "metabase-lib";
 import Field from "metabase-lib/v1/metadata/Field";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -19,6 +18,7 @@ import type {
   ParameterValue,
   RowValue,
 } from "metabase-types/api";
+import { formatValue } from "metabase/value-formatting";
 
 import { formatDateValue } from "./date-formatting";
 

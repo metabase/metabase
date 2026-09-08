@@ -1,6 +1,3 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { memoize } from "metabase/utils/memoize";
-import { formatValue } from "metabase/value-formatting";
 import {
   type DatasetColumn,
   type RawSeries,
@@ -8,6 +5,9 @@ import {
   type XAxisScale,
   getRowsForStableKeys,
 } from "metabase-types/api";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { memoize } from "metabase/utils/memoize";
+import { formatValue } from "metabase/value-formatting";
 
 import type { CartesianChartColumns } from "../../../lib/graph/columns";
 import { getCartesianChartColumns } from "../../../lib/graph/columns";

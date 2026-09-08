@@ -5,6 +5,10 @@ import type {
 } from "@reduxjs/toolkit/query";
 import type { ComponentType, ReactNode } from "react";
 
+import type {
+  RemoteSyncChangesResponse,
+  RemoteSyncEntity,
+} from "metabase-types/api";
 import type { TagType } from "metabase/api/tags";
 import type { UseQuery } from "metabase/api/types/rtk";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
@@ -15,10 +19,6 @@ import type {
 } from "metabase/plugins";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { State } from "metabase/redux/store";
-import type {
-  RemoteSyncChangesResponse,
-  RemoteSyncEntity,
-} from "metabase-types/api";
 
 export type CollectionsNavTreeProps = {
   collections: CollectionTreeItem[];

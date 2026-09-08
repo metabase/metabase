@@ -1,11 +1,11 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
 import type { NotificationType } from "metabase/notifications/types";
 import { Button } from "metabase/ui";
-import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
 type UnsubscribeModalProps = {
   item: Alert | DashboardSubscription;

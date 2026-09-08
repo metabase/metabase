@@ -1,5 +1,5 @@
-import { skipToken, useSearchQuery } from "metabase/api";
 import type { SearchRequest } from "metabase-types/api";
+import { skipToken, useSearchQuery } from "metabase/api";
 
 export const useFetchModels = (
   req: Partial<SearchRequest> | typeof skipToken = {},

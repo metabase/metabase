@@ -2,12 +2,12 @@ import { userEvent } from "@testing-library/user-event";
 
 import { setupUserEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import type {
   StructuredUserAttributes,
   UserAttributeMap,
 } from "metabase-types/api";
 import { createMockUserListResult } from "metabase-types/api/mocks";
+import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 
 import { LoginAttributesWidget } from "./LoginAttributesWidget";
 

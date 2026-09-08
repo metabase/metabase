@@ -1,3 +1,5 @@
+import type { MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 import type {
   DimensionListItem,
   MetricGroup,
@@ -10,8 +12,6 @@ import {
   getDefinitionSourceIcon,
   getDefinitionSourceName,
 } from "metabase/metrics-viewer/utils/definition-sources";
-import type { MetricDefinition } from "metabase-lib/metric";
-import * as LibMetric from "metabase-lib/metric";
 
 type NamedItem = { name: string };
 

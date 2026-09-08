@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Skeleton, useMantineTheme } from "metabase/ui";
 import type { CliFilters } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
 import {
   buildCountBreakoutQuery,
@@ -18,6 +17,7 @@ import type {
   TableMetadata,
 } from "metabase-lib";
 import type { VisualizationDisplay } from "metabase-types/api";
+import { Skeleton, useMantineTheme } from "metabase/ui";
 
 const DEFAULT_CHART_HEIGHT = 350;
 const DEFAULT_MAX_CATEGORIES = 8;

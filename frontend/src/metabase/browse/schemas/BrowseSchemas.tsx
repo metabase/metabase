@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import type { DatabaseId } from "metabase-types/api";
 import {
   skipToken,
   useGetDatabaseQuery,
@@ -16,7 +17,6 @@ import CS from "metabase/css/core/index.css";
 import { useParams } from "metabase/router";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { DatabaseId } from "metabase-types/api";
 
 import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";

@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { VisualizationDisplay } from "metabase-types/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Button, Flex } from "metabase/ui";
 import {
@@ -9,7 +10,6 @@ import {
   getVisualizationType,
 } from "metabase/visualizer/selectors";
 import { setDisplay } from "metabase/visualizer/visualizer.slice";
-import type { VisualizationDisplay } from "metabase-types/api";
 
 import { VisualizationPicker } from "../VisualizationPicker";
 import { useVisualizerUi } from "../VisualizerUiContext";

@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import type { IconName, Transform, UserId } from "metabase-types/api";
 import {
   skipToken,
   useGetDatabaseQuery,
@@ -15,7 +16,6 @@ import { UserInput } from "metabase/metadata/components";
 import { TransformOwnerAvatar } from "metabase/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
 import { Button, Divider, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { IconName, Transform, UserId } from "metabase-types/api";
 
 import { isTransformRunning, sourceDatabaseId } from "../../../utils";
 

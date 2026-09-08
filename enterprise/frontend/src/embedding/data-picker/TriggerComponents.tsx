@@ -3,12 +3,12 @@ import type { CSSProperties, ReactNode } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useTranslateContent } from "metabase/content-translation/hooks";
-import CS from "metabase/css/core/index.css";
-import { Box, Icon, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import CS from "metabase/css/core/index.css";
+import { Box, Icon, Text } from "metabase/ui";
 
 import DataSelectorS from "./DataSelector/DataSelector.module.css";
 

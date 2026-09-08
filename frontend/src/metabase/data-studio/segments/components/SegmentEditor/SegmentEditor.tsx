@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import type * as Lib from "metabase-lib";
 import { EditableText } from "metabase/common/components/EditableText";
 import { Markdown } from "metabase/common/components/Markdown";
 import { SegmentFilterEditor } from "metabase/segments";
 import { Card, Stack, Text } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 
 import S from "./SegmentEditor.module.css";
 

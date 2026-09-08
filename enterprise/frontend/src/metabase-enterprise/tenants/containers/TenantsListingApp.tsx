@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useListTenantsQuery } from "metabase-enterprise/api";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   ACTIVE_STATUS,
@@ -11,7 +12,6 @@ import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
 import { Box, Group, Tabs, Title } from "metabase/ui";
-import { useListTenantsQuery } from "metabase-enterprise/api";
 
 import { EditUserStrategySettingsButton } from "../EditUserStrategySettingsButton";
 import { TenantsDocsButton } from "../TenantsDocsButton";

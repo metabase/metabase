@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useExportChangesMutation } from "metabase-enterprise/api";
 import {
   Alert,
   Box,
@@ -11,7 +12,6 @@ import {
   Modal,
   Stack,
 } from "metabase/ui";
-import { useExportChangesMutation } from "metabase-enterprise/api";
 
 import { trackPushChanges } from "../../analytics";
 import { type SyncError, parseSyncError } from "../../utils";

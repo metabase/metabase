@@ -1,9 +1,9 @@
 import { msgid, ngettext } from "ttag";
 
+import type { Collection, CollectionType } from "metabase-types/api";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { isEmptyStateData } from "metabase/data-studio/common/utils";
 import * as Urls from "metabase/urls";
-import type { Collection, CollectionType } from "metabase-types/api";
 
 export function getArchiveLibraryCollectionsMessage(count: number): string {
   return ngettext(

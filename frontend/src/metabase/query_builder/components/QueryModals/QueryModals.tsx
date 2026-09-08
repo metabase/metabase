@@ -2,6 +2,8 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Question from "metabase-lib/v1/Question";
+import type { Card, DashboardTabId } from "metabase-types/api";
 import { getDashboard } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import { CopyModal } from "metabase/common/components/CopyModal";
@@ -21,8 +23,6 @@ import MoveEventModal from "metabase/timelines/questions/containers/MoveEventMod
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import { Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import Question from "metabase-lib/v1/Question";
-import type { Card, DashboardTabId } from "metabase-types/api";
 
 import { setArchivedQuestion } from "../../actions";
 import { updateUrl } from "../../actions/url";

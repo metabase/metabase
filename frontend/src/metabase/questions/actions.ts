@@ -1,9 +1,9 @@
-import { cardApi, datasetApi } from "metabase/api";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import type { Dispatch } from "metabase/redux/store";
 import type { Card, UnsavedCard } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
+import { cardApi, datasetApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import type { Dispatch } from "metabase/redux/store";
 
 export const loadMetadataForCard =
   (

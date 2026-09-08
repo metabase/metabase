@@ -1,6 +1,6 @@
-import { Box, Ellipsified, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { DatasetColumn } from "metabase-types/api";
+import { Box, Ellipsified, Icon } from "metabase/ui";
 
 import S from "./EditTableDataGrid.module.css";
 

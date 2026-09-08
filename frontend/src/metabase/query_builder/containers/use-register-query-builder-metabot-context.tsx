@@ -1,12 +1,3 @@
-import { dayjs } from "metabase/dayjs";
-import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { useUserMetabotPermissions } from "metabase/metabot/hooks";
-import { transformSeries as transformCartesianSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
-import {
-  type ComputedVisualizationSettings,
-  extractRemappings,
-  getVisualizationTransformed,
-} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -16,6 +7,15 @@ import type {
   RawSeries,
   TimelineEvent,
 } from "metabase-types/api";
+import { dayjs } from "metabase/dayjs";
+import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { transformSeries as transformCartesianSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
+import {
+  type ComputedVisualizationSettings,
+  extractRemappings,
+  getVisualizationTransformed,
+} from "metabase/viz-core";
 
 import {
   getFirstQueryResult,

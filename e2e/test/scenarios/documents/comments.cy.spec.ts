@@ -3,8 +3,8 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { deleteComment } from "e2e/support/helpers";
-import { uuid } from "metabase/utils/uuid";
 import type { CommentId, DocumentId } from "metabase-types/api";
+import { uuid } from "metabase/utils/uuid";
 
 const { H } = cy;
 const { Comments } = H;

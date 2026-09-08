@@ -3,6 +3,13 @@ import cx from "classnames";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type {
+  ArbitraryCustomDestinationClickBehavior,
+  ClickBehavior,
+  DashboardCard,
+} from "metabase-types/api";
+import { clickBehaviorIsValid } from "metabase-types/guards";
 import CS from "metabase/css/core/index.css";
 import { isTableDisplay } from "metabase/dashboard/utils";
 import {
@@ -13,13 +20,6 @@ import {
   Text,
   TextInputBlurChange,
 } from "metabase/ui";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type {
-  ArbitraryCustomDestinationClickBehavior,
-  ClickBehavior,
-  DashboardCard,
-} from "metabase-types/api";
-import { clickBehaviorIsValid } from "metabase-types/guards";
 
 import LinkOptionsS from "../LinkOptions/LinkOptions.module.css";
 import { SidebarItem } from "../SidebarItem";

@@ -1,5 +1,5 @@
-import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 
 import { SecurityCenterBanner } from "./components/SecurityCenterBanner/SecurityCenterBanner";
 import { SecurityCenterMobileNavItem } from "./components/SecurityCenterNavItem/SecurityCenterMobileNavItem";

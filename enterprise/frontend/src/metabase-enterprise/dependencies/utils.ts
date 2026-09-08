@@ -1,8 +1,5 @@
 import { c, msgid, ngettext, t } from "ttag";
 
-import * as Urls from "metabase/urls";
-import type { NamedUser } from "metabase/utils/user";
-import { visualizations } from "metabase/viz-core";
 import type {
   AnalysisFindingError,
   AnalysisFindingErrorType,
@@ -18,6 +15,9 @@ import type {
   Transform,
   VisualizationDisplay,
 } from "metabase-types/api";
+import * as Urls from "metabase/urls";
+import type { NamedUser } from "metabase/utils/user";
+import { visualizations } from "metabase/viz-core";
 
 import type {
   DependencyError,

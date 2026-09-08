@@ -2,7 +2,6 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupCollectionTreeEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { TRANSFORMS_ROOT_ID } from "metabase-enterprise/remote_sync/displayGroups";
 import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 import {
@@ -10,6 +9,7 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { createMockRemoteSyncEntity } from "metabase-types/api/mocks/remote-sync";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { AllChangesView } from "./AllChangesView";
 

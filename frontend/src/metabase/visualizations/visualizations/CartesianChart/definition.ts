@@ -1,5 +1,11 @@
 import _ from "underscore";
 
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import type {
+  Series,
+  TransformedSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_COLORS_SETTINGS,
@@ -21,12 +27,6 @@ import {
   validateDatasetRows,
   validateStacking,
 } from "metabase/viz-core";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type {
-  Series,
-  TransformedSeries,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 import { transformSeries } from "./definition-legacy";
 

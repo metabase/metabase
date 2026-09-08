@@ -13,10 +13,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import type { SearchFilters } from "metabase/common/search/types";
-import { Route } from "metabase/router";
-import { SearchApp } from "metabase/search/containers/SearchApp";
-import { checkNotNull } from "metabase/utils/types";
 import type { EnabledSearchModel, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
@@ -25,6 +21,10 @@ import {
   createMockTable,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
+import type { SearchFilters } from "metabase/common/search/types";
+import { Route } from "metabase/router";
+import { SearchApp } from "metabase/search/containers/SearchApp";
+import { checkNotNull } from "metabase/utils/types";
 
 // Mock PAGE_SIZE so we don't have to generate a ton of elements for the pagination test
 jest.mock("metabase/search/containers/constants", () => ({

@@ -11,13 +11,13 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { checkNotNull } from "metabase/utils/types";
 import {
   createMockCollection,
   createMockDatabase,
   createMockSearchResult,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { checkNotNull } from "metabase/utils/types";
 
 import type { DatabasePaneProps } from "./DatabasePane";
 import { DatabasePane } from "./DatabasePane";

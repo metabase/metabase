@@ -1,6 +1,6 @@
-import type { Crumb } from "metabase/common/components/Breadcrumbs";
 import type { Collection } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
+import type { Crumb } from "metabase/common/components/Breadcrumbs";
 
 import { findCollectionById, getCollectionBreadCrumbs } from "./collections";
 

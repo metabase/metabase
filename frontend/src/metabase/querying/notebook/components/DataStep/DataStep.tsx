@@ -1,11 +1,11 @@
 import { type CSSProperties, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { isEmbedding } from "metabase/embedding/config";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
-import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
 import { FieldPicker, type FieldPickerItem } from "../FieldPicker";

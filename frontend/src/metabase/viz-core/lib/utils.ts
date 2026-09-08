@@ -2,7 +2,6 @@ import * as d3 from "d3";
 import _ from "underscore";
 
 import { data_image_uri_pattern } from "cljs/metabase.util.markdown.image";
-import { isNotNull } from "metabase/utils/types";
 import {
   isCoordinate,
   isDate,
@@ -20,6 +19,7 @@ import type {
   SingleSeries,
   VirtualCard,
 } from "metabase-types/api";
+import { isNotNull } from "metabase/utils/types";
 
 import type { Extent } from "../types";
 

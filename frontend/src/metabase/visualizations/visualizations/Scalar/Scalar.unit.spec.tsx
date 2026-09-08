@@ -8,8 +8,6 @@ import {
   screen,
   within,
 } from "__support__/ui";
-import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
-import { registerVisualizations } from "metabase/visualizations/register";
 import type { Series } from "metabase-types/api";
 import {
   createMockCard,
@@ -18,6 +16,8 @@ import {
   createMockDatasetData,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { Scalar } from "./Scalar";
 

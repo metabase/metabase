@@ -1,6 +1,5 @@
 import type { ComponentType } from "react";
 
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   DatabaseData,
@@ -9,6 +8,7 @@ import type {
   Database as DatabaseType,
   TableId,
 } from "metabase-types/api";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 
 const getDefaultPluginDbRouting = () => ({
   // Unjustified type cast. FIXME

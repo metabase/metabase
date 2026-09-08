@@ -3,6 +3,12 @@ import {
   createMockCartesianChartModel,
   createMockSeriesModel,
 } from "__support__/echarts";
+import {
+  createMockColumn,
+  createMockDatetimeColumn,
+  createMockSingleSeries,
+  createMockVisualizationSettings,
+} from "metabase-types/api/mocks";
 import { dayjs } from "metabase/dayjs";
 import {
   type ComputedVisualizationSettings,
@@ -15,12 +21,6 @@ import {
   X_AXIS_DATA_KEY,
   getDatasetKey,
 } from "metabase/viz-core";
-import {
-  createMockColumn,
-  createMockDatetimeColumn,
-  createMockSingleSeries,
-  createMockVisualizationSettings,
-} from "metabase-types/api/mocks";
 
 import {
   canBrush,

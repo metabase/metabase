@@ -5,12 +5,6 @@ import {
 } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import { loadMetadataForCard } from "metabase/questions/actions";
-import type {
-  CardEmbedRef,
-  DocumentsState,
-  MentionCacheItem,
-} from "metabase/redux/store/documents";
 import type {
   Card,
   Document,
@@ -19,6 +13,12 @@ import type {
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
+import { loadMetadataForCard } from "metabase/questions/actions";
+import type {
+  CardEmbedRef,
+  DocumentsState,
+  MentionCacheItem,
+} from "metabase/redux/store/documents";
 
 import { getMentionsCacheKey } from "./utils/mentionsUtils";
 

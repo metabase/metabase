@@ -1,5 +1,8 @@
 import { useMemo } from "react";
 
+import * as LibMetric from "metabase-lib/metric";
+import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
+import type { Card, DatasetColumn } from "metabase-types/api";
 import {
   skipToken,
   useGetMetricDatasetQuery,
@@ -15,9 +18,6 @@ import {
   useMetricDefinition,
   useMetricDimensionQuery,
 } from "metabase/metrics/common/hooks";
-import * as LibMetric from "metabase-lib/metric";
-import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
-import type { Card, DatasetColumn } from "metabase-types/api";
 
 const COLUMN_DISPLAY_NAME_SEPARATOR = ": ";
 

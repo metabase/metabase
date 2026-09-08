@@ -1,13 +1,3 @@
-import { color, colors } from "metabase/ui/colors";
-import { isNumber } from "metabase/utils/types";
-import { formatValue } from "metabase/value-formatting";
-import {
-  CHANGE_ARROW_ICONS,
-  CHANGE_TYPE_OPTIONS,
-  type Trend,
-  computeTrend as _computeTrend,
-} from "metabase/visualizations/visualizations/SmartScalar/compute";
-import { computeChange } from "metabase/viz-core";
 import type {
   DatasetColumn,
   RowValue,
@@ -25,6 +15,16 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockInsight } from "metabase-types/api/mocks/insight";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+import { color, colors } from "metabase/ui/colors";
+import { isNumber } from "metabase/utils/types";
+import { formatValue } from "metabase/value-formatting";
+import {
+  CHANGE_ARROW_ICONS,
+  CHANGE_TYPE_OPTIONS,
+  type Trend,
+  computeTrend as _computeTrend,
+} from "metabase/visualizations/visualizations/SmartScalar/compute";
+import { computeChange } from "metabase/viz-core";
 
 import { COMPARISON_TYPES } from "./constants";
 import { formatChange } from "./utils";

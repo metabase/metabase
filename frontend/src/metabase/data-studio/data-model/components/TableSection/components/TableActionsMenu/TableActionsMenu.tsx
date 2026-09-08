@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { Table } from "metabase-types/api";
 import {
   useDiscardTablesFieldValuesMutation,
   useRescanTablesFieldValuesMutation,
@@ -17,7 +18,6 @@ import { PLUGIN_REPLACEMENT } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Button, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Table } from "metabase-types/api";
 
 interface Props {
   table: Table;

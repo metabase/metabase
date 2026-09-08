@@ -1,9 +1,9 @@
-import { serializeCardForUrl } from "metabase/common/utils/card";
 import type {
   CardDisplayType,
   DatasetQuery,
   UnsavedCard,
 } from "metabase-types/api";
+import { serializeCardForUrl } from "metabase/common/utils/card";
 
 import { serializedQuestion } from "./questions";
 

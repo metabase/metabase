@@ -1,5 +1,5 @@
-import { PLUGIN_MONITOR_TOOLS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_MONITOR_TOOLS } from "metabase/plugins";
 
 import { ErrorOverview } from "./ErrorOverview";
 

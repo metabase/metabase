@@ -1,5 +1,5 @@
-import { Box } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
+import { Box } from "metabase/ui";
 
 import { BooleanFilterPicker } from "../BooleanFilterPicker";
 import { CoordinateFilterPicker } from "../CoordinateFilterPicker";

@@ -1,13 +1,13 @@
 import type { SkipToken } from "@reduxjs/toolkit/query";
 
-import { skipToken } from "metabase/api";
-import { dayjs } from "metabase/dayjs";
-import { isWithinIframe } from "metabase/utils/iframe";
 import type {
   Comment,
   CommentTarget,
   ListCommentsRequest,
 } from "metabase-types/api";
+import { skipToken } from "metabase/api";
+import { dayjs } from "metabase/dayjs";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import type { CommentThread } from "./types";
 

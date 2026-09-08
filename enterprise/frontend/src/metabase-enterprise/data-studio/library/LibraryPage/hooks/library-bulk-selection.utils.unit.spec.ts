@@ -1,9 +1,9 @@
-import type { TreeItem } from "metabase/data-studio/common/types";
 import type { CollectionId, CollectionType } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
+import type { TreeItem } from "metabase/data-studio/common/types";
 
 import {
   type LibrarySection,

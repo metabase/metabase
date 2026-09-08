@@ -11,6 +11,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import type { SearchResult } from "metabase-types/api";
 import { useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import {
@@ -33,7 +34,6 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";
 import { EMBED_SEARCH_MODELS, LINK_SEARCH_MODELS } from "../shared/constants";

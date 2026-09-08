@@ -1,7 +1,7 @@
 import { type ReactNode, forwardRef } from "react";
 
-import { Tooltip } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { Tooltip } from "metabase/ui";
 
 import { Root, ShortMessage, StyledIcon } from "./ErrorView.styled";
 

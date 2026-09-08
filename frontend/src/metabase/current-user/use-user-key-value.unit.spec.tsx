@@ -8,9 +8,9 @@ import {
   setupUpdateUserKeyValueEndpoint,
 } from "__support__/server-mocks/user-key-value";
 import { waitFor } from "__support__/ui";
+import type { UserKeyValue } from "metabase-types/api";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { UserKeyValue } from "metabase-types/api";
 
 import {
   type UseUserKeyValueParams,

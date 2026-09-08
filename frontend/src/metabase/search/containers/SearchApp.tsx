@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import type { SearchRequest } from "metabase-types/api";
 import { useSearchQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -30,7 +31,6 @@ import {
 import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
 import { Box, Group, Paper, Text } from "metabase/ui";
-import type { SearchRequest } from "metabase-types/api";
 
 const getPageFromLocation = (location: Location) => {
   const page = new URLSearchParams(location.search).get("page");

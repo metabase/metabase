@@ -1,5 +1,4 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { isTouchDevice } from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER, columnFinder } from "metabase-lib/test-helpers";
 import {
@@ -7,6 +6,7 @@ import {
   PEOPLE_ID,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
+import { isTouchDevice } from "metabase/utils/browser";
 
 import { JoinColumnButton } from "./JoinColumnButton";
 

@@ -1,8 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { hasFeature } from "metabase/databases";
-import { parseTimestamp } from "metabase/utils/time-dayjs";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -16,6 +14,8 @@ import type {
   TransformRunStatus,
   TransformSource,
 } from "metabase-types/api";
+import { hasFeature } from "metabase/databases";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
 
 export function parseTimestampWithTimezone(
   timestamp: string,

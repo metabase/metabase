@@ -3,13 +3,13 @@ import fetchMock from "fetch-mock";
 
 import { findRequests } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
 import {
   createMockCard,
   createMockCollection,
   createMockDashboard,
   createMockDocument,
 } from "metabase-types/api/mocks";
+import { UndoListing } from "metabase/common/components/UndoListing";
 
 import { type RestorableItem, useRestore } from "./use-restore";
 

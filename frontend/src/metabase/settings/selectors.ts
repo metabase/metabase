@@ -1,9 +1,9 @@
-import type { State } from "metabase/redux/store";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
   TokenFeature,
 } from "metabase-types/api";
+import type { State } from "metabase/redux/store";
 
 import { settingsApi } from "./api";
 

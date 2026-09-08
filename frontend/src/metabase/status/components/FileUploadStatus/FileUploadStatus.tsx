@@ -1,12 +1,12 @@
 import _ from "underscore";
 
+import type { CollectionId } from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { FileUpload } from "metabase/redux/store/upload";
 import { clearAllUploads, getAllUploads } from "metabase/redux/uploads";
 import { isEmpty } from "metabase/utils/validate";
-import type { CollectionId } from "metabase-types/api";
 
 import useStatusVisibility from "../../hooks/use-status-visibility";
 import { isUploadAborted, isUploadInProgress } from "../../utils";

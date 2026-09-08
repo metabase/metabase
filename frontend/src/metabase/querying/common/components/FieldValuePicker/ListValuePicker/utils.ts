@@ -1,6 +1,6 @@
+import type { FieldValue } from "metabase-types/api";
 import { getFieldOptions } from "metabase/querying/common/utils";
 import type { ComboboxItem } from "metabase/ui";
-import type { FieldValue } from "metabase-types/api";
 
 export function searchOptions(
   options: ComboboxItem[],

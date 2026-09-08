@@ -1,5 +1,12 @@
 import { t } from "ttag";
 
+import { handleMetabotSlashCommand } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/slash-commands";
+import {
+  getAiAuditingRoutes,
+  getAiAuditingUpsellRoutes,
+} from "metabase-enterprise/monitor/ai-auditing/routes";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type { User } from "metabase-types/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import {
   PLUGIN_ADMIN_USER_MENU_ITEMS,
@@ -8,13 +15,6 @@ import {
 } from "metabase/plugins";
 import { Menu } from "metabase/ui";
 import { isInternalUser } from "metabase/urls";
-import { handleMetabotSlashCommand } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/slash-commands";
-import {
-  getAiAuditingRoutes,
-  getAiAuditingUpsellRoutes,
-} from "metabase-enterprise/monitor/ai-auditing/routes";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
-import type { User } from "metabase-types/api";
 
 import { InsightsLink } from "./components/InsightsLink";
 import { InsightsMenuItem } from "./components/InsightsMenuItem";

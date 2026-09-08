@@ -1,8 +1,8 @@
 import type { ComponentType, SVGProps } from "react";
 
+import type { LlmProviderTypeName } from "metabase-types/api";
 import { DefaultLogoIcon } from "metabase/common/components/LogoIcon";
 import { Flex, Icon } from "metabase/ui";
-import type { LlmProviderTypeName } from "metabase-types/api";
 
 import S from "./ProviderTypeIcon.module.css";
 import AnthropicMark from "./logos/anthropic.svg?component";

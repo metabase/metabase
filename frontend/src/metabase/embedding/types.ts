@@ -1,4 +1,3 @@
-import type { CodeLanguage } from "metabase/common/components/CodeEditor";
 import type {
   Card,
   Dashboard,
@@ -6,6 +5,7 @@ import type {
   EmbeddingParameters,
   ParameterValueOrArray,
 } from "metabase-types/api";
+import type { CodeLanguage } from "metabase/common/components/CodeEditor";
 
 export type DisplayTheme = "light" | "night" | "transparent";
 

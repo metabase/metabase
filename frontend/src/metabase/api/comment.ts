@@ -1,11 +1,3 @@
-import { Api } from "metabase/api/api";
-import {
-  idTag,
-  invalidateTags,
-  listTag,
-  provideCommentListTags,
-  provideUserListTags,
-} from "metabase/api/tags";
 import type {
   BaseUser,
   Comment,
@@ -17,6 +9,14 @@ import type {
   MentionableUser,
   UpdateCommentRequest,
 } from "metabase-types/api";
+import { Api } from "metabase/api/api";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideCommentListTags,
+  provideUserListTags,
+} from "metabase/api/tags";
 
 export type DeleteCommentRequest = { id: CommentId } & ListCommentsRequest;
 

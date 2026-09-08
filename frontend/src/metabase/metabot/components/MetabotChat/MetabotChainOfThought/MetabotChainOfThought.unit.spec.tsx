@@ -4,9 +4,9 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockDashboard } from "metabase-types/api/mocks";
 import type { MetabotAgentChainOfThoughtMessage } from "metabase/metabot/state";
 import { createMockState } from "metabase/redux/store/mocks";
-import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { MetabotChainOfThought } from "./MetabotChainOfThought";
 

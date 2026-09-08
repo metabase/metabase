@@ -16,6 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import cx from "classnames";
 
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import { Sortable } from "metabase/common/components/Sortable";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Flex, type FlexProps, Text } from "metabase/ui";
@@ -30,7 +31,6 @@ import {
   removeColumn,
   updateSettings,
 } from "metabase/visualizer/visualizer.slice";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { WellItem, type WellItemProps } from "../WellItem";
 import S from "../well.module.css";

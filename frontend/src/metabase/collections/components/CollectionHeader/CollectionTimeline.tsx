@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { Collection } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link/Link";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Collection } from "metabase-types/api";
 
 interface CollectionTimelineProps {
   collection: Collection;

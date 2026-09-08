@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 
+import type { CollectionId } from "metabase-types/api";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import {
   buildCollectionTree,
   isLibraryCollection,
 } from "metabase/common/collections/utils";
 import { getAllDescendantIds } from "metabase/common/components/tree/utils";
-import type { CollectionId } from "metabase-types/api";
 
 import { useGitSyncVisible } from "./use-git-sync-visible";
 import { useRemoteSyncDirtyState } from "./use-remote-sync-dirty-state";

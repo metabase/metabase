@@ -1,5 +1,5 @@
-import { invalidateTags, tag } from "metabase/api/tags";
 import type { EmailSMTPOverrideSettings } from "metabase-types/api";
+import { invalidateTags, tag } from "metabase/api/tags";
 
 import { EnterpriseApi } from "./api";
 

@@ -2,6 +2,7 @@ import cx from "classnames";
 import { dissoc } from "icepick";
 import { t } from "ttag";
 
+import type { TableId } from "metabase-types/api";
 import { Api, dashboardApi, useLazyGetXrayDashboardQuery } from "metabase/api";
 import { invalidateTags, listTag } from "metabase/api/tags";
 import { Link } from "metabase/common/components/Link";
@@ -10,7 +11,6 @@ import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/urls";
-import type { TableId } from "metabase-types/api";
 
 interface EmbeddingHubXrayPickerModalProps {
   opened: boolean;

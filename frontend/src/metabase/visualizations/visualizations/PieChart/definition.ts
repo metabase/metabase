@@ -1,6 +1,8 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import type { SingleSeries } from "metabase-types/api";
 import { formatValue } from "metabase/value-formatting";
 import {
   ChartSettingsError,
@@ -24,8 +26,6 @@ import {
   metricSetting,
   nestedSettings,
 } from "metabase/viz-core";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { SingleSeries } from "metabase-types/api";
 
 import type { SliceNameWidgetProps } from "./SliceNameWidget";
 

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type * as Lib from "metabase-lib";
 import { FormSelect } from "metabase/forms";
 import {
   Alert,
@@ -9,7 +10,6 @@ import {
   type InputDescriptionProps,
   Loader,
 } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 
 import { useAutoSelectFirstOption } from "../useAutoSelectFirstOption";
 import { useClearUnsupportedLookback } from "../useClearUnsupportedLookback";

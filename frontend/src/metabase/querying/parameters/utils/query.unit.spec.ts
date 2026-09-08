@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -28,6 +27,7 @@ import {
   createProductsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { isNotNull } from "metabase/utils/types";
 
 import { applyParameter, convertParametersToMbql } from "./query";
 

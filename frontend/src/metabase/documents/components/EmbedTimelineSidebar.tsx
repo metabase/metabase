@@ -2,16 +2,16 @@ import type { Editor } from "@tiptap/react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useListTimelinesQuery } from "metabase/api";
-import { useDispatch, useSelector } from "metabase/redux";
-import { TimelineSidebar } from "metabase/timelines/questions/components/TimelineSidebar";
-import { Box, Loader, Stack, Text } from "metabase/ui";
-import { getTimelineEventSettings } from "metabase/viz-core";
 import type {
   CollectionId,
   TimelineEvent,
   TimelineEventId,
 } from "metabase-types/api";
+import { useListTimelinesQuery } from "metabase/api";
+import { useDispatch, useSelector } from "metabase/redux";
+import { TimelineSidebar } from "metabase/timelines/questions/components/TimelineSidebar";
+import { Box, Loader, Stack, Text } from "metabase/ui";
+import { getTimelineEventSettings } from "metabase/viz-core";
 
 import {
   clearFocusedTimelineEvents,

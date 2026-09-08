@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { type NumberValue, parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
+import { type NumberValue, parseNumber } from "metabase/utils/number";
 
 import { getClauseDefinition, getMBQLName, isDefinedClause } from "../clause";
 import { CompileError, isExpressionError } from "../errors";

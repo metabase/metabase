@@ -2,14 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
 import { c, msgid, t } from "ttag";
 
-import { skipToken, useListSubscriptionsQuery } from "metabase/api";
-import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { Sidebar } from "metabase/common/components/Sidebar";
-import { hasMapping } from "metabase/parameters/utils/dashboards";
-import { canUseLinkedFilters } from "metabase/parameters/utils/linked-filters";
-import { useSelector } from "metabase/redux";
-import { Tabs } from "metabase/ui";
-import { slugify } from "metabase/utils/formatting";
 import { isFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -21,6 +13,14 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import { skipToken, useListSubscriptionsQuery } from "metabase/api";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { Sidebar } from "metabase/common/components/Sidebar";
+import { hasMapping } from "metabase/parameters/utils/dashboards";
+import { canUseLinkedFilters } from "metabase/parameters/utils/linked-filters";
+import { useSelector } from "metabase/redux";
+import { Tabs } from "metabase/ui";
+import { slugify } from "metabase/utils/formatting";
 
 import { useDashboardContext } from "../../context";
 import {

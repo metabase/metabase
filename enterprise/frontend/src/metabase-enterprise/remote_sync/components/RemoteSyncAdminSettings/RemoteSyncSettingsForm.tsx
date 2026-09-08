@@ -1,5 +1,6 @@
 import { jt, t } from "ttag";
 
+import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import {
@@ -14,7 +15,6 @@ import {
   useSetting,
 } from "metabase/settings";
 import { Box, Button, Flex, Icon, Stack, Text } from "metabase/ui";
-import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 
 import {
   REMOTE_SYNC_KEY,

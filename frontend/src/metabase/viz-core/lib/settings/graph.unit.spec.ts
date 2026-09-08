@@ -1,4 +1,3 @@
-import { checkNotNull } from "metabase/utils/types";
 import type { VisualizationDisplay } from "metabase-types/api";
 import {
   createMockCard,
@@ -8,6 +7,7 @@ import {
   createMockInsight,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+import { checkNotNull } from "metabase/utils/types";
 
 import {
   GRAPH_AXIS_SETTINGS,

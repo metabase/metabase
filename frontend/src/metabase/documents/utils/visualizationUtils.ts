@@ -1,16 +1,16 @@
 import { useMemo } from "react";
 
+import type {
+  Dataset,
+  IconName,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import { isNotNull } from "metabase/utils/types";
 import {
   getIconForVisualizationType,
   getSensibleVisualizations,
   visualizations,
 } from "metabase/viz-core";
-import type {
-  Dataset,
-  IconName,
-  VisualizationDisplay,
-} from "metabase-types/api";
 
 export interface VisualizationItem {
   value: VisualizationDisplay;

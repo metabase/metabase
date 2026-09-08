@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
-import { useListLlmModelsQuery } from "metabase/api";
 import type { LlmConnectionModels } from "metabase-types/api";
+import { useListLlmModelsQuery } from "metabase/api";
 
 export function useLlmConnectionModels() {
   const { data: connections = [], isLoading, error } = useListLlmModelsQuery();

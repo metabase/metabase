@@ -1,6 +1,6 @@
+import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { formatValue } from "metabase/value-formatting";
-import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
 
 import type {
   ComputedVisualizationSettings,

@@ -3,18 +3,6 @@ import cx from "classnames";
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useToast } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
-import {
-  Button,
-  Combobox,
-  Group,
-  Icon,
-  Loader,
-  Modal,
-  Text,
-  useCombobox,
-} from "metabase/ui";
 import {
   useGetHasRemoteChangesQuery,
   useImportChangesMutation,
@@ -29,6 +17,18 @@ import {
   taskCleared,
 } from "metabase-enterprise/remote_sync/sync-task-slice";
 import type { ExportPreflightResponse } from "metabase-types/api";
+import { useToast } from "metabase/common/hooks";
+import { useDispatch, useSelector } from "metabase/redux";
+import {
+  Button,
+  Combobox,
+  Group,
+  Icon,
+  Loader,
+  Modal,
+  Text,
+  useCombobox,
+} from "metabase/ui";
 
 import { trackPullChanges } from "../../analytics";
 import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";

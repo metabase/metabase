@@ -1,5 +1,6 @@
 import { jt, t } from "ttag";
 
+import type { IconName } from "metabase-types/api";
 import { useListDatabasesQuery } from "metabase/api/database";
 import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/redux";
@@ -16,7 +17,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 export function EnableTransformsCard({
   onEnableClick,
   permissionsErrorMessage,

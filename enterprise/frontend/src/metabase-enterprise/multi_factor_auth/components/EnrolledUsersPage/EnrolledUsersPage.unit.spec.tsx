@@ -12,12 +12,12 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { MfaEnrolledUser } from "metabase-types/api";
 import {
   createMockMfaEnrolledUser,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { EnrolledUsersPage } from "./EnrolledUsersPage";
 

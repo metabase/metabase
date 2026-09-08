@@ -5,13 +5,13 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
 } from "__support__/server-mocks";
-import { Api } from "metabase/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import { Api } from "metabase/api";
 
 import {
   initializeVisualizer,

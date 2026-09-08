@@ -1,5 +1,7 @@
 import { jt, t } from "ttag";
 
+import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type { Parameter, TemplateTag } from "metabase-types/api";
 import {
   Box,
   Code,
@@ -10,8 +12,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { Parameter, TemplateTag } from "metabase-types/api";
 
 import { ContainerLabel, InputContainer } from "./TagEditorParam";
 

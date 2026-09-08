@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { match } from "ts-pattern";
 
-import { Box, Stack, Title } from "metabase/ui";
 import type {
   InspectorCard,
   InspectorSection,
@@ -9,6 +8,7 @@ import type {
   InspectorSource,
   InspectorVisitedFields,
 } from "metabase-types/api";
+import { Box, Stack, Title } from "metabase/ui";
 
 import { useLensContentContext } from "../../LensContent/LensContentContext";
 

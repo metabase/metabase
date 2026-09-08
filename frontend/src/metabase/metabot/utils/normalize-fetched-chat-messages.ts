@@ -1,5 +1,5 @@
-import { createMessageId } from "metabase/metabot/state/utils";
 import type { MetabotStateContext } from "metabase-types/api";
+import { createMessageId } from "metabase/metabot/state/utils";
 
 import type { MetabotAgentTurnError, MetabotChatMessage } from "../state/types";
 

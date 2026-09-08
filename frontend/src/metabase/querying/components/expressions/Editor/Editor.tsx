@@ -7,6 +7,8 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   CodeMirror,
   type CodeMirrorRef,
@@ -22,8 +24,6 @@ import {
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
 import { useSelector } from "metabase/redux";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
-import type * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { FunctionBrowser } from "../FunctionBrowser";
 import { LayoutMain, LayoutSidebar } from "../Layout";

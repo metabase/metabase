@@ -2,17 +2,17 @@ import type { CustomVisualization } from "custom-viz";
 import type { ComponentType } from "react";
 
 import type {
-  Visualization,
-  VisualizationPassThroughProps,
-  VisualizationProps,
-} from "metabase/visualizations/types/visualization";
-import { columnSettings } from "metabase/viz-core";
-import type {
   CustomVizPluginRuntime,
   Series,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
+import type {
+  Visualization,
+  VisualizationPassThroughProps,
+  VisualizationProps,
+} from "metabase/visualizations/types/visualization";
+import { columnSettings } from "metabase/viz-core";
 
 import { sanitizePluginSettings } from "./custom-viz-settings";
 

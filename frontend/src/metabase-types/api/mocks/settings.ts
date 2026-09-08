@@ -1,4 +1,3 @@
-import { dayjs } from "metabase/dayjs";
 import type {
   Engine,
   EngineField,
@@ -14,6 +13,7 @@ import type {
   VersionInfo,
   VersionInfoRecord,
 } from "metabase-types/api";
+import { dayjs } from "metabase/dayjs";
 export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "driver-name": "PostgreSQL",
   "details-fields": [],

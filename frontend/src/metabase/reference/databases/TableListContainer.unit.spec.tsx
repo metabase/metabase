@@ -1,8 +1,8 @@
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import TableListContainer from "./TableListContainer";
 

@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
+import type {
+  PreviewDatabaseReplicationResponse,
+  TableInfo,
+} from "metabase-enterprise/api/database-replication";
+import type { Database, DatabaseId } from "metabase-types/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
@@ -28,11 +33,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import type {
-  PreviewDatabaseReplicationResponse,
-  TableInfo,
-} from "metabase-enterprise/api/database-replication";
-import type { Database, DatabaseId } from "metabase-types/api";
 
 export interface DatabaseReplicationFormFields {
   databaseId: DatabaseId;

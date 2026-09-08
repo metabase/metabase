@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { TransformRun } from "metabase-types/api";
 import { skipToken, useGetFieldQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Box, Card } from "metabase/ui";
-import type { TransformRun } from "metabase-types/api";
 
 import { CheckpointValue } from "../../../../components/CheckpointValue";
 import { SidebarInfoRow } from "../../../../components/SidebarInfoRow";

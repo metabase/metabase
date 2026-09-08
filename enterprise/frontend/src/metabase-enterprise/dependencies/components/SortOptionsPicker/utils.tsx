@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { FixedSizeIcon } from "metabase/ui";
 import type { DependencySortColumn } from "metabase-types/api";
+import { FixedSizeIcon } from "metabase/ui";
 
 import type { SortColumnItem, SortDirectionItem } from "./types";
 

@@ -1,9 +1,9 @@
-import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 import type {
   DashboardId,
   DashboardWidth,
   VisualizationDisplay,
 } from "metabase-types/api";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 
 import type { SectionId } from "./sections";
 

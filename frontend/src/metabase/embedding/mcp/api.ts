@@ -1,7 +1,7 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import type { SubmitMcpAppsFeedbackRequest } from "metabase-types/api";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
 type StoreDrillQueryRequest = {
   instanceUrl: string;

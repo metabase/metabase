@@ -14,7 +14,6 @@ import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { MetabaseCard } from "embedding-sdk-bundle/types/question";
-import { utf8_to_b64url } from "metabase/utils/encoding";
 import {
   createMockCardQueryMetadata,
   createMockCollection,
@@ -22,6 +21,7 @@ import {
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import { utf8_to_b64url } from "metabase/utils/encoding";
 
 import { TEST_COLUMN, TEST_DB, TEST_TABLE } from "./constants.spec";
 

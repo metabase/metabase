@@ -3,19 +3,6 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  Api,
-  useUpdateCardMutation,
-  useUpdateCollectionMutation,
-  useUpdateDashboardMutation,
-  useUpdateDocumentMutation,
-  useUpdateExplorationMutation,
-} from "metabase/api";
-import { listTag } from "metabase/api/tags";
-import { TRASHABLE_MODELS, getParentEntityLink } from "metabase/archive/utils";
-import { useToast } from "metabase/common/hooks/use-toast";
-import { useDispatch } from "metabase/redux";
-import { useNavigate } from "metabase/router";
 import type {
   Card,
   CardId,
@@ -29,6 +16,19 @@ import type {
   ExplorationId,
   RegularCollectionId,
 } from "metabase-types/api";
+import {
+  Api,
+  useUpdateCardMutation,
+  useUpdateCollectionMutation,
+  useUpdateDashboardMutation,
+  useUpdateDocumentMutation,
+  useUpdateExplorationMutation,
+} from "metabase/api";
+import { listTag } from "metabase/api/tags";
+import { TRASHABLE_MODELS, getParentEntityLink } from "metabase/archive/utils";
+import { useToast } from "metabase/common/hooks/use-toast";
+import { useDispatch } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 
 type Restorable<M extends string, Id> = {
   model: M;

@@ -1,7 +1,7 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { checkNotNull } from "metabase/utils/types";
 import type { CollectionItem, Dashboard } from "metabase-types/api";
+import { checkNotNull } from "metabase/utils/types";
 
 import {
   assertAllResultsAndValuesAreSandboxed,

@@ -2,10 +2,10 @@ import { useDraggable } from "@dnd-kit/core";
 import cx from "classnames";
 import { useEffect, useId, useRef } from "react";
 
+import type { RowValue, VisualizationSettings } from "metabase-types/api";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified } from "metabase/ui";
-import type { RowValue, VisualizationSettings } from "metabase-types/api";
 
 import { PivotTableCell, ResizeHandle } from "./PivotTable.styled";
 import { RowToggleIcon } from "./RowToggleIcon";

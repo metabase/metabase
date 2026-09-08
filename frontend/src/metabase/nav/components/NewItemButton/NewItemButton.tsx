@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { CollectionId } from "metabase-types/api";
 import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { Button, Icon } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
 
 import { trackAppNewButtonClicked } from "./analytics";
 

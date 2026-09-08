@@ -2,6 +2,7 @@ import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type { Job } from "metabase-types/api";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { useNavigate } from "metabase/router";
@@ -14,7 +15,6 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Job } from "metabase-types/api";
 
 const COLUMN_WIDTHS = [0.34, 0.33, 0.33];
 

@@ -1,11 +1,11 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDispatch } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import * as Urls from "metabase/urls";
-import type Question from "metabase-lib/v1/Question";
 
 type DataStudioToolbarButtonProps = {
   question: Question;

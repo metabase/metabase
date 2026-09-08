@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
+import type { TestPythonTransformResponse } from "metabase-types/api";
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import {
@@ -16,7 +17,6 @@ import {
   Text,
 } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
-import type { TestPythonTransformResponse } from "metabase-types/api";
 
 import { ExecutionOutputTable } from "./ExecutionOutputTable";
 import S from "./PythonEditorResults.module.css";

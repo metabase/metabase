@@ -1,12 +1,12 @@
 import { useEffect } from "react";
 
+import type { TableId } from "metabase-types/api";
 import {
   fetchForeignTablesMetadata,
   skipToken,
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { useDispatch } from "metabase/redux";
-import type { TableId } from "metabase-types/api";
 
 type UseLoadTableWithMetadataOptions = {
   includeForeignTables?: boolean;

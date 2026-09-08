@@ -1,3 +1,11 @@
+import * as Lib from "metabase-lib";
+import { getColumnNameFromKey } from "metabase-lib/v1/queries/utils/column-key";
+import type {
+  Card,
+  Dataset,
+  DatasetColumn,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import type { VisualizerVizDefinitionWithColumnsAndPreloadedDatasets } from "metabase/redux/store/visualizer";
 import { isNotNull } from "metabase/utils/types";
 import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
@@ -9,14 +17,6 @@ import {
   getSeriesWithDisplay,
   isCartesianChart,
 } from "metabase/viz-core";
-import * as Lib from "metabase-lib";
-import { getColumnNameFromKey } from "metabase-lib/v1/queries/utils/column-key";
-import type {
-  Card,
-  Dataset,
-  DatasetColumn,
-  VisualizationDisplay,
-} from "metabase-types/api";
 
 import { DEFAULT_VISUALIZER_DISPLAY } from "../constants";
 import {

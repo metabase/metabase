@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { Revision } from "metabase-types/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import type { RevisionOrModerationEvent } from "metabase/plugins";
@@ -7,7 +8,6 @@ import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Button, Center, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
-import type { Revision } from "metabase-types/api";
 
 import S from "./RevisionHistoryTimeline.module.css";
 import { trackVersionRevertClicked } from "./analytics";

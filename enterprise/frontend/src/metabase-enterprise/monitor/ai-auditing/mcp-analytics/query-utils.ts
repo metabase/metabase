@@ -1,4 +1,3 @@
-import type { DateFilterValue } from "metabase/querying/common/types";
 import {
   applyDateFilter,
   applyIdFilter,
@@ -15,6 +14,7 @@ import type {
 } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { SortDirection } from "metabase-types/api";
+import type { DateFilterValue } from "metabase/querying/common/types";
 
 export type McpFilters = {
   dateFilter: DateFilterValue;

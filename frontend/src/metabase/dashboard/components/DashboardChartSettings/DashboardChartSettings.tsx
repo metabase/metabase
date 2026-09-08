@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
+import type { VisualizationSettings } from "metabase-types/api";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { Divider, Flex } from "metabase/ui";
 import { BaseChartSettings } from "metabase/visualizations/components/ChartSettings/BaseChartSettings";
@@ -14,7 +15,6 @@ import {
   getVisualizationRaw,
   sanitizeDashcardSettings,
 } from "metabase/viz-core";
-import type { VisualizationSettings } from "metabase-types/api";
 
 import type { DashboardChartSettingsProps } from "./types";
 

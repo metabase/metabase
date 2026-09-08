@@ -2,13 +2,13 @@ import { render } from "@testing-library/react";
 import L from "leaflet";
 import { createRef } from "react";
 
-import MetabaseSettings from "metabase/utils/settings";
 import type { Point } from "metabase-types/api/dataset";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import MetabaseSettings from "metabase/utils/settings";
 
 import {
   LeafletMap,

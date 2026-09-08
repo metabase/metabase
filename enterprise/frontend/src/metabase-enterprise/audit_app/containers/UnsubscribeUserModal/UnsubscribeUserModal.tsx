@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useUnsubscribeUserFromSubscriptionsMutation } from "metabase-enterprise/api";
+import type { User } from "metabase-types/api";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -8,8 +10,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks/use-toast";
 import { Stack, Text } from "metabase/ui";
 import { parseIntParam } from "metabase/urls";
-import { useUnsubscribeUserFromSubscriptionsMutation } from "metabase-enterprise/api";
-import type { User } from "metabase-types/api";
 
 interface UnsubscribeUserModalProps {
   params: { userId?: string };

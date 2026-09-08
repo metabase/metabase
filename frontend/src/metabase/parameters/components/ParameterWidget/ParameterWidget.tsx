@@ -9,10 +9,6 @@ import {
 } from "react";
 import { usePrevious } from "react-use";
 
-import { Sortable } from "metabase/common/components/Sortable";
-import { useTranslateContent } from "metabase/content-translation/hooks";
-import CS from "metabase/css/core/index.css";
-import { Box, Flex } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   CardId,
@@ -20,6 +16,10 @@ import type {
   Parameter,
   ParameterId,
 } from "metabase-types/api";
+import { Sortable } from "metabase/common/components/Sortable";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import CS from "metabase/css/core/index.css";
+import { Box, Flex } from "metabase/ui";
 
 import { ParameterValueWidget } from "../ParameterValueWidget";
 

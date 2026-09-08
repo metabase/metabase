@@ -1,5 +1,5 @@
-import { isRootCollection } from "metabase/common/collections/utils";
 import type { Collection } from "metabase-types/api";
+import { isRootCollection } from "metabase/common/collections/utils";
 
 export const getCollectionList = (collection: Collection | undefined) => {
   const ancestors = collection?.effective_ancestors || [];

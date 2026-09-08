@@ -2,14 +2,14 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import type { URLSearchFilterQueryParams } from "metabase/common/search/types";
-import { createMockState } from "metabase/redux/store/mocks";
-import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import type { URLSearchFilterQueryParams } from "metabase/common/search/types";
+import { createMockState } from "metabase/redux/store/mocks";
+import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 
 export interface SearchSidebarSetupOptions {
   tokenFeatures?: TokenFeatures;

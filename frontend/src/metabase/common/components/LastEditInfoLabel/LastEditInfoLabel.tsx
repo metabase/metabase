@@ -1,6 +1,7 @@
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
+import type { User } from "metabase-types/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { getUser } from "metabase/current-user";
 import { dayjs } from "metabase/dayjs";
@@ -9,7 +10,6 @@ import type { TooltipProps } from "metabase/ui";
 import { Text, Tooltip, UnstyledButton } from "metabase/ui";
 import type { NamedUser } from "metabase/utils/user";
 import { getFullName } from "metabase/utils/user";
-import type { User } from "metabase-types/api";
 
 export type ItemWithLastEditInfo = {
   "last-edit-info": Edit;

@@ -1,7 +1,7 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
 
-import { getSubpathSafeUrl } from "metabase/urls";
 import type { CustomVizPluginId } from "metabase-types/api";
+import { getSubpathSafeUrl } from "metabase/urls";
 
 import { makeDistortionCallback } from "./distortions";
 

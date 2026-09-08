@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { DataApp } from "metabase-types/api";
 import { Group, Stack, Text } from "metabase/ui";
 import type { MetabaseColorKey } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
-import type { DataApp } from "metabase-types/api";
 
 import { DataAppAllowedHosts } from "../DataAppAllowedHosts/DataAppAllowedHosts";
 import { DataAppIcon } from "../DataAppIcon/DataAppIcon";

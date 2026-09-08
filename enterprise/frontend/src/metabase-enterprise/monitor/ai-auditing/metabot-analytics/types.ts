@@ -1,10 +1,10 @@
-import type { MetabotProfileId } from "metabase/metabot/constants";
-import type { ParentedChatMessage } from "metabase/metabot/utils/message-tree";
 import type {
   DatasetQuery,
   MetabotFeedback,
   VisualizationDisplay,
 } from "metabase-types/api";
+import type { MetabotProfileId } from "metabase/metabot/constants";
+import type { ParentedChatMessage } from "metabase/metabot/utils/message-tree";
 
 export type MetabotUserInfo = {
   id: number;

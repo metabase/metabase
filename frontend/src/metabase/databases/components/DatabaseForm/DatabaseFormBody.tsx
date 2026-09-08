@@ -2,12 +2,12 @@ import { useFormikContext } from "formik";
 import { type JSX, useCallback } from "react";
 import { match } from "ts-pattern";
 
+import type { DatabaseData, Engine, EngineKey } from "metabase-types/api";
 import type {
   DatabaseFormConfig,
   FormLocation,
 } from "metabase/databases/types";
 import { Box } from "metabase/ui";
-import type { DatabaseData, Engine, EngineKey } from "metabase-types/api";
 
 import { DatabaseConnectionStringField } from "../DatabaseConnectionUri";
 import { DatabaseEngineField } from "../DatabaseEngineField";

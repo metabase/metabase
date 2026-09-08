@@ -16,7 +16,6 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type {
   DatabaseFeature,
   GroupTableAccessPolicy,
@@ -34,6 +33,7 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 
 import EditSandboxingModal from "./EditSandboxingModal";
 

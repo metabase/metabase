@@ -1,3 +1,4 @@
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 import {
   skipToken,
   useGetTimelineQuery,
@@ -6,7 +7,6 @@ import {
 import { useSetArchive } from "metabase/archive/hooks";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import TimelineDetailsModal from "../../components/TimelineDetailsModal";

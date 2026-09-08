@@ -1,12 +1,12 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Button, Flex } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import * as Lib from "metabase-lib";
-import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 
 import { defaultClickActionMode } from "../../click-actions/lib/modes";
 

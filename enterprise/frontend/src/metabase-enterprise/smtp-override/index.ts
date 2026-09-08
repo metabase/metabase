@@ -1,5 +1,5 @@
-import { PLUGIN_SMTP_OVERRIDE } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_SMTP_OVERRIDE } from "metabase/plugins";
 
 import {
   CloudSMTPConnectionCard,

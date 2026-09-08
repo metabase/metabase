@@ -1,11 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { PillTab } from "metabase/common/components/PillTabNavigation";
-import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { Outlet, useLocation } from "metabase/router";
-import { useSetting } from "metabase/settings";
-import * as Urls from "metabase/urls";
 import {
   VIEW_AGENT_API_CALLS,
   VIEW_GROUP_MEMBERS,
@@ -18,6 +13,11 @@ import {
   useFilterOptions,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
 import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
+import type { PillTab } from "metabase/common/components/PillTabNavigation";
+import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { Outlet, useLocation } from "metabase/router";
+import { useSetting } from "metabase/settings";
+import * as Urls from "metabase/urls";
 
 import { CliAnalyticsEmptyState } from "./CliAnalyticsEmptyState";
 import {

@@ -1,12 +1,12 @@
 import _ from "underscore";
 
+import type { Log } from "metabase-types/api";
 import {
   type QueryParam,
   type UrlStateConfig,
   getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
 import { createLogFormatter } from "metabase/monitor/components/LogsViewer/utils";
-import type { Log } from "metabase-types/api";
 
 const MAX_LOGS = 50000;
 

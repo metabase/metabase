@@ -2,6 +2,7 @@ import cx from "classnames";
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import type { Collection, Dashboard as IDashboard } from "metabase-types/api";
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { EditBar } from "metabase/common/components/EditBar";
 import { LastEditInfoLabel } from "metabase/common/components/LastEditInfoLabel";
@@ -28,7 +29,6 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
-import type { Collection, Dashboard as IDashboard } from "metabase-types/api";
 
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
 import { DashboardTabs } from "../DashboardTabs";

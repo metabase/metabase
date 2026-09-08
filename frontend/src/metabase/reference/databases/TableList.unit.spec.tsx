@@ -1,9 +1,9 @@
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import TableList from "./TableList";
 

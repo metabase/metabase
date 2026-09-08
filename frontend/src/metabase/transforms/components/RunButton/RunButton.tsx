@@ -7,6 +7,11 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import type {
+  TransformId,
+  TransformJobId,
+  TransformRun,
+} from "metabase-types/api";
 import { useSetting } from "metabase/settings";
 import {
   Button,
@@ -17,11 +22,6 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import type {
-  TransformId,
-  TransformJobId,
-  TransformRun,
-} from "metabase-types/api";
 
 import { isActiveRunStatus } from "../../utils";
 import { LockedTransformsHoverCard } from "../LockedTransformsHoverCard/LockedTransformsHoverCard";

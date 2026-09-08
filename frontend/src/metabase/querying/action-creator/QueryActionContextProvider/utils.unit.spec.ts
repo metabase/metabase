@@ -1,8 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import {
-  getDefaultFieldSettings,
-  getDefaultFormSettings,
-} from "metabase/actions/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Parameter, TemplateTagType } from "metabase-types/api";
@@ -11,6 +7,10 @@ import {
   createAdHocNativeCard,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import {
+  getDefaultFieldSettings,
+  getDefaultFormSettings,
+} from "metabase/actions/utils";
 
 import {
   setParameterTypesFromFieldSettings,

@@ -1,15 +1,5 @@
 import { t } from "ttag";
 
-import { color } from "metabase/ui/utils/colors";
-import { displayNameForColumn } from "metabase/value-formatting";
-import {
-  type ColumnSettingDefinition,
-  type FormattableColumn,
-  type VisualizationDefinition,
-  columnSettings,
-  getDefaultSize,
-  getMinSize,
-} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import {
   isAvatarURL,
@@ -21,6 +11,16 @@ import {
   isURL,
 } from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings, Series } from "metabase-types/api";
+import { color } from "metabase/ui/utils/colors";
+import { displayNameForColumn } from "metabase/value-formatting";
+import {
+  type ColumnSettingDefinition,
+  type FormattableColumn,
+  type VisualizationDefinition,
+  columnSettings,
+  getDefaultSize,
+  getMinSize,
+} from "metabase/viz-core";
 
 export const LIST_DEFINITION: VisualizationDefinition = {
   identifier: "list",

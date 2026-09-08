@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  CardQueryMetadata,
+  MetricDimension,
+  MetricId,
+  TemporalUnit,
+  UpdateMetricDimensionRequest,
+} from "metabase-types/api";
 import {
   useSetDefaultMetricDimensionMutation,
   useUpdateMetricDimensionMutation,
@@ -23,13 +30,6 @@ import {
   Textarea,
   Title,
 } from "metabase/ui";
-import type {
-  CardQueryMetadata,
-  MetricDimension,
-  MetricId,
-  TemporalUnit,
-  UpdateMetricDimensionRequest,
-} from "metabase-types/api";
 
 import { DimensionTimeGroupingSelect } from "./DimensionTimeGroupingSelect";
 import S from "./MetricDimensions.module.css";

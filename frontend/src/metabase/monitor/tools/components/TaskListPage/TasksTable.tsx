@@ -3,6 +3,12 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type {
+  Database,
+  ListTasksSortColumn,
+  SortingOptions,
+  Task,
+} from "metabase-types/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
@@ -20,12 +26,6 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import type {
-  Database,
-  ListTasksSortColumn,
-  SortingOptions,
-  Task,
-} from "metabase-types/api";
 
 import { DEFAULT_SORTING, TASK_SORT_COLUMNS } from "./utils";
 

@@ -10,12 +10,12 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { MfaStatus } from "metabase-types/api";
 import {
   createMockMfaStatus,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { AccountSecurityPanel } from "./AccountSecurityPanel";
 

@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { CollectionId } from "metabase-types/api";
 import { useGetCollectionQuery } from "metabase/api";
 import { isRootCollection } from "metabase/common/collections/utils";
-import type { CollectionId } from "metabase-types/api";
 
 export function SnippetCollectionName({ id }: { id: CollectionId }) {
   if (isRootCollection({ id })) {

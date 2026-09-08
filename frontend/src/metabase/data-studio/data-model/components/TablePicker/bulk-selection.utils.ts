@@ -1,5 +1,5 @@
-import type { SelectionState } from "metabase/ui";
 import type { DatabaseId, TableId } from "metabase-types/api";
+import type { SelectionState } from "metabase/ui";
 
 import type { DatabaseNode, SchemaNode, TableNode, TreeNode } from "./types";
 import { isSchemaNode, isTableNode } from "./types";

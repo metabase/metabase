@@ -14,6 +14,12 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
 
+import Question from "metabase-lib/v1/Question";
+import type {
+  CardDisplayType,
+  StoredResultSort,
+  TimelineEvent,
+} from "metabase-types/api";
 import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
@@ -58,12 +64,6 @@ import {
   getVisualizationTransformed,
   isTimeseries,
 } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
-import type {
-  CardDisplayType,
-  StoredResultSort,
-  TimelineEvent,
-} from "metabase-types/api";
 
 import { useDocumentEditorHost } from "../../Editor/DocumentEditorHost";
 

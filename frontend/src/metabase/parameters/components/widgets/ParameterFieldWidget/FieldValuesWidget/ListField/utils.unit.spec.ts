@@ -1,5 +1,5 @@
-import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import type { FieldValue } from "metabase-types/api";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 
 import { translateToGerman, translateToJapanese } from "./test-constants";
 import { optionMatchesFilter, removeDiacritics } from "./utils";

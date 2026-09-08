@@ -1,6 +1,14 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
 
+import {
+  DataPermission,
+  DataPermissionValue,
+  type Group,
+  type GroupsPermissions,
+  type PermissionEntityId,
+  type PermissionSubject,
+} from "metabase-types/api";
 import { Messages } from "metabase/admin/permissions/constants/messages";
 import {
   getPermissionWarning,
@@ -11,14 +19,6 @@ import {
   type PermissionOption,
   type PermissionSectionConfig,
 } from "metabase/admin/permissions/types";
-import {
-  DataPermission,
-  DataPermissionValue,
-  type Group,
-  type GroupsPermissions,
-  type PermissionEntityId,
-  type PermissionSubject,
-} from "metabase-types/api";
 
 export const DETAILS_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   no: {

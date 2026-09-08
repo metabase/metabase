@@ -4,13 +4,13 @@ import type { ComponentProps } from "react";
 import { createMockMetadata } from "__support__/metadata";
 import { getIcon, render, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
-import { checkNotNull } from "metabase/utils/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { checkNotNull } from "metabase/utils/types";
 
 import { TableTrigger } from "../../TriggerComponents";
 import { UnconnectedDataSelector } from "../DataSelector";

@@ -1,3 +1,5 @@
+import { TableMoreMenu } from "metabase-enterprise/data-studio/library/tables/components/TableHeader/TableMoreMenu";
+import type { CollectionId } from "metabase-types/api";
 import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import {
@@ -6,8 +8,6 @@ import {
   isTableData,
 } from "metabase/data-studio/common/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import { TableMoreMenu } from "metabase-enterprise/data-studio/library/tables/components/TableHeader/TableMoreMenu";
-import type { CollectionId } from "metabase-types/api";
 
 import { LibraryCollectionRowMenu } from "./LibraryCollectionRowMenu";
 import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";

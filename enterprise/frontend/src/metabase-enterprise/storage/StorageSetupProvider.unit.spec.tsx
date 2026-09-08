@@ -14,11 +14,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { Api } from "metabase/api";
-import { listTag } from "metabase/api/tags";
-import { UndoListing } from "metabase/common/components/UndoListing";
-import { useStorageSetup } from "metabase/common/components/upsells/StoragePurchaseModal";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { ICloudAddOnProduct, TokenFeatures } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -28,6 +23,11 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { mockStorageCloudAddOn } from "metabase-types/api/mocks/add-ons";
+import { Api } from "metabase/api";
+import { listTag } from "metabase/api/tags";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { useStorageSetup } from "metabase/common/components/upsells/StoragePurchaseModal";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { StorageSetupProvider } from "./StorageSetupProvider";
 import {

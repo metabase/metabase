@@ -1,5 +1,5 @@
-import { isVirtualDashCard } from "metabase/utils/dashboard";
 import type { BaseDashboardCard, SeriesCard } from "metabase-types/api";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
 
 import S from "./Watermark.module.css";
 

@@ -1,6 +1,6 @@
+import type { RawSeries, RowValue, TreemapRow } from "metabase-types/api";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import type { RawSeries, RowValue, TreemapRow } from "metabase-types/api";
 
 import { getTreemapChartColumns } from "../../echarts/graph/treemap/model/data";
 import { getNumberOr } from "../../lib/settings/row-values";

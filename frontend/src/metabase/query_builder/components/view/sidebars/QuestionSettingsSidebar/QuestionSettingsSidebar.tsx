@@ -2,12 +2,12 @@ import { useMount } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { PLUGIN_CACHING, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Stack, useModalsStack } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 
 import { onCloseQuestionSettings } from "../../../../store/actions";
 import { ModelCacheManagementSection } from "../ModelCacheManagementSection";

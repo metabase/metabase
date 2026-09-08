@@ -5,6 +5,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, msgid, t } from "ttag";
 import _ from "underscore";
 
+import type {
+  CacheStrategy,
+  CacheStrategyType,
+  CacheableModel,
+  ScheduleStrategy,
+} from "metabase-types/api";
+import { CacheDurationUnit } from "metabase-types/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
 import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
@@ -34,13 +41,6 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import type {
-  CacheStrategy,
-  CacheStrategyType,
-  CacheableModel,
-  ScheduleStrategy,
-} from "metabase-types/api";
-import { CacheDurationUnit } from "metabase-types/api";
 
 import { defaultRootStrategy, rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";

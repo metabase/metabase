@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type { CollectionItem } from "metabase-types/api";
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { Link } from "metabase/common/components/Link";
@@ -21,7 +22,6 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { CollectionItem } from "metabase-types/api";
 
 import { useColumnDef } from "./hooks/useColumnDef";
 

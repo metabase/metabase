@@ -1,12 +1,12 @@
 import type { Feature } from "geojson";
 
-import { sumMetric } from "metabase/viz-core";
 import type {
   CardId,
   DatasetColumn,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
+import { sumMetric } from "metabase/viz-core";
 
 export type FeatureClickContext = {
   cols: DatasetColumn[];

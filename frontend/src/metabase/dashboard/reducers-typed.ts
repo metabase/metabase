@@ -3,6 +3,16 @@ import { createReducer } from "@reduxjs/toolkit";
 import { assocIn, dissocIn } from "icepick";
 import { omit } from "underscore";
 
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type {
+  Card,
+  DashCardId,
+  Dashboard,
+  ParameterId,
+  ParameterValueOrArray,
+  ParameterValuesMap,
+  Revision,
+} from "metabase-types/api";
 import {
   createDashboardPublicLink,
   deleteDashboardPublicLink,
@@ -29,16 +39,6 @@ import type {
   DashboardSidebarName,
   StoreDashboard,
 } from "metabase/redux/store/dashboard";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type {
-  Card,
-  DashCardId,
-  Dashboard,
-  ParameterId,
-  ParameterValueOrArray,
-  ParameterValuesMap,
-  Revision,
-} from "metabase-types/api";
 
 import {
   CLOSE_SIDEBAR,

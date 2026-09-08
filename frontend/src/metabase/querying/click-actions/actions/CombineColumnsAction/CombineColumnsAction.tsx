@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { trackColumnCombineViaPlusModal } from "metabase/querying/analytics";
 import {
   CombineColumns,
@@ -9,7 +10,6 @@ import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
-import * as Lib from "metabase-lib";
 
 export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
   if (!clicked || clicked.value !== undefined || !clicked.columnShortcuts) {

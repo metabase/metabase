@@ -1,6 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type {
+  Channel,
+  ChannelApiResponse,
+  ChannelSpec,
+  ChannelSpecs,
+  ChannelType,
+  Dashboard,
+  DashboardSubscription,
+  DraftDashboardSubscription,
+  ScheduleSettings,
+  SubscriptionSupportingCard,
+  User,
+} from "metabase-types/api";
 import { skipToken, useListSubscriptionsQuery, userApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { useSetArchive } from "metabase/archive/hooks";
@@ -23,20 +37,6 @@ import {
 import { NEW_PULSE_TEMPLATE, cleanPulse, createChannel } from "metabase/pulse";
 import { connect, useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type {
-  Channel,
-  ChannelApiResponse,
-  ChannelSpec,
-  ChannelSpecs,
-  ChannelType,
-  Dashboard,
-  DashboardSubscription,
-  DraftDashboardSubscription,
-  ScheduleSettings,
-  SubscriptionSupportingCard,
-  User,
-} from "metabase-types/api";
 
 import { useDashboardContext } from "../../context";
 

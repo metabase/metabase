@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockEngines } from "metabase-types/api/mocks";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import { createMockEngines } from "metabase-types/api/mocks";
 
 import { DatabasePage } from "./DatabasePage";
 

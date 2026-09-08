@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { VisualizationSettings } from "metabase-types/api";
 import { Card, Center, Text } from "metabase/ui";
 import { useAreAllDataPointsOutOfRange } from "metabase/visualizations/visualizations/CartesianChart/use-data-points-visible";
 import type { BaseCartesianChartModel } from "metabase/viz-core";
-import type { VisualizationSettings } from "metabase-types/api";
 
 export interface DataPointsVisiblePopoverProps {
   isDashboard: boolean;

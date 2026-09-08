@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
+import type { Notification, VisualizationSettings } from "metabase-types/api";
 import {
   useListNotificationsQuery,
   useUnsubscribeFromNotificationMutation,
@@ -10,8 +12,6 @@ import {
 import { useToast } from "metabase/common/hooks/use-toast";
 import { DeleteAlertConfirmModal } from "metabase/notifications/modals/DeleteAlertConfirmModal";
 import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";
-import type Question from "metabase-lib/v1/Question";
-import type { Notification, VisualizationSettings } from "metabase-types/api";
 
 import { CreateOrEditQuestionAlertModal } from "../CreateOrEditQuestionAlertModal";
 

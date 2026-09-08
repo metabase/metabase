@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 
-import { useGetIcon } from "metabase/hooks/use-icon";
-import { getUrl } from "metabase/querying/notebook/components/NotebookDataPicker/utils";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import { useGetIcon } from "metabase/hooks/use-icon";
+import { getUrl } from "metabase/querying/notebook/components/NotebookDataPicker/utils";
 
 export const DEFAULT_LIST_LIMIT = 5;
 

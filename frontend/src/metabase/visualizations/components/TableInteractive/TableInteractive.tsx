@@ -17,6 +17,17 @@ import {
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import type { ClickObject, OrderByDirection } from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
+import { isFK, isID, isPK, isString } from "metabase-lib/v1/types/utils/isa";
+import type {
+  ColumnSettings,
+  DatasetColumn,
+  RowValue,
+  RowValues,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -60,17 +71,6 @@ import {
   getTableClickedObjectRowData,
   getTableHeaderClickedObject,
 } from "metabase/viz-core";
-import type { ClickObject, OrderByDirection } from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
-import { isFK, isID, isPK, isString } from "metabase-lib/v1/types/utils/isa";
-import type {
-  ColumnSettings,
-  DatasetColumn,
-  RowValue,
-  RowValues,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 import {
   getHighlightedTableCellKey,

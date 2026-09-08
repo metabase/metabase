@@ -1,6 +1,6 @@
-import { hasInlineParameters } from "metabase/dashboard/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { Dashboard, DashboardCard } from "metabase-types/api";
+import { hasInlineParameters } from "metabase/dashboard/utils";
 
 export const getSortedParameters = (
   dashboard: Dashboard,

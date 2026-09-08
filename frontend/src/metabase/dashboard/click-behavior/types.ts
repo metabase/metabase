@@ -1,7 +1,3 @@
-import type { ClickBehaviorExtraData } from "metabase/dashboard/utils/click-behavior";
-import type { ValueAndColumnForColumnNameDate } from "metabase/value-formatting";
-import type { ClickObject } from "metabase/visualizations/types";
-import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type {
   Card,
   CardId,
@@ -13,6 +9,10 @@ import type {
   ParameterId,
   ParameterValueOrArray,
 } from "metabase-types/api";
+import type { ClickBehaviorExtraData } from "metabase/dashboard/utils/click-behavior";
+import type { ValueAndColumnForColumnNameDate } from "metabase/value-formatting";
+import type { ClickObject } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 
 export type DashboardDrillType =
   | "link-url"

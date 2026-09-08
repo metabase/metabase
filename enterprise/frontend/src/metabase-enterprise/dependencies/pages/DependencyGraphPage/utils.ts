@@ -1,5 +1,5 @@
-import * as Urls from "metabase/urls";
 import { DEPENDENCY_TYPES, type DependencyEntry } from "metabase-types/api";
+import * as Urls from "metabase/urls";
 
 export function parseDependencyEntry(
   rawId?: string,

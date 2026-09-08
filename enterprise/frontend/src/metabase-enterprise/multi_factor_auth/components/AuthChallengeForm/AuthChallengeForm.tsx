@@ -1,6 +1,10 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import {
+  useSendEmailOtpMutation,
+  useVerifyMfaMutation,
+} from "metabase-enterprise/api";
 import { AuthTextButton } from "metabase/auth/components/AuthButton";
 import {
   Form,
@@ -14,10 +18,6 @@ import { useDispatch } from "metabase/redux";
 import { completeLogin } from "metabase/redux/auth";
 import { Box, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import {
-  useSendEmailOtpMutation,
-  useVerifyMfaMutation,
-} from "metabase-enterprise/api";
 
 import { TOTP_CODE_LENGTH } from "../../constants";
 import { withTotpCodeRules } from "../../schemas";

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import { Box, Card, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { Box, Card, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
 type EntitySectionProps = {
   icon: IconName;
   error?: string;

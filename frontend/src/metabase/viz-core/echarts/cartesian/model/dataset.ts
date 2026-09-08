@@ -1,10 +1,5 @@
 import { t } from "ttag";
 
-import type { Dayjs } from "metabase/dayjs";
-import { getObjectKeys } from "metabase/utils/objects";
-import { parseTimestamp } from "metabase/utils/time-dayjs";
-import { checkNumber, isNotNull } from "metabase/utils/types";
-import { isEmpty } from "metabase/utils/validate";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import {
   type DatasetColumn,
@@ -14,6 +9,11 @@ import {
   type XAxisScale,
   getRowsForStableKeys,
 } from "metabase-types/api";
+import type { Dayjs } from "metabase/dayjs";
+import { getObjectKeys } from "metabase/utils/objects";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import { checkNumber, isNotNull } from "metabase/utils/types";
+import { isEmpty } from "metabase/utils/validate";
 
 import { sumMetric } from "../../../lib/dataset";
 import type { CartesianChartColumns } from "../../../lib/graph/columns";

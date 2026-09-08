@@ -1,8 +1,8 @@
+import type { Document } from "metabase-types/api";
 import { openUrl } from "metabase/redux/app";
 import { NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import type { Dispatch } from "metabase/redux/store";
 import { navigate } from "metabase/router";
-import type { Document } from "metabase-types/api";
 
 export const navigateBackToDocument = (documentId: number) => () => {
   navigate(`/document/${documentId}`);

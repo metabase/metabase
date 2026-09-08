@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { IndexColumn, IndexColumnDirection } from "metabase-types/api";
 import {
   Card,
   type ComboboxItem,
@@ -8,7 +9,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { IndexColumn, IndexColumnDirection } from "metabase-types/api";
 
 type DirectionListProps = {
   columns: IndexColumn[];

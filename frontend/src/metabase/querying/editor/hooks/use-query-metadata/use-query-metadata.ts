@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useLazyGetAdhocQueryMetadataQuery } from "metabase/api";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import { useLazyGetAdhocQueryMetadataQuery } from "metabase/api";
 
 export function useQueryMetadata(question: Question) {
   const [loadMetadata, { error, isFetching, isUninitialized }] =

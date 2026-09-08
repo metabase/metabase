@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Badge } from "metabase/ui";
 import type { DataApp } from "metabase-types/api";
+import { Badge } from "metabase/ui";
 
 type Props = {
   app: DataApp;

@@ -3,6 +3,16 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import { isBoolean } from "metabase-lib/v1/types/utils/isa";
+import type {
+  ColumnFormattingOperator,
+  ColumnFormattingSetting,
+  ColumnRangeFormattingSetting,
+  ColumnSingleFormattingSetting,
+  ConditionalFormattingBooleanOperator,
+  ConditionalFormattingComparisonOperator,
+  DatasetColumn,
+} from "metabase-types/api";
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import {
@@ -15,16 +25,6 @@ import {
   TextInputBlurChange,
 } from "metabase/ui";
 import type { TextInputBlurChangeProps } from "metabase/ui/components/inputs/TextInputBlurChange/TextInputBlurChange";
-import { isBoolean } from "metabase-lib/v1/types/utils/isa";
-import type {
-  ColumnFormattingOperator,
-  ColumnFormattingSetting,
-  ColumnRangeFormattingSetting,
-  ColumnSingleFormattingSetting,
-  ConditionalFormattingBooleanOperator,
-  ConditionalFormattingComparisonOperator,
-  DatasetColumn,
-} from "metabase-types/api";
 
 import { ChartSettingInputNumeric } from "../ChartSettingInputNumeric";
 import { ChartSettingRadio } from "../ChartSettingRadio";

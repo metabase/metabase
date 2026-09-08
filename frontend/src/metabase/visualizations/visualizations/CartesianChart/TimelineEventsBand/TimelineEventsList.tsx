@@ -1,6 +1,6 @@
+import type { TimelineEvent } from "metabase-types/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Box, Flex, Icon, Stack, Text } from "metabase/ui";
-import type { TimelineEvent } from "metabase-types/api";
 
 import S from "./TimelineEventsBand.module.css";
 import { TIMELINE_ICON_TO_SMALL_ICON_MAP } from "./utils";

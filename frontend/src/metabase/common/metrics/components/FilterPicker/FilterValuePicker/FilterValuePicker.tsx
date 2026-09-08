@@ -1,6 +1,8 @@
 import { skipToken } from "@reduxjs/toolkit/query/react";
 import { useMemo } from "react";
 
+import type * as Lib from "metabase-lib";
+import * as LibMetric from "metabase-lib/metric";
 import {
   useGetMeasureDimensionValuesQuery,
   useGetMetricDimensionValuesQuery,
@@ -20,8 +22,6 @@ import {
 } from "metabase/querying/common/components/FieldValuePicker";
 import type { ComboboxProps } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
-import type * as Lib from "metabase-lib";
-import * as LibMetric from "metabase-lib/metric";
 
 import { canListAllFilterDimensions, getStaticPlaceholder } from "./utils";
 

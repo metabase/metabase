@@ -1,6 +1,6 @@
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_REPLACEMENT } from "metabase/plugins";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { SourceReplacementButton } from "./components/SourceReplacementButton";
 import { SourceReplacementModal } from "./components/SourceReplacementModal";

@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import type { MetabotInfo } from "metabase-types/api";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useToast } from "metabase/common/hooks";
 import { useUpdateMetabotMutation } from "metabase/metabot";
 import { Stack, Switch } from "metabase/ui";
-import type { MetabotInfo } from "metabase-types/api";
 
 export function MetabotVerifiedContentConfigurationPane({
   metabot,

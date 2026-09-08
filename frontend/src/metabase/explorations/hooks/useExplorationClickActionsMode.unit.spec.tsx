@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentType } from "react";
 
 import { screen } from "__support__/ui";
+import { createMockColumn } from "metabase-types/api/mocks";
+import { createMockDocumentContent } from "metabase-types/api/mocks/document";
 import {
   trackExplorationCommentCreated,
   trackExplorationExploreFurtherClicked,
@@ -12,8 +14,6 @@ import type {
   ClickActionPopoverProps,
   ClickObject,
 } from "metabase/visualizations/types";
-import { createMockColumn } from "metabase-types/api/mocks";
-import { createMockDocumentContent } from "metabase-types/api/mocks/document";
 
 import type { CommentDrafts } from "../types";
 

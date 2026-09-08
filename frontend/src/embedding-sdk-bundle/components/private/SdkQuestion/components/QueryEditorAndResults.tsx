@@ -1,11 +1,11 @@
 import { useState } from "react";
 
+import type * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import { QueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useQueryResults } from "metabase/querying/editor/hooks/use-query-results";
 import { VisualizeButton } from "metabase/querying/notebook/components/Notebook";
-import type * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 
 interface QueryEditorAndResultsProps {
   question: Question;

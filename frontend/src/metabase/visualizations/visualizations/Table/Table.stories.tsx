@@ -9,6 +9,8 @@ import {
   VisualizationWrapper,
   createWaitForResizeToStopDecorator,
 } from "__support__/storybook";
+import type { RawSeries } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -20,8 +22,6 @@ import { Box } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { RawSeries } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import * as data from "./stories-data";
 

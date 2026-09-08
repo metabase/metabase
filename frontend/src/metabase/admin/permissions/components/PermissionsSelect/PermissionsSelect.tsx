@@ -1,8 +1,8 @@
 import { Fragment, memo, useState } from "react";
 
+import type { IconName } from "metabase-types/api";
 import { Icon, Popover, Switch, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { IconName } from "metabase-types/api";
 
 import type {
   DataPermissionValue,

@@ -1,3 +1,4 @@
+import type { ColorSettings } from "metabase-types/api/settings";
 import type {
   MetabaseColor,
   MetabaseColors,
@@ -7,7 +8,6 @@ import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/emb
 import { deriveFullMetabaseTheme } from "metabase/ui/colors/derive-theme";
 import { ACCENT_COUNT } from "metabase/ui/colors/palette";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { ColorSettings } from "metabase-types/api/settings";
 
 type ColorScheme = "light" | "dark";
 

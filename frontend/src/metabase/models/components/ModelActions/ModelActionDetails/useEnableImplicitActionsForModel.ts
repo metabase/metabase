@@ -1,9 +1,9 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { CardId } from "metabase-types/api";
 import { useCreateActionMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks/use-toast";
-import type { CardId } from "metabase-types/api";
 
 export function useEnableImplicitActionsForModel(modelId: CardId) {
   const [createAction] = useCreateActionMutation();

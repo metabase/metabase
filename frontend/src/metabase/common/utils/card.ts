@@ -2,13 +2,6 @@ import querystring from "querystring";
 
 import _ from "underscore";
 
-import { clone } from "metabase/utils/clone";
-import {
-  b64hash_to_utf8,
-  b64url_to_utf8,
-  utf8_to_b64url,
-} from "metabase/utils/encoding";
-import { stableStringify } from "metabase/utils/objects";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -30,6 +23,13 @@ import type {
   VirtualDashCardParameterMapping,
 } from "metabase-types/api";
 import { isDashCardDataSeries } from "metabase-types/guards/dashboard";
+import { clone } from "metabase/utils/clone";
+import {
+  b64hash_to_utf8,
+  b64url_to_utf8,
+  utf8_to_b64url,
+} from "metabase/utils/encoding";
+import { stableStringify } from "metabase/utils/objects";
 
 export type SerializeCardOptions = {
   includeDatasetQuery?: boolean;

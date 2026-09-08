@@ -1,10 +1,10 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
+import type { IconName } from "metabase-types/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { Box, FixedSizeIcon, Flex, Text, Tooltip } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./AreaLayout.module.css";
 import { TOOLTIP_OPEN_DELAY } from "./constants";

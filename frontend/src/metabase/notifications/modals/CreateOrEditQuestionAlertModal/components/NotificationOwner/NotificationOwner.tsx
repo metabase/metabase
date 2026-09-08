@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type {
+  AdminNotification,
+  Notification,
+  UserId,
+} from "metabase-types/api";
 import {
   type UserOption,
   UserPicker,
 } from "metabase/common/components/UserPicker";
 import { Flex, Text } from "metabase/ui";
 import { getUserLabel } from "metabase/utils/user";
-import type {
-  AdminNotification,
-  Notification,
-  UserId,
-} from "metabase-types/api";
 
 type Props = {
   editingNotification: Notification | AdminNotification;

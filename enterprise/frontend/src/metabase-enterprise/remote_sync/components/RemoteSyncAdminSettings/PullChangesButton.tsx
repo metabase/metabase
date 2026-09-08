@@ -1,9 +1,9 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { useImportChangesMutation } from "metabase-enterprise/api";
 import { useToast } from "metabase/common/hooks";
 import { Button, Tooltip } from "metabase/ui";
-import { useImportChangesMutation } from "metabase-enterprise/api";
 
 import { trackPullChanges } from "../../analytics";
 

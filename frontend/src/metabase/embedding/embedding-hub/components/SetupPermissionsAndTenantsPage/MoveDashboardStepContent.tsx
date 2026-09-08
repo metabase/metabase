@@ -1,12 +1,12 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type { CollectionItem, DashboardId } from "metabase-types/api";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector";
 import { useToast } from "metabase/common/hooks";
 import { Box, Button, Divider, Group, Stack, Text } from "metabase/ui";
-import type { CollectionItem, DashboardId } from "metabase-types/api";
 
 import {
   useCreateSampleDashboardInSharedCollection,

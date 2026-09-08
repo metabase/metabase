@@ -1,6 +1,7 @@
 import { type HTMLAttributes, useCallback, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
+import type { NotificationCronSubscription } from "metabase-types/api";
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
 import {
   cronToBuilderValue,
@@ -25,7 +26,6 @@ import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getSetting } from "metabase/settings";
 import { Box, type BoxProps, Flex, Text } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
-import type { NotificationCronSubscription } from "metabase-types/api";
 
 import styles from "./NotificationSchedule.module.css";
 import { NotificationScheduleWarning } from "./NotificationScheduleWarning";

@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { TransformRun } from "metabase-types/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { Box, Stack, Title } from "metabase/ui";
-import type { TransformRun } from "metabase-types/api";
 
 import S from "./ErrorSection.module.css";
 

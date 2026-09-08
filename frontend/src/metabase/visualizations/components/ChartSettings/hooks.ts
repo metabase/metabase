@@ -1,6 +1,13 @@
 import { assocIn } from "icepick";
 import { useCallback, useMemo } from "react";
 
+import type Question from "metabase-lib/v1/Question";
+import type {
+  RawSeries,
+  Series,
+  TransformedSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import {
   type ComputedVisualizationSettings,
@@ -11,13 +18,6 @@ import {
   getVisualizationTransformed,
   updateSettings,
 } from "metabase/viz-core";
-import type Question from "metabase-lib/v1/Question";
-import type {
-  RawSeries,
-  Series,
-  TransformedSeries,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 export type UseChartSettingsStateProps = {
   settings?: VisualizationSettings;

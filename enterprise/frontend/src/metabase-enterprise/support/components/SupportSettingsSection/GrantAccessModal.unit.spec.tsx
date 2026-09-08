@@ -11,9 +11,9 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { createMockAccessGrant } from "metabase-types/api/mocks";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { PLUGIN_SUPPORT } from "metabase/plugins";
-import { createMockAccessGrant } from "metabase-types/api/mocks";
 
 import { GrantAccessModal } from "./GrantAccessModal";
 

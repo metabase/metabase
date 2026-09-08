@@ -1,8 +1,4 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { ThemeProvider } from "metabase/ui";
-import { registerVisualizations } from "metabase/visualizations/register";
-import type { VisualizationProps } from "metabase/visualizations/types";
-import { loadVisualizationComponents } from "metabase/viz-core";
 import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockCard,
@@ -13,6 +9,10 @@ import {
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+import { ThemeProvider } from "metabase/ui";
+import { registerVisualizations } from "metabase/visualizations/register";
+import type { VisualizationProps } from "metabase/visualizations/types";
+import { loadVisualizationComponents } from "metabase/viz-core";
 
 import { Funnel } from "./Funnel";
 

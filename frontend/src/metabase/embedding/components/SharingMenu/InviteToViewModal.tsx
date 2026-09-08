@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
+import type { InviteTarget, User } from "metabase-types/api";
 import {
   skipToken,
   useCreateUserMutation,
@@ -31,7 +32,6 @@ import {
   Text,
 } from "metabase/ui";
 import { generatePassword } from "metabase/utils/password";
-import type { InviteTarget, User } from "metabase-types/api";
 
 interface InviteToViewModalProps {
   title: string;

@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import type { TransformRun } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Anchor, Breadcrumbs, FixedSizeIcon, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { TransformRun } from "metabase-types/api";
 
 type LocationSectionProps = {
   run: TransformRun;

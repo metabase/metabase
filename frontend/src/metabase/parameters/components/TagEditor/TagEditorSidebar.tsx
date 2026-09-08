@@ -2,9 +2,6 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { EmptyState } from "metabase/common/components/EmptyState";
-import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { Box, Tabs } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -19,6 +16,9 @@ import type {
   TemplateTag,
   TemplateTagId,
 } from "metabase-types/api";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { Box, Tabs } from "metabase/ui";
 
 import { TagEditorHelp } from "./TagEditorHelp";
 import { TagEditorParam } from "./TagEditorParam";

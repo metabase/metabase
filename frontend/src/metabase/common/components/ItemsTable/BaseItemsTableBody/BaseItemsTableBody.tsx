@@ -1,3 +1,4 @@
+import type { CollectionItem } from "metabase-types/api";
 import {
   ItemDragSourceTableRow,
   TableRow,
@@ -6,7 +7,6 @@ import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { useSelector } from "metabase/redux";
 import { getIsDndAvailable } from "metabase/selectors/app";
-import type { CollectionItem } from "metabase-types/api";
 
 import { TBody } from "../BaseItemsTable.styled";
 

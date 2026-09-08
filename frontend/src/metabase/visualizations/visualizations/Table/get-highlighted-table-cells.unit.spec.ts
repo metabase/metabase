@@ -1,14 +1,14 @@
-import { getHighlightedTableCells } from "metabase/visualizations/visualizations/Table/get-highlighted-table-cells";
-import type {
-  HighlightedObject,
-  PivotedDatasetColumn,
-} from "metabase/viz-core";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+import { getHighlightedTableCells } from "metabase/visualizations/visualizations/Table/get-highlighted-table-cells";
+import type {
+  HighlightedObject,
+  PivotedDatasetColumn,
+} from "metabase/viz-core";
 
 const CATEGORY_COLUMN = createMockColumn({
   name: "CATEGORY",

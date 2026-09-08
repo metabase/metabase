@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { SortDirection } from "metabase-types/api";
 import type { GlossaryItem } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Table as CommonTable } from "metabase/common/components/Table/Table";
@@ -17,7 +18,6 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import type { SortDirection } from "metabase-types/api";
 
 import { EmptyState } from "../EmptyState";
 

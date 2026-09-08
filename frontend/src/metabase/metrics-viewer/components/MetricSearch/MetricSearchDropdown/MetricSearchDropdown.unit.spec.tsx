@@ -11,7 +11,6 @@ import {
   renderWithProviders,
   waitFor,
 } from "__support__/ui";
-import { reinitialize } from "metabase/plugins";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -19,6 +18,7 @@ import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { reinitialize } from "metabase/plugins";
 
 import { MetricSearchDropdown } from "./MetricSearchDropdown";
 

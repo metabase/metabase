@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import type { NativeQuerySnippet } from "metabase-types/api";
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
-import type { NativeQuerySnippet } from "metabase-types/api";
 
 type ArchiveSnippetModalProps = {
   snippet: Pick<NativeQuerySnippet, "id" | "name">;

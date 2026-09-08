@@ -1,13 +1,13 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type { MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 import {
   trackMetricsViewerFilterEdited,
   trackMetricsViewerFilterRemoved,
 } from "metabase/metrics-viewer/analytics";
 import { Badge, Flex, Popover, Text } from "metabase/ui";
-import type { MetricDefinition } from "metabase-lib/metric";
-import * as LibMetric from "metabase-lib/metric";
 
 import type { SourceColorMap } from "../../types/viewer-state";
 import type { DefinitionSource } from "../../utils/definition-sources";

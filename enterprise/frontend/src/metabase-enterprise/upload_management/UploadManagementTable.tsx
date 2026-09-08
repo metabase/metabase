@@ -1,6 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import {
+  useDeleteUploadTableMutation,
+  useListUploadTablesQuery,
+} from "metabase-enterprise/api";
+import type { Table } from "metabase-types/api";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import {
   BulkActionBar,
@@ -20,11 +25,6 @@ import {
   Text,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import {
-  useDeleteUploadTableMutation,
-  useListUploadTablesQuery,
-} from "metabase-enterprise/api";
-import type { Table } from "metabase-types/api";
 
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { getDateDisplay } from "./utils";

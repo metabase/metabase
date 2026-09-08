@@ -1,9 +1,5 @@
 import type { ReactNode } from "react";
 
-import type {
-  ClickObject,
-  VisualizationPassThroughProps,
-} from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Dataset,
@@ -13,6 +9,10 @@ import type {
   TimelineEvent,
   VisualizationSettings,
 } from "metabase-types/api";
+import type {
+  ClickObject,
+  VisualizationPassThroughProps,
+} from "metabase/visualizations/types";
 
 /**
  * A query result as it lives in the query builder. It's a {@link Dataset} for

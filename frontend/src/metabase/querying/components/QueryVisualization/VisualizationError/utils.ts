@@ -1,5 +1,5 @@
-import { getErrorMessage } from "metabase/api/utils";
 import type { DatasetError } from "metabase-types/api";
+import { getErrorMessage } from "metabase/api/utils";
 
 // Error message for a failed query. 4xx comes as a string, 5xx as { status, data }.
 // Returns "" when there is no message in the payload. (#71558)

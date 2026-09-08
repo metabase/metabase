@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { DataPermissionValue } from "metabase-types/api";
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import { hasFeature } from "metabase/databases";
 import {
@@ -15,8 +17,6 @@ import {
   type PermissionOption,
 } from "metabase/plugins";
 import { navigate } from "metabase/router";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
-import { DataPermissionValue } from "metabase-types/api";
 
 import { ImpersonationModal } from "./components/ImpersonationModal";
 import {

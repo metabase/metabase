@@ -1,6 +1,7 @@
 import { useFormikContext } from "formik";
 import { c, t } from "ttag";
 
+import type { DatabaseData } from "metabase-types/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { useDocsUrl } from "metabase/common/hooks";
@@ -11,7 +12,6 @@ import type {
 import { FormSubmitButton } from "metabase/forms/components/FormSubmitButton";
 import { useSetting } from "metabase/settings";
 import { Button, Flex, Text } from "metabase/ui";
-import type { DatabaseData } from "metabase-types/api";
 
 import { DatabaseFormError } from "../DatabaseFormError";
 

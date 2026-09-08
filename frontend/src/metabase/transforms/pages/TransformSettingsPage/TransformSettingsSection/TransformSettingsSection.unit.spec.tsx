@@ -3,8 +3,6 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
-import * as Urls from "metabase/urls";
 import type { Transform } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -13,6 +11,8 @@ import {
   createMockTransformRun,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { TransformSettingsSection } from "./TransformSettingsSection";
 

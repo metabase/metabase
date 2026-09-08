@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { getUserIsAdmin } from "metabase/current-user";
 import { CopyLinkButton } from "metabase/embedding/components/SharingMenu/ActionButtons/CopyLinkButton";
@@ -31,7 +32,6 @@ import {
   publicQuestion as getPublicQuestionUrl,
   question as getQuestionUrl,
 } from "metabase/urls";
-import type Question from "metabase-lib/v1/Question";
 
 import { QuestionPublicLinkPopover } from "../../../../sidebars/QuestionInfoSidebar/QuestionPublicLinkPopover/QuestionPublicLinkPopover";
 

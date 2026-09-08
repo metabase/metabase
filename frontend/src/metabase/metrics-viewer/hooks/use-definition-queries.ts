@@ -1,10 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { metricApi, useListSegmentsQuery } from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils/errors";
-import { useDispatch, useSelector } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
@@ -16,6 +12,10 @@ import type {
   TypedProjection,
 } from "metabase-types/api";
 import type { MetricDatasetRequest } from "metabase-types/api/metric";
+import { metricApi, useListSegmentsQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
+import { useDispatch, useSelector } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 
 import {
   type ExpressionDefinitionEntry,

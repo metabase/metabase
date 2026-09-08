@@ -1,12 +1,6 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { DateTime } from "metabase/common/components/DateTime";
-import { Link } from "metabase/common/components/Link";
-import CS from "metabase/css/core/index.css";
-import { Anchor, Box, Card, FixedSizeIcon, Group, Stack } from "metabase/ui";
-import * as Urls from "metabase/urls";
-import { getUserName } from "metabase/utils/user";
 import {
   canNodeHaveOwner,
   getNodeCreatedAt,
@@ -18,6 +12,12 @@ import {
   getNodeTransform,
 } from "metabase-enterprise/dependencies/utils";
 import type { DependencyNode } from "metabase-types/api";
+import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
+import { Anchor, Box, Card, FixedSizeIcon, Group, Stack } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { getUserName } from "metabase/utils/user";
 
 import S from "./InfoSection.module.css";
 

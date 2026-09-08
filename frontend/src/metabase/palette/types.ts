@@ -1,9 +1,9 @@
 import type { Action, ActionImpl } from "kbar";
 import type React from "react";
 
+import type { IconName, ModerationReviewStatus } from "metabase-types/api";
 import type { To } from "metabase/router";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { IconName, ModerationReviewStatus } from "metabase-types/api";
 
 import type { GROUP_LABELS } from "./constants";
 

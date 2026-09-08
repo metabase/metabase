@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import slugg from "slugg";
 import { t } from "ttag";
 
+import type { Card, CardId, DatabaseId, Field } from "metabase-types/api";
 import {
   useLazyGetCardQuery,
   useLazyListAutocompleteSuggestionsQuery,
@@ -11,7 +12,6 @@ import {
 } from "metabase/api";
 import { useSetting } from "metabase/settings";
 import { isNotNull } from "metabase/utils/types";
-import type { Card, CardId, DatabaseId, Field } from "metabase-types/api";
 
 import { source } from "./language";
 import { getCardAutocompleteResultMeta, matchTagAtCursor } from "./util";

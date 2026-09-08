@@ -1,4 +1,5 @@
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockSettings } from "metabase-types/api/mocks";
 import type { DispatchFn } from "metabase/redux/hooks";
 import {
   createMockSettingsState,
@@ -6,7 +7,6 @@ import {
 } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { getSetting, settingsApi } from "metabase/settings";
-import { createMockSettings } from "metabase-types/api/mocks";
 
 import { RedirectIfSetup } from "./RedirectIfSetup";
 

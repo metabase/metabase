@@ -1,5 +1,8 @@
 import { useContext } from "react";
 
+import * as Lib from "metabase-lib";
+import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { TableId } from "metabase-types/api";
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { EmbeddingDataPickerContext } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
@@ -10,9 +13,6 @@ import {
   getEntityTypes,
 } from "metabase/redux/embedding-data-picker";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
-import * as Lib from "metabase-lib";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { TableId } from "metabase-types/api";
 
 import { DataPickerTarget } from "../DataPickerTarget";
 

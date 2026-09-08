@@ -11,15 +11,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { useCommandPalette } from "metabase/palette/hooks/useCommandPalette";
-import { useCommandPaletteBasicActions } from "metabase/palette/hooks/useCommandPaletteBasicActions";
-import {
-  createMockAdminAppState,
-  createMockAdminState,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import { Route, useLocation, useParams } from "metabase/router";
-import { parseSearchQuery } from "metabase/utils/browser";
 import type { RecentItem, Settings } from "metabase-types/api";
 import {
   createMockCollection,
@@ -30,6 +21,15 @@ import {
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
+import { useCommandPalette } from "metabase/palette/hooks/useCommandPalette";
+import { useCommandPaletteBasicActions } from "metabase/palette/hooks/useCommandPaletteBasicActions";
+import {
+  createMockAdminAppState,
+  createMockAdminState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { Route, useLocation, useParams } from "metabase/router";
+import { parseSearchQuery } from "metabase/utils/browser";
 
 import { PaletteResults } from "../../PaletteResults";
 

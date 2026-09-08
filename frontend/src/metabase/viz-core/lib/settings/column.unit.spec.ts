@@ -1,9 +1,9 @@
-import { checkNotNull } from "metabase/utils/types";
 import type { DatasetColumn, Series } from "metabase-types/api";
 import {
   createMockColumn,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+import { checkNotNull } from "metabase/utils/types";
 
 import { getComputedSettings } from "../settings";
 

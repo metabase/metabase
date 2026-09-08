@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 
-import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { DatabaseId } from "metabase-types/api";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 
 import { MainPane } from "./MainPane";
 import {

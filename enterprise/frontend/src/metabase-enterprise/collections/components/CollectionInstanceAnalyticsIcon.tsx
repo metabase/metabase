@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { Collection } from "metabase-types/api";
 import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
-import type { Collection } from "metabase-types/api";
 
 import { getCollectionType } from "../utils";
 

@@ -1,11 +1,11 @@
 import { renderHook } from "@testing-library/react";
 
+import type { IconName, VisualizationDisplay } from "metabase-types/api";
 import {
   type VisualizationDefinition,
   registerVisualization,
   setDefaultVisualization,
 } from "metabase/viz-core";
-import type { IconName, VisualizationDisplay } from "metabase-types/api";
 
 import { useGetIcon } from "./use-icon";
 

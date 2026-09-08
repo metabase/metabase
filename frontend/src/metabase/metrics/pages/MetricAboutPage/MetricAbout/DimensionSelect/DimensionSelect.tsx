@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { IconName } from "metabase-types/api";
 import {
   Combobox,
   DefaultSelectItem,
@@ -7,7 +8,6 @@ import {
   UnstyledButton,
   useCombobox,
 } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./DimensionSelect.module.css";
 

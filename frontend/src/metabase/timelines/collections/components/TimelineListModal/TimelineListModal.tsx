@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type { Collection, Timeline } from "metabase-types/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import {
   getDefaultTimelineName,
@@ -9,7 +10,6 @@ import {
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Collection, Timeline } from "metabase-types/api";
 
 import SearchEmptyState from "../SearchEmptyState";
 import TimelineEmptyState from "../TimelineEmptyState";

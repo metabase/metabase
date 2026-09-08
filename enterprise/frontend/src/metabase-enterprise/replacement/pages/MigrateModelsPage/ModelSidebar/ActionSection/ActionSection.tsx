@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { Card, Database } from "metabase-types/api";
 import { validateDatabase } from "metabase/transforms/utils";
 import { Button, Icon, Tooltip } from "metabase/ui";
-import type { Card, Database } from "metabase-types/api";
 
 import { trackModelToTransformsMigrationModalOpened } from "../../../../analytics";
 import { SourceReplacementButton } from "../../../../components/SourceReplacementButton";

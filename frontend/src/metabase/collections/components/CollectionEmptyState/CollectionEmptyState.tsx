@@ -2,6 +2,7 @@ import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 
 import EmptyStateIcon from "assets/img/empty-states/collection.svg";
+import type { Collection } from "metabase-types/api";
 import {
   isLibraryCollection,
   isRootTrashCollection,
@@ -11,7 +12,6 @@ import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
-import type { Collection } from "metabase-types/api";
 
 import { trackCollectionNewButtonClicked } from "./analytics";
 

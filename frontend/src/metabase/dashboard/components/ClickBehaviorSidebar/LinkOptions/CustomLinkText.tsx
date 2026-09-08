@@ -2,12 +2,12 @@ import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
-import { TextInputBlurChange } from "metabase/ui";
 import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
 } from "metabase-types/api";
+import CS from "metabase/css/core/index.css";
+import { TextInputBlurChange } from "metabase/ui";
 
 import S from "./CustomLinkText.module.css";
 

@@ -1,3 +1,4 @@
+import type { FieldId, TableId } from "metabase-types/api";
 import { fieldApi, tableApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
@@ -5,7 +6,6 @@ import {
   tableForeignKeysFetched,
 } from "metabase/metadata-store";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import type { FieldId, TableId } from "metabase-types/api";
 
 type FetchOptions = {
   reload?: boolean;

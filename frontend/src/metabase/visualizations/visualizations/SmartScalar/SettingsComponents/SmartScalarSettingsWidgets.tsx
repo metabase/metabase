@@ -13,10 +13,10 @@ import { useCallback } from "react";
 import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
+import type { SmartScalarComparison } from "metabase-types/api";
 import { Sortable } from "metabase/common/components/Sortable";
 import { Stack } from "metabase/ui";
 import type { SmartScalarComparisonWidgetProps } from "metabase/viz-core";
-import type { SmartScalarComparison } from "metabase-types/api";
 
 import { getDefaultComparison } from "../utils";
 

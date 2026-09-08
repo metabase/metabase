@@ -1,9 +1,9 @@
 import { Fragment, useMemo } from "react";
 
+import type { Comment } from "metabase-types/api/comments";
 import type { CommentExtraRenderer } from "metabase/comments/types";
 import { getCommentThreads } from "metabase/comments/utils";
 import { Box, Stack } from "metabase/ui";
-import type { Comment } from "metabase-types/api/comments";
 
 import { Discussion } from "../Discussion";
 

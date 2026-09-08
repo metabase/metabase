@@ -1,5 +1,5 @@
-import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
 
 import { AdminDatabaseTableEditingSection } from "./admin/AdminDatabaseTableEditingSection";
 import { getRoutes } from "./routes";

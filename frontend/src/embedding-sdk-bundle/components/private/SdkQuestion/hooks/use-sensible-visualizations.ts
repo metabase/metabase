@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { logUnavailableCustomVizMessage } from "embedding-sdk-bundle/lib/log-unavailable-custom-viz";
+import type { CardDisplayType } from "metabase-types/api";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { getSensibleVisualizations } from "metabase/viz-core";
-import type { CardDisplayType } from "metabase-types/api";
 
 import { useSdkQuestionContext } from "../context";
 

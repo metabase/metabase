@@ -2,11 +2,11 @@ import { type FormEvent, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { ParameterValueOrArray } from "metabase-types/api";
 import { BooleanPicker } from "metabase/querying/common/components/BooleanPicker";
 import type { BooleanFilterValue } from "metabase/querying/common/types";
 import { deserializeBooleanParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { Box } from "metabase/ui";
-import type { ParameterValueOrArray } from "metabase-types/api";
 
 import { MIN_WIDTH } from "../../constants";
 import { WidgetFooter } from "../WidgetFooter";

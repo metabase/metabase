@@ -1,6 +1,5 @@
 import type React from "react";
 
-import type { Dispatch, GetState } from "metabase/redux/store";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -13,6 +12,7 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { Dispatch, GetState } from "metabase/redux/store";
 
 export type {
   BrushClickObject,

@@ -1,6 +1,6 @@
 import { act, renderHookWithProviders } from "__support__/ui";
-import { datasetApi } from "metabase/api/dataset";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
+import { datasetApi } from "metabase/api/dataset";
 
 import { useDraftCardOperations } from "./use-draft-card-operations";
 

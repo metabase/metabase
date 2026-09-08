@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Button, Icon, Menu } from "metabase/ui";
 import type { LoggerPreset } from "metabase-types/api";
+import { Button, Icon, Menu } from "metabase/ui";
 
 interface Props {
   presets: LoggerPreset[];

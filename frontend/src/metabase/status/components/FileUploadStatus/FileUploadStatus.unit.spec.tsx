@@ -3,8 +3,8 @@ import {
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState, createMockUpload } from "metabase/redux/store/mocks";
 import { createMockCollection } from "metabase-types/api/mocks";
+import { createMockState, createMockUpload } from "metabase/redux/store/mocks";
 
 import { FileUploadStatus } from "./FileUploadStatus";
 

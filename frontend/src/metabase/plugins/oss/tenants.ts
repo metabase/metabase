@@ -1,11 +1,6 @@
 import type React from "react";
 import type { SetStateAction } from "react";
 
-import type { CollectionTreeItem } from "metabase/common/collections/utils";
-import type {
-  OmniPickerCollectionItem,
-  OmniPickerItem,
-} from "metabase/common/components/Pickers";
 import type {
   Collection,
   CollectionId,
@@ -16,6 +11,11 @@ import type {
   Tenant,
   User,
 } from "metabase-types/api";
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
+import type {
+  OmniPickerCollectionItem,
+  OmniPickerItem,
+} from "metabase/common/components/Pickers";
 
 import {
   PluginPlaceholder,

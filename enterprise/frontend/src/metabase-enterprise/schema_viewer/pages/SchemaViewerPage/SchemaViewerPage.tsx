@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useGetErdQuery } from "metabase-enterprise/api";
+import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
 import { skipToken } from "metabase/api";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useSearchParams } from "metabase/router";
 import { Stack } from "metabase/ui";
 import { getSchemaViewerParams } from "metabase/urls";
-import { useGetErdQuery } from "metabase-enterprise/api";
-import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
 
 import { SchemaViewer } from "../../components/SchemaViewer";
 import { useSchemaPreferencesStore } from "../../components/SchemaViewer/hooks/useSchemaPreferencesStore";

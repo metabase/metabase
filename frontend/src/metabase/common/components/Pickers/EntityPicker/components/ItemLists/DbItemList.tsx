@@ -1,12 +1,12 @@
 import { match } from "ts-pattern";
 
+import type { Database, SchemaName, Table } from "metabase-types/api";
 import {
   skipToken,
   useListDatabaseSchemaTablesQuery,
   useListDatabaseSchemasQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import type { Database, SchemaName, Table } from "metabase-types/api";
 
 import {
   ItemList,

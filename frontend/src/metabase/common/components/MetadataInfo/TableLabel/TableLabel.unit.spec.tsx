@@ -1,10 +1,10 @@
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import type { Table } from "metabase-types/api";
+import { createMockTable } from "metabase-types/api/mocks";
 import { getMetadata } from "metabase/metadata-store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
-import type { Table } from "metabase-types/api";
-import { createMockTable } from "metabase-types/api/mocks";
 
 import { TableLabel } from "./TableLabel";
 

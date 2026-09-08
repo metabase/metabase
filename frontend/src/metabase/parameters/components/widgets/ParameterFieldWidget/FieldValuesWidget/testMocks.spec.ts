@@ -1,6 +1,4 @@
 import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/metadata-store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { createMockField } from "metabase-types/api/mocks";
 import {
   REVIEWS_ID,
@@ -11,6 +9,8 @@ import {
   createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { getMetadata } from "metabase/metadata-store";
+import { createMockState } from "metabase/redux/store/mocks";
 
 export const LISTABLE_PK_FIELD_ID = 100;
 export const LISTABLE_PK_FIELD_VALUE = "1234";

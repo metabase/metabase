@@ -1,7 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
+import { checkNotNull } from "metabase/utils/types";
 
 import { getHasDatabaseWithJsonEngine } from "./predicates";
 

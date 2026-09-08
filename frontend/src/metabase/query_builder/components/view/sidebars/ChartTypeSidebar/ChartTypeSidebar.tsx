@@ -2,6 +2,9 @@ import cx from "classnames";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { VisualizationDisplay } from "metabase-types/api";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
@@ -12,9 +15,6 @@ import {
   type GetSensibleVisualizationsProps,
   getSensibleVisualizations,
 } from "metabase/viz-core";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type { VisualizationDisplay } from "metabase-types/api";
 
 import { updateQuestion } from "../../../../actions";
 import {

@@ -1,8 +1,8 @@
 import { msgid, ngettext } from "ttag";
 
+import type { SearchResult as ApiSearchResult } from "metabase-types/api";
 import { SearchResult } from "metabase/common/components/SearchResult";
 import { Paper, Stack, Text } from "metabase/ui";
-import type { SearchResult as ApiSearchResult } from "metabase-types/api";
 
 export const SearchResultSection = ({
   results,

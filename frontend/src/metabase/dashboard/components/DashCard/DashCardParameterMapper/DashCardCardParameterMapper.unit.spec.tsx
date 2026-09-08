@@ -8,9 +8,6 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
-import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
 import type { Card, VirtualCard } from "metabase-types/api";
 import {
@@ -30,6 +27,9 @@ import {
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { getMetadata } from "metabase/metadata-store";
+import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { DashCardCardParameterMapper } from "./DashCardCardParameterMapper";
 

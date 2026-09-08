@@ -5,15 +5,15 @@ import _ from "underscore";
 
 import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
-import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
-import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import {
   createMockDatabase,
   createMockUser,
   createMockUserMetabotPermissions,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
+import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
+import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 
 import { Metabot } from "../components/Metabot";
 import { METABOT_PROFILE_OVERRIDES } from "../constants";

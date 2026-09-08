@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
+import type { DatabaseData } from "metabase-types/api";
 import { Form, FormProvider } from "metabase/forms";
 import { useSetting } from "metabase/settings";
-import type { DatabaseData } from "metabase-types/api";
 
 import type { FormLocation } from "../../types";
 import { getSubmitValues, getValidationSchema } from "../../utils/schema";

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { jt, t } from "ttag";
 
-import { Box, Modal } from "metabase/ui";
 import { useRegenerateRecoveryCodesMutation } from "metabase-enterprise/api";
+import { Box, Modal } from "metabase/ui";
 
 import { ConfirmCodeForm } from "../ConfirmCodeForm";
 import { RecoveryCodesForm } from "../RecoveryCodesForm";

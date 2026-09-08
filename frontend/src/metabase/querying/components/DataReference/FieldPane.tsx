@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { FieldId } from "metabase-types/api";
 import {
   skipToken,
   useGetCardQueryMetadataQuery,
@@ -13,8 +15,6 @@ import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { getMetadata } from "metabase/metadata-store";
 import { getQueryAndColumns } from "metabase/querying/common/utils";
 import { useSelector } from "metabase/redux";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { FieldId } from "metabase-types/api";
 
 import type {
   DataReferenceFieldItem,

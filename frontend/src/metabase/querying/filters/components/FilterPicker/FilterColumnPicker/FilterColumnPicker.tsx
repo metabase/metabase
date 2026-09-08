@@ -2,6 +2,7 @@ import cx from "classnames";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import {
   AccordionList,
   type Section as BaseSection,
@@ -22,7 +23,6 @@ import {
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { DelayGroup, Icon } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
 
 import { WIDTH } from "../constants";
 import type {

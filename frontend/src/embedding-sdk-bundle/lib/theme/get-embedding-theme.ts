@@ -2,6 +2,7 @@ import { merge } from "icepick";
 import _ from "underscore";
 
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
+import type { ColorSettings } from "metabase-types/api";
 import type {
   MetabaseColor,
   MetabaseComponentTheme,
@@ -24,7 +25,6 @@ import type {
   MetabaseColorKey,
 } from "metabase/ui/colors";
 import { mapChartColorsToAccents } from "metabase/ui/colors/accents";
-import type { ColorSettings } from "metabase-types/api";
 
 import { colorTuple } from "./color-tuple";
 

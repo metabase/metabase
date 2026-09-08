@@ -1,14 +1,14 @@
 import { t } from "ttag";
 
-import { useUnresolvedCommentsCount } from "metabase/comments/hooks/use-unresolved-comments-count";
-import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { type Path, useLocation, useNavigate } from "metabase/router";
-import { Ellipsified, Group, Indicator, Stack } from "metabase/ui";
 import type {
   ExplorationId,
   ExplorationPageNodeId,
   HydratedExplorationExploreFilter,
 } from "metabase-types/api";
+import { useUnresolvedCommentsCount } from "metabase/comments/hooks/use-unresolved-comments-count";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { type Path, useLocation, useNavigate } from "metabase/router";
+import { Ellipsified, Group, Indicator, Stack } from "metabase/ui";
 
 import { ExploreFilterPills } from "../ExploreFilterPills";
 

@@ -1,6 +1,6 @@
+import type { User } from "metabase-types/api";
 import { Outlet } from "metabase/router";
 import { Box, rem } from "metabase/ui";
-import type { User } from "metabase-types/api";
 
 import { AccountHeader } from "../AccountHeader";
 

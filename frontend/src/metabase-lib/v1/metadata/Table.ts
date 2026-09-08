@@ -1,8 +1,8 @@
 import _ from "underscore";
 
+import type { Measure, NormalizedTable, Segment } from "metabase-types/api";
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import { singularize } from "metabase/utils/formatting";
-import type { Measure, NormalizedTable, Segment } from "metabase-types/api";
 
 import Question from "../Question";
 

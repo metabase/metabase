@@ -17,11 +17,11 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
   createMockCollection,
   createMockCollectionItemFromCollection,
 } from "metabase-types/api/mocks";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 
 import { CreateDashboardModal } from "./CreateDashboardModal";
 

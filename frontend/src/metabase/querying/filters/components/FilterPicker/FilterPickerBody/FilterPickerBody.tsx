@@ -1,7 +1,7 @@
 import cx from "classnames";
 
-import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { Box } from "metabase/ui";
 
 import { BooleanFilterPicker } from "../BooleanFilterPicker";
 import { CoordinateFilterPicker } from "../CoordinateFilterPicker";

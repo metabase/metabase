@@ -1,4 +1,3 @@
-import { exploration } from "metabase/urls/explorations";
 import type {
   CardId,
   CollectionId,
@@ -6,6 +5,7 @@ import type {
   IndexedEntity,
   TableId,
 } from "metabase-types/api";
+import { exploration } from "metabase/urls/explorations";
 
 import { action } from "./actions";
 import { browseDatabase } from "./browse";

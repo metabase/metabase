@@ -2,8 +2,8 @@ import { useFormikContext } from "formik";
 import type { ChangeEvent, ReactNode } from "react";
 import { useCallback } from "react";
 
-import { FormSwitch } from "metabase/forms";
 import type { DatabaseData } from "metabase-types/api";
+import { FormSwitch } from "metabase/forms";
 
 export interface DatabaseScheduleToggleFieldProps {
   name: string;

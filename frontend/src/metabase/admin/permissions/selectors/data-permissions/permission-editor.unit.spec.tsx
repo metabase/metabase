@@ -1,12 +1,4 @@
 import { createMockEntitiesState } from "__support__/store";
-import {
-  createMockAdminState,
-  createMockApiState,
-  createMockPermissionsState,
-  createMockSettingsState,
-  createMockState,
-  seedApiQueryCache,
-} from "metabase/redux/store/mocks";
 import type { GroupsPermissions } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -15,6 +7,14 @@ import {
   createMockTable,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import {
+  createMockAdminState,
+  createMockApiState,
+  createMockPermissionsState,
+  createMockSettingsState,
+  createMockState,
+  seedApiQueryCache,
+} from "metabase/redux/store/mocks";
 
 import { DataPermission, DataPermissionValue } from "../../types";
 

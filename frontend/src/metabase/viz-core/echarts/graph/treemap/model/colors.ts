@@ -1,7 +1,7 @@
 import Color from "color";
 
-import { getColorsForValues } from "metabase/ui/colors/charts";
 import type { TreemapRow } from "metabase-types/api";
+import { getColorsForValues } from "metabase/ui/colors/charts";
 
 import { getTreemapNodeKey } from "./data";
 import type { TreemapTree } from "./types";

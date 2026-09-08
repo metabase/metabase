@@ -3,6 +3,15 @@ import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
+import type {
+  ConcreteTableId,
+  DatasetColumn,
+  DatasetData,
+  WritebackActionId,
+} from "metabase-types/api";
 import { DeleteObjectModal } from "metabase/actions/components/DeleteObjectModal";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import { getActionItems } from "metabase/actions/utils";
@@ -17,15 +26,6 @@ import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { useDispatch } from "metabase/redux";
 import { Loader, Modal } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type {
-  ConcreteTableId,
-  DatasetColumn,
-  DatasetData,
-  WritebackActionId,
-} from "metabase-types/api";
 
 import { ObjectDetailBody } from "./ObjectDetailBody";
 import { ObjectDetailHeader } from "./ObjectDetailHeader";

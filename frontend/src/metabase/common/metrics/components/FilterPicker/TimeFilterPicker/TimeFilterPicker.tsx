@@ -2,9 +2,9 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Box, Flex, Text, TimeInput } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
+import { Box, Flex, Text, TimeInput } from "metabase/ui";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";

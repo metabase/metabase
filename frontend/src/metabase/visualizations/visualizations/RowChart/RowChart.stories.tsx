@@ -6,11 +6,11 @@ import { useMount } from "react-use";
 
 import { VisualizationWrapper } from "__support__/storybook";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import type { RawSeries, Series } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualization } from "metabase/viz-core";
-import type { RawSeries, Series } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
 
 import { RowChart } from "./RowChart";
 

@@ -1,5 +1,5 @@
-import { PLUGIN_CACHING } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_CACHING } from "metabase/plugins";
 
 import { DashboardAndQuestionCachingTab } from "./components/DashboardAndQuestionCachingTab";
 import { DatabaseCachingEditor } from "./components/DatabaseCachingEditor";

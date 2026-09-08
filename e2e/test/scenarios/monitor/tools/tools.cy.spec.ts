@@ -1,6 +1,6 @@
 import type { NativeQuestionDetails } from "e2e/support/helpers";
-import { dayjs } from "metabase/dayjs";
 import { createMockTask } from "metabase-types/api/mocks";
+import { dayjs } from "metabase/dayjs";
 
 const { H } = cy;
 

@@ -1,9 +1,5 @@
 import { getGuestEmbedFilteredParameters } from "embedding-sdk-bundle/lib/get-guest-embed-filtered-parameters";
 import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
-import { runQuestionQuery } from "metabase/querying/run-query";
-import type { Dispatch } from "metabase/redux/store";
-import { getSensibleDisplays, visualizations } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DatasetData,
@@ -11,6 +7,10 @@ import type {
   QueryVisualizationDisplayType,
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import { runQuestionQuery } from "metabase/querying/run-query";
+import type { Dispatch } from "metabase/redux/store";
+import { getSensibleDisplays, visualizations } from "metabase/viz-core";
 
 interface RunQuestionQueryParams {
   question: Question;

@@ -1,11 +1,5 @@
 import { useMemo } from "react";
 
-import {
-  useListMentionsQuery,
-  useListRecentsQuery,
-  useSearchQuery,
-} from "metabase/api";
-import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 import type {
   MentionableUser,
   RecentItem,
@@ -13,6 +7,12 @@ import type {
   SearchRequest,
   SearchResult,
 } from "metabase-types/api";
+import {
+  useListMentionsQuery,
+  useListRecentsQuery,
+  useSearchQuery,
+} from "metabase/api";
+import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 
 import type { SuggestionModel } from "../shared/types";
 

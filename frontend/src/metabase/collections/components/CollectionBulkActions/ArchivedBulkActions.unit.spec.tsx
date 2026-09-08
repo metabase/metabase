@@ -3,12 +3,12 @@ import fetchMock from "fetch-mock";
 import { useState } from "react";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
+import { UndoListing } from "metabase/common/components/UndoListing";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
 

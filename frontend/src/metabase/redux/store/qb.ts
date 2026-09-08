@@ -1,5 +1,3 @@
-import type { QueryModalType } from "metabase/querying/constants";
-import type { Widget } from "metabase/viz-core";
 import type {
   Card,
   CollectionItemModel,
@@ -9,6 +7,8 @@ import type {
   ParameterValuesMap,
   TimelineEventId,
 } from "metabase-types/api";
+import type { QueryModalType } from "metabase/querying/constants";
+import type { Widget } from "metabase/viz-core";
 
 export type QueryBuilderMode = "view" | "notebook" | "dataset";
 export type DatasetEditorTab = "query" | "columns" | "metadata";

@@ -1,8 +1,8 @@
 import { autocompletion } from "@codemirror/autocomplete";
 
-import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { isNotNull } from "metabase/utils/types";
 
 export type SuggestOptions = {
   query: Lib.Query;

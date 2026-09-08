@@ -1,5 +1,12 @@
 import { jt, t } from "ttag";
 
+import { useUnpublishTablesMutation } from "metabase-enterprise/api";
+import type {
+  BulkTableInfo,
+  DatabaseId,
+  SchemaId,
+  TableId,
+} from "metabase-types/api";
 import { useGetTableSelectionInfoQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -15,13 +22,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import { useUnpublishTablesMutation } from "metabase-enterprise/api";
-import type {
-  BulkTableInfo,
-  DatabaseId,
-  SchemaId,
-  TableId,
-} from "metabase-types/api";
 
 export function UnpublishTablesModal({
   databaseIds,

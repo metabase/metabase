@@ -2,6 +2,8 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type { EmbeddingParameters } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import type {
   EmbedResourceParameter,
@@ -11,8 +13,6 @@ import type {
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Box, Divider, Icon, Select, Stack, Text } from "metabase/ui";
-import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { EmbeddingParameters } from "metabase-types/api";
 
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 import type { EmbedResourceParameterWithValue } from "./types";

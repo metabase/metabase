@@ -12,6 +12,12 @@ import {
   createWaitForChartsDecorator,
 } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
+import {
+  createMockCard,
+  createMockCardQueryMetadata,
+  createMockDataset,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { Api } from "metabase/api";
 import { Editor } from "metabase/documents/components/Editor/Editor";
@@ -19,12 +25,6 @@ import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
-import {
-  createMockCard,
-  createMockCardQueryMetadata,
-  createMockDataset,
-  createMockDatasetData,
-} from "metabase-types/api/mocks";
 
 import {
   HEATMAP_COLS,

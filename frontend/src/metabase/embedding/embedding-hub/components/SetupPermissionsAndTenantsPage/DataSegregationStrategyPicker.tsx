@@ -2,8 +2,8 @@
 
 import { t } from "ttag";
 
-import { Button, FixedSizeIcon, Flex, Radio, Stack } from "metabase/ui";
 import type { DataSegregationStrategy, IconName } from "metabase-types/api";
+import { Button, FixedSizeIcon, Flex, Radio, Stack } from "metabase/ui";
 
 interface DataSegregationStrategyPickerProps {
   value: DataSegregationStrategy | null;

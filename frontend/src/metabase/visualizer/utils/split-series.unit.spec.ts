@@ -1,10 +1,10 @@
-import { registerVisualizations } from "metabase/visualizations/register";
 import type { RowValues } from "metabase-types/api/dataset";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { splitVisualizerSeries } from "./split-series";
 

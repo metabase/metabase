@@ -6,7 +6,6 @@ import {
   setupUnpublishTablesEndpointError,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
 import type {
   BulkTableSelectionInfo,
   DatabaseId,
@@ -17,6 +16,7 @@ import {
   createMockBulkTableInfo,
   createMockBulkTableSelectionInfo,
 } from "metabase-types/api/mocks";
+import { UndoListing } from "metabase/common/components/UndoListing";
 
 import { UnpublishTablesModal } from "./UnpublishTablesModal";
 

@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import type { RecentCollectionItem } from "metabase-types/api";
 import {
   CompactPinnedItemCard,
   CompactPinnedItemCardSkeleton,
 } from "metabase/common/collections/components/CompactPinnedItemCard";
 import { Box, Repeat, SimpleGrid, Text } from "metabase/ui";
-import type { RecentCollectionItem } from "metabase-types/api";
 
 import { trackModelClick } from "./analytics";
 

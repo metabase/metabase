@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { act, screen } from "__support__/ui";
-import { setupHostedInstance } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/tests/setup";
 import { mockStorageCloudAddOn } from "metabase-types/api/mocks/add-ons";
+import { setupHostedInstance } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/tests/setup";
 
 import { type Clicker, confirmPurchaseModal } from "./test-utils";
 import { STORAGE_SETUP_TIMEOUT_MS } from "./use-purchase-storage-add-on";

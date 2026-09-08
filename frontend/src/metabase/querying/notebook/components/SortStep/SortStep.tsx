@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import { Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";

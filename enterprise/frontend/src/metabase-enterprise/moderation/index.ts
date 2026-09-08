@@ -1,5 +1,5 @@
-import { PLUGIN_MODERATION } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import { EntityModerationIcon } from "./components/EntityModerationIcon";
 import { MetabotVerifiedContentConfigurationPane } from "./components/MetabotVerifiedContentConfigurationPane";

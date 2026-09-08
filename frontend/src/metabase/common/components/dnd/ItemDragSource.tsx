@@ -8,6 +8,7 @@ import type {
 import { DragSource } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 
+import type { Collection, CollectionItem } from "metabase-types/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { isRootTrashCollection } from "metabase/common/collections/utils";
 import {
@@ -17,7 +18,6 @@ import {
   useSetPinned,
   useToast,
 } from "metabase/common/hooks";
-import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { type ItemDropResult, handleItemDrop } from "./handle-item-drop";
 

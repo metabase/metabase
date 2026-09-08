@@ -2,6 +2,19 @@ import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type {
+  Card,
+  Collection,
+  Dashboard,
+  DashboardSubscription,
+  Document,
+  Exploration,
+  NativeQuerySnippet,
+  Segment,
+  Timeline,
+  TimelineEvent,
+  WritebackAction,
+} from "metabase-types/api";
 import {
   useUpdateActionMutation,
   useUpdateCardMutation,
@@ -17,19 +30,6 @@ import {
 } from "metabase/api";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import type {
-  Card,
-  Collection,
-  Dashboard,
-  DashboardSubscription,
-  Document,
-  Exploration,
-  NativeQuerySnippet,
-  Segment,
-  Timeline,
-  TimelineEvent,
-  WritebackAction,
-} from "metabase-types/api";
 
 type Archivable<M extends string, T extends { id: unknown }> = {
   model: M;

@@ -2,8 +2,8 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import AdvisoriesEmpty from "assets/img/shield-96x96.svg";
-import { Badge, Box, Button, Card, Group, Text, Title } from "metabase/ui";
 import type { Advisory, AdvisoryId } from "metabase-types/api";
+import { Badge, Box, Button, Card, Group, Text, Title } from "metabase/ui";
 
 import { isAcknowledged, sortAdvisories } from "../../utils";
 import { AdvisoryCard } from "../AdvisoryCard/AdvisoryCard";

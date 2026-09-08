@@ -7,7 +7,6 @@ import {
   setupFieldValuesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -17,6 +16,7 @@ import {
   PEOPLE_SOURCE_VALUES,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { checkNotNull } from "metabase/utils/types";
 
 import { QuestionFiltersHeader } from "./QuestionFiltersHeader";
 

@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import type { LoggerDurationUnit } from "metabase-types/api";
 import {
   useAdjustLogLevelsMutation,
   useListLoggerPresetsQuery,
@@ -9,7 +10,6 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormProvider } from "metabase/forms";
-import type { LoggerDurationUnit } from "metabase-types/api";
 
 import { LogLevelsForm } from "./LogLevelsForm";
 import type { AllowedTimeUnit } from "./types";

@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import type { IconName, ParameterTarget } from "metabase-types/api";
 import { AccordionList } from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import type {
@@ -7,7 +8,6 @@ import type {
   StructuredQuerySectionOption,
 } from "metabase/parameters/utils/mapping-options";
 import { Icon } from "metabase/ui";
-import type { IconName, ParameterTarget } from "metabase-types/api";
 
 export type ParameterTargetListProps = {
   mappingOptions: ParameterMappingOption[];

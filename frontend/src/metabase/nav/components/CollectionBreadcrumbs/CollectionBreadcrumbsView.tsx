@@ -1,10 +1,10 @@
 import { Fragment, type ReactNode, useState } from "react";
 import { t } from "ttag";
 
+import type { CollectionEssentials, IconName } from "metabase-types/api";
 import { CollectionBadge } from "metabase/common/collections/components/CollectionBadge";
 import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
-import type { CollectionEssentials, IconName } from "metabase-types/api";
 
 /**
  * A collection crumb carries the collection rather than a name and an icon:

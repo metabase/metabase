@@ -1,10 +1,10 @@
 import { screen } from "__support__/ui";
-import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockCard,
   createMockColumn,
   createMockDataset,
 } from "metabase-types/api/mocks";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import {
   TEST_NATIVE_CARD,

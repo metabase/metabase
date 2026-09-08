@@ -1,5 +1,3 @@
-import { Api } from "metabase/api/api";
-import { idTag, listTag } from "metabase/api/tags";
 import type {
   CopyDocumentRequest,
   CreateDocumentRequest,
@@ -9,6 +7,8 @@ import type {
   GetPublicDocument,
   UpdateDocumentRequest,
 } from "metabase-types/api";
+import { Api } from "metabase/api/api";
+import { idTag, listTag } from "metabase/api/tags";
 
 export const documentApi = Api.injectEndpoints({
   endpoints: (builder) => ({

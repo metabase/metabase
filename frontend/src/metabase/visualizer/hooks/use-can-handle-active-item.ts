@@ -1,6 +1,10 @@
 import type { Active } from "@dnd-kit/core";
 import { useMemo } from "react";
 
+import type {
+  DatasetColumn,
+  VisualizerColumnReference,
+} from "metabase-types/api";
 import { useSelector } from "metabase/redux";
 import type { DraggedColumn } from "metabase/redux/store/visualizer";
 import {
@@ -8,10 +12,6 @@ import {
   getReferencedColumns,
 } from "metabase/visualizer/selectors";
 import { isDraggedColumnItem } from "metabase/visualizer/utils";
-import type {
-  DatasetColumn,
-  VisualizerColumnReference,
-} from "metabase-types/api";
 
 interface UseCanHandleActiveItemParams {
   active: Active | null;

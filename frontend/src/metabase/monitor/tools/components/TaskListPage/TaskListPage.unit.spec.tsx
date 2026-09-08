@@ -15,14 +15,14 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import type { ListTasksResponse } from "metabase-types/api";
+import { createMockTask } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { createMockLocation } from "metabase/redux/store/mocks";
 import type { Location } from "metabase/router";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { ListTasksResponse } from "metabase-types/api";
-import { createMockTask } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { TaskListPage } from "./TaskListPage";
 

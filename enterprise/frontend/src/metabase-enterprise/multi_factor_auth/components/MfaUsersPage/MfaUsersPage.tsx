@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
+import type { MfaAdminUser, MfaUserListResponse } from "metabase-types/api";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { SearchFilter } from "metabase/admin/people/components/SearchFilter";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
@@ -15,7 +16,6 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { MfaAdminUser, MfaUserListResponse } from "metabase-types/api";
 
 import { AUTHENTICATION_PATH } from "../../constants";
 

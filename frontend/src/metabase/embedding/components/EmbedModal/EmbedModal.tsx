@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { EmbeddingParameters } from "metabase-types/api";
 import { ModalHeader } from "metabase/common/components/ModalContent";
 import { StaticEmbedSetupPane } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane";
 import type {
@@ -8,7 +9,6 @@ import type {
   GuestEmbedResourceType,
 } from "metabase/embedding/types";
 import { Modal } from "metabase/ui";
-import type { EmbeddingParameters } from "metabase-types/api";
 
 import S from "./EmbedModal.module.css";
 

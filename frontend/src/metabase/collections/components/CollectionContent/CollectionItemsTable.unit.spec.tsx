@@ -10,10 +10,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import * as Analytics from "metabase/analytics";
-import { Api } from "metabase/api";
-import { Route } from "metabase/router";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
   Collection,
   CollectionId,
@@ -23,6 +19,10 @@ import {
   createMockCollection,
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
+import * as Analytics from "metabase/analytics";
+import { Api } from "metabase/api";
+import { Route } from "metabase/router";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import { CollectionItemsTable } from "./CollectionItemsTable";
 

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Checkbox, Stack } from "metabase/ui";
 import type { DependencyGroupType } from "metabase-types/api";
+import { Checkbox, Stack } from "metabase/ui";
 
 import type { DependencyFilterOptions } from "../../../types";
 import { getDependencyGroupTypeInfo } from "../../../utils";

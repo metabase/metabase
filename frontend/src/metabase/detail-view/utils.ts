@@ -1,12 +1,3 @@
-import type { ContentTranslationFunction } from "metabase/content-translation/types";
-import { formatValue } from "metabase/value-formatting";
-import {
-  getComputedSettings,
-  getComputedSettingsForSeries,
-  getGlobalSettingsForColumn,
-  getSettingDefinitionsForColumn,
-  getTitleForColumn,
-} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
@@ -28,6 +19,15 @@ import {
   createMockCard,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
+import { formatValue } from "metabase/value-formatting";
+import {
+  getComputedSettings,
+  getComputedSettingsForSeries,
+  getGlobalSettingsForColumn,
+  getSettingDefinitionsForColumn,
+  getTitleForColumn,
+} from "metabase/viz-core";
 
 export function renderValue(
   tc: ContentTranslationFunction,

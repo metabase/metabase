@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import CS from "metabase/css/core/index.css";
 import { ParametersSettings } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings";
 import { getLockedPreviewParameters } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-locked-preview-parameters";
@@ -8,8 +10,6 @@ import { getResourceTypeFromExperience } from "metabase/embedding/embedding-ifra
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import { Group, Stack, Text } from "metabase/ui";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { useSdkIframeEmbedSetupContext } from "../../context";
 import { useInitialParameterValues } from "../../hooks/use-initial-parameter-values";

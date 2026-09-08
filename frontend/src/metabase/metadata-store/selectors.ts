@@ -1,8 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
-import type { State } from "metabase/redux/store";
-import { getSettings } from "metabase/settings";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
@@ -32,6 +30,8 @@ import type {
   NormalizedTable,
   Segment,
 } from "metabase-types/api";
+import type { State } from "metabase/redux/store";
+import { getSettings } from "metabase/settings";
 
 import { type FieldEntity, FieldSchema } from "./schema";
 

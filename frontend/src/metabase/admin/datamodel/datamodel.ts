@@ -1,3 +1,4 @@
+import type { Revision, RevisionId } from "metabase-types/api";
 import { revisionApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
@@ -5,7 +6,6 @@ import {
   createThunkAction,
   handleActions,
 } from "metabase/redux";
-import type { Revision, RevisionId } from "metabase-types/api";
 
 export const FETCH_REVISIONS = "metabase/admin/datamodel/FETCH_REVISIONS";
 

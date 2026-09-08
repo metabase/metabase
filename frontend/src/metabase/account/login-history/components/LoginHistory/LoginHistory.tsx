@@ -2,12 +2,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
+import type { UserLoginHistoryItem } from "metabase-types/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Label } from "metabase/common/components/type/Label";
 import CS from "metabase/css/core/index.css";
 import { dayjs } from "metabase/dayjs";
 import { Box, Card, Flex, Text } from "metabase/ui";
-import type { UserLoginHistoryItem } from "metabase-types/api";
 
 interface FormattedLoginItem extends UserLoginHistoryItem {
   date: string;

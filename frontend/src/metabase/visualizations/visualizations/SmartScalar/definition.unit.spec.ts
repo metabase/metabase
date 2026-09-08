@@ -1,5 +1,3 @@
-import { checkNotNull } from "metabase/utils/types";
-import { ChartSettingsError } from "metabase/viz-core";
 import type { DatasetColumn, RowValues } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {
@@ -8,6 +6,8 @@ import {
   createMockDatetimeColumn,
   createMockNumericColumn,
 } from "metabase-types/api/mocks/dataset";
+import { checkNotNull } from "metabase/utils/types";
+import { ChartSettingsError } from "metabase/viz-core";
 
 import { SMART_SCALAR_CHART_DEFINITION } from "./definition";
 

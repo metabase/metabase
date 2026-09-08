@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
 import { SidesheetCard } from "metabase/common/components/Sidesheet";
 import { Stack } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 
 import { ModelUsageDetails } from "./ModelUsageDetails";
 import { TablesLinkedToQuestion } from "./TablesLinkedToQuestion";

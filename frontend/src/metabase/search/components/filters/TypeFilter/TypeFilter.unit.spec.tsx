@@ -1,5 +1,5 @@
-import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
 import type { EnabledSearchModel } from "metabase-types/api";
+import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
 
 const fromUrl = TypeFilter.fromUrl;
 const toUrl = TypeFilter.toUrl;

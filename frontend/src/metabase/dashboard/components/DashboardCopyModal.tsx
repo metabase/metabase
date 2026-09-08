@@ -2,6 +2,7 @@ import { dissoc } from "icepick";
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { Dashboard } from "metabase-types/api";
 import { useCopyDashboardMutation } from "metabase/api";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import type { CopyDashboardFormProperties } from "metabase/common/components/CopyDashboardForm";
@@ -9,7 +10,6 @@ import { CopyModal } from "metabase/common/components/CopyModal";
 import { useSelector } from "metabase/redux";
 import { useLocation, useNavigate, useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { Dashboard } from "metabase-types/api";
 
 import { getDashboardComplete } from "../selectors";
 

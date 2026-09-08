@@ -1,10 +1,10 @@
-import { checkNotNull } from "metabase/utils/types";
-import { ChartSettingsError } from "metabase/viz-core";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks/dataset";
+import { checkNotNull } from "metabase/utils/types";
+import { ChartSettingsError } from "metabase/viz-core";
 
 import { SANKEY_CHART_DEFINITION } from "./definition";
 

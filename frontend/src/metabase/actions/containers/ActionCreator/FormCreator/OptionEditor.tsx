@@ -2,8 +2,8 @@ import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Button, Icon, Popover, UnstyledButton } from "metabase/ui";
 import type { FieldType, FieldValueOptions } from "metabase-types/api";
+import { Button, Icon, Popover, UnstyledButton } from "metabase/ui";
 
 import {
   AddMorePrompt,

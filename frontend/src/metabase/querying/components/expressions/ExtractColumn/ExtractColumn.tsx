@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import { getExample } from "metabase/querying/drills/utils/column-extract-drill";
 import { Box, Button, Flex, Stack, Text, Title } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../ExpressionWidget/ExpressionWidgetHeader";
 

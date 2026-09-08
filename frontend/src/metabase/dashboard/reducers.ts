@@ -1,11 +1,11 @@
 import { type UnknownAction, createReducer } from "@reduxjs/toolkit";
 import { assoc, chain, merge, updateIn } from "icepick";
 
+import type { Card } from "metabase-types/api";
 import { actionApi } from "metabase/api";
 import { combineReducers } from "metabase/redux";
 import { CARD_UPDATED } from "metabase/redux/cards";
 import { SET_PARAMETER_VALUES, initialize } from "metabase/redux/dashboard";
-import type { Card } from "metabase-types/api";
 
 import type {
   removeCardFromDashboard,

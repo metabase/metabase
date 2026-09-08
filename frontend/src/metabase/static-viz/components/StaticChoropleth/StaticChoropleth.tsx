@@ -1,6 +1,7 @@
 import { geoAlbersUsa, geoMercator, geoPath } from "d3";
 import type { Feature } from "geojson";
 
+import type { GeoJSONData, RawSeries } from "metabase-types/api";
 import {
   type ComputedVisualizationSettings,
   HEAT_MAP_ZERO_COLOR,
@@ -10,7 +11,6 @@ import {
   getDefaultMapMetric,
   getLegendTitles,
 } from "metabase/viz-core";
-import type { GeoJSONData, RawSeries } from "metabase-types/api";
 
 import {
   MAP_WIDTH,

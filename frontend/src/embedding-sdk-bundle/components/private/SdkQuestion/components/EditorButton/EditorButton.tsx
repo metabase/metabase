@@ -2,9 +2,9 @@ import type { HTMLAttributes, MouseEventHandler } from "react";
 import { t } from "ttag";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
-import type { ActionIconProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import type { ActionIconProps } from "metabase/ui";
 
 import { SdkActionIcon } from "../util/SdkActionIcon";
 

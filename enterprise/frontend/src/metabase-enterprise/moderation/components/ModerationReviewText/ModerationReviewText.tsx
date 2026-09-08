@@ -1,8 +1,3 @@
-import { skipToken, useGetUserQuery } from "metabase/api";
-import { getUser } from "metabase/current-user";
-import { useSelector } from "metabase/redux";
-import { FixedSizeIcon, Flex, Text } from "metabase/ui";
-import { getRelativeTime } from "metabase/utils/time-dayjs";
 import {
   getIconForReview,
   getLatestModerationReview,
@@ -10,6 +5,11 @@ import {
 } from "metabase-enterprise/moderation/service";
 import type Question from "metabase-lib/v1/Question";
 import type { Dashboard, ModerationReview } from "metabase-types/api";
+import { skipToken, useGetUserQuery } from "metabase/api";
+import { getUser } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
+import { FixedSizeIcon, Flex, Text } from "metabase/ui";
+import { getRelativeTime } from "metabase/utils/time-dayjs";
 
 const ICON_BUTTON_SIZE = 16;
 

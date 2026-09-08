@@ -3,6 +3,9 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
+import { useUpdateSamlMutation } from "metabase-enterprise/api";
+import { provisioningOptions } from "metabase-enterprise/auth/utils";
+import type { EnterpriseSettings } from "metabase-types/api";
 import {
   CollapsibleSettingsSection,
   SETTINGS_CARD_DESCRIPTION_PROPS,
@@ -39,9 +42,6 @@ import {
   useSetting,
 } from "metabase/settings";
 import { Flex, Stack, Text, Title } from "metabase/ui";
-import { useUpdateSamlMutation } from "metabase-enterprise/api";
-import { provisioningOptions } from "metabase-enterprise/auth/utils";
-import type { EnterpriseSettings } from "metabase-types/api";
 
 export type SAMLFormSettings = Pick<
   EnterpriseSettings,

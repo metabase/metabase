@@ -1,5 +1,3 @@
-import type { PermissionSectionConfig } from "metabase/admin/permissions/types";
-import { isNotNull } from "metabase/utils/types";
 import type {
   DataPermissionValue,
   Group,
@@ -8,6 +6,8 @@ import type {
   PermissionSubject,
   SpecialGroupType,
 } from "metabase-types/api";
+import type { PermissionSectionConfig } from "metabase/admin/permissions/types";
+import { isNotNull } from "metabase/utils/types";
 
 import { buildDataModelPermission } from "./data-model-permission";
 import { buildDetailsPermission } from "./details-permission";

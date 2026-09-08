@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { TransformJob } from "metabase-types/api";
 import { useListTransformJobsQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -28,7 +29,6 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { TransformJob } from "metabase-types/api";
 
 import { JobListMoreMenu } from "../../components/JobListMoreMenu";
 import { JobMoreMenu } from "../../components/JobMoreMenu";

@@ -1,10 +1,3 @@
-import { Api } from "metabase/api";
-import {
-  idTag,
-  invalidateTags,
-  listTag,
-  provideApiKeyListTags,
-} from "metabase/api/tags";
 import type {
   ApiKey,
   ApiKeyId,
@@ -14,6 +7,13 @@ import type {
   UpdateApiKeyRequest,
   UpdateApiKeyResponse,
 } from "metabase-types/api/admin";
+import { Api } from "metabase/api";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideApiKeyListTags,
+} from "metabase/api/tags";
 
 export const apiKeyApi = Api.injectEndpoints({
   endpoints: (builder) => ({

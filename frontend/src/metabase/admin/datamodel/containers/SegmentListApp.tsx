@@ -2,6 +2,7 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import type { Segment } from "metabase-types/api";
 import { SegmentItem } from "metabase/admin/datamodel/components/SegmentItem";
 import { FilteredToUrlTable } from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
 import { useListSegmentsQuery } from "metabase/api";
@@ -18,7 +19,6 @@ import { useSelector } from "metabase/redux";
 import { useLocation } from "metabase/router";
 import { Button } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Segment } from "metabase-types/api";
 
 interface Props {
   segments: Segment[];

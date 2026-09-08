@@ -1,5 +1,5 @@
-import type { IconProps } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import type { IconProps } from "metabase/ui";
 export interface ITreeNodeItem<TData = unknown> {
   id: string | number;
   name: string;

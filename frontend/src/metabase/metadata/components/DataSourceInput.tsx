@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Select, type SelectProps } from "metabase/ui";
 import type { TableDataSource } from "metabase-types/api";
+import { Select, type SelectProps } from "metabase/ui";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   showMetabaseTransform?: boolean;

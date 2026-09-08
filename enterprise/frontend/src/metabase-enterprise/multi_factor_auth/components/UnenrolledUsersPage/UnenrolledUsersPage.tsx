@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { TreeTableColumnDef } from "metabase/ui";
 import { useListUnenrolledMfaUsersQuery } from "metabase-enterprise/api";
 import type { MfaAdminUser } from "metabase-types/api";
+import type { TreeTableColumnDef } from "metabase/ui";
 
 import {
   MfaUsersPage,

@@ -1,6 +1,5 @@
 import { render } from "__support__/ui";
 import { delay } from "__support__/utils";
-import * as Card from "metabase/common/utils/card";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -8,6 +7,7 @@ import {
   SAMPLE_PROVIDER,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import * as Card from "metabase/common/utils/card";
 
 import { AdHocQuestionLoaderView } from "./AdHocQuestionLoader";
 

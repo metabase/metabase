@@ -1,13 +1,13 @@
 import { assocIn } from "icepick";
 import { t } from "ttag";
 
+import type { ClickBehavior } from "metabase-types/api";
 import {
   Combobox,
   DefaultSelectItem,
   UnstyledButton,
   useCombobox,
 } from "metabase/ui";
-import type { ClickBehavior } from "metabase-types/api";
 
 import S from "./ClickMappings.module.css";
 import type { SourceOption, SourceOptionsByType, TargetItem } from "./types";

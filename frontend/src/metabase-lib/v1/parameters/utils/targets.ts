@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
@@ -17,6 +16,7 @@ import type {
   StructuredParameterDimensionTarget,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
+import { isNotNull } from "metabase/utils/types";
 
 import { columnFilterForParameter } from "./filters";
 import { isTemporalUnitParameter } from "./parameter-type";

@@ -1,10 +1,5 @@
 import _ from "underscore";
 
-import {
-  MAX_SERIES,
-  getBreakoutSeriesName,
-  getComputedSettingsForSeries,
-} from "metabase/viz-core";
 import type {
   DatasetColumn,
   RawSeries,
@@ -12,6 +7,11 @@ import type {
   SingleSeries,
 } from "metabase-types/api";
 import { getRowsForStableKeys } from "metabase-types/api";
+import {
+  MAX_SERIES,
+  getBreakoutSeriesName,
+  getComputedSettingsForSeries,
+} from "metabase/viz-core";
 
 // TODO: this series transformation is used only for the visualization settings computation which is excessive.
 // Replace this with defining settings models per visualization type which will contain all necessary info

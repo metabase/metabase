@@ -1,10 +1,10 @@
+import type { CommentTarget } from "metabase-types/api";
 import { skipToken, useListCommentsQuery } from "metabase/api";
 import type { CommentThread } from "metabase/comments/types";
 import {
   getListCommentsQuery,
   getTargetChildCommentThreads,
 } from "metabase/comments/utils";
-import type { CommentTarget } from "metabase-types/api";
 
 interface UseUnresolvedCommentsCountOptions {
   target?: CommentTarget;

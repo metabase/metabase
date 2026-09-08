@@ -8,7 +8,6 @@ import {
   setupRunTransformDagEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
 import type {
   RunTransformDagResponse,
   Transform,
@@ -19,6 +18,7 @@ import {
   createMockTransformRun,
   createMockTransformRunForJobRun,
 } from "metabase-types/api/mocks";
+import { UndoListing } from "metabase/common/components/UndoListing";
 
 import { RunSection } from "./RunSection";
 

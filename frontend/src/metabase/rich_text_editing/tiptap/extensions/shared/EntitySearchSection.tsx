@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { SearchResult } from "metabase-types/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 import {
@@ -12,7 +13,6 @@ import type {
   SuggestionPickerViewMode,
 } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Box, Divider, Text } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
 
 import { LinkedEntityPickerModal } from "./LinkedEntityPickerModal";
 import type { DocumentLinkedEntityPickerItemValue } from "./LinkedEntityPickerModal/types";

@@ -3,15 +3,15 @@ import { t } from "ttag";
 import type { AnySchema } from "yup";
 import * as Yup from "yup";
 
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { AdminPath } from "metabase/redux/store";
-import type { ModalOverlayProps, StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CacheableDashboard,
   CacheableModel,
   CardId,
 } from "metabase-types/api";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { AdminPath } from "metabase/redux/store";
+import type { ModalOverlayProps, StackProps } from "metabase/ui";
 
 // Types
 

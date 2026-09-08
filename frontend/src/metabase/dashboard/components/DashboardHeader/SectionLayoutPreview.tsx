@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
+import type { DashboardCardLayoutAttrs } from "metabase-types/api";
 import type { SectionLayout } from "metabase/dashboard/sections";
 import { Box, Flex } from "metabase/ui";
-import type { DashboardCardLayoutAttrs } from "metabase-types/api";
 
 const WIDTH = 70;
 const SPACING = 2;

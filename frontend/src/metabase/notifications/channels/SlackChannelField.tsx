@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { Channel, ChannelSpec } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import {
   findChannelId,
@@ -10,7 +11,6 @@ import {
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Autocomplete } from "metabase/ui";
-import type { Channel, ChannelSpec } from "metabase-types/api";
 
 const CHANNEL_FIELD_NAME = "channel";
 const CHANNEL_PREFIX = "#";

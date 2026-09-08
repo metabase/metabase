@@ -1,7 +1,6 @@
 import { fireEvent, screen } from "@testing-library/react";
 
 import { renderWithTheme } from "__support__/ui";
-import type { QuestionNotificationListItem } from "metabase/notifications/types";
 import type { Notification } from "metabase-types/api";
 import {
   createMockNotification,
@@ -11,6 +10,7 @@ import {
   createMockNotificationRecipientUser,
   createMockUser,
 } from "metabase-types/api/mocks";
+import type { QuestionNotificationListItem } from "metabase/notifications/types";
 
 import { NotificationCard } from "./NotificationCard";
 

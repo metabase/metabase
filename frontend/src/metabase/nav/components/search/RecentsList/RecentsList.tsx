@@ -1,13 +1,13 @@
-import { useListRecentsQuery } from "metabase/api";
-import { RecentsListContent } from "metabase/nav/components/search/RecentsList/RecentsListContent";
-import { useNavigate } from "metabase/router";
-import { Paper } from "metabase/ui";
-import { getName } from "metabase/utils/name";
 import type {
   RecentContexts,
   RecentItem,
   UnrestrictedLinkEntity,
 } from "metabase-types/api";
+import { useListRecentsQuery } from "metabase/api";
+import { RecentsListContent } from "metabase/nav/components/search/RecentsList/RecentsListContent";
+import { useNavigate } from "metabase/router";
+import { Paper } from "metabase/ui";
+import { getName } from "metabase/utils/name";
 
 import { getItemUrl, recentsFilter } from "./util";
 

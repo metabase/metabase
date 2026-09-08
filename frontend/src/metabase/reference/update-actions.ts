@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import type { Database, Field, Segment, Table } from "metabase-types/api";
 import { databaseApi, fieldApi, segmentApi, tableApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
@@ -8,7 +9,6 @@ import {
   tableFetched,
 } from "metabase/metadata-store";
 import type { Dispatch } from "metabase/redux/store";
-import type { Database, Field, Segment, Table } from "metabase-types/api";
 
 /**
  * The edit forms in this module submit the entity they rendered, which came

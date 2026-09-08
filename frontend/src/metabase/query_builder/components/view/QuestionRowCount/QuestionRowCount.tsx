@@ -3,6 +3,11 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { Limit } from "metabase-lib";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
+import type { Dataset } from "metabase-types/api";
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import {
   type NumberFormatter,
@@ -13,11 +18,6 @@ import { getRowCountMessage } from "metabase/common/utils/get-row-count-message"
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
 import { Box, Popover, UnstyledButton } from "metabase/ui";
-import type { Limit } from "metabase-lib";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
-import type { Dataset } from "metabase-types/api";
 
 import { setLimit } from "../../../actions";
 import {

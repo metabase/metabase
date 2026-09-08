@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { VisualizerVizDefinition } from "metabase-types/api";
 import { EditableText } from "metabase/common/components/EditableText";
 import { useDispatch, useSelector } from "metabase/redux";
 import { ActionIcon, Button, Flex, Icon, Tooltip } from "metabase/ui";
@@ -13,7 +14,6 @@ import {
   getVisualizationTitle,
 } from "metabase/visualizer/selectors";
 import { setTitle } from "metabase/visualizer/visualizer.slice";
-import type { VisualizerVizDefinition } from "metabase-types/api";
 
 import { useVisualizerUi } from "../VisualizerUiContext";
 import {

@@ -1,10 +1,10 @@
 import fetchMock from "fetch-mock";
 
+import type { ParameterValues } from "metabase-types/api";
+import { createMockParameter } from "metabase-types/api/mocks";
 import type { DispatchFn } from "metabase/redux";
 import type { GetState } from "metabase/redux/store";
 import { stableStringify } from "metabase/utils/objects";
-import type { ParameterValues } from "metabase-types/api";
-import { createMockParameter } from "metabase-types/api/mocks";
 
 import {
   fetchCardParameterValues,

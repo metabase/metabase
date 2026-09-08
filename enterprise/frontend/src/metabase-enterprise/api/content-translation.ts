@@ -1,6 +1,6 @@
-import { invalidateTags, listTag } from "metabase/api/tags";
 import { contentTranslationEndpoints } from "metabase-enterprise/content_translation/constants";
 import type { DictionaryResponse } from "metabase-types/api/content-translation";
+import { invalidateTags, listTag } from "metabase/api/tags";
 
 import { EnterpriseApi } from "./api";
 

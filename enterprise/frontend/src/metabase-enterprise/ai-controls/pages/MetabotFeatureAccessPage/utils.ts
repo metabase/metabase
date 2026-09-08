@@ -3,12 +3,12 @@ import { useCallback, useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { useMetadataToasts } from "metabase/common/hooks";
 import {
   useGetAIControlsGroupPermissionsQuery,
   useUpdateAIControlsGroupPermissionsMutation,
 } from "metabase-enterprise/api";
 import { AIToolKey, type MetabotGroupPermission } from "metabase-types/api";
+import { useMetadataToasts } from "metabase/common/hooks";
 
 export type GroupTab = "user-groups" | "tenant-groups";
 

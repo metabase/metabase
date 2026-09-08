@@ -18,13 +18,13 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import * as Analytics from "metabase/analytics";
-import { Route } from "metabase/router";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
+import * as Analytics from "metabase/analytics";
+import { Route } from "metabase/router";
 
 import { CollectionContent } from "./CollectionContent";
 

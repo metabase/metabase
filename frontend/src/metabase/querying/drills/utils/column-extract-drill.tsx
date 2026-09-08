@@ -1,5 +1,6 @@
 import { c } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
@@ -8,7 +9,6 @@ import type {
   Drill,
   RegularClickAction,
 } from "metabase/visualizations/types/click-actions";
-import * as Lib from "metabase-lib";
 
 import { trackColumnExtractViaHeader } from "../../analytics";
 

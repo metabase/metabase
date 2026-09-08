@@ -1,9 +1,9 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { IconName, RecentItem } from "metabase-types/api";
 import type { To } from "metabase/router";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { IconName, RecentItem } from "metabase-types/api";
 
 import { METABASE_DOCS_LABELS } from "./constants";
 import type { PaletteActionImpl } from "./types";

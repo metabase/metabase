@@ -3,15 +3,15 @@ import type {
   NavigateToNewCardParams,
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
+import Question from "metabase-lib/v1/Question";
+import type { ParameterValuesMap } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import { cardIsEquivalent } from "metabase/common/utils/card";
 import { getMetadata } from "metabase/metadata-store";
 import { loadCard } from "metabase/query_builder";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getCardAfterVisualizationClick } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
-import type { ParameterValuesMap } from "metabase-types/api";
-import type { EntityToken } from "metabase-types/api/entity";
 
 interface RunQuestionOnNavigateParams extends NavigateToNewCardParams {
   originalQuestion?: Question;

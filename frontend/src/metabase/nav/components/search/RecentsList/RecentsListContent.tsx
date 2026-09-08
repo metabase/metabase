@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { RecentItem } from "metabase-types/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import {
   ItemIcon,
@@ -19,7 +20,6 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Group, Loader, Stack, Title } from "metabase/ui";
 import { getName } from "metabase/utils/name";
 import { isSyncCompleted } from "metabase/utils/syncing";
-import type { RecentItem } from "metabase-types/api";
 
 import { getItemUrl, isItemActive } from "./util";
 

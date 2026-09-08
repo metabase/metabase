@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { c, t } from "ttag";
 
+import type { IconName, NotificationChannel } from "metabase-types/api";
 import {
   SettingsPageWrapper,
   SettingsSection,
@@ -16,7 +17,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import type { IconName, NotificationChannel } from "metabase-types/api";
 
 import { CreateWebhookModal } from "../widgets/Notifications/CreateWebhookModal";
 import { EditWebhookModal } from "../widgets/Notifications/EditWebhookModal";

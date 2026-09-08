@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { c, t } from "ttag";
 
-import { Box, Radio, Stack, Text } from "metabase/ui";
 import type { RemoteSyncConflictVariant } from "metabase-types/api";
+import { Box, Radio, Stack, Text } from "metabase/ui";
 
 import type { OptionValue } from "./utils";
 

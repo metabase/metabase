@@ -1,9 +1,9 @@
 import cx from "classnames";
 
+import type { SingleSeries, VisualizationSettings } from "metabase-types/api";
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import { getAccentColors } from "metabase/ui/colors/groups";
-import type { SingleSeries, VisualizationSettings } from "metabase-types/api";
 
 import { SeriesNameInput } from "./ChartNestedSettingSeries.styled";
 

@@ -1,5 +1,17 @@
 import _ from "underscore";
 
+import type Question from "metabase-lib/v1/Question";
+import type {
+  CardId,
+  DashCardId,
+  DashboardCard,
+  DashboardId,
+  DashboardTabId,
+  Parameter,
+  ParameterId,
+  ParameterTarget,
+  QuestionDashboardCard,
+} from "metabase-types/api";
 import { isActionDashCard } from "metabase/actions/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { findDashCardForInlineParameter } from "metabase/dashboard/utils";
@@ -13,18 +25,6 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
-import type Question from "metabase-lib/v1/Question";
-import type {
-  CardId,
-  DashCardId,
-  DashboardCard,
-  DashboardId,
-  DashboardTabId,
-  Parameter,
-  ParameterId,
-  ParameterTarget,
-  QuestionDashboardCard,
-} from "metabase-types/api";
 
 import type { SetMultipleDashCardAttributesOpts } from "../core";
 

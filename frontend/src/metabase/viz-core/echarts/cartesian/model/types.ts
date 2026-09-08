@@ -1,6 +1,5 @@
 import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 
-import type { Dayjs } from "metabase/dayjs";
 import type {
   Card,
   CardId,
@@ -9,6 +8,7 @@ import type {
   RowValue,
   VisualizationSettingKey,
 } from "metabase-types/api";
+import type { Dayjs } from "metabase/dayjs";
 
 import type { CartesianChartColumns } from "../../../lib/graph/columns";
 import type { Extent } from "../../../types";

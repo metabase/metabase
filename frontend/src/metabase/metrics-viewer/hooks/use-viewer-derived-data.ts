@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
-import { objectFromEntries } from "metabase/utils/objects";
 import * as LibMetric from "metabase-lib/metric";
+import { objectFromEntries } from "metabase/utils/objects";
 
 import type {
   MetricSourceId,

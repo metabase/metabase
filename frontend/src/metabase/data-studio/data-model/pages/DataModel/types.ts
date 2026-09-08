@@ -1,4 +1,3 @@
-import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
 import type {
   DatabaseId,
   FieldId,
@@ -6,6 +5,7 @@ import type {
   SchemaName,
   TableId,
 } from "metabase-types/api";
+import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
 
 export type RouteParams = {
   databaseId?: string;

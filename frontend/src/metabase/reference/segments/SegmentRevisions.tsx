@@ -3,6 +3,11 @@ import { getIn } from "icepick";
 import { Component } from "react";
 import { t } from "ttag";
 
+import type {
+  NormalizedTable,
+  Revision as RevisionData,
+  User,
+} from "metabase-types/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
@@ -12,11 +17,6 @@ import { connect } from "metabase/redux";
 import S from "metabase/reference/components/List/List.module.css";
 import { Revision } from "metabase/segments";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
-import type {
-  NormalizedTable,
-  Revision as RevisionData,
-  User,
-} from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";

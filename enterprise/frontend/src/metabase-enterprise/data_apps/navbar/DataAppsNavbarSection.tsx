@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { useListDataAppsQuery } from "metabase-enterprise/api";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import {
   PaddedSidebarLink,
@@ -7,7 +8,6 @@ import {
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import * as Urls from "metabase/urls";
-import { useListDataAppsQuery } from "metabase-enterprise/api";
 
 export function DataAppsNavbarSection({
   onItemSelect,

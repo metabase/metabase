@@ -1,5 +1,3 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import MetabaseSettings from "metabase/utils/settings";
 import {
   createMockDatabase,
   createMockField,
@@ -10,6 +8,8 @@ import {
   createPeopleCreatedAtField,
   createPeopleNameField,
 } from "metabase-types/api/mocks/presets";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import MetabaseSettings from "metabase/utils/settings";
 
 import {
   areFieldsComparable,

@@ -4,9 +4,9 @@ import {
   IsomorphicVisualizationStory,
   SdkVisualizationStory,
 } from "__support__/storybook";
+import type { RawSeries } from "metabase-types/api";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { RawSeries } from "metabase-types/api";
 
 import * as data from "./stories-data";
 

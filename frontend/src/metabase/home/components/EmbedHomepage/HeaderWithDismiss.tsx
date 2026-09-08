@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { Group, Menu, Text } from "metabase/ui";
-import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
 type HeaderWithDismissProps = {
   onDismiss: (reason: EmbeddingHomepageDismissReason) => void;

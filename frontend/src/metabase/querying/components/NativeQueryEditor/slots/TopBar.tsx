@@ -1,7 +1,7 @@
 import { type PropsWithChildren, type ReactNode, forwardRef } from "react";
 
-import { Flex } from "metabase/ui";
 import type { DatabaseId, TableId } from "metabase-types/api";
+import { Flex } from "metabase/ui";
 
 import { DataSourceSelectors } from "../DataSourceSelectors/DataSourceSelectors";
 import { useNativeQueryEditorContext } from "../context/NativeQueryEditorContext";

@@ -2,6 +2,8 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import Question from "metabase-lib/v1/Question";
+import type { DashboardCard, Dataset } from "metabase-types/api";
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -10,8 +12,6 @@ import { getMetadata } from "metabase/metadata-store";
 import { useSelector, useStore } from "metabase/redux";
 import { Icon, Menu } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import Question from "metabase-lib/v1/Question";
-import type { DashboardCard, Dataset } from "metabase-types/api";
 
 import { DashCardMenuButton } from "./DashCardMenu/DashCardMenuButton";
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";

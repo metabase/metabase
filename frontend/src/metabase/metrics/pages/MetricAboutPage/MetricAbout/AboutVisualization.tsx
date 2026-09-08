@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 
+import type { Card, Dataset } from "metabase-types/api";
 import { MetricCardVisualization } from "metabase/common/data-studio/components/OverviewVisualization";
 import { Box, Stack } from "metabase/ui";
 import {
   TrendInfo,
   useTrendData,
 } from "metabase/visualizations/components/TrendInfo";
-import type { Card, Dataset } from "metabase-types/api";
 
 import S from "./MetricAbout.module.css";
 

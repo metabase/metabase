@@ -1,5 +1,5 @@
-import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 import type { CardId } from "metabase-types/api";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 
 export const trackModelClick = (modelId: CardId) =>
   trackSchemaEvent("browse_data", {

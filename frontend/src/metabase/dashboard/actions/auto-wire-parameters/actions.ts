@@ -1,3 +1,11 @@
+import type {
+  DashCardId,
+  DashboardParameterMapping,
+  DashboardTabId,
+  ParameterId,
+  ParameterTarget,
+  QuestionDashboardCard,
+} from "metabase-types/api";
 import {
   closeAutoWireParameterToast,
   showAddedCardAutoWireParametersToast,
@@ -26,14 +34,6 @@ import {
 } from "metabase/parameters/utils/mapping-options";
 import type { Dispatch, GetState, StoreDashcard } from "metabase/redux/store";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import type {
-  DashCardId,
-  DashboardParameterMapping,
-  DashboardTabId,
-  ParameterId,
-  ParameterTarget,
-  QuestionDashboardCard,
-} from "metabase-types/api";
 
 export function showAutoWireToast(
   parameter_id: ParameterId,

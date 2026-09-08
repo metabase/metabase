@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
+import type { SortingOptions } from "metabase-types/api/sorting";
 import { skipToken } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
@@ -9,8 +11,6 @@ import type { Location } from "metabase/router";
 import { useUserSetting } from "metabase/settings";
 import { Flex, Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
-import type { SortingOptions } from "metabase-types/api/sorting";
 
 import { trackStaleItemsArchived } from "../analytics";
 import type {

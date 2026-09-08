@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
+import type { LocaleData, User } from "metabase-types/api";
 import { ColorSchemeSelect } from "metabase/common/components/ColorScheme";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import {
@@ -15,7 +16,6 @@ import {
 } from "metabase/forms";
 import { Box, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { LocaleData, User } from "metabase-types/api";
 
 import type { UserProfileData } from "../../types";
 

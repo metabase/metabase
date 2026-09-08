@@ -1,8 +1,5 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/redux";
-import { getDocsUrl, getLearnUrl } from "metabase/selectors/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type Question from "metabase-lib/v1/Question";
 import {
   isDateParameter,
@@ -10,6 +7,9 @@ import {
   isStringParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type { Parameter } from "metabase-types/api";
+import { useSelector } from "metabase/redux";
+import { getDocsUrl, getLearnUrl } from "metabase/selectors/settings";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import {
   NativeCardDefault,

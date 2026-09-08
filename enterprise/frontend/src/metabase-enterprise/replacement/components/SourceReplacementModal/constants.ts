@@ -1,5 +1,5 @@
-import type { TagType } from "metabase/api/tags";
 import type { DependencyType } from "metabase-types/api";
+import type { TagType } from "metabase/api/tags";
 
 export const DEPENDENT_TYPES: DependencyType[] = [
   "card",

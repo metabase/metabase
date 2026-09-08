@@ -4,6 +4,12 @@ import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import type {
+  Dashboard,
+  ModerationReview,
+  Revision,
+  User,
+} from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { skipToken, useListRevisionsQuery } from "metabase/api";
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
@@ -28,12 +34,6 @@ import {
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Stack, Tabs, Text } from "metabase/ui";
-import type {
-  Dashboard,
-  ModerationReview,
-  Revision,
-  User,
-} from "metabase-types/api";
 
 import { DashboardDetails } from "./DashboardDetails";
 import { DashboardEntityIdCard } from "./DashboardEntityIdCard";

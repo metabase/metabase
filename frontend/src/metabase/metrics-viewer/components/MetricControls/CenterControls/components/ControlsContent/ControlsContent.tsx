@@ -1,6 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
+import type { TemporalUnit } from "metabase-types/api";
 import { getDimensionIcon } from "metabase/common/utils/columns";
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import type { MetricsViewerDimensionBreakoutProjectionConfig } from "metabase/metrics-viewer/types";
@@ -10,8 +12,6 @@ import {
   getProjectionInfo,
 } from "metabase/metrics-viewer/utils";
 import { Box, Button, Flex, Icon } from "metabase/ui";
-import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
-import type { TemporalUnit } from "metabase-types/api";
 
 import S from "../../CenterControls.module.css";
 import {

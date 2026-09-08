@@ -1,5 +1,10 @@
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
+import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type { Card, DashboardTabId, DatasetQuery } from "metabase-types/api";
 import {
   cardApi,
   databaseApi,
@@ -29,11 +34,6 @@ import {
   getCardAfterVisualizationClick,
   getRegisteredDefaultSize,
 } from "metabase/viz-core";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
-import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { Card, DashboardTabId, DatasetQuery } from "metabase-types/api";
 
 import { trackNewQuestionSaved } from "../../analytics";
 import { updateModelIndexes } from "../../model-indexes/actions";

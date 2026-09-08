@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type MetadataDatabase from "metabase-lib/v1/metadata/Database";
+import type MetadataTable from "metabase-lib/v1/metadata/Table";
+import { getRemappings } from "metabase-lib/v1/queries/utils/field";
+import type { Database, Field, FieldId, FieldValue } from "metabase-types/api";
 import {
   skipToken,
   useCreateFieldDimensionMutation,
@@ -25,10 +29,6 @@ import {
   Stack,
   rem,
 } from "metabase/ui";
-import type MetadataDatabase from "metabase-lib/v1/metadata/Database";
-import type MetadataTable from "metabase-lib/v1/metadata/Table";
-import { getRemappings } from "metabase-lib/v1/queries/utils/field";
-import type { Database, Field, FieldId, FieldValue } from "metabase-types/api";
 
 import {
   type ChangeOptions,

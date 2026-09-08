@@ -1,9 +1,9 @@
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import {
   DataPermissionValue,
   type Group,
   type GroupsPermissions,
 } from "metabase-types/api";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 
 import { getFeatureLevelDataPermissions } from "./index";
 

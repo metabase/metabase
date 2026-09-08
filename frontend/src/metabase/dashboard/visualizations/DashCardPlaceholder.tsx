@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { Dashboard, VirtualDashboardCard } from "metabase-types/api";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
   QuestionPickerModal,
@@ -11,7 +12,6 @@ import { useDispatch } from "metabase/redux";
 import { Button, Flex } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { VisualizationDefinition } from "metabase/viz-core";
-import type { Dashboard, VirtualDashboardCard } from "metabase-types/api";
 
 type Props = VisualizationProps & {
   dashcard: VirtualDashboardCard;

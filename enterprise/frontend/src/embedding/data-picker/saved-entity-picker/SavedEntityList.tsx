@@ -1,6 +1,8 @@
 import { Fragment } from "react";
 import { t } from "ttag";
 
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { CollectionId, DatabaseId, TableId } from "metabase-types/api";
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -9,8 +11,6 @@ import { SelectList } from "metabase/common/components/SelectList";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { CollectionId, DatabaseId, TableId } from "metabase-types/api";
 
 import type { SavedEntityType } from "../types";
 

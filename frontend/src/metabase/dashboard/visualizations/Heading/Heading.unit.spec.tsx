@@ -1,8 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { buildTextTagTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Dashboard,
@@ -17,6 +15,8 @@ import {
   createMockHeadingDashboardCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
 
 import { Heading } from "../Heading";
 

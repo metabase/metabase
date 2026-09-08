@@ -1,8 +1,8 @@
 import { useElementSize } from "@mantine/hooks";
 import type { ReactNode } from "react";
 
-import { Box, Ellipsified, Group, Icon, Text, rem } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { Box, Ellipsified, Group, Icon, Text, rem } from "metabase/ui";
 
 import { Input } from "./Input";
 import S from "./NameDescriptionInput.module.css";

@@ -1,4 +1,3 @@
-import type { AccentColorOptions } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DatasetColumn,
@@ -11,6 +10,7 @@ import type {
   TableColumnOrderSetting,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { AccentColorOptions } from "metabase/ui/colors/types";
 
 import type { ComputedVisualizationSettings } from "./computed-settings";
 

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { useDocsUrl } from "metabase/common/hooks";
 import type { SettingDefinition } from "metabase-types/api";
+import { useDocsUrl } from "metabase/common/hooks";
 
 export const useGetEnvVarDocsUrl = (envName: string | undefined) => {
   return useDocsUrl("configuring-metabase/environment-variables", {

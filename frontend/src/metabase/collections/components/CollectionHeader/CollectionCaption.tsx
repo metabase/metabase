@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { Collection } from "metabase-types/api";
 import {
   isEditableCollection,
   isInstanceAnalyticsCollection,
@@ -16,7 +17,6 @@ import {
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Box, Flex, Icon, rem } from "metabase/ui";
-import type { Collection } from "metabase-types/api";
 
 import S from "./CollectionCaption.module.css";
 

@@ -12,7 +12,6 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import type { DashCardId } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
@@ -23,6 +22,7 @@ import {
   createMockDatabase,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 
 import { ActionSidebar } from "./ActionSidebar";
 

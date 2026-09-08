@@ -1,13 +1,13 @@
 import { updateIn } from "icepick";
 import _ from "underscore";
 
-import { Icon } from "metabase/ui";
-import { COLLAPSED_ROWS_SETTING } from "metabase/visualizations/lib/data_grid";
 import type {
   PivotTableCollapsedRowsSetting,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
+import { Icon } from "metabase/ui";
+import { COLLAPSED_ROWS_SETTING } from "metabase/visualizations/lib/data_grid";
 
 import { RowToggleIconRoot } from "./PivotTable.styled";
 

@@ -1,13 +1,13 @@
 import { parse as parseUrl } from "url";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import { isEqualCard } from "metabase/common/utils/card";
 import { createThunkAction } from "metabase/redux";
 import type { Path } from "metabase/router";
 import { getIsNavigationPending, navigate } from "metabase/router";
 import { getBasename } from "metabase/utils/basename";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 
 import {
   getCard,

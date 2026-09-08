@@ -2,7 +2,6 @@ import { memo, useMemo } from "react";
 import _ from "underscore";
 
 import { createMockMetadata } from "__support__/metadata";
-import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import * as Lib from "metabase-lib";
 import type {
   DatabaseId,
@@ -11,6 +10,7 @@ import type {
   FieldReference,
   Table,
 } from "metabase-types/api";
+import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 
 import { HiddenFieldEmptyStateBlock } from "./EmptyStateBlock";
 import { isFieldHidden } from "./utils";

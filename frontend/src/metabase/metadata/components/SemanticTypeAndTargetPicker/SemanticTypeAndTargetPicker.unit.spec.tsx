@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field } from "metabase-types/api";
 import {
   createOrdersProductIdField,
   createOrdersTotalField,
   createProductsIdField,
 } from "metabase-types/api/mocks/presets";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 
 import { SemanticTypeAndTargetPicker } from "./SemanticTypeAndTargetPicker";
 

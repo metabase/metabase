@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { User, UserId } from "metabase-types/api";
 import { useListUsersQuery } from "metabase/api";
 import {
   Avatar,
@@ -11,7 +12,6 @@ import {
   type SelectProps,
 } from "metabase/ui";
 import { isEmail } from "metabase/utils/email";
-import type { User, UserId } from "metabase-types/api";
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   email: string | null;
   userId: UserId | "unknown" | null;

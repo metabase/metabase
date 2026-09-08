@@ -1,3 +1,4 @@
+import type { Table } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import {
@@ -6,7 +7,6 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
 import * as Urls from "metabase/urls";
-import type { Table } from "metabase-types/api";
 
 import { TableMoreMenu } from "./TableMoreMenu";
 import { TableNameInput } from "./TableNameInput";

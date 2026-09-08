@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { getCollectionPathAsString } from "metabase/common/collections/utils";
 import type {
   RecentItem,
   SearchResult,
   SortingOptions,
 } from "metabase-types/api";
+import { getCollectionPathAsString } from "metabase/common/collections/utils";
 
 import type { ModelResult, RecentModel, SortColumn } from "./types";
 

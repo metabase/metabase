@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { TemplateTag } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { Select } from "metabase/ui";
-import type { TemplateTag } from "metabase-types/api";
 
 import type { WidgetOption } from "../types";
 

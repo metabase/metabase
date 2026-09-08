@@ -1,7 +1,7 @@
 import _ from "underscore";
 
-import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { CollectionId, CollectionItemModel } from "metabase-types/api";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 
 import type { OmniPickerCollectionItem, OmniPickerItem } from "./EntityPicker";
 

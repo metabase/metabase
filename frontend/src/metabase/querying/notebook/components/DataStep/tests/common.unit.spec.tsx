@@ -4,8 +4,6 @@ import fetchMock from "fetch-mock";
 import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, getIcon, screen, waitFor } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
-import { METAKEY } from "metabase/utils/browser";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -21,6 +19,8 @@ import {
   createSampleDatabase,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
+import { METAKEY } from "metabase/utils/browser";
+import { checkNotNull } from "metabase/utils/types";
 
 import { DEFAULT_QUESTION, createMockNotebookStep } from "../../../test-utils";
 

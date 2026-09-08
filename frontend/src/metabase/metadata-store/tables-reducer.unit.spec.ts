@@ -1,7 +1,7 @@
-import { cardCreated, cardUpdated } from "metabase/redux/cards";
 import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card } from "metabase-types/api";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
+import { cardCreated, cardUpdated } from "metabase/redux/cards";
 
 import { tablesReducer } from "./tables-reducer";
 

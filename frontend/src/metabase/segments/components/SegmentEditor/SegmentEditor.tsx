@@ -1,5 +1,5 @@
-import { Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import { Flex } from "metabase/ui";
 
 import { DataStep } from "./DataStep";
 import { FilterStep } from "./FilterStep";

@@ -1,5 +1,5 @@
-import { PLUGIN_MONITOR, reinitialize } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_MONITOR, reinitialize } from "metabase/plugins";
 
 import { getDependencyDiagnosticsRoutes } from "./routes";
 

@@ -1,13 +1,13 @@
 import { useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 
-import { useProgressiveLoader } from "metabase/common/hooks";
-import { SimpleGrid, Stack } from "metabase/ui";
 import type {
   InspectorCard,
   InspectorSource,
   InspectorVisitedFields,
 } from "metabase-types/api";
+import { useProgressiveLoader } from "metabase/common/hooks";
+import { SimpleGrid, Stack } from "metabase/ui";
 
 import { useLensContentContext } from "../../../../LensContent/LensContentContext";
 import { ScalarCard } from "../ScalarCard";

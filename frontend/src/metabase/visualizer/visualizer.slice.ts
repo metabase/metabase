@@ -8,6 +8,16 @@ import { shallowEqual } from "react-redux";
 import undoable, { combineFilters, includeAction } from "redux-undo";
 import _ from "underscore";
 
+import type {
+  Card,
+  CardId,
+  Dataset,
+  DatasetColumn,
+  VisualizationDisplay,
+  VisualizationSettings,
+  VisualizerDataSource,
+  VisualizerDataSourceId,
+} from "metabase-types/api";
 import { cardApi } from "metabase/api";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import type {
@@ -23,16 +33,6 @@ import {
   type ComputedVisualizationSettings,
   isCartesianChart,
 } from "metabase/viz-core";
-import type {
-  Card,
-  CardId,
-  Dataset,
-  DatasetColumn,
-  VisualizationDisplay,
-  VisualizationSettings,
-  VisualizerDataSource,
-  VisualizerDataSourceId,
-} from "metabase-types/api";
 
 import {
   getCurrentVisualizerState,

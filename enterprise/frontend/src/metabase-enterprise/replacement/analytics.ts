@@ -1,6 +1,6 @@
+import type { CardId } from "metabase-types/api";
 import { trackSimpleEvent } from "metabase/analytics";
 import type { SourceReplacementTriggeredFrom } from "metabase/plugins";
-import type { CardId } from "metabase-types/api";
 
 export function trackModelToTransformsMigrationModalOpened({
   cardId,

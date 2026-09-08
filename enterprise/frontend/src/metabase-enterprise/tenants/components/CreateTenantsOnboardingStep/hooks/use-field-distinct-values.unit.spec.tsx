@@ -6,11 +6,11 @@ import {
   setupFieldEndpoints,
 } from "__support__/server-mocks";
 import { waitFor } from "__support__/ui";
+import type { FieldId, RowValue } from "metabase-types/api";
+import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getStore } from "metabase/store";
-import type { FieldId, RowValue } from "metabase-types/api";
-import { createMockField, createMockTable } from "metabase-types/api/mocks";
 
 import { useFieldDistinctValues } from "./use-field-distinct-values";
 

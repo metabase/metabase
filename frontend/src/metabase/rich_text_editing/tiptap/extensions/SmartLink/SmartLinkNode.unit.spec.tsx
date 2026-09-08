@@ -9,7 +9,6 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { RouterProviderMemory } from "metabase/router";
 import {
   createMockCard,
   createMockCollection,
@@ -18,6 +17,7 @@ import {
   createMockDocument,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { RouterProviderMemory } from "metabase/router";
 
 import type { SuggestionModel } from "../shared/types";
 

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Box, DefaultSelectItem, Text } from "metabase/ui";
 import type { TemporalUnit } from "metabase-types/api";
+import { Box, DefaultSelectItem, Text } from "metabase/ui";
 
 const MIN_WIDTH = 180;
 const INITIAL_VISIBLE_ITEMS_COUNT = 7;

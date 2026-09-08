@@ -1,6 +1,18 @@
 import { memo, useMemo, useRef } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type {
+  DatabaseId,
+  DatasetColumn,
+  Field,
+  FieldId,
+  RawSeries,
+  RowValues,
+  TableId,
+} from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 import {
   RTK_CACHE_KEY_PARAM,
   skipToken,
@@ -14,18 +26,6 @@ import { getMetadataUnfiltered } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { Box, Repeat, Skeleton, Stack, rem } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/viz-core";
-import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type {
-  DatabaseId,
-  DatasetColumn,
-  Field,
-  FieldId,
-  RawSeries,
-  RowValues,
-  TableId,
-} from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
 
 import { Error } from "./Error";
 import { getDataErrorMessage, is403Error } from "./utils";

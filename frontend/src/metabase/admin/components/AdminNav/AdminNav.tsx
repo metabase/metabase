@@ -1,5 +1,6 @@
 import type React from "react";
 
+import type { IconName } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import { useLocation } from "metabase/router";
 import {
@@ -9,7 +10,6 @@ import {
   Stack,
   type StackProps,
 } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 export const AdminNavWrapper = ({
   children,
   ...stackProps

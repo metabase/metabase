@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import {
   BulkActionBar,
@@ -15,7 +16,6 @@ import {
   useMetadataToasts,
   useSetCollection,
 } from "metabase/common/hooks";
-import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 
 import { UnpublishTablesModal } from "../../components/UnpublishTablesModal";
 import type {

@@ -1,9 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { TemporalBucketPicker } from "metabase/common/metrics/components/TemporalBucketPicker";
-import type { DimensionWithDefinition } from "metabase/common/metrics/types";
-import { Button, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type {
   DimensionMetadata,
@@ -12,6 +9,9 @@ import type {
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
+import { TemporalBucketPicker } from "metabase/common/metrics/components/TemporalBucketPicker";
+import type { DimensionWithDefinition } from "metabase/common/metrics/types";
+import { Button, Popover } from "metabase/ui";
 
 import S from "../../../CenterControls.module.css";
 

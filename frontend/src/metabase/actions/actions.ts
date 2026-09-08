@@ -1,12 +1,12 @@
-import { actionApi } from "metabase/api";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import type { Dispatch } from "metabase/redux/store";
-import { addUndo } from "metabase/redux/undo";
 import type {
   ActionFormSubmitResult,
   ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
+import { actionApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import type { Dispatch } from "metabase/redux/store";
+import { addUndo } from "metabase/redux/undo";
 
 import { getActionErrorMessage, getActionExecutionMessage } from "./utils";
 

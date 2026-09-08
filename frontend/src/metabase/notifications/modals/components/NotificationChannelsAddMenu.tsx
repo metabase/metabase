@@ -2,15 +2,15 @@ import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Link } from "metabase/common/components/Link/Link";
-import CS from "metabase/css/core/index.css";
-import { getNotificationHandlersGroupedByTypes } from "metabase/notifications/utils";
-import { Button, Menu, Text } from "metabase/ui";
 import type {
   ChannelApiResponse,
   NotificationChannel,
   NotificationHandler,
 } from "metabase-types/api";
+import { Link } from "metabase/common/components/Link/Link";
+import CS from "metabase/css/core/index.css";
+import { getNotificationHandlersGroupedByTypes } from "metabase/notifications/utils";
+import { Button, Menu, Text } from "metabase/ui";
 
 export type ChannelToAddOption =
   | {

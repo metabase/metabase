@@ -4,6 +4,7 @@ import { scaleLinear } from "@visx/scale";
 import { useMemo } from "react";
 import { c } from "ttag";
 
+import type { DatasetColumn } from "metabase-types/api";
 import { formatValue } from "metabase/value-formatting";
 import {
   calculateProgressMetrics,
@@ -13,7 +14,6 @@ import {
   getProgressColors,
   getProgressMessage,
 } from "metabase/visualizations/visualizations/Progress/utils";
-import type { DatasetColumn } from "metabase-types/api";
 
 import Watermark from "../../watermark.svg?component";
 import type { StaticChartProps } from "../StaticVisualization/types";

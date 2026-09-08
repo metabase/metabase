@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { msgid, ngettext } from "ttag";
 
-import { Checkbox, Stack } from "metabase/ui";
 import type { DatabaseUsageInfo } from "metabase-types/api";
+import { Checkbox, Stack } from "metabase/ui";
 
 interface ContentRemovalConfirmationProps {
   usageInfo: DatabaseUsageInfo;

@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 import {
   EntityPickerModal,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import {
   ENTITY_PICKER_OPTIONS,

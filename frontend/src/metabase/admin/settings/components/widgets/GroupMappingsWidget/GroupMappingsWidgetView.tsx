@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
+import type { GroupId, GroupInfo } from "metabase-types/api";
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -20,7 +21,6 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
-import type { GroupId, GroupInfo } from "metabase-types/api";
 
 import { AddMappingRow } from "./AddMappingRow";
 import S from "./GroupMappingsWidget.module.css";

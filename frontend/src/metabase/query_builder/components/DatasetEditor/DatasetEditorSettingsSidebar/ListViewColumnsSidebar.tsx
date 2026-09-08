@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { DatasetColumn } from "metabase-types/api";
 import {
   Button,
   type FlexProps,
@@ -13,7 +14,6 @@ import {
 import { ColumnItem } from "metabase/visualizations/components/settings/ColumnItem";
 import { useListColumns } from "metabase/visualizations/visualizations/List/components/ListView";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import type { DatasetColumn } from "metabase-types/api";
 
 import styles from "./ListViewColumnsSidebar.module.css";
 

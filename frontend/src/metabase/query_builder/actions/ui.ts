@@ -1,3 +1,4 @@
+import type { VisualizationDisplay } from "metabase-types/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { currentUserApi, getUser } from "metabase/current-user";
 import { createThunkAction } from "metabase/redux";
@@ -10,7 +11,6 @@ import type {
 } from "metabase/redux/store";
 import { settingsApi } from "metabase/settings";
 import { checkNotNull } from "metabase/utils/types";
-import type { VisualizationDisplay } from "metabase-types/api";
 
 import { trackFirstNonTableChartGenerated } from "../analytics";
 import {

@@ -1,6 +1,9 @@
 import { useCallback } from "react";
 import { jt, t } from "ttag";
 
+import { useGetBillingInfoQuery } from "metabase-enterprise/api";
+import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
+import type { TokenStatus } from "metabase-types/api";
 import {
   SettingsPageWrapper,
   SettingsSection,
@@ -17,9 +20,6 @@ import type { State } from "metabase/redux/store";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
 import { Box, Divider, Flex, Stack } from "metabase/ui";
-import { useGetBillingInfoQuery } from "metabase-enterprise/api";
-import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
-import type { TokenStatus } from "metabase-types/api";
 
 import { BillingInfo } from "../BillingInfo";
 

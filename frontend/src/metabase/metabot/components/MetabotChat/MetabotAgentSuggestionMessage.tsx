@@ -5,6 +5,13 @@ import { useLocation, useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type {
+  MetabotSuggestedTransform,
+  MetabotTransformInfo,
+  SuggestedTransform,
+} from "metabase-types/api";
 import { useLazyGetTransformQuery } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { MetabotContext } from "metabase/metabot/context";
@@ -29,13 +36,6 @@ import {
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type {
-  MetabotSuggestedTransform,
-  MetabotTransformInfo,
-  SuggestedTransform,
-} from "metabase-types/api";
 
 import S from "./MetabotAgentSuggestionMessage.module.css";
 import {

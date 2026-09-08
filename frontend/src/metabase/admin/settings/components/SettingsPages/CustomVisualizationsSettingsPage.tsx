@@ -1,5 +1,6 @@
 import { jt, t } from "ttag";
 
+import type { IconName } from "metabase-types/api";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellCustomViz } from "metabase/admin/upsells";
 import { Link } from "metabase/common/components/Link";
@@ -20,7 +21,6 @@ import {
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { IconName } from "metabase-types/api";
 export function CustomVisualizationsManagePage() {
   const customVizLoaded = useHasTokenFeature("custom-viz");
   const customVizAvailable = useHasTokenFeature("custom-viz-available");

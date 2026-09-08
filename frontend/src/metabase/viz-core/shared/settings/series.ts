@@ -1,7 +1,7 @@
 import { getIn } from "icepick";
 
-import { getColorsForValues } from "metabase/ui/colors/charts";
 import type { VisualizationSettings } from "metabase-types/api";
+import { getColorsForValues } from "metabase/ui/colors/charts";
 
 import type { ComputedVisualizationSettings } from "../../types";
 

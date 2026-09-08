@@ -9,9 +9,6 @@ import {
   setupMetricEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
-import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card, Dataset, Field, Metric } from "metabase-types/api";
 import {
   createMockCard,
@@ -32,6 +29,9 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { MetricAbout } from "./MetricAbout";
 

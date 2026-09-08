@@ -1,6 +1,6 @@
+import type { NotificationRunSummary } from "metabase-types/api";
 import { dayjs } from "metabase/dayjs";
 import { FixedSizeIcon, Flex, Stack, Text, Tooltip } from "metabase/ui";
-import type { NotificationRunSummary } from "metabase-types/api";
 
 import { formatRelativeDate } from "../NotificationsAdminPage/utils";
 

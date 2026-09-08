@@ -1,11 +1,6 @@
 import * as d3 from "d3";
 import _ from "underscore";
 
-import { dayjs } from "metabase/dayjs";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { getObjectEntries, getObjectKeys } from "metabase/utils/objects";
-import { isNotNull, isNumber } from "metabase/utils/types";
-import { formatValue } from "metabase/value-formatting";
 import type {
   ColumnSettings,
   DatasetColumn,
@@ -17,6 +12,11 @@ import type {
 } from "metabase-types/api";
 import { numericScale } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+import { dayjs } from "metabase/dayjs";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getObjectEntries, getObjectKeys } from "metabase/utils/objects";
+import { isNotNull, isNumber } from "metabase/utils/types";
+import { formatValue } from "metabase/value-formatting";
 
 import { computeNumericDataInterval } from "../../../lib/numeric";
 import { getLineAreaBarComparisonSettings } from "../../../lib/settings";

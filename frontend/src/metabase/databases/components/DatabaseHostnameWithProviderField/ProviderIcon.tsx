@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 
-import { Icon } from "metabase/ui";
 import type { DatabaseProviderName } from "metabase-types/api/settings";
+import { Icon } from "metabase/ui";
 
 import AivenIcon from "./providers/aiven.svg";
 import AmazonRDSIcon from "./providers/amazon-rds.svg";

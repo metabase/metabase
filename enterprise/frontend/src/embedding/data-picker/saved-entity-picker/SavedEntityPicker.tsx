@@ -1,5 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 
+import type {
+  Collection,
+  CollectionId,
+  DatabaseId,
+  TableId,
+  User,
+} from "metabase-types/api";
 import {
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
@@ -18,13 +25,6 @@ import CS from "metabase/css/core/index.css";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Box, Icon } from "metabase/ui";
-import type {
-  Collection,
-  CollectionId,
-  DatabaseId,
-  TableId,
-  User,
-} from "metabase-types/api";
 
 import type { SavedEntityType } from "../types";
 

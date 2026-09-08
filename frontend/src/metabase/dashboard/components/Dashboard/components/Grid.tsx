@@ -1,13 +1,13 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type { DashboardCard } from "metabase-types/api";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Loader } from "metabase/ui";
-import type { DashboardCard } from "metabase-types/api";
 
 import { useDashboardContext } from "../../../context";
 import {

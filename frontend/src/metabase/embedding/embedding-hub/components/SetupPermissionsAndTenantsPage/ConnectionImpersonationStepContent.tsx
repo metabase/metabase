@@ -3,13 +3,13 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { Database, DatabaseId } from "metabase-types/api";
 import { useListDatabasesQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { DatabaseMultiSelect } from "metabase/common/components/DatabaseMultiSelect";
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { Button, Flex, Stack, Text } from "metabase/ui";
-import type { Database, DatabaseId } from "metabase-types/api";
 
 import { useUpdateAllTenantUsersGroupPermissions } from "./hooks/use-update-all-tenant-users-group-permissions";
 

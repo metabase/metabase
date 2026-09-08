@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import type { Collection } from "metabase-types/api";
 import { EntityIdCard } from "metabase/common/components/EntityIdCard";
 import {
   Sidesheet,
@@ -11,7 +12,6 @@ import {
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { Stack } from "metabase/ui";
-import type { Collection } from "metabase-types/api";
 
 export const CollectionInfoSidebar = ({
   onClose,

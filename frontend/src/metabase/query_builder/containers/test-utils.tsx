@@ -32,12 +32,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
-import { serializeCardForUrl } from "metabase/common/utils/card";
-import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
-import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset, Timeline, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
@@ -62,6 +56,12 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
+import { serializeCardForUrl } from "metabase/common/utils/card";
+import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 
 import { QueryBuilder } from "./QueryBuilder";
 

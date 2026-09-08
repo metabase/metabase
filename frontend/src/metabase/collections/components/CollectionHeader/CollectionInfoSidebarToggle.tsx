@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import type { Collection } from "metabase-types/api";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 
 import { CollectionInfoSidebar } from "../CollectionInfoSidebar";
 

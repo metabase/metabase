@@ -1,9 +1,9 @@
-import type { ClickObject } from "metabase/visualizations/types";
 import type {
   DatasetColumn,
   RawSeries,
   VisualizerColumnValueSource,
 } from "metabase-types/api";
+import type { ClickObject } from "metabase/visualizations/types";
 
 import { isDataSourceNameRef, parseDataSourceId } from "./data-source";
 

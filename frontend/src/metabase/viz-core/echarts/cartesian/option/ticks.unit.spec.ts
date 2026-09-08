@@ -1,10 +1,10 @@
 import { createMockChartLayout } from "__support__/echarts";
-import { dayjs } from "metabase/dayjs";
 import {
   createMockDatetimeColumn,
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+import { dayjs } from "metabase/dayjs";
 
 import { X_AXIS_DATA_KEY } from "../constants/dataset";
 import { getXAxisModel } from "../model/axis";

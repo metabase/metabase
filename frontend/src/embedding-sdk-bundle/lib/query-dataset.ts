@@ -1,10 +1,10 @@
-import { api } from "metabase/api/client";
 import type {
   Dataset,
   DatasetColumn,
   DatasetQuery,
   RowValues,
 } from "metabase-types/api";
+import { api } from "metabase/api/client";
 
 export type QueryDatasetParams = {
   datasetQuery: DatasetQuery;

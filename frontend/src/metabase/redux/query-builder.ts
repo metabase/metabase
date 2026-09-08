@@ -5,8 +5,8 @@
  */
 import { createAction } from "redux-actions";
 
-import { createThunkAction } from "metabase/redux";
 import type { Card } from "metabase-types/api";
+import { createThunkAction } from "metabase/redux";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
 export const setUIControls = createAction(SET_UI_CONTROLS);

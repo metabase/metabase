@@ -1,9 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import {
-  type ClickObject,
-  isCustomClickAction,
-} from "metabase/visualizations/types";
-import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
@@ -14,6 +9,11 @@ import {
   createSampleDatabase,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
+import {
+  type ClickObject,
+  isCustomClickAction,
+} from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 
 import { CopyValueAction } from "./CopyValueAction";
 

@@ -1,7 +1,7 @@
 import { msgid, ngettext, t } from "ttag";
 
-import MetabaseSettings from "metabase/utils/settings";
 import type { PasswordComplexity } from "metabase-types/api";
+import MetabaseSettings from "metabase/utils/settings";
 
 const LOWER = "abcdefghijklmnopqrstuvwxyz";
 const UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";

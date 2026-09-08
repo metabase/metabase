@@ -1,14 +1,14 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { getErrorMessage } from "metabase/api/utils";
-import { useToast } from "metabase/common/hooks";
-import { Button } from "metabase/ui";
 import { useTestRemoteSyncConnectionMutation } from "metabase-enterprise/api/remote-sync";
 import type {
   RemoteSyncConfigurationSettings,
   TestRemoteSyncConnectionRequest,
 } from "metabase-types/api";
+import { getErrorMessage } from "metabase/api/utils";
+import { useToast } from "metabase/common/hooks";
+import { Button } from "metabase/ui";
 
 import { TOKEN_KEY, URL_KEY } from "../../constants";
 

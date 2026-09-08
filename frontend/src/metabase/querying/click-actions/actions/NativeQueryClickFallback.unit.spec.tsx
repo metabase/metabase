@@ -1,12 +1,12 @@
 jest.doMock("metabase/utils/dom");
 
 import { createMockMetadata } from "__support__/metadata";
-import * as iframeUtils from "metabase/utils/iframe";
 import Question from "metabase-lib/v1/Question";
 import {
   createEmptyAdHocNativeCard,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import * as iframeUtils from "metabase/utils/iframe";
 
 import { NativeQueryClickFallback } from "./NativeQueryClickFallback";
 

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { SimpleGrid, Stack, Title } from "metabase/ui";
 import { buildCallsByDayByStatusQuery } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/query-utils";
+import { SimpleGrid, Stack, Title } from "metabase/ui";
 
 import { McpBreakoutChart } from "./McpBreakoutChart";
 import { McpCallsTimelineChart } from "./McpCallsTimelineChart";

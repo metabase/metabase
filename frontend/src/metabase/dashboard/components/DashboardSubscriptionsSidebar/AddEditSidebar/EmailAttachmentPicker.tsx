@@ -10,14 +10,14 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
-import CS from "metabase/css/core/index.css";
-import { Box, Checkbox, Group, Icon, Switch, Text, Tooltip } from "metabase/ui";
 import type {
   DraftDashboardSubscription,
   ExportFormat,
   SubscriptionSupportingCard,
 } from "metabase-types/api";
+import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
+import CS from "metabase/css/core/index.css";
+import { Box, Checkbox, Group, Icon, Switch, Text, Tooltip } from "metabase/ui";
 
 import S from "./EmailAttachmentPicker.module.css";
 

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { ActionIcon, Card, Flex, Icon, Menu, Text } from "metabase/ui";
 import type { EmbeddingTheme } from "metabase-types/api/embedding-theme";
+import { ActionIcon, Card, Flex, Icon, Menu, Text } from "metabase/ui";
 
 import { EmbeddingThemeCardPreview } from "./EmbeddingThemeCardPreview";
 

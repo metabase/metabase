@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { c, msgid, ngettext, t } from "ttag";
 
+import type { Table } from "metabase-types/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Box, Switch, Text } from "metabase/ui";
-import type { Table } from "metabase-types/api";
 
 export function DeleteConfirmModal({
   opened,

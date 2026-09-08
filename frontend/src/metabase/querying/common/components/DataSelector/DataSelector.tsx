@@ -4,25 +4,6 @@ import { Component, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  cardApi,
-  databaseApi,
-  useLazyListDatabaseSchemaTablesQuery,
-  useLazyListDatabaseSchemasQuery,
-  useListDatabasesQuery,
-  useSearchQuery,
-} from "metabase/api";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { EmptyState } from "metabase/common/components/EmptyState";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import CS from "metabase/css/core/index.css";
-import { canUserCreateQueries } from "metabase/current-user";
-import { getMetadata } from "metabase/metadata-store";
-import { connect } from "metabase/redux";
-import type { Dispatch, State } from "metabase/redux/store";
-import { fetchTableMetadata } from "metabase/redux/tables";
-import { getSetting } from "metabase/settings";
-import { Box, Popover } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -47,6 +28,25 @@ import type {
   SearchResponse,
   TableId,
 } from "metabase-types/api";
+import {
+  cardApi,
+  databaseApi,
+  useLazyListDatabaseSchemaTablesQuery,
+  useLazyListDatabaseSchemasQuery,
+  useListDatabasesQuery,
+  useSearchQuery,
+} from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
+import { canUserCreateQueries } from "metabase/current-user";
+import { getMetadata } from "metabase/metadata-store";
+import { connect } from "metabase/redux";
+import type { Dispatch, State } from "metabase/redux/store";
+import { fetchTableMetadata } from "metabase/redux/tables";
+import { getSetting } from "metabase/settings";
+import { Box, Popover } from "metabase/ui";
 
 import { DataSelectorDataBucketPicker } from "./DataSelectorDataBucketPicker";
 import { DataSelectorDatabasePicker } from "./DataSelectorDatabasePicker";

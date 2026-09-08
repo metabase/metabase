@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useGetSemanticSearchStatusQuery } from "metabase-enterprise/api/search";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { UpsellSemanticSearchPill } from "metabase/admin/upsells/UpsellSemanticSearch";
@@ -15,7 +16,6 @@ import {
   useAdminSetting,
 } from "metabase/settings";
 import { Box, Progress, Stack, Text, Tooltip } from "metabase/ui";
-import { useGetSemanticSearchStatusQuery } from "metabase-enterprise/api/search";
 
 function useLatch(bool: boolean) {
   const [hasSeenTrue, setHasSeenTrue] = useState(bool);

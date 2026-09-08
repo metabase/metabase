@@ -11,6 +11,7 @@ import {
 } from "react";
 import { c, msgid, ngettext, t } from "ttag";
 
+import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -35,7 +36,6 @@ import {
   Title,
 } from "metabase/ui";
 import { openSaveDialog } from "metabase/utils/dom";
-import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
 
 import { contentTranslationEndpoints } from "../../constants";
 

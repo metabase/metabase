@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { DataSegregationStrategy } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import { OnboardingStepper } from "metabase/embedding/embedding-hub/components/OnboardingStepper";
 import type { OnboardingStepperHandle } from "metabase/embedding/embedding-hub/components/OnboardingStepper/types";
@@ -10,7 +11,6 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins/oss/tenants";
 import { Group, Icon, Stack, Text, Title } from "metabase/ui";
-import type { DataSegregationStrategy } from "metabase-types/api";
 
 import { useGetEmbeddingHubChecklistQuery } from "../../api/embedding-hub";
 

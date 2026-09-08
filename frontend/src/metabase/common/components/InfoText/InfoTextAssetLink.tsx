@@ -1,5 +1,10 @@
 import { t } from "ttag";
 
+import {
+  type Database,
+  type SearchResult,
+  isConcreteTableId,
+} from "metabase-types/api";
 import { skipToken, useGetDatabaseQuery, useGetTableQuery } from "metabase/api";
 import { SearchResultLink } from "metabase/common/components/SearchResultLink";
 import { Box, Icon, Text } from "metabase/ui";
@@ -9,11 +14,6 @@ import {
   tableRowsQuery,
   table as tableUrl,
 } from "metabase/urls";
-import {
-  type Database,
-  type SearchResult,
-  isConcreteTableId,
-} from "metabase-types/api";
 
 import type { InfoTextData } from "./get-info-text";
 import { getInfoText } from "./get-info-text";

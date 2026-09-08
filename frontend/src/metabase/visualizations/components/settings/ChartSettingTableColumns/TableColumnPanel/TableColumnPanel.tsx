@@ -1,13 +1,13 @@
 import { useCallback, useMemo } from "react";
 
-import type { DragEndEvent } from "metabase/common/components/Sortable";
-import { useTranslateContent } from "metabase/content-translation/hooks";
-import { Box } from "metabase/ui";
-import type { EditWidgetData } from "metabase/viz-core";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
+import type { DragEndEvent } from "metabase/common/components/Sortable";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import { Box } from "metabase/ui";
+import type { EditWidgetData } from "metabase/viz-core";
 
 import { ChartSettingOrderedItems } from "../../ChartSettingOrderedItems";
 

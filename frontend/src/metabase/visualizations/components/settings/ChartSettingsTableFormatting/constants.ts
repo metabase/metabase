@@ -1,11 +1,11 @@
-import {
-  getAccentColors,
-  getStatusColorRanges,
-} from "metabase/ui/colors/groups";
 import type {
   ColumnRangeFormattingSetting,
   ColumnSingleFormattingSetting,
 } from "metabase-types/api";
+import {
+  getAccentColors,
+  getStatusColorRanges,
+} from "metabase/ui/colors/groups";
 
 // TODO
 export const COLORS = getAccentColors({ dark: false });

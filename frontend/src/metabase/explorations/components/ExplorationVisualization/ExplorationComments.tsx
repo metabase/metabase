@@ -10,6 +10,14 @@ import { useLocation } from "react-use";
 import { t } from "ttag";
 import { noop } from "underscore";
 
+import type {
+  Comment,
+  CommentContext,
+  DocumentContent,
+  ExplorationId,
+  Timeline,
+  TimelineId,
+} from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   useCreateCommentMutation,
@@ -49,14 +57,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import type {
-  Comment,
-  CommentContext,
-  DocumentContent,
-  ExplorationId,
-  Timeline,
-  TimelineId,
-} from "metabase-types/api";
 
 import S from "./ExplorationComments.module.css";
 

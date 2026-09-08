@@ -3,6 +3,15 @@ import { P, isMatching } from "ts-pattern";
 import { t } from "ttag";
 
 import {
+  useGetScimTokenQuery,
+  useRegenerateScimTokenMutation,
+} from "metabase-enterprise/api";
+import {
+  useHasAnySsoFeature,
+  useHasSsoEnabled,
+} from "metabase-enterprise/auth/utils";
+import type { Settings } from "metabase-types/api";
+import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
@@ -31,15 +40,6 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import {
-  useGetScimTokenQuery,
-  useRegenerateScimTokenMutation,
-} from "metabase-enterprise/api";
-import {
-  useHasAnySsoFeature,
-  useHasSsoEnabled,
-} from "metabase-enterprise/auth/utils";
-import type { Settings } from "metabase-types/api";
 
 import { CopyScimInput, getTextInputStyles } from "./ScimInputs";
 import { ScimTextWarning } from "./ScimTextWarning";

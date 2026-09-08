@@ -2,8 +2,8 @@ import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { Box, Flex, Icon } from "metabase/ui";
 import type { DashboardCard, QuestionDashboardCard } from "metabase-types/api";
+import { Box, Flex, Icon } from "metabase/ui";
 
 import { getClickBehaviorDescription } from "../../../utils";
 

@@ -3,6 +3,8 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
@@ -10,8 +12,6 @@ import type { FilterChangeOpts } from "metabase/querying/filters/components/Filt
 import { useDispatch } from "metabase/redux";
 import type { QueryBuilderMode } from "metabase/redux/store";
 import { Button, Icon, Popover, Tooltip } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 
 import { updateQuestion } from "../../../../actions";
 import ViewTitleHeaderS from "../ViewTitleHeader.module.css";

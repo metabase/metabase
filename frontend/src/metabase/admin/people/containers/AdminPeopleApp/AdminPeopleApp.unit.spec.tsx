@@ -1,4 +1,9 @@
 import { renderWithProviders, screen, within } from "__support__/ui";
+import type { EmbeddingHomepageStatus } from "metabase-types/api";
+import {
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { UpsellTenants } from "metabase/admin/upsells/UpsellTenants";
 import { createTenantsRouteGuard } from "metabase/admin/utils";
 import {
@@ -8,11 +13,6 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import type { EmbeddingHomepageStatus } from "metabase-types/api";
-import {
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
 
 import { AdminPeopleApp } from "./AdminPeopleApp";
 

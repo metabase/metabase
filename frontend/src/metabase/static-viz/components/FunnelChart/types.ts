@@ -1,5 +1,5 @@
-import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import type { VisualizationSettings } from "metabase-types/api";
+import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 
 export type FunnelSettings = {
   step: {

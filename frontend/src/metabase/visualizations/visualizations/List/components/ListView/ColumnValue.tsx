@@ -1,22 +1,5 @@
 import { useMemo } from "react";
 
-import {
-  Badge,
-  Box,
-  Ellipsified,
-  Flex,
-  Icon,
-  Image,
-  Stack,
-  Text,
-} from "metabase/ui";
-import { formatNumber, getCurrencySymbol } from "metabase/utils/formatting";
-import { formatValue } from "metabase/value-formatting";
-import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
-import {
-  type ComputedVisualizationSettings,
-  getColumnExtent,
-} from "metabase/viz-core";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   isAvatarURL,
@@ -44,6 +27,23 @@ import type {
   RowValue,
   RowValues,
 } from "metabase-types/api";
+import {
+  Badge,
+  Box,
+  Ellipsified,
+  Flex,
+  Icon,
+  Image,
+  Stack,
+  Text,
+} from "metabase/ui";
+import { formatNumber, getCurrencySymbol } from "metabase/utils/formatting";
+import { formatValue } from "metabase/value-formatting";
+import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
+import {
+  type ComputedVisualizationSettings,
+  getColumnExtent,
+} from "metabase/viz-core";
 
 import styles from "./ListView.module.css";
 import { getCategoryColor } from "./styling";

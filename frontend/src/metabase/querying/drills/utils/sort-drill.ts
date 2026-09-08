@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import type * as Lib from "metabase-lib";
 import type {
   ClickActionBase,
   Drill,
 } from "metabase/visualizations/types/click-actions";
-import type * as Lib from "metabase-lib";
 
 const ACTIONS: Record<string, ClickActionBase> = {
   asc: {

@@ -1,3 +1,4 @@
+import type { TimelineEvent } from "metabase-types/api";
 import {
   skipToken,
   useDeleteTimelineEventMutation,
@@ -7,7 +8,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
 import * as Urls from "metabase/urls";
-import type { TimelineEvent } from "metabase-types/api";
 
 function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
   const eventId = Urls.extractEntityId(params.timelineEventId);

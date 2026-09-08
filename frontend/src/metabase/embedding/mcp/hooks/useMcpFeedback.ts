@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { useToast } from "metabase/common/hooks";
 import type { McpAppsFeedback } from "metabase-types/api";
+import { useToast } from "metabase/common/hooks";
 
 import type {
   McpFeedbackAreaValues,

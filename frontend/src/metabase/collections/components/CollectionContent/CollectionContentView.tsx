@@ -5,6 +5,13 @@ import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type {
+  Bookmark,
+  Collection,
+  CollectionId,
+  CollectionItem,
+  Database,
+} from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   Api,
@@ -40,13 +47,6 @@ import {
 } from "metabase/redux/uploads";
 import { useNavigate } from "metabase/router";
 import { Box } from "metabase/ui";
-import type {
-  Bookmark,
-  Collection,
-  CollectionId,
-  CollectionItem,
-  Database,
-} from "metabase-types/api";
 
 import { ModelUploadModal } from "../ModelUploadModal";
 import UploadOverlay from "../UploadOverlay";

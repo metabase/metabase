@@ -2,6 +2,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { SmartScalarComparisonStaticNumber } from "metabase-types/api";
 import {
   Box,
   NumberInput,
@@ -9,7 +10,6 @@ import {
   Stack,
   TextInput,
 } from "metabase/ui";
-import type { SmartScalarComparisonStaticNumber } from "metabase-types/api";
 
 import { COMPARISON_TYPES } from "../constants";
 

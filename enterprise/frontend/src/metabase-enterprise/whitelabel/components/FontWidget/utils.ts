@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useAdminSetting } from "metabase/settings";
 import type { FontFile, FontFormat } from "metabase-types/api";
+import { useAdminSetting } from "metabase/settings";
 
 import type { FontFileOption } from "./types";
 

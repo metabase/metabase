@@ -1,15 +1,15 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { UserAvatar } from "metabase/common/components/UserAvatar";
-import CS from "metabase/css/core/index.css";
-import { dayjs } from "metabase/dayjs";
 import type {
   RevisionDiffKey,
   Revision as RevisionType,
   TableId,
   User,
 } from "metabase-types/api";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
+import CS from "metabase/css/core/index.css";
+import { dayjs } from "metabase/dayjs";
 
 import { RevisionDiff } from "./RevisionDiff";
 import {

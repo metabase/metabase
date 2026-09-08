@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import * as Yup from "yup";
 
+import type { Transform, UpdateTransformRequest } from "metabase-types/api";
 import {
   skipToken,
   useDeleteTransformTargetMutation,
@@ -30,7 +31,6 @@ import {
   Stack,
 } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { Transform, UpdateTransformRequest } from "metabase-types/api";
 
 type UpdateTargetModalProps = {
   transform: Transform;

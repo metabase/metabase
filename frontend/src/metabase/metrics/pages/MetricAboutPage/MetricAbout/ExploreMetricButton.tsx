@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { CardId } from "metabase-types/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { Button, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { CardId } from "metabase-types/api";
 
 interface ExploreMetricButtonProps {
   cardId: CardId;

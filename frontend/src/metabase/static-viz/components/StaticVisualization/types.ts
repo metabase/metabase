@@ -1,8 +1,8 @@
+import type { RawSeries } from "metabase-types/api";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/viz-core";
-import type { RawSeries } from "metabase-types/api";
 
 export interface StaticChartProps {
   rawSeries: RawSeries;

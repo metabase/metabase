@@ -1,5 +1,6 @@
 import { type HTMLAttributes, type Ref, forwardRef } from "react";
 
+import type { IconName } from "metabase-types/api";
 import {
   ActionIcon,
   type ActionIconProps,
@@ -7,7 +8,6 @@ import {
   Icon,
   Tooltip,
 } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 export type ViewFooterButtonProps = {
   icon: IconName;
   tooltipLabel?: string | null;

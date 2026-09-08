@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { TimelineEvent } from "metabase-types/api";
 import { TimelineEventInfo } from "metabase/common/components/TimelineEventInfo";
 import { Box } from "metabase/ui";
-import type { TimelineEvent } from "metabase-types/api";
 
 import S from "./TimelineEventCard.module.css";
 

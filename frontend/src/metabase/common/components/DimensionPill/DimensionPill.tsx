@@ -2,14 +2,14 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { DimensionGroup, DimensionMetadata } from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 import {
   AccordionList,
   type Section,
 } from "metabase/common/components/AccordionList";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import { Divider, Flex, Icon, Popover, Text } from "metabase/ui";
-import type { DimensionGroup, DimensionMetadata } from "metabase-lib/metric";
-import type { IconName } from "metabase-types/api";
 
 import S from "./DimensionPill.module.css";
 import { groupIntoSections } from "./utils";

@@ -1,9 +1,9 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { useUpdateRemoteSyncSettingsMutation } from "metabase-enterprise/api/remote-sync";
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { useUpdateRemoteSyncSettingsMutation } from "metabase-enterprise/api/remote-sync";
 
 import { trackRemoteSyncDeactivated } from "../analytics";
 import { URL_KEY } from "../constants";

@@ -1,8 +1,8 @@
 import cx from "classnames";
 
+import type { IconName } from "metabase-types/api";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Card, Skeleton } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./CompactPinnedItemCard.module.css";
 

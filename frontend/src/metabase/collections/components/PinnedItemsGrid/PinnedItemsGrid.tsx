@@ -1,6 +1,13 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
+import type {
+  Bookmark,
+  Collection,
+  CollectionId,
+  CollectionItem,
+  Database,
+} from "metabase-types/api";
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { PinnedItemSortDropTarget } from "metabase/collections/components/PinnedItemSortDropTarget";
 import { CompactPinnedItemCard } from "metabase/common/collections/components/CompactPinnedItemCard";
@@ -14,13 +21,6 @@ import { isRootTrashCollection } from "metabase/common/collections/utils";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
 import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
 import { Box, SimpleGrid, rem } from "metabase/ui";
-import type {
-  Bookmark,
-  Collection,
-  CollectionId,
-  CollectionItem,
-  Database,
-} from "metabase-types/api";
 
 import { useIsShiftPressed } from "./use-is-shift-pressed";
 

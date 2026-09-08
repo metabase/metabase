@@ -2,9 +2,9 @@ import cx from "classnames";
 import { dissocIn, getIn } from "icepick";
 import { t } from "ttag";
 
+import type { ClickBehavior } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
-import type { ClickBehavior } from "metabase-types/api";
 
 import type { SourceType, TargetItem } from "./types";
 

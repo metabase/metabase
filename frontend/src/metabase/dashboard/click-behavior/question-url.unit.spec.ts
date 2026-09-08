@@ -1,7 +1,6 @@
 import { parse } from "url";
 
 import { createMockMetadata } from "__support__/metadata";
-import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
@@ -11,6 +10,7 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { deserializeCardFromUrl } from "metabase/common/utils/card";
 
 import { getStructuredQuestionUrlWithParameters } from "./question-url";
 

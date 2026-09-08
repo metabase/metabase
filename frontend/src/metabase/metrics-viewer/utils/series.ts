@@ -1,21 +1,5 @@
 import { t } from "ttag";
 
-import type { DimensionOption } from "metabase/common/components/DimensionPill";
-import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
-import { getDimensionIcon } from "metabase/common/utils/columns";
-import type {
-  DimensionPillBarItem,
-  ExpressionDimensionItem,
-  ExpressionMetricSource,
-  MetricDimensionItem,
-} from "metabase/metrics-viewer/components/DimensionPillBar";
-import { getColorsForValues } from "metabase/ui/colors/charts";
-import { isNotNull } from "metabase/utils/types";
-import {
-  MAX_SERIES,
-  formatBreakoutValue,
-  getBreakoutSeriesName,
-} from "metabase/viz-core";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
@@ -33,6 +17,22 @@ import type {
   TemporalUnit,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { DimensionOption } from "metabase/common/components/DimensionPill";
+import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
+import { getDimensionIcon } from "metabase/common/utils/columns";
+import type {
+  DimensionPillBarItem,
+  ExpressionDimensionItem,
+  ExpressionMetricSource,
+  MetricDimensionItem,
+} from "metabase/metrics-viewer/components/DimensionPillBar";
+import { getColorsForValues } from "metabase/ui/colors/charts";
+import { isNotNull } from "metabase/utils/types";
+import {
+  MAX_SERIES,
+  formatBreakoutValue,
+  getBreakoutSeriesName,
+} from "metabase/viz-core";
 
 import {
   type BreakoutColorMap,

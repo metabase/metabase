@@ -10,8 +10,8 @@ import {
 import cx from "classnames";
 import { useMemo } from "react";
 
-import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import { isNotNull } from "metabase/utils/types";
 
 import S from "./CodeMirrorEditor.module.css";
 import {

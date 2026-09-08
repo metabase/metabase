@@ -1,9 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { FormProvider } from "metabase/forms";
 import type { GroupId, GroupInfo } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
+import { FormProvider } from "metabase/forms";
 
 import type { MappingSettingKey } from "./GroupMappingsWidgetView";
 import { GroupMappingsWidgetView } from "./GroupMappingsWidgetView";

@@ -3,6 +3,11 @@ import { type PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
 import { jt, t } from "ttag";
 
+import {
+  type RecentCollectionItem,
+  type RecentItem,
+  isRecentTableItem,
+} from "metabase-types/api";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { getCollection } from "metabase/common/collections/utils";
@@ -21,11 +26,6 @@ import { modelToUrl } from "metabase/urls";
 import type { SearchQuery } from "metabase/utils/browser";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { getName } from "metabase/utils/name";
-import {
-  type RecentCollectionItem,
-  type RecentItem,
-  isRecentTableItem,
-} from "metabase-types/api";
 
 import { METABASE_DOCS_LABELS, getAdminSettingsSections } from "../constants";
 import type { PaletteAction } from "../types";

@@ -2,6 +2,7 @@ import type { Row, SortingState, Updater } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 
+import type { CollectionEssentials, IconName } from "metabase-types/api";
 import { getCollectionPathAsString } from "metabase/common/collections/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
@@ -14,7 +15,6 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import type { CollectionEssentials, IconName } from "metabase-types/api";
 
 export type PolicyTableRowBase = {
   id: string;

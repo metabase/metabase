@@ -1,5 +1,5 @@
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import { checkNotNull } from "metabase/utils/types";
 
 import {
   DEFAULT_TEST_QUERY,

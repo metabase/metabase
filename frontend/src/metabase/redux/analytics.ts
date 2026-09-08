@@ -1,5 +1,5 @@
-import { trackSchemaEvent } from "metabase/analytics";
 import type { DashboardId } from "metabase-types/api";
+import { trackSchemaEvent } from "metabase/analytics";
 
 import type { ResourceAccessedVia, ResourceType } from "./downloads";
 

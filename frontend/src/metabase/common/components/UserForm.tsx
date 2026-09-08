@@ -3,6 +3,7 @@ import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import type { GroupId, GroupInfo, User, UserId } from "metabase-types/api";
 import { FormField } from "metabase/common/components/FormField";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { GroupsMultiSelect } from "metabase/common/components/GroupsMultiSelect";
@@ -20,7 +21,6 @@ import {
 } from "metabase/plugins";
 import { Alert, Button } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { GroupId, GroupInfo, User, UserId } from "metabase-types/api";
 
 const localUserSchema = Yup.object({
   first_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),

@@ -1,14 +1,14 @@
 import { t } from "ttag";
 
 import {
+  useGetDataAppRepoStatusQuery,
+  useListDataAppsQuery,
+} from "metabase-enterprise/api";
+import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { Badge, Box, Flex, Group, Loader, Stack, Title } from "metabase/ui";
-import {
-  useGetDataAppRepoStatusQuery,
-  useListDataAppsQuery,
-} from "metabase-enterprise/api";
 
 import S from "./ManageDataAppsPage.module.css";
 import { DataAppListItem } from "./components/DataAppListItem/DataAppListItem";

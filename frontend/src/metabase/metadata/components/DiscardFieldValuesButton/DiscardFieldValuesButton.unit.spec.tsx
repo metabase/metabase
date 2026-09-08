@@ -9,9 +9,9 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { createMockField } from "metabase-types/api/mocks";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { createMockField } from "metabase-types/api/mocks";
 
 import { DiscardFieldValuesButton } from "./DiscardFieldValuesButton";
 

@@ -1,10 +1,5 @@
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import {
-  createMockQueryBuilderState,
-  createMockQueryBuilderUIControlsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
@@ -14,6 +9,11 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import {
+  createMockQueryBuilderState,
+  createMockQueryBuilderUIControlsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 
 const testDatasetQuery = () =>
   createMockStructuredDatasetQuery({

@@ -1,6 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 
+import type { Card } from "metabase-types/api";
 import {
   getShallowDatabases as getDatabases,
   getShallowFields as getFields,
@@ -8,7 +9,6 @@ import {
   getShallowTables as getTables,
 } from "metabase/metadata-store";
 import type { State } from "metabase/redux/store";
-import type { Card } from "metabase-types/api";
 
 import type {
   StubbedDatabase,

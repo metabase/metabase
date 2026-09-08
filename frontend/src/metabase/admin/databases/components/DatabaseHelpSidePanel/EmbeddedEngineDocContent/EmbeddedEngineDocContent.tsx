@@ -1,9 +1,9 @@
 import { useRef } from "react";
 import { useMount } from "react-use";
 
+import type { EngineKey } from "metabase-types/api";
 import { Markdown } from "metabase/common/components/Markdown";
 import { Alert, Box, Loader } from "metabase/ui";
-import type { EngineKey } from "metabase-types/api";
 
 import S from "./EmbeddedEngineDocContent.module.css";
 import { MarkdownLink } from "./MarkdownLink";

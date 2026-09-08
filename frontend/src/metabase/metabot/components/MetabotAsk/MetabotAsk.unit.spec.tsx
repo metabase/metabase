@@ -2,11 +2,11 @@ import userEvent from "@testing-library/user-event";
 import { assocIn } from "icepick";
 
 import { screen, waitFor } from "__support__/ui";
-import { getMetabotVisible } from "metabase/metabot/state";
 import {
   createMockMetabotConversation,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { getMetabotVisible } from "metabase/metabot/state";
 
 import {
   conversationIdForAgent,

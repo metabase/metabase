@@ -2,13 +2,13 @@ import { useHotkeys } from "@mantine/hooks";
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
-import type { PythonTransformEditorProps } from "metabase/plugins";
-import { Flex, Stack } from "metabase/ui";
 import type {
   DatabaseId,
   PythonTransformTableAliases,
   Table,
 } from "metabase-types/api";
+import type { PythonTransformEditorProps } from "metabase/plugins";
+import { Flex, Stack } from "metabase/ui";
 
 import { canRunPythonTransformSource } from "../../utils";
 

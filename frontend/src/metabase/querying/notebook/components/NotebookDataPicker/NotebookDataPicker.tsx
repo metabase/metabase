@@ -2,6 +2,9 @@ import { useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { TableId } from "metabase-types/api";
 import { selectTableQueryMetadata } from "metabase/api";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
@@ -22,9 +25,6 @@ import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import { Icon, TextInput } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { TableId } from "metabase-types/api";
 
 import type { QueryEditorDatabasePickerItem } from "../../../editor/types";
 import {

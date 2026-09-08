@@ -1,6 +1,12 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  type DatasetData,
+  type RawSeries,
+  type RowValue,
+  getRowsForStableKeys,
+} from "metabase-types/api";
 import { formatNullable } from "metabase/utils/formatting";
 import {
   ChartSettingsError,
@@ -13,12 +19,6 @@ import {
   getMinSize,
   metricSetting,
 } from "metabase/viz-core";
-import {
-  type DatasetData,
-  type RawSeries,
-  type RowValue,
-  getRowsForStableKeys,
-} from "metabase-types/api";
 
 import type { FunnelRow } from "./types";
 

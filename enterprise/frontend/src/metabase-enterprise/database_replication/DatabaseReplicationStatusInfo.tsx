@@ -1,9 +1,9 @@
 import { memo } from "react";
 import { t } from "ttag";
 
+import type { DatabaseId } from "metabase-types/api";
 import { useSetting } from "metabase/settings";
 import { Badge, Flex, type FlexProps, Text, Tooltip } from "metabase/ui";
-import type { DatabaseId } from "metabase-types/api";
 
 interface DatabaseReplicationStatusInfoProps extends FlexProps {
   databaseId: DatabaseId;

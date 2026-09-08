@@ -1,5 +1,15 @@
 import { t } from "ttag";
 
+import {
+  DataPermission,
+  DataPermissionValue,
+  type Group,
+  type GroupsPermissions,
+  type PermissionEntityId,
+  type PermissionSubject,
+  type SchemaEntityId,
+  type TableEntityId,
+} from "metabase-types/api";
 import { Messages } from "metabase/admin/permissions/constants/messages";
 import { navigateToGranularPermissions } from "metabase/admin/permissions/permissions";
 import {
@@ -16,16 +26,6 @@ import {
   getSchemasPermission,
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
-import {
-  DataPermission,
-  DataPermissionValue,
-  type Group,
-  type GroupsPermissions,
-  type PermissionEntityId,
-  type PermissionSubject,
-  type SchemaEntityId,
-  type TableEntityId,
-} from "metabase-types/api";
 
 const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
   if (isAdmin) {

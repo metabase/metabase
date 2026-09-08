@@ -1,7 +1,6 @@
 import _ from "underscore";
 
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import {
   checkCanBeModel,
@@ -33,6 +32,7 @@ import {
   createStructuredModelCard as _createStructuredModelCard,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { checkNotNull } from "metabase/utils/types";
 
 function createSavedNativeCard({
   tags = {},

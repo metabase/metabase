@@ -1,6 +1,6 @@
+import type { DictionaryArray } from "metabase-types/api";
 import type { NonEmpty } from "metabase/content-translation/types";
 import { clone } from "metabase/utils/clone";
-import type { DictionaryArray } from "metabase-types/api";
 
 export const germanFieldNames: NonEmpty<DictionaryArray> = [
   { locale: "de", msgid: "Title", msgstr: "Titel" },

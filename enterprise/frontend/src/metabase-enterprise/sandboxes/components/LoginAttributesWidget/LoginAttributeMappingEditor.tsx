@@ -3,16 +3,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
-  Box,
-  Button,
-  Flex,
-  HoverCard,
-  Icon,
-  Text,
-  TextInput,
-  Tooltip,
-} from "metabase/ui";
-import {
   addEntry,
   buildEntries,
   buildMapping,
@@ -26,6 +16,16 @@ import type {
   UserAttributeMap,
   UserAttributeSource,
 } from "metabase-types/api";
+import {
+  Box,
+  Button,
+  Flex,
+  HoverCard,
+  Icon,
+  Text,
+  TextInput,
+  Tooltip,
+} from "metabase/ui";
 
 export type MappingEditorEntry = {
   key: string;

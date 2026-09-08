@@ -1,6 +1,6 @@
+import type { Segment } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import { Card, Ellipsified, Flex, Icon, Stack, Text } from "metabase/ui";
-import type { Segment } from "metabase-types/api";
 
 import S from "./SegmentItem.module.css";
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 
+import { isBaseEntityID } from "metabase-types/api/entity-id";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
@@ -9,7 +10,6 @@ import {
   useParams,
   useSearchParams,
 } from "metabase/router";
-import { isBaseEntityID } from "metabase-types/api/entity-id";
 
 import {
   type TranslateEntityIdResponse,

@@ -1,8 +1,8 @@
 import { action } from "@storybook/addon-actions";
 import type { Meta } from "@storybook/react";
 
-import type { RevisionOrModerationEvent } from "metabase/plugins";
 import { createMockRevision } from "metabase-types/api/mocks";
+import type { RevisionOrModerationEvent } from "metabase/plugins";
 
 import { RevisionHistoryTimeline } from "./RevisionHistoryTimeline";
 

@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { Card, IconName } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import { Anchor, FixedSizeIcon, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Card, IconName } from "metabase-types/api";
 
 type LocationSectionProps = {
   card: Card;

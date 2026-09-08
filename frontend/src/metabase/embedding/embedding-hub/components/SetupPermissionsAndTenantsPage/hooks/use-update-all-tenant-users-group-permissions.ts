@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import type { DatabaseId, TableId } from "metabase-types/api";
 import {
   Api,
   databaseApi,
@@ -11,7 +12,6 @@ import { listTag } from "metabase/api/tags";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
-import type { DatabaseId, TableId } from "metabase-types/api";
 
 import {
   type AllSchemaTables,

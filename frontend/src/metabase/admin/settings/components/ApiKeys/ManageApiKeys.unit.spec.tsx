@@ -13,9 +13,9 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { ManageApiKeys } from "metabase/admin/settings/components/ApiKeys/ManageApiKeys";
 import type { ApiKey } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
+import { ManageApiKeys } from "metabase/admin/settings/components/ApiKeys/ManageApiKeys";
 
 const GROUPS = [
   createMockGroup(),

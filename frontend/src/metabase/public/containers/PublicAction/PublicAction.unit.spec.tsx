@@ -7,7 +7,6 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { Route } from "metabase/router";
 import type {
   ParametersForActionExecution,
   PublicWritebackAction,
@@ -16,6 +15,7 @@ import {
   createMockActionParameter,
   createMockPublicAction,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import PublicApp from "../PublicApp";
 

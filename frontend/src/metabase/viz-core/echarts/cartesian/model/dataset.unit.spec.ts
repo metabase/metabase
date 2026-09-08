@@ -1,7 +1,4 @@
 import { createMockSeriesModel } from "__support__/echarts";
-import { dayjs } from "metabase/dayjs";
-import { parseTimestamp } from "metabase/utils/time-dayjs";
-import { checkNumber } from "metabase/utils/types";
 import {
   type RowValue,
   type SingleSeries,
@@ -13,6 +10,9 @@ import {
   createMockDatasetData,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+import { dayjs } from "metabase/dayjs";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import { checkNumber } from "metabase/utils/types";
 
 import type {
   BreakoutChartColumns,

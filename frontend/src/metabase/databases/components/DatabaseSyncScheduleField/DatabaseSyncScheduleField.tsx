@@ -3,10 +3,10 @@ import type { ReactNode } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 import { Schedule } from "metabase/common/components/Schedule";
 import type { ScheduleChangeEvent } from "metabase/common/components/Schedule/types";
 import { FormField } from "metabase/forms";
-import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
 const DEFAULT_SCHEDULE: ScheduleSettings = {
   schedule_day: "mon",

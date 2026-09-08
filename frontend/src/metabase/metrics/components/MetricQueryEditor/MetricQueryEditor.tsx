@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
+import type * as Lib from "metabase-lib";
 import { QueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
 import type { QueryEditorUiState } from "metabase/querying/editor/types";
-import type * as Lib from "metabase-lib";
 
 import { getEditorOptions } from "./utils";
 

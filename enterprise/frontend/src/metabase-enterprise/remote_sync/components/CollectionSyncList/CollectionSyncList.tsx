@@ -2,12 +2,12 @@ import { useFormikContext } from "formik";
 import { useCallback, useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
 
-import { Box, Flex, Loader, Text } from "metabase/ui";
 import type {
   CollectionItem,
   CollectionSyncPreferences,
   RemoteSyncConfigurationSettings,
 } from "metabase-types/api";
+import { Box, Flex, Loader, Text } from "metabase/ui";
 
 import { COLLECTIONS_KEY, TYPE_KEY } from "../../constants";
 import { CollectionSyncRow } from "../CollectionSyncRow";

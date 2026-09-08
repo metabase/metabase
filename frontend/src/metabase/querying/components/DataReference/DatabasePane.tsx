@@ -3,6 +3,12 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import {
+  type Card,
+  type SearchResult,
+  type Table,
+  isConcreteTableId,
+} from "metabase-types/api";
+import {
   skipToken,
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
@@ -17,12 +23,6 @@ import type {
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
-import {
-  type Card,
-  type SearchResult,
-  type Table,
-  isConcreteTableId,
-} from "metabase-types/api";
 
 import {
   NodeListContainer,

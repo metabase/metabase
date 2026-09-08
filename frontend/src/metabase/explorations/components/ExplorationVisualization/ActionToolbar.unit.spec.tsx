@@ -7,7 +7,6 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { createPage } from "metabase/explorations/test-utils";
 import type {
   DocumentContent,
   ExplorationPageNode,
@@ -20,6 +19,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockComment } from "metabase-types/api/mocks/comment";
 import { createMockDocumentContent } from "metabase-types/api/mocks/document";
+import { createPage } from "metabase/explorations/test-utils";
 
 import { ActionToolbar } from "./ActionToolbar";
 import type { ExplorationChartForDocumentEmbed } from "./utils";

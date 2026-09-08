@@ -9,8 +9,6 @@ import {
   screen,
   within,
 } from "__support__/ui";
-import { Route } from "metabase/router";
-import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type {
   Transform,
   TransformJob,
@@ -22,6 +20,8 @@ import {
   createMockTransformRun,
   createMockTransformRunForJobRun,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 
 import { JobEditor } from "./JobEditor";
 

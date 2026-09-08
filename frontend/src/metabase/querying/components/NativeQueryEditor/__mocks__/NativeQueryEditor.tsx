@@ -1,7 +1,7 @@
 import type { ChangeEvent } from "react";
 
-import { DataSourceSelectors } from "metabase/querying/components/NativeQueryEditor/DataSourceSelectors";
 import type { DatabaseId, TableId } from "metabase-types/api";
+import { DataSourceSelectors } from "metabase/querying/components/NativeQueryEditor/DataSourceSelectors";
 
 import type { NativeQueryEditorCoreProps } from "../NativeQueryEditorRoot";
 

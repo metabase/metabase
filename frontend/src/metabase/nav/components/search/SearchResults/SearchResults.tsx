@@ -3,6 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
+import type {
+  CollectionItem,
+  SearchContext,
+  SearchModel,
+  SearchResult as SearchResultType,
+  SearchResponse as SearchResultsType,
+} from "metabase-types/api";
 import { skipToken, useSearchQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { SearchResult } from "metabase/common/components/SearchResult/SearchResult";
@@ -15,13 +22,6 @@ import {
   DEFAULT_SEARCH_LIMIT,
   SEARCH_DEBOUNCE_DURATION,
 } from "metabase/utils/constants";
-import type {
-  CollectionItem,
-  SearchContext,
-  SearchModel,
-  SearchResult as SearchResultType,
-  SearchResponse as SearchResultsType,
-} from "metabase-types/api";
 
 import S from "./SearchResults.module.css";
 

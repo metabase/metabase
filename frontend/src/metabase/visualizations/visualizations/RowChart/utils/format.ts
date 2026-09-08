@@ -1,5 +1,10 @@
 import type { NumberLike, StringLike } from "@visx/scale";
 
+import type {
+  DatasetColumn,
+  RowValue,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { isEmpty } from "metabase/utils/validate";
 import { formatValue } from "metabase/value-formatting";
@@ -13,11 +18,6 @@ import {
   getLabelsMetricColumn,
   getStackOffset,
 } from "metabase/viz-core";
-import type {
-  DatasetColumn,
-  RowValue,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 export const getFormatters = (
   chartColumns: CartesianChartColumns,

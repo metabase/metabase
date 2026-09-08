@@ -1,5 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect } from "react";
 
+import type { WritebackAction } from "metabase-types/api";
 import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
 import CreateCollectionModal, {
   type CreateCollectionModalOwnProps,
@@ -21,7 +22,6 @@ import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { useLocation, useNavigate, useParams } from "metabase/router";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { WritebackAction } from "metabase-types/api";
 
 /**
  * The embed setup modals, fetched when one is opened.

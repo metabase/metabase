@@ -1,7 +1,7 @@
 import { c, jt, t } from "ttag";
 
-import { Autocomplete, Stack, Text } from "metabase/ui";
 import type { FieldId } from "metabase-types/api";
+import { Autocomplete, Stack, Text } from "metabase/ui";
 
 import { useFieldDistinctValues } from "./hooks/use-field-distinct-values";
 import { getIsolationFieldConfig } from "./isolation-field-config";

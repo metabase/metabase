@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Skeleton } from "metabase/ui";
 import type { CliFilters } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
 import { buildCallerLivenessQuery } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
 import { BreakoutChartCard } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/BreakoutChartCard";
@@ -12,6 +11,7 @@ import type {
   TableMetadata,
 } from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
+import { Skeleton } from "metabase/ui";
 
 const TABLE_HEIGHT = 500;
 

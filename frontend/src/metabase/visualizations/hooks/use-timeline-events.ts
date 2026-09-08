@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
+import type { TimelineEvent } from "metabase-types/api";
 import { skipToken, useListTimelinesQuery } from "metabase/api";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import type { TimelineEvent } from "metabase-types/api";
 
 type UseTimelineEventsProps = Pick<
   VisualizationProps,

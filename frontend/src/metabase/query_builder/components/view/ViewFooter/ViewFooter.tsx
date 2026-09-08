@@ -1,9 +1,9 @@
 import cx from "classnames";
 
+import * as Lib from "metabase-lib";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
 import { Box, Group } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import {
   getFirstQueryResult,

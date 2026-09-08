@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { useLatest } from "react-use";
 
+import type { Card } from "metabase-types/api";
 import { useCreateCardMutation } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import { CopyModal } from "metabase/common/components/CopyModal";
 import type { CopyCardProperties } from "metabase/questions/components/CopyCardForm";
-import type { Card } from "metabase-types/api";
 
 type CardCopyModalProps = {
   card: Card;

@@ -7,10 +7,10 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-me
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
+import type { DatasetQuery } from "metabase-types/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { getMetadataUnfiltered } from "metabase/metadata-store";
 import { fetchTableMetadata } from "metabase/redux/tables";
-import type { DatasetQuery } from "metabase-types/api";
 
 import { TEST_METADATA } from "./fixtures";
 

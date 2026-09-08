@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { EnterpriseSettings } from "metabase-types/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useAdminSetting } from "metabase/settings";
-import type { EnterpriseSettings } from "metabase-types/api";
 
 import { AuthCard } from "../../components/AuthCard";
 import { GOOGLE_SCHEMA } from "../../constants";

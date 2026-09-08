@@ -2,6 +2,7 @@ import type { FormEvent, MouseEventHandler } from "react";
 import { useEffect, useRef, useState } from "react";
 import { jt, t } from "ttag";
 
+import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 import { useGetDatabaseUsageInfoQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useNavigate } from "metabase/router";
@@ -18,7 +19,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
 import ContentRemovalConfirmation from "../ContentRemovalConfirmation";
 

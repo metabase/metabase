@@ -1,8 +1,8 @@
 import { setupBasename } from "__support__/basename";
-import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import Question from "metabase-lib/v1/Question";
 import type { EntityToken } from "metabase-types/api/entity";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
+import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 
 import {
   getChartFileName,

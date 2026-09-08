@@ -1,5 +1,5 @@
-import { trackSimpleEvent } from "metabase/analytics";
 import type { ExplorationId } from "metabase-types/api";
+import { trackSimpleEvent } from "metabase/analytics";
 
 import type { ExplorationSidebarTab } from "./types";
 

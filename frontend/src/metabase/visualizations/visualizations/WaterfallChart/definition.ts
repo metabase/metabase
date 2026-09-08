@@ -1,6 +1,7 @@
 import Color from "color";
 import { t } from "ttag";
 
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import { color, staticVizOverrides } from "metabase/ui/colors";
 import {
   type ComputedVisualizationSettings,
@@ -14,7 +15,6 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/viz-core";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { getCartesianChartDefinition } from "../CartesianChart/definition";
 

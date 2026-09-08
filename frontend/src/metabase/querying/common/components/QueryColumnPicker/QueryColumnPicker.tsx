@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type { IconName } from "metabase-types/api";
 import {
   AccordionList,
   type Section as BaseSection,
@@ -22,8 +24,6 @@ import { DelayGroup, Icon } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 import { isNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
-import type { IconName } from "metabase-types/api";
 
 import { ColumnBucketPickerPopover } from "./ColumnBucketPickerPopover";
 import S from "./QueryColumnPicker.module.css";

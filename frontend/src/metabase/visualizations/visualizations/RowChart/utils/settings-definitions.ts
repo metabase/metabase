@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import type { Series, VisualizationSettings } from "metabase-types/api";
 import {
   GRAPH_GOAL_SETTINGS,
   type VisualizationSettingsDefinitions,
   getDefaultDimensionLabel,
 } from "metabase/viz-core";
-import type { Series, VisualizationSettings } from "metabase-types/api";
 
 export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
   "stackable.stack_type": {

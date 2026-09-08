@@ -1,15 +1,15 @@
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
+import type { Card, DatasetColumn, Field, FieldId } from "metabase-types/api";
 import { datasetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { getMetadata } from "metabase/metadata-store";
 import { createThunkAction } from "metabase/redux";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-import type { Card, DatasetColumn, Field, FieldId } from "metabase-types/api";
 
 import {
   CLEAR_OBJECT_DETAIL_FK_REFERENCES,

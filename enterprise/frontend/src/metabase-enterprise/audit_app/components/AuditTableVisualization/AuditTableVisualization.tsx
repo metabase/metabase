@@ -2,6 +2,8 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
+import type { ClickObject } from "metabase-lib";
+import type { DatasetColumn, RowValues, Series } from "metabase-types/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
@@ -15,8 +17,6 @@ import {
   isColumnRightAligned,
   registerVisualization,
 } from "metabase/viz-core";
-import type { ClickObject } from "metabase-lib";
-import type { DatasetColumn, RowValues, Series } from "metabase-types/api";
 
 import S from "./AuditTableVisualization.module.css";
 

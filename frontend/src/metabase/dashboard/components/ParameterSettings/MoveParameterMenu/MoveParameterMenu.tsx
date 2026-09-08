@@ -3,16 +3,16 @@ import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import CS from "metabase/css/core/index.css";
-import { useDispatch, useSelector } from "metabase/redux";
-import { Flex, Group, Icon, Select, Text } from "metabase/ui";
-import { isQuestionDashCard } from "metabase/utils/dashboard";
-import { visualizations } from "metabase/viz-core";
 import type {
   BaseDashboardCard,
   IconName,
   ParameterId,
 } from "metabase-types/api";
+import CS from "metabase/css/core/index.css";
+import { useDispatch, useSelector } from "metabase/redux";
+import { Flex, Group, Icon, Select, Text } from "metabase/ui";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { visualizations } from "metabase/viz-core";
 
 import { moveParameter } from "../../../actions";
 import { getCurrentDashcards, getTabs } from "../../../selectors";

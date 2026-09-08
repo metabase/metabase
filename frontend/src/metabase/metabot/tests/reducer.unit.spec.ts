@@ -1,6 +1,8 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { createDraft } from "immer";
 
+import type { MetabotSuggestedTransform } from "metabase-types/api";
+import { createMockTransform } from "metabase-types/api/mocks/transform";
 import {
   type MetabotState,
   activateSuggestedTransform,
@@ -10,8 +12,6 @@ import {
   metabotReducer,
 } from "metabase/metabot/state";
 import { LOCATION_CHANGE } from "metabase/router";
-import type { MetabotSuggestedTransform } from "metabase-types/api";
-import { createMockTransform } from "metabase-types/api/mocks/transform";
 
 import { METABOT_PROFILE_OVERRIDES } from "../constants";
 import {

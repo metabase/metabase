@@ -1,7 +1,7 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import { ImpersonationWarning } from "./ImpersonationWarning";
 

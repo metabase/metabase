@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
-import { useListDatabasesQuery } from "metabase/api";
 import type { Database } from "metabase-types/api";
+import { useListDatabasesQuery } from "metabase/api";
 
 export interface AttachedDwhInfo {
   /** Storage exists on this instance. */

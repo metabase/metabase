@@ -1,5 +1,5 @@
-import { Card } from "metabase/ui";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
+import { Card } from "metabase/ui";
 
 import S from "./GraphInfoPanel.module.css";
 import { PanelBody } from "./PanelBody";

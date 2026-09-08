@@ -9,7 +9,6 @@ import {
 } from "__support__/server-mocks";
 import { PERMISSION_ERROR } from "__support__/server-mocks/constants";
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -21,6 +20,7 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { Route } from "metabase/router";
 
 import { MetricAboutPage } from "./MetricAboutPage";
 

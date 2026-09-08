@@ -2,11 +2,11 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import { hasFeature } from "metabase/databases";
 import { Box, Checkbox, Flex } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";

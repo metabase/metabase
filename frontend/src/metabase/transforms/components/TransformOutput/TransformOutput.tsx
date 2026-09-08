@@ -1,3 +1,4 @@
+import type { TransformId } from "metabase-types/api";
 import {
   skipToken,
   useGetTransformQuery,
@@ -7,7 +8,6 @@ import { getErrorMessage } from "metabase/api/utils";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { Box, Breadcrumbs, FixedSizeIcon, Group, Loader } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { TransformId } from "metabase-types/api";
 
 import { TransformOutputItem } from "./TransformOutputItem";
 

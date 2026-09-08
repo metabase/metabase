@@ -1,12 +1,12 @@
 import { Fragment } from "react";
 import { t } from "ttag";
 
+import type { Trigger } from "metabase-types/api";
 import { useGetTasksInfoQuery } from "metabase/api";
 import { useNavigate } from "metabase/router";
 import { ActionIcon, Divider, Flex, Icon, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import type { Trigger } from "metabase-types/api";
 
 import S from "./JobTriggersSidebar.module.css";
 

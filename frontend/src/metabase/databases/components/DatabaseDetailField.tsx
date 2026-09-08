@@ -1,3 +1,9 @@
+import type {
+  Engine,
+  EngineField,
+  EngineFieldOption,
+  EngineKey,
+} from "metabase-types/api";
 import { FormFileInput } from "metabase/common/components/FormFileInput";
 import {
   FormNumberInput,
@@ -7,12 +13,6 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { Icon, type SwitchProps, Tooltip } from "metabase/ui";
-import type {
-  Engine,
-  EngineField,
-  EngineFieldOption,
-  EngineKey,
-} from "metabase-types/api";
 
 import { FIELD_OVERRIDES } from "../constants";
 import type { EngineFieldOverride, FieldType } from "../types";

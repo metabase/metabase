@@ -1,11 +1,11 @@
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import {
   type BreakoutListItem,
   getBreakoutListItem,
   useBreakoutQueryHandlers,
 } from "metabase/query_builder";
 import { isNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 
 import { useSdkQuestionContext } from "../../context";
 

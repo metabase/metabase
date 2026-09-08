@@ -12,6 +12,27 @@ import {
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import {
+  checkCanBeModel,
+  getSortedModelFields,
+} from "metabase-lib/v1/metadata/utils/models";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type {
+  CollectionId,
+  Dataset,
+  DatasetColumn,
+  Field,
+  FieldId,
+  NativeQuerySnippet,
+  RawSeries,
+  ResultsMetadata,
+  VisualizationDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
+import type { ModelIndex } from "metabase-types/api/modelIndexes";
 import {
   ActionButton,
   type ActionButtonHandle,
@@ -34,27 +55,6 @@ import { connect, useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 import { Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import {
-  checkCanBeModel,
-  getSortedModelFields,
-} from "metabase-lib/v1/metadata/utils/models";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type {
-  CollectionId,
-  Dataset,
-  DatasetColumn,
-  Field,
-  FieldId,
-  NativeQuerySnippet,
-  RawSeries,
-  ResultsMetadata,
-  VisualizationDisplay,
-  VisualizationSettings,
-} from "metabase-types/api";
-import type { ModelIndex } from "metabase-types/api/modelIndexes";
 
 import {
   setDatasetEditorTab,

@@ -1,10 +1,10 @@
-import type { HighlightedObject } from "metabase/viz-core";
 import type {
   DatasetColumn,
   DatasetData,
   RowValues,
   Series,
 } from "metabase-types/api";
+import type { HighlightedObject } from "metabase/viz-core";
 
 export type HighlightedTableCell = {
   rowIndex: number;

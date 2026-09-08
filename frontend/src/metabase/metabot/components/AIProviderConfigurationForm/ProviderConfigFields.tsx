@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { LlmProviderConfig, LlmProviderField } from "metabase-types/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import {
   FileInput,
@@ -12,7 +13,6 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import type { LlmProviderConfig, LlmProviderField } from "metabase-types/api";
 
 import { isVisibleField } from "./visible-fields";
 

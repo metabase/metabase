@@ -10,6 +10,7 @@ import {
 import { useUnmount } from "react-use";
 import { t } from "ttag";
 
+import type { SearchRequest } from "metabase-types/api";
 import {
   EntityPickerModal,
   MiniPicker,
@@ -21,7 +22,6 @@ import type {
 } from "metabase/common/components/Pickers/MiniPicker/types";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { MenuProps } from "metabase/ui";
-import type { SearchRequest } from "metabase-types/api";
 
 import type { SelectedMetric } from "../../../types/viewer-state";
 import { createSourceId } from "../../../utils/source-ids";

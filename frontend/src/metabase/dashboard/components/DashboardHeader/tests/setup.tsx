@@ -7,11 +7,6 @@ import {
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { getDefaultTab } from "metabase/dashboard/actions";
-import { DASHBOARD_APP_ACTIONS } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import type { Collection, TokenFeatures } from "metabase-types/api";
 import {
   createMockDashboard,
@@ -19,6 +14,11 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { getDefaultTab } from "metabase/dashboard/actions";
+import { DASHBOARD_APP_ACTIONS } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { DashboardHeader } from "../DashboardHeader";
 

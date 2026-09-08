@@ -6,15 +6,15 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { BrowseSchemas } from "metabase/browse/schemas/BrowseSchemas";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { BrowseSchemas } from "metabase/browse/schemas/BrowseSchemas";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { BrowseDatabases } from "./BrowseDatabases";
 

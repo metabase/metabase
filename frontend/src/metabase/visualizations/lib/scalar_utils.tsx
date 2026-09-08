@@ -1,12 +1,12 @@
-import { ColorPill } from "metabase/common/components/ColorPill";
-import { Text } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
-import { formatValue } from "metabase/value-formatting";
 import type {
   ColumnSettings,
   RowValue,
   ScalarSegment,
 } from "metabase-types/api";
+import { ColorPill } from "metabase/common/components/ColorPill";
+import { Text } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
+import { formatValue } from "metabase/value-formatting";
 
 // slight overestimates of Lato Bold character widths (digits ≈0.58em,
 // separators ≈0.22em), so borderline values compact instead of overflowing

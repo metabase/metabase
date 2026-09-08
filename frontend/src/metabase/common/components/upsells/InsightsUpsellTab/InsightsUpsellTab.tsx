@@ -1,6 +1,6 @@
+import type { CardType } from "metabase-types/api";
 import { UpsellUsageAnalytics } from "metabase/common/components/upsells/UpsellUsageAnalytics";
 import { Flex } from "metabase/ui";
-import type { CardType } from "metabase-types/api";
 
 export const InsightsUpsellTab = ({
   model,

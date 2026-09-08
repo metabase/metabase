@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
+import type { Collection, CollectionId } from "metabase-types/api";
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
 import {
   PermissionsEditor,
@@ -20,7 +21,6 @@ import { assertNumericId } from "metabase/admin/permissions/types";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate, useParams } from "metabase/router";
-import type { Collection, CollectionId } from "metabase-types/api";
 
 import {
   getIsTenantSpecificDirty,

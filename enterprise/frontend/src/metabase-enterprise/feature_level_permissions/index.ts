@@ -1,8 +1,8 @@
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { getFeatureLevelDataPermissions } from "./permission-management";
 import {

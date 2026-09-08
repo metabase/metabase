@@ -1,10 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { getTemporalUnits } from "metabase/common/metrics/utils/dates";
-import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
-import { useMetricDefinition } from "metabase/metrics/common/hooks";
-import { Select } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 import type {
@@ -12,6 +8,10 @@ import type {
   MetricId,
   TemporalUnit,
 } from "metabase-types/api";
+import { getTemporalUnits } from "metabase/common/metrics/utils/dates";
+import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
+import { useMetricDefinition } from "metabase/metrics/common/hooks";
+import { Select } from "metabase/ui";
 
 interface DimensionTimeGroupingSelectProps {
   metricId: MetricId;

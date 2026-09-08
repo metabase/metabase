@@ -1,6 +1,6 @@
 import { renderWithProviders } from "__support__/ui";
-import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
+import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 
 import { materializePastedChart } from "./chart-paste-extension";
 

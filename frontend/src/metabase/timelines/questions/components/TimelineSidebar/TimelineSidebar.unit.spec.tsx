@@ -3,13 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
 import { setupTimelinesEndpoints } from "__support__/server-mocks/timeline";
 import { renderWithProviders, screen } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { dayjs } from "metabase/dayjs";
 import {
   createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { dayjs } from "metabase/dayjs";
 
 import {
   TimelineSidebar,

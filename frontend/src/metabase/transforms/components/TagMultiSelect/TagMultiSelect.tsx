@@ -2,6 +2,7 @@ import cx from "classnames";
 import { type MouseEvent, useState } from "react";
 import { jt, t } from "ttag";
 
+import type { TransformTag, TransformTagId } from "metabase-types/api";
 import {
   useCreateTransformTagMutation,
   useListTransformTagsQuery,
@@ -17,7 +18,6 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import type { TransformTag, TransformTagId } from "metabase-types/api";
 
 import { DeleteTagModal } from "./DeleteTagModal";
 import S from "./TagMultiSelect.module.css";

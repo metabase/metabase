@@ -2,6 +2,13 @@ import { Component, createRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type {
+  Collection,
+  CollectionId,
+  CollectionItem,
+  CollectionItemModel,
+  NativeQuerySnippet,
+} from "metabase-types/api";
 import {
   useGetCollectionQuery,
   useListCollectionItemsQuery,
@@ -23,13 +30,6 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
 import { Box, Button, Flex, Icon, Menu } from "metabase/ui";
-import type {
-  Collection,
-  CollectionId,
-  CollectionItem,
-  CollectionItemModel,
-  NativeQuerySnippet,
-} from "metabase-types/api";
 
 import { SnippetRow } from "./SnippetRow";
 import S from "./SnippetSidebar.module.css";

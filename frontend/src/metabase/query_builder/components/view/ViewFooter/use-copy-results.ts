@@ -1,6 +1,15 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
+import type {
+  Card,
+  Dataset,
+  DatasetData,
+  RawSeries,
+  RowValues,
+} from "metabase-types/api";
 import {
   type NumberFormatter,
   useNumberFormatter,
@@ -31,15 +40,6 @@ import {
   getComputedSettingsForSeries,
   isPivoted,
 } from "metabase/viz-core";
-import type Question from "metabase-lib/v1/Question";
-import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
-import type {
-  Card,
-  Dataset,
-  DatasetData,
-  RawSeries,
-  RowValues,
-} from "metabase-types/api";
 
 type CopyMode = "results" | "chart";
 

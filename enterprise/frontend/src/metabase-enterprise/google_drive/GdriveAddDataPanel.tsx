@@ -3,6 +3,11 @@ import type { PropsWithChildren } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
+import {
+  DriveConnectionDisplay,
+  GdriveConnectionModal,
+} from "metabase-enterprise/google_drive";
 import { skipToken } from "metabase/api";
 import {
   StoragePurchaseButton,
@@ -37,11 +42,6 @@ import {
   Title,
 } from "metabase/ui";
 import { getSubpathSafeUrl } from "metabase/urls";
-import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
-import {
-  DriveConnectionDisplay,
-  GdriveConnectionModal,
-} from "metabase-enterprise/google_drive";
 
 import { getDisconnectModalStrings } from "./GdriveConnectionModal.strings";
 import { trackSheetConnectionClick } from "./analytics";

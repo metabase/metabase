@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import type {
   DatePickerTruncationUnit,
   DatePickerUnit,
   RelativeDatePickerValue,
   RelativeIntervalDirection,
 } from "metabase/querying/common/types";
-import * as Lib from "metabase-lib";
 
 import { getAvailableTruncationUnits, getDirection } from "../utils";
 

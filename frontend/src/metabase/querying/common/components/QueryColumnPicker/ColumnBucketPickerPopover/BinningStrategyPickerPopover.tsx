@@ -1,11 +1,11 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import {
   type BucketItem,
   BucketPickerPopover,
 } from "metabase/common/components/BucketPickerPopover";
-import * as Lib from "metabase-lib";
 
 import type { CommonBucketPickerProps } from "./types";
 

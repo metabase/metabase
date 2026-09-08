@@ -2,12 +2,12 @@ import fetchMock from "fetch-mock";
 
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
 import {
   createMockDatabase,
   createMockField,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
 
 import FieldListContainer from "./FieldListContainer";
 

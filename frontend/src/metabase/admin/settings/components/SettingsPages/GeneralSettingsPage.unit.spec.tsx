@@ -10,8 +10,6 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
-import { Route } from "metabase/router";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockDashboard,
@@ -19,6 +17,8 @@ import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { Route } from "metabase/router";
 
 import { GeneralSettingsPage } from "./GeneralSettingsPage";
 

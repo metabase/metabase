@@ -1,6 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  CollectionId,
+  DatetimeUnit,
+  Timeline,
+  TimelineEvent,
+} from "metabase-types/api";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { type Dayjs, type OpUnitType, dayjs } from "metabase/dayjs";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
@@ -14,12 +20,6 @@ import type {
   CartesianChartDateTimeAbsoluteUnit,
   TimeSeriesInterval,
 } from "metabase/viz-core";
-import type {
-  CollectionId,
-  DatetimeUnit,
-  Timeline,
-  TimelineEvent,
-} from "metabase-types/api";
 
 type InternalModal =
   | { type: "new-event" }

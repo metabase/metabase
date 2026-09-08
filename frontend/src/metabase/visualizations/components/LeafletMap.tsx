@@ -1,20 +1,19 @@
 import "leaflet-draw";
 import "leaflet/dist/leaflet.css";
 import "./LeafletMap.module.css";
-
 import L from "leaflet";
 import { Component, createRef } from "react";
 import _ from "underscore";
 
-import MetabaseSettings from "metabase/utils/settings";
-import { isNullOrUndefined } from "metabase/utils/types";
-import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 import type { Point } from "metabase-types/api/dataset";
 import { isObject } from "metabase-types/guards/common";
+import MetabaseSettings from "metabase/utils/settings";
+import { isNullOrUndefined } from "metabase/utils/types";
+import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 
 export type LeafletMapPoint<TExtra extends unknown[] = []> = [
   number,

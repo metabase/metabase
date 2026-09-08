@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 
-import { useSetting } from "metabase/settings";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   DatabaseId,
@@ -8,6 +7,7 @@ import type {
   SearchRequest,
   TableId,
 } from "metabase-types/api";
+import { useSetting } from "metabase/settings";
 
 import type {
   EntityPickerOptions,

@@ -1,10 +1,10 @@
 import _ from "underscore";
 
+import type Question from "metabase-lib/v1/Question";
 import type { Dispatch } from "metabase/redux/store";
 import type { Path } from "metabase/router";
 import { navigate } from "metabase/router";
 import { openUrl } from "metabase/urls";
-import type Question from "metabase-lib/v1/Question";
 
 import type {
   ClickAction,

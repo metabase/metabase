@@ -2,10 +2,10 @@ import type { Extension } from "@codemirror/state";
 import { EditorView, tooltips } from "@codemirror/view";
 import { useMemo } from "react";
 
-import { suggestions } from "metabase/querying/expressions";
-import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { suggestions } from "metabase/querying/expressions";
+import { isNotNull } from "metabase/utils/types";
 
 import S from "./Editor.module.css";
 import { customExpression } from "./language";

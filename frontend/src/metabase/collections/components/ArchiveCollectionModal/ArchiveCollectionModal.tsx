@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import type { Collection } from "metabase-types/api";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetArchive } from "metabase/archive/hooks";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import * as Urls from "metabase/urls";
-import type { Collection } from "metabase-types/api";
 
 type OwnProps = {
   onClose: () => void;

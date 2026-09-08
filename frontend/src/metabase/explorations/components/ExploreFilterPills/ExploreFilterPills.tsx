@@ -1,6 +1,6 @@
+import type { HydratedExplorationExploreFilter } from "metabase-types/api";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { Group } from "metabase/ui";
-import type { HydratedExplorationExploreFilter } from "metabase-types/api";
 
 export type ExploreFilterPill = Pick<
   HydratedExplorationExploreFilter,

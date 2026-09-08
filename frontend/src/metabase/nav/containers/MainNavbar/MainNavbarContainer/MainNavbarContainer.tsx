@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { Collection, User } from "metabase-types/api";
 import {
   useGetCollectionQuery,
   useListBookmarksQuery,
@@ -30,7 +31,6 @@ import { addUndo } from "metabase/redux/undo";
 import type { To } from "metabase/router";
 import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Collection, User } from "metabase-types/api";
 
 import { NavbarErrorView } from "../NavbarErrorView";
 import { NavbarLoadingView } from "../NavbarLoadingView";

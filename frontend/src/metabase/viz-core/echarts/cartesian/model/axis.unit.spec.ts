@@ -1,10 +1,10 @@
-import { dayjs } from "metabase/dayjs";
 import type { RowValue } from "metabase-types/api";
 import {
   createMockDatetimeColumn,
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+import { dayjs } from "metabase/dayjs";
 
 import { X_AXIS_DATA_KEY } from "../constants/dataset";
 

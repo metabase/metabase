@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 
-import { Alert, Icon, Stack } from "metabase/ui";
 import type { InspectorAlertTrigger } from "metabase-types/api";
+import { Alert, Icon, Stack } from "metabase/ui";
 
 type CardAlertsProps = {
   alerts: InspectorAlertTrigger[];

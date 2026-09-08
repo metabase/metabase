@@ -1,7 +1,7 @@
 import { memo } from "react";
 
-import { Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
+import { Stack } from "metabase/ui";
 
 import type { DependencyDiagnosticsMode } from "../types";
 

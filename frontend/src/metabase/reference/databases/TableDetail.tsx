@@ -3,6 +3,8 @@ import { useFormik } from "formik";
 import { useState } from "react";
 import { t } from "ttag";
 
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { User } from "metabase-types/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import {
@@ -17,8 +19,6 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { updateTable } from "metabase/reference/update-actions";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { User } from "metabase-types/api";
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {

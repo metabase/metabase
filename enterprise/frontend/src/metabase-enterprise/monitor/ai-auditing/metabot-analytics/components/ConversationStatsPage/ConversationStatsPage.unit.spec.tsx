@@ -9,10 +9,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
-import * as Urls from "metabase/urls";
-import { parseSearchQuery } from "metabase/utils/browser";
 import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
 import {
   ADMIN_GROUP,
@@ -32,6 +28,10 @@ import {
   createMockDatasetData,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
 
 import { ConversationStatsPage } from "./ConversationStatsPage";
 import { buildAuditViewsFixture } from "./audit-views-fixture";

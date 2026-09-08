@@ -2,15 +2,32 @@ import { createSelector } from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
 import _ from "underscore";
 
+import Question from "metabase-lib/v1/Question";
+import {
+  getValuePopulatedParameters as _getValuePopulatedParameters,
+  getParameterValuesBySlug,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
+import type {
+  Card,
+  DashCardId,
+  Dashboard,
+  DashboardCard,
+  DashboardId,
+  DashboardParameterMapping,
+  DashboardTabId,
+  EmbeddingParameterVisibility,
+  ParameterId,
+  VirtualCard,
+} from "metabase-types/api";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
-import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
-import { getIsWebApp } from "metabase/embedding/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
+import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
+import { getIsWebApp } from "metabase/embedding/selectors";
 import { getMetadata } from "metabase/metadata-store";
 import {
   getDashboardQuestions,
@@ -32,23 +49,6 @@ import { getPathnameWithoutSubPath } from "metabase/utils/dom";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { isNotNull } from "metabase/utils/types";
 import { extendCardWithDashcardSettings } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
-import {
-  getValuePopulatedParameters as _getValuePopulatedParameters,
-  getParameterValuesBySlug,
-} from "metabase-lib/v1/parameters/utils/parameter-values";
-import type {
-  Card,
-  DashCardId,
-  Dashboard,
-  DashboardCard,
-  DashboardId,
-  DashboardParameterMapping,
-  DashboardTabId,
-  EmbeddingParameterVisibility,
-  ParameterId,
-  VirtualCard,
-} from "metabase-types/api";
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {

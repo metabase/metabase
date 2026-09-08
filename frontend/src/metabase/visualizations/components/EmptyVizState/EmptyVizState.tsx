@@ -1,13 +1,13 @@
 import { c, t } from "ttag";
 
-import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
-import CS from "metabase/css/core/index.css";
-import { Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 import {
   type VisualizationDisplay,
   isCardDisplayType,
 } from "metabase-types/api/visualization";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { useDocsUrl } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
+import { Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 
 import { getEmptyVizConfig } from "./utils";
 

@@ -1,5 +1,3 @@
-/* eslint-disable import-js/order */
-
 import type { MetabaseEmbeddingSdkBundleExports } from "./types/sdk-bundle";
 
 import { MetabotSubscriber } from "./components/private/MetabotSubscriber/MetabotSubscriber";

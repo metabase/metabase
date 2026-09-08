@@ -2,6 +2,12 @@ import { useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
+import type {
+  Database,
+  SettingKey,
+  SettingValue,
+  UploadsSettings,
+} from "metabase-types/api";
 import {
   skipToken,
   useListDatabasesQuery,
@@ -29,12 +35,6 @@ import {
   TextInput,
   Tooltip,
 } from "metabase/ui";
-import type {
-  Database,
-  SettingKey,
-  SettingValue,
-  UploadsSettings,
-} from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
 

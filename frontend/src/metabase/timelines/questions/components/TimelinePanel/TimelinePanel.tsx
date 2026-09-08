@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Box, Button } from "metabase/ui";
 import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import { Box, Button } from "metabase/ui";
 
 import TimelineEmptyState from "../TimelineEmptyState";
 import TimelineList from "../TimelineList";

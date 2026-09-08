@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Box, Loader, Text } from "metabase/ui";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
+import { Box, Loader, Text } from "metabase/ui";
 
 import { AllChangesView } from "./AllChangesView";
 

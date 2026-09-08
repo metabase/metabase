@@ -9,6 +9,10 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import type {
+  ExplorationBlockNode,
+  ExplorationQuery,
+} from "metabase-types/api";
 import {
   trackExplorationSidebarTabChanged,
   trackExplorationVisualizationChanged,
@@ -22,10 +26,6 @@ import {
 } from "metabase/explorations/test-utils";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type {
-  ExplorationBlockNode,
-  ExplorationQuery,
-} from "metabase-types/api";
 
 import { ExplorationSidebar } from "./ExplorationSidebar";
 import {

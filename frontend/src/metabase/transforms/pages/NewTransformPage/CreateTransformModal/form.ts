@@ -1,11 +1,11 @@
 import * as Yup from "yup";
 
-import * as Errors from "metabase/utils/errors";
-import { slugify } from "metabase/utils/formatting";
 import type {
   CreateTransformRequest,
   TransformSource,
 } from "metabase-types/api";
+import * as Errors from "metabase/utils/errors";
+import { slugify } from "metabase/utils/formatting";
 
 import {
   VALIDATION_SCHEMA as INCREMENTAL_TRANSFORM_VALIDATION_SCHEMA,

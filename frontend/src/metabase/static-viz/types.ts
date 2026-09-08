@@ -1,4 +1,3 @@
-import type { ColorPalette } from "metabase/ui/colors/types";
 import type {
   Card,
   ColumnFormattingSetting,
@@ -12,6 +11,7 @@ import type {
   TokenFeatures,
   VisualizerVizDefinition,
 } from "metabase-types/api";
+import type { ColorPalette } from "metabase/ui/colors/types";
 
 export type RenderChartOptions = {
   tokenFeatures: TokenFeatures;

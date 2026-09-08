@@ -3,6 +3,9 @@ import { useFormik } from "formik";
 import { useEffect } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { DatasetQuery, Segment, TableId } from "metabase-types/api";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import { Link } from "metabase/common/components/Link";
 import { getMetadata } from "metabase/metadata-store";
@@ -14,9 +17,6 @@ import {
   getSegmentQueryDefinition,
 } from "metabase/segments";
 import { Alert, Button } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { DatasetQuery, Segment, TableId } from "metabase-types/api";
 
 import FormInput from "../FormInput";
 import FormLabel from "../FormLabel";

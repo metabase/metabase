@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { Collection, CollectionId } from "metabase-types/api";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import type {
   MoveDestination,
@@ -10,7 +11,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
 import { useSetCollection } from "metabase/common/hooks";
 import * as Urls from "metabase/urls";
-import type { Collection, CollectionId } from "metabase-types/api";
 
 export interface MoveCollectionModalProps {
   collection: Collection;

@@ -1,7 +1,7 @@
-import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
-import type { SettingsState, State } from "metabase/redux/store";
 import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
+import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
+import type { SettingsState, State } from "metabase/redux/store";
 
 import { createMockAdminState } from "./admin";
 import { createMockApiState, seedCurrentUserApiState } from "./api";

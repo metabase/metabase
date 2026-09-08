@@ -1,5 +1,5 @@
-import { PLUGIN_WRITABLE_CONNECTION } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_WRITABLE_CONNECTION } from "metabase/plugins";
 
 import { WritableConnectionInfoSection } from "./components/WritableConnectionInfoSection";
 import { getWritableConnectionInfoRoutes } from "./routes";

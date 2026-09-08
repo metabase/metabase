@@ -1,6 +1,6 @@
+import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import { Box } from "metabase/ui";
-import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 
 import { CenterControls } from "./CenterControls";
 import { LeftControls } from "./LeftControls";

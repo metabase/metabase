@@ -2,6 +2,7 @@ import { useFormikContext } from "formik";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
+import type { MetabotFeedback, MetabotIssueType } from "metabase-types/api";
 import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
@@ -11,7 +12,6 @@ import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { MetabotFeedback, MetabotIssueType } from "metabase-types/api";
 
 import { issueTypeOptions } from "./feedback-issue-types";
 

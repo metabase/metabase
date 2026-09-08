@@ -7,6 +7,15 @@ import type {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
+import { customVizPluginApi } from "metabase-enterprise/api/custom-viz-plugin";
+import type {
+  CustomVizPluginId,
+  CustomVizPluginRuntime,
+  VisualizationDisplay,
+} from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
+import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { api } from "metabase/api/client";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { type ToastArgs, useToast } from "metabase/common/hooks";
@@ -27,15 +36,6 @@ import {
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types/visualization";
 import { registerVisualization, visualizations } from "metabase/viz-core";
-import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
-import { customVizPluginApi } from "metabase-enterprise/api/custom-viz-plugin";
-import type {
-  CustomVizPluginId,
-  CustomVizPluginRuntime,
-  VisualizationDisplay,
-} from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
-import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import { type PluginClickObject, toHostClickObject } from "./click-object";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";

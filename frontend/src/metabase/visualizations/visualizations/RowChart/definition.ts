@@ -1,5 +1,12 @@
 import { t } from "ttag";
 
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import type {
+  DatasetData,
+  SeriesCard,
+  TransformedCard,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   type ComputedVisualizationSettings,
   GRAPH_DATA_SETTINGS,
@@ -17,13 +24,6 @@ import {
   validateDatasetRows,
   validateStacking,
 } from "metabase/viz-core";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type {
-  DatasetData,
-  SeriesCard,
-  TransformedCard,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 import { getColumnValueFormatter } from "./utils/format";
 import { ROW_CHART_SETTINGS } from "./utils/settings-definitions";

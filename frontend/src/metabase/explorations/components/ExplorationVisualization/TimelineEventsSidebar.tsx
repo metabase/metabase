@@ -1,7 +1,7 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { ActionIcon, Group, Icon, ScrollArea, Stack, Text } from "metabase/ui";
 import type { TimelineEvent } from "metabase-types/api";
+import { ActionIcon, Group, Icon, ScrollArea, Stack, Text } from "metabase/ui";
 
 import { TimelineEventCard } from "./TimelineEventCard";
 import S from "./TimelineEventsSidebar.module.css";

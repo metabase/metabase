@@ -1,6 +1,11 @@
 import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 
+import type {
+  Dashboard,
+  VirtualDashboardCard,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { useDocsUrl } from "metabase/common/hooks";
@@ -16,11 +21,6 @@ import {
   getAllowedIframeAttributes,
   isAllowedIframeUrl,
 } from "metabase/viz-core";
-import type {
-  Dashboard,
-  VirtualDashboardCard,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 import {
   IFrameEditWrapper,

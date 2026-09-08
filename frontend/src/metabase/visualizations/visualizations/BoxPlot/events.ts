@@ -1,6 +1,7 @@
 import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo } from "react";
 
+import type { CardId, RawSeries } from "metabase-types/api";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
 import type {
   OnChangeCardAndRun,
@@ -16,7 +17,6 @@ import {
   getBoxPlotClickData,
   isBoxPlotSeriesEvent,
 } from "metabase/viz-core";
-import type { CardId, RawSeries } from "metabase-types/api";
 
 type UseBoxPlotEventsProps = {
   chartRef: React.RefObject<EChartsType | undefined>;

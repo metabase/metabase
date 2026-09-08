@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { EntityIdCard } from "metabase/common/components/EntityIdCard";
 import { Link } from "metabase/common/components/Link";
@@ -20,7 +21,6 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Flex, Icon, Stack, Tabs } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type Question from "metabase-lib/v1/Question";
 
 import { onCloseQuestionInfo } from "../../../../store/actions";
 import { QuestionActivityTimeline } from "../../../QuestionActivityTimeline";

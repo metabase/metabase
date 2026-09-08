@@ -1,3 +1,4 @@
+import type { CreateTimelineRequest, Timeline } from "metabase-types/api";
 import {
   skipToken,
   useCreateTimelineMutation,
@@ -6,7 +7,6 @@ import {
 import { useNavigate } from "metabase/router";
 import NewTimelineModal from "metabase/timelines/common/components/NewTimelineModal";
 import * as Urls from "metabase/urls";
-import type { CreateTimelineRequest, Timeline } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";

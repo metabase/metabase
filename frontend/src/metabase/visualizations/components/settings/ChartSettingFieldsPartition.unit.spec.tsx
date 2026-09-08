@@ -1,6 +1,6 @@
 import { render, screen } from "__support__/ui";
-import type { Partition } from "metabase/visualizations/visualizations/PivotTable/partitions";
 import { createMockColumn } from "metabase-types/api/mocks";
+import type { Partition } from "metabase/visualizations/visualizations/PivotTable/partitions";
 
 import { ChartSettingFieldsPartition } from "./ChartSettingFieldsPartition";
 

@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import type { Transform } from "metabase-types/api";
 import { formatStatus, isErrorStatus } from "metabase/transforms/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
 import { Box, Ellipsified, Flex, Icon } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import type { Transform } from "metabase-types/api";
 
 import type { TransformRunByTransformId } from "./types";
 

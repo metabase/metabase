@@ -1,11 +1,11 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { Text } from "metabase/ui";
 import type {
   ColumnFormattingSetting,
   ColumnSingleFormattingSetting,
 } from "metabase-types/api";
+import { Text } from "metabase/ui";
 
 import { ALL_OPERATOR_NAMES } from "./get-operators-for-columns";
 

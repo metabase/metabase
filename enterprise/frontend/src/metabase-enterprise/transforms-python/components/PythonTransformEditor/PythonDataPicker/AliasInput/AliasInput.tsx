@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { ActionIcon, Icon, TextInput } from "metabase/ui";
 import type { Table } from "metabase-types/api";
+import { ActionIcon, Icon, TextInput } from "metabase/ui";
 
 import type { TableSelection } from "../types";
 import { slugify } from "../utils";

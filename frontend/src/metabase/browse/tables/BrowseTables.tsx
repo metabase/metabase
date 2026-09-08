@@ -1,3 +1,4 @@
+import type { DatabaseId } from "metabase-types/api";
 import { useListDatabasesQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -5,7 +6,6 @@ import { findDatabaseByName } from "metabase/common/utils/database";
 import { useParams } from "metabase/router";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { DatabaseId } from "metabase-types/api";
 
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";

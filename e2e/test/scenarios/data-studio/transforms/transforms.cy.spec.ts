@@ -11,7 +11,6 @@ import {
   NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { createLibraryWithItems } from "e2e/support/test-library-data";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type {
   CardType,
   CollectionId,
@@ -19,6 +18,7 @@ import type {
   TransformSourceCheckpointStrategy,
   TransformTagId,
 } from "metabase-types/api";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 
 const { H } = cy;
 

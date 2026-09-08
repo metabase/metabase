@@ -2,6 +2,13 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type Question from "metabase-lib/v1/Question";
+import {
+  canArchiveAction,
+  canEditAction,
+  canRunAction,
+} from "metabase-lib/v1/actions/utils";
+import type { Database, WritebackAction } from "metabase-types/api";
 import {
   useDeleteActionMutation,
   useListActionsQuery,
@@ -13,13 +20,6 @@ import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { ActionIcon, Alert, Button, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
-import type Question from "metabase-lib/v1/Question";
-import {
-  canArchiveAction,
-  canEditAction,
-  canRunAction,
-} from "metabase-lib/v1/actions/utils";
-import type { Database, WritebackAction } from "metabase-types/api";
 
 import {
   EmptyStateActionContainer,

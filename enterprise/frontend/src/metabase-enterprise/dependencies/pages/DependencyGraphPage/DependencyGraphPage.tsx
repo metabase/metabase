@@ -1,12 +1,12 @@
 import { useContext } from "react";
 
+import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import { skipToken } from "metabase/api";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSearchParams } from "metabase/router";
 import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 
 import { DependencyGraph } from "../../components/DependencyGraph";
 import { isSameNode } from "../../utils";

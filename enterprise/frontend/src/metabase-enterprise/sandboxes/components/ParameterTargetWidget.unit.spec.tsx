@@ -1,6 +1,6 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import type { ParameterTarget } from "metabase-types/api";
+import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 
 import { ParameterTargetWidget } from "./ParameterTargetWidget";
 

@@ -1,5 +1,12 @@
 import _ from "underscore";
 
+import type {
+  Group,
+  GroupsPermissions,
+  PermissionsDatabase,
+  SchemaEntityId,
+  SpecialGroupType,
+} from "metabase-types/api";
 import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
 import {
   getSchemasPermission,
@@ -10,13 +17,6 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
-import type {
-  Group,
-  GroupsPermissions,
-  PermissionsDatabase,
-  SchemaEntityId,
-  SpecialGroupType,
-} from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { Messages } from "../../constants/messages";

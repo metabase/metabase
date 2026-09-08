@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { coercions_for_type } from "cljs/metabase.types.core";
+import type { Field } from "metabase-types/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { Select, type SelectProps } from "metabase/ui";
-import type { Field } from "metabase-types/api";
 
 import S from "./CoercionStrategyPicker.module.css";
 import { humanizeCoercionStrategy } from "./utils";

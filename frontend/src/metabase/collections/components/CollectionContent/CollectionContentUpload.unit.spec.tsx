@@ -18,16 +18,16 @@ import {
   within,
 } from "__support__/ui";
 import {
+  createMockCollection,
+  createMockCollectionItem,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
+import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { FileUploadStatus } from "metabase/status/components/FileUploadStatus/FileUploadStatus";
-import {
-  createMockCollection,
-  createMockCollectionItem,
-  createMockDatabase,
-} from "metabase-types/api/mocks";
 
 import { CollectionContent } from "./CollectionContent";
 

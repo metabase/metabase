@@ -1,8 +1,8 @@
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import {
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 
 import {
   databaseManagementPermissionAllowedPathGetter,

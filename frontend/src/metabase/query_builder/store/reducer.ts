@@ -2,6 +2,15 @@ import { type Reducer, combineReducers, createReducer } from "@reduxjs/toolkit";
 import { assoc, merge } from "icepick";
 import _ from "underscore";
 
+import type {
+  Card,
+  CollectionItemModel,
+  Dataset,
+  Field,
+  NativeQuerySnippet,
+  ParameterValuesMap,
+  TimelineEvent,
+} from "metabase-types/api";
 import {
   createCardPublicLink,
   deleteCardPublicLink,
@@ -28,15 +37,6 @@ import type {
   Range,
 } from "metabase/redux/store";
 import { clone } from "metabase/utils/clone";
-import type {
-  Card,
-  CollectionItemModel,
-  Dataset,
-  Field,
-  NativeQuerySnippet,
-  ParameterValuesMap,
-  TimelineEvent,
-} from "metabase-types/api";
 
 import {
   CLOSED_NATIVE_EDITOR_SIDEBARS,

@@ -1,6 +1,6 @@
 import { ReduxProvider } from "__support__/storybook";
-import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { SyncProgressModal } from "./SyncProgressModal";
 

@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import type { Table, TableDataSource, UserId } from "metabase-types/api";
 import { useUpdateTableMutation } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
@@ -26,7 +27,6 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNullOrUndefined } from "metabase/utils/types";
-import type { Table, TableDataSource, UserId } from "metabase-types/api";
 
 import S from "./DescriptionSection.module.css";
 

@@ -1,6 +1,7 @@
 import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useState } from "react";
 
+import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 import {
   type ChartLayout,
   TIMELINE_BAND_HEIGHT,
@@ -8,7 +9,6 @@ import {
   type TimelineEventGroup,
   type TimelineEventsModel,
 } from "metabase/viz-core";
-import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import { TimelineEventChip } from "./TimelineEventChip";
 import { TimelineEventStack } from "./TimelineEventStack";

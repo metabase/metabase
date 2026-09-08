@@ -1,6 +1,6 @@
-import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, VisualizationDisplay } from "metabase-types/api";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 
 export const trackNewQuestionSaved = (
   draftQuestion: Question,

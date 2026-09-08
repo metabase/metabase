@@ -1,7 +1,7 @@
 import { screen } from "__support__/ui";
-import { StreamInterruptedError } from "metabase/api/client";
 import type { DatasetError } from "metabase-types/api";
 import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
+import { StreamInterruptedError } from "metabase/api/client";
 
 import { setup } from "./setup";
 

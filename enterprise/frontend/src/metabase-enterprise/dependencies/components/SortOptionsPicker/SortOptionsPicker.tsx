@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import { type DependencySortColumn, SORT_DIRECTIONS } from "metabase-types/api";
 import {
   ActionIcon,
   FixedSizeIcon,
@@ -9,7 +10,6 @@ import {
   SegmentedControl,
   Stack,
 } from "metabase/ui";
-import { type DependencySortColumn, SORT_DIRECTIONS } from "metabase-types/api";
 
 import type { DependencySortOptions } from "../../types";
 

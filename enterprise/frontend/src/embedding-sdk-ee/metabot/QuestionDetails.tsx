@@ -4,10 +4,10 @@ import { useBreakoutData } from "embedding-sdk-bundle/components/private/SdkQues
 import { useFilterData } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Filter/hooks/use-filter-data";
 import { useSummarizeData } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Summarize/use-summarize-data";
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
-import { Text } from "metabase/ui";
-import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import { Text } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 
 export function QuestionDetails() {
   const { question } = useSdkQuestionContext();

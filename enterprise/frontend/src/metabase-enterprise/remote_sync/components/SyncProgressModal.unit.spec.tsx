@@ -5,9 +5,9 @@ import {
   setupRemoteSyncCancelTaskEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { RemoteSyncOutcome } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { SyncProgressModal } from "./SyncProgressModal";
 

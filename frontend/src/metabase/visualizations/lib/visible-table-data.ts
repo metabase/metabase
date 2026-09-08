@@ -1,10 +1,10 @@
+import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
+import type { DatasetData, RawSeries } from "metabase-types/api";
 import * as DataGrid from "metabase/visualizations/lib/data_grid";
 import {
   type ComputedVisualizationSettings,
   isPivoted,
 } from "metabase/viz-core";
-import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
-import type { DatasetData, RawSeries } from "metabase-types/api";
 
 export type VisibleTableData = Pick<
   DatasetData,

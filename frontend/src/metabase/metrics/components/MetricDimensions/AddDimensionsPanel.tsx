@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type {
+  AddableMetricDimension,
+  MetricDimensionGroup,
+  MetricId,
+} from "metabase-types/api";
 import {
   useAddMetricDimensionsMutation,
   useListMetricDimensionsQuery,
@@ -26,11 +31,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import type {
-  AddableMetricDimension,
-  MetricDimensionGroup,
-  MetricId,
-} from "metabase-types/api";
 
 import S from "./MetricDimensions.module.css";
 import { getNewDimensionTitle } from "./utils";

@@ -1,12 +1,12 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 
+import type { SearchResult } from "metabase-types/api";
 import {
   TreeTable,
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
 
 import { getColumnWidths, getColumns } from "./utils";
 

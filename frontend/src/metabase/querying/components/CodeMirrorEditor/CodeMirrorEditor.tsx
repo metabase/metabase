@@ -10,14 +10,14 @@ import {
 } from "react";
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+import type { CardId } from "metabase-types/api";
 import {
   CodeMirror,
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { isEventOverElement } from "metabase/utils/dom";
-import * as Lib from "metabase-lib";
-import type { CardId } from "metabase-types/api";
 
 import type { SelectionRange } from "../../editor/types";
 

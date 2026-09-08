@@ -1,9 +1,9 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 import { UpsellEmbedHomepage } from "metabase/common/components/upsells/UpsellEmbedHomepage";
 import { Box, Card, Flex, Stack, Text, Title } from "metabase/ui";
-import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
 import { EmbedJsContent } from "./EmbedJsContent";
 import { HeaderWithDismiss } from "./HeaderWithDismiss";

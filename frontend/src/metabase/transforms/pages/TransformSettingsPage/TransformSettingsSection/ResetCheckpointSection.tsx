@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useId } from "react";
 import { jt, t } from "ttag";
 
+import type { Transform } from "metabase-types/api";
 import {
   skipToken,
   useGetFieldQuery,
@@ -12,7 +13,6 @@ import { useMetadataToasts } from "metabase/common/hooks";
 import { CheckpointValue } from "metabase/transforms/components/CheckpointValue";
 import { isTransformRunning } from "metabase/transforms/utils";
 import { Box, Button, Code, Group, Icon, Text } from "metabase/ui";
-import type { Transform } from "metabase-types/api";
 
 export function ResetCheckpointSection({
   transform,

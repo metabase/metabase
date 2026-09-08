@@ -1,10 +1,10 @@
 import type { App } from "@modelcontextprotocol/ext-apps/react";
 import { useCallback } from "react";
 
-import * as Urls from "metabase/urls";
-import { utf8_to_b64 } from "metabase/utils/encoding";
 import type * as Lib from "metabase-lib";
 import type { SeriesCard } from "metabase-types/api";
+import * as Urls from "metabase/urls";
+import { utf8_to_b64 } from "metabase/utils/encoding";
 
 import { storeDrillQuery } from "../api";
 

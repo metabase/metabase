@@ -8,13 +8,13 @@ import {
   setupRemoveMetabotPromptSuggestionEndpoint,
 } from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
-import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
-import { Route } from "metabase/router";
 import type {
   RegenerateSuggestedMetabotPromptsResponse,
   SuggestedMetabotPrompt,
 } from "metabase-types/api";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
+import { Route } from "metabase/router";
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { mockSuggestedPrompts } from "./test-utils";

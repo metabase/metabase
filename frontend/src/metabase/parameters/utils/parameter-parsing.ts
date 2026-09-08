@@ -1,10 +1,3 @@
-import {
-  normalizeBooleanParameterValue,
-  normalizeDateParameterValue,
-  normalizeNumberParameterValue,
-  normalizeStringParameterValue,
-  normalizeTemporalUnitParameterValue,
-} from "metabase/querying/parameters/utils/parsing";
 import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
@@ -17,6 +10,13 @@ import type {
   ParameterValueOrArray,
   ParameterValuesMap,
 } from "metabase-types/api";
+import {
+  normalizeBooleanParameterValue,
+  normalizeDateParameterValue,
+  normalizeNumberParameterValue,
+  normalizeStringParameterValue,
+  normalizeTemporalUnitParameterValue,
+} from "metabase/querying/parameters/utils/parsing";
 
 export function getParameterValueFromQueryParams(
   parameter: Parameter,

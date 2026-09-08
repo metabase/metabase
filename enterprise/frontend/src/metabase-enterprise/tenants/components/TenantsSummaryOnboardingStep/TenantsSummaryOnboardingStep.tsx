@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
+import type { DataSegregationStrategy } from "metabase-types/api";
 import { RelatedSettingCard } from "metabase/admin/components/RelatedSettingsSection";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import { useNavigate } from "metabase/router";
 import { Button, Flex, SimpleGrid, Stack, Text, Title } from "metabase/ui";
 import { conjunct } from "metabase/utils/formatting/strings";
-import type { DataSegregationStrategy } from "metabase-types/api";
 
 import { useListTenantsQuery } from "../../../api/tenants";
 import { getIsolationFieldConfig } from "../CreateTenantsOnboardingStep/isolation-field-config";

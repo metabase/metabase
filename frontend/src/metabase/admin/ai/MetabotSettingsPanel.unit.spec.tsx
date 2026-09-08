@@ -26,12 +26,6 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
-import {
-  FIXED_METABOT_ENTITY_IDS,
-  FIXED_METABOT_IDS,
-} from "metabase/metabot/constants";
-import { reinitialize } from "metabase/plugins";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { MetabotId, MetabotInfo, RecentItem } from "metabase-types/api";
 import {
   createMockCollection,
@@ -39,6 +33,12 @@ import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import {
+  FIXED_METABOT_ENTITY_IDS,
+  FIXED_METABOT_IDS,
+} from "metabase/metabot/constants";
+import { reinitialize } from "metabase/plugins";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 
 import { MetabotSettingsPanel } from "./MetabotSettingsPanel";
 

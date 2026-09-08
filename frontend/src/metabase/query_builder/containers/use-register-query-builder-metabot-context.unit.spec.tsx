@@ -3,8 +3,6 @@ import _ from "underscore";
 import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders } from "__support__/ui";
-import { registerVisualizations } from "metabase/visualizations/register";
-import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type {
   RawSeries,
@@ -20,6 +18,8 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 import { createAdHocCard } from "metabase-types/api/mocks/presets";
+import { registerVisualizations } from "metabase/visualizations/register";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 
 import {
   registerQueryBuilderMetabotContextFn,

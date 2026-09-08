@@ -1,4 +1,3 @@
-import { getDeduplicatedTableColumnSettings } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import {
   getColumnKey,
@@ -14,6 +13,7 @@ import type {
   SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+import { getDeduplicatedTableColumnSettings } from "metabase/viz-core";
 
 export type ColumnInfo = {
   key: string;

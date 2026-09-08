@@ -1,7 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
-import { getHelpText } from "metabase/querying/expressions";
 import type * as Lib from "metabase-lib";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { getHelpText } from "metabase/querying/expressions";
 
 import { getFilteredClauses } from "./utils";
 

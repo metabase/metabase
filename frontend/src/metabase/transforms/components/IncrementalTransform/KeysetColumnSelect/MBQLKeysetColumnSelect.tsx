@@ -1,7 +1,7 @@
-import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
-import type { DataAttributes, InputDescriptionProps } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { TransformSource } from "metabase-types/api";
+import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
+import type { DataAttributes, InputDescriptionProps } from "metabase/ui";
 
 import { KeysetColumnSelect } from "./KeysetColumnSelect";
 

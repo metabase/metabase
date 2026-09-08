@@ -2,6 +2,7 @@ import cx from "classnames";
 import { type MouseEvent, useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type { SortingOptions } from "metabase-types/api";
 import { getCollectionName } from "metabase/common/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
@@ -27,7 +28,6 @@ import {
   Skeleton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { SortingOptions } from "metabase-types/api";
 
 import BrowseTableS from "../components/BrowseTable.module.css";
 

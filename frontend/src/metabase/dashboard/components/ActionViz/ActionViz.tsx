@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import type { VisualizationSettings } from "metabase-types/api";
 import {
   type VisualizationDefinition,
   getDefaultSize,
   getMinSize,
 } from "metabase/viz-core";
-import type { VisualizationSettings } from "metabase-types/api";
 
 import { Action } from "./Action";
 

@@ -1,7 +1,5 @@
 import { createAction } from "@reduxjs/toolkit";
 
-import type { Dispatch } from "metabase/redux/store";
-import { type Location, navigate } from "metabase/router";
 import type {
   DashCardId,
   DashCardVisualizationSettings,
@@ -9,6 +7,8 @@ import type {
   DashboardCard,
   DashboardId,
 } from "metabase-types/api";
+import type { Dispatch } from "metabase/redux/store";
+import { type Location, navigate } from "metabase/router";
 
 import type { NewDashboardCard } from "../utils";
 

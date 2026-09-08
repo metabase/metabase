@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect } from "react";
 import { jt, t } from "ttag";
 
+import type { IconName } from "metabase-types/api";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
@@ -8,7 +9,6 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/current-user";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Box, Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./GuidePage.module.css";
 

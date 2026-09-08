@@ -8,15 +8,15 @@ import { setupMockIntersectionObserver } from "__support__/intersection-observer
 import { setupCommentEndpoints } from "__support__/server-mocks";
 import { act, getTestStoreAndWrapper, waitFor } from "__support__/ui";
 import { delay } from "__support__/utils";
+import type { Comment } from "metabase-types/api";
+import { createMockDocument } from "metabase-types/api/mocks";
+import { createMockComment } from "metabase-types/api/mocks/comment";
 import { DocumentEditorHostProvider } from "metabase/documents/components/Editor/DocumentEditorHost";
 import { initialState as documentsInitialState } from "metabase/documents/documents.slice";
 import {
   createMockNodeViewProps,
   createMockProseMirrorNode,
 } from "metabase/metabot/components/editor-extensions/MetabotEmbed/__support__/node-view-mocks";
-import type { Comment } from "metabase-types/api";
-import { createMockDocument } from "metabase-types/api/mocks";
-import { createMockComment } from "metabase-types/api/mocks/comment";
 
 import { isTopLevel, useBlockMenus } from "./use-block-menus";
 

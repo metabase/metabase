@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import type { TreeTableColumnDef } from "metabase/ui";
-import { Ellipsified } from "metabase/ui";
 import type {
   SourceReplacementColumnErrorType,
   SourceReplacementColumnMapping,
 } from "metabase-types/api";
+import type { TreeTableColumnDef } from "metabase/ui";
+import { Ellipsified } from "metabase/ui";
 
 import { getColumnErrorMessage } from "../../../../utils";
 import type { EntityItem } from "../../types";

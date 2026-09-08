@@ -1,19 +1,22 @@
 import path from "node:path";
+
 import globals from "globals";
-import presets from "./recommended-rules.json" with { type: "json" };
+
 import {
   SIDE_EFFECT_FREE_PATHS,
   SIDE_EFFECT_PATHS,
 } from "../build/shared/rspack/side-effect-free-modules.js";
-import {
-  NO_MODULE_SIDE_EFFECTS_IGNORES,
-  NO_MODULE_SIDE_EFFECTS_OPTIONS,
-} from "./no-module-side-effects-options.js";
+
 import {
   boundarySettings,
   boundaryOptions,
   getPublicApiModules,
 } from "./module-boundaries.mjs";
+import {
+  NO_MODULE_SIDE_EFFECTS_IGNORES,
+  NO_MODULE_SIDE_EFFECTS_OPTIONS,
+} from "./no-module-side-effects-options.js";
+import presets from "./recommended-rules.json" with { type: "json" };
 const __dirname = path.resolve(import.meta.dirname, "../..");
 const TEST_FILES_NAME_PATTERN_ERROR_MESSAGE = `Please name your test setup and utils files with a ".spec.*" in the filename, or put them under "/tests", e.g. "setup.spec.ts", "MyComponent.setup.spec.ts", or "tests/setup.ts". This is to ensure they won't be imported in the SDK build.`;
 
@@ -219,26 +222,6 @@ const configs = [
       "import/no-default-export": "error",
       "import/no-named-as-default": "off",
       "import/no-commonjs": "warn",
-      "import/order": [
-        "error",
-        {
-          "newlines-between": "always",
-          alphabetize: {
-            order: "asc",
-            orderImportKind: "asc",
-            caseInsensitive: false,
-          },
-          groups: [
-            "builtin",
-            "external",
-            "internal",
-            "parent",
-            "sibling",
-            "index",
-          ],
-          warnOnUnassignedImports: false,
-        },
-      ],
       "sort-imports": [
         "error",
         {
@@ -1066,7 +1049,6 @@ const configs = [
       "@typescript-eslint/no-var-requires": "off",
       "import/no-commonjs": "off",
       "import/no-default-export": "off",
-      "import/order": "off",
       "import/no-unresolved": "off",
       "metabase/no-color-literals": "off",
     },

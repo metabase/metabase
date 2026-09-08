@@ -1,9 +1,9 @@
 import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTypes";
 
-import { parseNumberValue } from "metabase/utils/number";
 import { isNumericBaseType } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
+import { parseNumberValue } from "metabase/utils/number";
 
 import type {
   ComputedVisualizationSettings,

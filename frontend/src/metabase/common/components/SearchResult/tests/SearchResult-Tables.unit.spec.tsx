@@ -7,14 +7,14 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { SearchResult } from "metabase/common/components/SearchResult";
-import { createWrappedSearchResult } from "metabase/common/components/SearchResult/tests/util";
 import type { InitialSyncStatus } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { SearchResult } from "metabase/common/components/SearchResult";
+import { createWrappedSearchResult } from "metabase/common/components/SearchResult/tests/util";
 
 interface SetupOpts {
   name: string;

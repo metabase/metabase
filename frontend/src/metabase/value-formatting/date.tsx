@@ -1,6 +1,10 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
+import type { ColumnSettings } from "metabase-types/api";
+import type { DatetimeUnit } from "metabase-types/api/query";
+import { SCHEDULE_DAY, isScheduleDay } from "metabase-types/guards/settings";
 import CS from "metabase/css/core/index.css";
 import {
   type Dayjs,
@@ -16,10 +20,6 @@ import {
   hasHour,
 } from "metabase/utils/formatting";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
-import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
-import type { ColumnSettings } from "metabase-types/api";
-import type { DatetimeUnit } from "metabase-types/api/query";
-import { SCHEDULE_DAY, isScheduleDay } from "metabase-types/guards/settings";
 
 const EN_DASH = `–`;
 

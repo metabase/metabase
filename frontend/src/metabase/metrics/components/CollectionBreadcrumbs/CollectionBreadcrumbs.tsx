@@ -1,11 +1,11 @@
 import cx from "classnames";
 
+import type { Card } from "metabase-types/api";
 import { Link } from "metabase/common/components/Link";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
 import CS from "metabase/css/core/index.css";
 import { Breadcrumbs, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Card } from "metabase-types/api";
 
 interface CollectionBreadcrumbsProps {
   card: Card;

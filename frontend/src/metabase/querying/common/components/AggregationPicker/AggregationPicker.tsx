@@ -8,6 +8,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import {
   AccordionList,
@@ -34,7 +35,6 @@ import {
   getClauseDefinition,
 } from "metabase/querying/expressions";
 import { Box, Flex, Icon, Text } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import {
   ColumnPickerHeaderContainer,

@@ -1,6 +1,12 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { provisioningOptions } from "metabase-enterprise/auth/utils";
+import type {
+  EnterpriseSettings,
+  SettingDefinition,
+  SettingDefinitionMap,
+} from "metabase-types/api";
 import {
   CollapsibleSettingsSection,
   SETTINGS_CARD_DESCRIPTION_PROPS,
@@ -29,12 +35,6 @@ import {
   useGetAdminSettingsDetailsQuery,
 } from "metabase/settings";
 import { Box, Flex, Stack } from "metabase/ui";
-import { provisioningOptions } from "metabase-enterprise/auth/utils";
-import type {
-  EnterpriseSettings,
-  SettingDefinition,
-  SettingDefinitionMap,
-} from "metabase-types/api";
 
 // Attribute-key fields show only a placeholder, no helper text. Env-locked
 // fields swap the placeholder for the readOnly "Using MB_..." notice.

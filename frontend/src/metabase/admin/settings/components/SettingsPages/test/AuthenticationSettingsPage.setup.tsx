@@ -8,14 +8,14 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
-import type { AuthSettingsPageTab } from "metabase/plugins";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { ApiKey, EnterpriseSettings } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import type { AuthSettingsPageTab } from "metabase/plugins";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 
 import { AuthenticationSettingsPage } from "../AuthenticationSettingsPage";
 

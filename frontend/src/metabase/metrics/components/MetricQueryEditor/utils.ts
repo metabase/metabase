@@ -1,5 +1,5 @@
-import type { QueryEditorUiOptions } from "metabase/querying/editor/types";
 import * as Lib from "metabase-lib";
+import type { QueryEditorUiOptions } from "metabase/querying/editor/types";
 
 export function getEditorOptions(
   query: Lib.Query,

@@ -1,8 +1,8 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Badge, Icon, Skeleton, Tabs } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { Badge, Icon, Skeleton, Tabs } from "metabase/ui";
 
 import type {
   NotificationsTab,

@@ -1,5 +1,12 @@
 import { t } from "ttag";
 
+import type {
+  Collection,
+  CollectionId,
+  CreateTimelineEventRequest,
+  CreateTimelineRequest,
+  TimelineEvent,
+} from "metabase-types/api";
 import {
   useCreateTimelineEventMutation,
   useCreateTimelineMutation,
@@ -11,13 +18,6 @@ import { getDefaultTimeline } from "metabase/common/utils/timelines";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
-import type {
-  Collection,
-  CollectionId,
-  CreateTimelineEventRequest,
-  CreateTimelineRequest,
-  TimelineEvent,
-} from "metabase-types/api";
 
 interface NewEventModalContainerProps {
   cardId?: number;

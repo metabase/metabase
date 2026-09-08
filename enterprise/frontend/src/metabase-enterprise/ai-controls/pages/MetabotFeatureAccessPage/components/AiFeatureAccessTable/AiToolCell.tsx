@@ -1,8 +1,8 @@
 import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import { Checkbox, Flex } from "metabase/ui";
 import type { AIToolKey } from "metabase-types/api";
+import { Checkbox, Flex } from "metabase/ui";
 
 import type { AiFeatureAccessRow, AiFeatureAccessTableProps } from "./utils";
 

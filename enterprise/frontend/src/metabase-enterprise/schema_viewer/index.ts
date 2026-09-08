@@ -1,5 +1,5 @@
-import { PLUGIN_SCHEMA_VIEWER } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_SCHEMA_VIEWER } from "metabase/plugins";
 
 import { getDataStudioSchemaViewerRoutes } from "./routes";
 

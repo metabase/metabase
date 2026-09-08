@@ -1,9 +1,9 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import type { PieRow, RawSeries } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 
 import { getAggregatedRows, getColors, getKeyFromDimensionValue } from "./pie";
 

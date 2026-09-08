@@ -3,6 +3,14 @@ import type { MouseEvent } from "react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type Question from "metabase-lib/v1/Question";
+import type {
+  DashCardId,
+  DashCardSeries,
+  DashboardCard,
+  VisualizationSettings,
+} from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 import { isActionDashCard } from "metabase/actions/utils";
 import { AddFilterParameterMenu } from "metabase/dashboard/components/AddFilterParameterMenu";
 import {
@@ -21,14 +29,6 @@ import {
   isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
 import { getVisualizationRaw } from "metabase/viz-core";
-import type Question from "metabase-lib/v1/Question";
-import type {
-  DashCardId,
-  DashCardSeries,
-  DashboardCard,
-  VisualizationSettings,
-} from "metabase-types/api";
-import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import { canEditQuestion } from "../DashCardMenu/utils";
 

@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import type { ColorName } from "metabase/ui/colors/types";
 import type {
   Collection,
   IconName,
@@ -9,6 +8,7 @@ import type {
   RemoteSyncRemedyCollection,
   SettingDefinition,
 } from "metabase-types/api";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import type { CollectionPathSegment } from "./displayGroups";
 

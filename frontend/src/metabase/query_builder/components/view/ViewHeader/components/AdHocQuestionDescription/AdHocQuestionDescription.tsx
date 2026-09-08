@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
-import CS from "metabase/css/core/index.css";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import CS from "metabase/css/core/index.css";
 
 import { describeQueryStage, getInfoStageIndex } from "./utils";
 

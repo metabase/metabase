@@ -7,10 +7,10 @@ import type {
 } from "@reduxjs/toolkit";
 import { isAnyOf } from "@reduxjs/toolkit";
 
+import type { Collection } from "metabase-types/api";
 import { Api } from "metabase/api";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
-import type { Collection } from "metabase-types/api";
 
 import { REMOTE_SYNC_INVALIDATION_TAGS, TRANSFORMS_KEY } from "../constants";
 

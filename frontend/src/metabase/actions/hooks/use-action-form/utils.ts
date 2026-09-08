@@ -1,7 +1,3 @@
-import type { FieldSettings as LocalFieldSettings } from "metabase/actions/types";
-import { getDefaultFieldSettings } from "metabase/actions/utils";
-import { dayjs } from "metabase/dayjs";
-import { isEmpty } from "metabase/utils/validate";
 import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   FieldSettings,
@@ -11,6 +7,10 @@ import type {
   ParameterId,
   ParametersForActionExecution,
 } from "metabase-types/api";
+import type { FieldSettings as LocalFieldSettings } from "metabase/actions/types";
+import { getDefaultFieldSettings } from "metabase/actions/utils";
+import { dayjs } from "metabase/dayjs";
+import { isEmpty } from "metabase/utils/validate";
 
 export function stripTZInfo(dateOrTimeString: string) {
   // strip everything after a trailing tz (e.g. +08:00)

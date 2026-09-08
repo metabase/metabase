@@ -1,5 +1,5 @@
-import type { ColorName } from "metabase/ui/colors/types";
 import type * as Lib from "metabase-lib";
+import type { ColorName } from "metabase/ui/colors/types";
 
 export interface CommonBucketPickerProps {
   query: Lib.Query;

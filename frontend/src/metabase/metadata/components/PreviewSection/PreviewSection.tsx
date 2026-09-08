@@ -1,6 +1,8 @@
 import { memo, useMemo } from "react";
 import { t } from "ttag";
 
+import { isPK } from "metabase-lib/v1/types/utils/isa";
+import type { Field, Table } from "metabase-types/api";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
@@ -12,8 +14,6 @@ import {
   SegmentedControl,
   Text,
 } from "metabase/ui";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { Field, Table } from "metabase-types/api";
 
 import { FilteringPreview } from "./FilteringPreview";
 import { ObjectDetailPreview } from "./ObjectDetailPreview";

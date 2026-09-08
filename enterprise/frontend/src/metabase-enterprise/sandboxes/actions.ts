@@ -1,5 +1,7 @@
 import _ from "underscore";
 
+import type { GroupTableAccessPolicy } from "metabase-types/api";
+import { DataPermission, DataPermissionValue } from "metabase-types/api";
 import {
   LOAD_DATA_PERMISSIONS,
   SAVE_DATA_PERMISSIONS,
@@ -14,8 +16,6 @@ import {
   createThunkAction,
   handleActions,
 } from "metabase/redux";
-import type { GroupTableAccessPolicy } from "metabase-types/api";
-import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
 import type { RawGroupTableAccessPolicyParams } from "./types";
 import { getPolicyKey, getPolicyKeyFromParams } from "./utils";

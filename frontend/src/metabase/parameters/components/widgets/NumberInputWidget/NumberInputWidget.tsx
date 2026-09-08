@@ -2,6 +2,12 @@ import { type FormEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type {
+  Parameter,
+  ParameterValue,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
@@ -14,12 +20,6 @@ import {
 import { Box, type ComboboxItem } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import { isNotNull } from "metabase/utils/types";
-import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type {
-  Parameter,
-  ParameterValue,
-  ParameterValueOrArray,
-} from "metabase-types/api";
 
 import { Footer, TokenFieldWrapper, WidgetLabel } from "../Widget";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";

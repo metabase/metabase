@@ -3,8 +3,8 @@ import fetchMock from "fetch-mock";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
-import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
 
 import { type SetupOpts, setup } from "./setup";
 

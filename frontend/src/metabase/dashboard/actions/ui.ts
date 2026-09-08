@@ -1,3 +1,4 @@
+import type { DashCardId } from "metabase-types/api";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { createAction, createThunkAction } from "metabase/redux";
 import type {
@@ -5,7 +6,6 @@ import type {
   Dispatch,
   GetState,
 } from "metabase/redux/store";
-import type { DashCardId } from "metabase-types/api";
 
 import { getSidebar } from "../selectors";
 

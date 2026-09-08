@@ -1,11 +1,12 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 
+import type { ColorSettings } from "metabase-types/api";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   isPublicEmbedding,
   isStaticEmbedding,
 } from "metabase/embedding/config";
 import type { DisplayTheme } from "metabase/embedding/types";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useUpdateSettingMutation } from "metabase/settings";
 import type { MantineThemeOverride } from "metabase/ui";
 import { mutateColors } from "metabase/ui/colors/colors";
@@ -21,7 +22,6 @@ import {
   setUserColorSchemeAfterUpdate,
 } from "metabase/utils/color-scheme";
 import MetabaseSettings from "metabase/utils/settings";
-import type { ColorSettings } from "metabase-types/api";
 
 import { AppColorSchemeProvider } from "./AppColorSchemeProvider";
 

@@ -1,6 +1,5 @@
 import slugg from "slugg";
 
-import MetabaseSettings from "metabase/utils/settings";
 import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -10,6 +9,7 @@ import type {
   UnsavedCard,
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
+import MetabaseSettings from "metabase/utils/settings";
 
 import { card as urlForCard } from "./cards";
 import { appendSlug } from "./utils";

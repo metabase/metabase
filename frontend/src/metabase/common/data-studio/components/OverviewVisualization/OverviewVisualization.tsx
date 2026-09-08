@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 
+import Question from "metabase-lib/v1/Question";
+import type { Card, Dataset } from "metabase-types/api";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import { getMetadata } from "metabase/metadata-store";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { useSelector } from "metabase/redux";
-import Question from "metabase-lib/v1/Question";
-import type { Card, Dataset } from "metabase-types/api";
 
 import { useCardQueryData } from "../../hooks/use-card-query-data";
 

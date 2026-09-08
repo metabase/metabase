@@ -1,7 +1,7 @@
 import { useLayoutEffect, useState } from "react";
 
-import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { Box, Flex } from "metabase/ui";
 
 import { JoinConditionColumnPicker } from "../JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "../JoinConditionOperatorPicker";

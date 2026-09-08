@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 
+import type { InspectorCard } from "metabase-types/api";
 import { useProgressiveLoader } from "metabase/common/hooks";
 import { SimpleGrid, Stack } from "metabase/ui";
-import type { InspectorCard } from "metabase-types/api";
 
 import { useLensContentContext } from "../../../LensContent/LensContentContext";
 

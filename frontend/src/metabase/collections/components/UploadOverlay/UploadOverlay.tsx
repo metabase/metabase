@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Flex, Icon, rem } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
+import { Flex, Icon, rem } from "metabase/ui";
 
 import S from "./UploadOverlay.module.css";
 

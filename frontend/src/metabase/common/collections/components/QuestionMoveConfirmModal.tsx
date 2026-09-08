@@ -3,8 +3,6 @@ import { useLatest } from "react-use";
 import { jt, msgid, ngettext, t } from "ttag";
 import { first } from "underscore";
 
-import { useGetMultipleCardsDashboardsQuery } from "metabase/api";
-import { Button, Flex, List, Loader, Modal, Text, Title } from "metabase/ui";
 import type {
   CardId,
   Collection,
@@ -12,6 +10,8 @@ import type {
   Dashboard,
   DashboardId,
 } from "metabase-types/api";
+import { useGetMultipleCardsDashboardsQuery } from "metabase/api";
+import { Button, Flex, List, Loader, Modal, Text, Title } from "metabase/ui";
 
 export type CardDashboards = {
   cardId: CardId;

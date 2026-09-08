@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import { match } from "ts-pattern";
 
+import type { ParameterValueOrArray } from "metabase-types/api";
 import { MonthYearPicker } from "metabase/querying/common/components/MonthYearPicker";
 import type { MonthYearPickerValue } from "metabase/querying/common/types";
 import {
   deserializeDateParameterValue,
   serializeDateParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
-import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateMonthYearPickerProps = {
   value: ParameterValueOrArray | null | undefined;

@@ -3,6 +3,7 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { Group } from "metabase-types/api";
 import { Messages } from "metabase/admin/permissions/constants/messages";
 import { getDefaultGroupHasHigherAccessText } from "metabase/admin/permissions/selectors/confirmations";
 import {
@@ -15,7 +16,6 @@ import {
 } from "metabase/common/utils/groups";
 import { getUser } from "metabase/current-user";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import type { Group } from "metabase-types/api";
 
 import { APPLICATION_PERMISSIONS_OPTIONS } from "./constants";
 import type {

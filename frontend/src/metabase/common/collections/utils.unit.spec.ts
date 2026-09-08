@@ -1,5 +1,12 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { type Collection, SEARCH_MODELS } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockCollectionItem,
+  createMockSearchResult,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import {
   PERSONAL_COLLECTIONS,
   ROOT_COLLECTION,
@@ -18,13 +25,6 @@ import {
   isRootTrashCollection,
   normalizedCollection,
 } from "metabase/common/collections/utils";
-import { type Collection, SEARCH_MODELS } from "metabase-types/api";
-import {
-  createMockCollection,
-  createMockCollectionItem,
-  createMockSearchResult,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
 
 describe("Collections > utils", () => {
   describe("isRootPersonalCollection", () => {

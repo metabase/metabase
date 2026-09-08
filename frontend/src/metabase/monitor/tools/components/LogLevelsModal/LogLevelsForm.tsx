@@ -2,10 +2,10 @@ import { useField } from "formik";
 import { useEffect, useId } from "react";
 import { t } from "ttag";
 
+import type { LoggerPreset } from "metabase-types/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { Form, FormErrorMessage, FormSubmitButton } from "metabase/forms";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
-import type { LoggerPreset } from "metabase-types/api";
 
 import { DurationInput } from "./DurationInput";
 import S from "./LogLevelsForm.module.css";

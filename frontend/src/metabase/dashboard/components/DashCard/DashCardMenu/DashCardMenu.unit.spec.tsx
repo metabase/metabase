@@ -6,15 +6,6 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import { getMetadata } from "metabase/metadata-store";
-import {
-  createMockDashboardState,
-  createMockState,
-  createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
-import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
@@ -29,6 +20,15 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { getMetadata } from "metabase/metadata-store";
+import {
+  createMockDashboardState,
+  createMockState,
+  createMockStoreDashboard,
+} from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 
 import { DashCardMenu } from "./DashCardMenu";
 

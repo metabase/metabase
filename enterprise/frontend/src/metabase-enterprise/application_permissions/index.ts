@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_APPLICATION_PERMISSIONS,
   PLUGIN_REDUCERS,
 } from "metabase/plugins";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import applicationPermissionsReducer from "./reducer";
 import getRoutes from "./routes";

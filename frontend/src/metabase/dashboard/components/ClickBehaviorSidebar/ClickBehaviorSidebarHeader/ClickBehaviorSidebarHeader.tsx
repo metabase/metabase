@@ -1,8 +1,8 @@
 import { jt, t } from "ttag";
 
+import type { DashboardCard, DatasetColumn } from "metabase-types/api";
 import { isTableDisplay } from "metabase/dashboard/utils";
 import { Box, Icon } from "metabase/ui";
-import type { DashboardCard, DatasetColumn } from "metabase-types/api";
 
 import S from "../ClickBehaviorSidebar.module.css";
 import { Heading } from "../ClickBehaviorSidebarComponents";

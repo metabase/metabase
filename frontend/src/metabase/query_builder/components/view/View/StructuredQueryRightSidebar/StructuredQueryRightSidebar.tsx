@@ -1,9 +1,9 @@
 import { match } from "ts-pattern";
 
-import type { Dayjs } from "metabase/dayjs";
-import type { QueryModalType } from "metabase/querying/constants";
 import type Question from "metabase-lib/v1/Question";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
+import type { Dayjs } from "metabase/dayjs";
+import type { QueryModalType } from "metabase/querying/constants";
 
 import { QuestionInfoSidebar } from "../../sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "../../sidebars/QuestionSettingsSidebar";

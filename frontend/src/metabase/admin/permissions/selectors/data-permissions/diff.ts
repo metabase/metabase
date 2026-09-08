@@ -1,10 +1,10 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+import type { GroupInfo } from "metabase-types/api";
 import { diffDataPermissions } from "metabase/admin/permissions/utils/graph";
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import type { GroupInfo } from "metabase-types/api";
 
 export const getIsDirty = createSelector(
   (state: State) => state.admin.permissions.dataPermissions,

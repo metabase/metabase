@@ -1,11 +1,11 @@
 import type { CSSProperties, ComponentProps, Key, ReactNode } from "react";
 
+import type { IconName } from "metabase-types/api";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { Link } from "metabase/common/components/Link";
 import { VirtualizedGrid } from "metabase/common/components/VirtualizedGrid";
 import CS from "metabase/css/core/index.css";
 import { Box, Card, Flex, Group, Icon, Loader, Title } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import styles from "./CollectionListView.module.css";
 

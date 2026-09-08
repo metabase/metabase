@@ -9,13 +9,6 @@ import { mockSettings } from "__support__/settings";
 import type { Screen } from "__support__/ui";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import { isEmbeddingSdk as mockIsEmbeddingSdk } from "metabase/embedding-sdk/config";
-import type { SelectedTabId } from "metabase/redux/store";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard,
@@ -32,6 +25,13 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { isEmbeddingSdk as mockIsEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type { SelectedTabId } from "metabase/redux/store";
+import {
+  createMockDashboardState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 
 import DashboardSubscriptionsSidebar from "../DashboardSubscriptionsSidebar";
 

@@ -1,3 +1,11 @@
+import type {
+  Card,
+  CardId,
+  Database,
+  DatabaseId,
+  WritebackAction,
+  WritebackActionId,
+} from "metabase-types/api";
 import { ActionCreator as ActionCreatorContent } from "metabase/actions/containers/ActionCreator/ActionCreator";
 import type { DataReferenceSlot } from "metabase/actions/containers/ActionCreator/types";
 import {
@@ -8,14 +16,6 @@ import {
 } from "metabase/api";
 import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import type {
-  Card,
-  CardId,
-  Database,
-  DatabaseId,
-  WritebackAction,
-  WritebackActionId,
-} from "metabase-types/api";
 
 import { ActionContextProvider } from "./ActionContextProvider";
 import {

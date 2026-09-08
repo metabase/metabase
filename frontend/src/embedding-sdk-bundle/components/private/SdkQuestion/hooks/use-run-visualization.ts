@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 
+import type Question from "metabase-lib/v1/Question";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import { isQuestionDirty } from "metabase/querying/common/utils/question";
 import { useRunVisualization as useRunVisualizationCore } from "metabase/querying/notebook/components/Notebook";
-import type Question from "metabase-lib/v1/Question";
 
 import { useSdkQuestionContext } from "../context";
 

@@ -1,3 +1,4 @@
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 import {
   skipToken,
   useGetCollectionQuery,
@@ -10,7 +11,6 @@ import MoveEventModal, {
 } from "metabase/timelines/common/components/MoveEventModal";
 import { useSetTimeline } from "metabase/timelines/common/hooks";
 import * as Urls from "metabase/urls";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";

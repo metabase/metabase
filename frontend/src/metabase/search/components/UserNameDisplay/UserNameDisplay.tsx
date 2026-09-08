@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import type { UserId } from "metabase-types/api";
 import { useListUserRecipientsQuery } from "metabase/api";
 import { Text } from "metabase/ui";
-import type { UserId } from "metabase-types/api";
 
 export type UserNameDisplayProps = {
   userIdList: UserId[];

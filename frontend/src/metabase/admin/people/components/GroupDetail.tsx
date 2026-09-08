@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import type { Group, Member, Membership, User } from "metabase-types/api";
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
@@ -20,7 +21,6 @@ import {
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Box, Button, Text } from "metabase/ui";
-import type { Group, Member, Membership, User } from "metabase-types/api";
 
 import { Alert } from "./Alert";
 import { GroupMembersTable } from "./GroupMembersTable";

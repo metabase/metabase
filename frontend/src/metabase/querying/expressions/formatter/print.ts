@@ -1,8 +1,8 @@
 import { builders, printer } from "prettier/doc";
 
-import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
 import { isa } from "metabase-lib/v1/types/utils/isa";
+import { parseNumber } from "metabase/utils/number";
 
 import { getClauseDefinition } from "../clause";
 import {

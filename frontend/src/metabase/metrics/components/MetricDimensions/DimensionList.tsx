@@ -1,6 +1,7 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { t } from "ttag";
 
+import type { DimensionId, MetricDimension } from "metabase-types/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
@@ -17,7 +18,6 @@ import {
   TextInput,
   Title,
 } from "metabase/ui";
-import type { DimensionId, MetricDimension } from "metabase-types/api";
 
 import { DimensionRow } from "./DimensionRow";
 import S from "./MetricDimensions.module.css";

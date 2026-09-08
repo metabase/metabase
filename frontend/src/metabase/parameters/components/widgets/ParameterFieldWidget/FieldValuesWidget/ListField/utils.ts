@@ -1,5 +1,5 @@
-import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import type { FieldValue, RowValue } from "metabase-types/api";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 
 import type { Option } from "../SingleSelectListField/types";
 

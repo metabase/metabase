@@ -1,3 +1,5 @@
+import type { ExplorationQueryStatus } from "metabase-types/api";
+import { createMockComment } from "metabase-types/api/mocks/comment";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { dayjs } from "metabase/dayjs";
 import {
@@ -7,8 +9,6 @@ import {
   createQuery,
   createThread,
 } from "metabase/explorations/test-utils";
-import type { ExplorationQueryStatus } from "metabase-types/api";
-import { createMockComment } from "metabase-types/api/mocks/comment";
 
 import type { ExplorationTreeNode, ExplorationTreePage } from "./utils";
 import {

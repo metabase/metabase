@@ -1,10 +1,10 @@
 import { c, msgid } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import { QueryColumnInfoIcon } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import { SidesheetCard } from "metabase/common/components/Sidesheet";
 import { Box, Group, Stack } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 
 export const SidesheetCardWithFields = ({
   question,

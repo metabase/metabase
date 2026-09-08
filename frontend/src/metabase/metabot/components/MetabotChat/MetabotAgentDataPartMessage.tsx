@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
+import type { MetabotCodeEdit } from "metabase-types/api";
 import {
   skipToken,
   useGetCardQuery,
@@ -27,7 +28,6 @@ import {
   Text,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { MetabotCodeEdit } from "metabase-types/api";
 
 import {
   CodeEditTablePills,

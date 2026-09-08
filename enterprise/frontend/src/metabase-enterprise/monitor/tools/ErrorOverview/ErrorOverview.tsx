@@ -2,6 +2,7 @@ import type { RowSelectionState } from "@tanstack/react-table";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import type { CardId } from "metabase-types/api";
 import {
   useLazyGetAdhocQueryQuery,
   useLazyGetCardQueryQuery,
@@ -18,7 +19,6 @@ import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTit
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { useLocation } from "metabase/router";
 import { Center, Flex } from "metabase/ui";
-import type { CardId } from "metabase-types/api";
 
 import { ErroringQuestionsSearch } from "./ErroringQuestionsSearch";
 import { ErroringQuestionsTable } from "./ErroringQuestionsTable";

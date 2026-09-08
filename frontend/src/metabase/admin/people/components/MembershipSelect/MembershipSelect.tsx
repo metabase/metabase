@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { GroupInfo, Member } from "metabase-types/api";
 import {
   getGroupNameLocalized,
   isAdminGroup,
@@ -11,7 +12,6 @@ import {
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { Box, Divider, Flex, Icon, Popover } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import type { GroupInfo, Member } from "metabase-types/api";
 
 import { GroupSummary } from "../GroupSummary";
 

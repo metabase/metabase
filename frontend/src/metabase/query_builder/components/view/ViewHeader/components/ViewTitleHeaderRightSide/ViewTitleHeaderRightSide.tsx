@@ -3,6 +3,9 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { Dataset } from "metabase-types/api";
 import { getUserCanWriteToCollections } from "metabase/current-user";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
@@ -12,9 +15,6 @@ import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import MetabaseSettings from "metabase/utils/settings";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type { Dataset } from "metabase-types/api";
 
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 import { canExploreResults } from "../../utils";

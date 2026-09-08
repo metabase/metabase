@@ -1,7 +1,7 @@
+import type { Collection, CollectionId } from "metabase-types/api";
 import { collectionApi } from "metabase/api";
 import { findCollectionById } from "metabase/common/utils/collections";
 import type { State } from "metabase/redux/store";
-import type { Collection, CollectionId } from "metabase-types/api";
 
 export const getCollectionFromCollectionsTree = (
   state: State,

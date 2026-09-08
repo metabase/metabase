@@ -1,3 +1,16 @@
+import type {
+  Dataset,
+  ExplorationQuery,
+  RowValues,
+  SingleSeries,
+} from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+  createMockDatetimeColumn,
+} from "metabase-types/api/mocks";
 import {
   CARTESIAN_SERIES_COL_NAME,
   HEAT_MAP_SEGMENT_COL_NAME,
@@ -13,19 +26,6 @@ import type {
   ComputedVisualizationSettings,
   HighlightedObject,
 } from "metabase/viz-core";
-import type {
-  Dataset,
-  ExplorationQuery,
-  RowValues,
-  SingleSeries,
-} from "metabase-types/api";
-import {
-  createMockCard,
-  createMockColumn,
-  createMockDataset,
-  createMockDatasetData,
-  createMockDatetimeColumn,
-} from "metabase-types/api/mocks";
 
 import {
   buildCommentHighlightContext,

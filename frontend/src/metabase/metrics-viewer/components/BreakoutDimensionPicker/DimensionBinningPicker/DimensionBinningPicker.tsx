@@ -1,16 +1,16 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  type BucketItem,
-  BucketPickerPopover,
-} from "metabase/common/components/BucketPickerPopover";
 import type {
   DimensionMetadata,
   MetricDefinition,
   ProjectionClause,
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import {
+  type BucketItem,
+  BucketPickerPopover,
+} from "metabase/common/components/BucketPickerPopover";
 
 import { applyProjection } from "../../../utils/definition-builder";
 

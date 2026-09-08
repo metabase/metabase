@@ -3,13 +3,13 @@ import { setupCollectionTreeEndpoint } from "__support__/server-mocks/collection
 import { setupTenantEntpoints } from "__support__/server-mocks/tenant";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection, Tenant } from "metabase-types/api";
 import {
   createMockCollection,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import {
   COLLECTIONS_TOP_LEVEL_ID,

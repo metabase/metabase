@@ -2,6 +2,8 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { ProjectionClause } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import type {
@@ -14,8 +16,6 @@ import {
 } from "metabase/metrics-viewer/utils";
 import { Box, Flex, Icon, Menu, Pill, Popover, Skeleton } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { ProjectionClause } from "metabase-lib/metric";
-import * as LibMetric from "metabase-lib/metric";
 
 import { BreakoutDimensionPicker } from "../../BreakoutDimensionPicker";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";

@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import type { ChangeEvent, ChangeEventHandler } from "react";
 import { t } from "ttag";
 
+import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 import {
   useCreateActionPublicLinkMutation,
   useDeleteActionPublicLinkMutation,
@@ -17,7 +18,6 @@ import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import { ActionIcon, Icon, Switch, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
 import { isActionPublic, isSavedAction } from "../../utils";
 

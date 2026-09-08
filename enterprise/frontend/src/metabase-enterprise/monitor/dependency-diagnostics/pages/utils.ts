@@ -1,4 +1,3 @@
-import * as Urls from "metabase/urls";
 import type { DependencyDiagnosticsMode } from "metabase-enterprise/monitor/dependency-diagnostics/components/types";
 import {
   DEPENDENCY_GROUP_TYPES,
@@ -6,6 +5,7 @@ import {
   type DependencyDiagnosticsUserParams,
   SORT_DIRECTIONS,
 } from "metabase-types/api";
+import * as Urls from "metabase/urls";
 
 export function getPageUrl(
   mode: DependencyDiagnosticsMode,

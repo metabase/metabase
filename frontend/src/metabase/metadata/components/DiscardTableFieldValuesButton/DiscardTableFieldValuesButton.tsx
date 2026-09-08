@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { TableId } from "metabase-types/api";
 import { useDiscardTableFieldValuesMutation } from "metabase/api";
 import { useMetadataToasts, useTemporaryState } from "metabase/common/hooks";
 import { Button } from "metabase/ui";
-import type { TableId } from "metabase-types/api";
 
 interface Props {
   tableId: TableId;

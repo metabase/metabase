@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
+import type { RecentItem } from "metabase-types/api";
 import { useListRecentsQuery } from "metabase/api";
 import { Box } from "metabase/ui";
-import type { RecentItem } from "metabase-types/api";
 
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerItem } from "../../types";

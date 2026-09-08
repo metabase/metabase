@@ -1,7 +1,7 @@
 import { MODULAR_EMBEDDING_HANDLE_LINK_PLUGIN } from "embedding-sdk-shared/lib/sdk-global-plugins";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { SdkIframeEmbedTagMessage } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import { listenForEajsMessages } from "metabase/embedding/embedding-iframe-sdk/utils/post-message";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 export const initializeHandleLinkPlugin = () => {
   if (hasPremiumFeature("embedding_simple")) {

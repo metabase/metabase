@@ -1,6 +1,13 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import type {
+  ConcreteTableId,
+  DatabaseId,
+  Table,
+  TableId,
+} from "metabase-types/api";
+import { isConcreteTableId } from "metabase-types/api";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
   DataPickerModal,
@@ -16,13 +23,6 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
-import type {
-  ConcreteTableId,
-  DatabaseId,
-  Table,
-  TableId,
-} from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api";
 
 import S from "./TableSelector.module.css";
 

@@ -1,6 +1,3 @@
-import { getColumnIcon } from "metabase/common/utils/columns";
-import type { ContentTranslationFunction } from "metabase/content-translation/types";
-import type { EditWidgetData } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
@@ -8,6 +5,9 @@ import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
+import type { EditWidgetData } from "metabase/viz-core";
 
 import type { ColumnItem } from "./types";
 

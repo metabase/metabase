@@ -9,6 +9,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import type { Database, SearchResult } from "metabase-types/api";
 import { useListDatabasesQuery } from "metabase/api";
 import type {
   Item,
@@ -21,7 +22,6 @@ import { SuggestionPaper } from "metabase/rich_text_editing/tiptap/extensions/sh
 import { useBuildDbMenuItems } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionHooks";
 import { useSetting } from "metabase/settings";
 import { Box, Group, Loader, Text } from "metabase/ui";
-import type { Database, SearchResult } from "metabase-types/api";
 
 interface MentionSuggestionProps {
   items: SearchResult[];

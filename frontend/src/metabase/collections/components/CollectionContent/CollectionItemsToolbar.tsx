@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Flex, Icon, Input, Loader, TextInput } from "metabase/ui";
 import type { CollectionItemModel } from "metabase-types/api";
+import { Flex, Icon, Input, Loader, TextInput } from "metabase/ui";
 
 import { CollectionTypeFilter } from "./CollectionTypeFilter";
 

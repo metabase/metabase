@@ -1,9 +1,9 @@
 import { useRef } from "react";
 
+import * as Lib from "metabase-lib";
 import { useListDatabasesQuery } from "metabase/api";
 import type { TemplateTagsSidebarProps } from "metabase/querying/editor/types";
 import { checkNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
 
 import { TagEditorSidebar } from "./TagEditor/TagEditorSidebar";
 

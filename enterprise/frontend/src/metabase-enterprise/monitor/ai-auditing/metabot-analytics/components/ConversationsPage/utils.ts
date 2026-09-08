@@ -1,10 +1,10 @@
+import type { SortDirection } from "metabase-types/api";
 import {
   type UrlStateConfig,
   parsePage,
   parseSortColumn,
   parseSortDirection,
 } from "metabase/common/hooks/use-url-state";
-import type { SortDirection } from "metabase-types/api";
 
 import {
   CONVERSATION_SORT_COLUMNS,

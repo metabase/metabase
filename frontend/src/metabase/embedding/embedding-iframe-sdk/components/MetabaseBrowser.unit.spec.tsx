@@ -14,14 +14,14 @@ import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/p
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { useLocale } from "metabase/common/hooks/use-locale";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
   createMockDashboardQueryMetadata,
 } from "metabase-types/api/mocks";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { useLocale } from "metabase/common/hooks/use-locale";
 
 import type { SdkIframeEmbedSettings } from "../types/embed";
 

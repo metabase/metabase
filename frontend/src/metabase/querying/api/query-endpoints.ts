@@ -1,9 +1,9 @@
-import { cardApi, dashboardApi, embedApi, publicApi } from "metabase/api";
-import { isNative } from "metabase/common/utils/card";
-import type { Dispatch } from "metabase/redux/store";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card, Dataset } from "metabase-types/api";
+import { cardApi, dashboardApi, embedApi, publicApi } from "metabase/api";
+import { isNative } from "metabase/common/utils/card";
+import type { Dispatch } from "metabase/redux/store";
 
 // Minimal structural view of an RTK Query endpoint. We only ever dispatch
 // `.initiate(...)`, so this is all the runner and pivot map need. Declared as a

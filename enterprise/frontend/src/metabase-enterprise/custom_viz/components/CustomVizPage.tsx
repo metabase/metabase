@@ -3,6 +3,11 @@ import { jt, t } from "ttag";
 import * as Yup from "yup";
 
 import {
+  useCreateCustomVizPluginMutation,
+  useListAllCustomVizPluginsQuery,
+  useReplaceCustomVizPluginBundleMutation,
+} from "metabase-enterprise/api";
+import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
@@ -27,11 +32,6 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Errors from "metabase/utils/errors";
-import {
-  useCreateCustomVizPluginMutation,
-  useListAllCustomVizPluginsQuery,
-  useReplaceCustomVizPluginBundleMutation,
-} from "metabase-enterprise/api";
 
 import {
   trackCustomVizPluginCreated,

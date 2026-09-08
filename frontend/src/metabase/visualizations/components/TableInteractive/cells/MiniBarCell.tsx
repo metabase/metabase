@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type d3 from "d3";
 
+import type { ColumnSettings } from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import {
   BaseCell,
@@ -8,7 +9,6 @@ import {
   type CellFormatter,
 } from "metabase/data-grid";
 import { color } from "metabase/ui/colors";
-import type { ColumnSettings } from "metabase-types/api";
 
 import S from "./MiniBarCell.module.css";
 

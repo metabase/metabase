@@ -15,9 +15,6 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { SelectionProvider } from "metabase/data-studio/data-model/pages/DataModel/contexts/SelectionContext";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import type { Database, TokenFeatures, User } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -26,6 +23,9 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { SelectionProvider } from "metabase/data-studio/data-model/pages/DataModel/contexts/SelectionContext";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import type { TreePath } from "../types";
 import { UncontrolledTablePicker } from "../wrappers";

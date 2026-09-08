@@ -1,5 +1,21 @@
 import { t } from "ttag";
 
+import {
+  isAvatarURL,
+  isCoordinate,
+  isDimension,
+  isEmail,
+  isImageURL,
+  isMetric,
+  isNumber,
+  isString,
+  isURL,
+} from "metabase-lib/v1/types/utils/isa";
+import type {
+  ColumnSettings,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { isNative } from "metabase/common/utils/card";
 import { displayNameForColumn } from "metabase/value-formatting";
 import {
@@ -21,22 +37,6 @@ import {
   makeCellBackgroundGetter,
   tableColumnSettings,
 } from "metabase/viz-core";
-import {
-  isAvatarURL,
-  isCoordinate,
-  isDimension,
-  isEmail,
-  isImageURL,
-  isMetric,
-  isNumber,
-  isString,
-  isURL,
-} from "metabase-lib/v1/types/utils/isa";
-import type {
-  ColumnSettings,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 import { isFormattable } from "../../components/settings/ChartSettingsTableFormatting";
 

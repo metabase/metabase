@@ -1,9 +1,9 @@
-import { isRootCollection } from "metabase/common/collections/utils";
 import type {
   Collection,
   CollectionEssentials,
   CollectionId,
 } from "metabase-types/api";
+import { isRootCollection } from "metabase/common/collections/utils";
 
 import type { BreadcrumbCrumb } from "./CollectionBreadcrumbsView";
 

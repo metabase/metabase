@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { CollectionId } from "metabase-types/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { getUserCanWriteToCollections } from "metabase/current-user";
 import { NewMenuItemAIExploration } from "metabase/metabot/components/NewMenuItemAIExploration";
@@ -11,7 +12,6 @@ import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/settings";
 import { Box, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { CollectionId } from "metabase-types/api";
 
 import { trackNewMenuItemClicked } from "./analytics";
 

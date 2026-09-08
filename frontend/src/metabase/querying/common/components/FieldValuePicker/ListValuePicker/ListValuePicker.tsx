@@ -2,8 +2,8 @@ import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Checkbox, Icon, Stack, Text, TextInput } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
+import { Checkbox, Icon, Stack, Text, TextInput } from "metabase/ui";
 
 import { getEffectiveOptions, searchOptions } from "./utils";
 

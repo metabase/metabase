@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 
-import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { Flex } from "metabase/ui";
 
 import { JoinConditionColumnPicker } from "../JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "../JoinConditionOperatorPicker";

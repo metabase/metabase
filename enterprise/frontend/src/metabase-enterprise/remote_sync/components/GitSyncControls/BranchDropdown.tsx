@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import {
+  useCreateBranchMutation,
+  useGetBranchesQuery,
+} from "metabase-enterprise/api";
 import { useToast } from "metabase/common/hooks";
 import {
   Box,
@@ -15,10 +19,6 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import {
-  useCreateBranchMutation,
-  useGetBranchesQuery,
-} from "metabase-enterprise/api";
 
 import { trackBranchCreated } from "../../analytics";
 

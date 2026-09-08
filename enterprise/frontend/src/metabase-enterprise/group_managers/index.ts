@@ -1,8 +1,8 @@
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_GROUP_MANAGERS,
 } from "metabase/plugins";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import {
   confirmDeleteMembership,

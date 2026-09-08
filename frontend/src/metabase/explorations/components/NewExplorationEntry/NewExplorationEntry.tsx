@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useState } from "react";
 import { c, t } from "ttag";
 
+import type { ExplorationSummary } from "metabase-types/api";
 import { useGetMyExplorationsQuery } from "metabase/api";
 import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -33,7 +34,6 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
-import type { ExplorationSummary } from "metabase-types/api";
 
 import type { ExplorationSelection } from "../../hooks";
 

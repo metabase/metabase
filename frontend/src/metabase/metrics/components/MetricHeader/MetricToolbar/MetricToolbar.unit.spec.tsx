@@ -10,8 +10,6 @@ import { setupListNotificationEndpoints } from "__support__/server-mocks/notific
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
 import type { CollectionType } from "metabase-types/api";
 import {
   createMockCard,
@@ -20,6 +18,8 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { MetricToolbar } from "./MetricToolbar";
 

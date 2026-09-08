@@ -3,6 +3,7 @@ import type { HTMLAttributes } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import type { CollectionId, DashboardId } from "metabase-types/api";
 import {
   skipToken,
   useGetCollectionQuery,
@@ -33,7 +34,6 @@ import {
 import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Button, Flex, Icon } from "metabase/ui";
-import type { CollectionId, DashboardId } from "metabase-types/api";
 
 function ItemName({
   collectionId,
