@@ -51,6 +51,19 @@ export function canEditMembership(group: Pick<GroupInfo, "magic_group_type">) {
   return !isDefaultGroup(group) && !PLUGIN_TENANTS.isExternalUsersGroup(group);
 }
 
+/**
+ * Mirrors the server-side gate: additions to the Data Analysts group are refused
+ * without advanced-permissions, removals are always allowed.
+ */
+export function getAddMembersDisabledReason(
+  group: Pick<GroupInfo, "magic_group_type">,
+  hasAdvancedPermissions: boolean,
+): string | null {
+  return isDataAnalystGroup(group) && !hasAdvancedPermissions
+    ? t`Adding members to this group requires Advanced Permissions. Members can only be removed.`
+    : null;
+}
+
 export function getGroupNameLocalized(group: Pick<GroupInfo, "name">) {
   const specialName = SPECIAL_GROUP_NAMES[group.name];
   return specialName ? specialName() : group.name;
