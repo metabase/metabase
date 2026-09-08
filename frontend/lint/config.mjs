@@ -219,26 +219,11 @@ const configs = [
       "import/no-default-export": "error",
       "import/no-named-as-default": "off",
       "import/no-commonjs": "warn",
-      "import/order": [
-        "error",
-        {
-          "newlines-between": "always",
-          alphabetize: {
-            order: "asc",
-            orderImportKind: "asc",
-            caseInsensitive: false,
-          },
-          groups: [
-            "builtin",
-            "external",
-            "internal",
-            "parent",
-            "sibling",
-            "index",
-          ],
-          warnOnUnassignedImports: false,
-        },
-      ],
+      // oxfmt owns import ordering through its `sortImports` config, which runs
+      // in the format pass. The import-x order rule is the slowest lint rule, so
+      // delegating to the Rust formatter removes it from the lint run. Files whose
+      // import order is runtime-significant keep it with `// oxfmt-ignore` comments.
+      "import/order": "off",
       "sort-imports": [
         "error",
         {
