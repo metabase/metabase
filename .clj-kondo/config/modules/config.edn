@@ -704,8 +704,8 @@
    :uses #{api
            api-routes
            app-db
-           llm
            metabot
+           metabot.llm
            models
            query-processor
            search
@@ -764,7 +764,6 @@
                     :model/MetabotGroupLimit
                     :model/MetabotInstanceLimit
                     :model/MetabotMessage
-                    :model/MetabotPermissions
                     :model/MetabotPrompt
                     :model/MetabotSourceFeedback
                     :model/MetabotUsedTable
@@ -2227,6 +2226,7 @@
                     :model/DashboardCardSeries
                     :model/Database
                     :model/NativeQuerySnippet
+                    :model/QueryCache
                     :model/QueryExecution
                     :model/Table}}
 
@@ -2235,7 +2235,10 @@
    :ns-prefix "metabase.query-processor.middleware.cache-backend"
    :api       #{metabase.query-processor.middleware.cache-backend.db
                 metabase.query-processor.middleware.cache-backend.interface}
-   :uses      #{app-db premium-features util}
+   :uses      #{app-db
+                premium-features
+                query-processor
+                util}
    :model-imports #{:model/QueryCache}}
 
   query-processor.driver-api
@@ -3775,7 +3778,7 @@
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/Transform}
-   :model-exports #{:model/MetabotGroupLimit :model/MetabotInstanceLimit :model/MetabotPermissions}}
+   :model-exports #{:model/MetabotGroupLimit :model/MetabotInstanceLimit}}
 
   enterprise/metabot.agent-api
   {:team "Metabot"
