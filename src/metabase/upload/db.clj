@@ -4,6 +4,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.humanization :as humanization]
+   [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -83,15 +84,16 @@
 (mu/defn unarchived-models-for-table
   "The id, query, and schema of the unarchived model Cards of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Card :id :dataset_query :card_schema]
+  (t2/select [:model/Card :id :dataset_query :card_schema :type :database_id
+              :result_metadata :dimensions :dimension_mappings]
              :table_id table-id
              :type     :model
              :archived false))
 
 (mu/defn card-query-and-metadata
-  "The query, result metadata, and schema of the Card with `card-id`, or nil."
+  "The query-relevant columns of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :dataset_query :result_metadata :card_schema] card-id))
+  (queries/card-query-info card-id))
 
 (mu/defn set-card-result-metadata!
   "Set the result metadata of the Card with `card-id`."

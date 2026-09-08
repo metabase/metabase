@@ -2,6 +2,7 @@
   (:require
    [metabase.queries.cached-result]
    [metabase.queries.card]
+   [metabase.queries.db]
    [metabase.queries.metadata]
    [metabase.queries.models.card]
    [metabase.queries.models.card.metadata]
@@ -26,6 +27,9 @@
   card-param-constraints
   card-param-values
   card-param-remapped-value]
+ [metabase.queries.db
+  card-query-info
+  cards-queries-info]
  [metabase.queries.models.card
   create-card!]
  [metabase.queries.metadata

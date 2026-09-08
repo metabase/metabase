@@ -8,6 +8,7 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -113,9 +114,9 @@
   (t2/select-one :model/Card :id card-id))
 
 (mu/defn card-query-columns
-  "The query and schema of the Card with `card-id`, or nil."
+  "The query-relevant columns of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :dataset_query :card_schema] :id card-id))
+  (queries/card-query-info card-id))
 
 (mu/defn card-queries
   "A map of Card id to query for the Cards with `card-ids`."
@@ -148,7 +149,8 @@
   "The series Cards of the DashboardCards with `dashcard-ids`, each with its `:dashboardcard_id`, in series order."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/select [:model/Card :id :name :description :display :dataset_query :type :database_id
-              :visualization_settings :collection_id :card_schema :series.dashboardcard_id]
+              :visualization_settings :collection_id :card_schema :result_metadata
+              :dimensions :dimension_mappings :series.dashboardcard_id]
              {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
               :where     [:in :series.dashboardcard_id dashcard-ids]
               :order-by  [[:series.position :asc]]}))

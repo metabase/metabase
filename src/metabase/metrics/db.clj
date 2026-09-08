@@ -46,10 +46,14 @@
   [id :- ::lib.schema.id/measure]
   (t2/select-one :model/Measure :id id))
 
-(mu/defn metric-cards-for-database
-  "The id and dimensions of the metric Cards of the Database with `database-id`."
+(mu/defn raw-metric-cards-for-database
+  "The id and dimensions of the metric Cards of the Database with `database-id`.
+
+  Selects the `report_card` table directly rather than `:model/Card`: this asks whether dimensions have ever been
+  *persisted*, so it has to see the stored column. Going through the model runs the `:card_schema` upgrades, which
+  populates missing `:dimensions`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Card :id :dimensions] :type "metric" :database_id database-id))
+  (t2/select [:report_card :id :dimensions] :type "metric" :database_id database-id))
 
 (mu/defn fields-with-columns
   "The id and `columns` of the Fields with `field-ids`."

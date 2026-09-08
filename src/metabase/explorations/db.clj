@@ -11,6 +11,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -769,17 +770,14 @@
   (t2/select-one [:model/Card :name :description :display :visualization_settings] :id card-id))
 
 (mu/defn card-queries
-  "The ID, schema, Database, and query of the Cards with `card-ids`."
+  "The query-relevant columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :card_schema :database_id :dataset_query] :id [:in card-ids]))
+  (queries/cards-queries-info card-ids))
 
 (mu/defn metric-cards-by-id
   "A map of ID to the planner columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-pk->fn identity
-                    [:model/Card :id :name :description :database_id :dataset_query :card_schema :dimensions
-                     :dimension_mappings]
-                    :id [:in card-ids]))
+  (u/index-by :id (queries/cards-queries-info card-ids :include [:name :description])))
 
 (mu/defn metric-card-ids
   "The `:id`s of the Cards visible to the current user as metrics, restricted to `metric-ids` when
@@ -799,7 +797,7 @@
 ;;; the response stays small and JSON encoding is fast.
 (def ^:private exploration-card-columns
   [:id :name :description :collection_id :database_id :table_id :type :entity_id
-   :card_schema :dataset_query :dimensions :dimension_mappings])
+   :card_schema :dataset_query :result_metadata :dimensions :dimension_mappings])
 
 (mu/defn metric-cards-for-explorations
   "The exploration-relevant columns of the metric Cards with `card-ids`."

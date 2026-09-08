@@ -6,8 +6,10 @@
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.users.schema :as users.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -178,14 +180,14 @@
   (t2/select [:model/Field :id :name] :table_id table-id :name [:in field-names]))
 
 (mu/defn cards-by-id
-  "A map of Card ID to the query, result metadata, and schema of the Cards with `card-ids`."
+  "A map of Card ID to the query-related columns of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn identity [:model/Card :id :dataset_query :result_metadata :card_schema] :id [:in card-ids]))
+  (u/index-by :id (queries/cards-queries-info card-ids)))
 
 (mu/defn cards-result-metadata
-  "The `:id`, `:result_metadata`, and `:card_schema` of the Cards with `card-ids`."
+  "The query-related columns of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :result_metadata :card_schema] :id [:in card-ids]))
+  (queries/cards-queries-info card-ids))
 
 (mu/defn card-result-metadata
   "The result metadata of the Card with `card-id`."
@@ -196,7 +198,9 @@
   "The `:id`, `:dataset_query`, `:database_id`, and `:card_schema` of the Cards Sandboxes are built on."
   []
   (t2/select :model/Card
-             {:select [:c.id :c.dataset_query :c.database_id :c.card_schema]
+             {:select [:c.id :c.dataset_query :c.database_id :c.card_schema
+                       ;; required alongside :card_schema for the Card schema upgrade
+                       :c.type :c.result_metadata :c.dimensions :c.dimension_mappings]
               :from   [[(t2/table-name :model/Card) :c]]
               :where  [:exists ^:allow-subquery {:select [[[:inline 1]]]
                                                  :from   [[(t2/table-name :model/Sandbox) :s]]
