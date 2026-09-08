@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -365,10 +364,8 @@
         ;; it doesn't matter much, the source of time truth is `archived_at`,
         ;; we're just using this as a cheap namespace
         suffix (str "__mbarchiv__" (.toEpochSecond (t/offset-date-time)))
-        threshold-expr (apply
-                        (requiring-resolve 'metabase.util.honey-sql-2/add-interval-honeysql-form)
-                        (mdb/db-type) :%now archive-tables-threshold)
-        tables-to-archive (sync.db/tables-to-archive (u/the-id database) threshold-expr)
+        [amount unit] archive-tables-threshold
+        tables-to-archive (sync.db/tables-to-archive (u/the-id database) amount unit)
         archived (atom 0)]
     (doseq [table tables-to-archive
             :let [new-name (str (:name table) suffix)]]

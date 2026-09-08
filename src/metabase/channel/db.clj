@@ -9,6 +9,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
@@ -84,7 +85,7 @@
                                                 [:= :is_active true]
                                                 [:in :id user-ids]]}))
 
-(mu/defn user-ids-with-permission :- [:sequential [:map {:closed true} [:user_id (mut/optional-keys (mut/open-schema ::users.schema/user))]]]
+(mu/defn user-ids-with-permission :- [:sequential [:map {:closed true} [:user_id (mut/optional-keys (mut/open-schema (mr/schema ::users.schema/user)))]]]
   "The ids of the Users belonging to a PermissionsGroup that holds `permission-path`."
   [permission-path :- :string]
   (app-db/query {:select   [:pgm.user_id]

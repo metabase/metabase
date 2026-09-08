@@ -10,6 +10,7 @@
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -249,7 +250,7 @@
               (and has-field? field_name)
               (conj [:= :f.name field_name]))))))
 
-(mu/defn tables-at-paths :- [:sequential [:map {:closed true} [:id ms/PositiveInt] [:name :string] [:collection_id [:maybe (mut/optional-keys (mut/open-schema ::collections.schema/collection))]]]]
+(mu/defn tables-at-paths :- [:sequential [:map {:closed true} [:id ms/PositiveInt] [:name :string] [:collection_id [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::collections.schema/collection)))]]]]
   "The `:id`, `:name`, and `:collection_id` rows of the Tables at `paths` (`{:db_name :schema :table_name}`)."
   [paths :- [:sequential Path]]
   (t2/query {:select [:t.id :t.name :t.collection_id]
@@ -314,7 +315,7 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select [:model/Collection :id :is_remote_synced] :id [:in collection-ids]))
 
-(mu/defn collection-name-and-id :- [:maybe (mut/optional-keys (mut/open-schema ::collections.schema/collection))]
+(mu/defn collection-name-and-id :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::collections.schema/collection)))]
   "The `:name` and `:collection_id` (its own ID) of the Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :name [:id :collection_id]] :id collection-id))
@@ -358,7 +359,7 @@
                              [:= :location "/"]
                              [:not :archived]]}))
 
-(mu/defn unarchived-root-collection-ids-in-namespace :- [:maybe [:set ms/PositiveInt]]
+(mu/defn unarchived-root-collection-ids-in-namespace :- [:maybe [:set ::lib.schema.id/collection]]
   "The IDs of the unarchived root Collections of `namespace-name`."
   [namespace-name :- :string]
   (t2/select-fn-set :id :model/Collection

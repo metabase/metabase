@@ -10,6 +10,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -159,7 +160,7 @@
   [conversation-ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/MetabotMessage :conversation_id :data :data_version] :conversation_id [:in conversation-ids]))
 
-(mu/defn feedback-for-conversation :- [:sequential (mut/optional-keys (mut/open-schema ::metabot.schema/metabot-feedback))]
+(mu/defn feedback-for-conversation :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::metabot.schema/metabot-feedback)))]
   "The MetabotFeedback rows on the messages of the MetabotConversation with `conversation-id`, oldest first."
   [conversation-id :- ms/PositiveInt]
   (t2/select :model/MetabotFeedback

@@ -7,6 +7,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -77,7 +78,7 @@
    (when scope [:= :scope scope])
    (when user-id [:= :user_id user-id])])
 
-(mu/defn next-undo-batch :- [:sequential (mut/optional-keys (mut/open-schema ::action-v2.schema/undo))]
+(mu/defn next-undo-batch :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::action-v2.schema/undo)))]
   "The Undo rows of the newest not-undone (when `undo?`) or oldest undone batch of `user-id` in `scope`."
   [undo?   :- :boolean
    user-id :- ::lib.schema.id/user

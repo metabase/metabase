@@ -7,6 +7,7 @@
    [metabase.permissions.schema :as permissions.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
@@ -78,7 +79,7 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/PermissionsGroup :id id))
 
-(mu/defn group-memberships :- [:sequential (mut/optional-keys (mut/open-schema ::permissions.schema/permissions-group-membership))]
+(mu/defn group-memberships :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::permissions.schema/permissions-group-membership)))]
   "The membership id, group id, user id, and group manager flag of every PermissionsGroupMembership, optionally
   restricted to the groups `manager-user-id` manages, excluding `excluded-group-id`, and excluding tenant groups
   when `exclude-tenant-groups?`."

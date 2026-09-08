@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -99,7 +100,7 @@
   [internal-id :- :string]
   (t2/select-one :model/Notification :internal_id internal-id))
 
-(mu/defn notification-for-handler :- [:maybe (mut/optional-keys (mut/open-schema ::notification.schema/notification))]
+(mu/defn notification-for-handler :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::notification.schema/notification)))]
   "The Notification owning the NotificationHandler with `handler-id`, or nil."
   [handler-id :- ms/PositiveInt]
   (t2/select-one :model/Notification
@@ -180,7 +181,7 @@
   [notification-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Notification :id [:in notification-ids] :payload_type :notification/card))
 
-(mu/defn active-card-notifications-for-card :- [:sequential (mut/optional-keys (mut/open-schema ::notification.schema/notification))]
+(mu/defn active-card-notifications-for-card :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::notification.schema/notification)))]
   "The active card Notifications attached to the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select :model/Notification
@@ -190,7 +191,7 @@
                                                 :from   [:notification_card]
                                                 :where  [:= :card_id card-id]}]))
 
-(mu/defn active-system-event-notifications :- [:sequential (mut/optional-keys (mut/open-schema ::notification.schema/notification))]
+(mu/defn active-system-event-notifications :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::notification.schema/notification)))]
   "The active Notifications subscribed to the system event named `event-name`."
   [event-name :- :string]
   (t2/select :model/Notification

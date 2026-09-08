@@ -2989,6 +2989,7 @@
            remote-sync
            search
            segments
+           users
            util
            warehouses}
    :model-exports #{:model/Dimension

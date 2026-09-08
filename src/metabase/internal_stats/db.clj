@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -27,7 +28,7 @@
   []
   (t2/count :model/Card :enable_embedding true :archived false :type :question))
 
-(mu/defn proxied-ai-usage-tokens-by-model :- [:sequential (mut/optional-keys (mut/open-schema ::metabot.schema/ai-usage-log))]
+(mu/defn proxied-ai-usage-tokens-by-model :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::metabot.schema/ai-usage-log)))]
   "The model and total tokens of the proxied AiUsageLog rows on `date`, grouped by model."
   [date :- ms/TemporalInstant]
   (t2/select [:model/AiUsageLog :model [:%sum.total_tokens :tokens]]

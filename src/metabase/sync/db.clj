@@ -125,16 +125,17 @@
   (t2/select columns :db_id database-id :name [:in table-names]))
 
 (mu/defn tables-to-archive :- [:sequential ::warehouse-schema.schema/table]
-  "The inactive, unarchived, non-transform-target Tables of the Database with `database-id` deactivated before the
-  SQL expression `deactivated-before`."
-  [database-id        :- ::lib.schema.id/database
-   deactivated-before  :- ms/TemporalInstant]
+  "The inactive, unarchived, non-transform-target Tables of the Database with `database-id` deactivated more than
+  `amount` `unit`s (e.g. `-14 :day`) before the app DB's now."
+  [database-id :- ::lib.schema.id/database
+   amount      :- :int
+   unit        :- :keyword]
   (t2/select :model/Table
              :db_id database-id
              :active false
              :archived_at nil
              :transform_target false
-             :deactivated_at [:< deactivated-before]))
+             :deactivated_at [:< (h2x/add-interval-honeysql-form (app-db/db-type) :%now amount unit)]))
 
 (mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ms/PositiveInt]
   "A map of Table ID to Database ID for `table-ids`."

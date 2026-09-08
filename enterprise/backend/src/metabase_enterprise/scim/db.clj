@@ -72,7 +72,7 @@
   [email :- :string]
   (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
 
-(mu/defn user-ids-by-entity-ids :- [:maybe [:set ms/PositiveInt]]
+(mu/defn user-ids-by-entity-ids :- [:maybe [:set ::lib.schema.id/user]]
   "The IDs of the Users with `entity-ids`."
   [entity-ids :- [:sequential :string]]
   (t2/select-fn-set :id :model/User {:where [:in :entity_id entity-ids]}))

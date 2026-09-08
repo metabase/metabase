@@ -627,7 +627,7 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :db_id] :id [:in table-ids]))
 
-(mu/defn table-id-by-name :- [:maybe ms/PositiveInt]
+(mu/defn table-id-by-name :- [:maybe ::lib.schema.id/table]
   "The ID of the Table named `table-name` in `schema` of the Database with `db-id`, or nil."
   [db-id      :- ::lib.schema.id/database
    schema     :- [:maybe :string]

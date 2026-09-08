@@ -271,57 +271,19 @@
   []
   (t2/select-fn-vec :name :model/Database))
 
-(mu/defn database-id-by-name :- [:maybe ms/PositiveInt]
+(mu/defn database-id-by-name :- [:maybe ::lib.schema.id/database]
   "The id of the Database named `database-name`, or nil."
   [database-name :- :string]
   (t2/select-one-fn :id :model/Database :name database-name))
 
-(mu/defn table-id-by-name :- [:maybe ms/PositiveInt]
+(mu/defn table-id-by-name :- [:maybe ::lib.schema.id/table]
   "The id of the Table named `table-name` in `schema` of the Database with `database-id`, or nil."
   [table-name  :- :string
    schema      :- [:maybe :string]
    database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id database-id))
 
-(def ^:private InsertInactiveTable
-  "Rows returned by [[insert-inactive-table!]]."
-  [:map {:closed true}
-   [:id                      ::lib.schema.id/table]
-   [:created_at              ms/TemporalInstant]
-   [:updated_at              ms/TemporalInstant]
-   [:name                    :string]
-   [:description             [:maybe [:or :string :map sequential?]]]
-   [:entity_type             [:maybe [:or :keyword :string]]]
-   [:active                  :boolean]
-   [:db_id                   ::lib.schema.id/database]
-   [:display_name            [:maybe :string]]
-   [:visibility_type         [:maybe [:or :keyword :string]]]
-   [:schema                  [:maybe :string]]
-   [:points_of_interest      [:maybe [:or :string :map sequential?]]]
-   [:caveats                 [:maybe [:or :string :map sequential?]]]
-   [:show_in_getting_started :boolean]
-   [:field_order             [:or :keyword :string]]
-   [:initial_sync_status     [:or :keyword :string]]
-   [:is_upload               :boolean]
-   [:database_require_filter [:maybe :boolean]]
-   [:estimated_row_count     [:maybe :int]]
-   [:view_count              :int]
-   [:is_defective_duplicate  :boolean]
-   [:unique_table_helper     [:maybe :string]]
-   [:deactivated_at          [:maybe ms/TemporalInstant]]
-   [:archived_at             [:maybe ms/TemporalInstant]]
-   [:is_writable             [:maybe :boolean]]
-   [:data_authority          [:or :keyword :string :map sequential?]]
-   [:data_source             [:maybe [:or :keyword :string :map sequential?]]]
-   [:data_layer              [:maybe [:or :keyword :string :map sequential?]]]
-   [:owner_email             [:maybe [:or :string :map sequential?]]]
-   [:owner_user_id           [:maybe ::lib.schema.id/user]]
-   [:collection_id           [:maybe ::lib.schema.id/collection]]
-   [:is_published            :boolean]
-   [:transform_id            [:maybe ::lib.schema.id/transform]]
-   [:transform_target        :boolean]])
-
-(mu/defn insert-inactive-table! :- InsertInactiveTable
+(mu/defn insert-inactive-table! :- ::lib.schema.id/table
   "Insert an inactive Table named `table-name` in `schema` of the Database with `database-id` and return its id."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
@@ -331,52 +293,7 @@
                                          :name   table-name
                                          :active false}))
 
-(def ^:private FieldPk
-  "Rows returned by [[field-pk]]."
-  [:map {:closed true}
-   [:id                         ::lib.schema.id/field]
-   [:created_at                 ms/TemporalInstant]
-   [:updated_at                 ms/TemporalInstant]
-   [:name                       :string]
-   [:base_type                  [:or :keyword :string :map sequential?]]
-   [:semantic_type              [:maybe [:or :keyword :string :map sequential?]]]
-   [:active                     :boolean]
-   [:description                [:maybe [:or :string :map sequential?]]]
-   [:preview_display            :boolean]
-   [:position                   :int]
-   [:table_id                   ::lib.schema.id/table]
-   [:parent_id                  [:maybe ms/PositiveInt]]
-   [:display_name               [:maybe :string]]
-   [:visibility_type            [:or :keyword :string]]
-   [:fk_target_field_id         [:maybe ::lib.schema.id/field]]
-   [:last_analyzed              [:maybe ms/TemporalInstant]]
-   [:points_of_interest         [:maybe [:or :string :map sequential?]]]
-   [:caveats                    [:maybe [:or :string :map sequential?]]]
-   [:fingerprint                [:maybe [:or :string :map sequential?]]]
-   [:fingerprint_version        :int]
-   [:database_type              [:or :keyword :string :map sequential?]]
-   [:has_field_values           [:maybe [:or :keyword :string :map sequential?]]]
-   [:settings                   [:maybe [:or :string :map sequential?]]]
-   [:database_position          :int]
-   [:custom_position            :int]
-   [:effective_type             [:maybe [:or :keyword :string :map sequential?]]]
-   [:coercion_strategy          [:maybe [:or :keyword :string :map sequential?]]]
-   [:nfc_path                   [:maybe [:or :string :map sequential?]]]
-   [:database_required          :boolean]
-   [:json_unfolding             :boolean]
-   [:database_is_auto_increment :boolean]
-   [:database_indexed           [:maybe :boolean]]
-   [:database_partitioned       [:maybe :boolean]]
-   [:is_defective_duplicate     :boolean]
-   [:unique_field_helper        [:maybe :int]]
-   [:database_is_pk             [:maybe :boolean]]
-   [:database_is_nullable       [:maybe :boolean]]
-   [:database_is_generated      [:maybe :boolean]]
-   [:database_default           [:maybe [:or :string :map sequential?]]]
-   [:dimension_interestingness  [:maybe number?]]
-   [:data_sensitivity           [:maybe [:or :keyword :string]]]])
-
-(mu/defn field-pk :- [:maybe FieldPk]
+(mu/defn field-pk :- [:maybe ::lib.schema.id/field]
   "The id of the Field named `field-name` under `parent-id` in the Table with `table-id`, or nil."
   [table-id   :- ::lib.schema.id/table
    field-name :- :string
@@ -393,52 +310,7 @@
                                [:= :name field]
                                [:= :parent_id (field-in-path-query table-id rest)]]}))
 
-(def ^:private FieldPkInPath
-  "Rows returned by [[field-pk-in-path]]."
-  [:map {:closed true}
-   [:id                         ::lib.schema.id/field]
-   [:created_at                 ms/TemporalInstant]
-   [:updated_at                 ms/TemporalInstant]
-   [:name                       :string]
-   [:base_type                  [:or :keyword :string :map sequential?]]
-   [:semantic_type              [:maybe [:or :keyword :string :map sequential?]]]
-   [:active                     :boolean]
-   [:description                [:maybe [:or :string :map sequential?]]]
-   [:preview_display            :boolean]
-   [:position                   :int]
-   [:table_id                   ::lib.schema.id/table]
-   [:parent_id                  [:maybe ms/PositiveInt]]
-   [:display_name               [:maybe :string]]
-   [:visibility_type            [:or :keyword :string]]
-   [:fk_target_field_id         [:maybe ::lib.schema.id/field]]
-   [:last_analyzed              [:maybe ms/TemporalInstant]]
-   [:points_of_interest         [:maybe [:or :string :map sequential?]]]
-   [:caveats                    [:maybe [:or :string :map sequential?]]]
-   [:fingerprint                [:maybe [:or :string :map sequential?]]]
-   [:fingerprint_version        :int]
-   [:database_type              [:or :keyword :string :map sequential?]]
-   [:has_field_values           [:maybe [:or :keyword :string :map sequential?]]]
-   [:settings                   [:maybe [:or :string :map sequential?]]]
-   [:database_position          :int]
-   [:custom_position            :int]
-   [:effective_type             [:maybe [:or :keyword :string :map sequential?]]]
-   [:coercion_strategy          [:maybe [:or :keyword :string :map sequential?]]]
-   [:nfc_path                   [:maybe [:or :string :map sequential?]]]
-   [:database_required          :boolean]
-   [:json_unfolding             :boolean]
-   [:database_is_auto_increment :boolean]
-   [:database_indexed           [:maybe :boolean]]
-   [:database_partitioned       [:maybe :boolean]]
-   [:is_defective_duplicate     :boolean]
-   [:unique_field_helper        [:maybe :int]]
-   [:database_is_pk             [:maybe :boolean]]
-   [:database_is_nullable       [:maybe :boolean]]
-   [:database_is_generated      [:maybe :boolean]]
-   [:database_default           [:maybe [:or :string :map sequential?]]]
-   [:dimension_interestingness  [:maybe number?]]
-   [:data_sensitivity           [:maybe [:or :keyword :string]]]])
-
-(mu/defn field-pk-in-path :- [:maybe FieldPkInPath]
+(mu/defn field-pk-in-path :- [:maybe ::lib.schema.id/field]
   "The id of the Field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
   `table-id`, or nil."
   [table-id    :- ::lib.schema.id/table
@@ -499,52 +371,7 @@
   (when (seq field-names)
     (t2/select-one :model/Field (field-in-path-query table-id field-names))))
 
-(def ^:private InsertInactiveField
-  "Rows returned by [[insert-inactive-field!]]."
-  [:map {:closed true}
-   [:id                         ::lib.schema.id/field]
-   [:created_at                 ms/TemporalInstant]
-   [:updated_at                 ms/TemporalInstant]
-   [:name                       :string]
-   [:base_type                  [:or :keyword :string :map sequential?]]
-   [:semantic_type              [:maybe [:or :keyword :string :map sequential?]]]
-   [:active                     :boolean]
-   [:description                [:maybe [:or :string :map sequential?]]]
-   [:preview_display            :boolean]
-   [:position                   :int]
-   [:table_id                   ::lib.schema.id/table]
-   [:parent_id                  [:maybe ms/PositiveInt]]
-   [:display_name               [:maybe :string]]
-   [:visibility_type            [:or :keyword :string]]
-   [:fk_target_field_id         [:maybe ::lib.schema.id/field]]
-   [:last_analyzed              [:maybe ms/TemporalInstant]]
-   [:points_of_interest         [:maybe [:or :string :map sequential?]]]
-   [:caveats                    [:maybe [:or :string :map sequential?]]]
-   [:fingerprint                [:maybe [:or :string :map sequential?]]]
-   [:fingerprint_version        :int]
-   [:database_type              [:or :keyword :string :map sequential?]]
-   [:has_field_values           [:maybe [:or :keyword :string :map sequential?]]]
-   [:settings                   [:maybe [:or :string :map sequential?]]]
-   [:database_position          :int]
-   [:custom_position            :int]
-   [:effective_type             [:maybe [:or :keyword :string :map sequential?]]]
-   [:coercion_strategy          [:maybe [:or :keyword :string :map sequential?]]]
-   [:nfc_path                   [:maybe [:or :string :map sequential?]]]
-   [:database_required          :boolean]
-   [:json_unfolding             :boolean]
-   [:database_is_auto_increment :boolean]
-   [:database_indexed           [:maybe :boolean]]
-   [:database_partitioned       [:maybe :boolean]]
-   [:is_defective_duplicate     :boolean]
-   [:unique_field_helper        [:maybe :int]]
-   [:database_is_pk             [:maybe :boolean]]
-   [:database_is_nullable       [:maybe :boolean]]
-   [:database_is_generated      [:maybe :boolean]]
-   [:database_default           [:maybe [:or :string :map sequential?]]]
-   [:dimension_interestingness  [:maybe number?]]
-   [:data_sensitivity           [:maybe [:or :keyword :string]]]])
-
-(mu/defn insert-inactive-field! :- InsertInactiveField
+(mu/defn insert-inactive-field! :- ::lib.schema.id/field
   "Insert an inactive, untyped Field named `field-name` under `parent-id` in the Table with `table-id` and return its
   id."
   [table-id   :- ::lib.schema.id/table

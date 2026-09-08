@@ -10,6 +10,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -42,7 +43,7 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select [:model/Sandbox :id :table_id] :card_id card-id))
 
-(mu/defn user-sandboxes-with-group-ids :- [:sequential (mut/optional-keys (mut/open-schema ::sandbox.schema/sandbox))]
+(mu/defn user-sandboxes-with-group-ids :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::sandbox.schema/sandbox)))]
   "The Sandboxes of the groups of the User with `user-id`, each with the `:group_id` of the membership."
   [user-id :- ::lib.schema.id/user]
   (t2/select :model/Sandbox
@@ -53,7 +54,7 @@
               :where     [:and
                           [:= :pgm.user_id user-id]]}))
 
-(mu/defn sandboxes-with-table-info :- [:sequential (mut/optional-keys (mut/open-schema ::sandbox.schema/sandbox))]
+(mu/defn sandboxes-with-table-info :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::sandbox.schema/sandbox)))]
   "The group, Table, Database, and schema of the Sandboxes of the optional `group-id` or `group-ids` in the optional
   Database `db-id`, excluding the Database `excluded-db-id` when given."
   [group-id       :- [:maybe ms/PositiveInt]
@@ -176,7 +177,7 @@
                       (when schema-only?
                         [:= :schema schema])]}))
 
-(mu/defn database-of-table :- [:maybe (mut/optional-keys (mut/open-schema ::warehouses.schema/database))]
+(mu/defn database-of-table :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::warehouses.schema/database)))]
   "The Database of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Database
@@ -205,7 +206,7 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :result_metadata :model/Card :id card-id))
 
-(mu/defn sandboxing-cards :- [:sequential (mut/optional-keys (mut/open-schema ::queries.schema/card))]
+(mu/defn sandboxing-cards :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
   "The `:id`, `:dataset_query`, `:database_id`, and `:card_schema` of the Cards Sandboxes are built on."
   []
   (t2/select :model/Card

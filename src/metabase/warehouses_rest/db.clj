@@ -12,6 +12,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -27,7 +28,7 @@
              {:order-by [[:%lower.schema :asc]
                          [:%lower.display_name :asc]]}))
 
-(mu/defn active-visible-schemas-for-databases :- [:sequential [:map {:closed true} [:db_id (mut/optional-keys (mut/open-schema ::warehouses.schema/database))] [:schema [:maybe :string]]]]
+(mu/defn active-visible-schemas-for-databases :- [:sequential [:map {:closed true} [:db_id (mut/optional-keys (mut/open-schema (mr/schema ::warehouses.schema/database)))] [:schema [:maybe :string]]]]
   "The distinct Database id and schema of the active, visible Tables of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/query {:select-distinct [:db_id :schema]
@@ -164,7 +165,7 @@
       (and (empty? search-id) (not-empty search-name))
       [:like [:lower :report_card.name] (h2x/like-substring search-name)])))
 
-(mu/defn autocomplete-cards :- [:sequential (mut/optional-keys (mut/open-schema ::queries.schema/card))]
+(mu/defn autocomplete-cards :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
   "Up to 50 unarchived Cards of the Database with `database-id` matching `search-card-slug` (see
   [[autocomplete-cards-search-clause]]), with their Collection name, models first then newest first. Dashboard
   questions are excluded unless `include-dashboard-questions?`."
@@ -187,7 +188,7 @@
                          [:report_card.id :desc]] ; sort by most recently created after sorting by type
               :limit    50}))
 
-(mu/defn autocomplete-fields :- [:sequential (mut/optional-keys (mut/open-schema ::warehouse-schema.schema/field))]
+(mu/defn autocomplete-fields :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::warehouse-schema.schema/field)))]
   "Up to `limit` name, type, id, and Table of the active, non-sensitive Fields of active Tables of the Database with
   `database-id` whose lower-cased name matches the SQL LIKE `like-pattern` (a Honey SQL LIKE right-hand side, see
   `metabase.util.honey-sql-2/like-substring`/`like-prefix`), in field then table name order."
@@ -210,7 +211,7 @@
                                                      [:= :table.id :metabase_field.table_id]]]
               :limit      limit}))
 
-(mu/defn table-ids-for-database :- [:maybe [:set ms/PositiveInt]]
+(mu/defn table-ids-for-database :- [:maybe [:set ::lib.schema.id/table]]
   "The ids of the Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/select-fn-set :id :model/Table, :db_id database-id))

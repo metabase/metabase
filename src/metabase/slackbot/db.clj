@@ -8,10 +8,11 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn active-slack-connect-identity :- [:maybe [:map {:closed true} [:user_id (mut/optional-keys (mut/open-schema ::users.schema/user))] [:metadata [:maybe [:or :string :map sequential?]]]]]
+(mu/defn active-slack-connect-identity :- [:maybe [:map {:closed true} [:user_id (mut/optional-keys (mut/open-schema (mr/schema ::users.schema/user)))] [:metadata [:maybe [:or :string :map sequential?]]]]]
   "The user id and metadata of the newest Slack Connect AuthIdentity of an active User for `slack-user-id`, or nil."
   [slack-user-id :- :string]
   (t2/select-one [:model/AuthIdentity :user_id :metadata]

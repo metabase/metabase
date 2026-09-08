@@ -11,7 +11,9 @@
    [metabase.models.db :as models.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.segments.schema :as segments.schema]
+   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -61,7 +63,7 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :table_id :model/Field :id field-id))
 
-(mu/defn field-id-by-name :- [:maybe ::warehouse-schema.schema/field]
+(mu/defn field-id-by-name :- [:maybe ::lib.schema.id/field]
   "The ID of the ::warehouse-schema.schema/field named `field-name` under `parent-id` in the ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id   :- ::lib.schema.id/table
    parent-id  :- [:maybe ms/PositiveInt]
@@ -81,12 +83,12 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one [:model/Field :base_type :visibility_type :has_field_values :preview_display] :id field-id))
 
-(mu/defn field-ids-for-table :- [:maybe [:set ::warehouse-schema.schema/field]]
+(mu/defn field-ids-for-table :- [:maybe [:set ::lib.schema.id/field]]
   "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select-pks-set :model/Field {:where [:= :table_id table-id]}))
 
-(mu/defn active-field-ids-for-table :- [:maybe [:set ::warehouse-schema.schema/field]]
+(mu/defn active-field-ids-for-table :- [:maybe [:set ::lib.schema.id/field]]
   "The IDs of the active Fields of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select-pks-set :model/Field :table_id table-id :active true))
@@ -180,7 +182,7 @@
   [field-id :- ::lib.schema.id/field]
   (t2/exists? :model/FieldUserSettings field-id))
 
-(mu/defn user-edited-field-ids-for-table :- [:maybe [:set (mut/optional-keys (mut/open-schema ::warehouse-schema.schema/field))]]
+(mu/defn user-edited-field-ids-for-table :- [:maybe [:set [:maybe ::lib.schema.id/field]]]
   "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id` that have a FieldUserSettings row."
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn-set :field_id :model/FieldUserSettings
@@ -229,7 +231,7 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select [:model/FieldValues :field_id :values] :field_id field-id :type :full))
 
-(mu/defn full-field-values-for-tables :- [:sequential (mut/optional-keys (mut/open-schema ::warehouse-schema.schema/field-values))]
+(mu/defn full-field-values-for-tables :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::warehouse-schema.schema/field-values)))]
   "The ::warehouse-schema.schema/field ID, values, and ::warehouse-schema.schema/table ID of the full FieldValues of the normal Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/FieldValues :field_id :values :field.table_id]
@@ -367,7 +369,7 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Segment :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
 
-(mu/defn segment-ids-for-table :- [:maybe [:set ::segments.schema/segment]]
+(mu/defn segment-ids-for-table :- [:maybe [:set ::lib.schema.id/segment]]
   "The IDs of the Segments of the ::warehouse-schema.schema/table with `table-id`, excluding archived ones when `skip-archived?`."
   [table-id       :- ::lib.schema.id/table
    skip-archived? :- [:maybe :boolean]]
@@ -378,7 +380,7 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Measure :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
 
-(mu/defn measure-ids-for-table :- [:maybe [:set ::measures.schema/measure]]
+(mu/defn measure-ids-for-table :- [:maybe [:set ::lib.schema.id/measure]]
   "The IDs of the Measures of the ::warehouse-schema.schema/table with `table-id`, excluding archived ones when `skip-archived?`."
   [table-id       :- ::lib.schema.id/table
    skip-archived? :- [:maybe :boolean]]
@@ -471,7 +473,7 @@
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one-fn :name :model/Database :id database-id))
 
-(mu/defn database-id-by-name :- [:maybe ::warehouses.schema/database]
+(mu/defn database-id-by-name :- [:maybe ::lib.schema.id/database]
   "The ID of the ::warehouses.schema/database named `database-name`, or nil."
   [database-name :- :string]
   (t2/select-one-pk :model/Database :name database-name))
@@ -483,23 +485,12 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select :model/Collection :id [:in collection-ids]))
 
-(mu/defn user-summaries-by-id :- [:map-of ::lib.schema.id/user [:map {:closed true}
-                                                                [:id              ::lib.schema.id/user]
-                                                                [:email           :string]
-                                                                [:date_joined     ms/TemporalInstant]
-                                                                [:first_name      [:maybe :string]]
-                                                                [:last_name       [:maybe :string]]
-                                                                [:last_login      [:maybe ms/TemporalInstant]]
-                                                                [:is_superuser    :boolean]
-                                                                [:is_data_analyst :boolean]
-                                                                [:is_qbnewb       :boolean]
-                                                                [:tenant_id       [:maybe ms/PositiveInt]]
-                                                                [:common_name     [:maybe :string]]]]
+(mu/defn user-summaries-by-id :- [:map-of ::lib.schema.id/user (mut/select-keys ::users.schema/user [:id :email :first_name :last_name :common_name])]
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
-(mu/defn cards-with-moderated-status :- [:sequential (mut/optional-keys (mut/open-schema ::queries.schema/card))]
+(mu/defn cards-with-moderated-status :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
   "The query-metadata columns of the Cards with `card-ids`, with their latest moderation status."
   [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
   (t2/select :model/Card

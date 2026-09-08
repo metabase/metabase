@@ -55,7 +55,7 @@
   [row :- ::dashboards.schema/dashboard-card.update]
   (t2/insert-returning-instance! :model/DashboardCard row))
 
-(mu/defn dashcard-ids-in-layout-order :- [:maybe [:sequential ms/PositiveInt]]
+(mu/defn dashcard-ids-in-layout-order :- [:maybe [:sequential ::lib.schema.id/dashcard]]
   "The ids of the DashboardCards of the Dashboard with `dashboard-id`, in row then column order."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-fn-vec :id :model/DashboardCard :dashboard_id dashboard-id {:order-by [[:row :asc] [:col :asc]]}))

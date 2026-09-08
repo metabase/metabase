@@ -15,6 +15,7 @@
    [metabase.users.schema :as users.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
@@ -285,7 +286,7 @@
   []
   (first (t2/query (execution-metrics-sql))))
 
-(mu/defn query-cache-stats :- [:maybe (mut/optional-keys (mut/open-schema ::cache.schema/query-cache))]
+(mu/defn query-cache-stats :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::cache.schema/query-cache)))]
   "The average result `:length` and `:count` of the QueryCache entries."
   []
   (t2/select-one [:model/QueryCache [[:avg [:length :results]] :length] [:%count.* :count]]))

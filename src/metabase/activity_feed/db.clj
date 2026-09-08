@@ -12,12 +12,13 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.view-log.schema :as view-log.schema]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
-(mu/defn recent-cards :- [:sequential (mut/optional-keys (mut/open-schema ::queries.schema/card))]
+(mu/defn recent-cards :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
   "The recently viewed Cards with `ids`, with their Collection and Dashboard names."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Card
@@ -29,7 +30,7 @@
               :left-join [:collection [:= :collection.id :report_card.collection_id]
                           [:report_dashboard :dashboard] [:= :dashboard.id :report_card.dashboard_id]]}))
 
-(mu/defn recent-dashboards :- [:sequential (mut/optional-keys (mut/open-schema ::dashboards.schema/dashboard))]
+(mu/defn recent-dashboards :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::dashboards.schema/dashboard)))]
   "The recently viewed Dashboards with `ids`, with their Collection names."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Dashboard
@@ -39,7 +40,7 @@
              {:where     [:in :report_dashboard.id ids]
               :left-join [:collection [:= :collection.id :report_dashboard.collection_id]]}))
 
-(mu/defn recent-tables :- [:sequential (mut/optional-keys (mut/open-schema ::warehouse-schema.schema/table))]
+(mu/defn recent-tables :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::warehouse-schema.schema/table)))]
   "The recently viewed Tables with `ids`, with their Database names and sync status."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Table
@@ -50,7 +51,7 @@
              {:where     [:in :metabase_table.id ids]
               :left-join [:metabase_database [:= :metabase_database.id :metabase_table.db_id]]}))
 
-(mu/defn recent-dashboard-and-table-views :- [:sequential (mut/optional-keys (mut/open-schema ::activity-feed.schema/recent-views))]
+(mu/defn recent-dashboard-and-table-views :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::activity-feed.schema/recent-views)))]
   "Up to `limit` most recently viewed unarchived, active Dashboards and Tables with their view counts and last
   viewer."
   [limit :- ms/PositiveInt]
@@ -77,7 +78,7 @@
                            [:= :model "table"]
                            [:= :t.id :model_id]]]}))
 
-(mu/defn recent-card-runs :- [:sequential (mut/optional-keys (mut/open-schema ::queries.schema/query-execution))]
+(mu/defn recent-card-runs :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/query-execution)))]
   "Up to `limit` most recently run question Cards with their run counts and last runner."
   [limit :- ms/PositiveInt]
   (t2/select [:model/QueryExecution
@@ -205,7 +206,7 @@
     :left-join [[:report_dashboard :d]
                 [:= :recent_views.model_id :d.id]]}))
 
-(mu/defn cards-for-recent-views :- [:sequential (mut/optional-keys (mut/open-schema ::queries.schema/card))]
+(mu/defn cards-for-recent-views :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
   "The Cards with `card-ids` with their Dashboard, Collection, and moderation status."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select :model/Card
@@ -241,7 +242,7 @@
                           [:report_dashboard :dashboard]
                           [:= :dashboard.id :card.dashboard_id]]}))
 
-(mu/defn dashboards-for-recent-views :- [:sequential (mut/optional-keys (mut/open-schema ::dashboards.schema/dashboard))]
+(mu/defn dashboards-for-recent-views :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::dashboards.schema/dashboard)))]
   "The Dashboards with `dashboard-ids` with their Collection and moderation status."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/select :model/Dashboard
@@ -266,7 +267,7 @@
                            [:= :c.id :dash.collection_id]
                            [:= :c.archived false]]]}))
 
-(mu/defn unarchived-collections-with-details :- [:sequential (mut/optional-keys (mut/open-schema ::collections.schema/collection))]
+(mu/defn unarchived-collections-with-details :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::collections.schema/collection)))]
   "The unarchived Collections with `collection-ids`, with their location, type, and authority level."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select :model/Collection
@@ -276,7 +277,7 @@
                       [:in :id collection-ids]
                       [:= :archived false]]}))
 
-(mu/defn visible-tables-for-recent-views :- [:sequential (mut/optional-keys (mut/open-schema ::warehouse-schema.schema/table))]
+(mu/defn visible-tables-for-recent-views :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::warehouse-schema.schema/table)))]
   "The non-hidden Tables with `table-ids` with their Database name and sync status."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/Table
@@ -294,7 +295,7 @@
               :left-join [[:metabase_database :db]
                           [:= :db.id :t.db_id]]}))
 
-(mu/defn recent-views-with-card-type :- [:sequential (mut/optional-keys (mut/open-schema ::activity-feed.schema/recent-views))]
+(mu/defn recent-views-with-card-type :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::activity-feed.schema/recent-views)))]
   "The RecentViews of the User with `user-id` in `contexts`, newest first, with the type of the viewed Card. Narrowed
   to `db-models` and to the Cards of `card-types` when given; excludes trashed and namespaced Collections, exploration
   Documents, and, when `selections?`, the instance analytics Collection."
@@ -346,7 +347,7 @@
                            [:= :doc.id :rv.model_id]]]
               :order-by  [[:rv.timestamp :desc]]}))
 
-(mu/defn documents-for-recent-views :- [:sequential (mut/optional-keys (mut/open-schema ::documents.schema/document))]
+(mu/defn documents-for-recent-views :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::documents.schema/document)))]
   "The Documents with `document-ids` with their Collection."
   [document-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Document

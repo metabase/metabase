@@ -11,8 +11,8 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
 (def ^:private PermissionsRow
@@ -207,22 +207,22 @@
   []
   (t2/count :model/Collection :is_remote_synced true))
 
-(mu/defn collection-ids-with-location-like :- [:maybe [:set ::collections.schema/collection]]
+(mu/defn collection-ids-with-location-like :- [:maybe [:set ::lib.schema.id/collection]]
   "The IDs of the Collections whose location matches the SQL `pattern`."
   [pattern :- :string]
   (t2/select-pks-set :model/Collection :location [:like pattern]))
 
-(mu/defn unarchived-collection-ids-with-location-like :- [:maybe [:set ::collections.schema/collection]]
+(mu/defn unarchived-collection-ids-with-location-like :- [:maybe [:set ::lib.schema.id/collection]]
   "The IDs of the unarchived Collections whose location matches the SQL `pattern`."
   [pattern :- :string]
   (t2/select-pks-set :model/Collection :location [:like pattern] :archived false))
 
-(mu/defn not-yet-archived-collection-ids-with-location-like :- [:maybe [:set ::collections.schema/collection]]
+(mu/defn not-yet-archived-collection-ids-with-location-like :- [:maybe [:set ::lib.schema.id/collection]]
   "The IDs of the Collections whose location matches the SQL `pattern` and that are not marked archived."
   [pattern :- :string]
   (t2/select-pks-set :model/Collection :location [:like pattern] :archived [:not= true]))
 
-(mu/defn archived-collection-ids-in-operation-with-location-like :- [:maybe [:set ::collections.schema/collection]]
+(mu/defn archived-collection-ids-in-operation-with-location-like :- [:maybe [:set ::lib.schema.id/collection]]
   "The IDs of the archived Collections of the archive operation with `archive-operation-id` whose location matches
   the SQL `pattern`."
   [pattern              :- :string
@@ -232,13 +232,13 @@
                      :archive_operation_id [:= archive-operation-id]
                      :archived [:= true]))
 
-(mu/defn collection-ids-of-type :- [:maybe [:set ::collections.schema/collection]]
+(mu/defn collection-ids-of-type :- [:maybe [:set ::lib.schema.id/collection]]
   "The IDs of the Collections among `collection-ids` of `type`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
    type           :- :string]
   (t2/select-pks-set :model/Collection :id [:in collection-ids] :type type))
 
-(mu/defn child-collection-ids :- [:maybe [:set ::collections.schema/collection]]
+(mu/defn child-collection-ids :- [:maybe [:set ::lib.schema.id/collection]]
   "The IDs of the non-trash Collections directly at `location`, excluding archived ones when `skip-archived?`."
   [location       :- :string
    trash-type     :- :string
@@ -251,14 +251,14 @@
                                [:not= :type trash-type]
                                [:= :type nil]]]}))
 
-(mu/defn remote-synced-root-collection-ids :- [:maybe [:set ::collections.schema/collection]]
+(mu/defn remote-synced-root-collection-ids :- [:maybe [:set ::lib.schema.id/collection]]
   "The IDs of the top-level remote-synced Collections."
   []
   (t2/select-pks-set :model/Collection {:where [:and
                                                 [:= :is_remote_synced true]
                                                 [:= :location "/"]]}))
 
-(mu/defn personal-collection-ids :- [:maybe [:set ::collections.schema/collection]]
+(mu/defn personal-collection-ids :- [:maybe [:set ::lib.schema.id/collection]]
   "The IDs of every personal ::collections.schema/collection."
   []
   (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil]))
@@ -444,7 +444,7 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/delete! :model/Timeline :collection_id [:in collection-ids]))
 
-(mu/defn dashboard-ids-in-collection :- [:maybe [:set ::dashboards.schema/dashboard]]
+(mu/defn dashboard-ids-in-collection :- [:maybe [:set ::lib.schema.id/dashboard]]
   "The IDs of the Dashboards in the ::collections.schema/collection with `collection-id` (nil for the root ::collections.schema/collection), excluding archived
   ones when `skip-archived?`."
   [collection-id  :- [:maybe ::lib.schema.id/collection]
@@ -452,7 +452,7 @@
   (t2/select-pks-set :model/Dashboard
                      {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
 
-(mu/defn card-ids-in-collection :- [:maybe [:set (mut/optional-keys (mut/open-schema ::queries.schema/card))]]
+(mu/defn card-ids-in-collection :- [:maybe [:set ::lib.schema.id/card]]
   "The IDs of the Cards in the ::collections.schema/collection with `collection-id`, excluding archived ones when `skip-archived?` and
   excluding Cards materialized by an exploration Summary."
   [collection-id  :- [:maybe ::lib.schema.id/collection]
@@ -484,7 +484,7 @@
   (t2/select-pks-set :model/Timeline
                      {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
 
-(mu/defn published-table-ids-in-collection :- [:maybe [:set ::warehouse-schema.schema/table]]
+(mu/defn published-table-ids-in-collection :- [:maybe [:set ::lib.schema.id/table]]
   "The IDs of the published Tables in the ::collections.schema/collection with `collection-id`, excluding archived ones when
   `skip-archived?`."
   [collection-id  :- [:maybe ::lib.schema.id/collection]
@@ -494,34 +494,12 @@
                                            [:= :is_published true]
                                            (when skip-archived? [:= :archived_at nil])]}))
 
-(def ^:private TransformIdsInCollection
-  "Rows returned by [[transform-ids-in-collection]]."
-  [:map {:closed true}
-   [:id                    ::lib.schema.id/transform]
-   [:name                  [:or :string :map sequential?]]
-   [:description           [:maybe [:or :string :map sequential?]]]
-   [:source                [:or :keyword :string :map sequential?]]
-   [:target                [:or :string :map sequential?]]
-   [:entity_id             :string]
-   [:created_at            ms/TemporalInstant]
-   [:updated_at            ms/TemporalInstant]
-   [:source_type           [:or :keyword :string]]
-   [:creator_id            ::lib.schema.id/user]
-   [:source_database_id    [:maybe ::lib.schema.id/database]]
-   [:collection_id         [:maybe ::lib.schema.id/collection]]
-   [:owner_user_id         [:maybe ::lib.schema.id/user]]
-   [:owner_email           [:maybe [:or :string :map sequential?]]]
-   [:target_db_id          [:maybe ::lib.schema.id/database]]
-   [:last_checkpoint_value [:maybe [:or :string :map sequential?]]]
-   [:target_table_id       [:maybe ::lib.schema.id/table]]
-   [:table_dependencies    [:maybe [:or :string :map sequential?]]]])
-
-(mu/defn transform-ids-in-collection :- [:maybe [:set TransformIdsInCollection]]
+(mu/defn transform-ids-in-collection :- [:maybe [:set ::lib.schema.id/transform]]
   "The IDs of the Transforms in the ::collections.schema/collection with `collection-id`."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select-pks-set :model/Transform {:where [:= :collection_id collection-id]}))
 
-(mu/defn published-table-ids-in-collections :- [:maybe [:set ::warehouse-schema.schema/table]]
+(mu/defn published-table-ids-in-collections :- [:maybe [:set ::lib.schema.id/table]]
   "The IDs of the published Tables in the Collections with `collection-ids`."
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
   (t2/select-pks-set :model/Table :collection_id [:in collection-ids] :is_published true))
@@ -532,7 +510,7 @@
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
   (t2/update! :model/Table {:collection_id [:in collection-ids]} {:collection_id nil, :is_published false}))
 
-(mu/defn dashboard-ids-with-cards :- [:sequential [:map {:closed true} [:dashboard_id (mut/optional-keys (mut/open-schema ::dashboards.schema/dashboard))]]]
+(mu/defn dashboard-ids-with-cards :- [:sequential [:map {:closed true} [:dashboard_id (mut/optional-keys (mut/open-schema (mr/schema ::dashboards.schema/dashboard)))]]]
   "The `:dashboard_id` rows of the Dashboards among `dashboard-ids` holding an unarchived dashboard question."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (t2/query {:select-distinct [:dashboard_id]
@@ -589,23 +567,12 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :type :model/User user-id))
 
-(mu/defn user-name-parts-by-id :- [:map-of ::lib.schema.id/user [:map {:closed true}
-                                                                 [:id              ::lib.schema.id/user]
-                                                                 [:email           :string]
-                                                                 [:date_joined     ms/TemporalInstant]
-                                                                 [:first_name      [:maybe :string]]
-                                                                 [:last_name       [:maybe :string]]
-                                                                 [:last_login      [:maybe ms/TemporalInstant]]
-                                                                 [:is_superuser    :boolean]
-                                                                 [:is_data_analyst :boolean]
-                                                                 [:is_qbnewb       :boolean]
-                                                                 [:tenant_id       [:maybe ms/PositiveInt]]
-                                                                 [:common_name     [:maybe :string]]]]
+(mu/defn user-name-parts-by-id :- [:map-of ::lib.schema.id/user (mut/select-keys ::users.schema/user [:first_name :last_name :email :id :common_name])]
   "A map of ID to the first name, last name, and email of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :first_name :last_name :email :id] :id [:in user-ids]))
 
-(mu/defn non-api-key-user-ids :- [:maybe [:set (mut/select-keys ::users.schema/user [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_data_analyst :is_qbnewb :tenant_id :common_name])]]
+(mu/defn non-api-key-user-ids :- [:maybe [:set ::lib.schema.id/user]]
   "The IDs of the Users among `user-ids` that are not API key users."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pks-set :model/User :id [:in user-ids] :type [:not= :api-key]))

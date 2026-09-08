@@ -114,45 +114,7 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database database-id))
 
-(def ^:private FieldTableId
-  "Rows returned by [[field-table-id]]."
-  [:map {:closed true}
-   [:id                      ::lib.schema.id/table]
-   [:created_at              ms/TemporalInstant]
-   [:updated_at              ms/TemporalInstant]
-   [:name                    :string]
-   [:description             [:maybe [:or :string :map sequential?]]]
-   [:entity_type             [:maybe [:or :keyword :string]]]
-   [:active                  :boolean]
-   [:db_id                   ::lib.schema.id/database]
-   [:display_name            [:maybe :string]]
-   [:visibility_type         [:maybe [:or :keyword :string]]]
-   [:schema                  [:maybe :string]]
-   [:points_of_interest      [:maybe [:or :string :map sequential?]]]
-   [:caveats                 [:maybe [:or :string :map sequential?]]]
-   [:show_in_getting_started :boolean]
-   [:field_order             [:or :keyword :string]]
-   [:initial_sync_status     [:or :keyword :string]]
-   [:is_upload               :boolean]
-   [:database_require_filter [:maybe :boolean]]
-   [:estimated_row_count     [:maybe :int]]
-   [:view_count              :int]
-   [:is_defective_duplicate  :boolean]
-   [:unique_table_helper     [:maybe :string]]
-   [:deactivated_at          [:maybe ms/TemporalInstant]]
-   [:archived_at             [:maybe ms/TemporalInstant]]
-   [:is_writable             [:maybe :boolean]]
-   [:data_authority          [:or :keyword :string :map sequential?]]
-   [:data_source             [:maybe [:or :keyword :string :map sequential?]]]
-   [:data_layer              [:maybe [:or :keyword :string :map sequential?]]]
-   [:owner_email             [:maybe [:or :string :map sequential?]]]
-   [:owner_user_id           [:maybe ::lib.schema.id/user]]
-   [:collection_id           [:maybe ::lib.schema.id/collection]]
-   [:is_published            :boolean]
-   [:transform_id            [:maybe ::lib.schema.id/transform]]
-   [:transform_target        :boolean]])
-
-(mu/defn field-table-id :- [:maybe FieldTableId]
+(mu/defn field-table-id :- [:maybe [:maybe ::lib.schema.id/table]]
   "The Table id of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :table_id :model/Field field-id))

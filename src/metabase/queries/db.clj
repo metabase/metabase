@@ -13,6 +13,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
@@ -56,7 +57,7 @@
                  :from   [:report_card]
                  :where  [:= :id card-id]}))
 
-(mu/defn card-database-and-table-ids :- [:maybe (mut/optional-keys (mut/open-schema ::queries.schema/card))]
+(mu/defn card-database-and-table-ids :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
   "The database and primary table IDs of the Card with `card-id`, as `:database-id` and `:table-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id card-id))
@@ -98,7 +99,7 @@
 
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
-(mu/defn dashcard-counts-by-card :- [:sequential [:map {:closed true} [:count :int] [:card_id (mut/optional-keys (mut/open-schema ::queries.schema/card))]]]
+(mu/defn dashcard-counts-by-card :- [:sequential [:map {:closed true} [:count :int] [:card_id (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]]]
   "Rows of `:card_id` and `:count` of DashboardCards for each of `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%count.* :count] :card_id]
@@ -106,7 +107,7 @@
              :where    [:in :card_id card-ids]
              :group-by [:card_id]}))
 
-(mu/defn parameter-card-counts-by-card :- [:sequential [:map {:closed true} [:count :int] [:card_id (mut/optional-keys (mut/open-schema ::queries.schema/card))]]]
+(mu/defn parameter-card-counts-by-card :- [:sequential [:map {:closed true} [:count :int] [:card_id (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]]]
   "Rows of `:card_id` and `:count` of ParameterCards for each of `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%count.* :count] :card_id]
@@ -114,7 +115,7 @@
              :where    [:in :card_id card-ids]
              :group-by [:card_id]}))
 
-(mu/defn average-running-times-by-card :- [:sequential [:map {:closed true} [:running_time [:maybe :int]] [:card_id (mut/optional-keys (mut/open-schema ::queries.schema/card))]]]
+(mu/defn average-running-times-by-card :- [:sequential [:map {:closed true} [:running_time [:maybe :int]] [:card_id (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]]]
   "Rows of `:card_id` and average `:running_time` of uncached executions for each of `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%avg.running_time :running_time] :card_id]
@@ -125,7 +126,7 @@
                         [:in :card_id card-ids]]
              :group-by [:card_id]}))
 
-(mu/defn last-query-starts-by-card :- [:sequential [:map {:closed true} [:started_at [:maybe ms/TemporalInstant]] [:card_id (mut/optional-keys (mut/open-schema ::queries.schema/card))]]]
+(mu/defn last-query-starts-by-card :- [:sequential [:map {:closed true} [:started_at [:maybe ms/TemporalInstant]] [:card_id (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]]]
   "Rows of `:card_id` and latest `:started_at` of uncached executions for each of `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%max.started_at :started_at] :card_id]
@@ -497,7 +498,7 @@
   (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id
                                       :card_id          card-id}))
 
-(mu/defn stored-results-for-card :- [:sequential (mut/optional-keys (mut/open-schema ::queries.schema/stored-result))]
+(mu/defn stored-results-for-card :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/stored-result)))]
   "The StoredResults used by the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select :model/StoredResult

@@ -11,6 +11,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.segments.schema :as segments.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -52,7 +53,7 @@
              :visibility_type nil
              :active          true))
 
-(mu/defn candidate-tables-with-field-stats :- [:sequential (mut/optional-keys (mut/open-schema ::warehouse-schema.schema/table))]
+(mu/defn candidate-tables-with-field-stats :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::warehouse-schema.schema/table)))]
   "The id, schema, name, entity type, Database, field count, and list-likeness of the active, visible Tables of the
   Database with `database-id` (optionally narrowed to `schema`) that have at least one non-key Field."
   [database-id :- ::lib.schema.id/database
@@ -121,7 +122,7 @@
                     :fk_target_field_id [:not= nil]
                     :active             true))
 
-(mu/defn active-field-ids-for-table :- [:maybe [:set ms/PositiveInt]]
+(mu/defn active-field-ids-for-table :- [:maybe [:set ::lib.schema.id/field]]
   "The ids of the active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn-set :id :model/Field :table_id table-id :active true))

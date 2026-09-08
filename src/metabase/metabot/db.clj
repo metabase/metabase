@@ -24,6 +24,7 @@
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -92,7 +93,7 @@
        :postgres :random
        :rand)]]])
 
-(mu/defn prompts :- [:sequential (mut/optional-keys (mut/open-schema ::metabot.schema/metabot-prompt))]
+(mu/defn prompts :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::metabot.schema/metabot-prompt)))]
   "The prompt, model, and Card columns of the MetabotPrompts of the Metabot with `metabot-id` whose Card is within
   scope, optionally restricted to Cards of `card-type` or the Card with `card-id`, ordered randomly if `sample?` else
   by Card name, and limited/offset by `limit`/`offset`."
@@ -222,7 +223,7 @@
   (cond-> [:and (participation-clause user-id)]
     profile-id (conj [:= (last-live-message-profile-id-subquery) profile-id])))
 
-(mu/defn conversations-page :- [:sequential (mut/optional-keys (mut/open-schema ::metabot.schema/metabot-conversation))]
+(mu/defn conversations-page :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::metabot.schema/metabot-conversation)))]
   "A page of up to `limit` (offset by `offset`) MetabotConversations visible in the history of the User with
   `user-id`, most-recent-activity first, optionally narrowed to the last live message's `profile-id`."
   [user-id :- ::lib.schema.id/user
@@ -601,7 +602,7 @@
      (table-part-clause :t.name table)
      (table-part-clause :t.schema schema)]))
 
-(mu/defn query-table-reference :- [:maybe (mut/optional-keys (mut/open-schema ::queries.schema/query-table))]
+(mu/defn query-table-reference :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/query-table)))]
   "The first Table ID, name, and schema in the Database with `db-id` matching `table` (and `schema`, if given), as a
   query table reference. Matching is case-insensitive unless `table`/`schema` are quoted with `\"` or `` ` ``."
   [db-id :- ::lib.schema.id/database
@@ -614,7 +615,7 @@
                            [:= :t.db_id db-id]
                            (table-match-clause {:schema schema :table table})]}))
 
-(mu/defn query-table-references :- [:sequential (mut/optional-keys (mut/open-schema ::queries.schema/query-table))]
+(mu/defn query-table-references :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/query-table)))]
   "The Table IDs, names, and schemas in the Database with `db-id` matching any of `tables` (each a map of `:schema`
   and `:table`), as query table references. Matching is case-insensitive unless quoted, as in
   [[query-table-reference]]."

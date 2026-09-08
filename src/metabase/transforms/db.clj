@@ -12,6 +12,7 @@
    [metabase.users.schema :as users.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -131,7 +132,7 @@
   [tag-ids :- [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
   (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids]))
 
-(mu/defn active-job-schedules-for-transforms :- [:sequential (mut/optional-keys (mut/open-schema ::transforms.schema/transform-transform-tag))]
+(mu/defn active-job-schedules-for-transforms :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::transforms.schema/transform-transform-tag)))]
   "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag."
   [transform-ids :- [:set ::lib.schema.id/transform]]
   (t2/select :model/TransformTransformTag
@@ -359,7 +360,7 @@
    [:statuses          [:maybe [:sequential :string]]]
    [:user-id           [:maybe ::lib.schema.id/user]]])
 
-(mu/defn paged-runs :- [:sequential (mut/optional-keys (mut/open-schema ::transforms.schema/transform-run))]
+(mu/defn paged-runs :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::transforms.schema/transform-run)))]
   "Up to `limit` (offset by `offset`) TransformRuns matching `filters` (see [[paged-runs-where]] for the supported
   keys), sorted by `sort-column`/`sort-direction` (translating `status`, `run-method`, and `transform-tags` sort
   columns per `status-labels`/`run-method-labels`/`tag-name-labels`)."
@@ -421,7 +422,7 @@
   (t2/select :model/TransformRun {:where [:and [:= :is_active true] [:in :id run-ids]]
                                   :for   :update}))
 
-(mu/defn last-success-times :- [:sequential (mut/optional-keys (mut/open-schema ::transforms.schema/transform-run))]
+(mu/defn last-success-times :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::transforms.schema/transform-run)))]
   "Rows of Transform ID and the latest `end_time` of its succeeded runs for `transform-ids`."
   [transform-ids :- [:set ::lib.schema.id/transform]]
   (t2/select :model/TransformRun

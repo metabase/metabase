@@ -14,6 +14,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.timeline.schema :as timeline.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -268,7 +269,7 @@
   [block-id :- ms/PositiveInt]
   (t2/select-one-fn :metrics :model/ExplorationBlock :id block-id))
 
-(mu/defn block-for-page :- [:maybe (mut/optional-keys (mut/open-schema ::explorations.schema/exploration-block))]
+(mu/defn block-for-page :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::explorations.schema/exploration-block)))]
   "The ExplorationBlock owning the ExplorationPage with `page-id`, or nil."
   [page-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationBlock
@@ -410,7 +411,7 @@
   (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery
                     :id query-id :status [:in ["done" "error" "canceled"]]))
 
-(mu/defn runnable-query :- [:maybe (mut/optional-keys (mut/open-schema ::explorations.schema/exploration-query))]
+(mu/defn runnable-query :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::explorations.schema/exploration-query)))]
   "The pending ExplorationQuery with `query-id` on an uncanceled thread, or nil."
   [query-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationQuery
@@ -556,7 +557,7 @@
   (t2/select [:model/ExplorationQueryResult :exploration_query_id score-column]
              :exploration_query_id [:in query-ids]))
 
-(mu/defn query-result-row-counts :- [:sequential (mut/optional-keys (mut/open-schema ::explorations.schema/exploration-query-result))]
+(mu/defn query-result-row-counts :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::explorations.schema/exploration-query-result)))]
   "The query ID and stored row count of the ExplorationQueryResults of the ExplorationQueries with `query-ids`."
   [query-ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/ExplorationQueryResult

@@ -8,6 +8,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -175,7 +176,7 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select :model/Card :table_id table-id))
 
-(mu/defn table-ids-referenced-by-cards :- [:sequential [:map {:closed true} [:table_id [:maybe (mut/optional-keys (mut/open-schema ::warehouse-schema.schema/table))]]]]
+(mu/defn table-ids-referenced-by-cards :- [:sequential [:map {:closed true} [:table_id [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::warehouse-schema.schema/table)))]]]]
   "The distinct `:table_id` rows of the Cards on the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/query {:select-distinct [:table_id]

@@ -8,11 +8,12 @@
    [metabase.segments.schema :as segments.schema]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
-(mu/defn query-execution-hash-counts :- [:sequential (mut/optional-keys (mut/open-schema ::queries.schema/query-execution))]
+(mu/defn query-execution-hash-counts :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/query-execution)))]
   "The `:hash` and execution count `:n` of the QueryExecutions started at or after `started-at` and before
   `started-before`, grouped by hash."
   [started-at     :- ms/TemporalInstant
@@ -142,7 +143,7 @@
     bucket-start (conj [:>= :bucket_date bucket-start])
     bucket-end   (conj [:<= :bucket_date bucket-end])))
 
-(mu/defn grouped-segment-rows :- [:sequential (mut/optional-keys (mut/open-schema ::usage-metadata.schema/source-segment-daily))]
+(mu/defn grouped-segment-rows :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::usage-metadata.schema/source-segment-daily)))]
   "The summed `source_segment_daily` counts optionally narrowed to `source-type`, `source-id`, and bucketed between
   `bucket-start` and `bucket-end`, grouped by source, field, and predicate, largest first."
   [source-type  :- [:maybe :keyword]
@@ -159,7 +160,7 @@
               :group-by [:source_type :source_id :field_id :predicate]
               :order-by [[:total_count :desc]]}))
 
-(mu/defn grouped-metric-rows :- [:sequential (mut/optional-keys (mut/open-schema ::usage-metadata.schema/source-metric-daily))]
+(mu/defn grouped-metric-rows :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::usage-metadata.schema/source-metric-daily)))]
   "The summed `source_metric_daily` counts optionally narrowed to `source-type`, `source-id`, and bucketed between
   `bucket-start` and `bucket-end`, grouped by source and aggregation, largest first."
   [source-type  :- [:maybe :keyword]
@@ -178,7 +179,7 @@
               :group-by [:source_type :source_id :agg_type :agg_field_id :temporal_field_id :temporal_unit]
               :order-by [[:total_count :desc]]}))
 
-(mu/defn grouped-dimension-rows :- [:sequential (mut/optional-keys (mut/open-schema ::usage-metadata.schema/source-dimension-daily))]
+(mu/defn grouped-dimension-rows :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::usage-metadata.schema/source-dimension-daily)))]
   "The summed `source_dimension_daily` counts optionally narrowed to `source-type`, `source-id`, and bucketed
   between `bucket-start` and `bucket-end`, grouped by source, field, unit, and binning, largest first."
   [source-type  :- [:maybe :keyword]
@@ -196,7 +197,7 @@
               :group-by [:source_type :source_id :field_id :temporal_unit :binning]
               :order-by [[:total_count :desc]]}))
 
-(mu/defn grouped-composite-rows :- [:sequential (mut/optional-keys (mut/open-schema ::usage-metadata.schema/source-segment-composite-daily))]
+(mu/defn grouped-composite-rows :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::usage-metadata.schema/source-segment-composite-daily)))]
   "The summed `source_segment_composite_daily` counts optionally narrowed to `source-type`, `source-id`, and
   bucketed between `bucket-start` and `bucket-end`, grouped by source and clause, largest first."
   [source-type  :- [:maybe :keyword]
@@ -214,7 +215,7 @@
               :group-by [:source_type :source_id :clause :atom_fingerprints :atom_count]
               :order-by [[:total_count :desc]]}))
 
-(mu/defn grouped-profile-rows :- [:sequential (mut/optional-keys (mut/open-schema ::usage-metadata.schema/source-dimension-profile-daily))]
+(mu/defn grouped-profile-rows :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::usage-metadata.schema/source-dimension-profile-daily)))]
   "The summed `source_dimension_profile_daily` counts optionally narrowed to `source-type`, `source-id`, and
   bucketed between `bucket-start` and `bucket-end`, grouped by source, field, and observation, largest first."
   [source-type  :- [:maybe :keyword]

@@ -12,6 +12,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -63,7 +64,7 @@
               :left-join [[:collection :collection] [:= :collection.id :dashboard.collection_id]]
               :where     [:in :dashboard.id dashboard-ids]}))
 
-(mu/defn dashcards-with-visible-cards-for-dashboards :- [:sequential (mut/optional-keys (mut/open-schema ::dashboards.schema/dashboard-card))]
+(mu/defn dashcards-with-visible-cards-for-dashboards :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::dashboards.schema/dashboard-card)))]
   "The DashboardCards of the Dashboards with `dashboard-ids` whose Card is visible (unarchived, a dashboard question
   not archived by itself, or absent), with their Card's Collection authority level, in dashboard then creation order."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
@@ -152,7 +153,7 @@
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/select [:model/DashboardCardSeries :id :card_id :dashboardcard_id] :dashboardcard_id [:in dashcard-ids]))
 
-(mu/defn series-cards-for-dashcards :- [:sequential (mut/optional-keys (mut/open-schema ::queries.schema/card))]
+(mu/defn series-cards-for-dashcards :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
   "The series Cards of the DashboardCards with `dashcard-ids`, each with its `:dashboardcard_id`, in series order."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/select [:model/Card :id :name :description :display :dataset_query :type :database_id

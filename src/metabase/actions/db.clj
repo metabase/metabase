@@ -8,12 +8,13 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn database-for-action :- [:maybe (mut/optional-keys (mut/open-schema ::warehouses.schema/database))]
+(mu/defn database-for-action :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::warehouses.schema/database)))]
   "The Database of the model Card of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
   (t2/select-one :model/Database {:select [:db.*]

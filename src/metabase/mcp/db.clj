@@ -8,6 +8,7 @@
    [metabase.mcp.schema :as mcp.schema]
    [metabase.session.core :as session]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -47,7 +48,7 @@
            [:prompt          {:optional true} [:maybe [:or :string :map sequential?]]]]]
   (t2/insert! :model/McpQueryHandle row))
 
-(mu/defn query-handle-for-user :- [:maybe (mut/optional-keys (mut/open-schema ::mcp.schema/mcp-query-handle))]
+(mu/defn query-handle-for-user :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::mcp.schema/mcp-query-handle)))]
   "The McpQueryHandle with `handle-id` whose session belongs to the User with `user-id`, or nil."
   [handle-id :- :string
    user-id   :- ::lib.schema.id/user]

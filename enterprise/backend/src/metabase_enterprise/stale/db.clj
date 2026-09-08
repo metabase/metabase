@@ -8,6 +8,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -21,7 +22,7 @@
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select-pk->fn identity :model/Collection :id [:in collection-ids]))
 
-(mu/defn stale-cards :- [:sequential (mut/optional-keys (mut/open-schema ::queries.schema/card))]
+(mu/defn stale-cards :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
   "The listing columns of the Cards with `card-ids`, with their latest moderation status."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select [:model/Card
@@ -54,7 +55,7 @@
                :moderated_status]]
              :id [:in card-ids]))
 
-(mu/defn stale-dashboards :- [:sequential (mut/optional-keys (mut/open-schema ::dashboards.schema/dashboard))]
+(mu/defn stale-dashboards :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::dashboards.schema/dashboard)))]
   "The listing columns of the Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (t2/select [:model/Dashboard

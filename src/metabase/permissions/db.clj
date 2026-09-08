@@ -14,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
@@ -159,7 +160,7 @@
                                [:= :table_id table-id]
                                [:= :table_id nil]]]}))
 
-(mu/defn user-data-permissions :- [:sequential (mut/optional-keys (mut/open-schema ::permissions.schema/data-permissions))]
+(mu/defn user-data-permissions :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::permissions.schema/data-permissions)))]
   "The permission type, group, value, database, and table of every DataPermissions row of the groups the User with
   `user-id` belongs to, optionally narrowed to `database-id` and/or `perm-type`."
   [user-id     :- ::lib.schema.id/user
@@ -207,7 +208,7 @@
              {:where [:and [:= :db_id database-id] [:= :table_id nil]
                       [:in :group_id group-ids] [:in :perm_type perm-types]]}))
 
-(mu/defn distinct-table-level-permission-values :- [:sequential (mut/optional-keys (mut/open-schema ::permissions.schema/data-permissions))]
+(mu/defn distinct-table-level-permission-values :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::permissions.schema/data-permissions)))]
   "The distinct group, permission type, schema, and value combinations of the table-level DataPermissions rows of
   `perm-types` for `group-ids` on the Database with `database-id`."
   [database-id :- ::lib.schema.id/database
@@ -218,7 +219,7 @@
               :where           [:and [:= :db_id database-id] [:not= :table_id nil]
                                 [:in :group_id group-ids] [:in :perm_type perm-types]]}))
 
-(mu/defn distinct-database-permission-values-for-group :- [:sequential (mut/optional-keys (mut/open-schema ::permissions.schema/data-permissions))]
+(mu/defn distinct-database-permission-values-for-group :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::permissions.schema/data-permissions)))]
   "The distinct database, permission type, and value combinations of the DataPermissions rows of the group with
   `group-id`."
   [group-id :- ms/PositiveInt]
@@ -385,7 +386,7 @@
   [pattern :- :string]
   (t2/select-fn-set :name :model/PermissionsGroup :name [:like pattern]))
 
-(mu/defn group-members :- [:sequential (mut/optional-keys (mut/open-schema ::users.schema/user))]
+(mu/defn group-members :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::users.schema/user)))]
   "The active Users in the PermissionsGroups with `group-ids`, with the optional extra `group-manager-column`."
   [group-ids            :- [:sequential ms/PositiveInt]
    group-manager-column :- [:maybe vector?]]

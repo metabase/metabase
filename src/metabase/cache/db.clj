@@ -141,7 +141,7 @@
    model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
   (t2/delete! :model/CacheConfig :model model :model_id [:in model-ids]))
 
-(mu/defn card-ids-for-databases :- [:maybe [:sequential ms/PositiveInt]]
+(mu/defn card-ids-for-databases :- [:maybe [:sequential ::lib.schema.id/card]]
   "The ids of the Cards of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select-fn-vec :id [:model/Card :id] :database_id [:in database-ids]))

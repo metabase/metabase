@@ -9,6 +9,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -49,7 +50,7 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select [:model/CardBookmark :card_id] :user_id user-id))
 
-(mu/defn cards-using-model :- [:sequential (mut/optional-keys (mut/open-schema ::queries.schema/card))]
+(mu/defn cards-using-model :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
   "The unarchived Cards of the same Database as the model Card with `model-id` whose query mentions it, in
   case-insensitive name order."
   [model-id :- ms/PositiveInt]
@@ -149,7 +150,7 @@
   [card-id :- ::lib.schema.id/card]
   (t2/delete! :model/Card :id card-id))
 
-(mu/defn max-collection-position :- [:maybe (mut/optional-keys (mut/open-schema ::queries.schema/card))]
+(mu/defn max-collection-position :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
   "The `:max_position` of the Cards in the Collection with `collection-id` (nil for the root)."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select-one [:model/Card [:%max.collection_position :max_position]] :collection_id collection-id))

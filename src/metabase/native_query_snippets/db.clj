@@ -8,7 +8,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn snippets-by-archived :- [:sequential ::native-query-snippets.schema/native-query-snippet]
@@ -43,7 +42,7 @@
    changes :- (mut/select-keys ::native-query-snippets.schema/native-query-snippet.update [:description :collection_id :archived :content :name])]
   (t2/update! :model/NativeQuerySnippet id changes))
 
-(mu/defn snippet-id-by-name :- [:maybe ms/PositiveInt]
+(mu/defn snippet-id-by-name :- [:maybe ::lib.schema.id/native-query-snippet]
   "The id of the NativeQuerySnippet named `snippet-name`, or nil."
   [snippet-name :- :string]
   (t2/select-one-fn :id :model/NativeQuerySnippet :name snippet-name))
