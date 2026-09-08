@@ -432,7 +432,8 @@
                   result)))))))
 
 (deftest transform-type-roundtrip-test
-  (mt/test-drivers #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver :clickhouse}
+  (mt/test-drivers (filter #(driver/database-supports? % :test/dynamic-dataset-loading nil)
+                           #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver :clickhouse})
     (mt/with-empty-db
       (let [driver       driver/*driver*
             db-id        (mt/id)

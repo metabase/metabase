@@ -262,14 +262,14 @@
 
 (deftest create-table-test
   (testing "Test we can create base table"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python :test/dynamic-dataset-loading)
       (mt/with-empty-db
         (with-test-table [table-id _table-name] [base-type-test-data (:data base-type-test-data)]
           (is table-id "Table should be created and have an ID"))))))
 
 (deftest base-types-python-transform-test
   (testing "Test Python transforms with base types across all supported drivers"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python :test/dynamic-dataset-loading)
       (mt/with-empty-db
         (with-test-table [table-id table-name] [base-type-test-data (:data base-type-test-data)]
           (let [transform-code (simple-identity-transform-code table-name)
@@ -290,13 +290,13 @@
 
 (deftest exotic-types-python-transform-test
   (testing "Test Python transforms with driver-specific exotic types"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python :test/dynamic-dataset-loading)
       (mt/with-empty-db
         (test-exotic-types-for-driver! driver/*driver*)))))
 
 (deftest edge-cases-python-transform-test
   (testing "Test Python transforms with edge cases: null values, empty strings, extreme values"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python :test/dynamic-dataset-loading)
       (mt/with-empty-db
         (let [edge-case-schema {:columns [{:name "id" :type :type/Integer :nullable? false}
                                           {:name "text_field" :type :type/Text :nullable? true}
@@ -359,7 +359,7 @@
 
 (deftest idempotent-transform-test
   (testing "Test that running the same transform multiple times produces identical results"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python :test/dynamic-dataset-loading)
       (mt/with-empty-db
         (with-test-table [table-id table-name] [base-type-test-data (:data base-type-test-data)]
           (let [transform-code (str "import pandas as pd\n"
@@ -398,7 +398,7 @@
 
 (deftest comprehensive-e2e-python-transform-test
   (testing "End-to-end test using execute-python-transform! across all supported drivers with comprehensive type coverage"
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/python)
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/python :test/dynamic-dataset-loading)
                            ;; we sometimes get I/O error in CI due to it taking too long. it's too slow, too flakey to keep enabled
                            :redshift)
       (mt/with-empty-db

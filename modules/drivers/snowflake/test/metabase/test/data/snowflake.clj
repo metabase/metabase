@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.driver :as driver]
+   [metabase.driver.snowflake]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
@@ -20,6 +21,8 @@
    (java.sql PreparedStatement ResultSet)))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.driver.snowflake/keep-me)
 
 (sql-jdbc.tx/add-test-extensions! :snowflake)
 
@@ -105,12 +108,38 @@
   []
   (sql-jdbc.conn/connection-details->spec :snowflake (tx/dbdef->connection-details :snowflake :server nil)))
 
+;;; --------------------------------- Session schema ----------------------------------
+;;;
+;;; Every dataset gets its own database, but tests that create tables outside the dataset loader (uploads, renames,
+;;; transforms) write into whichever database `(mt/id)` points at, usually the shared static `test-data` one. Each CI
+;;; job gets its own schema there so those tables never appear in another job's `describe-database`.
+
+(defn unique-session-schema
+  "Schema for tables this test run creates outside the dataset loader. See [[sql.tx/session-schema]]."
+  []
+  (sql.tu.unique-prefix/unique-prefix "schema"))
+
+(defmethod sql.tx/session-schema :snowflake [_driver] (unique-session-schema))
+
+(def ^:private session-schema-dbs
+  "Databases the session schema has been created in, so [[tx/after-run]] can drop it from the static ones."
+  (atom #{}))
+
+(defn- ensure-session-schema! [db-name]
+  (jdbc/execute! (no-db-connection-spec)
+                 [(format "CREATE SCHEMA IF NOT EXISTS \"%s\".\"%s\";" db-name (unique-session-schema))])
+  (swap! session-schema-dbs conj db-name))
+
 ;;; --------------------------------- Cleanup ----------------------------------
 
 (defmethod tx/after-run :snowflake [_driver]
   (let [spec (no-db-connection-spec)]
+    ;; temporary databases are dropped whole, so only the static ones need the session schema removed
+    (doseq [db-name @session-schema-dbs
+            :when   (str/starts-with? db-name "sha_")]
+      (jdbc/execute! spec [(format "DROP SCHEMA IF EXISTS \"%s\".\"%s\" CASCADE;" db-name (unique-session-schema))]))
     (doseq [name @to-cleanup]
-      (jdbc/execute! spec [(format "DROP DATABASE \"%s\";" name)]))))
+      (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";" name)]))))
 
 ;;; --------------------------------- Orphan GC ----------------------------------
 ;;;
@@ -122,22 +151,37 @@
   []
   (tx/db-test-env-var-or-throw :snowflake :account))
 
-(defn- drop-orphan [conn server dry-run? name]
+(defn- show-names!
+  "The `name` column of a Snowflake `SHOW ...` command."
+  [conn sql]
+  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement :snowflake conn sql [])
+              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! :snowflake stmt)]
+    (mapv :name (resultset-seq rs))))
+
+(defn- drop-orphan! [^java.sql.Connection conn server dry-run? name sql]
   (try
     (when-not dry-run?
-      (jdbc/execute! conn [(format "DROP DATABASE \"%s\";" name)]))
+      (with-open [stmt (.createStatement conn)]
+        (.execute stmt sql)))
     {:server server :name name :status :deleted}
     (catch Exception e
       {:server server :name name :status :error :error (ex-message e)})))
 
-(defn- gc-orphans! [conn {:keys [hours dry-run?]}]
-  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
-                                       :snowflake conn
-                                       "SHOW TERSE DATABASES STARTS WITH 'temp_'" [])
-              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! :snowflake stmt)]
-    (->> (resultset-seq rs)
-         (filter (partial sql.tu.unique-prefix/old-temp-dataset? hours))
-         (mapv (partial drop-orphan conn (account) dry-run?)))))
+(defn- gc-orphan-databases! [conn {:keys [hours dry-run?]}]
+  (into []
+        (for [db-name (show-names! conn "SHOW TERSE DATABASES STARTS WITH 'temp_'")
+              :when   (sql.tu.unique-prefix/old-temp-dataset? hours db-name)]
+          (drop-orphan! conn (account) dry-run? db-name (format "DROP DATABASE \"%s\";" db-name)))))
+
+(defn- gc-orphan-session-schemas!
+  "Session schemas a cancelled job left behind in a static database. [[tx/after-run]] drops them when a job finishes."
+  [conn {:keys [hours dry-run?]}]
+  (into []
+        (for [db-name (show-names! conn "SHOW TERSE DATABASES STARTS WITH 'sha_'")
+              schema  (show-names! conn (format "SHOW TERSE SCHEMAS STARTS WITH 'temp_' IN DATABASE \"%s\"" db-name))
+              :when   (sql.tu.unique-prefix/old-temp-dataset? hours schema)]
+          (drop-orphan! conn (account) dry-run? (str db-name "." schema)
+                        (format "DROP SCHEMA \"%s\".\"%s\" CASCADE;" db-name schema)))))
 
 (defn- drop-tracked-dataset [conn server dry-run? {:keys [database_name]}]
   (try
@@ -178,7 +222,8 @@
    (no-db-connection-spec)
    {:write? true}
    (fn [conn]
-     (concat (gc-orphans! conn options)
+     (concat (gc-orphan-databases! conn options)
+             (gc-orphan-session-schemas! conn options)
              (and (:tracked? options) (gc-tracked-datasets! conn options))))))
 
 (defmethod tx/count-datasets :snowflake
@@ -206,7 +251,8 @@
     ;; produced lot of failures. Following expression addresses that, setting timezone for the test user.
     (set-current-user-timezone! "UTC")
     ;; now call the default impl for SQL JDBC drivers
-    (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))
+    (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)
+    (ensure-session-schema! (:database-name db-def))))
 
 (defmethod tx/destroy-db! :snowflake
   [_driver dbdef]
@@ -283,13 +329,18 @@
 (defmethod tx/dataset-already-loaded? :snowflake
   [driver db-def]
   ;; check and see if ANY tables are loaded for the current catalog
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
-   {:write? false}
-   (fn [^java.sql.Connection conn]
-     (and (database-exists?! conn driver db-def)
-          (dataset-rows-ok?! conn db-def)))))
+  (let [loaded? (sql-jdbc.execute/do-with-connection-with-options
+                 driver
+                 (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
+                 {:write? false}
+                 (fn [^java.sql.Connection conn]
+                   (and (database-exists?! conn driver db-def)
+                        (dataset-rows-ok?! conn db-def))))]
+    ;; this is the one place the harness touches a database it did not create this run; [[tx/create-db!]] covers the
+    ;; ones it did
+    (when loaded?
+      (ensure-session-schema! (qualified-db-name db-def)))
+    loaded?))
 
 (defn drop-if-exists-and-create-roles!
   [driver details roles]
@@ -370,7 +421,25 @@
                                         WHERE query_text LIKE 'DROP DATABASE %'
                                         ORDER BY end_time DESC limit 64"]))
 
-(defmethod sql.tx/session-schema :snowflake [_driver] "PUBLIC")
+;;; --------------------------------- describe-database ----------------------------------
+
+(defonce ^:private ^{:arglists '([driver database])}
+  original-describe-database
+  (get-method driver/describe-database* :snowflake))
+
+;; Other CI jobs' session schemas come and go in the shared static databases while this run is looking at them. Hide
+;; them so sync and `describe-database` only see the dataset's tables and this run's own.
+(defmethod driver/describe-database* :snowflake
+  [driver database]
+  (let [session-schema (unique-session-schema)]
+    (update (original-describe-database driver database)
+            :tables
+            (fn [tables]
+              (into #{}
+                    (remove (fn [{:keys [schema]}]
+                              (and (str/starts-with? (str schema) "temp_")
+                                   (not= schema session-schema))))
+                    tables)))))
 
 ;;; ------------------------------------------------ Fake Sync Support ------------------------------------------------
 
@@ -380,10 +449,6 @@
 (defmethod driver/database-supports? [:snowflake :test/use-fake-sync]
   [_driver _feature _database]
   (not (tx/on-master-or-release-branch?)))
-
-;; too much contention here causing unreliable tests
-(defmethod driver/database-supports? [:snowflake :test/dynamic-dataset-loading]
-  [_driver _feature _database] false)
 
 (defmethod tx/fake-sync-schema :snowflake
   [_driver]
