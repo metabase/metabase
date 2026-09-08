@@ -105,6 +105,9 @@
       :pulse             (with-timestamped
                            {:name       (mt/random-name)
                             :parameters "{}"})
+      :report_dashboard  (with-timestamped
+                           {:name       (mt/random-name)
+                            :parameters "[]"})
       :pulse_channel     (with-timestamped
                            {:channel_type  "slack"
                             :details       (json/encode {:channel "general"})
@@ -148,7 +151,10 @@
             (is (some? (qs/get-trigger (@#'task/scheduler) (triggers/key abandonment-emails-trigger-key)))))
           ;; stop the scheduler because the scheduler won't be started when migrations start
           (task/stop-scheduler!)
-          (migrate!)
+          ;; test-migrations turns scheduler-dependent migrations into no-ops by default; this test is specifically
+          ;; testing one, so re-enable them
+          (binding [custom-migrations.util/*allow-temp-scheduling* true]
+            (migrate!))
           ;; check the job and trigger are deleted
           (task/start-scheduler!)
           (testing "after the migration, the job and trigger are deleted"
@@ -278,21 +284,15 @@
           (testing "legacy result_metadata field refs are updated"
             (is (= expected
                    (json/decode migrated-result-metadata))))
-          (testing "legacy result_metadata are updated to the current format"
-            (is (= (->> result_metadata
-                        json/encode
-                        ((:out mi/transform-result-metadata))
-                        json/encode)
-                   migrated-result-metadata)))
           (testing "result_metadata is equivalent before and after migration"
             (is (= (->> result_metadata
                         json/encode
                         ((:out mi/transform-result-metadata))
-                        json/encode)
+                        mt/obj->json->obj)
                    (-> migrated-result-metadata
                        json/decode
                        ((:out mi/transform-result-metadata))
-                       json/encode)))))))))
+                       mt/obj->json->obj)))))))))
 
 (deftest ^:mb/old-migrations-test add-join-alias-to-visualization-settings-field-refs-test
   (testing "Migrations v47.00-028: update visualization_settings.column_settings legacy field refs"
@@ -375,69 +375,65 @@
                                                                                        :email       "howard@aircraft.com"
                                                                                        :password    "superstrong"
                                                                                        :date_joined :%now}))
-            dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
-                                                                            :creator_id user-id}))
-            tab1-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 1"
-                                                                               :position     0
-                                                                               :dashboard_id dashboard-id}))
-            tab2-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 2"
-                                                                               :position     1
-                                                                               :dashboard_id dashboard-id}))
+            dashboard-id (first (t2/insert-returning-pks! (t2/table-name :model/Dashboard)
+                                                          {:name       "A dashboard"
+                                                           :creator_id user-id
+                                                           :parameters "[]"
+                                                           :created_at :%now
+                                                           :updated_at :%now}))
+            insert-tab!  (fn [name position]
+                           (first (t2/insert-returning-pks! (t2/table-name :model/DashboardTab)
+                                                            {:name         name
+                                                             :position     position
+                                                             :dashboard_id dashboard-id
+                                                             :entity_id    (u/generate-nano-id)
+                                                             :created_at   :%now
+                                                             :updated_at   :%now})))
+            tab1-id      (insert-tab! "Tab 1" 0)
+            tab2-id      (insert-tab! "Tab 2" 1)
             ;; adds a dummy tab without cards to make sure our migration doesn't fail on such case
-            _            (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 3"
-                                                                               :position     2
-                                                                               :dashboard_id dashboard-id}))
-            tab4-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 4"
-                                                                               :position     3
-                                                                               :dashboard_id dashboard-id}))
-            default-card {:dashboard_id           dashboard-id
-                          :visualization_settings {:virtual_card {:display "text"}
-                                                   :text         "A text card"}}
-            tab1-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab1-id
-                                                                                  :row              0
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           4})))
-
-            tab1-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab1-id
-                                                                                  :row              2
-                                                                                  :col              0
-                                                                                  :size_x           2
-                                                                                  :size_y           6})))
-
-            tab2-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab2-id
-                                                                                  :row              0
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           4})))
-
-            tab2-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab2-id
-                                                                                  :row              4
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           2})))
-            tab4-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab4-id
-                                                                                  :row              0
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           4})))
-            tab4-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab4-id
-                                                                                  :row              4
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           2})))]
+            _            (insert-tab! "Tab 3" 2)
+            tab4-id      (insert-tab! "Tab 4" 3)
+            insert-card! (fn [props]
+                           (first (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
+                                                            (merge {:dashboard_id           dashboard-id
+                                                                    :visualization_settings (json/encode
+                                                                                             {:virtual_card {:display "text"}
+                                                                                              :text         "A text card"})
+                                                                    :parameter_mappings     "[]"
+                                                                    :created_at             :%now
+                                                                    :updated_at             :%now}
+                                                                   props))))
+            tab1-card1-id (insert-card! {:dashboard_tab_id tab1-id
+                                         :row              0
+                                         :col              0
+                                         :size_x           4
+                                         :size_y           4})
+            tab1-card2-id (insert-card! {:dashboard_tab_id tab1-id
+                                         :row              2
+                                         :col              0
+                                         :size_x           2
+                                         :size_y           6})
+            tab2-card1-id (insert-card! {:dashboard_tab_id tab2-id
+                                         :row              0
+                                         :col              0
+                                         :size_x           4
+                                         :size_y           4})
+            tab2-card2-id (insert-card! {:dashboard_tab_id tab2-id
+                                         :row              4
+                                         :col              0
+                                         :size_x           4
+                                         :size_y           2})
+            tab4-card1-id (insert-card! {:dashboard_tab_id tab4-id
+                                         :row              0
+                                         :col              0
+                                         :size_x           4
+                                         :size_y           4})
+            tab4-card2-id (insert-card! {:dashboard_tab_id tab4-id
+                                         :row              4
+                                         :col              0
+                                         :size_x           4
+                                         :size_y           2})]
         (migrate! :down 46)
         (is (= [;; tab 1
                 {:id  tab1-card1-id
@@ -790,16 +786,23 @@
                                                    :visualization_settings "{}"
                                                    :database_id            database-id
                                                    :collection_id          nil})
-            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
-                                                                     :creator_id          user-id
-                                                                     :parameters          []})
-            dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
-                                                                         :visualization_settings (json/encode visualization-settings)
-                                                                         :card_id      card-id
-                                                                         :size_x       4
-                                                                         :size_y       4
-                                                                         :col          1
-                                                                         :row          1})]
+            dashboard-id (t2/insert-returning-pks! (t2/table-name :model/Dashboard)
+                                                   {:name       "My Dashboard"
+                                                    :creator_id user-id
+                                                    :parameters "[]"
+                                                    :created_at :%now
+                                                    :updated_at :%now})
+            dashcard-id  (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
+                                                   {:dashboard_id           dashboard-id
+                                                    :visualization_settings (json/encode visualization-settings)
+                                                    :parameter_mappings     "[]"
+                                                    :card_id                card-id
+                                                    :size_x                 4
+                                                    :size_y                 4
+                                                    :col                    1
+                                                    :row                    1
+                                                    :created_at             :%now
+                                                    :updated_at             :%now})]
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
@@ -882,16 +885,23 @@
                                                    :visualization_settings "{}"
                                                    :database_id            database-id
                                                    :collection_id          nil})
-            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
-                                                                     :creator_id          user-id
-                                                                     :parameters          []})
-            dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
-                                                                         :visualization_settings (json/encode visualization-settings)
-                                                                         :card_id      card-id
-                                                                         :size_x       4
-                                                                         :size_y       4
-                                                                         :col          1
-                                                                         :row          1})]
+            dashboard-id (t2/insert-returning-pks! (t2/table-name :model/Dashboard)
+                                                   {:name       "My Dashboard"
+                                                    :creator_id user-id
+                                                    :parameters "[]"
+                                                    :created_at :%now
+                                                    :updated_at :%now})
+            dashcard-id  (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
+                                                   {:dashboard_id           dashboard-id
+                                                    :visualization_settings (json/encode visualization-settings)
+                                                    :parameter_mappings     "[]"
+                                                    :card_id                card-id
+                                                    :size_x                 4
+                                                    :size_y                 4
+                                                    :col                    1
+                                                    :row                    1
+                                                    :created_at             :%now
+                                                    :updated_at             :%now})]
         (migrate!)
         (testing "After the migration, column_settings field refs are updated to include join-alias"
           (is (= expected
@@ -1463,16 +1473,23 @@
                                  :name                   "My Card"
                                  :created_at             :%now
                                  :updated_at             :%now})
-                [dashboard-id] (t2/insert-returning-pks! :model/Dashboard {:name       "My Dashboard"
-                                                                           :creator_id user-id
-                                                                           :parameters []})
-                [dashcard-id]  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id           dashboard-id
-                                                                               :visualization_settings dashcard-vis
-                                                                               :card_id                card-id
-                                                                               :size_x                 4
-                                                                               :size_y                 4
-                                                                               :col                    1
-                                                                               :row                    1})
+                [dashboard-id] (t2/insert-returning-pks! (t2/table-name :model/Dashboard)
+                                                         {:name       "My Dashboard"
+                                                          :creator_id user-id
+                                                          :parameters "[]"
+                                                          :created_at :%now
+                                                          :updated_at :%now})
+                [dashcard-id]  (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
+                                                         {:dashboard_id           dashboard-id
+                                                          :visualization_settings dashcard-vis
+                                                          :parameter_mappings     "[]"
+                                                          :card_id                card-id
+                                                          :size_x                 4
+                                                          :size_y                 4
+                                                          :col                    1
+                                                          :row                    1
+                                                          :created_at             :%now
+                                                          :updated_at             :%now})
                 expected-settings {:graph.dimensions ["CREATED_AT" "CATEGORY"],
                                    :graph.metrics    ["count"],
                                    :click            "link",
@@ -1568,8 +1585,9 @@
 
 (deftest ^:mb/old-migrations-test check-data-migrations-rollback
   ;; We're actually testing `v48.00-024`, but we want the `migrate!` function to run all the migrations in 48
-  ;; after rolling back to 47, so we're using `v48.00-000` as the start of the migration range in `test-migrations`
-  (impl/test-migrations ["v48.00-000"] [migrate!]
+  ;; after rolling back to 47, so we're using `v48.00-001` (the first v48 changeset still in the changelog) as the
+  ;; start of the migration range in `test-migrations`
+  (impl/test-migrations ["v48.00-001"] [migrate!]
     (testing "we can migrate even if data_migrations is empty"
       ;; 0 because we removed them and fresh db won't trigger any
       (is (= 0 (t2/count :data_migrations)))
@@ -1604,7 +1622,9 @@
 ;;;
 
 (deftest ^:mb/old-migrations-test unify-type-of-time-columns-test
-  (impl/test-migrations ["v49.00-054"] [migrate!]
+  ;; v49.00-059 is the UnifyTimeColumnsType custom migration; the changesets before it that this test used to
+  ;; reference (v49.00-054 through 058) have since been removed from the changelog.
+  (impl/test-migrations ["v49.00-059"] [migrate!]
     (let [db-type       (mdb/db-type)
           datetime-type (case db-type
                           :postgres "timestamp without time zone"
@@ -1616,8 +1636,11 @@
                     (table-and-column-of-type datetime-type)))))
       (testing "all of our time columns are now converted to timestamp-tz type, only changelog tables are intact"
         (migrate!)
-        (is (= #{[:databasechangelog :dateexecuted false] [:databasechangeloglock :lockgranted true]}
-               (set (table-and-column-of-type datetime-type)))))
+        ;; ignore databasechangeloglock.lockgranted: its type is Liquibase's business and varies by Liquibase
+        ;; version/db (newer Liquibase creates it as timestamptz on postgres)
+        (is (= #{[:databasechangelog :dateexecuted false]}
+               (disj (set (table-and-column-of-type datetime-type))
+                     [:databasechangeloglock :lockgranted true]))))
       (testing "downgrade should revert all converted columns to its original type"
         (migrate! :down 48)
         (is (true? (set/subset?
@@ -1750,7 +1773,11 @@
                       (testing "sanity check that the schedule exists"
                         (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
                                (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
-                    (migrate!)
+                    ;; test-migrations turns scheduler-dependent migrations into no-ops by default; this test is
+                    ;; specifically testing one, so re-enable them. `with-db-scheduler-setup!` redefines
+                    ;; `qs/initialize` so the migration operates on the test's in-memory scheduler.
+                    (binding [custom-migrations.util/*allow-temp-scheduling* true]
+                      (migrate!))
                     (testing "default options and scan with manual schedules should have scan field values"
                       (doseq [db db-with-scan-fv]
                         (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
@@ -1805,9 +1832,17 @@
       ;; but we need to re-bind that to global here because the InitSendPulseTriggers job will need access to the scheduler,
       ;; and since quartz job is running in a different thread other than this test's thread, we need to bind it globally
       (with-redefs [task.impl/*quartz-scheduler* task.impl/*quartz-scheduler*]
-        (let [user-id  (:id (new-instance-with-default :core_user))
-              pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
-              pc       (new-instance-with-default :pulse_channel {:pulse_id pulse-id})]
+        ;; these inserts run at the fully-migrated schema, where entity_id is NOT NULL and no model hook fills it in
+        (let [user-id  (:id (new-instance-with-default :core_user {:entity_id (u/generate-nano-id)}))
+              ;; the pulse must be a dashboard subscription: init-dashboard-subscription-triggers! only creates
+              ;; triggers for pulses with a dashboard_id now that alerts have been migrated to notifications
+              dash-id  (:id (new-instance-with-default :report_dashboard {:creator_id user-id
+                                                                          :entity_id  (u/generate-nano-id)}))
+              pulse-id (:id (new-instance-with-default :pulse {:creator_id   user-id
+                                                               :dashboard_id dash-id
+                                                               :entity_id    (u/generate-nano-id)}))
+              pc       (new-instance-with-default :pulse_channel {:pulse_id  pulse-id
+                                                                  :entity_id (u/generate-nano-id)})]
           ;; trigger this so we schedule a trigger for send-pulse
           (task.send-pulses/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
           (testing "sanity check that we have a send pulse trigger and 2 jobs"
@@ -1816,10 +1851,15 @@
                      "metabase.task.send-pulses.init-send-pulse-triggers.job"}
                    (scheduler-job-keys))))
           (testing "migrate down will remove init-send-pulse-triggers job, send-pulse job and send-pulse triggers"
-            (migrate! :down 49)
+            ;; test-migrations turns scheduler-dependent migrations into no-ops by default; this test is specifically
+            ;; testing one, so re-enable them. `with-send-pulse-setup!` redefines `qs/initialize` so the migration
+            ;; operates on the test's in-memory scheduler.
+            (binding [custom-migrations.util/*allow-temp-scheduling* true]
+              (migrate! :down 49))
             (is (= #{} (scheduler-job-keys))))
           (testing "the init-send-pulse-triggers job should be re-run after migrate up"
-            (migrate!)
+            (binding [custom-migrations.util/*allow-temp-scheduling* true]
+              (migrate!))
             ;; we redefine this so quartz triggers that run on different threads use the same db connection as this test
             (with-redefs [mdb.connection/*application-db* mdb.connection/*application-db*]
               ;; simulate starting MB after migrate up, which will trigger this function
@@ -2146,16 +2186,23 @@
                                                :visualization_settings "{}"
                                                :database_id            database-id
                                                :collection_id          nil})
-            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
-                                                                     :creator_id          user-id
-                                                                     :parameters          []})
-            dashcard-id (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
-                                                                        :visualization_settings (json/encode viz-settings-with-field-ref-keys)
-                                                                        :card_id      card-id
-                                                                        :size_x       4
-                                                                        :size_y       4
-                                                                        :col          1
-                                                                        :row          1})]
+            dashboard-id (t2/insert-returning-pks! (t2/table-name :model/Dashboard)
+                                                   {:name       "My Dashboard"
+                                                    :creator_id user-id
+                                                    :parameters "[]"
+                                                    :created_at :%now
+                                                    :updated_at :%now})
+            dashcard-id (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
+                                                  {:dashboard_id           dashboard-id
+                                                   :visualization_settings (json/encode viz-settings-with-field-ref-keys)
+                                                   :parameter_mappings     "[]"
+                                                   :card_id                card-id
+                                                   :size_x                 4
+                                                   :size_y                 4
+                                                   :col                    1
+                                                   :row                    1
+                                                   :created_at             :%now
+                                                   :updated_at             :%now})]
         (migrate!)
         (testing "After the migration, column_settings are migrated to name-based keys"
           (is (= viz-settings-with-name-keys
@@ -2540,8 +2587,9 @@
 
 ;; see [[custom-migrations/MigrateAlertToNotification]] for info about how this migration works
 (deftest ^:mb/old-migrations-test migrate-alert-to-notification-test
-  (testing "v53.2024-12-12T08:06:00: migrate alerts from pulse to notification"
-    (impl/test-migrations ["v53.2024-12-12T08:05:00"] [migrate!]
+  ;; the migration was originally v53.2024-12-12T08:05:00 but has since been re-versioned to v54
+  (testing "v54.2025-02-14T08:05:00: migrate alerts from pulse to notification"
+    (impl/test-migrations ["v54.2025-02-14T08:05:00"] [migrate!]
       (binding [custom-migrations.util/*allow-temp-scheduling* true]
         (let [user-id     (:id (new-instance-with-default :core_user))
               database-id (:id (new-instance-with-default :metabase_database))
