@@ -7,7 +7,6 @@ import {
 } from "metabase/viz-core";
 import type { SingleSeries } from "metabase-types/api";
 
-// Static rendering can't fetch, so a goal the data doesn't answer is an error.
 export function resolveGoalSettings(
   { card, data }: SingleSeries,
   settings: ComputedVisualizationSettings,
