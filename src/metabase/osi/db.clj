@@ -2,6 +2,7 @@
   "Application database queries for the OSI module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as app-db]
    [toucan2.core :as t2]))
 
 (defn ai-context
@@ -31,3 +32,12 @@
   "Apply `changes` to the OsiAiContext of the entity with `entity-type` and `entity-local-id`."
   [entity-type entity-local-id changes]
   (t2/update! :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id changes))
+
+(defn upsert-ai-context!
+  "Insert or replace the `:ai_context` of the OsiAiContext of the entity with `entity-type` and `entity-local-id`
+  with `ai-context`."
+  [entity-type entity-local-id ai-context]
+  (app-db/update-or-insert! :model/OsiAiContext
+                            {:entity_type     entity-type
+                             :entity_local_id entity-local-id}
+                            (constantly {:ai_context ai-context})))

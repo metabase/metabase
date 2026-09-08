@@ -75,6 +75,20 @@
   [collection-id]
   (t2/select-one :model/Collection collection-id))
 
+(defn latest-table-publishing-event
+  "The most recent publish or unpublish AuditLog event for `table-id`, or nil."
+  [table-id]
+  (t2/select-one [:model/AuditLog :timestamp :topic :user_id]
+                 :topic [:in [:table-publish :table-unpublish]]
+                 :model "Table"
+                 :model_id table-id
+                 {:order-by [[:timestamp :desc] [:id :desc]]}))
+
+(defn user-name-and-email
+  "The id, first name, last name, and email of the User with `user-id`, or nil."
+  [user-id]
+  (t2/select-one [:model/User :id :first_name :last_name :email] user-id))
+
 (defn publish-tables!
   "Publish the Tables with `table-ids` into the Collection with `collection-id`."
   [table-ids collection-id]

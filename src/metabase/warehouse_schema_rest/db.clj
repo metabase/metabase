@@ -157,3 +157,11 @@
   "Delete the FieldValues of the Fields with `field-ids`."
   [field-ids]
   (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids]))
+
+(defn update-or-insert-full-field-values!
+  "Update the full FieldValues of the Field with `field-id` to have `values` and `human-readable-values`, inserting
+  one if none exists yet. Returns the number of rows affected."
+  [field-id values human-readable-values]
+  (app-db/update-or-insert! :model/FieldValues {:field_id field-id, :type :full}
+                            (constantly {:values                values
+                                         :human_readable_values human-readable-values})))

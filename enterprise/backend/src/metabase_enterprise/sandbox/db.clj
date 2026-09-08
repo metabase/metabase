@@ -2,6 +2,7 @@
   "Application database queries for the sandbox module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions."
   (:require
+   [metabase.app-db.core :as mdb]
    [toucan2.core :as t2]))
 
 (defn sandbox
@@ -53,6 +54,23 @@
                        (when group-ids [:in :s.group_id group-ids])
                        (when db-id [:= :t.db_id db-id])
                        (when excluded-db-id [:not [:= :t.db_id excluded-db-id]])]}))
+
+(defn candidate-sandboxes-for-groups-and-databases
+  "The `:id`, `:group_id`, `:table_id`, `:db_id`, and `:schema` of the Sandboxes of the groups with `group-ids` on
+  Tables of the Databases with `db-ids`."
+  [group-ids db-ids]
+  (mdb/query
+   {:select    [[:sandboxes.id :id]
+                [:sandboxes.group_id :group_id]
+                [:sandboxes.table_id :table_id]
+                [:table.db_id :db_id]
+                [:table.schema :schema]]
+    :from      [[:sandboxes]]
+    :left-join [[:metabase_table :table]
+                [:= :sandboxes.table_id :table.id]]
+    :where     [:and
+                [:in :sandboxes.group_id group-ids]
+                [:in :table.db_id db-ids]]}))
 
 (defn insert-sandbox!
   "Insert `sandbox` and return the new instance."

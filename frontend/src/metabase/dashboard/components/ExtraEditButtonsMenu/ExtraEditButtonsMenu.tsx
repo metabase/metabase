@@ -38,7 +38,6 @@ export function ExtraEditButtonsMenu() {
         <Stack>
           <Box px="lg" py="sm">
             <Switch
-              size="sm"
               checked={dashboard?.width === "full"}
               onChange={handleToggleWidth}
               label={t`Full width`}
