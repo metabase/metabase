@@ -36,7 +36,7 @@ type Props = {
   members: Member[];
   onAddUsers: (userIds: number[]) => void;
   onCancelAdd: () => void;
-  onRemoveUser: (member: Member) => void;
+  onRemoveUser: (member: Member) => Promise<boolean>;
 };
 
 export const DataAppUserList = ({
@@ -47,7 +47,24 @@ export const DataAppUserList = ({
   onCancelAdd,
   onRemoveUser,
 }: Props) => {
-  const { handleNextPage, handlePreviousPage, page } = usePagination();
+  const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
+
+  const handleRemoveUser = async (member: Member) => {
+    const removed = await onRemoveUser(member);
+
+    if (!removed) {
+      return;
+    }
+
+    const lastPage = Math.max(
+      0,
+      Math.ceil((members.length - 1) / PAGE_SIZE) - 1,
+    );
+
+    // make sure user does not stay in an empty page if the
+    // removed member is the last one in the page
+    setPage((page) => Math.min(page, lastPage));
+  };
 
   const visibleMembers = useMemo(
     () => members.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
@@ -98,7 +115,7 @@ export const DataAppUserList = ({
                     key={member.membership_id}
                     member={member}
                     warning={warnings.byUserId.get(member.user_id)}
-                    onRemove={onRemoveUser}
+                    onRemove={handleRemoveUser}
                   />
                 ))}
               </AdminContentTable>

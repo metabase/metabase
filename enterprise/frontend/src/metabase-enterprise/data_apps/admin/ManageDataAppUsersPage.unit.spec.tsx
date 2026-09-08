@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { Route } from "metabase/router";
 import type { Group, Member } from "metabase-types/api";
 import {
@@ -23,6 +24,17 @@ const createMockMember = (opts?: Partial<Member>): Member => ({
   is_superuser: false,
   ...opts,
 });
+
+const createMockMembers = (count: number) =>
+  Array.from({ length: count }, (_, index) =>
+    createMockMember({
+      user_id: index + 100,
+      membership_id: index + 100,
+      first_name: `Member ${index + 1}`,
+      last_name: "",
+      email: `member${index + 1}@example.com`,
+    }),
+  );
 
 const setup = ({
   warningRequestFails = false,
@@ -68,7 +80,7 @@ const setup = ({
     "path:/api/apps/sales",
     createMockDataApp({ permission_group_id: 9 }),
   );
-  fetchMock.get("path:/api/permissions/group/9", group);
+  fetchMock.get("path:/api/permissions/group/9", () => group);
   fetchMock.get("path:/api/user", {
     data: [candidate, anotherCandidate, deactivatedCandidate, tenantCandidate],
     total: 4,
@@ -98,13 +110,20 @@ const setup = ({
   renderWithProviders(
     <Route
       path="admin/settings/apps/:slug/users"
-      element={<ManageDataAppUsersPage />}
+      element={
+        <>
+          <ManageDataAppUsersPage />
+          <UndoListing />
+        </>
+      }
     />,
     {
       withRouter: true,
       initialRoute: "/admin/settings/apps/sales/users",
     },
   );
+
+  return { group };
 };
 
 describe("ManageDataAppUsersPage", () => {
@@ -217,5 +236,50 @@ describe("ManageDataAppUsersPage", () => {
     ).toBeGreaterThan(0);
 
     expect(screen.getByRole("button", { name: "Add" })).toBeEnabled();
+  });
+
+  it("returns to the previous page after removing its last member", async () => {
+    const members = createMockMembers(26);
+    const { group } = setup({ members });
+
+    fetchMock.delete("path:/api/permissions/membership/125", () => {
+      group.members = members.slice(0, 25);
+
+      return 204;
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Next page" }),
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Member 26" }),
+    );
+
+    // should show the first page's member
+    expect(await screen.findByText("member1@example.com")).toBeInTheDocument();
+    expect(screen.queryByText("member26@example.com")).not.toBeInTheDocument();
+  });
+
+  it("stays on the current page when removing a member fails", async () => {
+    setup({ members: createMockMembers(26) });
+
+    fetchMock.delete("path:/api/permissions/membership/125", 500);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Next page" }),
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Member 26" }),
+    );
+
+    expect(
+      await screen.findByText("Failed to remove user"),
+    ).toBeInTheDocument();
+
+    // should show the current page's member
+    expect(screen.getByText("member26@example.com")).toBeInTheDocument();
+    expect(screen.queryByText("member1@example.com")).not.toBeInTheDocument();
   });
 });

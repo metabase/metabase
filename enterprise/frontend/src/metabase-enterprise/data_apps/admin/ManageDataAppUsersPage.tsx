@@ -86,6 +86,8 @@ const DataAppUsers = ({
     if (error) {
       sendToast({ message: t`Failed to remove user`, icon: "warning" });
     }
+
+    return !error;
   };
 
   return (
