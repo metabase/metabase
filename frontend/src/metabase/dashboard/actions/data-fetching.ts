@@ -50,7 +50,7 @@ import {
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
 import { uuid } from "metabase/utils/uuid";
-import { cardHasUnansweredGoalReferences } from "metabase/viz-core";
+import { hasUnansweredGoalReferences } from "metabase/viz-core";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
@@ -277,7 +277,7 @@ export const fetchCardDataAction = createAsyncThunk<
           : dashcard;
       const isMissingGoalReferences =
         savedDashcard != null &&
-        cardHasUnansweredGoalReferences(
+        hasUnansweredGoalReferences(
           {
             display: card.display,
             visualization_settings: {

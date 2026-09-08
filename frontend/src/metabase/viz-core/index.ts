@@ -220,7 +220,6 @@ export {
 export { getColorScale } from "./lib/color-scales";
 export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
 export {
-  cardHasUnansweredGoalReferences,
   getGoalSegmentBounds,
   getNumericGoalValue,
   getReferencedEntities,
@@ -228,6 +227,7 @@ export {
   getUnansweredGoalEntities,
   getUnresolvedGoalMessage,
   hasFailedGoalValues,
+  hasUnansweredGoalReferences,
   hasUnresolvedGoalReferences,
   hasUnresolvedGoalValues,
   isDynamicGoalSetting,
