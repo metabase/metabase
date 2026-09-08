@@ -18,7 +18,7 @@
   [[resolve-model-ref]] turns one into the provider type, model, and credentials an adapter needs."
   (:require
    [clojure.string :as str]
-   [metabase.llm.settings.providers :as llm.settings.providers]
+   [metabase.llm.providers.settings :as llm.providers.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -37,7 +37,7 @@
 
 (def ^:private aws-region-options
   (mapv (fn [region] {:value region :label region})
-        (sort llm.settings.providers/known-aws-regions)))
+        (sort llm.providers.settings/known-aws-regions)))
 
 (def ^:private provider-type-registry
   "Every provider type Metabase can connect to, in the order the admin UI offers them.
@@ -192,7 +192,7 @@
                      :type        :text
                      :placeholder (deferred-tru "my-project")
                      :validate    (fn [value]
-                                    (when-not (llm.settings.providers/valid-google-project-id? value)
+                                    (when-not (llm.providers.settings/valid-google-project-id? value)
                                       (tru "\"{0}\" is not a valid Google Cloud project ID. Use the project ID — 6 to 30 lowercase letters, digits and hyphens — rather than the project name or number." value)))
                      :help        (deferred-tru "The Google Cloud project to use. Optional if the service account key provides it.")
                      :docs-url    "https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects"}
@@ -201,7 +201,7 @@
                      :type      :text
                      :placeholder "global"
                      :validate  (fn [value]
-                                  (when-not (llm.settings.providers/valid-google-location? value)
+                                  (when-not (llm.providers.settings/valid-google-location? value)
                                     (tru "\"{0}\" is not a valid Google Cloud location." value)))
                      :help      (deferred-tru "Optional. Defaults to global.")}
                     {:key       :auth-method
@@ -233,7 +233,7 @@
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
-                     :default   llm.settings.providers/google-global-api-base-url
+                     :default   llm.providers.settings/google-global-api-base-url
                      :help      (deferred-tru "Derived from the location when left at the global host.")}]}
    {:type          "azure"
     :label         (deferred-tru "Microsoft Azure")
@@ -374,7 +374,7 @@
   everything else is always available."
   [type-name]
   (if (managed-type? type-name)
-    (some? (llm.settings.providers/llm-proxy-base-url))
+    (some? (llm.providers.settings/llm-proxy-base-url))
     (some? (provider-type type-name))))
 
 (defn secret-field-keys
@@ -534,7 +534,7 @@
   proxy is configured."
   [type-name config]
   (if (managed-type? type-name)
-    (some? (llm.settings.providers/llm-proxy-base-url))
+    (some? (llm.providers.settings/llm-proxy-base-url))
     (credentials-complete? type-name config)))
 
 ;;; ---------------------------------------- Connections configured by env var ------------------------------------
@@ -603,7 +603,7 @@
 
   Returns nil for a type no per-provider variable configures — the managed provider, which holds no credentials of
   its own, is the only one today. Setting these is the supported way to configure a single connection without writing
-  JSON into [[metabase.llm.settings.providers/llm-providers]]."
+  JSON into [[metabase.llm.providers.settings/llm-providers]]."
   [type-name]
   (when-let [{:keys [settings]} (get single-provider-settings type-name)]
     (not-empty
@@ -662,7 +662,7 @@
   from [[connections]], so rebuilding the list from there would drop it from the setting the next time an admin
   saved anything — the credentials would be gone for good once the env var came back off."
   []
-  (vec (llm.settings.providers/llm-providers)))
+  (vec (llm.providers.settings/llm-providers)))
 
 (defn- annotated-stored-connections
   []
@@ -735,7 +735,7 @@
 (defn set-connections!
   "Persist `conns` as the stored connection list, dropping the derived annotation keys."
   [conns]
-  (llm.settings.providers/llm-providers! (mapv #(dissoc % :source :env-vars :env-fields) conns)))
+  (llm.providers.settings/llm-providers! (mapv #(dissoc % :source :env-vars :env-fields) conns)))
 
 ;;; --------------------------------------------------- Slugs ------------------------------------------------------
 

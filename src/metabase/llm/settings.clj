@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [metabase.config.core :as config]
    [metabase.llm.provider :as llm.provider]
-   [metabase.llm.settings.providers]
+   [metabase.llm.providers.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :refer [defsetting]]
    [metabase.util :as u]
@@ -17,7 +17,7 @@
 
 ;; kept on this namespace so callers are unaffected by the split
 (p/import-vars
- [metabase.llm.settings.providers
+ [metabase.llm.providers.settings
   google-global-api-base-url
   known-aws-regions
   llm-providers
