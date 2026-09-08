@@ -32,6 +32,9 @@ jobs:
       # Loads per condition. The first is the cold reading and the rest give the
       # median, so this trades run time for a steadier number.
       RUNS: "8"
+      # Laps for the retention run. The first is warmup, and the slope over the
+      # rest is what gets recorded.
+      LAPS: "6"
     steps:
       - name: Check out the code
         uses: actions/checkout@v6
@@ -81,6 +84,16 @@ jobs:
         run: |
           node frontend/build/bench/matrix.js "$SITE/" "$RUNS" \
             | tee artifacts/load-times.json
+      - name: Measure memory retention
+        env:
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: |
+          # Rides along on the instance the load-time run already booted. It
+          # walks a lap over the app through the router, several times, and
+          # reports how much each lap leaves behind. Progress goes to stderr,
+          # the JSON to stdout.
+          node frontend/build/bench/memory.js "$SITE" "$LAPS" \
+            | tee artifacts/memory.json
       - name: Show the Metabase log if something went wrong
         if: failure()
         run: tail -100 artifacts/metabase.log || true
@@ -93,3 +106,10 @@ jobs:
           ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
           API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
         run: bun .github/scripts/upload-bundle-load-stats.ts
+      - name: Import memory retention into Stats
+        env:
+          MEMORY: artifacts/memory.json
+          COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
+          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
+          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
+        run: bun .github/scripts/upload-bundle-memory-stats.ts

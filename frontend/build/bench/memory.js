@@ -30,6 +30,7 @@ const site = (process.argv[2] || "").replace(/\/$/, "");
 const laps = Number(process.argv[3] || 6);
 const sessionCookie = process.env.SESSION_COOKIE || "";
 const port = 9222 + Number(process.env.PORT_OFFSET || 0);
+// Comma separated step names, for bisecting a lap that grows.
 
 if (!site) {
   console.error("usage: node memory.js <site> [laps]");
@@ -38,23 +39,86 @@ if (!site) {
 }
 
 /**
+ * Builds the ad-hoc question URL the query builder reads.
+ *
+ * The bench instance is blank, with no saved questions or dashboards, so the
+ * lap cannot visit `/question/1`. An ad-hoc question needs nothing saved and
+ * still mounts the whole visualisation stack.
+ */
+function adHocQuestion(question) {
+  const withDisplay = { display: "table", displayIsLocked: true, ...question };
+  return `/question#${Buffer.from(JSON.stringify(withDisplay)).toString("base64")}`;
+}
+
+async function api(path) {
+  const response = await fetch(`${site}${path}`, {
+    headers: { cookie: `metabase.SESSION=${sessionCookie}` },
+  });
+  if (!response.ok) {
+    throw new Error(`GET ${path} failed: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
  * One pass over the app.
  *
- * Breadth is the point. A lap that only opened a dashboard could only ever
- * catch a dashboard leak, so this covers the surfaces that mount the most:
- * charts, both query editors, tables and an admin screen. When a count climbs,
- * bisect by trimming the list.
+ * Breadth is the point. A lap that only opened one page could only ever catch a
+ * leak on that page, so this covers the surfaces that mount the most: a table,
+ * a chart, both query editors, and an admin screen. When a count climbs, bisect
+ * by trimming the list.
+ *
+ * The two query URLs are built from whatever database the instance has, so this
+ * works against a blank instance with only the sample data.
  */
-const LAP = [
-  { name: "home", path: "/" },
-  { name: "dashboard", path: "/dashboard/1" },
-  { name: "question", path: "/question/1" },
-  { name: "native editor", path: "/question/notebook#" },
-  { name: "browse databases", path: "/browse/databases" },
-  { name: "collection", path: "/collection/root" },
-  { name: "admin people", path: "/admin/people" },
-  { name: "admin databases", path: "/admin/databases" },
-];
+async function buildLap() {
+  const databases = await api("/api/database");
+  const database = (databases.data || databases)[0];
+  const { tables } = await api(`/api/database/${database.id}/metadata`);
+  const table =
+    tables.find((candidate) => candidate.fields?.length) ?? tables[0];
+  const dateField = table.fields.find((field) =>
+    String(field.effective_type || field.base_type).startsWith("type/Date"),
+  );
+
+  const table_query = {
+    dataset_query: {
+      type: "query",
+      database: database.id,
+      query: { "source-table": table.id },
+    },
+    display: "table",
+  };
+
+  // A breakout by month is what puts a real chart on the screen, which is where
+  // an undisposed ECharts instance would show. Without a date column the lap
+  // still runs, just without that surface.
+  const chart_query = dateField && {
+    dataset_query: {
+      type: "query",
+      database: database.id,
+      query: {
+        "source-table": table.id,
+        aggregation: [["count"]],
+        breakout: [["field", dateField.id, { "temporal-unit": "month" }]],
+      },
+    },
+    display: "line",
+  };
+
+  return [
+    { name: "home", path: "/" },
+    { name: "table question", path: adHocQuestion(table_query) },
+    ...(chart_query
+      ? [{ name: "chart question", path: adHocQuestion(chart_query) }]
+      : []),
+    { name: "notebook", path: "/question/notebook#" },
+    { name: "browse databases", path: "/browse/databases" },
+    { name: "collection", path: "/collection/root" },
+    { name: "admin people", path: "/admin/people" },
+    { name: "admin databases", path: "/admin/databases" },
+  ];
+}
 
 /**
  * Waits for the app to settle on the route.
@@ -148,6 +212,15 @@ async function main() {
 
   const readings = [];
 
+  const only = (process.env.LAP_STEPS || "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean);
+  const LAP = (await buildLap()).filter(
+    (step) => only.length === 0 || only.includes(step.name),
+  );
+  console.error(`lap: ${LAP.map((step) => step.name).join(" -> ")}`);
+
   // One real navigation to boot the app. Everything after it goes through the
   // router, in one document, which is where a leak would show.
   await visit(session, LAP[0].path, { reload: true });
@@ -159,7 +232,7 @@ async function main() {
 
     const counters = await measure(session);
     readings.push(counters);
-    console.log(
+    console.error(
       `lap ${lap + 1}: ${counters.nodes} nodes, ` +
         `${counters.jsEventListeners} listeners, ${counters.documents} documents`,
     );
@@ -178,11 +251,11 @@ async function main() {
     listenersPerLap: growthPerLap(listeners),
   };
 
-  console.log("");
-  console.log(`nodes per lap:     ${result.nodesPerLap.toFixed(1)}`);
-  console.log(`listeners per lap: ${result.listenersPerLap.toFixed(1)}`);
-  console.log("");
-  console.log(JSON.stringify(result));
+  console.error(`nodes per lap:     ${result.nodesPerLap.toFixed(1)}`);
+  console.error(`listeners per lap: ${result.listenersPerLap.toFixed(1)}`);
+
+  // stdout is the machine-readable half, so the workflow can pipe it.
+  console.log(JSON.stringify(result, null, 2));
 
   await devtools(port, "/json/close/all").catch(() => {});
   chrome.kill();
