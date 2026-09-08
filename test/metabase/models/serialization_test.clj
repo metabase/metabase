@@ -217,6 +217,29 @@
                            :id        "[\"dimension\",[\"field\",54,{\"source-field\":53}]]"
                            :dimension ["dimension" [:field 54 {:source-field 53}]]}}}}}}})))))
 
+(deftest ^:parallel timeline-events-viz-settings-test
+  (let [timeline-eid "vJ3mMcnCkLcGRoWkYQNoc"]
+    (testing "shown timelines become portable ids; hidden events are dropped for lack of one"
+      (binding [serdes/*export-fk* (fn [id model] (format "%s___%d" (name model) id))]
+        (let [exported (serdes/export-visualization-settings
+                        {:timeline.selected_timeline_ids       [7 9]
+                         :timeline.excluded_timeline_event_ids [42]})]
+          (is (= ["Timeline___7" "Timeline___9"]
+                 (:timeline.selected_timeline_ids exported)))
+          (is (not (contains? exported :timeline.excluded_timeline_event_ids))))))
+    (testing "timelines that didn't come along are dropped, not left pointing at a local id"
+      (binding [serdes/*import-fk* (fn [eid _model] (when (= eid timeline-eid) 123))]
+        (is (=? {:timeline.selected_timeline_ids [123]}
+                (serdes/import-visualization-settings
+                 {:timeline.selected_timeline_ids [timeline-eid "vJ3mMcnCkLcGRoWkYQNod"]})))))
+    (testing "the timelines a chart shows are dependencies, in both id forms"
+      (is (= #{[{:model "Timeline" :id timeline-eid}]}
+             (serdes/visualization-settings-deps
+              false {:timeline.selected_timeline_ids [timeline-eid]})))
+      (is (= #{[{:model "Timeline" :id 7}]}
+             (serdes/visualization-settings-deps
+              true {:timeline.selected_timeline_ids [7]}))))))
+
 (deftest ^:parallel import-viz-settings-test
   (binding [serdes/*import-field-fk* (constantly 3)]
     (is (= {:column_settings
