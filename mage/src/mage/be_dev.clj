@@ -95,7 +95,6 @@
     (loop []
       (let [response (->> (bencode/read-bencode in) (walk/postwalk consume))]
         (u/debug "Response:\n-----\n" (with-out-str (pp/pprint response)) "-----")
-        (safe-print "\n")
         (doseq [[k v] response]
           (case k
             "out"   (safe-print v)

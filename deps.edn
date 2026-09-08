@@ -568,6 +568,7 @@
     "enterprise/backend/src"
     "enterprise/backend/test"
     "dev/test/metabase"
+    "dev/test/dev"
     "bin/build/src"
     "bin/build/test"
     "bin/lint-migrations-file/src"
