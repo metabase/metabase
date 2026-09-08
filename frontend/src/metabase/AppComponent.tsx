@@ -25,6 +25,7 @@ import ScrollToTop from "metabase/hoc/ScrollToTop";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
+import { addUndo } from "metabase/redux/undo";
 import type { AppErrorDescriptor } from "metabase/redux/store";
 import { Outlet, useLocation } from "metabase/router";
 import { getErrorPage } from "metabase/selectors/app";
@@ -100,6 +101,59 @@ export function App() {
   useEffect(() => {
     trackPageView(pathname);
   }, [pathname]);
+
+  // TEMP-DEBUG: force an undo toast on the homepage so UndoListing is visible.
+  useEffect(() => {
+    console.log("AppComponent debug: adding undo toast");
+    dispatch(
+      addUndo({
+        verb: "Archived",
+        subject: "questions (verb and subject)",
+        count: 3,
+        actions: [() => undefined],
+        timeout: null,
+      }),
+    );
+    
+    dispatch(
+      addUndo({
+        verb: "Did",
+        subject: "things (verb and subject)",
+        count: 10,
+        timeout: null,
+      }),
+    );
+
+    dispatch(
+      addUndo({
+        message: "Single line with undo (message)",
+        actions: [() => undefined],
+        timeout: null,
+      }),
+    );
+    
+    dispatch(
+      addUndo({
+        message: "Single line no undo (message)",
+        timeout: null,
+      }),
+    );
+    
+    dispatch(
+      addUndo({
+        message: "Some things, long text long text long text we want it to wrap. Some things, long text long text long text we want it to wrap. Some things, long text long text long text we want it to wrap. (message)",
+        timeout: null,
+      }),
+    );
+
+    dispatch(
+      addUndo({
+        message: "Some things, long text long text long text we want it to wrap. Some things, long text long text long text we want it to wrap. Some things, long text long text long text we want it to wrap. (message)",
+        timeout: null,
+        actions: [() => undefined],
+      }),
+    );
+  }, [dispatch]);
 
   return (
     <ErrorBoundary onError={onError}>
