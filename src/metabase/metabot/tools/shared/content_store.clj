@@ -24,6 +24,18 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *last-lookup-refused?*
+  "Set to `true` by [[read-checked]] when a lookup was refused on permissions rather than simply
+  missing.
+
+  The two are deliberately indistinguishable to the *agent* — same status, same error key, so a
+  guessable id cannot be used to probe for hidden content. Some internal callers still need to
+  tell them apart: `llm-shape/export-query-for-llm` renders nothing at all for a refusal but
+  falls back to pretty-printed EDN for a genuine export failure, and without this it would print
+  the raw query for a card the caller may not read. Bind it per lookup and read it after; it says
+  nothing about *which* row was refused, so it cannot itself become an oracle."
+  (atom false))
+
 (defn- maybe-read-check
   "Apply `api/read-check` when `*current-user-id*` is bound; otherwise return the row
   unchanged. Returning `nil` propagates through (no row → nothing to check; the
@@ -42,7 +54,7 @@
                               (api/read-check row)
                               (catch clojure.lang.ExceptionInfo e
                                 (if (= 403 (:status-code (ex-data e)))
-                                  nil
+                                  (do (reset! *last-lookup-refused?* true) nil)
                                   (throw e))))
     :else                   row))
 
