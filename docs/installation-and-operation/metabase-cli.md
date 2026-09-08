@@ -90,9 +90,9 @@ The CLI is built to be driven by an AI coding agent like Claude Code. Instead of
 
 ### The metabase-cli skill
 
-The CLI ships with its own agent skills, so the instructions your agent reads always match the version of the CLI it's running. The [metabase-cli skill](https://github.com/metabase/agent-skills/tree/main/skills/metabase-cli) you install is a small pointer that tells the agent to load those bundled skills with `mb skills get`.
+The CLI ships with its own agent skills, so the instructions your agent reads always match the version of the CLI it's running. The [metabase-cli skill](https://github.com/metabase/agent-skills/tree/main/skills/metabase-cli) you install tells the agent to load those bundled skills with `mb skills get`.
 
-Install the skill in one of these ways:
+You can install the skill:
 
 - **From the Metabase agent skills repo**: `npx skills add metabase/agent-skills --skill metabase-cli -a claude-code`
 - **As a Claude Code plugin**: `/plugin marketplace add metabase/mb-cli`, then `/plugin install metabase-cli@metabase`
