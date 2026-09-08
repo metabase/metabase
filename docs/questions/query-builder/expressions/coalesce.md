@@ -149,7 +149,7 @@ is equivalent to the Metabase `coalesce` expression:
 coalesce([Notes], [Comments] "No notes or comments.")
 ```
 
-Alternatively, you may be used to working with INDEX and MATCH in an array formula if you’re “coalescing” data across three or more columns in a spreadsheet.
+Alternatively, you may be used to working with `INDEX` and `MATCH` in an array formula if you’re “coalescing” data across three or more columns in a spreadsheet.
 
 ### Python
 

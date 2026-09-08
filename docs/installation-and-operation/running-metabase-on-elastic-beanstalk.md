@@ -73,7 +73,7 @@ If you want to stay in Elastic Beanstalk, you can keep upgrading it by following
 
 1. Download the [last published Beanstalk artifact file](https://downloads.metabase.com/v0.47.2/metabase-aws-eb.zip).
 2. Unzip the file.
-3. Edit the Dockerrun.aws.json file and change the image tag to the latest available version. Always avoid using `:latest`; instead, use the latest version number.
+3. Edit the Dockerrun.aws.json file and change the image tag to the latest available version. Avoid using `:latest`; instead, use the latest version number.
 4. Compress the file.
 5. Upload the file to AWS as a new Beanstalk version.
 6. Upgrade your environment.
