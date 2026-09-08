@@ -1,4 +1,5 @@
-import { PointerSensor, useSensor } from "@dnd-kit/core";
+import { KeyboardSensor, PointerSensor, useSensor } from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useDisclosure } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import { useCallback, useId, useState } from "react";
@@ -107,6 +108,11 @@ export function AIProviderList() {
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE },
   });
+  // Space or Enter on the focused handle picks the row up, the arrow keys move it, Space drops it — the
+  // keyboard's way to set the fallback priority
+  const keyboardSensor = useSensor(KeyboardSensor, {
+    coordinateGetter: sortableKeyboardCoordinates,
+  });
 
   const getConnectionKey = useCallback(
     (connection: LlmProviderConnection) => connection.key,
@@ -180,7 +186,7 @@ export function AIProviderList() {
               key={sortableResetKey}
               items={connections}
               getId={getConnectionKey}
-              sensors={[pointerSensor]}
+              sensors={[pointerSensor, keyboardSensor]}
               onSortEnd={handleSortEnd}
               // `afterIndex` is matched against an item's index, and the divider renders above it,
               // so the dividers between rows are the indexes past the first.
@@ -362,9 +368,10 @@ function ProviderConnectionRow({
             ref={dragHandle.dragHandleRef}
             className={S.grabber}
             h={PROVIDER_ICON_SIZE}
-            aria-label={t`Reorder ${connection.name}`}
             data-testid="provider-drag-handle"
+            {...dragHandle.dragHandleAttributes}
             {...dragHandle.dragHandleListeners}
+            aria-label={t`Reorder ${connection.name}`}
           >
             <Icon name="grabber" c="text-secondary" />
           </Box>
