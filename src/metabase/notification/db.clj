@@ -8,10 +8,12 @@
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.explorations.schema :as explorations.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.notification.schema :as notification.schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -398,14 +400,7 @@
 
 ;;; ---------------------------------------------- Task runs ----------------------------------------------
 
-(def ^:private TerminalAlertRun
-  "Rows returned by [[terminal-alert-runs]]."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:status     :keyword]
-   [:started_at ms/TemporalInstant]])
-
-(mu/defn terminal-alert-runs :- [:sequential TerminalAlertRun]
+(mu/defn terminal-alert-runs :- [:sequential (mut/select-keys ::explorations.schema/exploration-query [:id :status :started_at])]
   "Up to `limit` TaskRuns of `run-type` for the Notification with `notification-id` that reached one of `statuses`
   after `cutoff`, newest first."
   [run-type        :- :string
@@ -739,16 +734,7 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :email [:model/User :email] user-id))
 
-(def ^:private UserSummary
-  "Rows returned by [[user-summary]]."
-  [:map {:closed true}
-   [:id          ms/PositiveInt]
-   [:first_name  [:maybe :string]]
-   [:last_name   [:maybe :string]]
-   [:email       :string]
-   [:common_name [:maybe :string]]])
-
-(mu/defn user-summary :- [:maybe UserSummary]
+(mu/defn user-summary :- [:maybe (mut/select-keys ::users.schema/user [:id :first_name :last_name :email :common_name])]
   "The ID, names, email, and derived common name of the User with `user-id`, or nil (also for a nil `user-id`, e.g.
   a system-created notification without a creator)."
   [user-id :- [:maybe ::lib.schema.id/user]]

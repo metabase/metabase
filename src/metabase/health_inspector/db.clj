@@ -35,7 +35,7 @@
 (mu/defn latest-run :- [:maybe LatestRunRow]
   "The `:health` and `:message` of the most recent `health_inspector_runs` row for `check-name`, or nil."
   [check-name :- :string]
-  ;; Tie-break on id: back-to-back inserts can share a run_at, and run_at alone would then pick a non-deterministic
+  ;; Ty-break on id: back-to-back inserts can share a run_at, and run_at alone would then pick a non-deterministic
   ;; row (id is a monotonic auto-increment PK).
   (t2/select-one [:health_inspector_runs :health :message] :check_name check-name
                  {:order-by [[:run_at :desc] [:id :desc]]}))

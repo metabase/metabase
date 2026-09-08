@@ -7,7 +7,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.segments.schema :as segments.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
@@ -56,14 +55,7 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id :model/Table :id table-id))
 
-(def ^:private TablePermsColumn
-  "Rows returned by [[table-perms-columns]]."
-  [:map {:closed true}
-   [:db_id ::lib.schema.id/database]
-   [:schema [:maybe :string]]
-   [:id ms/PositiveInt]])
-
-(mu/defn table-perms-columns :- [:maybe TablePermsColumn]
+(mu/defn table-perms-columns :- [:maybe (mut/select-keys ::warehouse-schema.schema/table [:db_id :schema :id])]
   "The Database id, schema, and id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :db_id :schema :id] :id table-id))

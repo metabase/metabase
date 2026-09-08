@@ -156,6 +156,7 @@
            permissions
            queries
            util
+           view-log
            warehouse-schema}
    :model-imports #{:model/Card
                     :model/Collection
@@ -641,14 +642,18 @@
            app-db
            audit-app
            config
+           dashboards
            events
            lib
            models
            permissions
            premium-features
+           queries
            remote-sync
            search
-           util}
+           users
+           util
+           warehouse-schema}
    :model-exports #{:model/Collection}
    :model-imports #{:model/Card
                     :model/CollectionBookmark
@@ -1658,6 +1663,7 @@
            driver
            embedding
            events
+           explorations
            lib
            models
            parameters
@@ -2935,8 +2941,7 @@
 
   view-log
   {:team "UX West"
-   :api  #{metabase.view-log.core
-           metabase.view-log.init}
+   :api  #{metabase.view-log.core metabase.view-log.init metabase.view-log.schema}
    :uses #{analytics
            api
            app-db
@@ -2974,13 +2979,16 @@
            driver
            lib
            lib-be
+           measures
            models
            parameters
            permissions
            premium-features
+           queries
            query-processor
            remote-sync
            search
+           segments
            util
            warehouses}
    :model-exports #{:model/Dimension
@@ -3586,9 +3594,11 @@
            health-inspector
            lib
            premium-features
+           queries
            search
            task
            util
+           warehouse-schema
            enterprise/semantic-search}
    :model-imports #{:model/Card
                     :model/Measure
@@ -3926,6 +3936,7 @@
            settings
            system
            task
+           users
            util}
    :model-exports #{:model/SecurityAdvisory}
    :model-imports #{:model/User}}

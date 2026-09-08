@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [malli.util :as mut]
+   [metabase.collections.schema :as collections.schema]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
@@ -12,17 +13,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private CollectionBreadcrumbColumn
-  "Rows returned by [[collection-breadcrumb-columns]]."
-  [:map {:closed true}
-   [:id                ms/PositiveInt]
-   [:name              :string]
-   [:location          [:maybe :string]]
-   [:personal_owner_id [:maybe ::lib.schema.id/user]]
-   [:namespace         [:maybe :keyword]]
-   [:archived_directly [:maybe :boolean]]])
-
-(mu/defn collection-breadcrumb-columns :- [:maybe CollectionBreadcrumbColumn]
+(mu/defn collection-breadcrumb-columns :- [:maybe (mut/select-keys ::collections.schema/collection [:id :name :location :personal_owner_id :namespace :archived_directly])]
   "The id, name, location, owner, namespace, and archival of the Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :id :name :location :personal_owner_id :namespace :archived_directly]

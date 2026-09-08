@@ -125,14 +125,14 @@
   [run-id :- ms/PositiveInt]
   (t2/select :model/TaskHistory :run_id run-id {:order-by [[:started_at :asc]]}))
 
-(def ^:private DistinctRunEntitie
+(def ^:private DistinctRunEntity
   "Rows returned by [[distinct-run-entities]]."
   [:map {:closed true}
    [:entity_type :string]
    [:entity_id ms/PositiveInt]])
 
 (mu/defn distinct-run-entities :- [:sequential
-                                   DistinctRunEntitie]
+                                   DistinctRunEntity]
   "The distinct entity type and id of the TaskRuns of `run-type` started in [`started-at-start`, `started-at-end`)."
   [run-type          :- :string
    started-at-start  :- [:maybe ms/TemporalInstant]

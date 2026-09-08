@@ -2,21 +2,15 @@
   "Application database queries for the entity-retrieval module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
-(def ^:private LibraryCardsInCollection
-  "Rows returned by [[library-cards-in-collections]]."
-  [:map {:closed true}
-   [:id          ms/PositiveInt]
-   [:name        :string]
-   [:description [:maybe [:or :string :map sequential?]]]
-   [:type        :keyword]
-   [:card_schema :int]])
-
-(mu/defn library-cards-in-collections :- [:sequential LibraryCardsInCollection]
+(mu/defn library-cards-in-collections :- [:sequential (mut/select-keys ::queries.schema/card [:id :name :description :type :card_schema])]
   "The ID, name, description, and type of the unarchived metric and model Cards in the Collections with
   `collection-ids`, optionally narrowed to just `id`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
@@ -28,15 +22,7 @@
                       [:in :type ["metric" "model"]]
                       (when id [:= :id id])]}))
 
-(def ^:private LibraryTablesInCollection
-  "Rows returned by [[library-tables-in-collections]]."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:name         :string]
-   [:display_name [:maybe :string]]
-   [:description  [:maybe [:or :string :map sequential?]]]])
-
-(mu/defn library-tables-in-collections :- [:sequential LibraryTablesInCollection]
+(mu/defn library-tables-in-collections :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :name :display_name :description])]
   "The ID, names, and description of the active published Tables in the Collections with `collection-ids`, optionally
   narrowed to just `id`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
@@ -48,14 +34,7 @@
                       [:= :active true]
                       (when id [:= :id id])]}))
 
-(def ^:private LibraryMeasuresOfTable
-  "Rows returned by [[library-measures-of-tables]]."
-  [:map {:closed true}
-   [:id          ms/PositiveInt]
-   [:name        :string]
-   [:description [:maybe [:or :string :map sequential?]]]])
-
-(mu/defn library-measures-of-tables :- [:sequential LibraryMeasuresOfTable]
+(mu/defn library-measures-of-tables :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :name :description])]
   "The ID, name, and description of the unarchived Measures on the Tables with `table-ids`, optionally narrowed to
   just `id`."
   [table-ids :- [:sequential ::lib.schema.id/table]
@@ -66,14 +45,7 @@
                       [:= :archived false]
                       (when id [:= :id id])]}))
 
-(def ^:private LibrarySegmentsOfTable
-  "Rows returned by [[library-segments-of-tables]]."
-  [:map {:closed true}
-   [:id          ms/PositiveInt]
-   [:name        :string]
-   [:description [:maybe [:or :string :map sequential?]]]])
-
-(mu/defn library-segments-of-tables :- [:sequential LibrarySegmentsOfTable]
+(mu/defn library-segments-of-tables :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :name :description])]
   "The ID, name, and description of the unarchived Segments on the Tables with `table-ids`, optionally narrowed to
   just `id`."
   [table-ids :- [:sequential ::lib.schema.id/table]

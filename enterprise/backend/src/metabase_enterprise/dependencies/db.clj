@@ -600,14 +600,7 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-fn->fn :id :type [:model/Card :id :type :card_schema] :id [:in card-ids]))
 
-(def ^:private CardDatabaseId
-  "Rows returned by [[card-database-ids]]."
-  [:map {:closed true}
-   [:id          ms/PositiveInt]
-   [:database_id [:maybe ::lib.schema.id/database]]
-   [:card_schema [:maybe :int]]])
-
-(mu/defn card-database-ids :- [:sequential CardDatabaseId]
+(mu/defn card-database-ids :- [:sequential (mut/select-keys ::queries.schema/card [:id :database_id :card_schema])]
   "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :database_id :card_schema] :id [:in card-ids]))
@@ -659,14 +652,7 @@
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
-(def ^:private DependenciesFrom
-  "Rows returned by [[dependencies-from]]."
-  [:map {:closed true}
-   [:id             ms/PositiveInt]
-   [:to_entity_type [:maybe :keyword]]
-   [:to_entity_id   ms/PositiveInt]])
-
-(mu/defn dependencies-from :- [:sequential DependenciesFrom]
+(mu/defn dependencies-from :- [:sequential (mut/select-keys ::dependencies.schema/dependency [:id :to_entity_type :to_entity_id])]
   "The `:id`, `:to_entity_type`, and `:to_entity_id` of the Dependencies of the entity `entity-type` `entity-id`."
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]

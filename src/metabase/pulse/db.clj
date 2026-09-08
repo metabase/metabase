@@ -15,13 +15,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private PulseChannelRecipientRow
-  "A whole (or partial) row for the `pulse_channel_recipient` table."
-  [:map {:closed true}
-   [:id                {:optional true} ms/PositiveInt]
-   [:pulse_channel_id  {:optional true} [:maybe ms/PositiveInt]]
-   [:user_id           {:optional true} [:maybe ::lib.schema.id/user]]])
-
 (mu/defn card :- [:maybe ::queries.schema/card]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
@@ -393,7 +386,7 @@
 
 (mu/defn insert-pulse-channel-recipients! :- :int
   "Insert the PulseChannelRecipient `rows`."
-  [rows :- [:sequential PulseChannelRecipientRow]]
+  [rows :- [:sequential ::pulse.schema/pulse-channel-recipient]]
   (t2/insert! :model/PulseChannelRecipient rows))
 
 (mu/defn delete-pulse-channel-recipient! :- :int

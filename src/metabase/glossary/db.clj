@@ -10,16 +10,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private GlossaryRow
-  "A whole (or partial) row for the `glossary` table."
-  [:map {:closed true}
-   [:id         {:optional true} ms/PositiveInt]
-   [:term       {:optional true} [:maybe :string]]
-   [:definition {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]])
-
 (mu/defn glossary-entries :- [:sequential ::glossary.schema/glossary]
   "The Glossary entries whose term or definition contains `search` case-insensitively, or every
   entry when `search` is nil, in term order."
@@ -33,7 +23,7 @@
 
 (mu/defn insert-glossary-entry! :- (mut/optional-keys ::glossary.schema/glossary)
   "Insert the Glossary `row` and return the inserted instance."
-  [row :- GlossaryRow]
+  [row :- ::glossary.schema/glossary]
   (t2/insert-returning-instance! :model/Glossary row))
 
 (mu/defn glossary-entry :- [:maybe ::glossary.schema/glossary]

@@ -13,25 +13,6 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(def ^:private QueryActionRow
-  [:map {:closed true}
-   [:action_id     {:optional true} [:maybe ::lib.schema.id/action]]
-   [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
-   [:dataset_query {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:legacy_query  {:optional true} [:maybe [:or :string :map sequential?]]]])
-
-(def ^:private HTTPActionRow
-  [:map {:closed true}
-   [:action_id        {:optional true} [:maybe ::lib.schema.id/action]]
-   [:template         {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:response_handle   {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:error_handle      {:optional true} [:maybe [:or :string :map sequential?]]]])
-
-(def ^:private ImplicitActionRow
-  [:map {:closed true}
-   [:action_id {:optional true} [:maybe ::lib.schema.id/action]]
-   [:kind      {:optional true} [:maybe [:or :keyword :string :map sequential?]]]])
-
 (mu/defn database-for-action :- [:maybe (mut/optional-keys (mut/open-schema ::warehouses.schema/database))]
   "The Database of the model Card of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
@@ -120,35 +101,35 @@
 
 (mu/defn insert-query-action! :- :int
   "Insert the QueryAction `action`, returning the number inserted."
-  [action :- QueryActionRow]
+  [action :- ::actions.schema/query-action]
   (t2/insert! :model/QueryAction action))
 
 (mu/defn insert-http-action! :- :int
   "Insert the HTTPAction `action`, returning the number inserted."
-  [action :- HTTPActionRow]
+  [action :- ::actions.schema/httpaction]
   (t2/insert! :model/HTTPAction action))
 
 (mu/defn insert-implicit-action! :- :int
   "Insert the ImplicitAction `action`, returning the number inserted."
-  [action :- ImplicitActionRow]
+  [action :- ::actions.schema/implicit-action]
   (t2/insert! :model/ImplicitAction action))
 
 (mu/defn update-query-action! :- :int
   "Apply `changes` to the QueryAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
-   changes   :- QueryActionRow]
+   changes   :- ::actions.schema/query-action]
   (t2/update! :model/QueryAction action-id changes))
 
 (mu/defn update-http-action! :- :int
   "Apply `changes` to the HTTPAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
-   changes   :- HTTPActionRow]
+   changes   :- ::actions.schema/httpaction]
   (t2/update! :model/HTTPAction action-id changes))
 
 (mu/defn update-implicit-action! :- :int
   "Apply `changes` to the ImplicitAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
-   changes   :- ImplicitActionRow]
+   changes   :- ::actions.schema/implicit-action]
   (t2/update! :model/ImplicitAction action-id changes))
 
 (mu/defn delete-query-action! :- :int

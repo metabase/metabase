@@ -2,12 +2,12 @@
   "Application database queries for the LLM module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
@@ -70,14 +70,7 @@
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids]))
 
-(def ^:private FieldNamesAndTable
-  "Rows returned by [[field-names-and-tables]]."
-  [:map {:closed true}
-   [:id       ms/PositiveInt]
-   [:name     :string]
-   [:table_id [:maybe ::lib.schema.id/table]]])
-
-(mu/defn field-names-and-tables :- [:sequential FieldNamesAndTable]
+(mu/defn field-names-and-tables :- [:sequential (mut/select-keys ::warehouse-schema.schema/field [:id :name :table_id])]
   "The id, name, and Table id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select [:model/Field :id :name :table_id] :id [:in field-ids]))

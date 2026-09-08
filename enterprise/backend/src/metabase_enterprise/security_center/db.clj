@@ -6,6 +6,7 @@
    [metabase-enterprise.security-center.schema :as security-center.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -69,17 +70,7 @@
                              advisory
                              (assoc advisory :match_status :unknown)))))
 
-(def ^:private UserSummariesById
-  "Rows returned by [[user-summaries-by-id]]."
-  [:map {:closed true}
-   [:id          ms/PositiveInt]
-   [:first_name  [:maybe :string]]
-   [:last_name   [:maybe :string]]
-   [:email       :string]
-   ;; added by the User model's post-select hook
-   [:common_name {:optional true} [:maybe :string]]])
-
-(mu/defn user-summaries-by-id :- [:map-of ms/PositiveInt UserSummariesById]
+(mu/defn user-summaries-by-id :- [:map-of ms/PositiveInt (mut/select-keys ::users.schema/user [:id :first_name :last_name :email :common_name])]
   "A map of ID to the ID, names, and email of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-fn->fn :id identity [:model/User :id :first_name :last_name :email] :id [:in user-ids]))

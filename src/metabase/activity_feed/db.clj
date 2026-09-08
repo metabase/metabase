@@ -13,18 +13,9 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.view-log.schema :as view-log.schema]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
-
-(def ^:private RecentViewRow
-  "A whole (or partial) row for the `recent_views` table."
-  [:map {:closed true}
-   [:id        {:optional true} ms/PositiveInt]
-   [:user_id   {:optional true} [:maybe ::lib.schema.id/user]]
-   [:model     {:optional true} [:maybe [:or :keyword :string]]]
-   [:model_id  {:optional true} [:maybe ms/PositiveInt]]
-   [:timestamp {:optional true} [:maybe ms/TemporalInstant]]
-   [:context   {:optional true} [:maybe [:or :keyword :string]]]])
 
 (mu/defn recent-cards :- [:sequential (mut/optional-keys (mut/open-schema ::queries.schema/card))]
   "The recently viewed Cards with `ids`, with their Collection and Dashboard names."
@@ -190,7 +181,7 @@
 
 (mu/defn insert-recent-views! :- :int
   "Insert the RecentViews `rows`."
-  [rows :- [:sequential RecentViewRow]]
+  [rows :- [:sequential (mut/select-keys ::view-log.schema/view-log [:id :user_id :model :model_id :timestamp :context])]]
   (t2/insert! :model/RecentViews rows))
 
 (mu/defn delete-recent-views! :- :int
