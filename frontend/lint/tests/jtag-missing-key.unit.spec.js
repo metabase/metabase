@@ -1,16 +1,8 @@
-import { RuleTester } from "oxlint/plugins-dev";
-
 import rule from "../eslint-plugin-metabase/rules/jtag-missing-key";
 
-const ruleTester = new RuleTester({
-  languageOptions: {
-    ecmaVersion: 2015,
-    sourceType: "module",
-    parserOptions: {
-      ecmaFeatures: { jsx: true },
-    },
-  },
-});
+import { createRuleTester } from "./rule-tester";
+
+const ruleTester = createRuleTester();
 
 const VALID_CASES = [
   {

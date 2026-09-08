@@ -52,7 +52,8 @@ const settingsEntries = policy
     settings: entry.settings ?? {},
     parserOptions: entry.languageOptions?.parserOptions ?? {},
   }));
-// The resolver keys its WeakMaps by settings identity.
+// Files matching the same scopes share one settings object,
+// because the resolver adapter keys its WeakMaps by settings identity.
 const combinations = new Map();
 let lastFile;
 let lastSettings;

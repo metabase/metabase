@@ -1,13 +1,8 @@
-import { RuleTester } from "oxlint/plugins-dev";
-
 import rule from "../eslint-plugin-metabase/rules/no-base-api-access";
 
-const ruleTester = new RuleTester({
-  languageOptions: {
-    parserOptions: { ecmaFeatures: { jsx: true } },
-    sourceType: "module",
-  },
-});
+import { createRuleTester } from "./rule-tester";
+
+const ruleTester = createRuleTester();
 
 const COMPONENT_FILE = "/repo/frontend/src/metabase/foo/components/Foo.tsx";
 const OWNER_FILE = "/repo/frontend/src/metabase/foo/api/bar.ts";

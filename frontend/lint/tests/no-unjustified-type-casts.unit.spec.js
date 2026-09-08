@@ -1,15 +1,11 @@
-import { RuleTester } from "oxlint/plugins-dev";
-
 import rule from "../eslint-plugin-metabase/rules/no-unjustified-type-casts";
+
+import { createRuleTester } from "./rule-tester";
 
 const TS_FILENAME = "spec.ts"; // Angle-bracket casts only parse with JSX off
 const TSX_FILENAME = "spec.tsx";
 
-const ruleTester = new RuleTester({
-  languageOptions: {
-    sourceType: "module",
-  },
-});
+const ruleTester = createRuleTester();
 
 const message = /Type casts .* must be preceded by a comment/;
 
