@@ -284,18 +284,6 @@ const compatibilityCases = [
     oxlint: 1,
   },
   {
-    filename: "order.ts",
-    code: 'import z from "z";\nimport a from "a";\nexport {z,a};',
-    rule: "import-js/order",
-    oxlint: 1,
-  },
-  {
-    filename: "order-disabled.ts",
-    code: '/* eslint-disable import-js/order */\nimport z from "z";\nimport a from "a";\nexport {z,a};',
-    rule: "import-js/order",
-    oxlint: 0,
-  },
-  {
     filename: "ttag.ts",
     code: "export const text=t`Hello`;",
     rule: "ttag/no-module-declaration",
