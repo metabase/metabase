@@ -106,7 +106,6 @@ export const validateBreakoutSeriesCount = (
   }
 };
 
-// Only a failed reference is final: an unanswered one is still being fetched.
 export const validateGoalReferences = (
   series: Series,
   settings: VisualizationSettings,
