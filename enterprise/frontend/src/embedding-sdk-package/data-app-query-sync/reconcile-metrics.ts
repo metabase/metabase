@@ -170,7 +170,12 @@ export async function reconcileRemovedMetrics({
       client.getCard(entry.copiedMetricId),
     );
 
-    if (copiedMetric) {
+    if (copiedMetric?.archived === true) {
+      // archived metrics are moved to the trash collection, so we cannot tell
+      // whether the copied metric were moved elsewhere before being trashed.
+      // leave it in trash and stop tracking it instead of permanently deleting it.
+      log(`left in the trash: metric ${copiedMetric.id}`);
+    } else if (copiedMetric) {
       if (
         !isMetricCard(copiedMetric) ||
         copiedMetric.collection_id !== collectionId
@@ -258,16 +263,20 @@ export async function reconcileMetrics({
       : null;
 
     if (copiedMetric) {
-      if (
-        !isMetricCard(copiedMetric) ||
-        copiedMetric.collection_id !== collectionId
-      ) {
+      // track metrics that are moved out of the data app collection, but allow
+      // archived metrics (moved to the trash collection) to be restored
+      const isOutsideDataAppCollection =
+        copiedMetric.collection_id !== collectionId &&
+        copiedMetric.archived !== true;
+
+      if (!isMetricCard(copiedMetric) || isOutsideDataAppCollection) {
         throw new Error(
           `Metric ${copiedMetric.id} is not managed by data app collection ${collectionId}.`,
         );
       }
 
       const changed =
+        copiedMetric.archived === true ||
         getPayloadFingerprint(metricInput(copiedMetric, collectionId)) !== hash;
 
       if (changed) {

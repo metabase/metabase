@@ -235,6 +235,7 @@ const modelBody = (input: ModelInput) => ({
 const metricBody = (input: MetricInput) => ({
   name: input.name,
   type: "metric",
+  archived: false,
   dataset_query: input.datasetQuery,
   display: input.display,
   visualization_settings: input.visualizationSettings,

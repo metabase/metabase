@@ -1,11 +1,11 @@
-import { MetabaseApiError } from "../metabase-client";
+import { MetabaseApiError, MetabaseClient } from "../metabase-client";
 import {
   reconcileMetrics,
   reconcileRemovedMetrics,
 } from "../reconcile-metrics";
 import type { DataAppMetric, ResourceLockfile } from "../types";
 
-import { makeApp, setupResourceSyncTests } from "./setup";
+import { jsonResponse, makeApp, setupResourceSyncTests } from "./setup";
 
 const HASH = `v1:sha256:${"0".repeat(64)}`;
 
@@ -350,5 +350,138 @@ describe("metric reconciliation", () => {
     expect(client.deleteCard).toHaveBeenCalledWith(404);
     expect(lockfile.metrics).toEqual([]);
     expect(log).toHaveBeenCalledWith("deleted metric: 404");
+  });
+
+  describe("archived and moved copies", () => {
+    const metric: DataAppMetric = {
+      id: 251,
+      name: "Lifetime value",
+      type: "metric",
+      collection_id: 1,
+      dataset_query: { database: 1, stages: [] },
+      display: "table",
+      visualization_settings: {},
+      description: null,
+    };
+
+    let appRoot: string;
+    let lockfile: ResourceLockfile;
+
+    beforeEach(() => {
+      appRoot = makeApp();
+
+      lockfile = {
+        queries: [],
+        models: [],
+        metrics: [{ sourceMetricId: 251, copiedMetricId: 404, hash: HASH }],
+      };
+    });
+
+    it("sends the restore payload for an unchanged archived metric", async () => {
+      const copy = {
+        ...metric,
+        id: 404,
+        collection_id: 99,
+        archived: true,
+      };
+
+      const fetchMock = jest
+        .spyOn(global, "fetch")
+        .mockResolvedValueOnce(jsonResponse(copy))
+        .mockResolvedValueOnce(jsonResponse({ ...copy, archived: false }));
+
+      const resolvedQuery = {
+        dataset_query: { aggregation: [["metric", {}, 251]] },
+        metrics: [metric],
+      };
+
+      await reconcileMetrics({
+        appRoot,
+        collectionId: 35,
+        resolvedQueries: [resolvedQuery],
+        lockfile,
+        client: new MetabaseClient("http://metabase.test", "secret"),
+        log: jest.fn(),
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        new URL("http://metabase.test/api/card/404"),
+        expect.objectContaining({
+          method: "PUT",
+          body: expect.any(String),
+        }),
+      );
+
+      expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({
+        name: "Lifetime value",
+        type: "metric",
+        archived: false,
+        collection_id: 35,
+        dataset_query: metric.dataset_query,
+        display: "table",
+        visualization_settings: {},
+        description: null,
+      });
+    });
+
+    describe("unarchived copies moved outside the app collection", () => {
+      let client: ReturnType<typeof createMockClient>;
+
+      beforeEach(() => {
+        client = createMockClient();
+
+        client.getCard.mockResolvedValue({
+          ...metric,
+          id: 404,
+          collection_id: 99,
+          archived: false,
+        });
+      });
+
+      it("does not update a metric copy that is moved to other collection", async () => {
+        await expect(
+          reconcileMetrics({
+            appRoot,
+            collectionId: 35,
+            lockfile,
+            client,
+            log: jest.fn(),
+            resolvedQueries: [{ dataset_query: {}, metrics: [metric] }],
+          }),
+        ).rejects.toThrow(/data app collection 35/);
+
+        expect(client.updateMetric).not.toHaveBeenCalled();
+        expect(client.createMetric).not.toHaveBeenCalled();
+        expect(client.deleteCard).not.toHaveBeenCalled();
+
+        expect(lockfile.metrics).toEqual([
+          { sourceMetricId: 251, copiedMetricId: 404, hash: HASH },
+        ]);
+      });
+
+      it("does not delete a metric copy that is moved to other collection when its source is removed", async () => {
+        await expect(
+          reconcileRemovedMetrics({
+            appRoot,
+            collectionId: 35,
+            lockfile,
+            client,
+            log: jest.fn(),
+            previousEntries: [...lockfile.metrics],
+            liveMetricIds: new Set(),
+          }),
+        ).rejects.toThrow(/data app collection 35/);
+
+        expect(client.updateMetric).not.toHaveBeenCalled();
+        expect(client.createMetric).not.toHaveBeenCalled();
+        expect(client.deleteCard).not.toHaveBeenCalled();
+
+        expect(lockfile.metrics).toEqual([
+          { sourceMetricId: 251, copiedMetricId: 404, hash: HASH },
+        ]);
+      });
+    });
   });
 });

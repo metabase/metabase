@@ -13,7 +13,7 @@ import {
   setDataAppCollectionAccess,
   syncDataAppResources,
 } from "e2e/support/helpers";
-import type { DataApp } from "metabase-types/api";
+import type { Card, DataApp } from "metabase-types/api";
 
 const { H } = cy;
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -216,6 +216,107 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
       cy.request(`/api/card/${card.id}`).then(({ body: restored }) => {
         expect(restored.archived, "the copy is out of the trash").to.eq(false);
         expect(restored.collection_id).to.eq(card.collection_id);
+      });
+    });
+  });
+
+  describe("trashed metric copies", () => {
+    beforeEach(() => {
+      H.createQuestion({
+        name: "Count of orders",
+        type: "metric",
+        query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
+        display: "scalar",
+      })
+        .its("body.id")
+        .as("sourceMetricId");
+
+      cy.log("define a query that uses metrics");
+      cy.get<number>("@sourceMetricId").then((id) => {
+        cy.writeFile(
+          QUERIES_FILE(),
+          [
+            'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
+
+            "export const OrdersCount = defineQuery({",
+            `  source: { type: "table", id: ${ORDERS_ID} },`,
+            `  aggregations: [{ type: "metric", id: ${id}, sourceTableId: ${ORDERS_ID} }],`,
+            "});",
+          ].join("\n"),
+        );
+      });
+
+      sync();
+
+      cy.readFile(LOCKFILE()).then((lockfile) => {
+        expect(lockfile.metrics).to.have.length(1);
+        expect(lockfile.queries).to.have.length(1);
+
+        cy.wrap(lockfile.metrics[0].copiedMetricId).as("copiedMetricId");
+        cy.wrap(lockfile.queries[0].savedQuestionSourceId).as("questionId");
+      });
+
+      cy.log("archive the copied metric");
+      cy.get<number>("@copiedMetricId").then((id) => {
+        cy.request<Card>(`/api/card/${id}`).its("body").as("metricCopy");
+
+        H.archiveQuestion(id);
+      });
+
+      cy.get<Card>("@metricCopy").then((copy) => {
+        cy.log("the copied metric is archived");
+
+        cy.request<Card>(`/api/card/${copy.id}`).should(({ body }) => {
+          expect(body.archived).to.eq(true);
+          expect(body.collection_id).not.to.eq(copy.collection_id);
+        });
+      });
+    });
+
+    it("restores a trashed metric copy after sync", () => {
+      sync();
+
+      cy.get<Card>("@metricCopy").then((copy) => {
+        cy.log("the archived metric should no longer be archived after sync");
+
+        cy.request<Card>(`/api/card/${copy.id}`).should(({ body }) => {
+          expect(body.archived).to.eq(false);
+          expect(body.collection_id).to.eq(copy.collection_id);
+        });
+
+        cy.log("the copied metric in the lockfile remains the same");
+        cy.readFile(LOCKFILE())
+          .its("metrics.0.copiedMetricId")
+          .should("eq", copy.id);
+      });
+
+      cy.get<number>("@questionId").then((id) => H.visitQuestion(id));
+
+      H.assertQueryBuilderRowCount(1);
+    });
+
+    it("leaves a trashed metric copy in trash after its source is removed", () => {
+      H.removeDataAppQueryDeclaration(APP_ROOT(), "OrdersCount");
+
+      sync();
+
+      cy.get<number>("@copiedMetricId").then((id) => {
+        cy.log("the copied metric should remain archived after sync");
+        cy.request<Card>(`/api/card/${id}`)
+          .its("body.archived")
+          .should("eq", true);
+      });
+
+      cy.readFile(LOCKFILE()).should((lockfile) => {
+        expect(lockfile.metrics).to.deep.eq([]);
+        expect(lockfile.queries).to.deep.eq([]);
+      });
+
+      cy.get<number>("@sourceMetricId").then((id) => {
+        cy.log("the source metric should not be archived");
+        cy.request<Card>(`/api/card/${id}`)
+          .its("body.archived")
+          .should("eq", false);
       });
     });
   });
