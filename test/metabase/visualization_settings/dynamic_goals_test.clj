@@ -29,6 +29,15 @@
     (is (= [] (dynamic-goals/goal-values {})))
     (is (= [1] (dynamic-goals/goal-values {:gauge.segments [{:min nil :max 1}]})))))
 
+(deftest ^:parallel active-goal-values-test
+  (testing "a shown goal line's value is active"
+    (is (= [ref-a]
+           (dynamic-goals/active-goal-values {:graph.goal_value ref-a :graph.show_goal true}))))
+  (testing "a hidden goal line's value is not, other goal values still are"
+    (are [viz] (= [ref-b] (dynamic-goals/active-goal-values viz))
+      {:graph.goal_value ref-a :gauge.segments [{:min ref-b}]}
+      {:graph.goal_value ref-a :graph.show_goal false :gauge.segments [{:min ref-b}]})))
+
 (deftest ^:parallel update-goal-values-test
   (let [viz {:graph.goal_value ref-a
              :gauge.segments   [{:min 0 :max ref-b :color "#fff"} {:min nil :max 10}]
@@ -108,15 +117,20 @@
 (deftest ^:parallel resolve-dynamic-goals-test
   (testing "substitutes referenced values across all goal-bearing settings"
     (is (= {:graph.goal_value 100
+            :graph.show_goal  true
             :progress.goal    3
             :gauge.segments   [{:min 0 :max 100 :color "#fff"}]
             :scalar.segments  [{:min 3 :max "self-col"}]}
            (dynamic-goals/resolve-dynamic-goals
             {:graph.goal_value {:id 1 :type "card" :column "total"}
+             :graph.show_goal  true
              :progress.goal    {:id 1 :type "card" :column "count"}
              :gauge.segments   [{:min 0 :max {:id 1 :type "card" :column "total"} :color "#fff"}]
              :scalar.segments  [{:min {:id 1 :type "card" :column "count"} :max "self-col"}]}
             referenced-entities))))
+  (testing "a hidden goal line keeps its reference"
+    (let [viz {:graph.goal_value {:id 1 :type "card" :column "total"} :graph.show_goal false}]
+      (is (= viz (dynamic-goals/resolve-dynamic-goals viz referenced-entities)))))
   (testing "no-op when settings hold no refs"
     (let [viz {:graph.goal_value 5 :gauge.segments [{:min 0 :max 10}]}]
       (is (= viz (dynamic-goals/resolve-dynamic-goals viz nil))))))

@@ -2,17 +2,24 @@
   "Dynamic goals: goal values in viz settings that reference another entity's value
   (`{:id 1, :type \"card\", :column \"total\"}`) instead of holding a literal number. Single source of
   truth for which settings carry goal values, so deriving the queries to run and substituting their
-  results can never disagree. Mirrors `frontend/src/metabase/visualizations/lib/dynamic-goals.ts`.")
+  results can never disagree. Mirrors `frontend/src/metabase/viz-core/lib/dynamic-goal-settings.ts`.")
 
 (set! *warn-on-reflection* true)
 
 (def ^:private goal-settings
-  "Viz settings that hold goal values: `:scalar` keys hold a single goal value, `:segments` keys hold
+  "Viz settings that hold goal values: `:value` keys hold a single goal value, `:segments` keys hold
   a sequence of segment maps with goal values at `:min`/`:max`."
-  {:graph.goal_value :scalar
-   :progress.goal    :scalar
+  {:graph.goal_value :value
+   :progress.goal    :value
    :gauge.segments   :segments
    :scalar.segments  :segments})
+
+(defn- active-goal-settings
+  "The [[goal-settings]] a renderer resolves for `viz-settings`: a hidden goal line has nothing to resolve.
+  Mirrors `isGoalSettingActive` on the frontend."
+  [viz-settings]
+  (cond-> goal-settings
+    (not (true? (:graph.show_goal viz-settings))) (dissoc :graph.goal_value)))
 
 (defn goal-source
   "The `{:id N, :type \"card\", :column \"name\"}` reference inside `goal-value`, or nil if it isn't one."
@@ -20,26 +27,35 @@
   (when (and (map? goal-value) (:id goal-value) (:type goal-value) (:column goal-value))
     (select-keys goal-value [:id :type :column])))
 
-(defn goal-values
-  "All non-nil goal values present in `viz-settings`."
-  [viz-settings]
-  (->> goal-settings
+(defn- goal-values-in
+  [viz-settings settings]
+  (->> settings
        (mapcat (fn [[setting kind]]
                  (case kind
-                   :scalar   [(get viz-settings setting)]
+                   :value    [(get viz-settings setting)]
                    :segments (mapcat (juxt :min :max) (get viz-settings setting)))))
        (remove nil?)))
 
-(defn update-goal-values
-  "Rewrite every goal value in `viz-settings` with `f`. Absent settings and nil segment bounds are
-  left untouched."
-  [viz-settings f]
+(defn goal-values
+  "All non-nil goal values present in `viz-settings`, including those no renderer resolves. Use
+  [[active-goal-values]] to find out what a query has to answer."
+  [viz-settings]
+  (goal-values-in viz-settings goal-settings))
+
+(defn active-goal-values
+  "The non-nil goal values a renderer resolves for `viz-settings`: every [[goal-values]] entry except a
+  hidden goal line's."
+  [viz-settings]
+  (goal-values-in viz-settings (active-goal-settings viz-settings)))
+
+(defn- update-goal-values-in
+  [viz-settings settings f]
   (reduce-kv
    (fn [viz setting kind]
      (if (nil? (get viz setting))
        viz
        (case kind
-         :scalar   (update viz setting f)
+         :value    (update viz setting f)
          :segments (update viz setting (fn [segments]
                                          (mapv (fn [segment]
                                                  (cond-> segment
@@ -47,7 +63,13 @@
                                                    (some? (:max segment)) (update :max f)))
                                                segments))))))
    viz-settings
-   goal-settings))
+   settings))
+
+(defn update-goal-values
+  "Rewrite every goal value in `viz-settings` with `f`, including those no renderer resolves. Absent
+  settings and nil segment bounds are left untouched."
+  [viz-settings f]
+  (update-goal-values-in viz-settings goal-settings f))
 
 (defn- unresolved!
   [reason {:keys [id type column]}]
@@ -79,7 +101,10 @@
     goal-value))
 
 (defn resolve-dynamic-goals
-  "Substitute every goal value in `viz-settings` with its [[resolve-goal-value]] resolution. No-op
-  when the settings hold no entity references."
+  "Substitute every [[active-goal-values]] entry in `viz-settings` with its [[resolve-goal-value]]
+  resolution; a hidden goal line keeps its value as is. No-op when the settings hold no entity
+  references."
   [viz-settings referenced-entities]
-  (update-goal-values viz-settings #(resolve-goal-value % referenced-entities)))
+  (update-goal-values-in viz-settings
+                         (active-goal-settings viz-settings)
+                         #(resolve-goal-value % referenced-entities)))
