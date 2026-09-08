@@ -410,7 +410,17 @@
                           {:user_ids [(mt/user->id :rasta)]})
     (mt/user-http-request :crowberto :post 402 "apps/demo/draft")))
 
-(deftest data-app-membership-writes-require-feature-token-test
+(deftest data-app-membership-additions-require-feature-token-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (create-app!)
+    (let [{group-id :permission_group_id}
+          (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))]
+      (mt/with-premium-features #{}
+        (mt/user-http-request :crowberto :post 402 "permissions/membership"
+                              {:group_id group-id :user_id (mt/user->id :lucky)})
+        (is (not (t2/exists? :model/PermissionsGroupMembership :group_id group-id)))))))
+
+(deftest data-app-membership-removal-without-feature-token-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (create-app!)
     (let [{group-id :permission_group_id}
@@ -418,13 +428,31 @@
           user-id (mt/user->id :rasta)]
       (perms/add-user-to-group! user-id group-id)
       (let [membership-id (t2/select-one-pk :model/PermissionsGroupMembership
-                                            :group_id group-id
-                                            :user_id user-id)]
+                                            :group_id group-id :user_id user-id)
+            endpoint (format "permissions/membership/%d" membership-id)]
         (mt/with-premium-features #{}
-          (mt/user-http-request :crowberto :post 402 "permissions/membership"
-                                {:group_id group-id :user_id (mt/user->id :lucky)})
-          (mt/user-http-request :crowberto :put 402 (format "permissions/membership/%d/clear" group-id))
-          (mt/user-http-request :crowberto :delete 402 (format "permissions/membership/%d" membership-id)))))))
+          (mt/user-http-request :rasta :delete 403 endpoint)
+          (is (t2/exists? :model/PermissionsGroupMembership :id membership-id))
+          ;; memberships and collection grants still remain after the token expires,
+          ;; so admins must still be able to remove a member without the feature token.
+          (mt/user-http-request :crowberto :delete 204 endpoint)
+          (is (not (t2/exists? :model/PermissionsGroupMembership :id membership-id))))))))
+
+(deftest data-app-membership-clearing-without-feature-token-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (create-app!)
+    (let [{group-id :permission_group_id}
+          (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
+          endpoint (format "permissions/membership/%d/clear" group-id)]
+      (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+      (perms/add-user-to-group! (mt/user->id :lucky) group-id)
+      (mt/with-premium-features #{}
+        (mt/user-http-request :rasta :put 403 endpoint)
+        (is (= 2 (t2/count :model/PermissionsGroupMembership :group_id group-id)))
+        ;; memberships and collection grants still remain after the token expires,
+        ;; so admins must still be able to remove all members without the feature token.
+        (mt/user-http-request :crowberto :put 204 endpoint)
+        (is (not (t2/exists? :model/PermissionsGroupMembership :group_id group-id)))))))
 
 (deftest query-definition-must-use-a-table-source-test
   (mt/with-premium-features #{:data-apps-preview}

@@ -362,7 +362,6 @@
                           [:group-id ms/PositiveInt]]]
   (perms/check-manager-of-group group-id)
   (api/check-404 (permissions-rest.db/permissions-group-exists? group-id))
-  (check-data-app-group-feature! group-id)
   (api/check-400 (not= group-id (u/the-id (perms/admin-group))))
   (perms/check-tenant-groups-visible! [group-id])
   (perms/remove-all-users-from-group! group-id)
@@ -380,6 +379,5 @@
     (api/check-404 membership)
     (perms/check-tenant-groups-visible! [(:group_id membership)])
     (perms/check-manager-of-group (:group_id membership))
-    (check-data-app-group-feature! (:group_id membership))
     (perms/remove-user-from-group! (:user_id membership) (:group_id membership))
     api/generic-204-no-content))
