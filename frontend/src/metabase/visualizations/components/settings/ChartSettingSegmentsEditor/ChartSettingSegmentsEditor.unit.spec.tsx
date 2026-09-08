@@ -154,3 +154,22 @@ it("should show a placeholder if there are no segments", async () => {
     expect.objectContaining({ min: 0, max: 1, color: expect.anything() }),
   ]);
 });
+
+it("Should not offer the same color twice in the picker (metabase#80823)", async () => {
+  setup();
+
+  // The trigger pill is labelled with the segment's own color, so "red" here
+  // is the first segment's swatch rather than one of the palette options.
+  await userEvent.click(screen.getByLabelText("red"));
+
+  // Each swatch is labelled with the color it applies, so a duplicated color in
+  // the palette shows up as two pills sharing an accessible name. Both then
+  // render as selected when either is picked.
+  const popover = await screen.findByRole("dialog");
+  const colors = within(popover)
+    .getAllByRole("button")
+    .map((pill) => pill.getAttribute("aria-label"));
+
+  expect(colors.length).toBeGreaterThan(0);
+  expect(new Set(colors).size).toBe(colors.length);
+});
