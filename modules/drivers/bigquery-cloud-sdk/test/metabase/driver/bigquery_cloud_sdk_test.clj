@@ -1101,162 +1101,168 @@
       :bigquery-cloud-sdk
       (mt/db)
       (let [tbl-nm (format "table_%s" (mt/random-name))]
-        (bigquery.tx/execute!
-         "CREATE TABLE `%s.%s`
-           (numeric_col NUMERIC,
-           decimal_col DECIMAL,
-           bignumeric_col BIGNUMERIC,
-           bigdecimal_col BIGDECIMAL,
-           string255_col STRING(255),
-           bytes32_col BYTES(32),
-           numeric29_col NUMERIC(29),
-           decimal29_col DECIMAL(29),
-           bignumeric32_col BIGNUMERIC(32),
-           bigdecimal76_col BIGDECIMAL(76,38))
-           AS SELECT NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s', 'hello',
-           B'mybytes', NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s'"
-         (get-test-data-name)
-         tbl-nm
-         numeric-val
-         decimal-val
-         bignumeric-val
-         bigdecimal-val
-         numeric-val
-         decimal-val
-         bignumeric-val
-         bigdecimal-val)
-        (is (contains? (into #{} (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))
-                       {:schema (get-test-data-name) :name tbl-nm :database_require_filter false})
-            "`describe-database` should see the table")
-        (is (= [{:base-type :type/Decimal
-                 :table-name tbl-nm
-                 :table-schema (get-test-data-name)
-                 :database-partitioned false
-                 :database-position 0
-                 :database-type "NUMERIC"
-                 :name "numeric_col"}
-                {:base-type :type/Decimal
-                 :table-name tbl-nm
-                 :table-schema (get-test-data-name)
-                 :database-partitioned false
-                 :database-position 1
-                 :database-type "NUMERIC"
-                 :name "decimal_col"}
-                {:base-type :type/Decimal
-                 :table-name tbl-nm
-                 :table-schema (get-test-data-name)
-                 :database-partitioned false
-                 :database-position 2
-                 :database-type "BIGNUMERIC"
-                 :name "bignumeric_col"}
-                {:base-type :type/Decimal
-                 :table-name tbl-nm
-                 :table-schema (get-test-data-name)
-                 :database-partitioned false
-                 :database-position 3
-                 :database-type "BIGNUMERIC"
-                 :name "bigdecimal_col"}
-                {:name "string255_col",
-                 :table-name tbl-nm
-                 :table-schema (get-test-data-name)
-                 :database-type "STRING",
-                 :base-type :type/Text,
-                 :database-partitioned false,
-                 :database-position 4}
-                {:name "bytes32_col",
-                 :table-name tbl-nm,
-                 :table-schema (get-test-data-name),
-                 :database-type "BYTES",
-                 :base-type :type/*,
-                 :database-partitioned false,
-                 :database-position 5}
-                {:name "numeric29_col",
-                 :table-name tbl-nm,
-                 :table-schema (get-test-data-name),
-                 :database-type "NUMERIC",
-                 :base-type :type/Decimal,
-                 :database-partitioned false,
-                 :database-position 6}
-                {:name "decimal29_col",
-                 :table-name tbl-nm,
-                 :table-schema (get-test-data-name),
-                 :database-type "NUMERIC",
-                 :base-type :type/Decimal,
-                 :database-partitioned false,
-                 :database-position 7}
-                {:name "bignumeric32_col",
-                 :table-name tbl-nm
-                 :table-schema (get-test-data-name)
-                 :database-type "BIGNUMERIC",
-                 :base-type :type/Decimal,
-                 :database-partitioned false,
-                 :database-position 8}
-                {:name "bigdecimal76_col",
-                 :table-name tbl-nm
-                 :table-schema (get-test-data-name)
-                 :database-type "BIGNUMERIC",
-                 :base-type :type/Decimal,
-                 :database-partitioned false,
-                 :database-position 9}]
-               (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [(get-test-data-name)]})))
-            "`describe-fields` should see the fields in the table")
-        (sync/sync-database! (mt/db) {:scan :schema})
-        (testing "We should be able to run queries against the table"
-          (doseq [[col-nm param-v] {"numeric_col"    (bigdec numeric-val)
-                                    "decimal_col"    (bigdec decimal-val)
-                                    "bignumeric_col" (bigdec bignumeric-val)
-                                    "bigdecimal_col" (bigdec bigdecimal-val)}]
-            (testing (format "filtering against %s" col-nm)
-              (is (= 1
-                     (-> (mt/first-row
-                          (mt/run-mbql-query nil
-                            {:source-table (mt/id tbl-nm)
-                             :aggregation  [[:count]]
-                             :parameters   [{:name   col-nm
-                                             :type   :number/=
-                                             :target [:field (mt/id tbl-nm col-nm)]
-                                             :value  [param-v]}]}))
-                         first))))))))))
+        (try
+          (bigquery.tx/execute!
+           "CREATE TABLE `%s.%s`
+             (numeric_col NUMERIC,
+             decimal_col DECIMAL,
+             bignumeric_col BIGNUMERIC,
+             bigdecimal_col BIGDECIMAL,
+             string255_col STRING(255),
+             bytes32_col BYTES(32),
+             numeric29_col NUMERIC(29),
+             decimal29_col DECIMAL(29),
+             bignumeric32_col BIGNUMERIC(32),
+             bigdecimal76_col BIGDECIMAL(76,38))
+             AS SELECT NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s', 'hello',
+             B'mybytes', NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s'"
+           (get-test-data-name)
+           tbl-nm
+           numeric-val
+           decimal-val
+           bignumeric-val
+           bigdecimal-val
+           numeric-val
+           decimal-val
+           bignumeric-val
+           bigdecimal-val)
+          (is (contains? (into #{} (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))
+                         {:schema (get-test-data-name) :name tbl-nm :database_require_filter false})
+              "`describe-database` should see the table")
+          (is (= [{:base-type :type/Decimal
+                   :table-name tbl-nm
+                   :table-schema (get-test-data-name)
+                   :database-partitioned false
+                   :database-position 0
+                   :database-type "NUMERIC"
+                   :name "numeric_col"}
+                  {:base-type :type/Decimal
+                   :table-name tbl-nm
+                   :table-schema (get-test-data-name)
+                   :database-partitioned false
+                   :database-position 1
+                   :database-type "NUMERIC"
+                   :name "decimal_col"}
+                  {:base-type :type/Decimal
+                   :table-name tbl-nm
+                   :table-schema (get-test-data-name)
+                   :database-partitioned false
+                   :database-position 2
+                   :database-type "BIGNUMERIC"
+                   :name "bignumeric_col"}
+                  {:base-type :type/Decimal
+                   :table-name tbl-nm
+                   :table-schema (get-test-data-name)
+                   :database-partitioned false
+                   :database-position 3
+                   :database-type "BIGNUMERIC"
+                   :name "bigdecimal_col"}
+                  {:name "string255_col",
+                   :table-name tbl-nm
+                   :table-schema (get-test-data-name)
+                   :database-type "STRING",
+                   :base-type :type/Text,
+                   :database-partitioned false,
+                   :database-position 4}
+                  {:name "bytes32_col",
+                   :table-name tbl-nm,
+                   :table-schema (get-test-data-name),
+                   :database-type "BYTES",
+                   :base-type :type/*,
+                   :database-partitioned false,
+                   :database-position 5}
+                  {:name "numeric29_col",
+                   :table-name tbl-nm,
+                   :table-schema (get-test-data-name),
+                   :database-type "NUMERIC",
+                   :base-type :type/Decimal,
+                   :database-partitioned false,
+                   :database-position 6}
+                  {:name "decimal29_col",
+                   :table-name tbl-nm,
+                   :table-schema (get-test-data-name),
+                   :database-type "NUMERIC",
+                   :base-type :type/Decimal,
+                   :database-partitioned false,
+                   :database-position 7}
+                  {:name "bignumeric32_col",
+                   :table-name tbl-nm
+                   :table-schema (get-test-data-name)
+                   :database-type "BIGNUMERIC",
+                   :base-type :type/Decimal,
+                   :database-partitioned false,
+                   :database-position 8}
+                  {:name "bigdecimal76_col",
+                   :table-name tbl-nm
+                   :table-schema (get-test-data-name)
+                   :database-type "BIGNUMERIC",
+                   :base-type :type/Decimal,
+                   :database-partitioned false,
+                   :database-position 9}]
+                 (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [(get-test-data-name)]})))
+              "`describe-fields` should see the fields in the table")
+          (sync/sync-database! (mt/db) {:scan :schema})
+          (testing "We should be able to run queries against the table"
+            (doseq [[col-nm param-v] {"numeric_col"    (bigdec numeric-val)
+                                      "decimal_col"    (bigdec decimal-val)
+                                      "bignumeric_col" (bigdec bignumeric-val)
+                                      "bigdecimal_col" (bigdec bigdecimal-val)}]
+              (testing (format "filtering against %s" col-nm)
+                (is (= 1
+                       (-> (mt/first-row
+                            (mt/run-mbql-query nil
+                              {:source-table (mt/id tbl-nm)
+                               :aggregation  [[:count]]
+                               :parameters   [{:name   col-nm
+                                               :type   :number/=
+                                               :target [:field (mt/id tbl-nm col-nm)]
+                                               :value  [param-v]}]}))
+                           first))))))
+          (finally
+            (drop-table-if-exists! tbl-nm)))))))
 
 (deftest sync-table-with-array-test
   (mt/test-driver
     :bigquery-cloud-sdk
     (testing "Tables with RECORD and ARRAY (REPEATED) columns can be synced successfully"
       (let [tbl-nm (format "table_array_type_%s" (mt/random-name))]
-        (doseq [sql [(format "CREATE TABLE `%s.%s` AS SELECT 1 AS int_col,
-                              GENERATE_ARRAY(1,10) AS array_col,
-                              STRUCT('Sam' AS name) AS primary,
-                              [STRUCT('Rudisha' AS name)] AS participants"
-                             (get-test-data-name)
-                             tbl-nm)]]
-          (bigquery.tx/execute! sql))
-        (is (= [{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name tbl-nm :table-schema (get-test-data-name)}
-                {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema (get-test-data-name)}
-                {:name "primary",
-                 :table-name tbl-nm
-                 :table-schema (get-test-data-name)
-                 :database-type "RECORD",
-                 :base-type :type/Dictionary,
-                 :database-partitioned false,
-                 :database-position 2,
-                 :nested-fields
-                 #{{:name "name",
-                    :table-name tbl-nm
-                    :table-schema (get-test-data-name)
-                    :database-type "STRING",
-                    :base-type :type/Text,
-                    :nfc-path ["primary"],
-                    :database-position 2}}
-                 :visibility-type :details-only}
-                {:name "participants",
-                 :table-name tbl-nm
-                 :table-schema (get-test-data-name)
-                 :database-type "ARRAY",
-                 :base-type :type/Array,
-                 :database-partitioned false,
-                 :database-position 3}]
-               (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [(get-test-data-name)]})))
-            "`describe-fields` should detect the correct base-type for array type columns")))))
+        (try
+          (doseq [sql [(format "CREATE TABLE `%s.%s` AS SELECT 1 AS int_col,
+                                GENERATE_ARRAY(1,10) AS array_col,
+                                STRUCT('Sam' AS name) AS primary,
+                                [STRUCT('Rudisha' AS name)] AS participants"
+                               (get-test-data-name)
+                               tbl-nm)]]
+            (bigquery.tx/execute! sql))
+          (is (= [{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name tbl-nm :table-schema (get-test-data-name)}
+                  {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema (get-test-data-name)}
+                  {:name "primary",
+                   :table-name tbl-nm
+                   :table-schema (get-test-data-name)
+                   :database-type "RECORD",
+                   :base-type :type/Dictionary,
+                   :database-partitioned false,
+                   :database-position 2,
+                   :nested-fields
+                   #{{:name "name",
+                      :table-name tbl-nm
+                      :table-schema (get-test-data-name)
+                      :database-type "STRING",
+                      :base-type :type/Text,
+                      :nfc-path ["primary"],
+                      :database-position 2}}
+                   :visibility-type :details-only}
+                  {:name "participants",
+                   :table-name tbl-nm
+                   :table-schema (get-test-data-name)
+                   :database-type "ARRAY",
+                   :base-type :type/Array,
+                   :database-partitioned false,
+                   :database-position 3}]
+                 (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [(get-test-data-name)]})))
+              "`describe-fields` should detect the correct base-type for array type columns")
+          (finally
+            (drop-table-if-exists! tbl-nm)))))))
 
 (deftest sync-inactivates-old-duplicate-tables
   (testing "If on the new driver, then downgrade, then upgrade again (#21981)"
