@@ -205,9 +205,9 @@
 (defn generated-dashboard-part
   "Return the `generated_entity` data part for a dashboard the agent assembled from
   conversation charts and queries. Embeds the whole definition — `title`, optional
-  `description`, and positioned `tiles` (each carrying its legacy `query`, `display`
-  and `title`) — so the FE can render it as an entity or route to it as an ad-hoc
-  dashboard, the same way card parts embed their query."
+  `description`, and positioned `tiles` (each carrying its legacy `dataset_query`,
+  `display` and `title`, the same shape the save endpoint accepts) — so the FE can
+  render it as an entity or route to it as an ad-hoc dashboard."
   [{:keys [id title description tiles]}]
   (generated-entity-part
    (cond-> {:type "dashboard" :id id :title title :tiles tiles}

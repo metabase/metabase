@@ -78,22 +78,22 @@
                (let [card (readable-card card-id)]
                  {:title                  title
                   :display                (name (:display card))
-                  :query                  (links/->legacy-mbql (:dataset_query card))
+                  :dataset_query          (links/->legacy-mbql (:dataset_query card))
                   :visualization_settings (:visualization_settings card)
                   :card_id                card-id})
 
                chart-id
                (let [{:keys [query display]} (resolve-generated-chart chart-id)]
-                 {:title    title
-                  :display  (name display)
-                  :query    (links/->legacy-mbql query)
-                  :chart_id chart-id})
+                 {:title         title
+                  :display       (name display)
+                  :dataset_query (links/->legacy-mbql query)
+                  :chart_id      chart-id})
 
                :else
-               {:title    title
-                :display  "table"
-                :query    (links/->legacy-mbql (get (shared/current-queries-state) query-id))
-                :query_id query-id})]
+               {:title         title
+                :display       "table"
+                :dataset_query (links/->legacy-mbql (get (shared/current-queries-state) query-id))
+                :query_id      query-id})]
     (assoc tile :size size)))
 
 (defn- place-tiles

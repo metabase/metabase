@@ -56,8 +56,8 @@
                (dissoc data :tiles)))
         (is (= [{:title "Venues by price" :display "bar" :row 0 :col 0 :size_x 12 :size_y 6 :chart_id "c-1"}
                 {:title "All venues" :display "table" :row 0 :col 12 :size_x 12 :size_y 9}]
-               (map #(dissoc % :query) (:tiles data))))
-        (is (every? #(map? (:query %)) (:tiles data)))))
+               (map #(dissoc % :dataset_query) (:tiles data))))
+        (is (every? #(map? (:dataset_query %)) (:tiles data)))))
     (testing "tells the model the dashboard is not saved yet"
       (is (re-find #"not saved anywhere yet" (:output result))))))
 
@@ -98,8 +98,8 @@
           (is (= {:title "Saved venues" :display "line" :card_id (:id card)
                   :visualization_settings {:graph.dimensions ["PRICE"]}
                   :row 0 :col 0 :size_x 12 :size_y 6}
-                 (dissoc (first tiles) :query)))
-          (is (map? (:query (first tiles)))))
+                 (dissoc (first tiles) :dataset_query)))
+          (is (map? (:dataset_query (first tiles)))))
         (is (string? dashboard-id))))))
 
 (deftest create-dashboard-blank-test

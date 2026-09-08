@@ -43,7 +43,7 @@ const dashboard: GeneratedAdhocDashboard = {
     {
       title: "Venues by price",
       display: "bar",
-      query: datasetQuery,
+      dataset_query: datasetQuery,
       chart_id: "c-1",
       row: 0,
       col: 0,
