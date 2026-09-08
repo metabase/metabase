@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
 import { setupLlmProviderEndpoints } from "__support__/server-mocks/metabot";
+import { findRequests } from "__support__/server-mocks/util";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type {
@@ -204,6 +205,63 @@ describe("AIProviderList", () => {
     expect(screen.getByLabelText("Reorder Anthropic")).toBeInTheDocument();
     expect(screen.getByLabelText("Reorder OpenAI")).toBeInTheDocument();
     expect(screen.queryByLabelText("Reorder Mistral")).not.toBeInTheDocument();
+  });
+
+  it("lets the keyboard set the provider order through the drag handle", async () => {
+    // dnd-kit's keyboard moves are computed from element rects, which jsdom reports as all-zero — derive a
+    // vertical stack from sibling order so "down" means something
+    jest
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLElement) {
+        let index = 0;
+        // eslint-disable-next-line testing-library/no-node-access -- synthesizing layout, not querying for assertions
+        let sibling = this.previousElementSibling;
+        while (sibling) {
+          index += 1;
+          // eslint-disable-next-line testing-library/no-node-access -- synthesizing layout, not querying for assertions
+          sibling = sibling.previousElementSibling;
+        }
+        const top = index * 50;
+        // cast: jsdom offers no way to construct a real DOMRect from plain fields, and dnd-kit only reads
+        // the geometry below
+        return {
+          x: 0,
+          y: top,
+          top,
+          bottom: top + 50,
+          left: 0,
+          right: 100,
+          width: 100,
+          height: 50,
+          toJSON: () => {},
+        } as DOMRect;
+      });
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
+
+    setup();
+
+    const handle = await screen.findByLabelText("Reorder Anthropic");
+    expect(handle).toHaveAttribute("tabindex", "0");
+    expect(handle).toHaveAttribute("aria-describedby");
+
+    handle.focus();
+    await userEvent.keyboard(" ");
+    await waitFor(() => expect(handle).toHaveAttribute("aria-pressed", "true"));
+
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard(" ");
+
+    await waitFor(async () => {
+      const puts = await findRequests("PUT");
+      expect(puts).toEqual([
+        expect.objectContaining({
+          url: expect.stringContaining("/provider-order"),
+          body: { order: ["openai", "anthropic"] },
+        }),
+      ]);
+    });
+
+    jest.restoreAllMocks();
   });
 
   it("does not offer reordering for a single connection", async () => {
