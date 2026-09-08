@@ -14,6 +14,12 @@ interface ChartSettingColorPickerProps {
   title?: string;
   pillSize?: PillSize;
   bordered?: boolean;
+  /**
+   * Reports the palette color name of the picked color to onChange. Off by
+   * default because the settings widget framework treats the second onChange
+   * argument as a Question override.
+   */
+  forwardColorName?: boolean;
   onChange?: (hexValue: string, colorName?: string) => void;
   accentColorOptions?: AccentColorOptions;
 }
@@ -24,6 +30,7 @@ export const ChartSettingColorPicker = ({
   title,
   pillSize,
   bordered,
+  forwardColorName,
   onChange,
   accentColorOptions = {
     main: true,
@@ -49,7 +56,9 @@ export const ChartSettingColorPicker = ({
         value={value}
         colors={getNamedAccentColors(accentColorOptions)}
         withinPortal={withinPortal}
-        onChange={onChange}
+        onChange={(hexValue, colorName) =>
+          onChange?.(hexValue, forwardColorName ? colorName : undefined)
+        }
         pillSize={pillSize}
       />
       {title && <h4 className={bordered ? CS.ml2 : CS.ml1}>{title}</h4>}
