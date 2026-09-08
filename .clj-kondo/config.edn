@@ -1090,4 +1090,8 @@
    {:discouraged-java-method
     {java.lang.System {exit
                        {:level :error
-                        :message "Don't use System/exit directly. Instead use mage.util/exit and let mage handle exiting the process"}}}}}}}
+                        :message "Don't use System/exit directly. Instead use mage.util/exit and let mage handle exiting the process"}}}
+
+    ;; mage runs under babashka, which bundles cheshire; metabase.util.json isn't on its classpath.
+    :discouraged-namespace
+    {cheshire.core {:level :off}}}}}}
