@@ -5,6 +5,7 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -636,14 +637,42 @@
         (with-selected-model "anthropic/claude-sonnet-4-6"
           (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model)))
           (with-failing-connection "anthropic"
-            (is (= {:model-ref          "openai/gpt-5.4"
-                    :selected-model-ref "anthropic/claude-haiku-4-5-20251001"
-                    :fallback           {:model                  "openai/gpt-5.4"
-                                         :model_name             "GPT-5.4"
-                                         :provider_name          "openai"
-                                         :previous_model         "anthropic/claude-haiku-4-5-20251001"
-                                         :previous_provider_name "anthropic"}}
-                   (metabot.settings/mini-model-selection)))))))))
+            (testing "and land on the fallback connection's fastest model, not the one Metabot itself would chat on"
+              (is (= {:model-ref          "openai/gpt-5.4-mini"
+                      :selected-model-ref "anthropic/claude-haiku-4-5-20251001"
+                      :fallback           {:model                  "openai/gpt-5.4-mini"
+                                           :model_name             "GPT-5.4 Mini"
+                                           :provider_name          "openai"
+                                           :previous_model         "anthropic/claude-haiku-4-5-20251001"
+                                           :previous_provider_name "anthropic"}}
+                     (metabot.settings/mini-model-selection))))))))))
+
+(deftest fallback-respects-the-managed-free-tier-lock-test
+  (mt/with-premium-features #{:ai-controls :metabase-ai-managed}
+    (with-connections [(connection "metabase" "metabase") configured-openai]
+      (mt/with-temporary-setting-values [llm-proxy-base-url "https://proxy.example.com"]
+        (with-selected-model "metabase/anthropic/claude-sonnet-4-6"
+          (testing "a locked managed connection does not serve the turn it is selected for"
+            (mt/with-dynamic-fn-redefs [metabot.usage/managed-usage-locked? (constantly true)]
+              (is (= "openai/gpt-5.4" (:model-ref (metabot.settings/metabot-model-selection))))))
+          (testing "and serves it again the moment the lock lifts"
+            (mt/with-dynamic-fn-redefs [metabot.usage/managed-usage-locked? (constantly false)]
+              (is (= "metabase/anthropic/claude-sonnet-4-6"
+                     (:model-ref (metabot.settings/metabot-model-selection)))))))))))
+
+(deftest fallback-does-not-route-to-a-locked-managed-connection-test
+  (mt/with-premium-features #{:ai-controls :metabase-ai-managed}
+    (with-connections [configured-anthropic (connection "metabase" "metabase")]
+      (mt/with-temporary-setting-values [llm-proxy-base-url "https://proxy.example.com"]
+        (with-selected-model "anthropic/claude-sonnet-4-6"
+          (with-failing-connection "anthropic"
+            (testing "with the managed free tier locked, there is nowhere to go and the selection stands"
+              (mt/with-dynamic-fn-redefs [metabot.usage/managed-usage-locked? (constantly true)]
+                (is (= "anthropic/claude-sonnet-4-6" (:model-ref (metabot.settings/metabot-model-selection))))))
+            (testing "unlocked, the managed connection is a fallback like any other"
+              (mt/with-dynamic-fn-redefs [metabot.usage/managed-usage-locked? (constantly false)]
+                (is (= "metabase/anthropic/claude-sonnet-4-6"
+                       (:model-ref (metabot.settings/metabot-model-selection))))))))))))
 
 (deftest mini-model-setting-keeps-reading-the-preferred-model-test
   (mt/with-premium-features #{:ai-controls}
