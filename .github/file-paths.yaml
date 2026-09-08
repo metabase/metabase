@@ -293,14 +293,19 @@ serialization_baseline:
   - ".github/workflows/serialization.yml"
   - "test_resources/serialization_baseline/**"
 
+# Backend contracts can change through shared schemas; frontend aliases can change
+# outside the RTK definitions. Include both complete source trees.
 openapi:
+  - ".github/file-paths.yaml"
   - ".github/workflows/lint.yml"
-  - "src/metabase/api/**"
-  - "src/metabase/api_routes/**"
-  - "src/metabase/*_rest/api.clj"
-  - "src/metabase/*/api.clj"
-  - "src/metabase/*/api/*.clj"
-  - "enterprise/backend/src/metabase_enterprise/**/api.clj"
-  - "enterprise/backend/src/metabase_enterprise/**/api/*.clj"
-  - "resources/openapi/**"
+  - "frontend/**"
+  - "enterprise/frontend/**"
+  - "src/**"
+  - "enterprise/backend/src/**"
+  - "**/deps.edn"
+  - "resources/data_readers.clj"
+  - "resources/locales.clj"
+  - "resources/version.properties"
+  - "tsconfig*.json"
   - "package.json"
+  - "bun.lock"
