@@ -321,6 +321,14 @@ const compatibilityCases = [
   },
 ];
 
+// Oxlint names a rule as namespace(rule), with eslint standing in for the unprefixed rules.
+function diagnosticCode(rule) {
+  const separator = rule.lastIndexOf("/");
+  return separator === -1
+    ? `eslint(${rule})`
+    : `${rule.slice(0, separator)}(${rule.slice(separator + 1)})`;
+}
+
 test("should apply the configured rules and suppressions", async (t) => {
   // Fixture paths must match the frontend and e2e policy overrides.
   const directories = new Map();
@@ -378,24 +386,24 @@ test("should apply the configured rules and suppressions", async (t) => {
     cases.length,
     "Fixtures were ignored instead of linted",
   );
+  const nativeByFile = Map.groupBy(native.diagnostics, (diagnostic) =>
+    path.resolve(root, diagnostic.filename),
+  );
   const eslint = new ESLint({ cwd: root });
   const legacy = await eslint.lintFiles(cases.map((c) => c.filename));
+  const legacyByFile = new Map(
+    legacy.map((result) => [result.filePath, result.messages]),
+  );
   for (const fixture of cases) {
     await t.test(
       `should apply ${fixture.rule} to ${path.basename(fixture.filename)}`,
       () => {
-        const separator = fixture.rule.lastIndexOf("/");
-        const code =
-          separator === -1
-            ? `eslint(${fixture.rule})`
-            : `${fixture.rule.slice(0, separator)}(${fixture.rule.slice(separator + 1)})`;
-        const findings = native.diagnostics.filter(
-          (d) => path.resolve(root, d.filename) === fixture.filename,
-        );
+        const findings = nativeByFile.get(fixture.filename) ?? [];
+        const code = diagnosticCode(fixture.rule);
         assert.equal(
-          legacy
-            .find((result) => result.filePath === fixture.filename)
-            .messages.filter((d) => d.ruleId === fixture.eslintRule).length,
+          legacyByFile
+            .get(fixture.filename)
+            .filter((d) => d.ruleId === fixture.eslintRule).length,
           fixture.eslint,
           `ESLint ${fixture.filename}`,
         );

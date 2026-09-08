@@ -1,17 +1,10 @@
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import { builtinRules } from "eslint/use-at-your-own-risk";
-import configs from "../../eslint.config.mjs";
-import ruleMap from "./oxlint/rule-map.json" with { type: "json" };
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
-import reactPlugin from "eslint-plugin-react";
-import * as reactHooksPlugin from "eslint-plugin-react-hooks";
-import jestPlugin from "eslint-plugin-jest";
-import jestDomPlugin from "eslint-plugin-jest-dom";
-import testingLibraryPlugin from "eslint-plugin-testing-library";
-import storybookPlugin from "eslint-plugin-storybook";
-import i18nextPlugin from "eslint-plugin-i18next";
+import configs from "../../eslint.config.mjs";
+import ruleMap from "./oxlint/rule-map.json" with { type: "json" };
 
 function stripConfig(config) {
   const copy = { ...config };
@@ -22,19 +15,19 @@ function stripConfig(config) {
   }
   return copy;
 }
+const plugins = Object.assign({}, ...configs.map((config) => config.plugins));
 export const recommendedRules = {
   javascript: js.configs.recommended.rules,
-  react: reactPlugin.configs.recommended.rules,
-  jsxRuntime: reactPlugin.configs["jsx-runtime"].rules,
-  hooks: reactHooksPlugin.configs.recommended.rules,
-  i18next: i18nextPlugin.configs["flat/recommended"].rules,
+  react: plugins.react.configs.recommended.rules,
+  jsxRuntime: plugins.react.configs["jsx-runtime"].rules,
+  hooks: plugins["react-hooks"].configs.recommended.rules,
+  i18next: plugins.i18next.configs["flat/recommended"].rules,
   typescript: tseslint.configs.recommended.map(stripConfig),
-  jest: jestPlugin.configs.recommended.rules,
-  jestDom: jestDomPlugin.configs.recommended.rules,
-  testingLibrary: testingLibraryPlugin.configs.react.rules,
-  storybook: storybookPlugin.configs["flat/recommended"].map(stripConfig),
+  jest: plugins.jest.configs.recommended.rules,
+  jestDom: plugins["jest-dom"].configs.recommended.rules,
+  testingLibrary: plugins["testing-library"].configs.react.rules,
+  storybook: plugins.storybook.configs["flat/recommended"].map(stripConfig),
 };
-const plugins = Object.assign({}, ...configs.map((config) => config.plugins));
 export const ruleDefaults = Object.fromEntries(
   Object.keys(ruleMap).flatMap((name) => {
     const slash = name.lastIndexOf("/");

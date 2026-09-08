@@ -19,6 +19,14 @@ import {
   ruleDefaults,
 } from "../update-recommended-rules.mjs";
 
+const config = createConfig();
+
+// wrap requires every rule the namespace declares, so the fixtures repeat one rule under each name.
+const namespace = "metabase";
+const fakePlugin = (rule) => ({
+  rules: Object.fromEntries(jsRules[namespace].map((name) => [name, rule])),
+});
+
 test("should match the installed presets and rule defaults", () => {
   assert.deepEqual(presets, recommendedRules, "Run bun run lint-config-update");
   assert.deepEqual(defaults, ruleDefaults, "Run bun run lint-config-update");
@@ -61,21 +69,16 @@ test("should match ESLint settings for each file scope", async () => {
 });
 
 test("should read settings for each file through the reused context", () => {
-  const namespace = "metabase";
-  const [ruleName] = jsRules[namespace];
   const seen = [];
-  const rules = Object.fromEntries(
-    jsRules[namespace].map((name) => [
-      name,
-      {
-        create(context) {
-          seen.push(context);
-          return {};
-        },
+  const rule = wrap(
+    namespace,
+    fakePlugin({
+      create(context) {
+        seen.push(context);
+        return {};
       },
-    ]),
-  );
-  const rule = wrap(namespace, { rules }).rules[ruleName];
+    }),
+  ).rules[jsRules[namespace][0]];
   // Oxlint hands a rule one context object for every file, changing only the filename.
   let filename;
   const context = {
@@ -108,16 +111,9 @@ test("should read settings for each file through the reused context", () => {
 });
 
 test("should require create and omit createOnce from wrapped rules", () => {
-  const namespace = "metabase";
-  const fakePlugin = (rule) => ({
-    rules: Object.fromEntries(jsRules[namespace].map((name) => [name, rule])),
-  });
   const wrapped = wrap(
     namespace,
-    fakePlugin({
-      create: () => ({}),
-      createOnce: () => ({}),
-    }),
+    fakePlugin({ create: () => ({}), createOnce: () => ({}) }),
   ).rules;
   for (const [name, rule] of Object.entries(wrapped)) {
     assert.equal(Object.hasOwn(rule, "createOnce"), false, name);
@@ -131,7 +127,6 @@ test("should require create and omit createOnce from wrapped rules", () => {
 });
 
 test("should retain inherited prefer-const and console options", () => {
-  const config = createConfig();
   const ts = config.overrides.filter((entry) =>
     entry.files.includes("**/*.ts"),
   );
@@ -148,7 +143,6 @@ test("should retain inherited prefer-const and console options", () => {
 });
 
 test("should keep TypeScript extension rules enabled when their base rules are disabled", () => {
-  const config = createConfig();
   const ts = config.overrides.findLast(
     (entry) => entry.files.includes("**/*.ts") && entry.rules["no-unused-vars"],
   );
