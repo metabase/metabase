@@ -114,7 +114,7 @@ jobs:
       - name: Compile CLJS dependencies used by frontend types
         run: bun run build-pure:cljs
       - name: Check frontend API contracts against the baseline
-        run: bun run api-contracts:check
+        run: bun run api-contracts-pure
       - name: Upload contract coverage and diagnostics
         if: always()
         uses: actions/upload-artifact@v7
