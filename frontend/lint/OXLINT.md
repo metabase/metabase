@@ -1,9 +1,10 @@
 # JavaScript and TypeScript linting
 
 Oxlint runs the JavaScript/TypeScript checks in `bun run lint`, staged-file checks
-and frontend CI, including module boundaries. Oxfmt owns formatting. Import
-ordering uses the existing import-x policy. ESLint remains installed for retained
-plugins and compatibility tests.
+and frontend CI, including module boundaries. Oxfmt owns formatting and import
+ordering through its `sortImports` config. A few files set their import order for
+runtime reasons and keep it with `// oxfmt-ignore` comments. ESLint remains
+installed for retained plugins and compatibility tests.
 
 ## Commands
 

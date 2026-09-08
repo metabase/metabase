@@ -1,7 +1,3 @@
-/* eslint-disable import-js/order */
-
-import { TEST_SCHEMA } from "./fixtures";
-
 import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
@@ -14,6 +10,8 @@ import {
 } from "..";
 import { useAction, useDataAppAction } from "../../use-action";
 import { defineAction, defineQuery } from "../../../../data-app";
+
+import { TEST_SCHEMA } from "./fixtures";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 

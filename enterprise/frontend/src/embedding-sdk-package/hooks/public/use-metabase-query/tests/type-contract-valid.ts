@@ -1,5 +1,3 @@
-/* eslint-disable import-js/order */
-
 import { TEST_SCHEMA } from "./fixtures";
 
 import type { RowValue } from "../../data-schema";

@@ -1,6 +1,6 @@
 import cx from "classnames";
-
 import LighthouseSvg from "img/bridge.svg?component";
+
 import { Box } from "metabase/ui";
 
 import Styles from "./Lighthouse.module.css";
