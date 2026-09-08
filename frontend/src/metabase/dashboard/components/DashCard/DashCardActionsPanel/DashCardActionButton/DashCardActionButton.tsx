@@ -2,8 +2,7 @@ import cx from "classnames";
 import type { ElementType, HTMLAttributes } from "react";
 import { forwardRef } from "react";
 
-import { Icon, type IconProps } from "metabase/ui";
-import { Tooltip } from "metabase/ui";
+import { Icon, type IconProps, Tooltip } from "metabase/ui";
 
 import S from "./DashCardActionButton.module.css";
 

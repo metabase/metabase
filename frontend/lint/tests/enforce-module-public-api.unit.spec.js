@@ -1,11 +1,9 @@
-import { RuleTester } from "eslint";
-
 import rule from "../eslint-plugin-metabase/rules/enforce-module-public-api";
 import { getPublicApiModules } from "../module-boundaries.mjs";
 
-const ruleTester = new RuleTester({
-  languageOptions: { ecmaVersion: 2022, sourceType: "module" },
-});
+import { createRuleTester } from "./rule-tester";
+
+const ruleTester = createRuleTester();
 
 const options = [{ modules: ["metabase/analytics"] }];
 

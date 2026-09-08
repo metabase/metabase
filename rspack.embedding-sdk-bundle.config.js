@@ -1,6 +1,6 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
-/* eslint-disable import/order */
+/* eslint-disable import-js/order */
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const rspack = require("@rspack/core");
 const BundleAnalyzerPlugin =
@@ -28,9 +28,7 @@ const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   SIDE_EFFECT_FREE_RULE,
 } = require("./frontend/build/shared/rspack/side-effect-free-modules");
-const {
-  EXTERNAL_DEPENDENCIES,
-} = require("./frontend/build/embedding-sdk/constants/external-dependencies");
+const resolveConfig = require("./frontend/build/embedding-sdk/rspack/resolve-config");
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
@@ -54,9 +52,6 @@ const SDK_BUNDLE_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-bundle";
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const SDK_OUTPUT_PATH = path.join(BUILD_PATH, SDK_BUNDLE_PATH);
-
-const ENTERPRISE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/metabase-enterprise";
 
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
@@ -203,7 +198,7 @@ const config = {
     ],
   },
 
-  externals: EXTERNAL_DEPENDENCIES,
+  ...resolveConfig,
 
   optimization: {
     ...OPTIMIZATION_CONFIG,
@@ -424,14 +419,6 @@ const config = {
       }),
     ...COMPRESSION_CONFIG,
   ].filter(Boolean),
-};
-
-config.resolve.alias = {
-  ...mainConfig.resolve.alias,
-  "sdk-ee-plugins": ENTERPRISE_SRC_PATH + "/sdk-plugins",
-  "sdk-iframe-embedding-ee-plugins":
-    ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins",
-  "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
 };
 
 if (config.cache) {

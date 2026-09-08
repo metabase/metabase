@@ -1,3 +1,6 @@
+const lintFix =
+  "oxlint --threads 4 --disable-nested-config --no-error-on-unmatched-pattern --max-warnings 0 --report-unused-disable-directives --fix";
+
 module.exports = {
   "+(frontend|enterprise)/**/*.styled.tsx": [
     "stylelint --customSyntax postcss-styled-syntax --fix",
@@ -7,12 +10,12 @@ module.exports = {
     "oxfmt --write",
   ],
   "+(frontend|enterprise/frontend)/**/*.{js,jsx,ts,tsx}": [
-    "cross-env LINT_CSS_MODULES=true eslint --no-warn-ignored --max-warnings 0 --fix",
+    `cross-env LINT_CSS_MODULES=true ${lintFix}`,
     "oxfmt --write",
     "node ./bin/verify-doc-links",
   ],
   "e2e/**/!(cypress_sample_instance_data).{js,jsx,ts,tsx}": [
-    "eslint --no-warn-ignored --max-warnings 0 --fix",
+    lintFix,
     "oxfmt --write",
   ],
   "**/*.{clj,cljc,cljs,bb}": [
@@ -20,9 +23,7 @@ module.exports = {
     "./bin/mage fix-unused-requires",
   ],
   "e2e/test/scenarios/**/*.{js,ts}": ["node e2e/validate-e2e-test-files.js"],
-  "enterprise/frontend/src/embedding-sdk-package/README.md": [
-    "oxfmt --write",
-  ],
+  "enterprise/frontend/src/embedding-sdk-package/README.md": ["oxfmt --write"],
   "+(.storybook|enterprise/frontend/src/embedding-sdk-shared/.storybook)/**/*.{js,jsx,ts,tsx,css}":
     ["oxfmt --write"],
   "**/*": [

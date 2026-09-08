@@ -8,10 +8,10 @@ import {
 } from "react";
 import { match } from "ts-pattern";
 
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
 import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/embed";
 import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { useSetting } from "metabase/settings";
 import { Box, Center, Loader } from "metabase/ui";
 

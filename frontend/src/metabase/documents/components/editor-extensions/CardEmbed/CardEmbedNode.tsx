@@ -230,6 +230,7 @@ export const CardEmbed: Node<{
 });
 
 export const CardEmbedComponent = memo(
+  /* eslint-disable complexity -- ESLint and oxlint report different positions within this function header. */
   ({
     node,
     updateAttributes,
@@ -237,8 +238,8 @@ export const CardEmbedComponent = memo(
     editor,
     getPos,
     deleteNode,
-    // eslint-disable-next-line complexity
   }: NodeViewProps) => {
+    /* eslint-enable complexity */
     const { _id, id, name } = node.attrs;
     const storedResultId = node.attrs.stored_result_id;
     const isStatic = storedResultId != null;

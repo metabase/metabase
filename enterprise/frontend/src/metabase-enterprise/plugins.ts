@@ -4,10 +4,8 @@ import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
 import "./shared";
-
 // PLUGINS THAT DON'T USE hasPremiumFeature (imported immediately):
 import "./license";
-
 // PLUGINS THAT USE hasPremiumFeature (import initialization functions):
 import { initializePlugin as initializeAdvancedPermissions } from "./advanced_permissions";
 import { initializePlugin as initializeAiControls } from "./ai-controls";

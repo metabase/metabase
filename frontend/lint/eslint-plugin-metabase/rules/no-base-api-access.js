@@ -8,6 +8,17 @@
 
 const micromatch = require("micromatch");
 
+const matchers = new WeakMap();
+function matcherFor(globs) {
+  let matcher = matchers.get(globs);
+  if (!matcher) {
+    // Checkouts under dotted directories must match `**`.
+    matcher = micromatch.matcher(globs, { dot: true });
+    matchers.set(globs, matcher);
+  }
+  return matcher;
+}
+
 // The base api objects. An owner's slice (`cardApi.endpoints`) is the intended way in and is not tracked.
 const DEFAULT_BASE_APIS = [
   { module: "metabase/api", name: "Api" },
@@ -75,9 +86,8 @@ module.exports = {
     const options = context.options[0] || {};
     const baseApis = options.baseApis || DEFAULT_BASE_APIS;
 
-    // `dot: true` so a checkout under a dotted directory still matches `**`
     const isAllowedIn = (globs = []) =>
-      globs.length > 0 && micromatch.isMatch(filename, globs, { dot: true });
+      globs.length > 0 && matcherFor(globs)(filename);
     const injectionAllowed = isAllowedIn(options.allowInjectionIn);
     const reachAllowed = isAllowedIn(options.allowReachIn);
 
