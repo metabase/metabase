@@ -14,8 +14,11 @@
  :largest-scc-modules-with-model-imports 118
  :largest-scc-namespaces 1517
  :largest-scc-namespaces-with-model-imports 1637
- :max-file-deftests 19677
- :max-file-test-namespaces 1508
+ :max-file-deftests 19729
+ :max-file-test-namespaces 1510
  :model-import-bypass-modules 2
  :module-count 204
+ :module-exports 0
+ :ns-prefix-overrides 0
+ :parent-team-mismatches 3
  :total-api 566}

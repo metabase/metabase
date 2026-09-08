@@ -17,7 +17,7 @@
                   :deprecated-var                                                      86
                   :discouraged-java-method                                             4
                   :discouraged-namespace                                               71
-                  :discouraged-var                                                     134
+                  :discouraged-var                                                     135
                   :duplicate-require                                                   1
                   :equals-true                                                         1
                   :main-without-gen-class                                              1
@@ -54,7 +54,7 @@
  :config-counts  {:constant-condition                      1
                   :deprecated-namespace                    7
                   :deprecated-var                          16
-                  :discouraged-namespace                   14
+                  :discouraged-namespace                   15
                   :discouraged-var                         14
                   :inline-def                              1
                   :main-without-gen-class                  1

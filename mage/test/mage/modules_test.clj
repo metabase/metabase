@@ -4,6 +4,7 @@
   (:require
    [clojure.edn :as edn]
    [clojure.test :refer [deftest is testing]]
+   [mage.color]
    [mage.modules]))
 
 ;; Referenced by core_test.clj to ensure namespace is loaded
@@ -286,17 +287,24 @@
     (filter #(mage.modules/driver-deps-affected? [%]) all)))
 
 (deftest module-graph-may-not-become-more-connected
-  (testing "The number of modules that trigger driver tests should not increase without explicit approval.
+  (testing "The number of top-level modules that trigger driver tests should not increase without explicit approval.
             If this test fails, you've likely connected a module to driver that shouldn't trigger driver tests.
-            Add it to :exempt-modules in driver-test-overrides.edn if it shouldn't trigger driver tests."
+            Add it to driver-affecting-overrides if it shouldn't trigger driver tests."
     ;; A module that transitively depends on driver code makes a change to it run ALL driver tests, which
     ;; is expensive. The budget lives in ratchets.edn next to :driver-test-exempt-modules, because the two
-    ;; move against each other: exempting a module lowers this count and raises the exemption count, and
-    ;; dropping an exemption does the reverse. Reading either alone is how you talk yourself into paying
-    ;; for CI you did not mean to. Raising it needs a hand edit there, with the reason in the commit.
+    ;; move against each other: exempting a module lowers this and raises the exemption count, and dropping
+    ;; an exemption does the reverse. Reading either alone is how you talk yourself into paying for CI you
+    ;; did not mean to.
+    ;;
+    ;; Counted per module, not per top-level subtree. Collapsing to top-level ancestors would report
+    ;; nesting the -rest layer as a 46 -> 33 improvement while the same 696 namespaces still trigger, so
+    ;; module-stats.edn carries :driver-test-triggering-namespaces for the number that holds still. The
+    ;; cost of counting modules is that splitting a triggering module needs a hand edit here, with a
+    ;; reason in the commit.
     (let [modules-triggering-drivers (modules-affecting-drivers)
           max-allowed-count          (:driver-test-triggering-modules
-                                      (edn/read-string (slurp ".clj-kondo/config/modules/ratchets.edn")))]
+                                      (edn/read-string
+                                       (slurp ".clj-kondo/config/modules/ratchets.edn")))]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
@@ -322,7 +330,57 @@
   (testing "siblings are alphabetical, except enterprise modules sort after everything else"
     (let [config {'queries {} 'enterprise/audit {} 'actions {} 'enterprise/sso {} 'util {}}
           tree   (#'mage.modules/module-display-tree config)
-          lines  (#'mage.modules/tree-node-lines [] tree)]
-      ;; the root node renders an empty line, so drop it
+          lines  (binding [mage.color/*disable-colors* true]
+                   (into []
+                         (mapcat (fn [[segment node]]
+                                   (#'mage.modules/tree-node-lines config false [segment] node)))
+                         (#'mage.modules/sorted-children tree)))]
       (is (= ["actions" "queries" "util" "enterprise/audit" "enterprise/sso"]
-             (rest lines))))))
+             lines)))))
+
+(deftest module-tree-lines-test
+  (let [config '{lib                  {}
+                 lib.be               {:ns-prefix "metabase.lib-be"}
+                 transforms           {}
+                 transforms.base      {:ns-prefix "metabase.transforms-base"}
+                 transforms.base.deep {}
+                 transforms.python    {:ns-prefix "metabase.transforms-python"}
+                 enterprise-tools     {}
+                 enterprise/transforms {}
+                 enterprise/transforms.python {:ns-prefix "metabase-enterprise.transforms-python"}
+                 enterprise/billing   {}}
+        tree   (#'mage.modules/module-display-tree config)
+        lines  (binding [mage.color/*disable-colors* true]
+                 (into []
+                       (mapcat (fn [[segment node]]
+                                 (#'mage.modules/tree-node-lines config false [segment] node)))
+                       (#'mage.modules/sorted-children tree)))]
+    (testing "alphabetical roots, enterprise last among siblings, dotted display names, stars on :ns-prefix"
+      (is (= ["enterprise-tools"
+              "lib"
+              "- lib.be *"
+              "transforms"
+              "- transforms.base *"
+              "-- transforms.base.deep"
+              "- transforms.python *"
+              "- transforms.enterprise"
+              "-- transforms.enterprise.python *"
+              "enterprise/billing"]
+             lines)))))
+
+(deftest module-tree-enterprise-default-prefix-not-starred-test
+  (testing "the implicit metabase-enterprise. prefix is canonical, and so is an explicit :ns-prefix equal to the default"
+    (is (nil? (#'mage.modules/explicit-ns-prefix '{enterprise/billing {}} 'enterprise/billing)))
+    (is (nil? (#'mage.modules/explicit-ns-prefix '{enterprise/billing {:ns-prefix "metabase-enterprise.billing"}}
+                                                 'enterprise/billing)))
+    (is (= "metabase.lib-be"
+           (#'mage.modules/explicit-ns-prefix '{lib.be {:ns-prefix "metabase.lib-be"}} 'lib.be)))))
+
+(deftest dotted-module-exact-test-files-mark-correct-module-changes
+  (testing "module-level dotted test files resolve back to the dotted module when a dotted prefix exists"
+    (let [build-prefix->module @#'mage.modules/build-prefix->module
+          file->module         @#'mage.modules/file->module
+          prefix->module       (build-prefix->module {'lib.schema {}})]
+      (is (= 'lib.schema
+             (file->module prefix->module
+                           "test/metabase/lib/schema_test.cljc"))))))
