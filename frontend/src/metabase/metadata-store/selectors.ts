@@ -124,9 +124,9 @@ export const getShallowSegments = getNormalizedSegments;
 
 // Takes the whole `State`, not `MetadataState`: it composes `getSettings`,
 // which reads settings out of the RTK Query cache. It narrows when that does.
-export const getMetadata: (
+const getMetadataForOpts: (
   state: State,
-  props?: MetadataSelectorOpts,
+  props: MetadataSelectorOpts,
 ) => Metadata = createSelector(
   [
     getNormalizedDatabases,
@@ -219,12 +219,26 @@ export const getMetadata: (
   },
 );
 
-export const getMetadataUnfiltered = (state: State) => {
-  return getMetadata(state, {
-    includeHiddenTables: true,
-    includeSensitiveFields: true,
-  });
+const NO_OPTS: MetadataSelectorOpts = {};
+
+/**
+ * Reselect keys its cache on the argument list, so `getMetadata(state)` and
+ * `getMetadata(state, undefined)` would build two `Metadata` objects over the
+ * same records, and with them two sets of metabase-lib caches. Callers use both
+ * shapes, so the options are canonicalised here.
+ */
+export const getMetadata = (
+  state: State,
+  props: MetadataSelectorOpts = NO_OPTS,
+): Metadata => getMetadataForOpts(state, props);
+
+const UNFILTERED_OPTS: MetadataSelectorOpts = {
+  includeHiddenTables: true,
+  includeSensitiveFields: true,
 };
+
+export const getMetadataUnfiltered = (state: State) =>
+  getMetadata(state, UNFILTERED_OPTS);
 
 export const getMetadataWithHiddenTables = (
   state: State,
