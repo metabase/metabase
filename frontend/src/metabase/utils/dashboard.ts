@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { stringifyHashOptions } from "metabase/utils/browser";
 import { isJWT } from "metabase/utils/jwt";
 import { isUuid } from "metabase/utils/uuid";
 import type {
@@ -48,16 +47,19 @@ export function isTransientId(id: unknown) {
   return typeof id === "string" && /\/auto\/dashboard/.test(id);
 }
 
-export const ADHOC_DASHBOARD_PATH = "/dashboard/adhoc";
-export const ADHOC_DASHBOARD_HASH_KEY = "adhoc";
+export const ADHOC_DASHBOARD_PATH = "/dashboard";
 
-// An ad-hoc dashboard id is its own url: the adhoc path plus the definition as a
-// `#adhoc=<encoded>` hash option, so DashboardApp's other hash options
-// (`fullscreen`, `refresh`, …) can live alongside it.
+// An ad-hoc dashboard id is its own url, `/dashboard#<encoded definition>`, like
+// `/question#<hash>`. The definition is the first hash segment; DashboardApp's
+// display options (`fullscreen`, `refresh`, …) append after `&` and round-trip
+// through the hash-option helpers as a bare key.
 export function getAdhocDashboardId(encodedDefinition: string) {
-  return `${ADHOC_DASHBOARD_PATH}#${stringifyHashOptions({
-    [ADHOC_DASHBOARD_HASH_KEY]: encodedDefinition,
-  })}`;
+  return `${ADHOC_DASHBOARD_PATH}#${encodedDefinition}`;
+}
+
+export function getAdhocDashboardEncodedDefinition(hash: string) {
+  const [encodedDefinition] = hash.replace(/^#/, "").split("&");
+  return encodedDefinition || undefined;
 }
 
 export function isAdhocDashboardPath(pathname: string) {
@@ -65,7 +67,7 @@ export function isAdhocDashboardPath(pathname: string) {
 }
 
 export function isAdhocDashboardId(id: unknown): id is string {
-  return typeof id === "string" && id.startsWith(ADHOC_DASHBOARD_PATH);
+  return typeof id === "string" && id.startsWith(`${ADHOC_DASHBOARD_PATH}#`);
 }
 
 export function getDashboardType(id: unknown) {

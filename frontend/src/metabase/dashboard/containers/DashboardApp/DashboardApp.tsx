@@ -42,7 +42,7 @@ import {
   stringifyHashOptions,
 } from "metabase/utils/browser";
 import {
-  ADHOC_DASHBOARD_HASH_KEY,
+  getAdhocDashboardEncodedDefinition,
   getAdhocDashboardId,
   isAdhocDashboardPath,
 } from "metabase/utils/dashboard";
@@ -93,12 +93,8 @@ function getRouteDashboardId(location: Location, slug: string | undefined) {
   if (!isAdhocDashboardPath(location.pathname)) {
     return Urls.extractEntityId(slug);
   }
-  const encodedDefinition = parseHashOptions(location.hash)[
-    ADHOC_DASHBOARD_HASH_KEY
-  ];
-  return typeof encodedDefinition === "string"
-    ? getAdhocDashboardId(encodedDefinition)
-    : null;
+  const encodedDefinition = getAdhocDashboardEncodedDefinition(location.hash);
+  return encodedDefinition ? getAdhocDashboardId(encodedDefinition) : null;
 }
 
 export const DashboardApp = () => {

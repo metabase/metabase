@@ -5,9 +5,8 @@ import _ from "underscore";
 import type { SelectedTabId } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 import type { AdhocDashboardDefinition } from "metabase/urls";
-import { parseHashOptions } from "metabase/utils/browser";
 import {
-  ADHOC_DASHBOARD_HASH_KEY,
+  getAdhocDashboardEncodedDefinition,
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
@@ -89,17 +88,17 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
   };
 }
 
-// An "adhoc" dashboard id is a `/dashboard/adhoc#adhoc=<base64 JSON>` url carrying
-// its whole definition, mirroring `/question#<hash>` urls. It expands into the same
+// An "adhoc" dashboard id is a `/dashboard#<base64 JSON>` url carrying its whole
+// definition, mirroring `/question#<hash>` urls. It expands into the same
 // placeholder-id shape as inline dashboards, so the inline/transient machinery
 // (adhoc query execution, normalizr) applies unchanged. Ids are derived from the
 // tile index so re-expanding the same url yields identical entities.
 export function getAdhocDashboardDefinition(
   dashId: string,
 ): AdhocDashboardDefinition {
-  const encodedDefinition = parseHashOptions(dashId.slice(dashId.indexOf("#")))[
-    ADHOC_DASHBOARD_HASH_KEY
-  ];
+  const encodedDefinition = getAdhocDashboardEncodedDefinition(
+    dashId.slice(dashId.indexOf("#")),
+  );
   return JSON.parse(b64url_to_utf8(String(encodedDefinition)));
 }
 
