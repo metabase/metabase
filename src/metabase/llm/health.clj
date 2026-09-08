@@ -93,7 +93,10 @@
                                       :fatal?      (fatal-status? status)
                                       :status      status
                                       :recorded-at (now-ms)})
-      (log/warn e "LLM provider connection failed" {:connection conn-key :status status})))
+      ;; the message, not the throwable: its ex-data deliberately carries the raw response body — kept out of
+      ;; 401/403 messages precisely because it can echo the credential — and rendering `e` would log it anyway
+      (log/warn "LLM provider connection failed"
+                {:connection conn-key :status status :error (ex-message e)})))
   nil)
 
 (defn record-success!
