@@ -281,17 +281,27 @@ const elements = [
   createElement({ type: "shared", name: "visualizer" }),
 
   // feature
-  // Route composition for the admin app. Must precede feature/admin.
-  ...[
-    "frontend/src/metabase/admin/routes.tsx",
-    "frontend/src/metabase/admin/routes.unit.spec.tsx",
-  ].map((pattern) =>
-    createElement({ type: "app", name: "admin-routes", pattern, mode: "full" }),
-  ),
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
   createElement({ type: "feature", name: "data-studio" }),
   createElement({ type: "shared", name: "documents" }),
+  // The hub's route table and the page that mounts the app-tier theme editor.
+  // Must precede feature/embedding-hub: routes.tsx imports admin's permissions
+  // routes (feature) and EmbeddingHubThemeEditorPage imports
+  // EmbeddingThemeEditorApp (app), neither of which a feature module may import.
+  ...[
+    "frontend/src/metabase/embedding-hub/routes.tsx",
+    "frontend/src/metabase/embedding-hub/routes.unit.spec.tsx",
+    "frontend/src/metabase/embedding-hub/pages/EmbeddingHubThemeEditorPage.tsx",
+  ].map((pattern) =>
+    createElement({
+      type: "app",
+      name: "embedding-hub-routes",
+      pattern,
+      mode: "full",
+    }),
+  ),
+  createElement({ type: "feature", name: "embedding-hub" }),
   // EE plugin-bootstrap files that only wire app-tier SDK modules into plugin
   // slots, so they're app tier, not feature/enterprise. Tagged by which embedding
   // product they belong to. Must precede the feature/enterprise element below
@@ -400,13 +410,6 @@ const elements = [
       mode: "full",
     }),
   ),
-  // App tier only because a feature module may not import another feature
-  // module, and the hub mounts feature and admin pages directly.
-  createElement({
-    type: "app",
-    name: "embedding-hub",
-    pattern: "frontend/src/metabase/embedding-hub/**",
-  }),
   createElement({
     type: "app",
     name: "nav",
