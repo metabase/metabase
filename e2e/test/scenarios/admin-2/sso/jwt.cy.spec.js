@@ -95,13 +95,11 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
   describe("Group mapping", () => {
     beforeEach(() => {
       enableJwtAuth();
-      cy.intercept("GET", "/api/permissions/group").as("getGroups");
       cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
       cy.intercept("PUT", "/api/permissions/membership/*/clear").as(
         "clearGroup",
       );
       cy.visit("/admin/settings/authentication/jwt");
-      cy.wait("@getGroups");
     });
 
     it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
@@ -110,7 +108,6 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
       addMapping("cn=People1", ["Administrators", "data", "nosql"]);
       addMapping("cn=People2", ["collection", "readonly"]);
 
-      cy.log("Delete the first mapping together with its groups");
       deleteMapping(
         "cn=People1",
         /delete the groups/i,
