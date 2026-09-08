@@ -206,16 +206,36 @@
 
 (deftest dispatch-rejects-non-numeric-id-test
   (testing "a non-numeric id segment throws a directive error stating the numeric-id contract"
-    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+    (is (thrown-with-msg? Exception #"the `model` segment takes a numeric id"
                           (#'read-resource/dispatch "metabase://model/VZbHZIeqQ2HhZv5r0pO6a")))
-    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+    (is (thrown-with-msg? Exception #"the `model` segment takes a numeric id"
                           (#'read-resource/dispatch "metabase://model/VZbHZIeqQ2HhZv5r0pO6a/fields")))
-    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+    (is (thrown-with-msg? Exception #"the `question` segment takes a numeric id"
                           (#'read-resource/dispatch "metabase://question/VZbHZIeqQ2HhZv5r0pO6a")))
-    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+    (is (thrown-with-msg? Exception #"the `table` segment takes a numeric id"
                           (#'read-resource/dispatch "metabase://table/orders")))
-    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
-                          (#'read-resource/dispatch "metabase://collection/root"))))
+    (is (thrown-with-msg? Exception #"the `collection` segment takes a numeric id"
+                          (#'read-resource/dispatch "metabase://collection/root")))
+    (testing "including documents, whose fetcher also parses the id as a long (BOT-1801)"
+      (is (thrown-with-msg? Exception #"the `document` segment takes a numeric id"
+                            (#'read-resource/dispatch "metabase://document/my-runbook")))))
+  (testing "a name in the database segment points at metabase://databases (BOT-1801)"
+    (doseq [uri ["metabase://database/redshift"
+                 "metabase://database/redshift/tables"
+                 "metabase://database/redshift/schemas/core/tables"]]
+      (testing uri
+        (let [e (try (#'read-resource/dispatch uri) (catch Exception e e))]
+          (is (str/includes? (ex-message e) "the `database` segment takes a numeric id")
+              "names the segment")
+          (is (str/includes? (ex-message e) "read metabase://databases")
+              "names the call that resolves the id")
+          (is (str/includes? (ex-message e) "`redshift`")
+              "includes the rejected id")
+          (is (not (str/includes? (ex-message e) "search result"))
+              "does not point at search")))))
+  (testing "entity types with no navigation URI keep the search-result remedy"
+    (is (thrown-with-msg? Exception #"copy the `uri` attribute from a search result"
+                          (#'read-resource/dispatch "metabase://metric/revenue"))))
   (testing "the error carries agent-error metadata"
     (let [e (try
               (#'read-resource/dispatch "metabase://model/VZbHZIeqQ2HhZv5r0pO6a")
@@ -224,12 +244,21 @@
       (is (true? (:agent-error? (ex-data e))))))
   (testing "the directive error text reaches read_resource output"
     (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://model/VZbHZIeqQ2HhZv5r0pO6a/fields"]})]
-      (is (str/includes? output "URIs use the numeric entity id"))))
+      (is (str/includes? output "the `model` segment takes a numeric id")))
+    (testing "and is distinguishable from a missing resource"
+      (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://database/redshift"]})]
+        (is (str/includes? output "read metabase://databases"))
+        (is (not (str/includes? output "**Error:** Not found."))))))
   (testing "non-id segments are unaffected — schema names and field ids may be non-numeric"
     (is (= ["database" "1" "schemas" "PUBLIC" "tables"]
            (:segments (#'read-resource/parse-uri "metabase://database/1/schemas/PUBLIC/tables"))))
     (is (nil? (#'read-resource/check-numeric-id-segment!
-               "metabase://table/3/fields/c75/17" ["table" "3" "fields" "c75" "17"])))))
+               "metabase://table/3/fields/c75/17" ["table" "3" "fields" "c75" "17"]))))
+  (testing "conversation ids are not numeric, so chart/query URIs stay exempt"
+    (is (nil? (#'read-resource/check-numeric-id-segment!
+               "metabase://chart/abc-123" ["chart" "abc-123"])))
+    (is (nil? (#'read-resource/check-numeric-id-segment!
+               "metabase://query/abc-123" ["query" "abc-123"])))))
 
 (comment
   (mt/with-current-user (mt/user->id :crowberto)
