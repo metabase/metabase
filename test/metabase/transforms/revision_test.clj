@@ -1,6 +1,7 @@
 (ns metabase.transforms.revision-test
   (:require
    [clojure.test :refer :all]
+   [metabase.revisions.impl.transform]
    [metabase.revisions.models.revision :as revision]))
 
 (deftest transform-serialize-instance-test

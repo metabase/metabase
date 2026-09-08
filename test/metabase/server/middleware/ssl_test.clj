@@ -1,6 +1,7 @@
 (ns metabase.server.middleware.ssl-test
   (:require
    [clojure.test :refer :all]
+   [metabase.audit-app.events.audit-log]
    [metabase.server.middleware.ssl :as mw.ssl]
    [metabase.test.util :as tu]
    [ring.mock.request :as ring.mock]

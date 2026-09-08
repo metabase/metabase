@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.request.core :as request]
    [metabase.server.handler :as handler]
+   [metabase.tiles.settings]
    [metabase.util.json :as json]
    [ring.mock.request :as ring.mock]
    [ring.util.response :as response])
