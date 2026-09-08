@@ -247,7 +247,18 @@
   (testing "a non-mandatory model keeps its cap — it got the disable instead"
     (let [body (body-for {:model "anthropic/claude-sonnet-4.6" :schema {:type "object"} :max-tokens 512})]
       (is (= 512 (:max_tokens body)))
-      (is (= {:enabled false} (:reasoning body))))))
+      (is (= {:enabled false} (:reasoning body)))))
+  (testing "the floor is keyed on the mandatory flag, not the class: the renderable-default pros get it too"
+    (doseq [model ["openai/gpt-5.5-pro" "openai/gpt-5.4-pro"]]
+      (testing model
+        (let [body (body-for {:model model :schema {:type "object"} :max-tokens 512})]
+          (is (= 2048 (:max_tokens body)))
+          (is (not (contains? body :reasoning))))
+        (is (= 512 (:max_tokens (body-for {:model model :max-tokens 512})))))))
+  (testing "a non-mandatory renderable-default model keeps its cap and still gets no directive"
+    (let [body (body-for {:model "openai/gpt-5.5" :schema {:type "object"} :max-tokens 512})]
+      (is (= 512 (:max_tokens body)))
+      (is (not (contains? body :reasoning))))))
 
 (deftest ^:parallel reasoning-class-partition-test
   (testing "every whitelisted model is deliberately classified, and the class drives the body"

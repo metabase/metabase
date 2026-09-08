@@ -239,8 +239,10 @@
   https://openrouter.ai/docs/use-cases/reasoning-tokens), so a small caller cap (the conversation-title path sends
   512) could hit `length` before the mandatory tool call is emitted. In practice this has not been observed: probed
   2026-09-03, qwen3.8-max reasons only ~150 tokens on title-shaped structured calls and fits the 512 cap, and
-  claude-fable-5 emits zero reasoning under a forced tool choice. The floor guards against a model update or a
-  longer-thinking mandatory model changing that. Matches vLLM's probe-proven floor."
+  claude-fable-5 emits zero reasoning under a forced tool choice; probed 2026-09-08, gpt-5.4-pro and gpt-5.5-pro
+  finish the same calls at the 512 cap with the tool call (242–375 and 22 completion tokens across runs). The floor
+  guards against a model update or a longer-thinking mandatory model changing that. Matches vLLM's probe-proven
+  floor."
   2048)
 
 (defn- with-reasoning-directive
@@ -250,31 +252,35 @@
   output and forced tool calls — probed live: forced tool choice yields zero reasoning tokens on
   Anthropic upstreams even when enabled, so the disable mirrors what actually happens
   (https://openrouter.ai/docs/use-cases/reasoning-tokens). Mandatory-reasoning models reject the
-  disable with a 400 and get no directive instead — their forced tool calls get a `max_tokens`
-  floor (see [[forced-tool-call-token-floor]]). `:renderable-default` models (the gpt-5.5/5.6
+  disable with a 400 and get no directive instead. `:renderable-default` models (the gpt-5.5/5.6
   family) never get one either way — they stream summaries under the server default, and an
   explicit enable verifiably suppresses gpt-5.6's reasoning entirely. Other models never get
-  one: the server default rules, and the gate answers false. Reads the body's own `:tool_choice`
-  so it sees the [[required-tool-choice->auto]] downgrade, not the incoming opts."
+  one: the server default rules, and the gate answers false. Independently of the class, a
+  mandatory-reasoning model's forced tool calls get a `max_tokens` floor (see
+  [[forced-tool-call-token-floor]]) — gpt-5.5-pro and gpt-5.4-pro are mandatory but
+  `:renderable-default`, so the floor cannot live inside the `:renderable` branch. Reads the
+  body's own `:tool_choice` so it sees the [[required-tool-choice->auto]] downgrade, not the
+  incoming opts."
   [body {:keys [model reasoning? schema] :or {reasoning? true}}]
-  (if-not (= :renderable (reasoning-class model))
-    body
-    (let [thinking? (and reasoning? (not schema) (not= "required" (:tool_choice body)))]
-      (cond
-        thinking?                    (cond-> (assoc body :reasoning {:enabled true})
-                                       ;; Anthropic rejects an explicit temperature while
-                                       ;; thinking (same interlock as claude.clj); sonnet-4.6
-                                       ;; and opus-4.6 keep :temperature past
-                                       ;; [[model-supports-temperature?]], so drop it here
-                                       (anthropic-model? model) (dissoc :temperature))
+  (let [forced? (or (some? schema) (= "required" (:tool_choice body)))
         ;; Safety net: the mandatory tool call must survive the un-disableable thinking spend
         ;; (theory vs practice in [[forced-tool-call-token-floor]]); only an existing cap is
         ;; raised, and only where a tool call is actually forced.
-        (reasoning-mandatory? model) (cond-> body
-                                       (and (or (some? schema) (= "required" (:tool_choice body)))
-                                            (:max_tokens body))
-                                       (update :max_tokens max forced-tool-call-token-floor))
-        :else                        (assoc body :reasoning {:enabled false})))))
+        body    (cond-> body
+                  (and (reasoning-mandatory? model) forced? (:max_tokens body))
+                  (update :max_tokens max forced-tool-call-token-floor))]
+    (if-not (= :renderable (reasoning-class model))
+      body
+      (let [thinking? (and reasoning? (not forced?))]
+        (cond
+          thinking?                    (cond-> (assoc body :reasoning {:enabled true})
+                                         ;; Anthropic rejects an explicit temperature while
+                                         ;; thinking (same interlock as claude.clj); sonnet-4.6
+                                         ;; and opus-4.6 keep :temperature past
+                                         ;; [[model-supports-temperature?]], so drop it here
+                                         (anthropic-model? model) (dissoc :temperature))
+          (reasoning-mandatory? model) body
+          :else                        (assoc body :reasoning {:enabled false}))))))
 
 (mu/defn openrouter-request-body
   "Build the Chat Completions request body for an LLM request.
