@@ -342,13 +342,15 @@ export function toReferencedEntity({
   return { type, id };
 }
 
-export type GoalCard = Pick<Card, "display" | "visualization_settings">;
+// `Question.card()` hands back the stored card, which may not carry settings yet.
+export type GoalCard = Pick<Card, "display"> &
+  Partial<Pick<Card, "visualization_settings">>;
 
 export function getGoalForeignColumnRefs(
   card: GoalCard,
 ): GoalForeignColumnRef[] {
   return getGoalValues(
-    card.visualization_settings,
+    card.visualization_settings ?? {},
     getDynamicGoalSettingKeys(card.display),
   ).filter(isGoalForeignColumnRef);
 }

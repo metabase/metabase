@@ -453,6 +453,7 @@ function gaugeCard(visualization_settings: VisualizationSettings): GoalCard {
 describe("getReferencedEntities", () => {
   it("returns no referenced entities when there are no settings", () => {
     expect(getReferencedEntities(gaugeCard({}))).toEqual([]);
+    expect(getReferencedEntities({ display: "gauge" })).toEqual([]);
   });
 
   it("returns no referenced entities when there are no foreign references", () => {
