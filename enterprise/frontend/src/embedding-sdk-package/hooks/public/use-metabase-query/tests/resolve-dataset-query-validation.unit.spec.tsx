@@ -1,11 +1,9 @@
-/* eslint-disable import-js/order */
-
-import { createMockStore, resetTestState } from "./setup";
-import { TEST_SCHEMA } from "./fixtures";
-
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 
 import { avg, breakout, filter, orderBy, sum } from "..";
+
+import { TEST_SCHEMA } from "./fixtures";
+import { createMockStore, resetTestState } from "./setup";
 
 beforeEach(resetTestState);
 

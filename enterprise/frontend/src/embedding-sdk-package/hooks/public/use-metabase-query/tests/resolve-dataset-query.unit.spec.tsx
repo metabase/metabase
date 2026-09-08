@@ -1,5 +1,9 @@
-/* eslint-disable import-js/order */
+import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
+import { cardApi } from "metabase/api";
 
+import { avg, breakout, count, filter, orderBy, sum } from "..";
+
+import { TEST_SCHEMA } from "./fixtures";
 import {
   createMockStore,
   mockFetchTableMetadata,
@@ -8,12 +12,6 @@ import {
   resetTestState,
   stagesOf,
 } from "./setup";
-import { TEST_SCHEMA } from "./fixtures";
-
-import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
-import { cardApi } from "metabase/api";
-
-import { avg, breakout, count, filter, orderBy, sum } from "..";
 
 beforeEach(resetTestState);
 
