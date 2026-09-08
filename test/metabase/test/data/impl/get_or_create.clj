@@ -301,8 +301,10 @@
               ;; `*log-exceptions-and-continue?*` is true in production; pinning it false here makes one bad table fail
               ;; the whole test database setup, which is what we want for drivers whose table listing is authoritative.
               ;; Redshift and BigQuery list tables from metadata that lags the tables themselves, so a table dropped by
-              ;; a concurrent CI job can still appear in the listing and then 404 when sync reads it.
-              (binding [sync-util/*log-exceptions-and-continue?* (contains? #{:redshift :bigquery-cloud-sdk} driver)]
+              ;; a concurrent CI job can still appear in the listing and then 404 when sync reads it. Snowflake's listing
+              ;; is accurate, but it shares one `test-data` database across all CI jobs and `with-empty-db` writes into
+              ;; it, so a table another job drops mid-sync fails fingerprinting the same way.
+              (binding [sync-util/*log-exceptions-and-continue?* (contains? #{:redshift :bigquery-cloud-sdk :snowflake} driver)]
                 (sync/sync-database! db {:scan scan}))
               ;; add extra metadata for fields
               (try
