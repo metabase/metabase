@@ -1,5 +1,6 @@
 (ns metabase.collections.schema
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -92,3 +93,42 @@
    [:effective_location {:optional true} :string]
    [:authority_level {:optional true} [:maybe :string]]
    [:dashboard_count {:optional true} [:maybe ms/PositiveInt]]])
+
+(mr/def ::collection
+  "A Collection as selected from the app DB: every column of `:collection`."
+  [:map {:closed true}
+   [:id                   ::lib.schema.id/collection]
+   [:name                 [:or :string :map sequential?]]
+   [:description          [:maybe [:or :string :map sequential?]]]
+   [:archived             :boolean]
+   [:location             :string]
+   [:personal_owner_id    [:maybe ::lib.schema.id/user]]
+   [:slug                 :string]
+   [:namespace            [:maybe [:or :keyword :string]]]
+   [:authority_level      [:maybe [:or :keyword :string]]]
+   [:entity_id            :string]
+   [:created_at           ms/TemporalInstant]
+   [:type                 [:maybe [:or :keyword :string]]]
+   [:is_sample            :boolean]
+   [:archive_operation_id [:maybe :string]]
+   [:archived_directly    [:maybe :boolean]]
+   [:is_remote_synced     [:maybe :boolean]]])
+
+(mr/def ::collection.update
+  "What an update (or insert) of a Collection accepts: every column of `:collection` except `id`, all optional."
+  [:map {:closed true}
+   [:name                 {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:description          {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:archived             {:optional true} [:maybe :boolean]]
+   [:location             {:optional true} [:maybe :string]]
+   [:personal_owner_id    {:optional true} [:maybe ::lib.schema.id/user]]
+   [:slug                 {:optional true} [:maybe :string]]
+   [:namespace            {:optional true} [:maybe [:or :keyword :string]]]
+   [:authority_level      {:optional true} [:maybe [:or :keyword :string]]]
+   [:entity_id            {:optional true} [:maybe :string]]
+   [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
+   [:type                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:is_sample            {:optional true} [:maybe :boolean]]
+   [:archive_operation_id {:optional true} [:maybe :string]]
+   [:archived_directly    {:optional true} [:maybe :boolean]]
+   [:is_remote_synced     {:optional true} [:maybe :boolean]]])

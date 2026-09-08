@@ -2,17 +2,29 @@
   "Application database queries for the data-complexity-score module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
+   [malli.util :as mut]
+   [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.schema :as collections.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.measures.schema :as measures.schema]
+   [metabase.metabot.schema :as metabot.schema]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
-(mu/defn active-field-counts-by-table :- [:sequential [:map {:closed true}
-                                                       [:table_id ms/PositiveInt]
-                                                       [:field_count :int]]]
+(def ^:private ActiveFieldCountsByTable
+  "Rows returned by [[active-field-counts-by-table]]."
+  [:map {:closed true}
+   [:table_id ::lib.schema.id/table]
+   [:field_count :int]])
+
+(mu/defn active-field-counts-by-table :- [:sequential ActiveFieldCountsByTable]
   "Rows of `:table_id` and `:field_count` of active Fields for `table-ids`."
-  [table-ids :- [:seqable ms/PositiveInt]]
+  [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/query {:select   [:table_id [:%count.* :field_count]]
              :from     [:metabase_field]
              :where    [:and
@@ -20,17 +32,17 @@
                         [:in :table_id table-ids]]
              :group-by [:table_id]}))
 
-(mu/defn unarchived-measure-names :- [:sequential (ms/InstanceOf :model/Measure)]
+(mu/defn unarchived-measure-names :- [:sequential (mut/select-keys ::measures.schema/measure [:table_id :name])]
   "The Table ID and name of the unarchived Measures on the Tables with `table-ids`."
-  [table-ids :- [:seqable ms/PositiveInt]]
+  [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Measure :table_id :name] :archived false :table_id [:in table-ids]))
 
-(mu/defn collection :- [:maybe (ms/InstanceOf :model/Collection)]
+(mu/defn collection :- [:maybe ::collections.schema/collection]
   "The Collection with `collection-id`, or nil."
-  [collection-id :- ms/PositiveInt]
+  [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
 
-(mu/defn verified-card-ids :- [:maybe [:set ms/PositiveInt]]
+(mu/defn verified-card-ids :- [:maybe [:set ::lib.schema.id/card]]
   "The IDs of the Cards whose most recent moderation review is verified."
   []
   (t2/select-fn-set :moderated_item_id :model/ModerationReview
@@ -38,44 +50,44 @@
                     :most_recent         true
                     :status              "verified"))
 
-(mu/defn official-collection-ids :- [:maybe [:set ms/PositiveInt]]
+(mu/defn official-collection-ids :- [:maybe [:set ::lib.schema.id/collection]]
   "The IDs of the official Collections."
   []
   (t2/select-fn-set :id :model/Collection :authority_level "official"))
 
-(mu/defn routed-child-database-ids :- [:maybe [:set ms/PositiveInt]]
+(mu/defn routed-child-database-ids :- [:maybe [:set ::lib.schema.id/database]]
   "The IDs of the Databases that are routing destinations."
   []
   (t2/select-fn-set :id :model/Database :router_database_id [:not= nil]))
 
-(mu/defn universe-cards :- [:sequential (ms/InstanceOf :model/Card)]
+(mu/defn universe-cards :- [:sequential (mut/select-keys ::queries.schema/card [:id :name :type :collection_id :card_schema])]
   "The ID, name, type, and Collection of the unarchived metric and model Cards outside the Database with
   `audit-database-id`."
-  [audit-database-id :- ms/PositiveInt]
+  [audit-database-id :- ::lib.schema.id/database]
   (t2/select [:model/Card :id :name :type :collection_id :card_schema]
              :type        [:in ["metric" "model"]]
              :archived    false
              :database_id [:not= audit-database-id]))
 
-(mu/defn universe-tables :- [:sequential (ms/InstanceOf :model/Table)]
+(mu/defn universe-tables :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority])]
   "The scoring columns of the active Tables outside the Database with `audit-database-id`."
-  [audit-database-id :- ms/PositiveInt]
+  [audit-database-id :- ::lib.schema.id/database]
   (t2/select [:model/Table :id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
              :active true
              :db_id  [:not= audit-database-id]))
 
-(mu/defn metabot-by-entity-id :- [:maybe (ms/InstanceOf :model/Metabot)]
+(mu/defn metabot-by-entity-id :- [:maybe ::metabot.schema/metabot]
   "The Metabot with `entity-id`, or nil."
   [entity-id :- :string]
   (t2/select-one :model/Metabot :entity_id entity-id))
 
-(mu/defn latest-score-entry :- [:maybe (ms/InstanceOf :model/DataComplexityScore)]
+(mu/defn latest-score-entry :- [:maybe ::data-complexity-score.schema/data-complexity-score]
   "The most recent DataComplexityScore of `source` for `fingerprint`, or nil."
   [fingerprint :- :string
    source      :- :string]
   (t2/select-one :model/DataComplexityScore :fingerprint fingerprint :source source {:order-by [[:id :desc]]}))
 
-(mu/defn score-entry :- [:maybe (ms/InstanceOf :model/DataComplexityScore)]
+(mu/defn score-entry :- [:maybe ::data-complexity-score.schema/data-complexity-score]
   "The DataComplexityScore with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/DataComplexityScore :id id))
@@ -94,14 +106,11 @@
 
 (mu/defn insert-score! :- ms/PositiveInt
   "Insert `score-entry` and return its ID."
-  [score-entry :- [:map {:closed true}
-                   [:fingerprint :string]
-                   [:source      :string]
-                   [:score_data  :any]]]
+  [score-entry :- (mut/select-keys ::data-complexity-score.schema/data-complexity-score.update [:fingerprint :source :score_data])]
   (t2/insert-returning-pk! :model/DataComplexityScore score-entry))
 
 (mu/defn delete-scores-created-before! :- :int
   "Delete the DataComplexityScores created before `cutoff`, returning the number deleted. `cutoff` is a temporal
   value (e.g. `java.sql.Timestamp`, which is not a `java.time.temporal.Temporal`), so it is typed loosely."
-  [cutoff :- :any]
+  [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/DataComplexityScore {:where [:< :created_at cutoff]}))

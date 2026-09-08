@@ -3,21 +3,22 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.schema :as collections.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn card-types-in-collections :- [:maybe [:set :any]]
+(mu/defn card-types-in-collections :- [:maybe [:set [:or :keyword :string]]]
   "The set of Card types present in the Collections with `collection-ids`."
-  [collection-ids :- [:seqable ms/PositiveInt]]
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select-fn-set :type [:model/Card :type] :collection_id [:in collection-ids]))
 
 (mu/defn published-table-in-collections? :- :boolean
   "Whether a published Table exists in the Collections with `collection-ids`."
-  [collection-ids :- [:seqable ms/PositiveInt]]
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/exists? :model/Table :is_published true :collection_id [:in collection-ids]))
 
-(mu/defn library-collections :- [:sequential (ms/InstanceOf :model/Collection)]
+(mu/defn library-collections :- [:sequential ::collections.schema/collection]
   "The readable Library, Library-data, and Library-metrics Collections, ordered by name."
   []
   (t2/select :model/Collection
@@ -35,7 +36,7 @@
 
 (mu/defn collection-type :- [:maybe :string]
   "The type of the Collection with `collection-id`."
-  [collection-id :- ms/PositiveInt]
+  [collection-id :- ::lib.schema.id/collection]
   (t2/select-one-fn :type [:model/Collection :type] :id collection-id))
 
 (mu/defn unarchived-card-collection-types-reducible

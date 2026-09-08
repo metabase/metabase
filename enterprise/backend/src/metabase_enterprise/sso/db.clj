@@ -2,13 +2,18 @@
   "Application database queries for the sso module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [metabase-enterprise.sso.schema :as sso.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn session-user-email-and-source :- [:maybe [:map {:closed true}
-                                                   [:email :string]
-                                                   [:sso_source [:maybe :string]]]]
+(def ^:private SessionUserEmailAndSource
+  "Rows returned by [[session-user-email-and-source]]."
+  [:map {:closed true}
+   [:email :string]
+   [:sso_source [:maybe [:or :keyword :string]]]])
+
+(mu/defn session-user-email-and-source :- [:maybe SessionUserEmailAndSource]
   "The email and SSO source of the User owning the Session with `session-key-hashed`, or nil."
   [session-key-hashed :- :string]
   (t2/query-one {:select [:u.email :u.sso_source]
@@ -23,20 +28,20 @@
 
 (mu/defn group-ids-by-name :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the PermissionsGroups named one of `group-names`."
-  [group-names :- [:seqable :string]]
+  [group-names :- [:set :string]]
   (t2/select-pks-set :model/PermissionsGroup :name [:in group-names]))
 
 (mu/defn insert-relay-state! :- :int
   "Insert the SsoRelayState `row`, returning the number inserted."
   [row :- [:map {:closed true}
            [:id           :string]
-           [:continue_url [:maybe :string]]
+           [:continue_url [:maybe [:or :string :map sequential?]]]
            [:origin       [:maybe :string]]
            [:embedding    :boolean]
            [:expires_at   ms/TemporalInstant]]]
   (t2/insert! :model/SsoRelayState row))
 
-(mu/defn unexpired-relay-state :- [:maybe (ms/InstanceOf :model/SsoRelayState)]
+(mu/defn unexpired-relay-state :- [:maybe ::sso.schema/sso-relay-state]
   "The SsoRelayState with `hashed-key` expiring after `now`, or nil."
   [hashed-key :- :string
    now        :- ms/TemporalInstant]

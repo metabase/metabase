@@ -3,6 +3,7 @@
    [clojure.math :as math]
    [clojure.string :as str]
    [malli.core :as mc]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.secret]))
@@ -128,3 +129,17 @@
 
 (mr/def ::api-key.update
   (update-schema ::api-key))
+
+(mr/def ::api-key.create
+  "What an insert of a ApiKey accepts: every column of `:api_key` except `id`, all optional, plus `:metabase.api-keys.core/unhashed-key` consumed by the model's hooks."
+  [:map {:closed true}
+   [:user_id                             {:optional true} [:maybe ::lib.schema.id/user]]
+   [:key                                 {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:key_prefix                          {:optional true} [:maybe :string]]
+   [:creator_id                          {:optional true} [:maybe ::lib.schema.id/user]]
+   [:created_at                          {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at                          {:optional true} [:maybe ms/TemporalInstant]]
+   [:name                                {:optional true} [:maybe :string]]
+   [:updated_by_id                       {:optional true} [:maybe ms/PositiveInt]]
+   [:scope                               {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:metabase.api-keys.core/unhashed-key {:optional true} ::key.unhashed-or-secret]])

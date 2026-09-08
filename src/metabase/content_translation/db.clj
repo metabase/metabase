@@ -2,16 +2,16 @@
   "Application database queries for the content translation module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.content-translation.schema :as content-translation.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn translations-for-locale :- [:sequential (ms/InstanceOf :model/ContentTranslation)]
+(mu/defn translations-for-locale :- [:sequential ::content-translation.schema/content-translation]
   "The ContentTranslations for `locale`, ordered by message id."
   [locale :- :string]
   (t2/select :model/ContentTranslation :locale locale {:order-by [:msgid]}))
 
-(mu/defn all-translations :- [:sequential (ms/InstanceOf :model/ContentTranslation)]
+(mu/defn all-translations :- [:sequential ::content-translation.schema/content-translation]
   "Every ContentTranslation, ordered by locale and message id."
   []
   (t2/select :model/ContentTranslation {:order-by [:locale :msgid]}))

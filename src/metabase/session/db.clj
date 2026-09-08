@@ -2,9 +2,13 @@
   "Application database queries for the session module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.db :as auth-identity.db]
+   [metabase.auth-identity.schema :as auth-identity.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.tracing.core :as tracing]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -18,7 +22,7 @@
 
 (mu/defn delete-sessions-for-user! :- :int
   "Delete every Session of the User with `user-id`."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/delete! :model/Session :user_id user-id))
 
 (mu/defn delete-expired-sessions! :- :int
@@ -40,41 +44,41 @@
     (tracing/with-span :tasks "task.session-cleanup.delete" {:db/statement (tracing/best-effort-sanitize-sql hsql)}
       (t2/query-one hsql))))
 
-(mu/defn auth-identity-for-provider :- [:maybe (ms/InstanceOf :model/AuthIdentity)]
+(mu/defn auth-identity-for-provider :- [:maybe ms/PositiveInt]
   "The AuthIdentity of the User with `user-id` at `provider`, or nil. See `metabase.auth-identity.db/auth-identity`,
   which owns the AuthIdentity table."
-  [user-id  :- ms/PositiveInt
+  [user-id  :- ::lib.schema.id/user
    provider :- :string]
   (auth-identity.db/auth-identity user-id provider))
 
 (mu/defn auth-identity-exists? :- :boolean
   "Whether the User with `user-id` has an AuthIdentity at `provider`."
-  [user-id  :- ms/PositiveInt
+  [user-id  :- ::lib.schema.id/user
    provider :- :string]
   (auth-identity.db/auth-identity-exists? user-id provider))
 
 (mu/defn set-auth-identity-credentials! :- :int
   "Set the `credentials` of the AuthIdentity with `auth-identity-id`."
   [auth-identity-id :- ms/PositiveInt
-   credentials      :- :any]
+   credentials      :- [:maybe :map]]
   (t2/update! :model/AuthIdentity auth-identity-id {:credentials credentials}))
 
-(mu/defn auth-identity-provider :- [:maybe (ms/InstanceOf :model/AuthIdentity)]
+(mu/defn auth-identity-provider :- [:maybe (mut/select-keys ::auth-identity.schema/auth-identity [:provider])]
   "The `:provider` of the AuthIdentity with `auth-identity-id`, or nil."
   [auth-identity-id :- ms/PositiveInt]
   (t2/select-one [:model/AuthIdentity :provider] :id auth-identity-id))
 
-(mu/defn user-by-email :- [:maybe (ms/InstanceOf :model/User)]
+(mu/defn user-by-email :- [:maybe (mut/select-keys ::users.schema/user [:id :sso_source :is_active])]
   "The id, SSO source, and active flag of the User whose email matches `email` case-insensitively, or nil."
   [email :- :string]
   (t2/select-one [:model/User :id :sso_source :is_active] :%lower.email (u/lower-case-en email)))
 
-(mu/defn user :- [:maybe (ms/InstanceOf :model/User)]
+(mu/defn user :- [:maybe ::users.schema/user]
   "The User with `user-id`, or nil."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/User :id user-id))
 
-(mu/defn user-login-status :- [:maybe (ms/InstanceOf :model/User)]
+(mu/defn user-login-status :- [:maybe (mut/select-keys ::users.schema/user [:id :is_active :last_login :tenant_id])]
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))

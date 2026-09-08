@@ -4,7 +4,8 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def ::dashcard
   [:map
@@ -24,3 +25,107 @@
    [:id         {:optional true} ::lib.schema.id/dashboard]
    [:parameters {:optional true} [:maybe ::parameters]]
    [:dashcards  {:optional true} [:maybe [:sequential ::dashcard]]]])
+
+(mr/def ::dashboard.update
+  "What an update (or insert) of a Dashboard accepts: every column of `:report_dashboard` except `id`, all optional."
+  [:map {:closed true}
+   [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:name                    {:optional true} [:maybe :string]]
+   [:description             {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
+   [:parameters              {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:points_of_interest      {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:caveats                 {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:show_in_getting_started {:optional true} [:maybe :boolean]]
+   [:public_uuid             {:optional true} [:maybe [:or :string uuid?]]]
+   [:made_public_by_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:enable_embedding        {:optional true} [:maybe :boolean]]
+   [:embedding_params        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:archived                {:optional true} [:maybe :boolean]]
+   [:position                {:optional true} [:maybe :int]]
+   [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:collection_position     {:optional true} [:maybe :int]]
+   [:cache_ttl               {:optional true} [:maybe :int]]
+   [:entity_id               {:optional true} [:maybe :string]]
+   [:auto_apply_filters      {:optional true} [:maybe :boolean]]
+   [:width                   {:optional true} [:maybe :string]]
+   [:initially_published_at  {:optional true} [:maybe ms/TemporalInstant]]
+   [:view_count              {:optional true} [:maybe :int]]
+   [:archived_directly       {:optional true} [:maybe :boolean]]
+   [:last_viewed_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:embedding_type          {:optional true} [:maybe [:or :keyword :string]]]
+   [:public_uuid_prefix      {:optional true} [:maybe :string]]])
+
+(mr/def ::dashboard-card
+  "A DashboardCard as selected from the app DB: every column of `:report_dashboardcard`."
+  [:map {:closed true}
+   [:id                     ::lib.schema.id/dashcard]
+   [:created_at             ms/TemporalInstant]
+   [:updated_at             ms/TemporalInstant]
+   [:size_x                 :int]
+   [:size_y                 :int]
+   [:row                    :int]
+   [:col                    :int]
+   [:card_id                [:maybe ::lib.schema.id/card]]
+   [:dashboard_id           ::lib.schema.id/dashboard]
+   [:parameter_mappings     [:or :string :map sequential?]]
+   [:visualization_settings [:or :string :map sequential?]]
+   [:entity_id              :string]
+   [:action_id              [:maybe ::lib.schema.id/action]]
+   [:dashboard_tab_id       [:maybe ms/PositiveInt]]
+   [:inline_parameters      [:maybe [:or :string :map sequential?]]]])
+
+(mr/def ::dashboard-card.update
+  "What an update (or insert) of a DashboardCard accepts: every column of `:report_dashboardcard` except `id`, all optional."
+  [:map {:closed true}
+   [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at             {:optional true} [:maybe ms/TemporalInstant]]
+   [:size_x                 {:optional true} [:maybe :int]]
+   [:size_y                 {:optional true} [:maybe :int]]
+   [:row                    {:optional true} [:maybe :int]]
+   [:col                    {:optional true} [:maybe :int]]
+   [:card_id                {:optional true} [:maybe ::lib.schema.id/card]]
+   [:dashboard_id           {:optional true} [:maybe ::lib.schema.id/dashboard]]
+   [:parameter_mappings     {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:visualization_settings {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:entity_id              {:optional true} [:maybe :string]]
+   [:action_id              {:optional true} [:maybe ::lib.schema.id/action]]
+   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:inline_parameters      {:optional true} [:maybe [:or :string :map sequential?]]]])
+
+(mr/def ::dashboard-card-series
+  "A DashboardCardSeries as selected from the app DB: every column of `:dashboardcard_series`."
+  [:map {:closed true}
+   [:id               ms/PositiveInt]
+   [:dashboardcard_id ::lib.schema.id/dashcard]
+   [:card_id          ::lib.schema.id/card]
+   [:position         :int]])
+
+(mr/def ::dashboard-card-series.update
+  "What an update (or insert) of a DashboardCardSeries accepts: every column of `:dashboardcard_series` except `id`, all optional."
+  [:map {:closed true}
+   [:dashboardcard_id {:optional true} [:maybe ::lib.schema.id/dashcard]]
+   [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]
+   [:position         {:optional true} [:maybe :int]]])
+
+(mr/def ::dashboard-tab
+  "A DashboardTab as selected from the app DB: every column of `:dashboard_tab`."
+  [:map {:closed true}
+   [:id           ms/PositiveInt]
+   [:dashboard_id ::lib.schema.id/dashboard]
+   [:name         [:or :string :map sequential?]]
+   [:position     :int]
+   [:entity_id    :string]
+   [:created_at   ms/TemporalInstant]
+   [:updated_at   ms/TemporalInstant]])
+
+(mr/def ::dashboard-tab.update
+  "What an update (or insert) of a DashboardTab accepts: every column of `:dashboard_tab` except `id`, all optional."
+  [:map {:closed true}
+   [:dashboard_id {:optional true} [:maybe ::lib.schema.id/dashboard]]
+   [:name         {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:position     {:optional true} [:maybe :int]]
+   [:entity_id    {:optional true} [:maybe :string]]
+   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])

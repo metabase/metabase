@@ -3,8 +3,10 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [java-time.api :as t]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.view-log.schema :as view-log.schema]
    [toucan2.core :as t2]))
 
 (defn- increment-view-counts-of-model!
@@ -43,32 +45,12 @@
 
 (mu/defn insert-view-logs! :- :int
   "Insert the ViewLog rows `views`, returning the number inserted."
-  [views :- [:seqable [:map {:closed true}
-                       [:id                          {:optional true} :any]
-                       [:user_id                     {:optional true} :any]
-                       [:model                       {:optional true} :any]
-                       [:model_id                    {:optional true} :any]
-                       [:timestamp                   {:optional true} :any]
-                       [:metadata                    {:optional true} :any]
-                       [:has_access                  {:optional true} :any]
-                       [:context                     {:optional true} :any]
-                       [:embedding_client            {:optional true} :any]
-                       [:embedding_sdk_version       {:optional true} :any]
-                       [:auth_method                 {:optional true} :any]
-                       [:tenant_id                   {:optional true} :any]
-                       [:embedding_hostname          {:optional true} :any]
-                       [:embedding_path              {:optional true} :any]
-                       [:user_agent                  {:optional true} :any]
-                       [:ip_address                  {:optional true} :any]
-                       [:sanitized_user_agent        {:optional true} :any]
-                       [:embedding_route             {:optional true} :any]
-                       [:metabase_version            {:optional true} :any]
-                       [:embedding_client_identifier {:optional true} :any]]]]
+  [views :- [:sequential ::view-log.schema/view-log.update]]
   (t2/insert! :model/ViewLog views))
 
 (mu/defn card-type :- [:maybe :keyword]
   "The `:type` of the Card with `card-id`, or nil."
-  [card-id :- ms/PositiveInt]
+  [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :type :model/Card :id card-id))
 
 (mu/defn update-dashboards-last-viewed-at! :- [:sequential :int]

@@ -4,9 +4,13 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
+   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
 (defn- format-union
@@ -35,7 +39,7 @@
 (mu/defn remapped-field :- [:maybe [:map {:closed true} [:id ms/PositiveInt] [:mapping_type :string]]]
   "The id and mapping-type of the Field that `field-id` remaps to via an explicit Field->Field Dimension, or —
   when `allow-implicit-uuid-remapping?` — an implicit FK->PK->Name or PK->Name mapping, or nil."
-  [field-id                       :- ms/PositiveInt
+  [field-id                       :- ::lib.schema.id/field
    allow-implicit-uuid-remapping? :- :boolean]
   (t2/query-one
    {:select [[:mapping.id :id] [:mapping.mapping_type :mapping_type]]
@@ -64,54 +68,54 @@
               :mapping]]
     :limit  1}))
 
-(mu/defn field :- [:maybe (ms/InstanceOf :model/Field)]
+(mu/defn field :- [:maybe ::warehouse-schema.schema/field]
   "The Field with `field-id`, or nil."
-  [field-id :- ms/PositiveInt]
+  [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
 
-(mu/defn fields :- [:sequential (ms/InstanceOf :model/Field)]
+(mu/defn fields :- [:sequential ::warehouse-schema.schema/field]
   "The Fields with `field-ids`."
-  [field-ids :- [:seqable ms/PositiveInt]]
+  [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids]))
 
-(mu/defn fields-fk-info :- [:sequential (ms/InstanceOf :model/Field)]
+(mu/defn fields-fk-info :- [:sequential (mut/select-keys ::warehouse-schema.schema/field [:id :fk_target_field_id :semantic_type])]
   "The id, FK target, and semantic type of the Fields with `field-ids`."
-  [field-ids :- [:seqable ms/PositiveInt]]
+  [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-ids]))
 
-(mu/defn field-fk-target-field-id :- [:maybe ms/PositiveInt]
+(mu/defn field-fk-target-field-id :- [:maybe ::lib.schema.id/field]
   "The FK target Field id of the Field with `field-id`, or nil."
-  [field-id :- ms/PositiveInt]
+  [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :fk_target_field_id :model/Field field-id))
 
 (mu/defn field-base-type :- [:maybe :keyword]
   "The base type of the Field with `field-id`, or nil."
-  [field-id :- ms/PositiveInt]
+  [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :base_type :model/Field :id field-id))
 
 (mu/defn field-name :- [:maybe :string]
   "The name of the Field with `field-id`, or nil."
-  [field-id :- ms/PositiveInt]
+  [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :name :model/Field :id field-id))
 
 (mu/defn full-field-values-exist? :- :boolean
   "Whether complete, non-remapped FieldValues of type `full` exist for the Field with `field-id`."
-  [field-id :- ms/PositiveInt]
+  [field-id :- ::lib.schema.id/field]
   (t2/exists? :model/FieldValues
               :field_id field-id, :values [:not= nil], :human_readable_values nil, :has_more_values false
               :type "full"))
 
 (mu/defn advanced-field-values-exist? :- :boolean
   "Whether complete, non-remapped FieldValues of type `advanced` with `hash-key` exist for the Field with `field-id`."
-  [field-id :- ms/PositiveInt
+  [field-id :- ::lib.schema.id/field
    hash-key :- :string]
   (t2/exists? :model/FieldValues
               :field_id field-id, :values [:not= nil], :human_readable_values nil, :has_more_values false
               :type "advanced", :hash_key hash-key))
 
-(mu/defn card :- [:maybe (ms/InstanceOf :model/Card)]
+(mu/defn card :- [:maybe ::queries.schema/card]
   "The Card with `card-id`, or nil."
-  [card-id :- ms/PositiveInt]
+  [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
 (mu/defn delete-field-values! :- :int
@@ -119,43 +123,47 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/FieldValues :id id))
 
-(mu/defn advanced-field-values :- [:maybe (ms/InstanceOf :model/FieldValues)]
+(mu/defn advanced-field-values :- [:maybe ::warehouse-schema.schema/field-values]
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, or nil."
-  [field-id :- ms/PositiveInt
+  [field-id :- ::lib.schema.id/field
    hash-key :- :string]
   (t2/select-one :model/FieldValues :field_id field-id, :type :advanced, :hash_key hash-key))
 
-(mu/defn find-or-insert-advanced-field-values! :- (ms/InstanceOf :model/FieldValues)
+(mu/defn find-or-insert-advanced-field-values! :- (mut/optional-keys ::warehouse-schema.schema/field-values)
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, inserting one built by calling
   `insert-fn` if none exists yet."
-  [field-id  :- ms/PositiveInt
+  [field-id  :- ::lib.schema.id/field
    hash-key  :- :string
    insert-fn :- fn?]
   (mdb/select-or-insert! :model/FieldValues {:field_id field-id, :type :advanced, :hash_key hash-key} insert-fn))
 
-(mu/defn active-name-fields-for-tables :- [:sequential (ms/InstanceOf :model/Field)]
+(mu/defn active-name-fields-for-tables :- [:sequential ::warehouse-schema.schema/field]
   "The `columns` of the active `:type/Name` Fields of the Tables with `table-ids`."
   [columns   :- [:sequential :keyword]
-   table-ids :- [:seqable ms/PositiveInt]]
+   table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select (into [:model/Field] columns)
              :table_id      [:in table-ids]
              :semantic_type (mdb/isa :type/Name)
              :active        true))
 
-(mu/defn fields-with-columns :- [:sequential (ms/InstanceOf :model/Field)]
+(mu/defn fields-with-columns :- [:sequential ::warehouse-schema.schema/field]
   "The `columns` of the Fields with `field-ids`."
   [columns   :- [:sequential :keyword]
-   field-ids :- [:seqable ms/PositiveInt]]
+   field-ids :- [:set ::lib.schema.id/field]]
   (t2/select (into [:model/Field] columns) :id [:in field-ids]))
 
-(mu/defn fk-relationships-for-database :- [:sequential [:map {:closed true}
-                                                        [:f1 ms/PositiveInt]
-                                                        [:t1 ms/PositiveInt]
-                                                        [:f2 ms/PositiveInt]
-                                                        [:t2 ms/PositiveInt]]]
+(def ^:private FkRelationshipsForDatabase
+  "Rows returned by [[fk-relationships-for-database]]."
+  [:map {:closed true}
+   [:f1 ms/PositiveInt]
+   [:t1 ms/PositiveInt]
+   [:f2 ms/PositiveInt]
+   [:t2 ms/PositiveInt]])
+
+(mu/defn fk-relationships-for-database :- [:sequential FkRelationshipsForDatabase]
   "Rows describing FK -> PK Field relationships (`:f1`/`:t1` FK Field/Table ids, `:f2`/`:t2` PK Field/Table ids)
   for active Fields in the Database with `database-id`."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (mdb/query {:select    [[:fk-field.id :f1]
                           [:fk-table.id :t1]
                           [:pk-field.id :f2]

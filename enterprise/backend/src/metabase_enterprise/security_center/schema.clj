@@ -1,7 +1,8 @@
 (ns metabase-enterprise.security-center.schema
   "Malli schemas for the Security Center module."
   (:require
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def ::advisory-id
   [:string {:min 1}])
@@ -37,3 +38,46 @@
   "HoneySQL query keyed by dialect. nil means affects all instances.
    Stored as EDN to preserve keywords that HoneySQL requires for identifiers/operators."
   [:maybe [:map-of :keyword :map]])
+
+(mr/def ::security-advisory
+  "A SecurityAdvisory as selected from the app DB: every column of `:security_advisory`."
+  [:map {:closed true}
+   [:id                ms/PositiveInt]
+   [:advisory_id       :string]
+   [:severity          [:or :keyword :string]]
+   [:title             :string]
+   [:description       [:or :string :map sequential?]]
+   [:advisory_url      [:maybe :string]]
+   [:remediation       [:or :string :map sequential?]]
+   [:affected_versions [:or :string :map sequential?]]
+   [:matching_query    [:maybe [:or :string :map sequential?]]]
+   [:published_at      ms/TemporalInstant]
+   [:fetched_at        ms/TemporalInstant]
+   [:match_status      [:or :keyword :string]]
+   [:last_evaluated_at [:maybe ms/TemporalInstant]]
+   [:acknowledged_by   [:maybe :int]]
+   [:acknowledged_at   [:maybe ms/TemporalInstant]]
+   [:last_notified_at  [:maybe ms/TemporalInstant]]
+   [:updated_at        ms/TemporalInstant]
+   [:download_jar_urls [:maybe [:or :string :map sequential?]]]])
+
+(mr/def ::security-advisory.update
+  "What an update (or insert) of a SecurityAdvisory accepts: every column of `:security_advisory` except `id`, all optional."
+  [:map {:closed true}
+   [:advisory_id       {:optional true} [:maybe :string]]
+   [:severity          {:optional true} [:maybe [:or :keyword :string]]]
+   [:title             {:optional true} [:maybe :string]]
+   [:description       {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:advisory_url      {:optional true} [:maybe :string]]
+   [:remediation       {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:affected_versions {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:matching_query    {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:published_at      {:optional true} [:maybe ms/TemporalInstant]]
+   [:fetched_at        {:optional true} [:maybe ms/TemporalInstant]]
+   [:match_status      {:optional true} [:maybe [:or :keyword :string]]]
+   [:last_evaluated_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:acknowledged_by   {:optional true} [:maybe :int]]
+   [:acknowledged_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_notified_at  {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]
+   [:download_jar_urls {:optional true} [:maybe [:or :string :map sequential?]]]])

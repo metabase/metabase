@@ -3,11 +3,20 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.app-db.core :as app-db]
+   [metabase.cache.schema :as cache.schema]
+   [metabase.collections.schema :as collections.schema]
+   [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.documents.schema :as documents.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.users.schema :as users.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mu/defn first-user-date-joined :- [:maybe ms/TemporalInstant]
@@ -20,41 +29,41 @@
   []
   (t2/exists? :model/Database, :is_sample true))
 
-(mu/defn sample-database-id :- [:maybe ms/PositiveInt]
+(mu/defn sample-database-id :- [:maybe ::lib.schema.id/database]
   "The id of the sample Database, or nil."
   []
   (t2/select-one-pk :model/Database :is_sample true))
 
-(mu/defn personal-user-stats-columns :- [:sequential (ms/InstanceOf :model/User)]
+(mu/defn personal-user-stats-columns :- [:sequential (mut/select-keys ::users.schema/user [:is_active :is_superuser :last_login :sso_source])]
   "The active, superuser, last login, and SSO source of every personal User."
   []
   (t2/select [:model/User :is_active :is_superuser :last_login :sso_source] :type :personal))
 
-(mu/defn document-archived-flags :- [:sequential (ms/InstanceOf :model/Document)]
+(mu/defn document-archived-flags :- [:sequential (mut/select-keys ::documents.schema/document [:archived])]
   "The archived flag of every Document."
   []
   (t2/select [:model/Document :archived]))
 
-(mu/defn collection-by-type :- [:maybe (ms/InstanceOf :model/Collection)]
+(mu/defn collection-by-type :- [:maybe (mut/select-keys ::collections.schema/collection [:id :location])]
   "The id and location of a Collection of `collection-type`, or nil."
   [collection-type :- :string]
   (t2/select-one [:model/Collection :id :location] :type collection-type))
 
-(mu/defn descendant-collection-ids :- [:maybe [:set ms/PositiveInt]]
+(mu/defn descendant-collection-ids :- [:maybe [:set ::lib.schema.id/collection]]
   "The ids of the Collections whose location starts with `location-prefix`, or nil."
   [location-prefix :- :string]
   (t2/select-pks-set :model/Collection :location [:like (str location-prefix "%")]))
 
 (mu/defn published-table-count-in-collections :- ms/IntGreaterThanOrEqualToZero
   "The number of published Tables in the Collections with `collection-ids`."
-  [collection-ids :- [:seqable ms/PositiveInt]]
+  [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/count :model/Table {:where [:and
                                   [:= :is_published true]
                                   [:in :collection_id collection-ids]]}))
 
 (mu/defn unarchived-metric-count-in-collections :- ms/IntGreaterThanOrEqualToZero
   "The number of unarchived metric Cards in the Collections with `collection-ids`."
-  [collection-ids :- [:seqable ms/PositiveInt]]
+  [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/count :model/Card {:where [:and
                                  [:= :type "metric"]
                                  [:= :archived false]
@@ -65,7 +74,7 @@
   []
   (t2/count :model/PermissionsGroup))
 
-(mu/defn dashboard-stats-columns :- [:sequential (ms/InstanceOf :model/Dashboard)]
+(mu/defn dashboard-stats-columns :- [:sequential (mut/select-keys ::dashboards.schema/dashboard [:creator_id :public_uuid :parameters :enable_embedding :embedding_params])]
   "The creator, public uuid, parameters, and embedding columns of the non-internal Dashboards."
   []
   (t2/select [:model/Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params]
@@ -86,21 +95,21 @@
                       :where    [(if alerts? :not= :=) :pulse.alert_condition nil]}
                left-join? (assoc :left-join [:pulse [:= :pulse.id :pulse_id]]))))
 
-(mu/defn pulse-channel-frequencies-by-column :- [:sequential (ms/InstanceOf :model/PulseChannel)]
+(mu/defn pulse-channel-frequencies-by-column :- [:sequential ms/PositiveInt]
   "The distinct `column` values (as `:k`) and their `:count` among the PulseChannels of alerts when `alerts?`, or of
   pulses otherwise."
   [column  :- :keyword
    alerts? :- :boolean]
   (notification-frequencies-by-column* :model/PulseChannel column alerts? true))
 
-(mu/defn pulse-frequencies-by-column :- [:sequential (ms/InstanceOf :model/Pulse)]
+(mu/defn pulse-frequencies-by-column :- [:sequential ::lib.schema.id/pulse]
   "The distinct `column` values (as `:k`) and their `:count` among the Pulses of alerts when `alerts?`, or of pulses
   otherwise."
   [column  :- :keyword
    alerts? :- :boolean]
   (notification-frequencies-by-column* :model/Pulse column alerts? false))
 
-(mu/defn pulse-card-frequencies-by-column :- [:sequential (ms/InstanceOf :model/PulseCard)]
+(mu/defn pulse-card-frequencies-by-column :- [:sequential ms/PositiveInt]
   "The distinct `column` values (as `:k`) and their `:count` among the PulseCards of alerts when `alerts?`, or of
   pulses otherwise."
   [column  :- :keyword
@@ -145,20 +154,24 @@
   []
   (t2/count :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)}))
 
-(mu/defn card-collection-ids :- [:sequential (ms/InstanceOf :model/Card)]
+(mu/defn card-collection-ids :- [:sequential (mut/select-keys ::queries.schema/card [:collection_id :card_schema])]
   "The Collection id and schema of the non-internal Cards."
   []
   (t2/select [:model/Card :collection_id :card_schema] {:where [:and (mi/exclude-internal-content-hsql :model/Card)]}))
 
-(mu/defn database-stats-columns :- [:sequential (ms/InstanceOf :model/Database)]
+(mu/defn database-stats-columns :- [:sequential (mut/select-keys ::warehouses.schema/database [:is_full_sync :engine :dbms_version])]
   "The sync, engine, and DBMS version of the non-internal Databases."
   []
   (t2/select [:model/Database :is_full_sync :engine :dbms_version]
              {:where (mi/exclude-internal-content-hsql :model/Database)}))
 
-(mu/defn table-database-and-schema :- [:sequential [:map {:closed true}
-                                                    [:db_id  [:maybe ms/PositiveInt]]
-                                                    [:schema [:maybe :string]]]]
+(def ^:private TableDatabaseAndSchema
+  "Rows returned by [[table-database-and-schema]]."
+  [:map {:closed true}
+   [:db_id  [:maybe ::lib.schema.id/database]]
+   [:schema [:maybe :string]]])
+
+(mu/defn table-database-and-schema :- [:sequential TableDatabaseAndSchema]
   "The Database id and schema of the Tables of the non-internal Databases."
   []
   (t2/query {:select [:t.db_id :t.schema]
@@ -166,8 +179,12 @@
              :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
              :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)}))
 
-(mu/defn field-table-ids :- [:sequential [:map {:closed true}
-                                          [:table_id [:maybe ms/PositiveInt]]]]
+(def ^:private FieldTableId
+  "Rows returned by [[field-table-ids]]."
+  [:map {:closed true}
+   [:table_id [:maybe ::lib.schema.id/table]]])
+
+(mu/defn field-table-ids :- [:sequential FieldTableId]
   "The Table id of the Fields of the non-internal Databases."
   []
   (t2/query {:select [:f.table_id]
@@ -238,33 +255,37 @@
       ")"
       "SELECT q1.*, q2.* FROM query_stats_1 q1, query_stats_2 q2;"])))
 
-(mu/defn execution-metrics :- [:maybe [:map {:closed true}
-                                       [:executions                  :int]
-                                       ;; SUM() over an empty query_execution table is SQL NULL, not 0 -- unlike
-                                       ;; the other columns below, these two aren't wrapped in COALESCE
-                                       [:by_status__completed        [:maybe :int]]
-                                       [:by_status__failed           [:maybe :int]]
-                                       [:num_by_latency__0           :int]
-                                       [:num_by_latency__lt_1        :int]
-                                       [:num_by_latency__1_10        :int]
-                                       [:num_by_latency__11_50       :int]
-                                       [:num_by_latency__51_250      :int]
-                                       [:num_by_latency__251_1000    :int]
-                                       [:num_by_latency__1001_10000  :int]
-                                       [:num_by_latency__10000_plus  :int]
-                                       [:num_per_user__0             :int]
-                                       [:num_per_user__lt_1          :int]
-                                       [:num_per_user__1_10          :int]
-                                       [:num_per_user__11_50         :int]
-                                       [:num_per_user__51_250        :int]
-                                       [:num_per_user__251_1000      :int]
-                                       [:num_per_user__1001_10000    :int]
-                                       [:num_per_user__10000_plus    :int]]]
+(def ^:private ExecutionMetric
+  "Rows returned by [[execution-metrics]]."
+  [:map {:closed true}
+   [:executions                  :int]
+   ;; SUM() over an empty query_execution table is SQL NULL, not 0 -- unlike
+   ;; the other columns below, these two aren't wrapped in COALESCE
+   [:by_status__completed        [:maybe :int]]
+   [:by_status__failed           [:maybe :int]]
+   [:num_by_latency__0           :int]
+   [:num_by_latency__lt_1        :int]
+   [:num_by_latency__1_10        :int]
+   [:num_by_latency__11_50       :int]
+   [:num_by_latency__51_250      :int]
+   [:num_by_latency__251_1000    :int]
+   [:num_by_latency__1001_10000  :int]
+   [:num_by_latency__10000_plus  :int]
+   [:num_per_user__0             :int]
+   [:num_per_user__lt_1          :int]
+   [:num_per_user__1_10          :int]
+   [:num_per_user__11_50         :int]
+   [:num_per_user__51_250        :int]
+   [:num_per_user__251_1000      :int]
+   [:num_per_user__1001_10000    :int]
+   [:num_per_user__10000_plus    :int]])
+
+(mu/defn execution-metrics :- [:maybe ExecutionMetric]
   "The execution statistics over the last 30 days of QueryExecutions."
   []
   (first (t2/query (execution-metrics-sql))))
 
-(mu/defn query-cache-stats :- [:maybe (ms/InstanceOf :model/QueryCache)]
+(mu/defn query-cache-stats :- [:maybe (mut/optional-keys (mut/open-schema ::cache.schema/query-cache))]
   "The average result `:length` and `:count` of the QueryCache entries."
   []
   (t2/select-one [:model/QueryCache [[:avg [:length :results]] :length] [:%count.* :count]]))
@@ -280,7 +301,7 @@
 
 (mu/defn query-execution-ids-excluding-database :- [:maybe [:set ms/PositiveInt]]
   "Up to `limit` ids of QueryExecutions not run against the Database with `database-id`."
-  [database-id :- [:maybe ms/PositiveInt]
+  [database-id :- [:maybe ::lib.schema.id/database]
    limit       :- ms/PositiveInt]
   (t2/select-fn-set :id :model/QueryExecution
                     {:where [:or
@@ -330,7 +351,7 @@
 
 (mu/defn database-engines-among :- [:maybe [:set :keyword]]
   "The set of engines of the Databases whose engine is one of `engine-names`."
-  [engine-names :- [:seqable :string]]
+  [engine-names :- [:sequential :string]]
   (t2/select-fn-set :engine :model/Database {:where [:in :engine engine-names]}))
 
 (mu/defn embedded-dashboard-exists? :- :boolean
@@ -403,7 +424,7 @@
   []
   (t2/exists? :model/Collection :namespace "snippets"))
 
-(mu/defn starburst-database-details :- [:maybe [:set :any]]
+(mu/defn starburst-database-details :- [:maybe [:set [:maybe :map]]]
   "The connection details of the Starburst Databases."
   []
   (t2/select-fn-set :details :model/Database :engine "starburst"))

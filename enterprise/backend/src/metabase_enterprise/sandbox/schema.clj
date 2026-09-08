@@ -35,3 +35,11 @@
 (mr/def ::sandbox
   [:map
    [:id ::lib.schema.id/sandbox]])
+
+(mr/def ::sandbox.update
+  "What an update (or insert) of a Sandbox accepts: every column of `:sandboxes` except `id`, all optional."
+  [:map {:closed true}
+   [:group_id             {:optional true} [:maybe ms/PositiveInt]]
+   [:table_id             {:optional true} [:maybe ::lib.schema.id/table]]
+   [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
+   [:attribute_remappings {:optional true} [:maybe [:or :string :map sequential?]]]])

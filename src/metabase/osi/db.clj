@@ -3,17 +3,18 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.osi.schema :as osi.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn ai-context :- [:maybe (ms/InstanceOf :model/OsiAiContext)]
+(mu/defn ai-context :- [:maybe ::osi.schema/osi-ai-context]
   "The OsiAiContext of the entity with `entity-type` and `entity-local-id`, or nil."
   [entity-type      :- :string
    entity-local-id  :- ms/PositiveInt]
   (t2/select-one :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id))
 
-(mu/defn ai-contexts-page :- [:sequential (ms/InstanceOf :model/OsiAiContext)]
+(mu/defn ai-contexts-page :- [:sequential ::osi.schema/osi-ai-context]
   "Up to `limit` OsiAiContexts from `offset`, ordered by entity type and local id."
   [limit  :- ms/PositiveInt
    offset :- ms/IntGreaterThanOrEqualToZero]

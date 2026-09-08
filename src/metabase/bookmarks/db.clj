@@ -2,8 +2,11 @@
   "Application database queries for the bookmarks module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
+   [metabase.bookmarks.schema :as bookmarks.schema]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -11,110 +14,106 @@
 
 (mu/defn card-bookmark-exists? :- :boolean
   "Whether the User with `user-id` has a CardBookmark for the Card with `card-id`."
-  [card-id :- ms/PositiveInt
-   user-id :- ms/PositiveInt]
+  [card-id :- ::lib.schema.id/card
+   user-id :- ::lib.schema.id/user]
   (t2/exists? :model/CardBookmark :card_id card-id :user_id user-id))
 
 (mu/defn dashboard-bookmark-exists? :- :boolean
   "Whether the User with `user-id` has a DashboardBookmark for the Dashboard with `dashboard-id`."
-  [dashboard-id :- ms/PositiveInt
-   user-id      :- ms/PositiveInt]
+  [dashboard-id :- ::lib.schema.id/dashboard
+   user-id      :- ::lib.schema.id/user]
   (t2/exists? :model/DashboardBookmark :dashboard_id dashboard-id :user_id user-id))
 
 (mu/defn collection-bookmark-exists? :- :boolean
   "Whether the User with `user-id` has a CollectionBookmark for the Collection with `collection-id`."
-  [collection-id :- ms/PositiveInt
-   user-id       :- ms/PositiveInt]
+  [collection-id :- ::lib.schema.id/collection
+   user-id       :- ::lib.schema.id/user]
   (t2/exists? :model/CollectionBookmark :collection_id collection-id :user_id user-id))
 
 (mu/defn document-bookmark-exists? :- :boolean
   "Whether the User with `user-id` has a DocumentBookmark for the Document with `document-id`."
   [document-id :- ms/PositiveInt
-   user-id     :- ms/PositiveInt]
+   user-id     :- ::lib.schema.id/user]
   (t2/exists? :model/DocumentBookmark :document_id document-id :user_id user-id))
 
 (mu/defn exploration-bookmark-exists? :- :boolean
   "Whether the User with `user-id` has an ExplorationBookmark for the Exploration with `exploration-id`."
   [exploration-id :- ms/PositiveInt
-   user-id        :- ms/PositiveInt]
+   user-id        :- ::lib.schema.id/user]
   (t2/exists? :model/ExplorationBookmark :exploration_id exploration-id :user_id user-id))
 
-(mu/defn insert-card-bookmark! :- (ms/InstanceOf :model/CardBookmark)
+(mu/defn insert-card-bookmark! :- (mut/optional-keys ::bookmarks.schema/card-bookmark)
   "Insert a CardBookmark for the Card with `card-id` and the User with `user-id`, returning the inserted instance."
-  [card-id :- ms/PositiveInt
-   user-id :- ms/PositiveInt]
+  [card-id :- ::lib.schema.id/card
+   user-id :- ::lib.schema.id/user]
   (t2/insert-returning-instance! :model/CardBookmark {:card_id card-id :user_id user-id}))
 
-(mu/defn insert-dashboard-bookmark! :- (ms/InstanceOf :model/DashboardBookmark)
+(mu/defn insert-dashboard-bookmark! :- (mut/optional-keys ::bookmarks.schema/dashboard-bookmark)
   "Insert a DashboardBookmark for the Dashboard with `dashboard-id` and the User with `user-id`, returning the
   inserted instance."
-  [dashboard-id :- ms/PositiveInt
-   user-id      :- ms/PositiveInt]
+  [dashboard-id :- ::lib.schema.id/dashboard
+   user-id      :- ::lib.schema.id/user]
   (t2/insert-returning-instance! :model/DashboardBookmark {:dashboard_id dashboard-id :user_id user-id}))
 
-(mu/defn insert-collection-bookmark! :- (ms/InstanceOf :model/CollectionBookmark)
+(mu/defn insert-collection-bookmark! :- (mut/optional-keys ::bookmarks.schema/collection-bookmark)
   "Insert a CollectionBookmark for the Collection with `collection-id` and the User with `user-id`, returning the
   inserted instance."
-  [collection-id :- ms/PositiveInt
-   user-id       :- ms/PositiveInt]
+  [collection-id :- ::lib.schema.id/collection
+   user-id       :- ::lib.schema.id/user]
   (t2/insert-returning-instance! :model/CollectionBookmark {:collection_id collection-id :user_id user-id}))
 
-(mu/defn insert-document-bookmark! :- (ms/InstanceOf :model/DocumentBookmark)
+(mu/defn insert-document-bookmark! :- (mut/optional-keys ::bookmarks.schema/document-bookmark)
   "Insert a DocumentBookmark for the Document with `document-id` and the User with `user-id`, returning the inserted
   instance."
   [document-id :- ms/PositiveInt
-   user-id     :- ms/PositiveInt]
+   user-id     :- ::lib.schema.id/user]
   (t2/insert-returning-instance! :model/DocumentBookmark {:document_id document-id :user_id user-id}))
 
-(mu/defn insert-exploration-bookmark! :- (ms/InstanceOf :model/ExplorationBookmark)
+(mu/defn insert-exploration-bookmark! :- (mut/optional-keys ::bookmarks.schema/exploration-bookmark)
   "Insert an ExplorationBookmark for the Exploration with `exploration-id` and the User with `user-id`, returning the
   inserted instance."
   [exploration-id :- ms/PositiveInt
-   user-id        :- ms/PositiveInt]
+   user-id        :- ::lib.schema.id/user]
   (t2/insert-returning-instance! :model/ExplorationBookmark {:exploration_id exploration-id :user_id user-id}))
 
 (mu/defn delete-card-bookmark! :- :int
   "Delete the CardBookmark of the User with `user-id` for the Card with `card-id`."
-  [card-id :- ms/PositiveInt
-   user-id :- ms/PositiveInt]
+  [card-id :- ::lib.schema.id/card
+   user-id :- ::lib.schema.id/user]
   (t2/delete! :model/CardBookmark :card_id card-id :user_id user-id))
 
 (mu/defn delete-dashboard-bookmark! :- :int
   "Delete the DashboardBookmark of the User with `user-id` for the Dashboard with `dashboard-id`."
-  [dashboard-id :- ms/PositiveInt
-   user-id      :- ms/PositiveInt]
+  [dashboard-id :- ::lib.schema.id/dashboard
+   user-id      :- ::lib.schema.id/user]
   (t2/delete! :model/DashboardBookmark :dashboard_id dashboard-id :user_id user-id))
 
 (mu/defn delete-collection-bookmark! :- :int
   "Delete the CollectionBookmark of the User with `user-id` for the Collection with `collection-id`."
-  [collection-id :- ms/PositiveInt
-   user-id       :- ms/PositiveInt]
+  [collection-id :- ::lib.schema.id/collection
+   user-id       :- ::lib.schema.id/user]
   (t2/delete! :model/CollectionBookmark :collection_id collection-id :user_id user-id))
 
 (mu/defn delete-document-bookmark! :- :int
   "Delete the DocumentBookmark of the User with `user-id` for the Document with `document-id`."
   [document-id :- ms/PositiveInt
-   user-id     :- ms/PositiveInt]
+   user-id     :- ::lib.schema.id/user]
   (t2/delete! :model/DocumentBookmark :document_id document-id :user_id user-id))
 
 (mu/defn delete-exploration-bookmark! :- :int
   "Delete the ExplorationBookmark of the User with `user-id` for the Exploration with `exploration-id`."
   [exploration-id :- ms/PositiveInt
-   user-id        :- ms/PositiveInt]
+   user-id        :- ::lib.schema.id/user]
   (t2/delete! :model/ExplorationBookmark :exploration_id exploration-id :user_id user-id))
 
 (mu/defn delete-bookmark-orderings-for-user! :- :int
   "Delete the BookmarkOrderings of the User with `user-id`."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/delete! :model/BookmarkOrdering :user_id user-id))
 
 (mu/defn insert-bookmark-orderings! :- :int
   "Insert the BookmarkOrdering `rows`."
-  [rows :- [:sequential [:map {:closed true}
-                         [:user_id  ms/PositiveInt]
-                         [:type     [:or :keyword :string]]
-                         [:item_id  ms/PositiveInt]
-                         [:ordering :int]]]]
+  [rows :- [:sequential (mut/select-keys ::bookmarks.schema/bookmark-ordering.update [:user_id :type :item_id :ordering])]]
   (t2/insert! :model/BookmarkOrdering rows))
 
 (defn- bookmarks-union-query
@@ -178,9 +177,9 @@
   `:is-superuser?`) can still read (re-checked at read time rather than trusted from when the bookmark was created,
   see SEC-669). The `collection_id` join uses [[h2x/identifier]] to work around
   https://github.com/seancorfield/honeysql/issues/450."
-  [user-id    :- ms/PositiveInt
+  [user-id    :- ::lib.schema.id/user
    user-scope :- [:map {:closed true}
-                  [:current-user-id ms/PositiveInt]
+                  [:current-user-id ::lib.schema.id/user]
                   [:is-superuser?   :boolean]]]
   (let [select-fields    [[:bookmark.created_at :created_at]
                           [:bookmark.type              :type]

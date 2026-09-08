@@ -2,16 +2,21 @@
   "Application database queries for the public sharing REST module. Every function here is a direct Toucan 2 call with
   no additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [malli.util :as mut]
+   [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.documents.schema :as documents.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------------ Cards -------------------------------------------------------
 
-(mu/defn public-card :- [:maybe (ms/InstanceOf :model/Card)]
+(mu/defn public-card :- [:maybe (mut/select-keys ::queries.schema/card [:id :dataset_query :description :display :name :parameters :visualization_settings :card_schema])]
   "The non-archived Card with `card-id`, restricted to the columns safe to expose publicly, or nil. With
   `:enable-embedding? true`, additionally requires embedding to be enabled."
-  [card-id :- ms/PositiveInt
+  [card-id :- ::lib.schema.id/card
    & {:keys [enable-embedding?]} :- [:maybe [:map {:closed true} [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (t2/select-one [:model/Card :id :dataset_query :description :display :name :parameters :visualization_settings
                   :card_schema]
@@ -20,23 +25,23 @@
                           [:= :archived false]
                           (when enable-embedding? [:= :enable_embedding true])]}))
 
-(mu/defn active-card :- [:maybe (ms/InstanceOf :model/Card)]
+(mu/defn active-card :- [:maybe ::queries.schema/card]
   "The non-archived Card with `card-id`, or nil."
-  [card-id :- ms/PositiveInt]
+  [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id :archived false))
 
-(mu/defn active-card-in-document :- [:maybe (ms/InstanceOf :model/Card)]
+(mu/defn active-card-in-document :- [:maybe ::queries.schema/card]
   "The non-archived Card with `card-id` that belongs to the Document with `document-id`, or nil."
-  [card-id     :- ms/PositiveInt
+  [card-id     :- ::lib.schema.id/card
    document-id :- ms/PositiveInt]
   (t2/select-one :model/Card :id card-id :document_id document-id :archived false))
 
 ;;; ---------------------------------------------------- Dashboards ----------------------------------------------------
 
-(mu/defn public-dashboard :- [:maybe (ms/InstanceOf :model/Dashboard)]
+(mu/defn public-dashboard :- [:maybe (mut/select-keys ::dashboards.schema/dashboard [:name :description :id :parameters :auto_apply_filters :width])]
   "The non-archived Dashboard with `dashboard-id`, restricted to the columns safe to expose publicly, or nil. With
   `:enable-embedding? true`, additionally requires embedding to be enabled."
-  [dashboard-id :- ms/PositiveInt
+  [dashboard-id :- ::lib.schema.id/dashboard
    & {:keys [enable-embedding?]} :- [:maybe [:map {:closed true} [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (t2/select-one [:model/Dashboard :name :description :id :parameters :auto_apply_filters :width]
                  {:where [:and
@@ -44,26 +49,26 @@
                           [:= :archived false]
                           (when enable-embedding? [:= :enable_embedding true])]}))
 
-(mu/defn dashcard :- [:maybe (ms/InstanceOf :model/DashboardCard)]
+(mu/defn dashcard :- [:maybe ::dashboards.schema/dashboard-card]
   "The DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id :- ms/PositiveInt]
+  [dashcard-id :- ::lib.schema.id/dashcard]
   (t2/select-one :model/DashboardCard :id dashcard-id))
 
-(mu/defn dashcard-id-in-dashboard :- [:maybe ms/PositiveInt]
+(mu/defn dashcard-id-in-dashboard :- [:maybe ::lib.schema.id/dashcard]
   "`dashcard-id` if that DashboardCard belongs to the Dashboard with `dashboard-id`, otherwise nil."
-  [dashcard-id  :- ms/PositiveInt
-   dashboard-id :- ms/PositiveInt]
+  [dashcard-id  :- ::lib.schema.id/dashcard
+   dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one-pk :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
 
 ;;; ----------------------------------------------------- Documents ----------------------------------------------------
 
-(mu/defn public-document :- [:maybe (ms/InstanceOf :model/Document)]
+(mu/defn public-document :- [:maybe (mut/select-keys ::documents.schema/document [:id :name :document :content_type :created_at :updated_at])]
   "The non-archived Document with `document-id`, restricted to the columns safe to expose publicly."
   [document-id :- ms/PositiveInt]
   (t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
                  :id document-id, :archived false))
 
-(mu/defn document-content :- [:maybe (ms/InstanceOf :model/Document)]
+(mu/defn document-content :- [:maybe (mut/select-keys ::documents.schema/document [:id :document :content_type])]
   "The id, content, and content type of the Document with `document-id`, or nil."
   [document-id :- ms/PositiveInt]
   (t2/select-one [:model/Document :id :document :content_type] :id document-id))

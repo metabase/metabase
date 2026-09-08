@@ -26,9 +26,13 @@
   [run-before :- ms/TemporalInstant]
   (t2/delete! :health_inspector_runs :run_at [:< run-before]))
 
-(mu/defn latest-run :- [:maybe [:map {:closed true}
-                                [:health :int]
-                                [:message :string]]]
+(def ^:private LatestRunRow
+  "Rows returned by [[latest-run]]."
+  [:map {:closed true}
+   [:health :int]
+   [:message :string]])
+
+(mu/defn latest-run :- [:maybe LatestRunRow]
   "The `:health` and `:message` of the most recent `health_inspector_runs` row for `check-name`, or nil."
   [check-name :- :string]
   ;; Tie-break on id: back-to-back inserts can share a run_at, and run_at alone would then pick a non-deterministic
@@ -36,12 +40,16 @@
   (t2/select-one [:health_inspector_runs :health :message] :check_name check-name
                  {:order-by [[:run_at :desc] [:id :desc]]}))
 
-(mu/defn latest-runs :- [:sequential [:map {:closed true}
-                                      [:id :int]
-                                      [:message :string]
-                                      [:check_name :string]
-                                      [:run_at ms/TemporalInstant]
-                                      [:health :int]]]
+(def ^:private LatestRun
+  "Rows returned by [[latest-runs]]."
+  [:map {:closed true}
+   [:id :int]
+   [:message :string]
+   [:check_name :string]
+   [:run_at ms/TemporalInstant]
+   [:health :int]])
+
+(mu/defn latest-runs :- [:sequential LatestRun]
   "The `limit` most recent `health_inspector_runs` rows."
   [limit :- ms/PositiveInt]
   (t2/select :health_inspector_runs {:limit limit :order-by [[:run_at :desc]]}))

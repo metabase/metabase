@@ -2,57 +2,62 @@
   "Application database queries for the action-v2 module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [malli.util :as mut]
+   [metabase-enterprise.action-v2.schema :as action-v2.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn table :- [:maybe (ms/InstanceOf :model/Table)]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
   "The Table with `table-id`, or nil."
-  [table-id :- ms/PositiveInt]
+  [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table table-id))
 
-(mu/defn active-table :- [:maybe (ms/InstanceOf :model/Table)]
+(mu/defn active-table :- [:maybe ::warehouse-schema.schema/table]
   "The active Table with `table-id`, or nil."
-  [table-id :- ms/PositiveInt]
+  [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id :active true))
 
-(mu/defn database :- [:maybe (ms/InstanceOf :model/Database)]
+(mu/defn database :- [:maybe ::warehouses.schema/database]
   "The Database with `database-id`, or nil."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn fields :- [:sequential (ms/InstanceOf :model/Field)]
+(mu/defn fields :- [:sequential ::warehouse-schema.schema/field]
   "The Fields with `field-ids`."
-  [field-ids :- [:seqable ms/PositiveInt]]
+  [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids]))
 
-(mu/defn pk-fields-for-table :- [:sequential (ms/InstanceOf :model/Field)]
+(mu/defn pk-fields-for-table :- [:sequential ::warehouse-schema.schema/field]
   "The active primary key Fields of the Table with `table-id`."
-  [table-id :- ms/PositiveInt]
+  [table-id :- ::lib.schema.id/table]
   (t2/select :model/Field :table_id table-id :semantic_type :type/PK :active true))
 
-(mu/defn fields-by-name :- [:sequential (ms/InstanceOf :model/Field)]
+(mu/defn fields-by-name :- [:sequential ::warehouse-schema.schema/field]
   "The Fields of the Table with `table-id` named one of `field-names`."
-  [table-id    :- ms/PositiveInt
-   field-names :- [:seqable :string]]
+  [table-id    :- ::lib.schema.id/table
+   field-names :- [:sequential :string]]
   (t2/select :model/Field :table_id table-id :name [:in field-names]))
 
-(mu/defn active-fields-in-position-order :- [:sequential (ms/InstanceOf :model/Field)]
+(mu/defn active-fields-in-position-order :- [:sequential ::warehouse-schema.schema/field]
   "The active Fields of the Table with `table-id`, in position order."
-  [table-id :- ms/PositiveInt]
+  [table-id :- ::lib.schema.id/table]
   (t2/select :model/Field :table_id table-id :active true {:order-by [[:position]]}))
 
-(mu/defn field-requirements-by-name :- [:map-of :string (ms/InstanceOf :model/Field)]
+(mu/defn field-requirements-by-name :- [:map-of :string ::lib.schema.id/field]
   "A map of name to the name, required flag, and base type of the Fields of the Table with `table-id`."
-  [table-id :- ms/PositiveInt]
+  [table-id :- ::lib.schema.id/table]
   (t2/select-fn->fn :name identity [:model/Field :name :database_required :base_type] :table_id table-id))
 
 (mu/defn category-list-field-ids-by-name :- [:sequential [:map {:closed true} [:id ms/PositiveInt] [:lower_name :string]]]
   "The `:id` and `:lower_name` rows of the category list Fields of the Table with `table-id` whose name matches one
   of `names`, case-insensitively."
-  [table-id :- ms/PositiveInt
-   names    :- [:seqable :string]]
+  [table-id :- ::lib.schema.id/table
+   names    :- [:sequential :string]]
   (t2/query {:select [:id [[:lower :name] :lower_name]]
              :from   [(t2/table-name :model/Field)]
              :where  [:and
@@ -61,9 +66,9 @@
                       [:in :has_field_values ["list" "auto-list"]]
                       [:= :semantic_type "type/Category"]]}))
 
-(mu/defn field-values-of-fields :- [:maybe [:sequential :any]]
+(mu/defn field-values-of-fields :- [:maybe [:sequential [:maybe [:sequential [:maybe [:or :string number? :boolean]]]]]]
   "The value lists of the FieldValues of the Fields with `field-ids`."
-  [field-ids :- [:seqable ms/PositiveInt]]
+  [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select-fn-vec :values :model/FieldValues :field_id [:in field-ids]))
 
 (defn- scope-and-user-expr
@@ -72,10 +77,10 @@
    (when scope [:= :scope scope])
    (when user-id [:= :user_id user-id])])
 
-(mu/defn next-undo-batch :- [:sequential (ms/InstanceOf :model/Undo)]
+(mu/defn next-undo-batch :- [:sequential (mut/optional-keys (mut/open-schema ::action-v2.schema/undo))]
   "The Undo rows of the newest not-undone (when `undo?`) or oldest undone batch of `user-id` in `scope`."
   [undo?   :- :boolean
-   user-id :- ms/PositiveInt
+   user-id :- ::lib.schema.id/user
    scope   :- :string]
   (t2/select :model/Undo
              :batch_num [:in
@@ -94,7 +99,7 @@
   optional `scope` and `user-id`, or nil."
   [batches-to-keep :- ms/PositiveInt
    scope           :- [:maybe :string]
-   user-id         :- [:maybe ms/PositiveInt]]
+   user-id         :- [:maybe ::lib.schema.id/user]]
   (t2/query {:select   [:batch_num]
              :from     [(t2/table-name :model/Undo)]
              :where    (scope-and-user-expr scope user-id)
@@ -116,7 +121,7 @@
   "Delete the Undo rows of batches up to `batch-num`, narrowed by the optional `scope` and `user-id`."
   [batch-num :- ms/IntGreaterThanOrEqualToZero
    scope     :- [:maybe :string]
-   user-id   :- [:maybe ms/PositiveInt]]
+   user-id   :- [:maybe ::lib.schema.id/user]]
   (t2/delete! :model/Undo :batch_num [:<= batch-num] {:where (scope-and-user-expr scope user-id)}))
 
 (mu/defn delete-undone-batches-from! :- :int
@@ -127,17 +132,8 @@
 
 (mu/defn insert-undos! :- :int
   "Insert the Undo `undos`."
-  [undos :- [:seqable
-             [:map {:closed true}
-              [:batch_num  {:optional true} :any]
-              [:table_id   {:optional true} :any]
-              [:row_pk     {:optional true} :any]
-              [:user_id    {:optional true} :any]
-              [:scope      {:optional true} :any]
-              [:undoable   {:optional true} :any]
-              [:raw_before {:optional true} :any]
-              [:raw_after  {:optional true} :any]
-              [:undone     {:optional true} :any]]]]
+  [undos :- [:sequential
+             ::action-v2.schema/undo.update]]
   (t2/insert! :model/Undo undos))
 
 (mu/defn mark-batch-undone! :- :int
@@ -150,8 +146,8 @@
   "Whether a later (when `undo?`) or earlier Undo row for the rows `row-pks` of the Tables `table-ids` exists beyond
   batch `batch-num` with the opposite undone state."
   [undo?     :- :boolean
-   table-ids :- [:seqable ms/PositiveInt]
-   row-pks   :- [:seqable :any]
+   table-ids :- [:set ::lib.schema.id/table]
+   row-pks   :- [:set :some]
    batch-num :- ms/PositiveInt]
   (t2/exists? :model/Undo
               :table_id [:in table-ids]

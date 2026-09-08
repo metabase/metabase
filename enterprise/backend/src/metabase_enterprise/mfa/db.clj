@@ -3,6 +3,10 @@
   additional logic, so the rest of the module only touches `toucan2.core` for transactions."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
+   [metabase.auth-identity.schema :as auth-identity.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.schema :as users.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -55,63 +59,61 @@
              [:like :%lower.last_name  pattern]
              [:like :%lower.email      pattern]]))))
 
-(mu/defn user :- [:maybe (ms/InstanceOf :model/User)]
+(mu/defn user :- [:maybe ::users.schema/user]
   "The User with `user-id`, or nil."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/User :id user-id))
 
 (mu/defn user-email :- [:maybe :string]
   "The email of the User with `user-id`."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :email :model/User :id user-id))
 
-(mu/defn lock-user :- [:maybe (ms/InstanceOf :model/User)]
+(mu/defn lock-user :- [:maybe (mut/select-keys ::users.schema/user [:id])]
   "The `:id` row of the User with `user-id`, locked for update."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id] :id user-id {:for :update}))
 
-(mu/defn totp-identity :- [:maybe (ms/InstanceOf :model/AuthIdentity)]
+(mu/defn totp-identity :- [:maybe ::auth-identity.schema/auth-identity]
   "The TOTP AuthIdentity of the User with `user-id`, or nil."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/AuthIdentity :user_id user-id :provider totp-provider))
 
-(mu/defn lock-totp-identity :- [:maybe (ms/InstanceOf :model/AuthIdentity)]
+(mu/defn lock-totp-identity :- [:maybe ::auth-identity.schema/auth-identity]
   "The TOTP AuthIdentity of the User with `user-id`, locked for update, or nil."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/AuthIdentity :user_id user-id :provider totp-provider {:for :update}))
 
-(mu/defn password-credentials :- :any
+(mu/defn password-credentials :- [:maybe :map]
   "The password credentials of the User with `user-id`, or nil."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :credentials :model/AuthIdentity :user_id user-id :provider "password"))
 
 (mu/defn insert-auth-identity! :- :int
   "Insert the AuthIdentity `row`, returning the number inserted."
   [row :- [:map {:closed true}
-           [:id           {:optional true} :any]
-           [:user_id      {:optional true} :any]
-           [:provider     {:optional true} :any]
-           [:credentials  {:optional true} :any]
-           [:metadata     {:optional true} :any]
-           [:provider_id  {:optional true} :any]
-           [:last_used_at {:optional true} :any]
-           [:expires_at   {:optional true} :any]
-           [:created_at   {:optional true} :any]
-           [:updated_at   {:optional true} :any]
-           [:confirmed_at {:optional true} :any]]]
+           [:id           {:optional true} ms/PositiveInt]
+           [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
+           [:provider     {:optional true} [:maybe [:or :keyword :string]]]
+           [:credentials  {:optional true} [:maybe [:or :string :map sequential?]]]
+           [:metadata     {:optional true} [:maybe [:or :string :map sequential?]]]
+           [:provider_id  {:optional true} [:maybe :string]]
+           [:last_used_at {:optional true} [:maybe ms/TemporalInstant]]
+           [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
+           [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
+           [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]
+           [:confirmed_at {:optional true} [:maybe ms/TemporalInstant]]]]
   (t2/insert! :model/AuthIdentity row))
 
 (mu/defn update-auth-identity! :- :int
   "Apply `changes` to the AuthIdentity with `auth-identity-id`, returning the number updated."
   [auth-identity-id :- ms/PositiveInt
-   changes          :- [:map {:closed true}
-                        [:credentials  {:optional true} :any]
-                        [:confirmed_at {:optional true} ms/TemporalInstant]]]
+   changes          :- (mut/select-keys ::auth-identity.schema/auth-identity.update [:credentials :confirmed_at])]
   (t2/update! :model/AuthIdentity auth-identity-id changes))
 
 (mu/defn delete-totp-identity! :- :int
   "Delete the TOTP AuthIdentity of the User with `user-id`, returning the number deleted."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/delete! :model/AuthIdentity :user_id user-id :provider totp-provider))
 
 (mu/defn confirmed-totp-count :- ms/IntGreaterThanOrEqualToZero
@@ -124,7 +126,7 @@
   []
   (t2/count :model/User {:where unenrolled-user-where}))
 
-(mu/defn user-list :- [:sequential (ms/InstanceOf :model/User)]
+(mu/defn user-list :- [:sequential (mut/optional-keys (mut/open-schema ::users.schema/user))]
   "The name-ordered admin list of enrolled (with their enrollment time) or unenrolled Users matching `search`, paged
   by the optional `limit` and `offset`."
   [enrolled? :- :boolean

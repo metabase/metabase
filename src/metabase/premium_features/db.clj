@@ -2,6 +2,8 @@
   "Application database queries for the premium features module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [malli.util :as mut]
+   [metabase.premium-features.schema :as premium-features.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -13,7 +15,7 @@
   ;; users, which calls an EE method that needs ... a token check :|
   (t2/count (t2/table-name :model/User) :is_active true, :type "personal"))
 
-(mu/defn token-status-cache :- [:maybe (ms/InstanceOf :model/PremiumFeaturesCache)]
+(mu/defn token-status-cache :- [:maybe (mut/select-keys ::premium-features.schema/premium-features-cache [:token_status_hash :updated_at])]
   "The `:token_status_hash` and `:updated_at` cached for `token-hash`, or nil."
   [token-hash :- :string]
   (t2/select-one [:model/PremiumFeaturesCache :token_status_hash :updated_at] :token_hash token-hash))

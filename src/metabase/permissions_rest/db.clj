@@ -2,9 +2,13 @@
   "Application database queries for the permissions REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [malli.util :as mut]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
 (defn- managed-groups-clause
@@ -16,7 +20,7 @@
                                                     [:= :user_id manager-user-id]
                                                     [:= :is_group_manager true]]}]))
 
-(mu/defn permissions-groups :- [:sequential (ms/InstanceOf :model/PermissionsGroup)]
+(mu/defn permissions-groups :- [:sequential ::permissions.schema/permissions-group]
   "Up to `limit` PermissionsGroups starting at `offset` (both optional), ordered by lower-cased name.
 
   `tenancy` (\"external\"/\"internal\"/nil) narrows to tenant/non-tenant groups (nil returns both); when
@@ -28,7 +32,7 @@
    {:keys [tenancy manager-user-id tenants-enabled? advanced-permissions-enabled?]}
    :- [:map {:closed true}
        [:tenancy                        {:optional true} [:maybe [:enum "external" "internal"]]]
-       [:manager-user-id                {:optional true} [:maybe ms/PositiveInt]]
+       [:manager-user-id                {:optional true} [:maybe ::lib.schema.id/user]]
        [:tenants-enabled?               {:optional true} :boolean]
        [:advanced-permissions-enabled?  {:optional true} :boolean]]]
   (let [base-where [:and
@@ -47,7 +51,7 @@
                  limit  (assoc :limit limit)
                  offset (assoc :offset offset)))))
 
-(mu/defn permissions-group :- [:maybe (ms/InstanceOf :model/PermissionsGroup)]
+(mu/defn permissions-group :- [:maybe ::permissions.schema/permissions-group]
   "The PermissionsGroup with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/PermissionsGroup :id id))
@@ -57,7 +61,7 @@
   [id :- ms/PositiveInt]
   (t2/exists? :model/PermissionsGroup :id id))
 
-(mu/defn insert-permissions-group! :- (ms/InstanceOf :model/PermissionsGroup)
+(mu/defn insert-permissions-group! :- (mut/optional-keys ::permissions.schema/permissions-group)
   "Insert a PermissionsGroup and return the inserted instance."
   [group-name    :- :string
    tenant-group? :- :boolean]
@@ -74,13 +78,13 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/PermissionsGroup :id id))
 
-(mu/defn group-memberships :- [:sequential (ms/InstanceOf :model/PermissionsGroupMembership)]
+(mu/defn group-memberships :- [:sequential (mut/optional-keys (mut/open-schema ::permissions.schema/permissions-group-membership))]
   "The membership id, group id, user id, and group manager flag of every PermissionsGroupMembership, optionally
   restricted to the groups `manager-user-id` manages, excluding `excluded-group-id`, and excluding tenant groups
   when `exclude-tenant-groups?`."
   [{:keys [manager-user-id excluded-group-id exclude-tenant-groups?]}
    :- [:map {:closed true}
-       [:manager-user-id          {:optional true} [:maybe ms/PositiveInt]]
+       [:manager-user-id          {:optional true} [:maybe ::lib.schema.id/user]]
        [:excluded-group-id        {:optional true} [:maybe ms/PositiveInt]]
        [:exclude-tenant-groups?   {:optional true} :boolean]]]
   (t2/select [:model/PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
@@ -95,10 +99,10 @@
 
 (mu/defn non-admin-user-exists? :- :boolean
   "Whether the User with `user-id` exists and is not a superuser."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/exists? :model/User :id user-id :is_superuser false))
 
-(mu/defn group-membership :- [:maybe (ms/InstanceOf :model/PermissionsGroupMembership)]
+(mu/defn group-membership :- [:maybe ::permissions.schema/permissions-group-membership]
   "The PermissionsGroupMembership with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/PermissionsGroupMembership :id id))
@@ -109,10 +113,10 @@
    group-manager? :- :boolean]
   (t2/update! :model/PermissionsGroupMembership id {:is_group_manager group-manager?}))
 
-(mu/defn non-destination-database-ids :- [:maybe [:sequential ms/PositiveInt]]
+(mu/defn non-destination-database-ids :- [:maybe [:sequential ::lib.schema.id/database]]
   "The ids of the Databases that are not routing destinations, excluding `excluded-database-id` (nil for no
   exclusion)."
-  [excluded-database-id :- [:maybe ms/PositiveInt]]
+  [excluded-database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-pks-vec :model/Database {:where [:and
                                               (when excluded-database-id [:not= :id excluded-database-id])
                                               [:= :router_database_id nil]]}))
@@ -124,10 +128,10 @@
   [{:keys [perm-type db-id group-id group-ids excluded-database-id]}
    :- [:map {:closed true}
        [:perm-type              {:optional true} [:maybe [:or :keyword :string]]]
-       [:db-id                  {:optional true} [:maybe ms/PositiveInt]]
+       [:db-id                  {:optional true} [:maybe ::lib.schema.id/database]]
        [:group-id               {:optional true} [:maybe ms/PositiveInt]]
-       [:group-ids              {:optional true} [:maybe [:seqable ms/PositiveInt]]]
-       [:excluded-database-id   {:optional true} [:maybe ms/PositiveInt]]]]
+       [:group-ids              {:optional true} [:maybe [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
+       [:excluded-database-id   {:optional true} [:maybe ::lib.schema.id/database]]]]
   (t2/reducible-query
    {:select   [[:perm_type :type]
                [:group_id :group-id]
@@ -150,7 +154,7 @@
                                                               [:= :router_db.id :db_id]]}]])
     :order-by [:group_id :db_id]}))
 
-(mu/defn tables-for-databases :- [:sequential (ms/InstanceOf :model/Table)]
+(mu/defn tables-for-databases :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema])]
   "The id, Database id, and schema of the Tables of the Databases with `database-ids`."
-  [database-ids :- [:seqable ms/PositiveInt]]
+  [database-ids :- [:set ::lib.schema.id/database]]
   (t2/select [:model/Table :id :db_id :schema] :db_id [:in database-ids]))

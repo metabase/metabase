@@ -2,7 +2,13 @@
   "Application database queries for the metabot module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [malli.util :as mut]
+   [metabase-enterprise.metabot.schema :as ee-metabot.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.schema :as permissions.schema]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -21,19 +27,19 @@
     [:not-in :group_id (default-group-ids)]
     [:in :group_id (conj (default-group-ids) (u/the-id (perms/admin-group)))]))
 
-(mu/defn all-groups :- [:sequential (ms/InstanceOf :model/PermissionsGroup)]
+(mu/defn all-groups :- [:sequential ::permissions.schema/permissions-group]
   "Every PermissionsGroup, in ID order."
   []
   (t2/select :model/PermissionsGroup {:order-by [[:id :asc]]}))
 
-(mu/defn all-stored-permissions :- [:sequential (ms/InstanceOf :model/MetabotPermissions)]
+(mu/defn all-stored-permissions :- [:sequential ::ee-metabot.schema/metabot-permissions]
   "Every MetabotPermissions row, ordered by group and permission type."
   []
   (t2/select :model/MetabotPermissions {:order-by [[:group_id :asc] [:perm_type :asc]]}))
 
-(mu/defn visible-permissions-for-user :- [:sequential (ms/InstanceOf :model/MetabotPermissions)]
+(mu/defn visible-permissions-for-user :- [:sequential (mut/optional-keys (mut/open-schema ::ee-metabot.schema/metabot-permissions))]
   "The MetabotPermissions rows of the groups of the User with `user-id` that the mode selected by `advanced?` shows."
-  [user-id   :- ms/PositiveInt
+  [user-id   :- ::lib.schema.id/user
    advanced? :- :boolean]
   (t2/select :model/MetabotPermissions
              {:where [:and
@@ -60,10 +66,10 @@
 (mu/defn insert-permission! :- :int
   "Insert the MetabotPermissions `row`."
   [row :- [:map {:closed true}
-           [:id         {:optional true} :any]
-           [:group_id   {:optional true} :any]
-           [:perm_type  {:optional true} :any]
-           [:perm_value {:optional true} :any]]]
+           [:id         {:optional true} ms/PositiveInt]
+           [:group_id   {:optional true} [:maybe ms/PositiveInt]]
+           [:perm_type  {:optional true} [:maybe [:or :keyword :string]]]
+           [:perm_value {:optional true} [:maybe [:or :keyword :string :map sequential?]]]]]
   (t2/insert! :model/MetabotPermissions row))
 
 (mu/defn delete-hidden-group-permissions! :- :int
@@ -71,12 +77,12 @@
   [advanced? :- :boolean]
   (t2/delete! :model/MetabotPermissions {:where [:not (visible-groups-expr advanced?)]}))
 
-(mu/defn group-limits :- [:sequential (ms/InstanceOf :model/MetabotGroupLimit)]
+(mu/defn group-limits :- [:sequential ::ee-metabot.schema/metabot-group-limit]
   "Every MetabotGroupLimit, in group order."
   []
   (t2/select :model/MetabotGroupLimit {:order-by [[:group_id :asc]]}))
 
-(mu/defn group-limit :- [:maybe (ms/InstanceOf :model/MetabotGroupLimit)]
+(mu/defn group-limit :- [:maybe ::ee-metabot.schema/metabot-group-limit]
   "The MetabotGroupLimit of the group with `group-id`, or nil."
   [group-id :- ms/PositiveInt]
   (t2/select-one :model/MetabotGroupLimit :group_id group-id))
@@ -84,7 +90,7 @@
 (mu/defn max-usage-for-user :- [:map {:closed true} [:max_usage [:maybe :int]]]
   "The `:max_usage` row holding the largest group limit of the User with `user-id`, or nil if any of their groups
   is unlimited."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/query-one {:select    [[[:case
                                [:= [[:count :*]] [[:count :gl.max_usage]]]
                                [[:max :gl.max_usage]]]
@@ -96,9 +102,9 @@
 (mu/defn insert-group-limit! :- :int
   "Insert the MetabotGroupLimit `row`."
   [row :- [:map {:closed true}
-           [:id        {:optional true} :any]
-           [:group_id  {:optional true} :any]
-           [:max_usage {:optional true} :any]]]
+           [:id        {:optional true} ms/PositiveInt]
+           [:group_id  {:optional true} [:maybe ms/PositiveInt]]
+           [:max_usage {:optional true} [:maybe :int]]]]
   (t2/insert! :model/MetabotGroupLimit row))
 
 (mu/defn update-group-limit! :- :int
@@ -112,12 +118,12 @@
   [group-id :- ms/PositiveInt]
   (t2/delete! :model/MetabotGroupLimit :group_id group-id))
 
-(mu/defn instance-limit :- [:maybe (ms/InstanceOf :model/MetabotInstanceLimit)]
+(mu/defn instance-limit :- [:maybe ::ee-metabot.schema/metabot-instance-limit]
   "The MetabotInstanceLimit of the Tenant with `tenant-id` (nil for the instance-wide limit), or nil."
   [tenant-id :- [:maybe ms/PositiveInt]]
   (t2/select-one :model/MetabotInstanceLimit :tenant_id tenant-id))
 
-(mu/defn tenant-limits :- [:sequential (ms/InstanceOf :model/MetabotInstanceLimit)]
+(mu/defn tenant-limits :- [:sequential ::ee-metabot.schema/metabot-instance-limit]
   "The MetabotInstanceLimits of tenants, ordered by tenant."
   []
   (t2/select :model/MetabotInstanceLimit :tenant_id [:not= nil] {:order-by [[:tenant_id :asc]]}))
@@ -125,9 +131,9 @@
 (mu/defn insert-instance-limit! :- :int
   "Insert the MetabotInstanceLimit `row`."
   [row :- [:map {:closed true}
-           [:id        {:optional true} :any]
-           [:tenant_id {:optional true} :any]
-           [:max_usage {:optional true} :any]]]
+           [:id        {:optional true} ms/PositiveInt]
+           [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
+           [:max_usage {:optional true} [:maybe :int]]]]
   (t2/insert! :model/MetabotInstanceLimit row))
 
 (mu/defn update-instance-limit! :- :int
@@ -143,22 +149,7 @@
 
 (mu/defn insert-usage-log! :- :int
   "Insert the AiUsageLog `row`."
-  [row :- [:map {:closed true}
-           [:id                    {:optional true} :any]
-           [:created_at            {:optional true} :any]
-           [:source                {:optional true} :any]
-           [:model                 {:optional true} :any]
-           [:prompt_tokens         {:optional true} :any]
-           [:completion_tokens     {:optional true} :any]
-           [:total_tokens          {:optional true} :any]
-           [:user_id               {:optional true} :any]
-           [:tenant_id             {:optional true} :any]
-           [:conversation_id       {:optional true} :any]
-           [:profile_id            {:optional true} :any]
-           [:request_id            {:optional true} :any]
-           [:ai_proxied            {:optional true} :any]
-           [:cache_creation_tokens {:optional true} :any]
-           [:cache_read_tokens     {:optional true} :any]]]
+  [row :- ::ee-metabot.schema/ai-usage-log.update]
   (t2/insert! :model/AiUsageLog row))
 
 (defn- usage-window-expr
@@ -171,7 +162,7 @@
 (mu/defn usage-token-sum :- [:map {:closed true} [:sum [:maybe :int]]]
   "The `:sum` row of tokens logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`."
   [period-start :- ms/TemporalInstant
-   user-id      :- [:maybe ms/PositiveInt]
+   user-id      :- [:maybe ::lib.schema.id/user]
    tenant-id    :- [:maybe ms/PositiveInt]]
   (t2/query-one {:select [[[:sum :total_tokens] :sum]]
                  :from   [:ai_usage_log]
@@ -180,7 +171,7 @@
 (mu/defn usage-message-count :- [:map {:closed true} [:cnt :int]]
   "The `:cnt` row of messages logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`."
   [period-start :- ms/TemporalInstant
-   user-id      :- [:maybe ms/PositiveInt]
+   user-id      :- [:maybe ::lib.schema.id/user]
    tenant-id    :- [:maybe ms/PositiveInt]]
   (t2/query-one {:select [[[:count :*] :cnt]]
                  :from   [:ai_usage_log]
@@ -191,17 +182,17 @@
   [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/AiUsageLog {:where [:< :created_at cutoff]}))
 
-(mu/defn transform :- [:maybe (ms/InstanceOf :model/Transform)]
+(mu/defn transform :- [:maybe ::transforms.schema/transform]
   "The Transform with `transform-id`, or nil."
-  [transform-id :- ms/PositiveInt]
+  [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/Transform :id transform-id))
 
-(mu/defn transforms :- [:sequential (ms/InstanceOf :model/Transform)]
+(mu/defn transforms :- [:sequential ::transforms.schema/transform]
   "The Transforms with `transform-ids`."
-  [transform-ids :- [:seqable ms/PositiveInt]]
+  [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (t2/select :model/Transform :id [:in transform-ids]))
 
-(mu/defn cards :- [:sequential (ms/InstanceOf :model/Card)]
+(mu/defn cards :- [:sequential ::queries.schema/card]
   "The Cards with `card-ids`."
-  [card-ids :- [:seqable ms/PositiveInt]]
+  [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select :model/Card :id [:in card-ids]))

@@ -2,9 +2,11 @@
   "Application database queries for the settings module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions."
   (:require
+   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.settings.schema :as settings.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn setting-value :- [:maybe :string]
@@ -17,7 +19,7 @@
   []
   (t2/select-fn->fn :key :value :model/Setting))
 
-(mu/defn insert-setting! :- (ms/InstanceOf :model/Setting)
+(mu/defn insert-setting! :- (mut/optional-keys ::settings.schema/setting)
   "Insert a Setting row for `setting-key` holding `value` and return it."
   [setting-key :- [:or :keyword :string]
    value       :- :string]
@@ -58,6 +60,6 @@
 
 (mu/defn update-user-settings! :- :int
   "Store `settings-json` as the user-local settings of the User with `user-id`, returning the number updated."
-  [user-id       :- ms/PositiveInt
+  [user-id       :- ::lib.schema.id/user
    settings-json :- :string]
   (t2/update! :model/User user-id {:settings settings-json}))

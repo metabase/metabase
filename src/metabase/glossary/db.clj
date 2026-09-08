@@ -2,6 +2,9 @@
   "Application database queries for the glossary module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
+   [metabase.glossary.schema :as glossary.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -10,14 +13,14 @@
 (def ^:private GlossaryRow
   "A whole (or partial) row for the `glossary` table."
   [:map {:closed true}
-   [:id         {:optional true} :any]
-   [:term       {:optional true} :any]
-   [:definition {:optional true} :any]
-   [:created_at {:optional true} :any]
-   [:updated_at {:optional true} :any]
-   [:creator_id {:optional true} :any]])
+   [:id         {:optional true} ms/PositiveInt]
+   [:term       {:optional true} [:maybe :string]]
+   [:definition {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]])
 
-(mu/defn glossary-entries :- [:sequential (ms/InstanceOf :model/Glossary)]
+(mu/defn glossary-entries :- [:sequential ::glossary.schema/glossary]
   "The Glossary entries whose term or definition contains `search` case-insensitively, or every
   entry when `search` is nil, in term order."
   [search :- [:maybe :string]]
@@ -28,12 +31,12 @@
                                        [:like [:lower :term] pattern]
                                        [:like [:lower :definition] pattern]])))))
 
-(mu/defn insert-glossary-entry! :- (ms/InstanceOf :model/Glossary)
+(mu/defn insert-glossary-entry! :- (mut/optional-keys ::glossary.schema/glossary)
   "Insert the Glossary `row` and return the inserted instance."
   [row :- GlossaryRow]
   (t2/insert-returning-instance! :model/Glossary row))
 
-(mu/defn glossary-entry :- [:maybe (ms/InstanceOf :model/Glossary)]
+(mu/defn glossary-entry :- [:maybe ::glossary.schema/glossary]
   "The Glossary entry with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/Glossary :id id))
@@ -50,12 +53,12 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/Glossary :id id))
 
-(mu/defn users-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/User)]
+(mu/defn users-by-id :- [:map-of ::lib.schema.id/user ::lib.schema.id/user]
   "A map of User id to the id, email, and name of the Users with `user-ids`."
-  [user-ids :- [:seqable ms/PositiveInt]]
+  [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
-(mu/defn glossary-entry-by-term :- [:maybe (ms/InstanceOf :model/Glossary)]
+(mu/defn glossary-entry-by-term :- [:maybe ::glossary.schema/glossary]
   "The Glossary entry for `term`, or nil."
   [term :- :string]
   (t2/select-one :model/Glossary :term term))

@@ -5,16 +5,23 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn card-database-ids :- [:sequential (ms/InstanceOf :model/Card)]
+(def ^:private CardDatabaseId
+  "Rows returned by [[card-database-ids]]."
+  [:map {:closed true}
+   [:id          ::lib.schema.id/card]
+   [:database_id ::lib.schema.id/database]
+   [:card_schema :int]])
+
+(mu/defn card-database-ids :- [:sequential CardDatabaseId]
   "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."
-  [card-ids :- [:seqable ms/PositiveInt]]
+  [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select [:model/Card :id :database_id :card_schema] :id [:in card-ids]))
 
-(mu/defn database :- [:maybe :map]
+(mu/defn database :- [:maybe ::lib.schema.metadata/database]
   "The `:metadata/database` with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :metadata/database database-id))
@@ -126,49 +133,49 @@
                           (and metric? table-ids) (conj [:= :source_card_id nil]))]
     (reduce sql.helpers/where {} where-clauses)))
 
-(mu/defn tables :- [:sequential :map]
+(mu/defn tables :- [:sequential ::lib.schema.metadata/table]
   "The `:metadata/table` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
   (t2/select :metadata/table (metadata-where :metadata/table database-id metadata-spec)))
 
-(mu/defn columns :- [:sequential :map]
+(mu/defn columns :- [:sequential ::lib.schema.metadata/column]
   "The `:metadata/column` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
   (t2/select :metadata/column (metadata-where :metadata/column database-id metadata-spec)))
 
-(mu/defn cards :- [:sequential :map]
+(mu/defn cards :- [:sequential ::lib.schema.metadata/card]
   "The `:metadata/card` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
   (t2/select :metadata/card (metadata-where :metadata/card database-id metadata-spec)))
 
-(mu/defn metrics :- [:sequential :map]
+(mu/defn metrics :- [:sequential ::lib.schema.metadata/metric]
   "The `:metadata/metric` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
   (t2/select :metadata/metric (metadata-where :metadata/metric database-id metadata-spec)))
 
-(mu/defn segments :- [:sequential :map]
+(mu/defn segments :- [:sequential ::lib.schema.metadata/segment]
   "The `:metadata/segment` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
   (t2/select :metadata/segment (metadata-where :metadata/segment database-id metadata-spec)))
 
-(mu/defn measures :- [:sequential :map]
+(mu/defn measures :- [:sequential ::lib.schema.metadata/measure]
   "The `:metadata/measure` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
   (t2/select :metadata/measure (metadata-where :metadata/measure database-id metadata-spec)))
 
-(mu/defn native-query-snippets :- [:sequential :map]
+(mu/defn native-query-snippets :- [:sequential ::lib.schema.metadata/native-query-snippet]
   "The `:metadata/native-query-snippet` rows picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
   (t2/select :metadata/native-query-snippet (metadata-where :metadata/native-query-snippet database-id metadata-spec)))
 
-(mu/defn transforms :- [:sequential :map]
+(mu/defn transforms :- [:sequential ::lib.schema.metadata/transform]
   "The `:metadata/transform` rows picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]

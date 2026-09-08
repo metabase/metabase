@@ -2,23 +2,28 @@
   "Application database queries for the stale module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [malli.util :as mut]
+   [metabase.collections.schema :as collections.schema]
+   [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn collection :- [:maybe (ms/InstanceOf :model/Collection)]
+(mu/defn collection :- [:maybe ::collections.schema/collection]
   "The Collection with `collection-id`, or nil."
-  [collection-id :- ms/PositiveInt]
+  [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection collection-id))
 
-(mu/defn collections-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/Collection)]
+(mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection ::lib.schema.id/collection]
   "A map of ID to Collection for `collection-ids`."
-  [collection-ids :- [:seqable ms/PositiveInt]]
+  [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select-pk->fn identity :model/Collection :id [:in collection-ids]))
 
-(mu/defn stale-cards :- [:sequential (ms/InstanceOf :model/Card)]
+(mu/defn stale-cards :- [:sequential (mut/optional-keys (mut/open-schema ::queries.schema/card))]
   "The listing columns of the Cards with `card-ids`, with their latest moderation status."
-  [card-ids :- [:seqable ms/PositiveInt]]
+  [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select [:model/Card
               :id
               :dashboard_id
@@ -49,9 +54,9 @@
                :moderated_status]]
              :id [:in card-ids]))
 
-(mu/defn stale-dashboards :- [:sequential (ms/InstanceOf :model/Dashboard)]
+(mu/defn stale-dashboards :- [:sequential (mut/optional-keys (mut/open-schema ::dashboards.schema/dashboard))]
   "The listing columns of the Dashboards with `dashboard-ids`."
-  [dashboard-ids :- [:seqable ms/PositiveInt]]
+  [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (t2/select [:model/Dashboard
               :id
               :description
@@ -73,9 +78,13 @@
   [union-queries]
   [[^:allow-subquery {:union-all union-queries} :dummy_alias]])
 
-(mu/defn stale-content-rows :- [:sequential [:map {:closed true}
-                                             [:id :int]
-                                             [:model :string]]]
+(def ^:private StaleContent
+  "Rows returned by [[stale-content-rows]]."
+  [:map {:closed true}
+   [:id :int]
+   [:model :string]])
+
+(mu/defn stale-content-rows :- [:sequential StaleContent]
   "A page of `:id`/`:model` rows from the union of `union-queries`, sorted by `sort-column` (`:name` or
   `:last_used_at`) in `sort-direction`, skipping `offset` and returning up to `limit` (either may be nil for no
   restriction)."

@@ -2,9 +2,12 @@
   "Application database queries for the internal stats module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.internal-stats.util :as u]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -24,7 +27,7 @@
   []
   (t2/count :model/Card :enable_embedding true :archived false :type :question))
 
-(mu/defn proxied-ai-usage-tokens-by-model :- [:sequential (ms/InstanceOf :model/AiUsageLog)]
+(mu/defn proxied-ai-usage-tokens-by-model :- [:sequential (mut/optional-keys (mut/open-schema ::metabot.schema/ai-usage-log))]
   "The model and total tokens of the proxied AiUsageLog rows on `date`, grouped by model."
   [date :- ms/TemporalInstant]
   (t2/select [:model/AiUsageLog :model [:%sum.total_tokens :tokens]]
@@ -107,17 +110,17 @@
                                     public-link-condition]
                          [:inline false]]]) :internal]])
 
-(mu/defn query-execution-statistics-all-time :- [:maybe (ms/InstanceOf :model/QueryExecution)]
+(mu/defn query-execution-statistics-all-time :- [:maybe ::queries.schema/query-execution]
   "The QueryExecution counts per embedding client over all time."
   []
   (t2/select-one query-execution-statistics))
 
-(mu/defn query-execution-statistics-since :- [:maybe (ms/InstanceOf :model/QueryExecution)]
+(mu/defn query-execution-statistics-since :- [:maybe ::queries.schema/query-execution]
   "The QueryExecution counts per embedding client for executions started after `started-after`."
   [started-after :- ms/TemporalInstant]
   (t2/select-one query-execution-statistics {:where [:> :started_at started-after]}))
 
-(mu/defn query-execution-statistics-on :- [:maybe (ms/InstanceOf :model/QueryExecution)]
+(mu/defn query-execution-statistics-on :- [:maybe ::queries.schema/query-execution]
   "The QueryExecution counts per embedding client for executions started on the day of `date`."
   [date :- ms/TemporalInstant]
   (t2/select-one query-execution-statistics {:where [:= [:cast :started_at :date] [:cast date :date]]}))
@@ -155,7 +158,7 @@
 
 (def ^:private embedding-on [:= :enable_embedding [:inline true]])
 
-(mu/defn question-statistics-all-time :- [:maybe (ms/InstanceOf :model/Card)]
+(mu/defn question-statistics-all-time :- [:maybe ::queries.schema/card]
   "Aggregate counts of unarchived, non-internal Cards over all time: totals, native vs GUI, dashboard
   questions, embedded, publicly shared, and (where the app db supports JSON path queries) counts
   broken down by template-tag parameters and embedding-parameter locking."

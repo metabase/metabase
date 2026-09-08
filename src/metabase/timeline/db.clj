@@ -2,35 +2,32 @@
   "Application database queries for the timeline module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
+   [metabase.collections.schema :as collections.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.timeline.schema :as timeline.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn insert-timeline! :- (ms/InstanceOf :model/Timeline)
+(mu/defn insert-timeline! :- (mut/optional-keys ::timeline.schema/timeline)
   "Insert the Timeline `row` and return the inserted instance."
-  [row :- [:map {:closed true}
-           [:name          :string]
-           [:creator_id    ms/PositiveInt]
-           [:default       {:optional true} [:maybe :boolean]]
-           [:description   {:optional true} [:maybe :string]]
-           [:icon          {:optional true} [:maybe :string]]
-           [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-           [:archived      {:optional true} [:maybe :boolean]]]]
+  [row :- (mut/select-keys ::timeline.schema/timeline.update [:name :creator_id :default :description :icon :collection_id :archived])]
   (t2/insert-returning-instance! :model/Timeline row))
 
-(mu/defn timelines-in-collections :- [:sequential (ms/InstanceOf :model/Timeline)]
+(mu/defn timelines-in-collections :- [:sequential ::timeline.schema/timeline]
   "The Timelines whose archived flag is `archived` in the Collections matching the Honey SQL `collection-clause`, in
   case-insensitive name order."
   [archived          :- :boolean
-   collection-clause :- :any]
+   collection-clause :- [:maybe vector?]]
   (t2/select :model/Timeline
              {:where    [:and
                          [:= :archived archived]
                          collection-clause]
               :order-by [[:%lower.name :asc]]}))
 
-(mu/defn timeline :- [:maybe (ms/InstanceOf :model/Timeline)]
+(mu/defn timeline :- [:maybe ::timeline.schema/timeline]
   "The Timeline with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/Timeline :id id))
@@ -40,27 +37,21 @@
   [id :- ms/PositiveInt]
   (t2/select-one-fn :icon :model/Timeline :id id))
 
-(mu/defn timelines-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/Timeline)]
+(mu/defn timelines-by-id :- [:map-of ms/PositiveInt ms/PositiveInt]
   "A map of id to Timeline for the Timelines with `ids`."
-  [ids :- [:seqable ms/PositiveInt]]
+  [ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn identity :model/Timeline :id [:in ids]))
 
-(mu/defn timelines-for-collection :- [:sequential (ms/InstanceOf :model/Timeline)]
+(mu/defn timelines-for-collection :- [:sequential ::timeline.schema/timeline]
   "The Timelines of the Collection with `collection-id` whose archived flag is `archived`."
-  [collection-id :- [:maybe ms/PositiveInt]
+  [collection-id :- [:maybe ::lib.schema.id/collection]
    archived      :- :boolean]
   (t2/select :model/Timeline :collection_id collection-id :archived archived))
 
 (mu/defn update-timeline! :- :int
   "Apply `changes` to the Timeline with `id`, returning the number updated."
   [id      :- ms/PositiveInt
-   changes :- [:map {:closed true}
-               [:name          {:optional true} :string]
-               [:default       {:optional true} [:maybe :boolean]]
-               [:description   {:optional true} [:maybe :string]]
-               [:icon          {:optional true} [:maybe :string]]
-               [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-               [:archived      {:optional true} [:maybe :boolean]]]]
+   changes :- (mut/select-keys ::timeline.schema/timeline.update [:name :default :description :icon :collection_id :archived])]
   (t2/update! :model/Timeline id changes))
 
 (mu/defn set-timeline-events-archived! :- :int
@@ -74,34 +65,25 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/Timeline :id id))
 
-(mu/defn collection :- [:maybe (ms/InstanceOf :model/Collection)]
+(mu/defn collection :- [:maybe ::collections.schema/collection]
   "The Collection with `collection-id`, or nil."
-  [collection-id :- ms/PositiveInt]
+  [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
 
-(mu/defn insert-timeline-event! :- (ms/InstanceOf :model/TimelineEvent)
+(mu/defn insert-timeline-event! :- (mut/optional-keys ::timeline.schema/timeline-event)
   "Insert the TimelineEvent `row` and return the inserted instance."
-  [row :- [:map {:closed true}
-           [:name         :string]
-           [:timestamp    ms/TemporalInstant]
-           [:timezone     :string]
-           [:timeline_id  ms/PositiveInt]
-           [:creator_id   ms/PositiveInt]
-           [:description  {:optional true} [:maybe :string]]
-           [:time_matters {:optional true} [:maybe :boolean]]
-           [:icon         {:optional true} [:maybe :string]]
-           [:archived     {:optional true} [:maybe :boolean]]]]
+  [row :- (mut/select-keys ::timeline.schema/timeline-event.update [:name :timestamp :timezone :timeline_id :creator_id :description :time_matters :icon :archived])]
   (t2/insert-returning-instance! :model/TimelineEvent row))
 
-(mu/defn timeline-event :- [:maybe (ms/InstanceOf :model/TimelineEvent)]
+(mu/defn timeline-event :- [:maybe ::timeline.schema/timeline-event]
   "The TimelineEvent with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/TimelineEvent :id id))
 
-(mu/defn timeline-events-for-timelines :- [:sequential (ms/InstanceOf :model/TimelineEvent)]
+(mu/defn timeline-events-for-timelines :- [:sequential ::timeline.schema/timeline-event]
   "The TimelineEvents of the Timelines with `timeline-ids`, unarchived only unless `all?`, and (when `start` and/or
   `end` are given) within that time range (respecting each event's `:time_matters` flag)."
-  [timeline-ids :- [:seqable ms/PositiveInt]
+  [timeline-ids :- [:sequential ms/PositiveInt]
    all?         :- [:maybe :boolean]
    start        :- [:maybe ms/TemporalInstant]
    end          :- [:maybe ms/TemporalInstant]]
@@ -128,15 +110,7 @@
 (mu/defn update-timeline-event! :- :int
   "Apply `changes` to the TimelineEvent with `id`, returning the number updated."
   [id      :- ms/PositiveInt
-   changes :- [:map {:closed true}
-               [:name         {:optional true} :string]
-               [:description  {:optional true} [:maybe :string]]
-               [:timestamp    {:optional true} [:maybe ms/TemporalInstant]]
-               [:time_matters {:optional true} [:maybe :boolean]]
-               [:timezone     {:optional true} [:maybe :string]]
-               [:icon         {:optional true} [:maybe :string]]
-               [:timeline_id  {:optional true} [:maybe ms/PositiveInt]]
-               [:archived     {:optional true} [:maybe :boolean]]]]
+   changes :- (mut/select-keys ::timeline.schema/timeline-event.update [:name :description :timestamp :time_matters :timezone :icon :timeline_id :archived])]
   (t2/update! :model/TimelineEvent id changes))
 
 (mu/defn delete-timeline-event! :- :int

@@ -4,9 +4,9 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
 
@@ -112,13 +112,17 @@
                                                  [:= :pgm.user_id :user.id]
                                                  [:is :pgm.is_group_manager true]]))))))))
 
-(mu/defn session-user-info :- [:maybe [:map {:closed true}
-                                       [:metabase-user-id    ms/PositiveInt]
-                                       [:is-superuser?       :boolean]
-                                       [:is-data-analyst?    :boolean]
-                                       [:user-locale         [:maybe :string]]
-                                       [:auth-provider       [:maybe :string]]
-                                       [:is-group-manager?   {:optional true} [:maybe :boolean]]]]
+(def ^:private SessionUserInfo
+  "Rows returned by [[session-user-info]]."
+  [:map {:closed true}
+   [:metabase-user-id    ::lib.schema.id/user]
+   [:is-superuser?       :boolean]
+   [:is-data-analyst?    :boolean]
+   [:user-locale         [:maybe :string]]
+   [:auth-provider       [:maybe :string]]
+   [:is-group-manager?   {:optional true} [:maybe :boolean]]])
+
+(mu/defn session-user-info :- [:maybe SessionUserInfo]
   "The user id, superuser/data-analyst/group-manager flags, locale, and auth provider for the active, unexpired
   Session whose `key_hashed` is `session-key-hash`, or nil if there is none. `anti-csrf-token`, when present,
   additionally requires the Session's `anti_csrf_token` to match it (a full-app-embed session); `max-age-minutes`
@@ -138,28 +142,36 @@
         params (concat [session-key-hash] (when (seq anti-csrf-token) [anti-csrf-token]))]
     (t2/query-one (cons sql params))))
 
-(mu/defn api-key-user-info :- [:maybe [:map {:closed true}
-                                       [:metabase-user-id  ms/PositiveInt]
-                                       [:api-key           :string]
-                                       [:is-superuser?     :boolean]
-                                       [:is-data-analyst?  :boolean]
-                                       [:user-locale       [:maybe :string]]
-                                       [:is-group-manager? {:optional true} [:maybe :boolean]]]]
+(def ^:private ApiKeyUserInfo
+  "Rows returned by [[api-key-user-info]]."
+  [:map {:closed true}
+   [:metabase-user-id  ::lib.schema.id/user]
+   [:api-key           :string]
+   [:is-superuser?     :boolean]
+   [:is-data-analyst?  :boolean]
+   [:user-locale       [:maybe :string]]
+   [:is-group-manager? {:optional true} [:maybe :boolean]]])
+
+(mu/defn api-key-user-info :- [:maybe ApiKeyUserInfo]
   "The user id, api key, superuser/data-analyst/group-manager flags, and locale for the active User whose ApiKey
   starts with `key-prefix`, or nil if there is none."
   [key-prefix                   :- :string
    enable-advanced-permissions? :- :boolean]
   (t2/query-one (cons (user-data-for-api-key-prefix-query enable-advanced-permissions?) [key-prefix])))
 
-(mu/defn oauth-user-info :- [:maybe [:map {:closed true}
-                                     [:metabase-user-id  ms/PositiveInt]
-                                     [:is-superuser?     :boolean]
-                                     [:is-data-analyst?  :boolean]
-                                     [:user-locale       [:maybe :string]]
-                                     [:is-group-manager? {:optional true} [:maybe :boolean]]]]
+(def ^:private OauthUserInfo
+  "Rows returned by [[oauth-user-info]]."
+  [:map {:closed true}
+   [:metabase-user-id  ::lib.schema.id/user]
+   [:is-superuser?     :boolean]
+   [:is-data-analyst?  :boolean]
+   [:user-locale       [:maybe :string]]
+   [:is-group-manager? {:optional true} [:maybe :boolean]]])
+
+(mu/defn oauth-user-info :- [:maybe OauthUserInfo]
   "The user id, superuser/data-analyst/group-manager flags, and locale for the active User with `user-id`, or nil if
   there is none."
-  [user-id                      :- ms/PositiveInt
+  [user-id                      :- ::lib.schema.id/user
    enable-advanced-permissions? :- :boolean]
   (t2/query-one (cons (user-data-for-id-query enable-advanced-permissions?) [user-id])))
 

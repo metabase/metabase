@@ -2,19 +2,20 @@
   "Application database queries for the permission-debug module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn user-superuser? :- [:maybe :boolean]
   "Whether the User with `user-id` is a superuser."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :is_superuser :model/User :id user-id))
 
-(mu/defn card :- [:maybe (ms/InstanceOf :model/Card)]
+(mu/defn card :- [:maybe ::queries.schema/card]
   "The Card with `card-id`, or nil."
-  [card-id :- ms/PositiveInt]
+  [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
 (defn- blocked-tables-select
@@ -43,8 +44,8 @@
 (mu/defn blocked-tables-in-database :- [:sequential BlockedTableRow]
   "The `[db-name schema table-name group-name]` rows of every Table in the Database with `database-id` blocked (per
   `permissions-blocking`) for the User with `user-id`, excluding those granted (per `permissions-granting`)."
-  [user-id              :- ms/PositiveInt
-   database-id          :- ms/PositiveInt
+  [user-id              :- ::lib.schema.id/user
+   database-id          :- ::lib.schema.id/database
    permissions-blocking :- :map
    permissions-granting :- :map]
   (t2/query (blocked-tables-select user-id [:= :blocked.db_id database-id] permissions-blocking permissions-granting)))
@@ -52,8 +53,8 @@
 (mu/defn blocked-tables-among :- [:sequential BlockedTableRow]
   "The `[db-name schema table-name group-name]` rows of the Tables with `table-ids` blocked (per
   `permissions-blocking`) for the User with `user-id`, excluding those granted (per `permissions-granting`)."
-  [user-id              :- ms/PositiveInt
-   table-ids            :- [:seqable ms/PositiveInt]
+  [user-id              :- ::lib.schema.id/user
+   table-ids            :- [:set ::lib.schema.id/table]
    permissions-blocking :- :map
    permissions-granting :- :map]
   (t2/query (blocked-tables-select user-id [:in :blocked.id table-ids] permissions-blocking permissions-granting)))

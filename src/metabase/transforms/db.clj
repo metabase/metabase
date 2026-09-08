@@ -3,34 +3,19 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
   and transactions."
   (:require
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.indexes.schema :as indexes.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.transforms.schema :as transforms.schema]
+   [metabase.users.schema :as users.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
-
-(def ^:private TransformRow
-  "Closed whole-row schema for `t2/insert!`/`t2/update!` against the `transform` table."
-  [:map {:closed true}
-   [:name                {:optional true} :any]
-   [:description          {:optional true} :any]
-   [:source               {:optional true} :any]
-   [:target               {:optional true} :any]
-   [:entity_id            {:optional true} :any]
-   [:created_at           {:optional true} :any]
-   [:updated_at           {:optional true} :any]
-   [:source_type          {:optional true} :any]
-   [:creator_id           {:optional true} :any]
-   [:source_database_id   {:optional true} :any]
-   [:collection_id        {:optional true} :any]
-   [:owner_user_id        {:optional true} :any]
-   [:owner_email          {:optional true} :any]
-   [:target_db_id         {:optional true} :any]
-   [:last_checkpoint_value {:optional true} :any]
-   [:target_table_id      {:optional true} :any]
-   [:table_dependencies   {:optional true} :any]
-   [:run_trigger          {:optional true} :any]])
 
 (def ^:private no-active-run-clause
   "Honey SQL clause matching TransformRunCancelation rows whose run is no longer active."
@@ -43,81 +28,81 @@
 
 ;;; ------------------------------------------------ Transform ------------------------------------------------
 
-(mu/defn transform :- [:maybe (ms/InstanceOf :model/Transform)]
+(mu/defn transform :- [:maybe ::transforms.schema/transform]
   "The Transform with `transform-id`, or nil."
-  [transform-id :- ms/PositiveInt]
+  [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/Transform :id transform-id))
 
-(mu/defn transforms :- [:sequential (ms/InstanceOf :model/Transform)]
+(mu/defn transforms :- [:sequential ::transforms.schema/transform]
   "The Transforms with `transform-ids`."
-  [transform-ids :- [:seqable ms/PositiveInt]]
+  [transform-ids :- [:or [:set ::lib.schema.id/transform] [:sequential ::lib.schema.id/transform]]]
   (t2/select :model/Transform :id [:in transform-ids]))
 
-(mu/defn transforms-of-source-types :- [:sequential (ms/InstanceOf :model/Transform)]
+(mu/defn transforms-of-source-types :- [:sequential ::transforms.schema/transform]
   "The Transforms whose source type is one of `source-types`, optionally narrowed to `database-id`, ordered by ID."
-  [source-types :- [:seqable :string]
-   database-id  :- [:maybe ms/PositiveInt]]
+  [source-types :- [:set :string]
+   database-id  :- [:maybe ::lib.schema.id/database]]
   (t2/select :model/Transform {:where    [:and
                                           [:in :source_type source-types]
                                           (when database-id [:= :source_database_id database-id])]
                                :order-by [[:id :asc]]}))
 
-(mu/defn transform-dependency-rows :- [:sequential (ms/InstanceOf :model/Transform)]
+(mu/defn transform-dependency-rows :- [:sequential (mut/select-keys ::transforms.schema/transform [:id :target :target_table_id :created_at :table_dependencies])]
   "The ID, target, target Table ID, creation time, and table dependencies of every Transform."
   []
   (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]))
 
-(mu/defn transform-snapshot :- [:maybe (ms/InstanceOf :model/Transform)]
+(mu/defn transform-snapshot :- [:maybe (mut/select-keys ::transforms.schema/transform [:name :entity_id :source_type])]
   "The name, entity ID, and source type of the Transform with `transform-id`."
-  [transform-id :- ms/PositiveInt]
+  [transform-id :- ::lib.schema.id/transform]
   (t2/select-one [:model/Transform :name :entity_id :source_type] :id transform-id))
 
-(mu/defn transform-summaries-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/Transform)]
+(mu/defn transform-summaries-by-id :- [:map-of ::lib.schema.id/transform ::lib.schema.id/transform]
   "A map of ID to the ID, name, and Collection ID of the Transforms with `transform-ids`."
-  [transform-ids :- [:seqable ms/PositiveInt]]
+  [transform-ids :- [:set ::lib.schema.id/transform]]
   (t2/select-pk->fn identity [:model/Transform :id :name :collection_id] :id [:in transform-ids]))
 
-(mu/defn transform-names-by-id :- [:map-of ms/PositiveInt :string]
+(mu/defn transform-names-by-id :- [:map-of ::lib.schema.id/transform :string]
   "A map of ID to name for the Transforms with `transform-ids`."
-  [transform-ids :- [:seqable ms/PositiveInt]]
+  [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (t2/select-pk->fn :name :model/Transform :id [:in transform-ids]))
 
-(mu/defn transform-last-checkpoint-value :- :any
+(mu/defn transform-last-checkpoint-value :- [:maybe [:or :string number?]]
   "The last checkpoint value of the Transform with `transform-id`."
-  [transform-id :- ms/PositiveInt]
+  [transform-id :- ::lib.schema.id/transform]
   (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] transform-id))
 
-(mu/defn transform-collection-id :- [:maybe ms/PositiveInt]
+(mu/defn transform-collection-id :- [:maybe ::lib.schema.id/collection]
   "The Collection ID of the Transform with `transform-id`."
-  [transform-id :- ms/PositiveInt]
+  [transform-id :- ::lib.schema.id/transform]
   (t2/select-one-fn :collection_id :model/Transform :id transform-id))
 
-(mu/defn insert-transform! :- (ms/InstanceOf :model/Transform)
+(mu/defn insert-transform! :- (mut/optional-keys ::transforms.schema/transform)
   "Insert `transform` and return the new instance."
-  [transform :- TransformRow]
+  [transform :- ::transforms.schema/transform.update]
   (t2/insert-returning-instance! :model/Transform transform))
 
 (mu/defn update-transform! :- :int
   "Apply `changes` to the Transform with `transform-id`."
-  [transform-id :- ms/PositiveInt
-   changes      :- TransformRow]
+  [transform-id :- ::lib.schema.id/transform
+   changes      :- ::transforms.schema/transform.update]
   (t2/update! :model/Transform transform-id changes))
 
 (mu/defn delete-transform! :- :int
   "Delete the Transform with `transform-id`."
-  [transform-id :- ms/PositiveInt]
+  [transform-id :- ::lib.schema.id/transform]
   (t2/delete! :model/Transform transform-id))
 
 ;;; ---------------------------------------------- Transform tags ----------------------------------------------
 
-(mu/defn tag :- [:maybe (ms/InstanceOf :model/TransformTag)]
+(mu/defn tag :- [:maybe ::transforms.schema/transform-tag]
   "The TransformTag with `tag-id`, or nil."
   [tag-id :- ms/PositiveInt]
   (t2/select-one :model/TransformTag :id tag-id))
 
 (mu/defn existing-tag-ids :- [:maybe [:set ms/PositiveInt]]
   "The subset of `tag-ids` that exist."
-  [tag-ids :- [:seqable ms/PositiveInt]]
+  [tag-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids]))
 
 (mu/defn tag-name-exists? :- :boolean
@@ -131,24 +116,24 @@
    tag-id   :- ms/PositiveInt]
   (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id]))
 
-(mu/defn transform-tag-links :- [:sequential (ms/InstanceOf :model/TransformTransformTag)]
+(mu/defn transform-tag-links :- [:sequential ::transforms.schema/transform-transform-tag]
   "The tag links of the Transforms with `transform-ids`, ordered by position."
-  [transform-ids :- [:seqable [:maybe ms/PositiveInt]]]
+  [transform-ids :- [:or [:set [:maybe ::lib.schema.id/transform]] [:sequential [:maybe ::lib.schema.id/transform]]]]
   (t2/select :model/TransformTransformTag :transform_id [:in transform-ids] {:order-by [[:position :asc]]}))
 
-(mu/defn transform-tag-links-for-tags :- [:sequential (ms/InstanceOf :model/TransformTransformTag)]
+(mu/defn transform-tag-links-for-tags :- [:sequential (mut/select-keys ::transforms.schema/transform-transform-tag [:tag_id :transform_id])]
   "The tag ID and Transform ID of the tag links of the TransformTags with `tag-ids`."
-  [tag-ids :- [:seqable ms/PositiveInt]]
+  [tag-ids :- [:set ms/PositiveInt]]
   (t2/select [:model/TransformTransformTag :tag_id :transform_id] :tag_id [:in tag-ids]))
 
-(mu/defn transform-ids-with-tags :- [:maybe [:set ms/PositiveInt]]
+(mu/defn transform-ids-with-tags :- [:maybe [:set ::lib.schema.id/transform]]
   "The IDs of the Transforms tagged with one of `tag-ids`."
-  [tag-ids :- [:seqable ms/PositiveInt]]
+  [tag-ids :- [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
   (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids]))
 
-(mu/defn active-job-schedules-for-transforms :- [:sequential (ms/InstanceOf :model/TransformTransformTag)]
+(mu/defn active-job-schedules-for-transforms :- [:sequential (mut/optional-keys (mut/open-schema ::transforms.schema/transform-transform-tag))]
   "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag."
-  [transform-ids :- [:seqable ms/PositiveInt]]
+  [transform-ids :- [:set ::lib.schema.id/transform]]
   (t2/select :model/TransformTransformTag
              {:select [:ttt.transform_id [:job.schedule :schedule]]
               :from   [[:transform_transform_tag :ttt]]
@@ -160,47 +145,43 @@
 
 (mu/defn insert-transform-tag-links! :- :int
   "Insert the TransformTransformTag `rows`."
-  [rows :- [:seqable
-            [:map {:closed true}
-             [:transform_id {:optional true} :any]
-             [:tag_id       {:optional true} :any]
-             [:entity_id    {:optional true} :any]
-             [:position     {:optional true} :any]]]]
+  [rows :- [:sequential
+            (mut/select-keys ::transforms.schema/transform-transform-tag.update [:transform_id :tag_id :entity_id :position])]]
   (t2/insert! :model/TransformTransformTag rows))
 
 (mu/defn set-transform-tag-position! :- :int
   "Set the position of the tag link between the Transform with `transform-id` and the tag with `tag-id`."
-  [transform-id :- ms/PositiveInt
+  [transform-id :- ::lib.schema.id/transform
    tag-id       :- ms/PositiveInt
    position     :- ms/IntGreaterThanOrEqualToZero]
   (t2/update! :model/TransformTransformTag {:transform_id transform-id, :tag_id tag-id} {:position position}))
 
 (mu/defn delete-transform-tag-links! :- :int
   "Delete the links between the Transform with `transform-id` and the tags with `tag-ids`."
-  [transform-id :- ms/PositiveInt
-   tag-ids      :- [:seqable ms/PositiveInt]]
+  [transform-id :- ::lib.schema.id/transform
+   tag-ids      :- [:set ms/PositiveInt]]
   (t2/delete! :model/TransformTransformTag :transform_id transform-id :tag_id [:in tag-ids]))
 
 ;;; ---------------------------------------------- Transform jobs ----------------------------------------------
 
-(mu/defn job :- [:maybe (ms/InstanceOf :model/TransformJob)]
+(mu/defn job :- [:maybe ::transforms.schema/transform-job]
   "The TransformJob with `job-id`, or nil."
   [job-id :- ms/PositiveInt]
   (t2/select-one :model/TransformJob :id job-id))
 
-(mu/defn active-jobs :- [:sequential (ms/InstanceOf :model/TransformJob)]
+(mu/defn active-jobs :- [:sequential ::transforms.schema/transform-job]
   "The active TransformJobs."
   []
   (t2/select :model/TransformJob :active true))
 
-(mu/defn job-snapshot :- [:maybe (ms/InstanceOf :model/TransformJob)]
+(mu/defn job-snapshot :- [:maybe (mut/select-keys ::transforms.schema/transform-job [:name :entity_id :built_in_type])]
   "The name, entity ID, and built-in type of the TransformJob with `job-id`."
   [job-id :- ms/PositiveInt]
   (t2/select-one [:model/TransformJob :name :entity_id :built_in_type] :id job-id))
 
 (mu/defn job-names-by-id :- [:map-of ms/PositiveInt :string]
   "A map of ID to name for the TransformJobs with `job-ids`."
-  [job-ids :- [:seqable ms/PositiveInt]]
+  [job-ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))
 
 (mu/defn activate-job! :- :int
@@ -218,19 +199,15 @@
   [job-id :- ms/PositiveInt]
   (t2/select-fn-set :tag_id :model/TransformJobTransformTag :job_id job-id))
 
-(mu/defn job-tag-links :- [:sequential (ms/InstanceOf :model/TransformJobTransformTag)]
+(mu/defn job-tag-links :- [:sequential ::transforms.schema/transform-job-transform-tag]
   "The tag links of the TransformJobs with `job-ids`, ordered by position."
-  [job-ids :- [:seqable ms/PositiveInt]]
+  [job-ids :- [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
   (t2/select :model/TransformJobTransformTag :job_id [:in job-ids] {:order-by [[:position :asc]]}))
 
 (mu/defn insert-job-tag-links! :- :int
   "Insert the TransformJobTransformTag `rows`."
-  [rows :- [:seqable
-            [:map {:closed true}
-             [:job_id    {:optional true} :any]
-             [:tag_id    {:optional true} :any]
-             [:entity_id {:optional true} :any]
-             [:position  {:optional true} :any]]]]
+  [rows :- [:sequential
+            (mut/select-keys ::transforms.schema/transform-job-transform-tag.update [:job_id :tag_id :entity_id :position])]]
   (t2/insert! :model/TransformJobTransformTag rows))
 
 (mu/defn set-job-tag-position! :- :int
@@ -243,32 +220,32 @@
 (mu/defn delete-job-tag-links! :- :int
   "Delete the links between the TransformJob with `job-id` and the tags with `tag-ids`."
   [job-id  :- ms/PositiveInt
-   tag-ids :- [:seqable ms/PositiveInt]]
+   tag-ids :- [:set ms/PositiveInt]]
   (t2/delete! :model/TransformJobTransformTag :job_id job-id :tag_id [:in tag-ids]))
 
 ;;; ---------------------------------------------- Transform runs ----------------------------------------------
 
-(mu/defn run :- [:maybe (ms/InstanceOf :model/TransformRun)]
+(mu/defn run :- [:maybe ::transforms.schema/transform-run]
   "The TransformRun with `run-id`, or nil."
   [run-id :- ms/PositiveInt]
   (t2/select-one :model/TransformRun :id run-id))
 
-(mu/defn runs :- [:sequential (ms/InstanceOf :model/TransformRun)]
+(mu/defn runs :- [:sequential ::transforms.schema/transform-run]
   "The TransformRuns with `run-ids`."
-  [run-ids :- [:seqable ms/PositiveInt]]
+  [run-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/TransformRun :id [:in run-ids]))
 
-(mu/defn runs-for-transform :- [:sequential (ms/InstanceOf :model/TransformRun)]
+(mu/defn runs-for-transform :- [:sequential ::transforms.schema/transform-run]
   "The TransformRuns of the Transform with `transform-id`, newest first."
-  [transform-id :- ms/PositiveInt]
+  [transform-id :- ::lib.schema.id/transform]
   (t2/select :model/TransformRun :transform_id transform-id {:order-by [[:start_time :desc] [:end_time :desc]]}))
 
-(mu/defn runs-for-job-run :- [:sequential (ms/InstanceOf :model/TransformRun)]
+(mu/defn runs-for-job-run :- [:sequential ::transforms.schema/transform-run]
   "The TransformRuns of the TransformJobRun with `job-run-id`, oldest first."
   [job-run-id :- ms/PositiveInt]
   (t2/select :model/TransformRun {:where [:= :job_run_id job-run-id], :order-by [[:start_time :asc]]}))
 
-(mu/defn runs-for-dag-run :- [:sequential (ms/InstanceOf :model/TransformRun)]
+(mu/defn runs-for-dag-run :- [:sequential ::transforms.schema/transform-run]
   "The TransformRuns of the TransformDagRun with `dag-run-id`, oldest first."
   [dag-run-id :- ms/PositiveInt]
   (t2/select :model/TransformRun {:where [:= :dag_run_id dag-run-id], :order-by [[:start_time :asc]]}))
@@ -376,22 +353,22 @@
    [:started-at-end    [:maybe ms/TemporalInstant]]
    [:ended-at-start    [:maybe ms/TemporalInstant]]
    [:ended-at-end      [:maybe ms/TemporalInstant]]
-   [:run-methods       [:maybe [:seqable :string]]]
-   [:transform-ids     [:maybe [:seqable ms/PositiveInt]]]
-   [:transform-tag-ids [:maybe [:seqable ms/PositiveInt]]]
-   [:statuses          [:maybe [:seqable :string]]]
-   [:user-id           [:maybe ms/PositiveInt]]])
+   [:run-methods       [:maybe [:sequential :string]]]
+   [:transform-ids     [:maybe [:or [:set ::lib.schema.id/transform] [:sequential ::lib.schema.id/transform]]]]
+   [:transform-tag-ids [:maybe [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
+   [:statuses          [:maybe [:sequential :string]]]
+   [:user-id           [:maybe ::lib.schema.id/user]]])
 
-(mu/defn paged-runs :- [:sequential (ms/InstanceOf :model/TransformRun)]
+(mu/defn paged-runs :- [:sequential (mut/optional-keys (mut/open-schema ::transforms.schema/transform-run))]
   "Up to `limit` (offset by `offset`) TransformRuns matching `filters` (see [[paged-runs-where]] for the supported
   keys), sorted by `sort-column`/`sort-direction` (translating `status`, `run-method`, and `transform-tags` sort
   columns per `status-labels`/`run-method-labels`/`tag-name-labels`)."
   [filters            :- RunFilters
    sort-column        :- [:maybe [:or :keyword :string]]
    sort-direction     :- [:maybe [:or :keyword :string]]
-   status-labels      :- [:map-of :string :any]
-   run-method-labels  :- [:map-of :string :any]
-   tag-name-labels    :- [:map-of :string :any]
+   status-labels      :- [:map-of :string :string]
+   run-method-labels  :- [:map-of :string :string]
+   tag-name-labels    :- [:map-of :string :string]
    limit              :- ms/PositiveInt
    offset             :- ms/IntGreaterThanOrEqualToZero]
   (let [where-clause (paged-runs-where filters)
@@ -412,7 +389,7 @@
 
 (mu/defn latest-runs-reducible
   "Reducible latest TransformRun of each Transform with `transform-ids`."
-  [transform-ids :- [:seqable ms/PositiveInt]]
+  [transform-ids :- [:set ::lib.schema.id/transform]]
   (t2/reducible-select :model/TransformRun
                        {:with   [[:latest_runs
                                   ^:allow-subquery
@@ -427,9 +404,9 @@
                         :from   [:latest_runs]
                         :where  [:= :rn [:inline 1]]}))
 
-(mu/defn active-run-for-transform :- [:maybe (ms/InstanceOf :model/TransformRun)]
+(mu/defn active-run-for-transform :- [:maybe ::transforms.schema/transform-run]
   "The active TransformRun of the Transform with `transform-id`, or nil."
-  [transform-id :- ms/PositiveInt]
+  [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/TransformRun :transform_id transform-id :is_active true))
 
 (mu/defn active-run-ids-of-parent :- [:maybe [:sequential ms/PositiveInt]]
@@ -438,15 +415,15 @@
    parent-run-id :- ms/PositiveInt]
   (t2/select-pks-vec :model/TransformRun parent-column parent-run-id :is_active true))
 
-(mu/defn lock-active-runs :- [:sequential (ms/InstanceOf :model/TransformRun)]
+(mu/defn lock-active-runs :- [:sequential ::transforms.schema/transform-run]
   "The active TransformRuns among `run-ids`, locked for update."
-  [run-ids :- [:seqable ms/PositiveInt]]
+  [run-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/TransformRun {:where [:and [:= :is_active true] [:in :id run-ids]]
                                   :for   :update}))
 
-(mu/defn last-success-times :- [:sequential (ms/InstanceOf :model/TransformRun)]
+(mu/defn last-success-times :- [:sequential (mut/optional-keys (mut/open-schema ::transforms.schema/transform-run))]
   "Rows of Transform ID and the latest `end_time` of its succeeded runs for `transform-ids`."
-  [transform-ids :- [:seqable ms/PositiveInt]]
+  [transform-ids :- [:set ::lib.schema.id/transform]]
   (t2/select :model/TransformRun
              {:select   [:transform_id [[:max :end_time] :last_success]]
               :where    [:and
@@ -454,30 +431,9 @@
                          [:= :status "succeeded"]]
               :group-by [:transform_id]}))
 
-(def ^:private TransformRunRow
-  "Closed whole-row schema for `t2/insert!` against the `transform_run` table."
-  [:map {:closed true}
-   [:transform_id               {:optional true} :any]
-   [:run_method                 {:optional true} :any]
-   [:status                     {:optional true} :any]
-   [:is_active                  {:optional true} :any]
-   [:start_time                 {:optional true} :any]
-   [:end_time                   {:optional true} :any]
-   [:message                    {:optional true} :any]
-   [:user_id                    {:optional true} :any]
-   [:transform_name             {:optional true} :any]
-   [:transform_entity_id        {:optional true} :any]
-   [:checkpoint_filter_field_id {:optional true} :any]
-   [:checkpoint_lo_value        {:optional true} :any]
-   [:checkpoint_hi_value        {:optional true} :any]
-   [:metered_as                 {:optional true} :any]
-   [:last_heartbeat             {:optional true} :any]
-   [:job_run_id                 {:optional true} :any]
-   [:dag_run_id                 {:optional true} :any]])
-
-(mu/defn insert-run! :- (ms/InstanceOf :model/TransformRun)
+(mu/defn insert-run! :- (mut/optional-keys ::transforms.schema/transform-run)
   "Insert `run` and return the new instance."
-  [run :- TransformRunRow]
+  [run :- ::transforms.schema/transform-run.update]
   (t2/insert-returning-instance! :model/TransformRun run))
 
 (mu/defn finish-active-run! :- :int
@@ -488,7 +444,7 @@
 
 (mu/defn cancel-active-runs! :- :int
   "Mark the active TransformRuns among `run-ids` canceled because the user asked but the run could not be stopped."
-  [run-ids :- [:seqable ms/PositiveInt]]
+  [run-ids :- [:sequential ms/PositiveInt]]
   (t2/update! :model/TransformRun
               :id [:in run-ids]
               :is_active true
@@ -504,7 +460,7 @@
 
 ;;; -------------------------------------------- Run cancelations --------------------------------------------
 
-(mu/defn insert-cancelation-for-active-run! :- :any
+(mu/defn insert-cancelation-for-active-run! :- [:maybe :int]
   "Record a cancelation request for the TransformRun with `run-id` if it is active and none exists yet."
   [run-id :- ms/PositiveInt]
   (t2/query-one [(str "INSERT INTO transform_run_cancelation (run_id) "
@@ -520,9 +476,9 @@
   []
   (t2/reducible-select :model/TransformRunCancelation))
 
-(mu/defn cancelations-requested-before :- [:sequential (ms/InstanceOf :model/TransformRunCancelation)]
+(mu/defn cancelations-requested-before :- [:sequential (mut/select-keys ::transforms.schema/transform-run-cancelation [:run_id :time])]
   "The run ID and request time of the TransformRunCancelations requested before `cutoff`."
-  [cutoff :- :any]
+  [cutoff :- ms/TemporalInstant]
   (t2/select [:model/TransformRunCancelation :run_id :time] :time [:< cutoff]))
 
 (mu/defn delete-cancelation-for-inactive-run! :- :int
@@ -583,7 +539,7 @@
       [[:start_time sort-direction]
        [:end_time   sort-direction nulls-sort]])))
 
-(mu/defn job-runs :- [:sequential (ms/InstanceOf :model/TransformJobRun)]
+(mu/defn job-runs :- [:sequential ::transforms.schema/transform-job-run]
   "Up to `limit` (offset by `offset`) TransformJobRuns, optionally narrowed to `job-id`, `status`, `run-method`, and
   started in [`started-at-start`, `started-at-end`), sorted by `sort-column`/`sort-direction`."
   [job-id            :- [:maybe ms/PositiveInt]
@@ -617,7 +573,7 @@
 
 (mu/defn latest-job-runs-reducible
   "Reducible latest TransformJobRun of each TransformJob with `job-ids`."
-  [job-ids :- [:seqable ms/PositiveInt]]
+  [job-ids :- [:set ms/PositiveInt]]
   (t2/reducible-select :model/TransformJobRun
                        {:with   [[:ranked_runs
                                   ^:allow-subquery
@@ -632,12 +588,12 @@
                         :from   [:ranked_runs]
                         :where  [:= :rn [:inline 1]]}))
 
-(mu/defn active-job-run-for-job :- [:maybe (ms/InstanceOf :model/TransformJobRun)]
+(mu/defn active-job-run-for-job :- [:maybe ::transforms.schema/transform-job-run]
   "The active TransformJobRun of the TransformJob with `job-id`, or nil."
   [job-id :- ms/PositiveInt]
   (t2/select-one :model/TransformJobRun :job_id job-id :is_active true))
 
-(mu/defn failed-cron-job-runs-between :- [:sequential (ms/InstanceOf :model/TransformJobRun)]
+(mu/defn failed-cron-job-runs-between :- [:sequential (mut/select-keys ::transforms.schema/transform-job-run [:job_id :start_time :message])]
   "The job ID, start time, and message of the cron TransformJobRuns that failed or timed out in `[start, end)`,
   oldest first."
   [start :- ms/TemporalInstant
@@ -650,53 +606,19 @@
                          [:< :start_time end]]
               :order-by [[:start_time :asc]]}))
 
-(def ^:private TransformJobRunRow
-  "Closed whole-row schema for `t2/insert!` against the `transform_job_run` table."
-  [:map {:closed true}
-   [:job_id         {:optional true} :any]
-   [:run_method     {:optional true} :any]
-   [:status         {:optional true} :any]
-   [:is_active      {:optional true} :any]
-   [:start_time     {:optional true} :any]
-   [:end_time       {:optional true} :any]
-   [:message        {:optional true} :any]
-   [:created_at     {:optional true} :any]
-   [:updated_at     {:optional true} :any]
-   [:last_heartbeat {:optional true} :any]
-   [:job_name       {:optional true} :any]
-   [:job_entity_id  {:optional true} :any]])
-
-(mu/defn insert-job-run! :- (ms/InstanceOf :model/TransformJobRun)
+(mu/defn insert-job-run! :- (mut/optional-keys ::transforms.schema/transform-job-run)
   "Insert `job-run` and return the new instance."
-  [job-run :- TransformJobRunRow]
+  [job-run :- ::transforms.schema/transform-job-run.update]
   (t2/insert-returning-instance! :model/TransformJobRun job-run))
 
-(mu/defn active-dag-run-for-transform :- [:maybe (ms/InstanceOf :model/TransformDagRun)]
+(mu/defn active-dag-run-for-transform :- [:maybe ::transforms.schema/transform-dag-run]
   "The active TransformDagRun seeded from the Transform with `transform-id`, or nil."
-  [transform-id :- ms/PositiveInt]
+  [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/TransformDagRun :source_transform_id transform-id :is_active true))
 
-(def ^:private TransformDagRunRow
-  "Closed whole-row schema for `t2/insert!` against the `transform_dag_run` table."
-  [:map {:closed true}
-   [:source_transform_id        {:optional true} :any]
-   [:source_transform_name      {:optional true} :any]
-   [:source_transform_entity_id {:optional true} :any]
-   [:direction                  {:optional true} :any]
-   [:transform_count            {:optional true} :any]
-   [:status                     {:optional true} :any]
-   [:is_active                  {:optional true} :any]
-   [:start_time                 {:optional true} :any]
-   [:end_time                   {:optional true} :any]
-   [:message                    {:optional true} :any]
-   [:user_id                    {:optional true} :any]
-   [:last_heartbeat             {:optional true} :any]
-   [:created_at                 {:optional true} :any]
-   [:updated_at                 {:optional true} :any]])
-
-(mu/defn insert-dag-run! :- (ms/InstanceOf :model/TransformDagRun)
+(mu/defn insert-dag-run! :- (mut/optional-keys ::transforms.schema/transform-dag-run)
   "Insert `dag-run` and return the new instance."
-  [dag-run :- TransformDagRunRow]
+  [dag-run :- ::transforms.schema/transform-dag-run.update]
   (t2/insert-returning-instance! :model/TransformDagRun dag-run))
 
 ;;; ------------------------------------------ Root run listing ------------------------------------------
@@ -805,14 +727,14 @@
   (a subset of `#{:job :dag :transform}`, or all three when empty), optionally narrowed to `statuses`,
   `run-methods`, started in [`started-at-start`, `started-at-end`), ended in [`ended-at-start`, `ended-at-end`),
   and/or touching one of `transform-ids`, sorted by `sort-column`/`sort-direction`."
-  [types             :- [:maybe [:seqable :keyword]]
-   statuses          :- [:maybe [:seqable :string]]
-   run-methods       :- [:maybe [:seqable :string]]
+  [types             :- [:maybe [:sequential :keyword]]
+   statuses          :- [:maybe [:sequential :string]]
+   run-methods       :- [:maybe [:sequential :string]]
    started-at-start  :- [:maybe ms/TemporalInstant]
    started-at-end    :- [:maybe ms/TemporalInstant]
    ended-at-start    :- [:maybe ms/TemporalInstant]
    ended-at-end      :- [:maybe ms/TemporalInstant]
-   transform-ids     :- [:maybe [:seqable ms/PositiveInt]]
+   transform-ids     :- [:maybe [:sequential ::lib.schema.id/transform]]
    sort-column       :- [:maybe [:or :keyword :string]]
    sort-direction    :- [:maybe [:or :keyword :string]]
    limit             :- ms/PositiveInt
@@ -828,14 +750,14 @@
 
 (mu/defn root-run-summaries-count :- ms/IntGreaterThanOrEqualToZero
   "The number of root-run summary rows matching the same filters as [[root-run-summaries-page]]."
-  [types             :- [:maybe [:seqable :keyword]]
-   statuses          :- [:maybe [:seqable :string]]
-   run-methods       :- [:maybe [:seqable :string]]
+  [types             :- [:maybe [:sequential :keyword]]
+   statuses          :- [:maybe [:sequential :string]]
+   run-methods       :- [:maybe [:sequential :string]]
    started-at-start  :- [:maybe ms/TemporalInstant]
    started-at-end    :- [:maybe ms/TemporalInstant]
    ended-at-start    :- [:maybe ms/TemporalInstant]
    ended-at-end      :- [:maybe ms/TemporalInstant]
-   transform-ids     :- [:maybe [:seqable ms/PositiveInt]]]
+   transform-ids     :- [:maybe [:sequential ::lib.schema.id/transform]]]
   (let [where (root-run-summaries-where statuses run-methods started-at-start started-at-end ended-at-start
                                         ended-at-end)
         base  (cond-> {:from [[(union-subquery types transform-ids) :runs]]}
@@ -849,62 +771,62 @@
 
 ;;; ----------------------------------------------- Other models -----------------------------------------------
 
-(mu/defn database :- [:maybe (ms/InstanceOf :model/Database)]
+(mu/defn database :- [:maybe ::warehouses.schema/database]
   "The Database with `database-id`, or nil."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database database-id))
 
-(mu/defn table :- [:maybe (ms/InstanceOf :model/Table)]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
   "The Table with `table-id`, or nil."
-  [table-id :- ms/PositiveInt]
+  [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table table-id))
 
-(mu/defn databases :- [:sequential (ms/InstanceOf :model/Database)]
+(mu/defn databases :- [:sequential ::warehouses.schema/database]
   "The Databases with `database-ids`."
-  [database-ids :- [:seqable ms/PositiveInt]]
+  [database-ids :- [:set ::lib.schema.id/database]]
   (t2/select :model/Database :id [:in database-ids]))
 
 (mu/defn database-exists? :- :boolean
   "Whether a Database with `database-id` exists."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :id database-id))
 
-(mu/defn tables :- [:sequential (ms/InstanceOf :model/Table)]
+(mu/defn tables :- [:sequential ::warehouse-schema.schema/table]
   "The Tables with `table-ids`."
-  [table-ids :- [:seqable ms/PositiveInt]]
+  [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))
 
-(mu/defn table-indexes-for-transforms :- [:sequential (ms/InstanceOf :model/TableIndex)]
+(mu/defn table-indexes-for-transforms :- [:sequential ::indexes.schema/table-index]
   "The TableIndexes of the Transforms with `transform-ids`, ordered by index name."
-  [transform-ids :- [:seqable ms/PositiveInt]]
+  [transform-ids :- [:set ::lib.schema.id/transform]]
   (t2/select :model/TableIndex :transform_id [:in transform-ids] {:order-by [[:index_name :asc]]}))
 
-(mu/defn field :- [:maybe (ms/InstanceOf :model/Field)]
+(mu/defn field :- [:maybe ::warehouse-schema.schema/field]
   "The Field with `field-id`, or nil."
-  [field-id :- ms/PositiveInt]
+  [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field field-id))
 
 (mu/defn field-exists? :- :boolean
   "Whether a Field with `field-id` exists."
-  [field-id :- ms/PositiveInt]
+  [field-id :- ::lib.schema.id/field]
   (t2/exists? :model/Field :id field-id))
 
 (mu/defn active-field-ids-by-name :- [:map-of :string ms/PositiveInt]
   "A map of name to ID for the active Fields of the Table with `table-id`."
-  [table-id :- ms/PositiveInt]
+  [table-id :- ::lib.schema.id/table]
   (t2/select-fn->fn :name :id [:model/Field :name :id] :table_id table-id :active true))
 
-(mu/defn active-users :- [:sequential (ms/InstanceOf :model/User)]
+(mu/defn active-users :- [:sequential ::users.schema/user]
   "The active Users with `user-ids`."
-  [user-ids :- [:seqable ms/PositiveInt]]
+  [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select :model/User :id [:in user-ids] :is_active true))
 
-(mu/defn active-admins :- [:sequential (ms/InstanceOf :model/User)]
+(mu/defn active-admins :- [:sequential ::users.schema/user]
   "The active superusers."
   []
   (t2/select :model/User :is_superuser true :is_active true))
 
-(mu/defn user-summaries-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/User)]
+(mu/defn user-summaries-by-id :- [:map-of ::lib.schema.id/user ::lib.schema.id/user]
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
-  [user-ids :- [:seqable ms/PositiveInt]]
+  [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))

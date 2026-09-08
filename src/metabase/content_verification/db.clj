@@ -2,23 +2,27 @@
   "Application database queries for the content verification module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
    [metabase.app-db.core :as app-db]
+   [metabase.content-verification.schema :as content-verification.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn moderation-reviews-for-items :- [:sequential (ms/InstanceOf :model/ModerationReview)]
+(mu/defn moderation-reviews-for-items :- [:sequential ::content-verification.schema/moderation-review]
   "The ModerationReviews of the items with `item-types` and `item-ids`, newest first."
-  [item-types :- [:seqable :keyword]
-   item-ids   :- [:seqable ms/PositiveInt]]
+  [item-types :- [:set :keyword]
+   item-ids   :- [:sequential ms/PositiveInt]]
   (t2/select :model/ModerationReview
              :moderated_item_type [:in item-types]
              :moderated_item_id [:in item-ids]
              {:order-by [[:id :desc]]}))
 
-(mu/defn users :- [:sequential (ms/InstanceOf :model/User)]
+(mu/defn users :- [:sequential ::users.schema/user]
   "The Users with `user-ids`."
-  [user-ids :- [:seqable ms/PositiveInt]]
+  [user-ids :- [:maybe [:sequential ::lib.schema.id/user]]]
   (t2/select :model/User :id [:in user-ids]))
 
 (mu/defn moderation-review-ids-for-item :- [:sequential [:map {:closed true} [:id ms/PositiveInt]]]
@@ -32,11 +36,11 @@
                             [:= :moderated_item_type item-type]]
                  :order-by [[:id :desc]]}))
 
-(mu/defn most-recent-moderation-review-statuses :- [:sequential (ms/InstanceOf :model/ModerationReview)]
+(mu/defn most-recent-moderation-review-statuses :- [:sequential (mut/select-keys ::content-verification.schema/moderation-review [:moderated_item_id :moderated_item_type :status])]
   "The item id, item type, and status of the most recent ModerationReviews of the items with `item-types` and
   `item-ids`, newest first."
-  [item-types :- [:seqable :keyword]
-   item-ids   :- [:seqable ms/PositiveInt]]
+  [item-types :- [:set :keyword]
+   item-ids   :- [:sequential ms/PositiveInt]]
   (t2/select [:model/ModerationReview :moderated_item_id :moderated_item_type :status]
              :moderated_item_type [:in item-types]
              :moderated_item_id [:in item-ids]
@@ -45,7 +49,7 @@
 
 (mu/defn delete-moderation-reviews! :- :int
   "Delete the ModerationReviews with `ids`."
-  [ids :- [:seqable ms/PositiveInt]]
+  [ids :- [:set ms/PositiveInt]]
   (t2/delete! :model/ModerationReview :id [:in ids]))
 
 (mu/defn unmark-most-recent-moderation-reviews! :- :int
@@ -56,13 +60,7 @@
               {:moderated_item_id item-id, :moderated_item_type item-type}
               {:most_recent false}))
 
-(mu/defn insert-moderation-review! :- (ms/InstanceOf :model/ModerationReview)
+(mu/defn insert-moderation-review! :- (mut/optional-keys ::content-verification.schema/moderation-review)
   "Insert the ModerationReview `row` and return the inserted instance."
-  [row :- [:map {:closed true}
-           [:moderated_item_id                 {:optional true} :any]
-           [:moderated_item_type               {:optional true} :any]
-           [:moderator_id                      {:optional true} :any]
-           [:status                            {:optional true} :any]
-           [:text                              {:optional true} :any]
-           [:most_recent                       {:optional true} :any]]]
+  [row :- (mut/select-keys ::content-verification.schema/moderation-review.update [:moderated_item_id :moderated_item_type :moderator_id :status :text :most_recent])]
   (t2/insert-returning-instance! :model/ModerationReview row))

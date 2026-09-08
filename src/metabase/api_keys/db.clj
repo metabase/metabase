@@ -2,6 +2,10 @@
   "Application database queries for the API keys module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
+   [metabase.api-keys.schema :as api-keys.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -11,19 +15,19 @@
   []
   (t2/count :model/ApiKey :scope nil))
 
-(mu/defn unscoped-api-keys :- [:sequential (ms/InstanceOf :model/ApiKey)]
+(mu/defn unscoped-api-keys :- [:sequential ::api-keys.schema/api-key]
   "The ApiKeys without a scope."
   []
   (t2/select :model/ApiKey :scope nil))
 
-(mu/defn api-key :- [:maybe (ms/InstanceOf :model/ApiKey)]
+(mu/defn api-key :- [:maybe ::api-keys.schema/api-key]
   "The ApiKey with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/ApiKey id))
 
-(mu/defn save-api-key! :- (ms/InstanceOf :model/ApiKey)
+(mu/defn save-api-key! :- ms/PositiveInt
   "Save the changes made to the ApiKey instance `api-key`."
-  [api-key :- (ms/InstanceOf :model/ApiKey)]
+  [api-key :- ::api-keys.schema/api-key]
   (t2/save! api-key))
 
 (mu/defn api-key-exists? :- :boolean
@@ -36,13 +40,17 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/ApiKey id))
 
+(def ^:private ApiKeyGroup
+  "Rows returned by [[api-key-groups]]."
+  [:map {:closed true}
+   [:group-name [:maybe :string]]
+   [:group-id ms/PositiveInt]
+   [:api-key-id ms/PositiveInt]])
+
 (mu/defn api-key-groups :- [:sequential
-                            [:map {:closed true}
-                             [:group-name [:maybe :string]]
-                             [:group-id ms/PositiveInt]
-                             [:api-key-id ms/PositiveInt]]]
+                            ApiKeyGroup]
   "The group name, group id, and api key id of the PermissionsGroups of the ApiKeys with `api-key-ids`."
-  [api-key-ids :- [:seqable ms/PositiveInt]]
+  [api-key-ids :- [:sequential ms/PositiveInt]]
   (t2/query {:select [[:pg.name :group-name]
                       [:pg.id :group-id]
                       [:api_key.id :api-key-id]]
@@ -53,18 +61,18 @@
 
 (mu/defn rename-api-key-user! :- :int
   "Set the first name (and clear the last name) of the api-key User with `user-id`."
-  [user-id    :- ms/PositiveInt
+  [user-id    :- ::lib.schema.id/user
    first-name :- :string]
   (t2/update! :model/User :id user-id, :type :api-key, {:first_name first-name, :last_name ""}))
 
 (mu/defn user-type :- [:maybe :keyword]
   "The `:type` of the User with `user-id`, or nil."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :type :model/User :id user-id))
 
 (mu/defn deactivate-api-key-user! :- :int
   "Deactivate the api-key User with `user-id` (nil for keys without a user, e.g. SCIM keys, which updates nothing)."
-  [user-id :- [:maybe ms/PositiveInt]]
+  [user-id :- [:maybe ::lib.schema.id/user]]
   (t2/update! :model/User user-id, :type :api-key, {:is_active false}))
 
 (mu/defn api-key-prefix-exists? :- :boolean
@@ -77,56 +85,18 @@
   [key-name :- :string]
   (t2/exists? :model/ApiKey :name key-name))
 
-(mu/defn insert-user! :- ms/PositiveInt
+(mu/defn insert-user! :- ::lib.schema.id/user
   "Insert the User `row` and return its id."
-  [row :- [:map {:closed true}
-           [:email                    {:optional true} :any]
-           [:first_name               {:optional true} :any]
-           [:last_name                {:optional true} :any]
-           [:password                 {:optional true} :any]
-           [:password_salt            {:optional true} :any]
-           [:date_joined              {:optional true} :any]
-           [:last_login               {:optional true} :any]
-           [:is_superuser             {:optional true} :any]
-           [:is_active                {:optional true} :any]
-           [:reset_token              {:optional true} :any]
-           [:reset_triggered          {:optional true} :any]
-           [:is_qbnewb                {:optional true} :any]
-           [:login_attributes         {:optional true} :any]
-           [:updated_at               {:optional true} :any]
-           [:sso_source               {:optional true} :any]
-           [:locale                   {:optional true} :any]
-           [:is_datasetnewb           {:optional true} :any]
-           [:settings                 {:optional true} :any]
-           [:type                     {:optional true} :any]
-           [:entity_id                {:optional true} :any]
-           [:deactivated_at           {:optional true} :any]
-           [:tenant_id                {:optional true} :any]
-           [:jwt_attributes           {:optional true} :any]
-           [:deactivated_with_tenant  {:optional true} :any]
-           [:is_data_analyst          {:optional true} :any]]]
+  [row :- ::users.schema/user.update]
   (t2/insert-returning-pk! :model/User row))
 
-(mu/defn insert-api-key! :- (ms/InstanceOf :model/ApiKey)
+(mu/defn insert-api-key! :- (mut/optional-keys ::api-keys.schema/api-key)
   "Insert the ApiKey `row` and return the inserted instance."
-  [row :- [:map {:closed true}
-           [:user_id                                    {:optional true} :any]
-           [:key                                         {:optional true} :any]
-           [:key_prefix                                  {:optional true} :any]
-           [:creator_id                                  {:optional true} :any]
-           [:created_at                                  {:optional true} :any]
-           [:updated_at                                  {:optional true} :any]
-           [:name                                        {:optional true} :any]
-           [:updated_by_id                               {:optional true} :any]
-           [:scope                                       {:optional true} :any]
-           [:metabase.api-keys.core/unhashed-key         {:optional true} :any]]]
+  [row :- ::api-keys.schema/api-key.insert]
   (t2/insert-returning-instance! :model/ApiKey row))
 
 (mu/defn update-api-key! :- :int
   "Apply `changes` to the ApiKey with `id`."
   [id      :- ms/PositiveInt
-   changes :- [:map {:closed true}
-               [:key           :string]
-               [:key_prefix    :string]
-               [:updated_by_id [:maybe ms/PositiveInt]]]]
+   changes :- (mut/select-keys ::api-keys.schema/api-key.update [:key :key_prefix :updated_by_id])]
   (t2/update! :model/ApiKey :id id changes))

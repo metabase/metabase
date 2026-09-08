@@ -3,51 +3,23 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(def ^:private DatabaseRow
-  "The writable columns of a Database row."
-  [:map {:closed true}
-   [:name                        {:optional true} :any]
-   [:description                 {:optional true} :any]
-   [:details                     {:optional true} :any]
-   [:engine                      {:optional true} :any]
-   [:is_sample                   {:optional true} :any]
-   [:is_full_sync                {:optional true} :any]
-   [:points_of_interest          {:optional true} :any]
-   [:caveats                     {:optional true} :any]
-   [:metadata_sync_schedule      {:optional true} :any]
-   [:cache_field_values_schedule {:optional true} :any]
-   [:timezone                    {:optional true} :any]
-   [:is_on_demand                {:optional true} :any]
-   [:auto_run_queries            {:optional true} :any]
-   [:refingerprint               {:optional true} :any]
-   [:cache_ttl                   {:optional true} :any]
-   [:initial_sync_status         {:optional true} :any]
-   [:creator_id                  {:optional true} :any]
-   [:settings                    {:optional true} :any]
-   [:dbms_version                {:optional true} :any]
-   [:is_audit                    {:optional true} :any]
-   [:uploads_enabled             {:optional true} :any]
-   [:uploads_schema_name         {:optional true} :any]
-   [:uploads_table_prefix        {:optional true} :any]
-   [:is_attached_dwh             {:optional true} :any]
-   [:router_database_id          {:optional true} :any]
-   [:provider_name               {:optional true} :any]
-   [:write_data_details          {:optional true} :any]
-   [:admin_details               {:optional true} :any]
-   [:is_stub                     {:optional true} :any]])
-
-(mu/defn active-visible-tables-for-databases :- [:sequential (ms/InstanceOf :model/Table)]
+(mu/defn active-visible-tables-for-databases :- [:sequential ::warehouse-schema.schema/table]
   "The active, visible Tables of the Databases with `database-ids`, in schema then display name order."
-  [database-ids :- [:seqable ms/PositiveInt]]
+  [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select :model/Table
              :active          true
              :db_id           [:in database-ids]
@@ -55,9 +27,9 @@
              {:order-by [[:%lower.schema :asc]
                          [:%lower.display_name :asc]]}))
 
-(mu/defn active-visible-schemas-for-databases :- [:sequential [:map {:closed true} [:db_id ms/PositiveInt] [:schema [:maybe :string]]]]
+(mu/defn active-visible-schemas-for-databases :- [:sequential [:map {:closed true} [:db_id (mut/optional-keys (mut/open-schema ::warehouses.schema/database))] [:schema [:maybe :string]]]]
   "The distinct Database id and schema of the active, visible Tables of the Databases with `database-ids`."
-  [database-ids :- [:seqable ms/PositiveInt]]
+  [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/query {:select-distinct [:db_id :schema]
              :from            [(t2/table-name :model/Table)]
              :where           [:and
@@ -65,7 +37,7 @@
                                [:= :active true]
                                [:= :visibility_type nil]]}))
 
-(mu/defn database-engines :- [:sequential (ms/InstanceOf :model/Database)]
+(mu/defn database-engines :- [:sequential (mut/select-keys ::warehouses.schema/database [:id :engine])]
   "The id and engine of every Database."
   []
   (t2/select [:model/Database :id :engine]))
@@ -76,8 +48,8 @@
   name order. `collection-scope` further restricts by collection: `nil` applies no collection restriction, `:root`
   restricts to Cards with no collection, and a collection of ids restricts to Cards in those collections."
   [card-type        :- [:or :keyword :string]
-   database-ids     :- [:seqable ms/PositiveInt]
-   collection-scope :- [:maybe [:or [:= :root] [:seqable ms/PositiveInt]]]]
+   database-ids     :- [:set ::lib.schema.id/database]
+   collection-scope :- [:maybe [:or [:= :root] [:sequential ms/PositiveInt]]]]
   (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
                                   :result_metadata :type :source_card_id :card_schema
                                   [^:allow-subquery {:select   [:status]
@@ -102,7 +74,7 @@
                                   (collection/visible-collection-filter-clause)]
                        :order-by [[:%lower.name :asc]]}))
 
-(mu/defn databases-where :- [:sequential (ms/InstanceOf :model/Database)]
+(mu/defn databases-where :- [:sequential ::warehouses.schema/database]
   "The Databases visible to the user described by `user-info` (a map of `:user-id`/`:is-superuser?`/
   `:is-data-analyst?`), in name then engine order. Excludes stub Databases and, unless `include-analytics?`, the
   audit Database. Restricted to Databases routed from `router-database-id` when given, otherwise to non-routed
@@ -110,7 +82,7 @@
   edit the metadata of."
   [user-info               :- :map
    filter-by-data-access?  :- :boolean
-   router-database-id      :- [:maybe ms/PositiveInt]
+   router-database-id      :- [:maybe ::lib.schema.id/database]
    include-analytics?      :- :boolean]
   (let [base-where [:and
                     [:= :is_stub false]
@@ -131,25 +103,25 @@
 
 (mu/defn database-exists? :- :boolean
   "Whether a Database with `database-id` exists."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :id database-id))
 
 (mu/defn non-destination-database-exists? :- :boolean
   "Whether a Database with `database-id` that is not a routing destination exists."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :id database-id :router_database_id nil))
 
 (mu/defn destination-database-exists-for-router? :- :boolean
   "Whether the Database with `database-id` has routing destinations."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :router_database_id database-id))
 
-(mu/defn autocomplete-tables :- [:sequential (ms/InstanceOf :model/Table)]
+(mu/defn autocomplete-tables :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema :name])]
   "Up to `limit` id, Database id, schema, and name rows of the active, visible Tables of the Database with
   `database-id` whose lower-cased name matches the SQL LIKE `like-pattern` (a Honey SQL LIKE right-hand side, see
   `metabase.util.honey-sql-2/like-substring`/`like-prefix`), in name order."
-  [database-id  :- ms/PositiveInt
-   like-pattern :- :any
+  [database-id  :- ::lib.schema.id/database
+   like-pattern :- [:or :string vector?]
    limit        :- ms/PositiveInt]
   (t2/select [:model/Table :id :db_id :schema :name]
              {:where    [:and [:= :db_id database-id]
@@ -192,11 +164,11 @@
       (and (empty? search-id) (not-empty search-name))
       [:like [:lower :report_card.name] (h2x/like-substring search-name)])))
 
-(mu/defn autocomplete-cards :- [:sequential (ms/InstanceOf :model/Card)]
+(mu/defn autocomplete-cards :- [:sequential (mut/optional-keys (mut/open-schema ::queries.schema/card))]
   "Up to 50 unarchived Cards of the Database with `database-id` matching `search-card-slug` (see
   [[autocomplete-cards-search-clause]]), with their Collection name, models first then newest first. Dashboard
   questions are excluded unless `include-dashboard-questions?`."
-  [database-id                    :- ms/PositiveInt
+  [database-id                    :- ::lib.schema.id/database
    search-card-slug               :- :string
    include-dashboard-questions?   :- [:maybe :boolean]]
   (t2/select [:model/Card :id :type :database_id :name :collection_id
@@ -215,12 +187,12 @@
                          [:report_card.id :desc]] ; sort by most recently created after sorting by type
               :limit    50}))
 
-(mu/defn autocomplete-fields :- [:sequential (ms/InstanceOf :model/Field)]
+(mu/defn autocomplete-fields :- [:sequential (mut/optional-keys (mut/open-schema ::warehouse-schema.schema/field))]
   "Up to `limit` name, type, id, and Table of the active, non-sensitive Fields of active Tables of the Database with
   `database-id` whose lower-cased name matches the SQL LIKE `like-pattern` (a Honey SQL LIKE right-hand side, see
   `metabase.util.honey-sql-2/like-substring`/`like-prefix`), in field then table name order."
-  [database-id  :- ms/PositiveInt
-   like-pattern :- :any
+  [database-id  :- ::lib.schema.id/database
+   like-pattern :- [:or :string vector?]
    limit        :- ms/PositiveInt]
   ;; NOTE: measuring showed that this query performance is improved ~4x when adding trgm index in pgsql and ~10x when
   ;; adding a index on `lower(metabase_field.name)` for ordering (trgm index having on impact on queries with index).
@@ -240,55 +212,55 @@
 
 (mu/defn table-ids-for-database :- [:maybe [:set ms/PositiveInt]]
   "The ids of the Tables of the Database with `database-id`."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (t2/select-fn-set :id :model/Table, :db_id database-id))
 
-(mu/defn non-sensitive-fields-for-tables :- [:sequential (ms/InstanceOf :model/Field)]
+(mu/defn non-sensitive-fields-for-tables :- [:sequential (mut/select-keys ::warehouse-schema.schema/field [:id :name :display_name :table_id :base_type :semantic_type])]
   "The id, name, display name, Table id, and types of the non-sensitive Fields of the Tables with `table-ids`."
-  [table-ids :- [:seqable ms/PositiveInt]]
+  [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
              :table_id        [:in table-ids]
              :visibility_type [:not-in ["sensitive" "retired"]]))
 
-(mu/defn insert-database! :- (ms/InstanceOf :model/Database)
+(mu/defn insert-database! :- (mut/optional-keys ::warehouses.schema/database)
   "Insert the Database `row` and return the inserted instance."
-  [row :- DatabaseRow]
+  [row :- (mut/merge (mut/merge (mut/merge (mut/merge (mut/merge (mut/merge (mut/merge (mut/merge ::warehouses.schema/database.update [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]])]
   (t2/insert-returning-instance! :model/Database row))
 
-(mu/defn sample-database :- [:maybe (ms/InstanceOf :model/Database)]
+(mu/defn sample-database :- [:maybe ::warehouses.schema/database]
   "The sample Database, or nil."
   []
   (t2/select-one :model/Database :is_sample true))
 
-(mu/defn database :- [:maybe (ms/InstanceOf :model/Database)]
+(mu/defn database :- [:maybe ::warehouses.schema/database]
   "The Database with `database-id`, or nil."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
 (mu/defn update-database! :- :int
   "Apply `changes` to the Database with `database-id`, returning the number updated."
-  [database-id :- ms/PositiveInt
-   changes     :- DatabaseRow]
+  [database-id :- ::lib.schema.id/database
+   changes     :- ::warehouses.schema/database.update]
   (t2/update! :model/Database database-id changes))
 
 (mu/defn delete-destination-databases! :- :int
   "Delete the routing destination Databases of the Database with `router-database-id`, returning the number deleted."
-  [router-database-id :- ms/PositiveInt]
+  [router-database-id :- ::lib.schema.id/database]
   (t2/delete! :model/Database :router_database_id router-database-id))
 
 (mu/defn delete-database! :- :int
   "Delete the Database with `database-id`, returning the number deleted."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (t2/delete! :model/Database :id database-id))
 
 (mu/defn mark-tables-sync-complete! :- :int
   "Mark the initial sync of the Tables with `table-ids` complete, returning the number updated."
-  [table-ids :- [:seqable ms/PositiveInt]]
+  [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/update! :model/Table {:id [:in table-ids]} {:initial_sync_status "complete"}))
 
 (mu/defn delete-field-values-for-database! :- :int
   "Delete the FieldValues of every Field of the Database with `database-id`, returning the number deleted."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (t2/query-one {:delete-from :metabase_fieldvalues
                  :where      [:in :field_id
                               ^:allow-subquery {:select     [:f.id]
@@ -296,16 +268,16 @@
                                                 :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
                                                 :where      [:= :t.db_id database-id]}]}))
 
-(mu/defn active-tables-for-database :- [:sequential (ms/InstanceOf :model/Table)]
+(mu/defn active-tables-for-database :- [:sequential ::warehouse-schema.schema/table]
   "The active Tables of the Database with `database-id`."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (t2/select :model/Table :db_id database-id :active true))
 
 (mu/defn active-table-schemas :- [:maybe [:set [:maybe :string]]]
   "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
   `include-hidden?` is false, restricted to Tables with no `visibility_type` (a non-nil value means the Table is
   hidden -- see [[metabase.warehouse-schema.models.table/visibility-types]])."
-  [database-id     :- ms/PositiveInt
+  [database-id     :- ::lib.schema.id/database
    include-hidden? :- :boolean]
   (let [clauses (cond-> []
                   (not include-hidden?) (conj [:= :visibility_type nil]))]
@@ -314,9 +286,9 @@
                              (when clauses
                                {:where (into [:and] clauses)})))))
 
-(mu/defn active-tables-in-schema :- [:sequential (ms/InstanceOf :model/Table)]
+(mu/defn active-tables-in-schema :- [:sequential ::warehouse-schema.schema/table]
   "The active Tables in `schema` of the Database with `database-id`, in display name order."
-  [database-id :- ms/PositiveInt
+  [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
   (t2/select :model/Table
              :db_id database-id
@@ -324,9 +296,9 @@
              :active true
              {:order-by [[:display_name :asc]]}))
 
-(mu/defn active-visible-tables-in-schema :- [:sequential (ms/InstanceOf :model/Table)]
+(mu/defn active-visible-tables-in-schema :- [:sequential ::warehouse-schema.schema/table]
   "The active, visible Tables in `schema` of the Database with `database-id`, in display name order."
-  [database-id :- ms/PositiveInt
+  [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
   (t2/select :model/Table
              :db_id database-id
@@ -335,7 +307,7 @@
              :visibility_type nil
              {:order-by [[:display_name :asc]]}))
 
-(mu/defn collection-ids-named :- [:maybe [:set ms/PositiveInt]]
+(mu/defn collection-ids-named :- [:maybe [:set ::lib.schema.id/collection]]
   "The ids of the Collections named `collection-name`, or nil."
   [collection-name :- :string]
   (t2/select-pks-set :model/Collection :name collection-name))
@@ -348,16 +320,20 @@
                              [:= :database_id database-id]
                              [:= :type type-str]]})
 
+(def ^:private DatabaseUsageCount
+  "Rows returned by [[database-usage-counts]]."
+  [:map {:closed true}
+   [:question :int]
+   [:dataset :int]
+   [:metric :int]
+   [:segment :int]
+   [:transform :int]])
+
 (mu/defn database-usage-counts :- [:sequential
-                                   [:map {:closed true}
-                                    [:question :int]
-                                    [:dataset :int]
-                                    [:metric :int]
-                                    [:segment :int]
-                                    [:transform :int]]]
+                                   DatabaseUsageCount]
   "A single row with the count of Questions (`:question`), Models (`:dataset`), Metrics (`:metric`), Segments
   (`:segment`), and Transforms (`:transform`) that use the Database with `database-id`."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (mdb/query
    {:select [:*]
     :from   [[(card-usage-count-subquery database-id :question "question") :question]

@@ -5,8 +5,13 @@
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
+   [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.notification.schema :as notification.schema]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -16,83 +21,83 @@
 (def ^:private NotificationRow
   "A whole Notification row for insert."
   [:map {:closed true}
-   [:payload_type {:optional true} :any]
-   [:active       {:optional true} :any]
-   [:internal_id  {:optional true} :any]
-   [:payload_id   {:optional true} :any]
-   [:creator_id   {:optional true} :any]])
+   [:payload_type {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:active       {:optional true} [:maybe :boolean]]
+   [:internal_id  {:optional true} [:maybe :string]]
+   [:payload_id   {:optional true} [:maybe ms/PositiveInt]]
+   [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]])
 
 (def ^:private NotificationCardRow
   "A whole NotificationCard row for insert."
   [:map {:closed true}
-   [:card_id         {:optional true} :any]
-   [:send_once       {:optional true} :any]
-   [:send_condition  {:optional true} :any]
-   [:disable_links   {:optional true} :any]])
+   [:card_id         {:optional true} [:maybe ::lib.schema.id/card]]
+   [:send_once       {:optional true} [:maybe :boolean]]
+   [:send_condition  {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:disable_links   {:optional true} [:maybe :boolean]]])
 
 (def ^:private NotificationHandlerRow
   "A whole NotificationHandler row for insert."
   [:map {:closed true}
-   [:channel_type    {:optional true} :any]
-   [:notification_id {:optional true} :any]
-   [:channel_id      {:optional true} :any]
-   [:template_id     {:optional true} :any]
-   [:active          {:optional true} :any]])
+   [:channel_type    {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:notification_id {:optional true} [:maybe ms/PositiveInt]]
+   [:channel_id      {:optional true} [:maybe ms/PositiveInt]]
+   [:template_id     {:optional true} [:maybe ms/PositiveInt]]
+   [:active          {:optional true} [:maybe :boolean]]])
 
 (def ^:private NotificationRecipientRow
   "A whole NotificationRecipient row for insert."
   [:map {:closed true}
-   [:notification_handler_id {:optional true} :any]
-   [:type                    {:optional true} :any]
-   [:user_id                 {:optional true} :any]
-   [:permissions_group_id    {:optional true} :any]
-   [:details                 {:optional true} :any]])
+   [:notification_handler_id {:optional true} [:maybe ms/PositiveInt]]
+   [:type                    {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:user_id                 {:optional true} [:maybe ::lib.schema.id/user]]
+   [:permissions_group_id    {:optional true} [:maybe ms/PositiveInt]]
+   [:details                 {:optional true} [:maybe [:or :string :map sequential?]]]])
 
 (def ^:private NotificationSubscriptionRow
   "A whole NotificationSubscription row for insert."
   [:map {:closed true}
-   [:notification_id {:optional true} :any]
-   [:type            {:optional true} :any]
-   [:event_name      {:optional true} :any]
-   [:cron_schedule   {:optional true} :any]
-   [:ui_display_type {:optional true} :any]])
+   [:notification_id {:optional true} [:maybe ms/PositiveInt]]
+   [:type            {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:event_name      {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:cron_schedule   {:optional true} [:maybe :string]]
+   [:ui_display_type {:optional true} [:maybe [:or :keyword :string :map sequential?]]]])
 
 (def ^:private ChannelTemplateRow
   "A whole ChannelTemplate row for insert."
   [:map {:closed true}
-   [:name         {:optional true} :any]
-   [:channel_type {:optional true} :any]
-   [:details      {:optional true} :any]])
+   [:name         {:optional true} [:maybe :string]]
+   [:channel_type {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:details      {:optional true} [:maybe [:or :string :map sequential?]]]])
 
 (def ^:private AdminFilters
   "The filters accepted by [[admin-notifications-page]] and [[admin-notifications-count]]."
   [:map {:closed true}
    [:active                      {:optional true} [:maybe :boolean]]
-   [:creator_id                  {:optional true} [:maybe ms/PositiveInt]]
+   [:creator_id                  {:optional true} [:maybe ::lib.schema.id/user]]
    [:creator_active              {:optional true} [:maybe :boolean]]
    [:creatorless                 {:optional true} [:maybe :boolean]]
-   [:card_id                     {:optional true} [:maybe ms/PositiveInt]]
-   [:recipient_notification_ids  {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+   [:card_id                     {:optional true} [:maybe ::lib.schema.id/card]]
+   [:recipient_notification_ids  {:optional true} [:maybe [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
    [:channel                     {:optional true} [:maybe [:or :string [:sequential :string]]]]
    [:last_send_status            {:optional true} [:maybe [:enum :failing :successful]]]
    [:last_check_status           {:optional true} [:maybe [:enum :failing :successful]]]
-   [:query                       {:optional true} [:maybe :string]]
+   [:query                       {:optional true} [:maybe [:or :string :map sequential?]]]
    [:sort_column                 {:optional true} [:maybe [:enum :id :last_send :last_check :card_name :creator_name :updated_at]]]
    [:sort_direction              {:optional true} [:maybe [:enum :asc :desc]]]])
 
 ;;; --------------------------------------------- Notification ---------------------------------------------
 
-(mu/defn notification :- [:maybe (ms/InstanceOf :model/Notification)]
+(mu/defn notification :- [:maybe ::notification.schema/notification]
   "The Notification with `notification-id`, or nil."
   [notification-id :- ms/PositiveInt]
   (t2/select-one :model/Notification notification-id))
 
-(mu/defn notification-by-internal-id :- [:maybe (ms/InstanceOf :model/Notification)]
+(mu/defn notification-by-internal-id :- [:maybe ::notification.schema/notification]
   "The seeded Notification with `internal-id`, or nil."
   [internal-id :- :string]
   (t2/select-one :model/Notification :internal_id internal-id))
 
-(mu/defn notification-for-handler :- [:maybe (ms/InstanceOf :model/Notification)]
+(mu/defn notification-for-handler :- [:maybe (mut/optional-keys (mut/open-schema ::notification.schema/notification))]
   "The Notification owning the NotificationHandler with `handler-id`, or nil."
   [handler-id :- ms/PositiveInt]
   (t2/select-one :model/Notification
@@ -108,14 +113,14 @@
   [{:keys [creator-id creator-or-recipient-id recipient-id card-id payload-type include-inactive? legacy-active
            legacy-user-id]}
    :- [:map {:closed true}
-       [:creator-id               {:optional true} [:maybe ms/PositiveInt]]
+       [:creator-id               {:optional true} [:maybe ::lib.schema.id/user]]
        [:creator-or-recipient-id  {:optional true} [:maybe ms/PositiveInt]]
        [:recipient-id             {:optional true} [:maybe ms/PositiveInt]]
-       [:card-id                  {:optional true} [:maybe ms/PositiveInt]]
+       [:card-id                  {:optional true} [:maybe ::lib.schema.id/card]]
        [:payload-type             {:optional true} [:maybe [:or :keyword :string]]]
        [:include-inactive?        {:optional true} [:maybe :boolean]]
        [:legacy-active            {:optional true} [:maybe :boolean]]
-       [:legacy-user-id           {:optional true} [:maybe ms/PositiveInt]]]]
+       [:legacy-user-id           {:optional true} [:maybe ::lib.schema.id/user]]]]
   (t2/reducible-select
    :model/Notification
    (cond-> {:select-distinct [:notification.*]}
@@ -163,19 +168,19 @@
                              [:= :notification_recipient.user_id legacy-user-id]
                              [:= :notification.creator_id legacy-user-id]])))))
 
-(mu/defn notifications-by-id :- [:sequential (ms/InstanceOf :model/Notification)]
+(mu/defn notifications-by-id :- [:sequential ::notification.schema/notification]
   "The Notifications with `notification-ids`."
-  [notification-ids :- [:seqable ms/PositiveInt]]
+  [notification-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Notification :id [:in notification-ids]))
 
-(mu/defn card-notifications :- [:sequential (ms/InstanceOf :model/Notification)]
+(mu/defn card-notifications :- [:sequential ::notification.schema/notification]
   "The card Notifications among `notification-ids`."
-  [notification-ids :- [:seqable ms/PositiveInt]]
+  [notification-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Notification :id [:in notification-ids] :payload_type :notification/card))
 
-(mu/defn active-card-notifications-for-card :- [:sequential (ms/InstanceOf :model/Notification)]
+(mu/defn active-card-notifications-for-card :- [:sequential (mut/optional-keys (mut/open-schema ::notification.schema/notification))]
   "The active card Notifications attached to the Card with `card-id`."
-  [card-id :- ms/PositiveInt]
+  [card-id :- ::lib.schema.id/card]
   (t2/select :model/Notification
              :active true
              :payload_type :notification/card
@@ -183,7 +188,7 @@
                                                 :from   [:notification_card]
                                                 :where  [:= :card_id card-id]}]))
 
-(mu/defn active-system-event-notifications :- [:sequential (ms/InstanceOf :model/Notification)]
+(mu/defn active-system-event-notifications :- [:sequential (mut/optional-keys (mut/open-schema ::notification.schema/notification))]
   "The active Notifications subscribed to the system event named `event-name`."
   [event-name :- :string]
   (t2/select :model/Notification
@@ -195,17 +200,15 @@
                           [:= :ns.event_name event-name]
                           [:= :ns.type "notification-subscription/system-event"]]}))
 
-(mu/defn insert-notification! :- (ms/InstanceOf :model/Notification)
+(mu/defn insert-notification! :- (mut/optional-keys ::notification.schema/notification)
   "Insert `notification` and return the new instance."
   [notification :- NotificationRow]
   (t2/insert-returning-instance! :model/Notification notification))
 
 (mu/defn update-card-notifications! :- :int
   "Apply `changes` to the card Notifications among `notification-ids`, returning the number updated."
-  [notification-ids :- [:seqable ms/PositiveInt]
-   changes          :- [:map {:closed true}
-                        [:active     {:optional true} :boolean]
-                        [:creator_id {:optional true} ms/PositiveInt]]]
+  [notification-ids :- [:sequential ms/PositiveInt]
+   changes          :- (mut/select-keys ::notification.schema/notification.update [:active :creator_id])]
   (t2/update! :model/Notification :id [:in notification-ids] :payload_type :notification/card changes))
 
 (mu/defn deactivate-notification! :- :int
@@ -220,7 +223,7 @@
 
 (mu/defn delete-notifications! :- :int
   "Delete the Notifications with `notification-ids`, returning the number deleted."
-  [notification-ids :- [:seqable ms/PositiveInt]]
+  [notification-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/Notification :id [:in notification-ids]))
 
 (mu/defn delete-notification-by-internal-id! :- :int
@@ -230,19 +233,19 @@
 
 ;;; ------------------------------------------- NotificationCard -------------------------------------------
 
-(mu/defn notification-cards :- [:sequential (ms/InstanceOf :model/NotificationCard)]
+(mu/defn notification-cards :- [:sequential ::notification.schema/notification-card]
   "The NotificationCards with `notification-card-ids`."
-  [notification-card-ids :- [:seqable ms/PositiveInt]]
+  [notification-card-ids :- [:set ::lib.schema.id/card]]
   (t2/select :model/NotificationCard :id [:in notification-card-ids]))
 
 (mu/defn notification-card-exists? :- :boolean
   "Whether a NotificationCard with `notification-card-id` exists."
-  [notification-card-id :- ms/PositiveInt]
+  [notification-card-id :- ::lib.schema.id/card]
   (t2/exists? :model/NotificationCard notification-card-id))
 
-(mu/defn notification-card-card-id :- [:maybe ms/PositiveInt]
+(mu/defn notification-card-card-id :- [:maybe ::lib.schema.id/card]
   "The `:card_id` of the NotificationCard with `notification-card-id`."
-  [notification-card-id :- ms/PositiveInt]
+  [notification-card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :card_id :model/NotificationCard :id notification-card-id))
 
 (mu/defn insert-notification-card! :- ms/PositiveInt
@@ -252,22 +255,22 @@
 
 (mu/defn delete-notification-card! :- :int
   "Delete the NotificationCard with `notification-card-id`, returning the number deleted."
-  [notification-card-id :- ms/PositiveInt]
+  [notification-card-id :- ::lib.schema.id/card]
   (t2/delete! :model/NotificationCard notification-card-id))
 
 ;;; --------------------------------------- NotificationSubscription ---------------------------------------
 
-(mu/defn subscription :- [:maybe (ms/InstanceOf :model/NotificationSubscription)]
+(mu/defn subscription :- [:maybe ::notification.schema/notification-subscription]
   "The NotificationSubscription with `subscription-id`, or nil."
   [subscription-id :- ms/PositiveInt]
   (t2/select-one :model/NotificationSubscription subscription-id))
 
-(mu/defn subscriptions-for-notifications :- [:sequential (ms/InstanceOf :model/NotificationSubscription)]
+(mu/defn subscriptions-for-notifications :- [:sequential ::notification.schema/notification-subscription]
   "The NotificationSubscriptions of the Notifications with `notification-ids`."
-  [notification-ids :- [:seqable ms/PositiveInt]]
+  [notification-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/NotificationSubscription :notification_id [:in notification-ids]))
 
-(mu/defn cron-subscriptions-for-notification :- [:sequential (ms/InstanceOf :model/NotificationSubscription)]
+(mu/defn cron-subscriptions-for-notification :- [:sequential ::notification.schema/notification-subscription]
   "The cron NotificationSubscriptions of the Notification with `notification-id`."
   [notification-id :- ms/PositiveInt]
   (t2/select :model/NotificationSubscription
@@ -281,7 +284,7 @@
                      :notification_id notification-id
                      :type :notification-subscription/cron))
 
-(mu/defn active-cron-subscriptions-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/NotificationSubscription)]
+(mu/defn active-cron-subscriptions-by-id :- [:map-of ms/PositiveInt ms/PositiveInt]
   "A map of ID to cron NotificationSubscription for every active Notification."
   []
   (t2/select-pk->fn identity :model/NotificationSubscription
@@ -295,14 +298,14 @@
 
 (mu/defn insert-subscriptions! :- :int
   "Insert the NotificationSubscription `subscriptions`, returning the number inserted."
-  [subscriptions :- [:seqable NotificationSubscriptionRow]]
+  [subscriptions :- [:sequential NotificationSubscriptionRow]]
   (t2/insert! :model/NotificationSubscription subscriptions))
 
 ;;; ------------------------------------ NotificationHandler / Recipient ------------------------------------
 
-(mu/defn handlers-for-notifications :- [:sequential (ms/InstanceOf :model/NotificationHandler)]
+(mu/defn handlers-for-notifications :- [:sequential ::notification.schema/notification-handler]
   "The NotificationHandlers of the Notifications with `notification-ids`."
-  [notification-ids :- [:seqable ms/PositiveInt]]
+  [notification-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/NotificationHandler :notification_id [:in notification-ids]))
 
 (mu/defn handler-notification-ids-for-email :- [:maybe [:set ms/PositiveInt]]
@@ -310,7 +313,7 @@
   `email` match, either directly (via the recipient's User) or among `raw-value-handler-ids` (handler IDs already
   known to have a matching raw-value recipient)."
   [lower-email           :- :string
-   raw-value-handler-ids :- [:seqable ms/PositiveInt]]
+   raw-value-handler-ids :- [:set ms/PositiveInt]]
   (let [user-clause [:and
                      [:= :nr.type "notification-recipient/user"]
                      [:= [:lower :cu.email] lower-email]]]
@@ -327,12 +330,12 @@
   [handler :- NotificationHandlerRow]
   (t2/insert-returning-pk! :model/NotificationHandler handler))
 
-(mu/defn recipients-for-handlers :- [:sequential (ms/InstanceOf :model/NotificationRecipient)]
+(mu/defn recipients-for-handlers :- [:sequential ::notification.schema/notification-recipient]
   "The NotificationRecipients of the NotificationHandlers with `handler-ids`."
-  [handler-ids :- [:seqable ms/PositiveInt]]
+  [handler-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/NotificationRecipient :notification_handler_id [:in handler-ids]))
 
-(mu/defn raw-value-recipients-for-handler :- [:sequential (ms/InstanceOf :model/NotificationRecipient)]
+(mu/defn raw-value-recipients-for-handler :- [:sequential ::notification.schema/notification-recipient]
   "The raw-value NotificationRecipients of the NotificationHandler with `handler-id`."
   [handler-id :- ms/PositiveInt]
   (t2/select :model/NotificationRecipient
@@ -347,7 +350,7 @@
 
 (mu/defn insert-recipients! :- :int
   "Insert one NotificationRecipient map or a sequence of them, returning the number inserted."
-  [recipients :- [:or NotificationRecipientRow [:seqable NotificationRecipientRow]]]
+  [recipients :- [:or NotificationRecipientRow [:sequential NotificationRecipientRow]]]
   (t2/insert! :model/NotificationRecipient recipients))
 
 (mu/defn delete-recipient! :- :int
@@ -359,7 +362,7 @@
   "Delete the NotificationRecipients for the User with `user-id` on the Notification with `notification-id`,
   returning the number deleted."
   [notification-id :- ms/PositiveInt
-   user-id         :- ms/PositiveInt]
+   user-id         :- ::lib.schema.id/user]
   (t2/delete! :model/NotificationRecipient
               :user_id user-id
               :notification_handler_id [:in ^:allow-subquery {:select [:id]
@@ -368,14 +371,14 @@
 
 ;;; ---------------------------------------------- Channels ----------------------------------------------
 
-(mu/defn active-channels-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/Channel)]
+(mu/defn active-channels-by-id :- [:map-of ms/PositiveInt ms/PositiveInt]
   "A map of ID to active Channel for `channel-ids`."
-  [channel-ids :- [:seqable ms/PositiveInt]]
+  [channel-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn->fn :id identity :model/Channel :id [:in channel-ids] :active true))
 
-(mu/defn channel-templates-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/ChannelTemplate)]
+(mu/defn channel-templates-by-id :- [:map-of ms/PositiveInt ms/PositiveInt]
   "A map of ID to ChannelTemplate for `template-ids`."
-  [template-ids :- [:seqable ms/PositiveInt]]
+  [template-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn->fn :id identity :model/ChannelTemplate :id [:in template-ids]))
 
 (mu/defn channel-template-channel-type :- [:maybe :keyword]
@@ -390,21 +393,25 @@
 
 (mu/defn delete-channel-templates! :- :int
   "Delete the ChannelTemplates with `template-ids`, returning the number deleted."
-  [template-ids :- [:seqable ms/PositiveInt]]
+  [template-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/ChannelTemplate :id [:in template-ids]))
 
 ;;; ---------------------------------------------- Task runs ----------------------------------------------
 
-(mu/defn terminal-alert-runs :- [:sequential [:map {:closed true}
-                                              [:id         ms/PositiveInt]
-                                              [:status     :keyword]
-                                              [:started_at ms/TemporalInstant]]]
+(def ^:private TerminalAlertRun
+  "Rows returned by [[terminal-alert-runs]]."
+  [:map {:closed true}
+   [:id         ms/PositiveInt]
+   [:status     :keyword]
+   [:started_at ms/TemporalInstant]])
+
+(mu/defn terminal-alert-runs :- [:sequential TerminalAlertRun]
   "Up to `limit` TaskRuns of `run-type` for the Notification with `notification-id` that reached one of `statuses`
   after `cutoff`, newest first."
   [run-type        :- :string
    notification-id :- ms/PositiveInt
-   statuses        :- [:seqable :string]
-   cutoff          :- :any
+   statuses        :- [:sequential :string]
+   cutoff          :- ms/TemporalInstant
    limit           :- ms/PositiveInt]
   (t2/select [:model/TaskRun :id :status :started_at]
              {:where    [:and
@@ -422,7 +429,7 @@
   [run-type        :- :string
    notification-id :- ms/PositiveInt
    task            :- :string
-   cutoff          :- :any]
+   cutoff          :- ms/TemporalInstant]
   (t2/reducible-select :model/TaskHistory
                        {:select   [:th.run_id :th.task_details :th.status
                                    [:tr.started_at :run_started_at]]
@@ -436,13 +443,17 @@
                         :order-by [[:tr.started_at :desc] [:tr.id :desc]]
                         :limit    500}))
 
-(mu/defn latest-failed-task-history :- [:sequential [:map {:closed true}
-                                                     [:run_id       ms/PositiveInt]
-                                                     [:task_details :any]]]
+(def ^:private LatestFailedTaskHistory
+  "Rows returned by [[latest-failed-task-history]]."
+  [:map {:closed true}
+   [:run_id       ms/PositiveInt]
+   [:task_details [:maybe [:or :string :map sequential?]]]])
+
+(mu/defn latest-failed-task-history :- [:sequential LatestFailedTaskHistory]
   "The `:run_id` and `:task_details` of the single failed/abandoned TaskHistory row per run among `run-ids` (and, if
   given, restricted to `task-name`), preferring rows of `preferred-task` and then the latest by `ended_at`."
   [preferred-task :- :string
-   run-ids        :- [:seqable ms/PositiveInt]
+   run-ids        :- [:set ms/PositiveInt]
    task-name      :- [:maybe :string]]
   (t2/select :model/TaskHistory
              {:select [:run_id :task_details]
@@ -474,7 +485,7 @@
   "How far back to consider alert-type TaskRuns / TaskHistory rows when computing run summaries."
   90)
 
-(mu/defn admin-lookback-cutoff :- :any
+(mu/defn admin-lookback-cutoff :- ms/TemporalInstant
   "The earliest `started_at` considered for the admin notification list/detail run history:
   [[admin-run-lookback-days]] days before now. A Honey SQL form, not a realized timestamp."
   []
@@ -651,7 +662,7 @@
   (assoc (admin-base-list-query (dissoc filters :sort_column :sort_direction))
          :order-by (admin-order-by-clauses (or sort_column :last_send) sort_direction)))
 
-(mu/defn admin-notifications-page :- [:sequential (ms/InstanceOf :model/Notification)]
+(mu/defn admin-notifications-page :- [:sequential ::notification.schema/notification]
   "A page (`limit`/`offset`) of admin notification-list rows matching `filters` (see
   [[metabase.notification.api.admin]] for the supported keys), most-relevant first per `:sort_column`/
   `:sort_direction`."
@@ -667,7 +678,7 @@
                             (assoc :select [[[:count :notification.id] :count]])
                             (dissoc :order-by)))))
 
-(mu/defn admin-notification-detail-row :- [:maybe (ms/InstanceOf :model/Notification)]
+(mu/defn admin-notification-detail-row :- [:maybe ::notification.schema/notification]
   "The admin notification-list row (skipping the run-summary joins) for the Notification with `notification-id`, or
   nil."
   [notification-id :- ms/PositiveInt]
@@ -683,63 +694,67 @@
    id    :- ms/PositiveInt]
   (t2/select-one model id))
 
-(mu/defn card :- [:maybe (ms/InstanceOf :model/Card)]
+(mu/defn card :- [:maybe ::queries.schema/card]
   "The Card with `card-id`, or nil."
-  [card-id :- ms/PositiveInt]
+  [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card card-id))
 
-(mu/defn unarchived-card :- [:maybe (ms/InstanceOf :model/Card)]
+(mu/defn unarchived-card :- [:maybe ::queries.schema/card]
   "The Card with `card-id` if it is not archived, or nil."
-  [card-id :- ms/PositiveInt]
+  [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id :archived false))
 
 (mu/defn card-name :- [:maybe :string]
   "The name of the Card with `card-id`."
-  [card-id :- ms/PositiveInt]
+  [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :name :model/Card card-id))
 
-(mu/defn dashboard :- [:maybe (ms/InstanceOf :model/Dashboard)]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
   "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ms/PositiveInt]
+  [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard dashboard-id))
 
 (mu/defn dashboard-name :- [:maybe :string]
   "The name of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ms/PositiveInt]
+  [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one-fn :name :model/Dashboard dashboard-id))
 
-(mu/defn dashboard-tabs :- [:sequential (ms/InstanceOf :model/DashboardTab)]
+(mu/defn dashboard-tabs :- [:sequential ::dashboards.schema/dashboard-tab]
   "The DashboardTabs of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ms/PositiveInt]
+  [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select :model/DashboardTab :dashboard_id dashboard-id))
 
 (mu/defn dashboard-tab-count :- ms/IntGreaterThanOrEqualToZero
   "The number of DashboardTabs on the Dashboard with `dashboard-id`."
-  [dashboard-id :- ms/PositiveInt]
+  [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/count :model/DashboardTab :dashboard_id dashboard-id))
 
-(mu/defn dashcards-for-dashboard :- [:sequential (ms/InstanceOf :model/DashboardCard)]
+(mu/defn dashcards-for-dashboard :- [:sequential ::dashboards.schema/dashboard-card]
   "The DashboardCards of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ms/PositiveInt]
+  [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select :model/DashboardCard :dashboard_id dashboard-id))
 
 (mu/defn user-email :- [:maybe :string]
   "The email of the User with `user-id`."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :email [:model/User :email] user-id))
 
-(mu/defn user-summary :- [:maybe [:map {:closed true}
-                                  [:id          ms/PositiveInt]
-                                  [:first_name  [:maybe :string]]
-                                  [:last_name   [:maybe :string]]
-                                  [:email       :string]
-                                  [:common_name [:maybe :string]]]]
+(def ^:private UserSummary
+  "Rows returned by [[user-summary]]."
+  [:map {:closed true}
+   [:id          ms/PositiveInt]
+   [:first_name  [:maybe :string]]
+   [:last_name   [:maybe :string]]
+   [:email       :string]
+   [:common_name [:maybe :string]]])
+
+(mu/defn user-summary :- [:maybe UserSummary]
   "The ID, names, email, and derived common name of the User with `user-id`, or nil (also for a nil `user-id`, e.g.
   a system-created notification without a creator)."
-  [user-id :- [:maybe ms/PositiveInt]]
+  [user-id :- [:maybe ::lib.schema.id/user]]
   (t2/select-one [:model/User :id :first_name :last_name :email] user-id))
 
-(mu/defn active-users-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/User)]
+(mu/defn active-users-by-id :- [:map-of ms/PositiveInt ::lib.schema.id/user]
   "A map of ID to active User for `user-ids`."
-  [user-ids :- [:seqable ms/PositiveInt]]
+  [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-fn->fn :id identity :model/User :id [:in user-ids] :is_active true))

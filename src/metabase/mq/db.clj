@@ -26,20 +26,24 @@
 
 (mu/defn delete-outbox-rows! :- :int
   "Delete the `queue_message_outbox` rows with `ids`, returning the number deleted."
-  [ids :- [:seqable ms/PositiveInt]]
+  [ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :queue_message_outbox :id [:in ids]))
 
-(mu/defn due-outbox-rows :- [:sequential [:map {:closed true}
-                                          [:id :int]
-                                          [:queue_name :string]
-                                          [:payload :string]
-                                          [:publish_attempts :int]]]
+(def ^:private DueOutbox
+  "Rows returned by [[due-outbox-rows]]."
+  [:map {:closed true}
+   [:id :int]
+   [:queue_name :string]
+   [:payload :string]
+   [:publish_attempts :int]])
+
+(mu/defn due-outbox-rows :- [:sequential DueOutbox]
   "Up to `limit` `queue_message_outbox` rows after `after-id`, in id order, that are due: never attempted and created
   before `created-before`, or scheduled to retry at or before `now`. Locked with the `for` clause `for-clause`.
   `now` and `created-before` are `java.sql.Timestamp`s, not `java.time` instants."
   [after-id       :- ms/IntGreaterThanOrEqualToZero
-   now            :- :any
-   created-before :- :any
+   now            :- ms/TemporalInstant
+   created-before :- ms/TemporalInstant
    limit          :- ms/PositiveInt
    for-clause     :- [:sequential :keyword]]
   (t2/query {:select   [:id :queue_name :payload :publish_attempts]
@@ -57,7 +61,7 @@
   "Increment the publish attempts of the `queue_message_outbox` row with `id` and schedule its next attempt,
   returning the number updated. `next-attempt-at` is a `java.sql.Timestamp`, not a `java.time` instant."
   [id              :- ms/PositiveInt
-   next-attempt-at :- :any]
+   next-attempt-at :- ms/TemporalInstant]
   (t2/update! :queue_message_outbox :id id
               {:publish_attempts [:+ :publish_attempts [:inline 1]]
                :next_attempt_at  next-attempt-at}))

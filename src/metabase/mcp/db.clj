@@ -2,7 +2,10 @@
   "Application database queries for the MCP module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
    [metabase.app-db.core :as app-db]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.mcp.schema :as mcp.schema]
    [metabase.session.core :as session]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -10,18 +13,10 @@
 
 (mu/defn insert-feedback! :- :int
   "Insert the McpFeedback `row`, returning the number inserted."
-  [row :- [:map {:closed true}
-           [:id                {:optional true} :any]
-           [:user_id           {:optional true} :any]
-           [:positive          {:optional true} :any]
-           [:issue_type        {:optional true} :any]
-           [:freeform_feedback {:optional true} :any]
-           [:prompt            {:optional true} :any]
-           [:query             {:optional true} :any]
-           [:created_at        {:optional true} :any]]]
+  [row :- ::mcp.schema/mcp-feedback.update]
   (t2/insert! :model/McpFeedback row))
 
-(mu/defn session-user-id :- [:maybe ms/PositiveInt]
+(mu/defn session-user-id :- [:maybe ::lib.schema.id/user]
   "The id of the User owning the `core_session` with `key-hashed`, or nil."
   [key-hashed :- :string]
   (t2/select-one-fn :user_id :core_session :key_hashed key-hashed))
@@ -31,7 +26,7 @@
   exists. Uses the raw `:core_session` table (not `:model/Session`) to bypass the after-insert hook, which would
   otherwise publish a spurious `:event/user-login` event."
   [key-hashed :- :string
-   user-id    :- ms/PositiveInt]
+   user-id    :- ::lib.schema.id/user]
   (app-db/select-or-insert!
    :core_session
    {:key_hashed key-hashed
@@ -44,18 +39,18 @@
 (mu/defn insert-query-handle! :- :int
   "Insert the McpQueryHandle `row`, returning the number inserted."
   [row :- [:map {:closed true}
-           [:id              {:optional true} :any]
-           [:mcp_session_id  {:optional true} :any]
-           [:core_session_id {:optional true} :any]
-           [:encoded_query   {:optional true} :any]
-           [:created_at      {:optional true} :any]
-           [:prompt          {:optional true} :any]]]
+           [:id              {:optional true} ms/PositiveInt]
+           [:mcp_session_id  {:optional true} [:maybe :string]]
+           [:core_session_id {:optional true} [:maybe :string]]
+           [:encoded_query   {:optional true} [:maybe [:or :string :map sequential?]]]
+           [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
+           [:prompt          {:optional true} [:maybe [:or :string :map sequential?]]]]]
   (t2/insert! :model/McpQueryHandle row))
 
-(mu/defn query-handle-for-user :- [:maybe (ms/InstanceOf :model/McpQueryHandle)]
+(mu/defn query-handle-for-user :- [:maybe (mut/optional-keys (mut/open-schema ::mcp.schema/mcp-query-handle))]
   "The McpQueryHandle with `handle-id` whose session belongs to the User with `user-id`, or nil."
   [handle-id :- :string
-   user-id   :- ms/PositiveInt]
+   user-id   :- ::lib.schema.id/user]
   (t2/select-one :model/McpQueryHandle
                  {:select [:mqh.*]
                   :from   [[:mcp_query_handle :mqh]]
@@ -67,7 +62,7 @@
 (mu/defn delete-session-for-user! :- [:sequential :int]
   "Delete the `core_session` with `key-hashed` if it belongs to the User with `user-id`."
   [key-hashed :- :string
-   user-id    :- ms/PositiveInt]
+   user-id    :- ::lib.schema.id/user]
   (t2/query {:delete-from :core_session
              :where       [:and
                            [:= :key_hashed key-hashed]

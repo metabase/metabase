@@ -1,6 +1,7 @@
 (ns metabase.users.schema
   (:require
    [clojure.string :as str]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -51,3 +52,80 @@
    [:type [:enum "dashboard" "question"]]
    [:id   ms/PositiveInt]
    [:name ms/NonBlankString]])
+
+(mr/def ::user
+  "A User as selected from the app DB: every column of `:core_user` (the non-default ones optional), plus `:common_name` added by the model's after-select hook."
+  [:map {:closed true}
+   [:id                      ::lib.schema.id/user]
+   [:email                   :string]
+   [:first_name              [:maybe :string]]
+   [:last_name               [:maybe :string]]
+   [:password                {:optional true} [:maybe :string]]
+   [:password_salt           {:optional true} [:maybe :string]]
+   [:date_joined             ms/TemporalInstant]
+   [:last_login              [:maybe ms/TemporalInstant]]
+   [:is_superuser            :boolean]
+   [:is_active               {:optional true} :boolean]
+   [:reset_token             {:optional true} [:maybe :string]]
+   [:reset_triggered         {:optional true} [:maybe :int]]
+   [:is_qbnewb               :boolean]
+   [:login_attributes        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:sso_source              {:optional true} [:maybe [:or :keyword :string]]]
+   [:locale                  {:optional true} [:maybe :string]]
+   [:is_datasetnewb          {:optional true} :boolean]
+   [:settings                {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:type                    {:optional true} [:or :keyword :string]]
+   [:entity_id               {:optional true} :string]
+   [:deactivated_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:tenant_id               [:maybe ms/PositiveInt]]
+   [:jwt_attributes          {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:deactivated_with_tenant {:optional true} [:maybe :boolean]]
+   [:is_data_analyst         :boolean]
+   [:common_name             {:optional true} [:maybe :string]]])
+
+(mr/def ::user.update
+  "What an update (or insert) of a User accepts: every column of `:core_user` except `id`, all optional."
+  [:map {:closed true}
+   [:email                   {:optional true} [:maybe :string]]
+   [:first_name              {:optional true} [:maybe :string]]
+   [:last_name               {:optional true} [:maybe :string]]
+   [:password                {:optional true} [:maybe :string]]
+   [:password_salt           {:optional true} [:maybe :string]]
+   [:date_joined             {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_login              {:optional true} [:maybe ms/TemporalInstant]]
+   [:is_superuser            {:optional true} [:maybe :boolean]]
+   [:is_active               {:optional true} [:maybe :boolean]]
+   [:reset_token             {:optional true} [:maybe :string]]
+   [:reset_triggered         {:optional true} [:maybe :int]]
+   [:is_qbnewb               {:optional true} [:maybe :boolean]]
+   [:login_attributes        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:sso_source              {:optional true} [:maybe [:or :keyword :string]]]
+   [:locale                  {:optional true} [:maybe :string]]
+   [:is_datasetnewb          {:optional true} [:maybe :boolean]]
+   [:settings                {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:type                    {:optional true} [:maybe [:or :keyword :string]]]
+   [:entity_id               {:optional true} [:maybe :string]]
+   [:deactivated_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]
+   [:jwt_attributes          {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:deactivated_with_tenant {:optional true} [:maybe :boolean]]
+   [:is_data_analyst         {:optional true} [:maybe :boolean]]])
+
+(mr/def ::user-parameter-value
+  "A UserParameterValue as selected from the app DB: every column of `:user_parameter_value`."
+  [:map {:closed true}
+   [:id           ms/PositiveInt]
+   [:user_id      ::lib.schema.id/user]
+   [:parameter_id :string]
+   [:value        [:maybe [:or :string :map sequential?]]]
+   [:dashboard_id [:maybe ::lib.schema.id/dashboard]]])
+
+(mr/def ::user-parameter-value.update
+  "What an update (or insert) of a UserParameterValue accepts: every column of `:user_parameter_value` except `id`, all optional."
+  [:map {:closed true}
+   [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
+   [:parameter_id {:optional true} [:maybe :string]]
+   [:value        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:dashboard_id {:optional true} [:maybe ::lib.schema.id/dashboard]]])

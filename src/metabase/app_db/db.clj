@@ -7,6 +7,7 @@
   not yet in effect, which that model's strict read rejects."
   (:require
    [honey.sql :as sql]
+   [metabase.settings.schema :as settings.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -33,9 +34,9 @@
 (mu/defn changelog-ids :- [:sequential :string]
   "The ids among `changelog-ids` still present in the Liquibase changelog table `changelog-table-name`, read on
   `conn`."
-  [conn                 :- :any
+  [conn                 :- (ms/InstanceOfClass java.sql.Connection)
    changelog-table-name :- :string
-   changelog-ids        :- [:seqable :string]]
+   changelog-ids        :- [:set :string]]
   (map :id (t2/query conn (sql/format {:select [:id]
                                        :from   [(keyword changelog-table-name)]
                                        :where  [:in :id changelog-ids]}))))
@@ -65,7 +66,7 @@
   []
   (t2/exists? :setting {:where unmigrated-settings-where}))
 
-(mu/defn unmigrated-settings :- [:sequential :map]
+(mu/defn unmigrated-settings :- [:sequential ::settings.schema/setting]
   "Every setting row with a non-blank `value` but no `value_with_aad`, locked for update."
   []
   (t2/select :setting {:where unmigrated-settings-where, :for :update}))
@@ -85,8 +86,8 @@
   `t2/update!`, does not unwrap it)."
   [setting-key :- :string
    changes     :- [:map {:closed true}
-                   [:value          {:optional true} [:maybe :string]]
-                   [:value_with_aad {:optional true} [:maybe :string]]]]
+                   [:value          {:optional true} [:maybe [:or :string :map sequential?]]]
+                   [:value_with_aad {:optional true} [:maybe [:or :string :map sequential?]]]]]
   (t2/query {:update :setting
              :set    (select-keys changes [:value :value_with_aad])
              :where  [:= :key setting-key]}))
@@ -109,7 +110,7 @@
   [table  :- :keyword
    column :- :keyword
    id     :- ms/PositiveInt
-   value  :- :any]
+   value  :- [:maybe :string]]
   (t2/query {:update table, :set {column value}, :where [:= :id id]}))
 
 (mu/defn delete-query-cache! :- [:sequential :int]

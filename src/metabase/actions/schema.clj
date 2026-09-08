@@ -177,3 +177,33 @@
 (mr/def ::action.for-update
   "Schema for updating an Action (REST API or internally)."
   (action-schema :update))
+
+(mr/def ::httpaction
+  "A HTTPAction as selected from the app DB: every column of `:http_action`."
+  [:map {:closed true}
+   [:action_id       ::lib.schema.id/action]
+   [:template        [:or :string :map sequential?]]
+   [:response_handle [:maybe [:or :string :map sequential?]]]
+   [:error_handle    [:maybe [:or :string :map sequential?]]]])
+
+(mr/def ::httpaction.update
+  "What an update (or insert) of a HTTPAction accepts: every column of `:http_action` except `id`, all optional."
+  [:map {:closed true}
+   [:action_id       {:optional true} [:maybe ::lib.schema.id/action]]
+   [:template        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:response_handle {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:error_handle    {:optional true} [:maybe [:or :string :map sequential?]]]])
+
+(mr/def ::implicit-action.update
+  "What an update (or insert) of a ImplicitAction accepts: every column of `:implicit_action` except `id`, all optional."
+  [:map {:closed true}
+   [:action_id {:optional true} [:maybe ::lib.schema.id/action]]
+   [:kind      {:optional true} [:maybe [:or :keyword :string :map sequential?]]]])
+
+(mr/def ::query-action.update
+  "What an update (or insert) of a QueryAction accepts: every column of `:query_action` except `id`, all optional."
+  [:map {:closed true}
+   [:action_id     {:optional true} [:maybe ::lib.schema.id/action]]
+   [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
+   [:dataset_query {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:legacy_query  {:optional true} [:maybe [:or :string :map sequential?]]]])

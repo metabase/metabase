@@ -2,23 +2,25 @@
   "Application database queries for the erd module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [malli.util :as mut]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.table :as schema.table]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
 (def ^:private ActiveTablesOpts
   "The optional restrictions [[active-tables-in-database]] accepts."
   [:map {:closed true}
-   [:table-ids {:optional true} [:seqable ms/PositiveInt]]
+   [:table-ids {:optional true} [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]
    [:schema    {:optional true} [:maybe :string]]])
 
-(mu/defn active-tables-in-database :- [:sequential (ms/InstanceOf :model/Table)]
+(mu/defn active-tables-in-database :- [:sequential (mut/optional-keys (mut/open-schema ::warehouse-schema.schema/table))]
   "The `columns` of the active Tables in the Database with `database-id`. `opts` may restrict the result: a
   `:table-ids` key restricts to those IDs (even when its value is empty), and a `:schema` key restricts to that
   schema (`\"\"` matches both nil and empty-string schemas)."
   [columns     :- [:sequential :keyword]
-   database-id :- ms/PositiveInt
+   database-id :- ::lib.schema.id/database
    opts        :- [:maybe ActiveTablesOpts]]
   (let [{:keys [table-ids schema]} opts]
     (t2/select :model/Table
@@ -29,17 +31,17 @@
                                                                [:or [:= :schema nil] [:= :schema ""]]
                                                                [:= :schema schema])))})))
 
-(mu/defn active-fields-for-tables :- [:sequential (ms/InstanceOf :model/Field)]
+(mu/defn active-fields-for-tables :- [:sequential ::warehouse-schema.schema/field]
   "The active Fields of the Tables with `table-ids`, in field order."
-  [table-ids :- [:seqable ms/PositiveInt]]
+  [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Field {:where    [:and
                                       [:in :table_id table-ids]
                                       [:= :active true]]
                            :order-by schema.table/field-order-rule}))
 
-(mu/defn active-fields :- [:sequential (ms/InstanceOf :model/Field)]
+(mu/defn active-fields :- [:sequential ::warehouse-schema.schema/field]
   "The active Fields with `field-ids`."
-  [field-ids :- [:seqable ms/PositiveInt]]
+  [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select :model/Field {:where [:and
                                    [:in :id field-ids]
                                    [:= :active true]]}))

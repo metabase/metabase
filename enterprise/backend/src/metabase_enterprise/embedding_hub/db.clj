@@ -2,8 +2,8 @@
   "Application database queries for the embedding-hub module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn user-database-exists? :- :boolean
@@ -13,14 +13,14 @@
                                        [:= :is_sample false]
                                        [:= :is_audit false]]}))
 
-(mu/defn sample-database-id :- [:maybe ms/PositiveInt]
+(mu/defn sample-database-id :- [:maybe ::lib.schema.id/database]
   "The ID of the sample Database, or nil."
   []
   (t2/select-one-pk :model/Database :is_sample true))
 
 (mu/defn upload-table-exists-in-database? :- :boolean
   "Whether the Database with `database-id` holds an active uploaded Table."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Table {:where [:and
                                     [:= :active true]
                                     [:= :is_upload true]
@@ -29,8 +29,8 @@
 (mu/defn user-dashboard-exists? :- :boolean
   "Whether an unarchived Dashboard exists other than `example-dashboard-id` and outside the Collections with
   `excluded-collection-ids`."
-  [example-dashboard-id    :- [:maybe ms/PositiveInt]
-   excluded-collection-ids :- [:maybe [:seqable ms/PositiveInt]]]
+  [example-dashboard-id    :- [:maybe ::lib.schema.id/dashboard]
+   excluded-collection-ids :- [:maybe [:sequential ::lib.schema.id/collection]]]
   (t2/exists? :model/Dashboard {:where (cond-> [:and
                                                 [:= :archived false]]
                                          example-dashboard-id (conj [:not= :id example-dashboard-id])
@@ -46,7 +46,7 @@
 (mu/defn user-model-exists? :- :boolean
   "Whether an unarchived model Card exists outside the sample Collections and the Collection with
   `audit-collection-id`."
-  [audit-collection-id :- [:maybe ms/PositiveInt]]
+  [audit-collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/exists? :model/Card {:where [:and
                                    [:= :type "model"]
                                    [:= :archived false]
@@ -73,7 +73,7 @@
                                          [:= :namespace "shared-tenant-collection"]
                                          [:= :archived false]]}))
 
-(mu/defn shared-tenant-collection-id :- [:maybe ms/PositiveInt]
+(mu/defn shared-tenant-collection-id :- [:maybe ::lib.schema.id/collection]
   "The ID of an unarchived shared tenant Collection, or nil."
   []
   (t2/select-one-pk :model/Collection {:where [:and
@@ -82,7 +82,7 @@
 
 (mu/defn unarchived-dashboard-exists-in-collection? :- :boolean
   "Whether an unarchived Dashboard exists in the Collection with `collection-id`."
-  [collection-id :- ms/PositiveInt]
+  [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Dashboard {:where [:and
                                         [:= :collection_id collection-id]
                                         [:= :archived false]]}))

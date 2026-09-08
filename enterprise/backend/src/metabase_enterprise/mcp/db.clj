@@ -2,6 +2,9 @@
   "Application database queries for the mcp module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [malli.util :as mut]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.mcp.schema :as mcp.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -11,7 +14,7 @@
   [session-id :- :string]
   (t2/exists? :model/McpSessionLog :id session-id))
 
-(mu/defn session-client-identity :- [:maybe :map]
+(mu/defn session-client-identity :- [:maybe (mut/select-keys ::mcp.schema/mcp-session-log [:client_name :client_version])]
   "The client name and version of the McpSessionLog with `session-id`, or nil."
   [session-id :- :string]
   (t2/select-one [:model/McpSessionLog :client_name :client_version] :id session-id))
@@ -20,7 +23,7 @@
   "Insert the McpSessionLog `row`."
   [row :- [:map {:closed true}
            [:id             {:optional true} :string]
-           [:user_id        {:optional true} [:maybe ms/PositiveInt]]
+           [:user_id        {:optional true} [:maybe ::lib.schema.id/user]]
            [:tenant_id      {:optional true} [:maybe ms/PositiveInt]]
            [:client_name    {:optional true} [:maybe :string]]
            [:client_version {:optional true} [:maybe :string]]
@@ -35,19 +38,7 @@
 
 (mu/defn insert-tool-call-log! :- :int
   "Insert the McpToolCallLog `row`."
-  [row :- [:map {:closed true}
-           [:user_id               {:optional true} [:maybe ms/PositiveInt]]
-           [:tool_name             {:optional true} [:maybe :string]]
-           [:status                {:optional true} [:maybe :string]]
-           [:duration_ms           {:optional true} [:maybe :int]]
-           [:error_code            {:optional true} [:maybe :int]]
-           [:error_message         {:optional true} [:maybe :string]]
-           [:client_name           {:optional true} [:maybe :string]]
-           [:client_version        {:optional true} [:maybe :string]]
-           [:tenant_id             {:optional true} [:maybe ms/PositiveInt]]
-           [:ip_address            {:optional true} [:maybe :string]]
-           [:user_agent            {:optional true} [:maybe :string]]
-           [:sanitized_user_agent  {:optional true} [:maybe :string]]]]
+  [row :- ::mcp.schema/mcp-tool-call-log.update]
   (t2/insert! :model/McpToolCallLog row))
 
 (mu/defn delete-tool-call-logs-created-before! :- :int

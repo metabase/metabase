@@ -2,16 +2,16 @@
   "Application database queries for the SQL tools module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn active-visible-table-ids-by-name :- [:maybe [:set ms/PositiveInt]]
+(mu/defn active-visible-table-ids-by-name :- [:maybe [:set ::lib.schema.id/table]]
   "Ids of the active, non-hidden Tables of Database `database-id` whose name case-insensitively matches one of
   `table-names`, or nil."
-  [database-id :- ms/PositiveInt
-   table-names :- [:seqable :string]]
+  [database-id :- ::lib.schema.id/database
+   table-names :- [:sequential :string]]
   (t2/select-pks-set :model/Table
                      {:where [:and
                               [:= :db_id database-id]

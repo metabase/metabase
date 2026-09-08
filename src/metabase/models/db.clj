@@ -3,6 +3,8 @@
   additional logic, so no other namespace in the module runs a query itself (the model machinery still uses
   `toucan2.core`)."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -12,7 +14,7 @@
   "The `model` row whose `pk-column` is `id`, or nil."
   [model     :- [:or :keyword symbol?]
    pk-column :- :keyword
-   id        :- :any]
+   id        :- [:or :int :string]]
   (t2/select-one model pk-column id))
 
 (mu/defn entity-by-entity-id :- [:maybe :map]
@@ -21,7 +23,7 @@
    entity-id :- :string]
   (t2/select-one model :entity_id entity-id))
 
-(mu/defn entity-field :- :any
+(mu/defn entity-field :- :some
   "The `field` of the `model` row with `id`, or nil."
   [model :- [:or :keyword symbol?]
    id    :- ms/PositiveInt
@@ -39,7 +41,7 @@
   "The primary key of the `model` row whose `field` is `value`, or nil."
   [model :- [:or :keyword symbol?]
    field :- :keyword
-   value :- :any]
+   value :- :some]
   (t2/select-one-pk model field value))
 
 (mu/defn after-select-via-identity-query :- [:maybe :map]
@@ -53,8 +55,8 @@
   extract-query nested-fetch hook passes a dynamic foreign-key-column + id-list condition here that varies per
   model/transform and can't be expressed as fixed data — ordered by `order-by` (or unordered when nil)."
   [model       :- [:or :keyword symbol?]
-   extra-where :- :any
-   order-by    :- :any]
+   extra-where :- [:maybe vector?]
+   order-by    :- [:maybe vector?]]
   (t2/reducible-select model (cond-> {}
                                extra-where (assoc :where extra-where)
                                order-by    (assoc :order-by order-by))))
@@ -64,9 +66,9 @@
   collection), additionally matching the Honey SQL `extra-where` when given (see [[entities-reducible]] for why this
   stays a raw clause), ordered by `order-by` (or unordered when nil)."
   [model          :- [:or :keyword symbol?]
-   collection-set :- [:seqable [:maybe ms/PositiveInt]]
-   extra-where    :- :any
-   order-by       :- :any]
+   collection-set :- [:or [:set [:maybe ms/PositiveInt]] [:sequential [:maybe ms/PositiveInt]]]
+   extra-where    :- [:maybe vector?]
+   order-by       :- [:maybe vector?]]
   (t2/reducible-select model
                        (cond-> {:where [:and
                                         [:or
@@ -89,19 +91,19 @@
 (mu/defn update-entity! :- :int
   "Apply `changes` to the `model` row with `id`, returning the number updated."
   [model   :- [:or :keyword symbol?]
-   id      :- :any
+   id      :- [:or :int :string]
    changes :- :map]
   (t2/update! model id changes))
 
 (mu/defn set-table-display-name! :- :int
   "Set the display name of the Table with `id`, returning the number updated."
-  [id           :- ms/PositiveInt
+  [id           :- ::lib.schema.id/table
    display-name :- :string]
   (t2/update! :model/Table id {:display_name display-name}))
 
 (mu/defn set-field-display-name! :- :int
   "Set the display name of the Field with `id`, returning the number updated."
-  [id           :- ms/PositiveInt
+  [id           :- ::lib.schema.id/field
    display-name :- :string]
   (t2/update! :model/Field id {:display_name display-name}))
 
@@ -126,21 +128,21 @@
 (mu/defn delete-entity! :- :int
   "Delete the `model` row with `id`, returning the number deleted."
   [model :- [:or :keyword symbol?]
-   id    :- :any]
+   id    :- [:or :int :string]]
   (t2/delete! model id))
 
 (mu/defn delete-entities-with-ids! :- :int
   "Delete the `model` rows whose `id-column` is one of `ids`, returning the number deleted."
   [model     :- [:or :keyword symbol?]
    id-column :- :keyword
-   ids       :- [:seqable :any]]
+   ids       :- [:sequential [:or :int :string]]]
   (t2/delete! model id-column [:in ids]))
 
 (mu/defn delete-children! :- :int
   "Delete the `model` rows whose `parent-column` is `parent-id`, returning the number deleted."
   [model         :- [:or :keyword symbol?]
    parent-column :- :keyword
-   parent-id     :- :any]
+   parent-id     :- [:or :int :string]]
   (t2/delete! model parent-column parent-id))
 
 (mu/defn delete-children-except! :- :int
@@ -148,28 +150,93 @@
   returning the number deleted."
   [model         :- [:or :keyword symbol?]
    parent-column :- :keyword
-   parent-id     :- :any
-   entity-ids    :- [:seqable :string]]
+   parent-id     :- [:or :int :string]
+   entity-ids    :- [:sequential :string]]
   (t2/delete! model parent-column parent-id :entity_id [:not-in entity-ids]))
 
-(mu/defn collection-paths-columns :- [:sequential (ms/InstanceOf :model/Collection)]
+(def ^:private CollectionPathsColumn
+  "Rows returned by [[collection-paths-columns]]."
+  [:map {:closed true}
+   [:id        ::lib.schema.id/collection]
+   [:entity_id :string]
+   [:location  :string]
+   [:name      [:or :string :map sequential?]]])
+
+(mu/defn collection-paths-columns :- [:sequential CollectionPathsColumn]
   "The id, entity id, location, and name of every Collection."
   []
   (t2/select [:model/Collection :id :entity_id :location :name]))
 
-(mu/defn dashboard-entity-ids-and-names :- [:sequential (ms/InstanceOf :model/Dashboard)]
+(def ^:private DashboardEntityIdsAndName
+  "Rows returned by [[dashboard-entity-ids-and-names]]."
+  [:map {:closed true}
+   [:entity_id :string]
+   [:name      :string]])
+
+(mu/defn dashboard-entity-ids-and-names :- [:sequential DashboardEntityIdsAndName]
   "The entity id and name of every Dashboard."
   []
   (t2/select [:model/Dashboard :entity_id :name]))
 
-(mu/defn document-entity-ids-and-names :- [:sequential (ms/InstanceOf :model/Document)]
+(def ^:private DocumentEntityIdsAndName
+  "Rows returned by [[document-entity-ids-and-names]]."
+  [:map {:closed true}
+   [:entity_id :string]
+   [:name      [:or :string :map sequential?]]])
+
+(mu/defn document-entity-ids-and-names :- [:sequential DocumentEntityIdsAndName]
   "The entity id and name of every Document."
   []
   (t2/select [:model/Document :entity_id :name]))
 
-(mu/defn field-hierarchy-rows :- [:sequential (ms/InstanceOf :model/Field)]
+(def ^:private FieldHierarchy
+  "Rows returned by [[field-hierarchy-rows]]."
+  [:map {:closed true}
+   [:id                         ::lib.schema.id/field]
+   [:created_at                 ms/TemporalInstant]
+   [:updated_at                 ms/TemporalInstant]
+   [:name                       :string]
+   [:base_type                  [:or :keyword :string :map sequential?]]
+   [:semantic_type              [:maybe [:or :keyword :string :map sequential?]]]
+   [:active                     :boolean]
+   [:description                [:maybe [:or :string :map sequential?]]]
+   [:preview_display            :boolean]
+   [:position                   :int]
+   [:table_id                   ::lib.schema.id/table]
+   [:parent_id                  [:maybe ms/PositiveInt]]
+   [:display_name               [:maybe :string]]
+   [:visibility_type            [:or :keyword :string]]
+   [:fk_target_field_id         [:maybe ::lib.schema.id/field]]
+   [:last_analyzed              [:maybe ms/TemporalInstant]]
+   [:points_of_interest         [:maybe [:or :string :map sequential?]]]
+   [:caveats                    [:maybe [:or :string :map sequential?]]]
+   [:fingerprint                [:maybe [:or :string :map sequential?]]]
+   [:fingerprint_version        :int]
+   [:database_type              [:or :keyword :string :map sequential?]]
+   [:has_field_values           [:maybe [:or :keyword :string :map sequential?]]]
+   [:settings                   [:maybe [:or :string :map sequential?]]]
+   [:database_position          :int]
+   [:custom_position            :int]
+   [:effective_type             [:maybe [:or :keyword :string :map sequential?]]]
+   [:coercion_strategy          [:maybe [:or :keyword :string :map sequential?]]]
+   [:nfc_path                   [:maybe [:or :string :map sequential?]]]
+   [:database_required          :boolean]
+   [:json_unfolding             :boolean]
+   [:database_is_auto_increment :boolean]
+   [:database_indexed           [:maybe :boolean]]
+   [:database_partitioned       [:maybe :boolean]]
+   [:is_defective_duplicate     :boolean]
+   [:unique_field_helper        [:maybe :int]]
+   [:database_is_pk             [:maybe :boolean]]
+   [:database_is_nullable       [:maybe :boolean]]
+   [:database_is_generated      [:maybe :boolean]]
+   [:database_default           [:maybe [:or :string :map sequential?]]]
+   [:dimension_interestingness  [:maybe number?]]
+   [:data_sensitivity           [:maybe [:or :keyword :string]]]])
+
+(mu/defn field-hierarchy-rows :- [:sequential FieldHierarchy]
   "The name and Table id of the Field with `field-id` and each of its ancestors, deepest first."
-  [field-id :- ms/PositiveInt]
+  [field-id :- ::lib.schema.id/field]
   (t2/select :model/Field
              {:with-recursive [[[:parents ^:allow-subquery {:columns [:id :name :parent_id :table_id]}]
                                 ^:allow-subquery {:union-all [^:allow-subquery {:from   [[:metabase_field :mf]]
@@ -181,14 +248,22 @@
               :from           [:parents]
               :select         [:name :table_id]}))
 
-(mu/defn table-ref-columns :- [:maybe (ms/InstanceOf :model/Table)]
+(def ^:private TableRefColumn
+  "Rows returned by [[table-ref-columns]]."
+  [:map {:closed true}
+   [:id     ::lib.schema.id/table]
+   [:db_id  ::lib.schema.id/database]
+   [:name   :string]
+   [:schema [:maybe :string]]])
+
+(mu/defn table-ref-columns :- [:maybe TableRefColumn]
   "The id, Database id, name, and schema of the Table with `table-id`, or nil."
-  [table-id :- ms/PositiveInt]
+  [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id))
 
 (mu/defn database-name :- [:maybe :string]
   "The name of the Database with `database-id`, or nil."
-  [database-id :- [:maybe ms/PositiveInt]]
+  [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one-fn :name [:model/Database :id :name] :id database-id))
 
 (mu/defn database-names :- [:maybe [:sequential :string]]
@@ -205,12 +280,50 @@
   "The id of the Table named `table-name` in `schema` of the Database with `database-id`, or nil."
   [table-name  :- :string
    schema      :- [:maybe :string]
-   database-id :- ms/PositiveInt]
+   database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id database-id))
 
-(mu/defn insert-inactive-table! :- ms/PositiveInt
+(def ^:private InsertInactiveTable
+  "Rows returned by [[insert-inactive-table!]]."
+  [:map {:closed true}
+   [:id                      ::lib.schema.id/table]
+   [:created_at              ms/TemporalInstant]
+   [:updated_at              ms/TemporalInstant]
+   [:name                    :string]
+   [:description             [:maybe [:or :string :map sequential?]]]
+   [:entity_type             [:maybe [:or :keyword :string]]]
+   [:active                  :boolean]
+   [:db_id                   ::lib.schema.id/database]
+   [:display_name            [:maybe :string]]
+   [:visibility_type         [:maybe [:or :keyword :string]]]
+   [:schema                  [:maybe :string]]
+   [:points_of_interest      [:maybe [:or :string :map sequential?]]]
+   [:caveats                 [:maybe [:or :string :map sequential?]]]
+   [:show_in_getting_started :boolean]
+   [:field_order             [:or :keyword :string]]
+   [:initial_sync_status     [:or :keyword :string]]
+   [:is_upload               :boolean]
+   [:database_require_filter [:maybe :boolean]]
+   [:estimated_row_count     [:maybe :int]]
+   [:view_count              :int]
+   [:is_defective_duplicate  :boolean]
+   [:unique_table_helper     [:maybe :string]]
+   [:deactivated_at          [:maybe ms/TemporalInstant]]
+   [:archived_at             [:maybe ms/TemporalInstant]]
+   [:is_writable             [:maybe :boolean]]
+   [:data_authority          [:or :keyword :string :map sequential?]]
+   [:data_source             [:maybe [:or :keyword :string :map sequential?]]]
+   [:data_layer              [:maybe [:or :keyword :string :map sequential?]]]
+   [:owner_email             [:maybe [:or :string :map sequential?]]]
+   [:owner_user_id           [:maybe ::lib.schema.id/user]]
+   [:collection_id           [:maybe ::lib.schema.id/collection]]
+   [:is_published            :boolean]
+   [:transform_id            [:maybe ::lib.schema.id/transform]]
+   [:transform_target        :boolean]])
+
+(mu/defn insert-inactive-table! :- InsertInactiveTable
   "Insert an inactive Table named `table-name` in `schema` of the Database with `database-id` and return its id."
-  [database-id :- ms/PositiveInt
+  [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string]
   (t2/insert-returning-pk! :model/Table {:db_id  database-id
@@ -218,9 +331,54 @@
                                          :name   table-name
                                          :active false}))
 
-(mu/defn field-pk :- [:maybe ms/PositiveInt]
+(def ^:private FieldPk
+  "Rows returned by [[field-pk]]."
+  [:map {:closed true}
+   [:id                         ::lib.schema.id/field]
+   [:created_at                 ms/TemporalInstant]
+   [:updated_at                 ms/TemporalInstant]
+   [:name                       :string]
+   [:base_type                  [:or :keyword :string :map sequential?]]
+   [:semantic_type              [:maybe [:or :keyword :string :map sequential?]]]
+   [:active                     :boolean]
+   [:description                [:maybe [:or :string :map sequential?]]]
+   [:preview_display            :boolean]
+   [:position                   :int]
+   [:table_id                   ::lib.schema.id/table]
+   [:parent_id                  [:maybe ms/PositiveInt]]
+   [:display_name               [:maybe :string]]
+   [:visibility_type            [:or :keyword :string]]
+   [:fk_target_field_id         [:maybe ::lib.schema.id/field]]
+   [:last_analyzed              [:maybe ms/TemporalInstant]]
+   [:points_of_interest         [:maybe [:or :string :map sequential?]]]
+   [:caveats                    [:maybe [:or :string :map sequential?]]]
+   [:fingerprint                [:maybe [:or :string :map sequential?]]]
+   [:fingerprint_version        :int]
+   [:database_type              [:or :keyword :string :map sequential?]]
+   [:has_field_values           [:maybe [:or :keyword :string :map sequential?]]]
+   [:settings                   [:maybe [:or :string :map sequential?]]]
+   [:database_position          :int]
+   [:custom_position            :int]
+   [:effective_type             [:maybe [:or :keyword :string :map sequential?]]]
+   [:coercion_strategy          [:maybe [:or :keyword :string :map sequential?]]]
+   [:nfc_path                   [:maybe [:or :string :map sequential?]]]
+   [:database_required          :boolean]
+   [:json_unfolding             :boolean]
+   [:database_is_auto_increment :boolean]
+   [:database_indexed           [:maybe :boolean]]
+   [:database_partitioned       [:maybe :boolean]]
+   [:is_defective_duplicate     :boolean]
+   [:unique_field_helper        [:maybe :int]]
+   [:database_is_pk             [:maybe :boolean]]
+   [:database_is_nullable       [:maybe :boolean]]
+   [:database_is_generated      [:maybe :boolean]]
+   [:database_default           [:maybe [:or :string :map sequential?]]]
+   [:dimension_interestingness  [:maybe number?]]
+   [:data_sensitivity           [:maybe [:or :keyword :string]]]])
+
+(mu/defn field-pk :- [:maybe FieldPk]
   "The id of the Field named `field-name` under `parent-id` in the Table with `table-id`, or nil."
-  [table-id   :- ms/PositiveInt
+  [table-id   :- ::lib.schema.id/table
    field-name :- :string
    parent-id  :- [:maybe ms/PositiveInt]]
   (t2/select-one-pk :model/Field :table_id table-id :name field-name :parent_id parent-id))
@@ -235,26 +393,161 @@
                                [:= :name field]
                                [:= :parent_id (field-in-path-query table-id rest)]]}))
 
-(mu/defn field-pk-in-path :- [:maybe ms/PositiveInt]
+(def ^:private FieldPkInPath
+  "Rows returned by [[field-pk-in-path]]."
+  [:map {:closed true}
+   [:id                         ::lib.schema.id/field]
+   [:created_at                 ms/TemporalInstant]
+   [:updated_at                 ms/TemporalInstant]
+   [:name                       :string]
+   [:base_type                  [:or :keyword :string :map sequential?]]
+   [:semantic_type              [:maybe [:or :keyword :string :map sequential?]]]
+   [:active                     :boolean]
+   [:description                [:maybe [:or :string :map sequential?]]]
+   [:preview_display            :boolean]
+   [:position                   :int]
+   [:table_id                   ::lib.schema.id/table]
+   [:parent_id                  [:maybe ms/PositiveInt]]
+   [:display_name               [:maybe :string]]
+   [:visibility_type            [:or :keyword :string]]
+   [:fk_target_field_id         [:maybe ::lib.schema.id/field]]
+   [:last_analyzed              [:maybe ms/TemporalInstant]]
+   [:points_of_interest         [:maybe [:or :string :map sequential?]]]
+   [:caveats                    [:maybe [:or :string :map sequential?]]]
+   [:fingerprint                [:maybe [:or :string :map sequential?]]]
+   [:fingerprint_version        :int]
+   [:database_type              [:or :keyword :string :map sequential?]]
+   [:has_field_values           [:maybe [:or :keyword :string :map sequential?]]]
+   [:settings                   [:maybe [:or :string :map sequential?]]]
+   [:database_position          :int]
+   [:custom_position            :int]
+   [:effective_type             [:maybe [:or :keyword :string :map sequential?]]]
+   [:coercion_strategy          [:maybe [:or :keyword :string :map sequential?]]]
+   [:nfc_path                   [:maybe [:or :string :map sequential?]]]
+   [:database_required          :boolean]
+   [:json_unfolding             :boolean]
+   [:database_is_auto_increment :boolean]
+   [:database_indexed           [:maybe :boolean]]
+   [:database_partitioned       [:maybe :boolean]]
+   [:is_defective_duplicate     :boolean]
+   [:unique_field_helper        [:maybe :int]]
+   [:database_is_pk             [:maybe :boolean]]
+   [:database_is_nullable       [:maybe :boolean]]
+   [:database_is_generated      [:maybe :boolean]]
+   [:database_default           [:maybe [:or :string :map sequential?]]]
+   [:dimension_interestingness  [:maybe number?]]
+   [:data_sensitivity           [:maybe [:or :keyword :string]]]])
+
+(mu/defn field-pk-in-path :- [:maybe FieldPkInPath]
   "The id of the Field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
   `table-id`, or nil."
-  [table-id    :- ms/PositiveInt
+  [table-id    :- ::lib.schema.id/table
    field-names :- [:sequential :string]]
   (when (seq field-names)
     (t2/select-one-pk :model/Field (field-in-path-query table-id field-names))))
 
-(mu/defn field-in-path :- [:maybe (ms/InstanceOf :model/Field)]
+(def ^:private FieldInPath
+  "Rows returned by [[field-in-path]]."
+  [:map {:closed true}
+   [:id                         ::lib.schema.id/field]
+   [:created_at                 ms/TemporalInstant]
+   [:updated_at                 ms/TemporalInstant]
+   [:name                       :string]
+   [:base_type                  [:or :keyword :string :map sequential?]]
+   [:semantic_type              [:maybe [:or :keyword :string :map sequential?]]]
+   [:active                     :boolean]
+   [:description                [:maybe [:or :string :map sequential?]]]
+   [:preview_display            :boolean]
+   [:position                   :int]
+   [:table_id                   ::lib.schema.id/table]
+   [:parent_id                  [:maybe ms/PositiveInt]]
+   [:display_name               [:maybe :string]]
+   [:visibility_type            [:or :keyword :string]]
+   [:fk_target_field_id         [:maybe ::lib.schema.id/field]]
+   [:last_analyzed              [:maybe ms/TemporalInstant]]
+   [:points_of_interest         [:maybe [:or :string :map sequential?]]]
+   [:caveats                    [:maybe [:or :string :map sequential?]]]
+   [:fingerprint                [:maybe [:or :string :map sequential?]]]
+   [:fingerprint_version        :int]
+   [:database_type              [:or :keyword :string :map sequential?]]
+   [:has_field_values           [:maybe [:or :keyword :string :map sequential?]]]
+   [:settings                   [:maybe [:or :string :map sequential?]]]
+   [:database_position          :int]
+   [:custom_position            :int]
+   [:effective_type             [:maybe [:or :keyword :string :map sequential?]]]
+   [:coercion_strategy          [:maybe [:or :keyword :string :map sequential?]]]
+   [:nfc_path                   [:maybe [:or :string :map sequential?]]]
+   [:database_required          :boolean]
+   [:json_unfolding             :boolean]
+   [:database_is_auto_increment :boolean]
+   [:database_indexed           [:maybe :boolean]]
+   [:database_partitioned       [:maybe :boolean]]
+   [:is_defective_duplicate     :boolean]
+   [:unique_field_helper        [:maybe :int]]
+   [:database_is_pk             [:maybe :boolean]]
+   [:database_is_nullable       [:maybe :boolean]]
+   [:database_is_generated      [:maybe :boolean]]
+   [:database_default           [:maybe [:or :string :map sequential?]]]
+   [:dimension_interestingness  [:maybe number?]]
+   [:data_sensitivity           [:maybe [:or :keyword :string]]]])
+
+(mu/defn field-in-path :- [:maybe FieldInPath]
   "The Field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
   `table-id`, or nil."
-  [table-id    :- [:maybe ms/PositiveInt]
+  [table-id    :- [:maybe ::lib.schema.id/table]
    field-names :- [:sequential :string]]
   (when (seq field-names)
     (t2/select-one :model/Field (field-in-path-query table-id field-names))))
 
-(mu/defn insert-inactive-field! :- ms/PositiveInt
+(def ^:private InsertInactiveField
+  "Rows returned by [[insert-inactive-field!]]."
+  [:map {:closed true}
+   [:id                         ::lib.schema.id/field]
+   [:created_at                 ms/TemporalInstant]
+   [:updated_at                 ms/TemporalInstant]
+   [:name                       :string]
+   [:base_type                  [:or :keyword :string :map sequential?]]
+   [:semantic_type              [:maybe [:or :keyword :string :map sequential?]]]
+   [:active                     :boolean]
+   [:description                [:maybe [:or :string :map sequential?]]]
+   [:preview_display            :boolean]
+   [:position                   :int]
+   [:table_id                   ::lib.schema.id/table]
+   [:parent_id                  [:maybe ms/PositiveInt]]
+   [:display_name               [:maybe :string]]
+   [:visibility_type            [:or :keyword :string]]
+   [:fk_target_field_id         [:maybe ::lib.schema.id/field]]
+   [:last_analyzed              [:maybe ms/TemporalInstant]]
+   [:points_of_interest         [:maybe [:or :string :map sequential?]]]
+   [:caveats                    [:maybe [:or :string :map sequential?]]]
+   [:fingerprint                [:maybe [:or :string :map sequential?]]]
+   [:fingerprint_version        :int]
+   [:database_type              [:or :keyword :string :map sequential?]]
+   [:has_field_values           [:maybe [:or :keyword :string :map sequential?]]]
+   [:settings                   [:maybe [:or :string :map sequential?]]]
+   [:database_position          :int]
+   [:custom_position            :int]
+   [:effective_type             [:maybe [:or :keyword :string :map sequential?]]]
+   [:coercion_strategy          [:maybe [:or :keyword :string :map sequential?]]]
+   [:nfc_path                   [:maybe [:or :string :map sequential?]]]
+   [:database_required          :boolean]
+   [:json_unfolding             :boolean]
+   [:database_is_auto_increment :boolean]
+   [:database_indexed           [:maybe :boolean]]
+   [:database_partitioned       [:maybe :boolean]]
+   [:is_defective_duplicate     :boolean]
+   [:unique_field_helper        [:maybe :int]]
+   [:database_is_pk             [:maybe :boolean]]
+   [:database_is_nullable       [:maybe :boolean]]
+   [:database_is_generated      [:maybe :boolean]]
+   [:database_default           [:maybe [:or :string :map sequential?]]]
+   [:dimension_interestingness  [:maybe number?]]
+   [:data_sensitivity           [:maybe [:or :keyword :string]]]])
+
+(mu/defn insert-inactive-field! :- InsertInactiveField
   "Insert an inactive, untyped Field named `field-name` under `parent-id` in the Table with `table-id` and return its
   id."
-  [table-id   :- ms/PositiveInt
+  [table-id   :- ::lib.schema.id/table
    parent-id  :- [:maybe ms/PositiveInt]
    field-name :- :string]
   (t2/insert-returning-pk! :model/Field {:table_id      table-id
@@ -264,30 +557,53 @@
                                          :base_type     :type/*
                                          :database_type "NULL"}))
 
-(mu/defn metadata-tables :- [:sequential :map]
+(mu/defn metadata-tables :- [:sequential ::lib.schema.metadata/table]
   "The `:metadata/table` rows named `table-name` in `schema` of the Database with `database-id`."
-  [database-id :- ms/PositiveInt
+  [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string]
   (t2/select :metadata/table :db_id database-id :schema schema :name table-name))
 
-(mu/defn card-serdes-columns :- [:maybe (ms/InstanceOf :model/Card)]
+(def ^:private CardSerdesColumn
+  "Rows returned by [[card-serdes-columns]]."
+  [:map {:closed true}
+   [:id            ::lib.schema.id/card]
+   [:entity_id     :string]
+   [:collection_id [:maybe ::lib.schema.id/collection]]
+   [:database_id   ::lib.schema.id/database]
+   [:card_schema   :int]])
+
+(mu/defn card-serdes-columns :- [:maybe CardSerdesColumn]
   "The id, entity id, Collection id, Database id, and schema of the Card with `card-id`, or nil."
-  [card-id :- ms/PositiveInt]
+  [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :id :entity_id :collection_id :database_id :card_schema] :id card-id))
 
-(mu/defn measure-serdes-columns :- [:maybe (ms/InstanceOf :model/Measure)]
+(def ^:private MeasureSerdesColumn
+  "Rows returned by [[measure-serdes-columns]]."
+  [:map {:closed true}
+   [:id        ms/PositiveInt]
+   [:entity_id :string]
+   [:table_id  ::lib.schema.id/table]])
+
+(mu/defn measure-serdes-columns :- [:maybe MeasureSerdesColumn]
   "The id, entity id, and Table id of the Measure with `measure-id`, or nil."
-  [measure-id :- ms/PositiveInt]
+  [measure-id :- ::lib.schema.id/measure]
   (t2/select-one [:model/Measure :id :entity_id :table_id] :id measure-id))
 
-(mu/defn segment-serdes-columns :- [:maybe (ms/InstanceOf :model/Segment)]
+(def ^:private SegmentSerdesColumn
+  "Rows returned by [[segment-serdes-columns]]."
+  [:map {:closed true}
+   [:id        ms/PositiveInt]
+   [:entity_id :string]
+   [:table_id  ::lib.schema.id/table]])
+
+(mu/defn segment-serdes-columns :- [:maybe SegmentSerdesColumn]
   "The id, entity id, and Table id of the Segment with `segment-id`, or nil."
-  [segment-id :- ms/PositiveInt]
+  [segment-id :- ::lib.schema.id/segment]
   (t2/select-one [:model/Segment :id :entity_id :table_id] :id segment-id))
 
 (mu/defn entity-by-own-pk :- [:maybe :map]
   "The `model` row identified by `id`, using whatever column is that model's own primary key."
   [model :- [:or :keyword symbol?]
-   id    :- :any]
+   id    :- [:or :int :string]]
   (t2/select-one model (first (t2/primary-keys model)) id))

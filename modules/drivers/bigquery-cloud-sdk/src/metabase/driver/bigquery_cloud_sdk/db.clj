@@ -4,11 +4,12 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.warehouses.schema :as warehouses.schema]
    ;; the driver persists dataset-filter and project-id migrations of its Database details back to the app DB
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
-(mu/defn database :- [:maybe :map]
+(mu/defn database :- [:maybe ::warehouses.schema/database]
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database database-id))

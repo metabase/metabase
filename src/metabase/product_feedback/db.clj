@@ -3,18 +3,23 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.users.schema :as users.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn creator-sentiment-candidates :- [:sequential [:map {:closed true}
-                                                       [:email      :string]
-                                                       [:created_at :any]
-                                                       [:first_name [:maybe :string]]
-                                                       [:num_dashboards ms/IntGreaterThanOrEqualToZero]
-                                                       [:num_questions  ms/IntGreaterThanOrEqualToZero]
-                                                       [:num_models     ms/IntGreaterThanOrEqualToZero]]]
+(def ^:private CreatorSentimentCandidate
+  "Rows returned by [[creator-sentiment-candidates]]."
+  [:map {:closed true}
+   [:email      :string]
+   [:created_at [:maybe ms/TemporalInstant]]
+   [:first_name [:maybe :string]]
+   [:num_dashboards ms/IntGreaterThanOrEqualToZero]
+   [:num_questions  ms/IntGreaterThanOrEqualToZero]
+   [:num_models     ms/IntGreaterThanOrEqualToZero]])
+
+(mu/defn creator-sentiment-candidates :- [:sequential CreatorSentimentCandidate]
   "The email, join date, first name, and content counts of the active personal Users who created content in the past
   2 months, with at least 10 Cards (2 native), and at least 1 Dashboard. When `only-superusers?` is true, only
   superusers are considered."
@@ -61,7 +66,7 @@
   [card-type :- [:or :keyword :string]]
   (t2/count :model/Card :archived false :type card-type))
 
-(mu/defn oldest-active-admin :- [:maybe (ms/InstanceOf :model/User)]
+(mu/defn oldest-active-admin :- [:maybe ::users.schema/user]
   "The earliest-joined active superuser, or nil."
   []
   (t2/select-one :model/User :is_superuser true, :is_active true, {:order-by [:date_joined]}))

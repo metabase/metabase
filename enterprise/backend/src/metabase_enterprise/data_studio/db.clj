@@ -3,16 +3,22 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
+   [metabase.audit-app.schema :as audit-app.schema]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.schema :as collections.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
 (def ^:private TableSelectors
   [:map {:closed true}
-   [:database-ids {:optional true} [:maybe [:seqable ms/PositiveInt]]]
-   [:table-ids    {:optional true} [:maybe [:seqable ms/PositiveInt]]]
-   [:schema-ids   {:optional true} [:maybe [:seqable :string]]]])
+   [:database-ids {:optional true} [:maybe [:or [:set ::lib.schema.id/database] [:sequential ::lib.schema.id/database]]]]
+   [:table-ids    {:optional true} [:maybe [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]]
+   [:schema-ids   {:optional true} [:maybe [:or [:set :string] [:sequential :string]]]]])
 
 (defn- table-selectors-expr
   "Matches the Tables selected by `database-ids`, `table-ids`, and `schema-ids` (each `\"<db-id>:<schema>\"`)."
@@ -58,11 +64,11 @@
                                   [:in input-table-id table-ids]
                                   not-in-tables]})))
 
-(mu/defn table-ids-matching-selectors :- [:maybe [:set ms/PositiveInt]]
+(mu/defn table-ids-matching-selectors :- [:maybe [:set ::lib.schema.id/table]]
   "The IDs of the Tables selected by `selectors` (`{:database-ids :table-ids :schema-ids}`) plus, when given, the
   `extra-table-ids` that are unpublished (`:unpublished` mode) or any of them (`:any` mode)."
   [selectors        :- TableSelectors
-   extra-table-ids  :- [:maybe [:seqable ms/PositiveInt]]
+   extra-table-ids  :- [:maybe [:set ::lib.schema.id/table]]
    extra-mode       :- [:enum :unpublished :any]]
   (t2/select-pks-set :model/Table
                      {:where (let [selector-expr (table-selectors-expr selectors)]
@@ -72,50 +78,50 @@
                                                       :any         [:in :id extra-table-ids])]
                                  selector-expr))}))
 
-(mu/defn published-table-ids :- [:maybe [:set ms/PositiveInt]]
+(mu/defn published-table-ids :- [:maybe [:set ::lib.schema.id/table]]
   "The IDs of the published Tables among `table-ids`."
-  [table-ids :- [:seqable ms/PositiveInt]]
+  [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select-pks-set :model/Table :id [:in table-ids] :is_published true))
 
-(mu/defn tables :- [:sequential (ms/InstanceOf :model/Table)]
+(mu/defn tables :- [:sequential ::warehouse-schema.schema/table]
   "The Tables with `table-ids`."
-  [table-ids :- [:seqable ms/PositiveInt]]
+  [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))
 
-(mu/defn collection :- [:maybe (ms/InstanceOf :model/Collection)]
+(mu/defn collection :- [:maybe ::collections.schema/collection]
   "The Collection with `collection-id`, or nil."
-  [collection-id :- ms/PositiveInt]
+  [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection collection-id))
 
-(mu/defn latest-table-publishing-event :- [:maybe (ms/InstanceOf :model/AuditLog)]
+(mu/defn latest-table-publishing-event :- [:maybe (mut/select-keys ::audit-app.schema/audit-log [:timestamp :topic :user_id])]
   "The most recent publish or unpublish AuditLog event for `table-id`, or nil."
-  [table-id :- ms/PositiveInt]
+  [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/AuditLog :timestamp :topic :user_id]
                  :topic [:in [:table-publish :table-unpublish]]
                  :model "Table"
                  :model_id table-id
                  {:order-by [[:timestamp :desc] [:id :desc]]}))
 
-(mu/defn user-name-and-email :- [:maybe (ms/InstanceOf :model/User)]
+(mu/defn user-name-and-email :- [:maybe (mut/select-keys ::users.schema/user [:id :first_name :last_name :email :common_name])]
   "The id, first name, last name, and email of the User with `user-id`, or nil."
-  [user-id :- ms/PositiveInt]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :first_name :last_name :email] user-id))
 
 (mu/defn publish-tables! :- :int
   "Publish the Tables with `table-ids` into the Collection with `collection-id`, returning the number updated."
-  [table-ids     :- [:seqable ms/PositiveInt]
-   collection-id :- ms/PositiveInt]
+  [table-ids     :- [:set ::lib.schema.id/table]
+   collection-id :- ::lib.schema.id/collection]
   (t2/update! :model/Table :id [:in table-ids] {:collection_id collection-id, :is_published true}))
 
 (mu/defn unpublish-tables! :- :int
   "Unpublish the Tables with `table-ids` and detach them from their Collection, returning the number updated."
-  [table-ids :- [:seqable ms/PositiveInt]]
+  [table-ids :- [:set ::lib.schema.id/table]]
   (t2/update! :model/Table :id [:in table-ids] {:collection_id nil, :is_published false}))
 
 (mu/defn published-table-visible-to-user? :- :boolean
   "Whether the Table with `table-id` is published in a Collection the User with `user-id` can read."
-  [table-id   :- ms/PositiveInt
-   user-id    :- ms/PositiveInt
+  [table-id   :- ::lib.schema.id/table
+   user-id    :- ::lib.schema.id/user
    superuser? :- :boolean]
   (t2/exists? :model/Table
               {:where [:and
@@ -135,7 +141,7 @@
 
 (mu/defn published-table-visible-in-database? :- :boolean
   "Whether the current user can read the Collection of any published Table in the Database with `database-id`."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Table
               {:where [:and
                        [:= :db_id database-id]

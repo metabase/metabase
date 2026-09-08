@@ -2,34 +2,41 @@
   "Application database queries for the task history module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.task-history.schema :as task-history.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn database-names-by-id :- [:map-of ms/PositiveInt :string]
+(mu/defn database-names-by-id :- [:map-of ::lib.schema.id/database :string]
   "A map of id to name for the Databases with `ids`."
-  [ids :- [:seqable ms/PositiveInt]]
+  [ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn :name :model/Database :id [:in ids]))
 
-(mu/defn card-names-by-id :- [:map-of ms/PositiveInt :string]
+(mu/defn card-names-by-id :- [:map-of ::lib.schema.id/card :string]
   "A map of id to name for the Cards with `ids`."
-  [ids :- [:seqable ms/PositiveInt]]
+  [ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn :name :model/Card :id [:in ids]))
 
-(mu/defn dashboard-names-by-id :- [:map-of ms/PositiveInt :string]
+(mu/defn dashboard-names-by-id :- [:map-of ::lib.schema.id/dashboard :string]
   "A map of id to name for the Dashboards with `ids`."
-  [ids :- [:seqable ms/PositiveInt]]
+  [ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn :name :model/Dashboard :id [:in ids]))
 
+(def ^:private TaskCountsForRun
+  "Rows returned by [[task-counts-for-runs]]."
+  [:map {:closed true}
+   [:run_id ms/PositiveInt]
+   [:task_count :int]
+   [:success_count :int]
+   [:failed_count :int]])
+
 (mu/defn task-counts-for-runs :- [:sequential
-                                  [:map {:closed true}
-                                   [:run_id ms/PositiveInt]
-                                   [:task_count :any]
-                                   [:success_count :any]
-                                   [:failed_count :any]]]
+                                  TaskCountsForRun]
   "The total, successful, and failed TaskHistory counts of the TaskRuns with `run-ids`, grouped by run."
-  [run-ids :- [:seqable ms/PositiveInt]]
+  [run-ids :- [:sequential ms/PositiveInt]]
   (t2/query {:select   [:run_id
                         [[:count :id] :task_count]
                         [[:sum [:case [:= :status (h2x/literal "success")] [:inline 1] :else [:inline 0]]] :success_count]
@@ -86,11 +93,11 @@
    [:run-type          [:maybe :string]]
    [:entity-type       [:maybe :string]]
    [:entity-id         [:maybe ms/PositiveInt]]
-   [:status            [:maybe :string]]
+   [:status            [:maybe [:or :keyword :string]]]
    [:started-at-start  [:maybe ms/TemporalInstant]]
    [:started-at-end    [:maybe ms/TemporalInstant]]])
 
-(mu/defn task-runs :- [:sequential (ms/InstanceOf :model/TaskRun)]
+(mu/defn task-runs :- [:sequential ::task-history.schema/task-run]
   "Up to `limit` (offset by `offset`) TaskRuns matching `filters` (see [[run-where]] for the supported keys), sorted
   by `sort-column`/`sort-direction`."
   [filters        :- RunFilters
@@ -108,20 +115,24 @@
   [filters :- RunFilters]
   (t2/count :model/TaskRun (or (run-where filters) {})))
 
-(mu/defn task-run :- [:maybe (ms/InstanceOf :model/TaskRun)]
+(mu/defn task-run :- [:maybe ::task-history.schema/task-run]
   "The TaskRun with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/TaskRun :id id))
 
-(mu/defn tasks-for-run :- [:sequential (ms/InstanceOf :model/TaskHistory)]
+(mu/defn tasks-for-run :- [:sequential ::task-history.schema/task-history]
   "The TaskHistory rows of the TaskRun with `run-id`, oldest first."
   [run-id :- ms/PositiveInt]
   (t2/select :model/TaskHistory :run_id run-id {:order-by [[:started_at :asc]]}))
 
+(def ^:private DistinctRunEntitie
+  "Rows returned by [[distinct-run-entities]]."
+  [:map {:closed true}
+   [:entity_type :string]
+   [:entity_id ms/PositiveInt]])
+
 (mu/defn distinct-run-entities :- [:sequential
-                                   [:map {:closed true}
-                                    [:entity_type :string]
-                                    [:entity_id ms/PositiveInt]]]
+                                   DistinctRunEntitie]
   "The distinct entity type and id of the TaskRuns of `run-type` started in [`started-at-start`, `started-at-end`)."
   [run-type          :- :string
    started-at-start  :- [:maybe ms/TemporalInstant]
@@ -158,7 +169,7 @@
       task   (conj [:= :task_history.task task])
       status (conj [:= :task_history.status (name status)]))))
 
-(mu/defn task-histories :- [:sequential (ms/InstanceOf :model/TaskHistory)]
+(mu/defn task-histories :- [:sequential (mut/optional-keys (mut/open-schema ::task-history.schema/task-history))]
   "Up to `limit` (offset by `offset`) TaskHistory rows, optionally narrowed to `status` and/or `task`, sorted by
   `sort-column` (an allow-listed column, joining to Database for `:db_name`/`:db_engine`) and `sort-direction`, with
   `:id desc` as a stable tiebreaker."
@@ -203,30 +214,12 @@
 
 (mu/defn insert-task-history! :- ms/PositiveInt
   "Insert the TaskHistory `row` and return its id."
-  [row :- [:map {:closed true}
-           [:task         {:optional true} :any]
-           [:db_id        {:optional true} :any]
-           [:started_at   {:optional true} :any]
-           [:ended_at     {:optional true} :any]
-           [:duration     {:optional true} :any]
-           [:task_details {:optional true} :any]
-           [:status       {:optional true} :any]
-           [:run_id       {:optional true} :any]
-           [:logs         {:optional true} :any]]]
+  [row :- ::task-history.schema/task-history.update]
   (t2/insert-returning-pk! :model/TaskHistory row))
 
 (mu/defn insert-task-run! :- ms/PositiveInt
   "Insert the TaskRun `row` and return its id."
-  [row :- [:map {:closed true}
-           [:run_type        {:optional true} :any]
-           [:entity_type     {:optional true} :any]
-           [:entity_id       {:optional true} :any]
-           [:started_at      {:optional true} :any]
-           [:ended_at        {:optional true} :any]
-           [:status          {:optional true} :any]
-           [:process_uuid    {:optional true} :any]
-           [:updated_at      {:optional true} :any]
-           [:notification_id {:optional true} :any]]]
+  [row :- ::task-history.schema/task-run.update]
   (t2/insert-returning-pk! :model/TaskRun row))
 
 (mu/defn task-statuses-for-run :- [:maybe [:set :keyword]]
@@ -244,13 +237,13 @@
 (mu/defn heartbeat-started-task-runs! :- :int
   "Touch `updated_at` of the started TaskRuns of `process-uuid`, returning the number updated."
   [process-uuid :- :string
-   updated-at   :- :any]
+   updated-at   :- ms/TemporalInstant]
   (t2/update! :model/TaskRun {:status :started, :process_uuid process-uuid} {:updated_at updated-at}))
 
 (mu/defn mark-started-tasks-unknown! :- :int
   "Set the started TaskHistory rows of the TaskRuns with `run-ids` to unknown, returning the number updated."
-  [run-ids  :- [:seqable ms/PositiveInt]
-   ended-at :- :any]
+  [run-ids  :- [:set ms/PositiveInt]
+   ended-at :- ms/TemporalInstant]
   (t2/update! :model/TaskHistory
               {:status :started, :run_id [:in run-ids]}
               {:status :unknown, :ended_at ended-at}))

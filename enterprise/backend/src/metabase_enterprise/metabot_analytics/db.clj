@@ -2,6 +2,9 @@
   "Application database queries for the metabot-analytics module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [malli.util :as mut]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.util.date-2 :as u.date]
@@ -10,7 +13,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn conversation :- [:maybe (ms/InstanceOf :model/MetabotConversation)]
+(mu/defn conversation :- [:maybe ::metabot.schema/metabot-conversation]
   "The MetabotConversation with `conversation-id`, or nil."
   [conversation-id :- ms/PositiveInt]
   (t2/select-one :model/MetabotConversation :id conversation-id))
@@ -106,13 +109,13 @@
                [:core_user :u]       [:= :u.id :c.user_id]]
    :group-by  [:c.id]})
 
-(mu/defn list-conversations :- [:sequential (ms/InstanceOf :model/MetabotConversation)]
+(mu/defn list-conversations :- [:sequential ::metabot.schema/metabot-conversation]
   "A page of conversation summary rows (see [[conversation-list-select]]), restricted to `user-id`, `group-id`,
   `tenant-id`, and `date` (each nil for no restriction), sorted by the allow-listed `sort-by` column name in
   `sort-direction` (`:asc` or `:desc`), skipping `offset` and returning up to `limit`."
   [{:keys [user-id group-id tenant-id date sort-by sort-direction offset limit]}
    :- [:map {:closed true}
-       [:user-id        {:optional true} [:maybe ms/PositiveInt]]
+       [:user-id        {:optional true} [:maybe ::lib.schema.id/user]]
        [:group-id       {:optional true} [:maybe ms/PositiveInt]]
        [:tenant-id      {:optional true} [:maybe ms/PositiveInt]]
        [:date           {:optional true} [:maybe :string]]
@@ -136,7 +139,7 @@
   and limit)."
   [{:keys [user-id group-id tenant-id date]}
    :- [:map {:closed true}
-       [:user-id   {:optional true} [:maybe ms/PositiveInt]]
+       [:user-id   {:optional true} [:maybe ::lib.schema.id/user]]
        [:group-id  {:optional true} [:maybe ms/PositiveInt]]
        [:tenant-id {:optional true} [:maybe ms/PositiveInt]]
        [:date      {:optional true} [:maybe :string]]]]
@@ -145,18 +148,18 @@
                                    :from   [[:metabot_conversation :c]]}
                             where (assoc :where where))))))
 
-(mu/defn messages-for-conversation :- [:sequential (ms/InstanceOf :model/MetabotMessage)]
+(mu/defn messages-for-conversation :- [:sequential ::metabot.schema/metabot-message]
   "The MetabotMessages of the MetabotConversation with `conversation-id`, oldest first."
   [conversation-id :- ms/PositiveInt]
   (t2/select :model/MetabotMessage :conversation_id conversation-id {:order-by [[:created_at :asc] [:id :asc]]}))
 
-(mu/defn message-data-for-conversations :- [:sequential (ms/InstanceOf :model/MetabotMessage)]
+(mu/defn message-data-for-conversations :- [:sequential (mut/select-keys ::metabot.schema/metabot-message [:conversation_id :data :data_version])]
   "The conversation, data, and data version of the MetabotMessages of the MetabotConversations with
   `conversation-ids`."
-  [conversation-ids :- [:seqable ms/PositiveInt]]
+  [conversation-ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/MetabotMessage :conversation_id :data :data_version] :conversation_id [:in conversation-ids]))
 
-(mu/defn feedback-for-conversation :- [:sequential (ms/InstanceOf :model/MetabotFeedback)]
+(mu/defn feedback-for-conversation :- [:sequential (mut/optional-keys (mut/open-schema ::metabot.schema/metabot-feedback))]
   "The MetabotFeedback rows on the messages of the MetabotConversation with `conversation-id`, oldest first."
   [conversation-id :- ms/PositiveInt]
   (t2/select :model/MetabotFeedback

@@ -2,15 +2,18 @@
   "Application database queries for the LLM module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
 (mu/defn database-engine :- [:maybe :keyword]
   "The engine of the Database with `database-id`, or nil."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :engine :model/Database :id database-id))
 
 (defn- table-match-clause
@@ -23,26 +26,26 @@
        [:= [:lower :schema] (u/lower-case-en schema)]]
       [:= [:lower :name] table-lower])))
 
-(mu/defn active-tables-matching :- [:sequential (ms/InstanceOf :model/Table)]
+(mu/defn active-tables-matching :- [:sequential ::warehouse-schema.schema/table]
   "The active Tables of the Database with `database-id` matching one of `tables` (each a map of `:table` and
   optional `:schema`), by case-insensitive name/schema."
-  [database-id :- ms/PositiveInt
-   tables      :- [:seqable [:map {:closed true}
-                             [:table  :string]
-                             [:schema {:optional true} [:maybe :string]]]]]
+  [database-id :- ::lib.schema.id/database
+   tables      :- [:sequential [:map {:closed true}
+                                [:table  :string]
+                                [:schema {:optional true} [:maybe :string]]]]]
   (t2/select :model/Table
              {:where [:and
                       [:= :db_id database-id]
                       [:= :active true]
                       (into [:or] (map table-match-clause) tables)]}))
 
-(mu/defn visible-tables :- [:sequential (ms/InstanceOf :model/Table)]
+(mu/defn visible-tables :- [:sequential ::warehouse-schema.schema/table]
   "The active, visible Tables among `table-ids` of the Database with `database-id` that `user-id` (or a
   superuser) can access for querying, requiring unrestricted view-data and query-builder-or-native create
   permissions."
-  [table-ids   :- [:seqable ms/PositiveInt]
-   database-id :- ms/PositiveInt
-   user-id     :- [:maybe ms/PositiveInt]
+  [table-ids   :- [:set ::lib.schema.id/table]
+   database-id :- ::lib.schema.id/database
+   user-id     :- [:maybe ::lib.schema.id/user]
    superuser?  :- :boolean]
   (let [{:keys [clause with]} (mi/visible-filter-clause
                                :model/Table :id
@@ -57,25 +60,29 @@
                (cond-> {:where clause}
                  with (assoc :with with)))))
 
-(mu/defn unarchived-cards :- [:sequential (ms/InstanceOf :model/Card)]
+(mu/defn unarchived-cards :- [:sequential ::queries.schema/card]
   "The unarchived Cards with `card-ids`."
-  [card-ids :- [:seqable ms/PositiveInt]]
+  [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select :model/Card :id [:in card-ids] :archived false))
 
-(mu/defn fields :- [:sequential (ms/InstanceOf :model/Field)]
+(mu/defn fields :- [:sequential ::warehouse-schema.schema/field]
   "The Fields with `field-ids`."
-  [field-ids :- [:seqable ms/PositiveInt]]
+  [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids]))
 
-(mu/defn field-names-and-tables :- [:sequential [:map {:closed true}
-                                                 [:id       ms/PositiveInt]
-                                                 [:name     :string]
-                                                 [:table_id [:maybe ms/PositiveInt]]]]
+(def ^:private FieldNamesAndTable
+  "Rows returned by [[field-names-and-tables]]."
+  [:map {:closed true}
+   [:id       ms/PositiveInt]
+   [:name     :string]
+   [:table_id [:maybe ::lib.schema.id/table]]])
+
+(mu/defn field-names-and-tables :- [:sequential FieldNamesAndTable]
   "The id, name, and Table id of the Fields with `field-ids`."
-  [field-ids :- [:seqable ms/PositiveInt]]
+  [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select [:model/Field :id :name :table_id] :id [:in field-ids]))
 
-(mu/defn field-fingerprints :- [:map-of ms/PositiveInt :any]
+(mu/defn field-fingerprints :- [:map-of ::lib.schema.id/field [:maybe :map]]
   "A map of Field id to fingerprint for the Fields with `field-ids`."
-  [field-ids :- [:seqable ms/PositiveInt]]
+  [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select-pk->fn :fingerprint :model/Field :id [:in field-ids]))
