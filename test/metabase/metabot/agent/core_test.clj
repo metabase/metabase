@@ -478,7 +478,39 @@
                   :result {:structured-output {:data []}}}]
           memory {:state {:queries {} :charts {}}}
           updated (#'agent/extract-charts memory parts)]
-      (is (empty? (:charts (memory/get-state updated)))))))
+      (is (empty? (:charts (memory/get-state updated))))))
+  (testing "merges onto an existing chart entry instead of replacing it"
+    ;; Regression: edit-chart-tool writes the full edited chart (including
+    ;; :image_base_64/:timeline_events/:chart_config carried over from the source
+    ;; chart) into memory before update-memory runs extract-charts over the same
+    ;; tool's structured-output. A full replace here would wipe those fields back
+    ;; out even though the tool-output never claimed to know about them.
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          chart-data {:chart-id "c-456"
+                      :query-id "q-123"
+                      :query query
+                      :chart-type :bar}
+          parts [{:type :tool-output
+                  :id "t1"
+                  :function "edit_chart"
+                  :result {:structured-output chart-data}}]
+          memory {:state {:queries {}
+                          :charts {"c-456" {:chart_id "c-456"
+                                            :query_id "q-123"
+                                            :queries [query]
+                                            :image_base_64 "abc123"
+                                            :timeline_events []
+                                            :chart_config {:some "config"}
+                                            :visualization_settings {:chart_type :pie}}}}}
+          updated (#'agent/extract-charts memory parts)]
+      (is (= {:chart_id "c-456"
+              :query_id "q-123"
+              :queries [query]
+              :image_base_64 "abc123"
+              :timeline_events []
+              :chart_config {:some "config"}
+              :visualization_settings {:chart_type :bar}}
+             (get-in (memory/get-state updated) [:charts "c-456"]))))))
 
 ;;; ===================== Integration Tests =====================
 ;;;
@@ -1012,7 +1044,10 @@
         chart-key (first (keys charts))]
     (testing "Loaded charts from chart configs into memory"
       (is (string? chart-key))
+      ;; :query_id must match :chart_id — it's how edit_chart later carries a
+      ;; query-id through for this chart (see chart-config->chart, extract-charts).
       (is (=? {chart-key {:chart_id chart-key
+                          :query_id chart-key
                           :timeline_events []
                           :queries [query]
                           :chart_config chart-config}}

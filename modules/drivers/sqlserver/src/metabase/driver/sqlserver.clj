@@ -212,13 +212,16 @@
        ;; https://social.technet.microsoft.com/Forums/sqlserver/en-US/bc1373f5-cb40-479d-9770-da1221a0bc95/connecting-to-sql-server-in-a-different-domain-using-jdbc-driver?forum=sqldataaccess
        :user               (str (when domain (str domain "\\"))
                                 user)
-       :instanceName       instance
        :encrypt            (boolean ssl)
        ;; only crazy people would want this. See https://docs.microsoft.com/en-us/sql/connect/jdbc/configuring-how-java-sql-time-values-are-sent-to-the-server?view=sql-server-ver15
        :sendTimeAsDatetime false}
       ;; only include `port` if it is specified; leave out for dynamic port: see
       ;; https://github.com/metabase/metabase/issues/7597
-      (merge (when port {:port port}))
+      ;; only include `instanceName` if supplied — mssql-jdbc treats an empty string as a named instance and
+      ;; initiates SQL Server Browser lookup, which breaks Microsoft Fabric / Synapse serverless endpoints
+      ;; that drop the connection whenever the property is present (#81270)
+      (merge (when port {:port port})
+             (when-not (str/blank? instance) {:instanceName instance}))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
 (def ^:private disallowed-additional-opts
@@ -511,8 +514,13 @@
   [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr            (sql.qp/->honeysql driver arg)
         datetimeoffset? (or (sql.qp.u/field-with-tz? arg)
-                            (h2x/is-of-type? expr "datetimeoffset"))]
-    (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
+                            (h2x/is-of-type? expr "datetimeoffset"))
+        _               (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
+        ;; `AT TIME ZONE` rejects a `date` argument (error 8116), so cast dates to `datetime2` first (#27186).
+        expr            (if (or (instance? LocalDate expr)
+                                (h2x/is-of-type? expr "date"))
+                          (h2x/cast "datetime2" expr)
+                          expr)]
     (-> (if datetimeoffset?
           expr
           (h2x/at-time-zone expr (zone-id->windows-zone source-timezone)))
@@ -1039,6 +1047,13 @@
         (.close stmt)
         (throw e)))))
 
+(defmethod sql-jdbc.execute/cancelation-poisons-connection? :sqlserver
+  [_driver]
+  ;; `.cancel` sends an out-of-band TDS attention packet. Its acknowledgement is not drained before the Connection is
+  ;; checked back into the pool, and it surfaces later as `The result set is closed.` while an unrelated query is
+  ;; reading rows on the recycled Connection.
+  true)
+
 (defmethod sql.qp/inline-value [:sqlserver LocalDate]
   [_ ^LocalDate t]
   ;; datefromparts(year, month, day)
@@ -1324,10 +1339,6 @@
 
 (defmethod driver/llm-sql-dialect-resource :sqlserver [_]
   "metabot/prompts/dialects/sqlserver.md")
-
-(defmethod driver/validate-impersonated-query :sqlserver
-  [driver query]
-  (driver.sql/validate-impersonated-query* driver query))
 
 (defmethod sql-jdbc.sync/current-user-table-privileges :sqlserver
   [_driver conn-spec & {:as _options}]

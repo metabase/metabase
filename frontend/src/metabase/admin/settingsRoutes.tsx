@@ -89,6 +89,11 @@ const ldapAuth = () =>
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsLdapForm"
   ).then(({ SettingsLdapForm }) => ({ Component: SettingsLdapForm }));
 
+const domainsSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DomainsSettingsPage"
+  ).then(({ DomainsSettingsPage }) => ({ Component: DomainsSettingsPage }));
+
 const remoteSyncSettings = () =>
   import(
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/RemoteSyncSettingsPage"
@@ -219,6 +224,7 @@ export const getSettingsRoutes = (
         path="authentication/oidc"
         lazy={PLUGIN_AUTH_PROVIDERS.settingsOIDCForm}
       />
+      <Route path="domains" lazy={domainsSettings} />
       <Route path="remote-sync" lazy={remoteSyncSettings} />
       <Route path="maps" lazy={mapsSettings} />
       <Route path="localization" lazy={localizationSettings} />

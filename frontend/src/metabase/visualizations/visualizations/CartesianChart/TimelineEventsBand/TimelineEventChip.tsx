@@ -3,8 +3,10 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Box, HoverCard, Icon, Text, UnstyledButton } from "metabase/ui";
-import { TIMELINE_EVENTS_BAND } from "metabase/visualizations/echarts/cartesian/constants/style";
-import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import {
+  TIMELINE_EVENTS_BAND,
+  type TimelineEventGroup,
+} from "metabase/viz-core";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import S from "./TimelineEventsBand.module.css";
@@ -112,7 +114,7 @@ export const TimelineEventChip = ({
       offset={POPOVER_OFFSET}
       openDelay={50}
       closeDelay={POPOVER_CLOSE_DELAY_MS}
-      shadow="md"
+      shadow="sm"
       classNames={{ dropdown: S.bridgeDropdown }}
     >
       <HoverCard.Target>

@@ -12,6 +12,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -482,6 +483,22 @@
               (is (false? (driver.u/supports? :test-driver feature db)))
               (is (= []
                      (log-messages))))))))))
+
+(deftest features-batched-matches-per-feature-test
+  (testing "bounding the whole scan instead of each check does not change which features come back"
+    (let [db (driver.u/ensure-lib-database (mt/db))]
+      (is (= (#'driver.u/features* :h2 db)
+             (#'driver.u/features-batched* :h2 db))))))
+
+(deftest features-batched-falls-back-when-budget-blown-test
+  (testing "a blown batch budget falls back to the per-feature path instead of throwing or truncating"
+    (let [db (driver.u/ensure-lib-database (mt/db))]
+      (with-redefs [driver.u/supports?-timeout-ms 20
+                    driver/database-supports? (fn [_ _ _] (Thread/sleep 50) true)]
+        ;; every per-feature check times out too and degrades to false, which is exactly what the unbatched
+        ;; path returns under the same stall
+        (is (= (#'driver.u/features* :h2 db)
+               (#'driver.u/features-batched* :h2 db)))))))
 
 (deftest sqlite-in-available-drivers
   (with-redefs [driver.impl/hierarchy (->  (derive (make-hierarchy) :sqlite :metabase.driver/driver)

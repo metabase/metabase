@@ -12,7 +12,6 @@ import { setupPerformanceEndpoints } from "__support__/server-mocks/performance"
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { getQuestion } from "metabase/query_builder/selectors";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -30,6 +29,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import { getQuestion } from "../../../../../store/selectors";
 import { QuestionInfoSidebar } from "../QuestionInfoSidebar";
 
 export interface SetupOpts {

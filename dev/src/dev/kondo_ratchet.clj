@@ -1,22 +1,234 @@
 (ns dev.kondo-ratchet
-  "Ratchet on inline kondo ignore forms.
+  "Check inline kondo ignores against the per-linter policies in `.clj-kondo/ratchets.edn`.
 
-  Per-linter budgets live in `.clj-kondo/ratchets.edn`, along with the set of linters whose ignores don't
-  need a justification comment.
-  `metabase.core.kondo-ratchet-test` fails when either drifts from the tree;
-  `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions, never the reverse.
+  The policies include suppression budgets and linters exempt from justification comments.
+  Checks fail when a suppression count exceeds its budget, but allow budgets above current counts.
+  `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one; it is
+  the only Mage command that writes the file.
   Loaded by both the bb task and the JVM test, so keep it dependency-free."
   {:clj-kondo/config '{:linters {:discouraged-var {clojure.core/println {:level :off}}}}}
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [clojure.walk :as walk]))
 
 (set! *warn-on-reflection* true)
 
-(def ratchets-file
-  "The budgets file, relative to the repo root."
+(def ^:dynamic *ratchets-file*
+  "The budgets file, relative to the repo root. Rebind it to read a file elsewhere, such as a merge stage."
   ".clj-kondo/ratchets.edn")
+
+(defn- read-ratchets-form
+  "The one EDN map in `file`.
+  An empty file, a non-map, or a second form is an error rather than an empty policy set, so a damaged
+  file can never read as \"no budgets\"."
+  [^java.io.File file]
+  (with-open [reader (java.io.PushbackReader. (io/reader file))]
+    (let [eof  (Object.)
+          form (edn/read {:eof eof} reader)]
+      (when (identical? eof form)
+        (throw (ex-info (str *ratchets-file* " is empty; expected one map of policies")
+                        {:file *ratchets-file*})))
+      (when-not (map? form)
+        (throw (ex-info (str *ratchets-file* " must hold a map of policies, not " (pr-str form))
+                        {:file *ratchets-file*, :form form})))
+      (when-not (identical? eof (edn/read {:eof eof} reader))
+        (throw (ex-info (str *ratchets-file* " holds more than one form; expected one map of policies")
+                        {:file *ratchets-file*})))
+      form)))
+
+(def ^:private empty-policies
+  {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})
+
+(defn validate-policies
+  "`ratchets` when each policy field it carries has the right shape: `:ignore-counts` maps linters to a
+  non-negative integer or `:unlimited`, `:config-counts` maps linters to a non-negative integer, and
+  `:comment-exempt` is a set. Every linter named anywhere must be a keyword.
+  Throws otherwise, so a malformed file can never be read as a set of removals."
+  [ratchets]
+  (let [{:keys [ignore-counts config-counts comment-exempt]} (merge empty-policies ratchets)]
+    (when-not (map? ignore-counts)
+      (throw (ex-info ":ignore-counts must be a map of linter policies"
+                      {:ignore-counts ignore-counts})))
+    (doseq [[linter policy] ignore-counts]
+      (when-not (or (= policy :unlimited)
+                    (and (integer? policy) (not (neg? policy))))
+        (throw (ex-info (format "%s has invalid policy %s; expected a non-negative integer or :unlimited"
+                                linter (pr-str policy))
+                        {:linter linter, :policy policy}))))
+    (when-not (map? config-counts)
+      (throw (ex-info ":config-counts must be a map of linter budgets"
+                      {:config-counts config-counts})))
+    (doseq [[linter budget] config-counts]
+      (when-not (and (integer? budget) (not (neg? budget)))
+        (throw (ex-info (format "%s has invalid config budget %s; expected a non-negative integer"
+                                linter (pr-str budget))
+                        {:linter linter, :budget budget}))))
+    (when-not (set? comment-exempt)
+      (throw (ex-info ":comment-exempt must be a set of linters"
+                      {:comment-exempt comment-exempt})))
+    ;; the merge keys on (str linter) and renders the same way, so a non-keyword name would be rewritten
+    ;; as a keyword, collide with one, or produce a file that no longer reads back
+    (doseq [linter (concat (keys ignore-counts) (keys config-counts) comment-exempt)]
+      (when-not (keyword? linter)
+        (throw (ex-info (format "%s is not a linter name; policies and exemptions are keyed by keyword"
+                                (pr-str linter))
+                        {:linter linter}))))
+    ratchets))
+
+(defn read-ratchets
+  "Parsed contents of [[*ratchets-file*]], with empty defaults for omitted keys.
+  Throws when the file is missing or a policy field is malformed (see [[validate-policies]]); only an
+  explicit `{:disabled true}` opts out of enforcement."
+  []
+  (let [file (io/file *ratchets-file*)]
+    (when-not (.exists file)
+      (throw (ex-info (str *ratchets-file* " is missing -- only {:disabled true} opts out of enforcement")
+                      {:file *ratchets-file*})))
+    (validate-policies (merge empty-policies (read-ratchets-form file)))))
+
+(defn disabled?
+  "Whether `ratchets` (default: [[read-ratchets]]) explicitly disables the ratchets."
+  ([]
+   (disabled? (read-ratchets)))
+  ([ratchets]
+   (true? (:disabled ratchets))))
+
+(def ^:private deps-file
+  "deps.edn")
+
+(def ^:private kondo-config-source
+  "Source file of clj-kondo's default config, on the classpath once the clj-kondo jar is."
+  "clj_kondo/impl/config.clj")
+
+(defn- pinned-kondo-version
+  "The clj-kondo version the `:kondo` alias in [[deps-file]] lints with."
+  []
+  (or (get-in (edn/read-string (slurp deps-file))
+              [:aliases :kondo :replace-deps 'clj-kondo/clj-kondo :mvn/version])
+      (throw (ex-info (str "no clj-kondo pin under the :kondo alias in " deps-file) {:file deps-file}))))
+
+(defn- kondo-config-resource
+  "URL of [[kondo-config-source]]. Throws when the clj-kondo jar is not on the classpath and cannot be added."
+  []
+  (or (io/resource kondo-config-source)
+      ;; the JVM `:dev` alias already has the jar; babashka adds the pinned version on demand, resolving
+      ;; through the same Maven cache the JVM uses
+      (when (System/getProperty "babashka.version")
+        ((requiring-resolve 'babashka.deps/add-deps)
+         {:deps {'clj-kondo/clj-kondo {:mvn/version (pinned-kondo-version)}}})
+        (io/resource kondo-config-source))
+      (throw (ex-info (str kondo-config-source " is not on the classpath; add the clj-kondo dependency")
+                      {:resource kondo-config-source}))))
+
+(defn builtin-linters
+  "Names of every linter clj-kondo ships, read from the `default-config` literal in the pinned jar."
+  []
+  ;; reading the source rather than loading the namespace keeps this babashka-compatible
+  (binding [*read-eval* false]
+    (with-open [r (java.io.PushbackReader. (io/reader (kondo-config-resource)))]
+      (loop []
+        (let [form (read {:eof ::eof} r)]
+          (cond
+            (= form ::eof)
+            (throw (ex-info (str "default-config not found in " kondo-config-source) {}))
+
+            (and (seq? form) (= 'def (first form)) (= 'default-config (second form)))
+            ;; the value is a quoted literal, so the def reads as (def default-config (quote {...}))
+            (set (keys (:linters (second (nth form 2)))))
+
+            :else
+            (recur)))))))
+
+(def ^:private kondo-config-dir
+  ".clj-kondo")
+
+(defn- tracked-files
+  "The git-tracked files under `dir` that are present on disk.
+  A file deleted but not yet staged, or outside a sparse checkout, is skipped."
+  [dir]
+  ;; only tracked files keep validation the same everywhere: the dependency configs `mage kondo` copies
+  ;; in are gitignored, and a clean checkout has none of them
+  (let [^java.util.List command ["git" "ls-files" "-z"]
+        process (.start (doto (ProcessBuilder. command)
+                          (.directory ^java.io.File (io/file dir))
+                          (.redirectErrorStream true)))
+        out     (slurp (.getInputStream process))]
+    (when-not (zero? (.waitFor process))
+      (throw (ex-info (str "git ls-files failed in " dir ": " (str/trim out)) {:dir dir})))
+    (->> (str/split out #"\x00")
+         (remove str/blank?)
+         (map #(io/file dir %))
+         (filter #(.isFile ^java.io.File %)))))
+
+(defn- linters-map-keys
+  "Keys of every `:linters` map nested anywhere in `config`, so scoped linters under `:config-in-ns`,
+  `:config-in-call`, and library configs count too."
+  [config]
+  (let [found (atom #{})]
+    (walk/prewalk (fn [x]
+                    (when (and (map? x) (map? (:linters x)))
+                      (swap! found into (keys (:linters x))))
+                    x)
+                  config)
+    @found))
+
+(defn repository-linters
+  "Names of every linter configured in a tracked `.edn` file under `dir` (default: `.clj-kondo`), which is
+  how the repository's own hook linters get a level."
+  ([]
+   (repository-linters kondo-config-dir))
+  ([dir]
+   (into #{}
+         (comp (filter (fn [^java.io.File f]
+                         (str/ends-with? (.getName f) ".edn")))
+               (mapcat (fn [^java.io.File f]
+                         (linters-map-keys (edn/read-string (slurp f))))))
+         (tracked-files dir))))
+
+(def external-linters
+  "Diagnostics from tools other than kondo that ignores still name, plus `:all` for the vector-less form."
+  #{:all :clojure-lsp/unused-public-var})
+
+(defn known-linters
+  "Every linter name a policy may use: kondo's built-ins, the repository's own, and [[external-linters]]."
+  []
+  (into (builtin-linters) cat [(repository-linters) external-linters]))
+
+(defn unknown-linters
+  "Policy keys in `ratchets` that are not in `known`, sorted."
+  [{:keys [ignore-counts config-counts comment-exempt]} known]
+  (into (sorted-set-by #(compare (str %1) (str %2)))
+        (remove known)
+        (concat (keys ignore-counts) (keys config-counts) comment-exempt)))
+
+(defn- known-linter-hint []
+  (format "policies must name a kondo built-in, a linter configured under %s, or one of %s"
+          kondo-config-dir
+          (str/join ", " (sort-by str external-linters))))
+
+(defn validate-linters!
+  "Throw one error naming every policy key in `ratchets` that is not a known linter."
+  [ratchets known]
+  (let [unknown (unknown-linters ratchets known)]
+    (when (seq unknown)
+      (throw (ex-info (format "%s names %d unknown linter%s: %s -- %s"
+                              *ratchets-file*
+                              (count unknown)
+                              (if (= 1 (count unknown)) "" "s")
+                              (str/join ", " unknown)
+                              (known-linter-hint))
+                      {:unknown (vec unknown)})))))
+
+(defn validate-seed!
+  "Throw when a linter in `seeded` is not known, so `--seed` never writes a policy the check rejects."
+  [seeded known]
+  (when-let [unknown (seq (remove known seeded))]
+    (throw (ex-info (format "cannot seed %s: not a known linter -- %s"
+                            (str/join ", " unknown)
+                            (known-linter-hint))
+                    {:unknown (vec unknown)}))))
 
 (def ^:private source-roots
   ["src" "test" "enterprise" "modules/drivers" "dev" "bin" "mage"])
@@ -237,7 +449,8 @@
      (for [linter (into (set (keys actual)) (keys recorded))
            :let   [budget (get recorded linter 0)
                    n      (get actual linter 0)]
-           :when  (not= budget n)]
+           :when  (and (not= budget :unlimited)
+                       (not= budget n))]
        [linter (cond-> {:recorded budget, :actual n}
                  (> n budget)
                  (assoc :examples (->> occurrences
@@ -245,6 +458,14 @@
                                        (map #(str (:file %) ":" (:line %)))
                                        (take 5)
                                        vec)))]))))
+
+(defn over-budget
+  "Linters whose actual count exceeds their bounded policy."
+  [policies occurrences]
+  (sorted-by-str
+   (for [[linter {:keys [recorded actual] :as entry}] (drift policies occurrences)
+         :when (> actual recorded)]
+     [linter entry])))
 
 (defn unjustified
   "Occurrences that need a justification comment but lack one, and suppress at least one linter outside
@@ -320,21 +541,24 @@
          :when  (not= budget n)]
      [linter {:recorded budget, :actual n}])))
 
-(defn read-ratchets
-  "Parsed contents of [[ratchets-file]], with empty defaults when the file doesn't exist."
-  []
-  (merge {:ignore-counts {}, :config-counts {}, :comment-exempt #{}}
-         (when (.exists (io/file ratchets-file))
-           (edn/read-string (slurp ratchets-file)))))
+(defn config-over-budget
+  "Linters whose config-suppression count exceeds its budget."
+  [budgets counts]
+  (sorted-by-str
+   (for [[linter {:keys [recorded actual] :as entry}] (config-drift budgets counts)
+         :when (> actual recorded)]
+     [linter entry])))
 
 (def ^:private header
-  (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:ignore-counts),\n"
-       ";; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude\n"
-       ";; entries). metabase.core.kondo-ratchet-test fails when either drifts from reality, or when an\n"
-       ";; ignore outside :comment-exempt lacks an explanatory comment directly above or trailing on its line.\n"
-       ";; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it\n"
-       ";; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or\n"
-       ";; widening the exemptions is a hand edit to defend in your PR.\n"
+  (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:ignore-counts), and\n"
+       ";; config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude entries).\n"
+       ";; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.\n"
+       ";; Checks fail when a count exceeds its numeric budget; unused budget is allowed.\n"
+       ";; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.\n"
+       ";; `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one.\n"
+       ";; The workflow runs it on master, so feature branches do not need to record reductions.\n"
+       ";; Raising or adding a budget (`--seed` for inline ignores, a manual edit for config) or widening the\n"
+       ";; exemptions must be explained in the PR.\n"
        ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"))
 
 (defn- render-counts
@@ -346,7 +570,7 @@
       (str "{"
            (str/join (str "\n" indent)
                      (for [[linter n] entries]
-                       (format (str "%-" width "s %d") (str linter) n)))
+                       (format (str "%-" width "s %s") (str linter) (str n))))
            "}"))))
 
 (defn render
@@ -367,45 +591,162 @@
                 "}"))
          "}\n")))
 
+(def ^:private absent
+  "Stands in for a policy map entry that a stage doesn't have."
+  ::absent)
+
+(defn- stricter
+  "The policy allowing fewer suppressions: a missing entry allows none, and any integer bound is stricter
+  than `:unlimited`."
+  [a b]
+  (cond
+    (or (= a absent) (= b absent)) absent
+    (= a :unlimited)               b
+    (= b :unlimited)               a
+    :else                          (min a b)))
+
+(defn- merge-counts
+  "Three-way merge a policy map. A one-sided change wins over an unchanged base.
+  Concurrent changes take the [[stricter]] policy, so budgets can only tighten through a merge."
+  [base ours theirs]
+  (sorted-by-str
+   (for [linter (into (set (keys base)) (concat (keys ours) (keys theirs)))
+         :let   [base-value   (get base linter absent)
+                 ours-value   (get ours linter absent)
+                 theirs-value (get theirs linter absent)
+                 merged       (cond
+                                (= ours-value theirs-value) ours-value
+                                (= ours-value base-value)   theirs-value
+                                (= theirs-value base-value) ours-value
+                                :else                       (stricter ours-value theirs-value))]
+         :when  (not= merged absent)]
+     [linter merged])))
+
+(defn- merge-exemptions
+  "Three-way merge the `:comment-exempt` set: the side that changed a linter's membership wins.
+  Independent of the count policies, since a justification exemption says nothing about how many ignores
+  a linter may have."
+  [base ours theirs]
+  (into #{}
+        (filter (fn [linter]
+                  (let [ours?   (contains? ours linter)
+                        theirs? (contains? theirs linter)]
+                    (if (= ours? theirs?)
+                      ours?
+                      (not (contains? base linter))))))
+        (into (set base) (concat ours theirs))))
+
+(def ^:private merge-fields
+  #{:ignore-counts :config-counts :comment-exempt})
+
+(defn- validate-merge-shape
+  "`ratchets` when it contains only the policy fields and `:disabled`, and each policy field passes
+  [[validate-policies]]; throws otherwise."
+  [ratchets]
+  (when-not (map? ratchets)
+    (throw (ex-info (str "a ratchet stage must be a map of policies, not " (pr-str ratchets))
+                    {:stage ratchets})))
+  (let [unexpected (set (keys (apply dissoc ratchets :disabled merge-fields)))]
+    (when (seq unexpected)
+      (throw (ex-info (str "unsupported ratchet fields: " (pr-str unexpected))
+                      {:fields unexpected}))))
+  (validate-policies ratchets))
+
+(defn merge-ratchets
+  "Three-way merge ratchets from `base`, the target branch (`ours`), and the incoming branch (`theirs`).
+  Every stage is validated first, even when a disabled stage decides the result: a target that
+  explicitly disables ratchets stays disabled, and an incoming disabled form leaves `ours` as it is.
+  Otherwise `:ignore-counts` and `:config-counts` merge with [[merge-counts]] and `:comment-exempt`
+  with [[merge-exemptions]]."
+  [base ours theirs]
+  (let [[base ours theirs] (map validate-merge-shape [base ours theirs])]
+    (cond
+      (disabled? ours)   {:disabled true}
+      (disabled? theirs) ours
+      :else              {:ignore-counts  (merge-counts (:ignore-counts base {})
+                                                        (:ignore-counts ours {})
+                                                        (:ignore-counts theirs {}))
+                          :config-counts  (merge-counts (:config-counts base {})
+                                                        (:config-counts ours {})
+                                                        (:config-counts theirs {}))
+                          :comment-exempt (merge-exemptions (:comment-exempt base #{})
+                                                            (:comment-exempt ours #{})
+                                                            (:comment-exempt theirs #{}))})))
+
 (defn lowered-counts
-  "`recorded` with each budget lowered to its actual count; entries with no ignores left are dropped.
-  Linters in `seeded` get their budget set to the actual count outright — the explicit escape hatch for
-  landing a new linter. Otherwise never raises a budget, never adds one."
+  "`recorded` with each bounded budget lowered to its actual count; bounded entries with no ignores go.
+  An `:unlimited` policy is kept as written, even at zero: it records a decision about the linter, not a count.
+  Linters in `seeded` get their budget set outright — the explicit escape hatch for landing a new linter.
+  Otherwise never raises a budget, never adds one."
   [recorded actual seeded]
-  (into (sorted-by-str
-         (for [linter seeded
-               :when  (pos? (get actual linter 0))]
-           [linter (get actual linter)]))
-        (keep (fn [[linter budget]]
-                (let [n (get actual linter 0)]
-                  (cond
-                    (contains? (set seeded) linter) nil
-                    (zero? n)                       nil
-                    (< n budget)                    [linter n]
-                    :else                           [linter budget]))))
-        recorded))
+  (let [seeded? (set seeded)]
+    (into (sorted-by-str
+           (for [linter seeded
+                 :when  (pos? (get actual linter 0))]
+             [linter (get actual linter)]))
+          (keep (fn [[linter budget]]
+                  (let [n (get actual linter 0)]
+                    (cond
+                      (seeded? linter)      nil
+                      (= budget :unlimited) [linter budget]
+                      (zero? n)             nil
+                      (< n budget)          [linter n]
+                      :else                 [linter budget]))))
+          recorded)))
+
+(defn unexercised-unlimited
+  "Linters with an `:unlimited` policy in `ignore-counts` and no ignores in `actual`, sorted."
+  [ignore-counts actual]
+  (into (sorted-set-by #(compare (str %1) (str %2)))
+        (for [[linter policy] ignore-counts
+              :when (and (= policy :unlimited)
+                         (zero? (get actual linter 0)))]
+          linter)))
+
+(defn unexercised-unlimited-warning
+  "One informational line naming the [[unexercised-unlimited]] linters, or nil when there are none.
+  The policies stay in place; the line only makes a stale one visible."
+  [ignore-counts actual]
+  (let [linters (unexercised-unlimited ignore-counts actual)]
+    (when (seq linters)
+      (str "WARNING: :unlimited policies with no ignores left: " (str/join ", " linters)
+           " -- delete an entry by hand once its linter no longer needs one"))))
+
+(defn stale-exemptions-warning
+  "An informational warning naming linters whose `:comment-exempt` entries are stale, or nil when there
+  are none. Does not modify the exemptions."
+  [exempt occurrences]
+  (let [linters (stale-exemptions exempt occurrences)]
+    (when (seq linters)
+      (str "WARNING: :comment-exempt is no longer needed for these linters: " (str/join ", " linters)
+           " -- delete the stale entries by hand"))))
 
 (defn change-report
-  "The lines [[fix!]] prints: lowered/dropped/seeded budgets, dropped exemptions, plus warnings for
-  anything over budget."
+  "The lines [[fix!]] prints for budget changes, budget violations, unused `:unlimited` policies, and
+  stale comment exemptions."
   [{:keys [ignore-counts config-counts comment-exempt]} occurrences config-actual seeded]
   (let [actual (actual-counts occurrences)]
     (concat
      (for [linter seeded
            :let   [n (get actual linter 0)]]
-       (if (pos? n)
-         (format "seeded %s at %d" linter n)
-         (format "WARNING: %s has no inline ignores -- nothing to seed" linter)))
+       (cond
+         (pos? n)                         (format "seeded %s at %d" linter n)
+         (contains? ignore-counts linter) (format "WARNING: %s has no inline ignores -- dropping its policy"
+                                                  linter)
+         :else                            (format "WARNING: %s has no inline ignores -- nothing to seed"
+                                                  linter)))
      (for [[linter budget] (sort-by (comp str first) (apply dissoc ignore-counts seeded))
            :let            [n (get actual linter 0)]
-           :when           (not= n budget)]
+           ;; a hand-written 0 with no ignores is dropped too, so it needs a line
+           :when           (and (integer? budget) (or (not= n budget) (zero? budget)))]
        (cond
          (zero? n)    (format "dropped %s (no ignores left)" linter)
          (< n budget) (format "lowered %s %d -> %d" linter budget n)
          :else        (format "WARNING: %s is over budget (%d recorded, %d actual) -- remove ignores, or accept them all with `--seed %s`"
                               linter budget n linter)))
+     (some-> (unexercised-unlimited-warning (apply dissoc ignore-counts seeded) actual) vector)
      (for [[linter n] (sort-by (comp str first) (apply dissoc actual (concat seeded (keys ignore-counts))))]
-       (format "WARNING: %s has %d ignores but no budget entry -- seed one with `./bin/mage fix-kondo-ratchets --seed %s`"
+       (format "WARNING: %s has %d ignores but no budget entry -- seed one with `./bin/mage kondo-ratchets-shrink --seed %s`"
                linter n linter))
      (for [[linter {:keys [recorded actual]}] (config-drift config-counts config-actual)]
        (cond
@@ -413,28 +754,179 @@
          (< actual recorded)  (format "lowered config %s %d -> %d" linter recorded actual)
          :else                (format "WARNING: config suppressions for %s are over budget (%d recorded, %d actual) -- remove one from .clj-kondo/config.edn or raise the budget by hand"
                                       linter recorded actual)))
-     (for [linter (stale-exemptions comment-exempt occurrences)]
-       (format "unexempted %s (all its ignores are justified now)" linter)))))
+     (some-> (stale-exemptions-warning comment-exempt occurrences) vector))))
+
+(def ^:private count-fields
+  [:ignore-counts :config-counts])
+
+(defn- display-name
+  [field linter]
+  (if (= field :config-counts)
+    (str ":config/" (subs (str linter) 1))
+    (str linter)))
+
+(defn- shrink-changes
+  [before after]
+  (->> count-fields
+       (into []
+             (comp
+              (mapcat (fn [field]
+                        (map (fn [[linter n]] [field linter n])
+                             (get before field))))
+              (keep (fn [[field linter before-count]]
+                      (let [after-count (get-in after [field linter] 0)]
+                        (when (and (integer? before-count)
+                                   (integer? after-count)
+                                   (< after-count before-count))
+                          {:name (display-name field linter)
+                           :from before-count
+                           :to   after-count}))))))
+       (sort-by :name)))
+
+(defn shrink-summary
+  "A compact, sorted before/after listing of numeric budgets lowered between two ratchet maps.
+  Config-level budgets carry a `:config/` prefix."
+  [before after]
+  (let [changes (shrink-changes before after)]
+    (if (empty? changes)
+      "{}"
+      (let [column-width                 (fn [k]
+                                           (transduce (map (comp count str k)) max 0 changes))
+            [name-width from-width to-width] (mapv column-width [:name :from :to])]
+        (str "{"
+             (str/join "\n "
+                       (for [{:keys [name from to]} changes]
+                         (format (str "%-" name-width "s  %" from-width "d => %" to-width "d")
+                                 name from to)))
+             "}")))))
+
+(def ^:private pie-legends
+  [["# still our problem" ". fixed, so no longer our problem"]
+   ["# stubborn lint" ". lint successfully rolled"]
+   ["# TODO" ". TODONE"]])
+
+(def ^:private pie-chart-resource
+  "dev/kondo_ratchet_pie.txt")
+
+(defn- pie-chart
+  []
+  (let [template (some-> pie-chart-resource io/resource slurp)
+        legend   (rand-nth pie-legends)]
+    (when-not template
+      (throw (ex-info (str "missing classpath resource " pie-chart-resource)
+                      {:resource pie-chart-resource})))
+    (apply format template legend)))
+
+(defn shrink-pr-body
+  "Markdown for an automated shrink PR."
+  [before after workflow-url]
+  (str "## Debt repaid, locking in progress\n\n"
+       "### What changed\n\n"
+       "```edn\n" (shrink-summary before after) "\n```\n\n"
+       "### Executive dashboard\n\n"
+       "```text\n" (pie-chart) "```\n\n"
+       "Generated by [`./bin/mage kondo-ratchets-shrink`](" workflow-url
+       ")\n"))
 
 (defn fix!
-  "Rewrite [[ratchets-file]]: lower budgets, drop stale comment exemptions, normalize formatting.
-  `--seed LINTER` (`{:seed \"...\"}` here) sets that budget to the actual count, adding or raising it.
-  Prints the [[change-report]], or `unchanged` on a no-op."
+  "Rewrite [[*ratchets-file*]]: lower budgets and normalize formatting.
+  Refuses to touch a file containing an unknown linter or to seed one, rather than silently dropping it.
+  `--seed LINTER` (`{:seed \"...\"}` here) sets that budget to the actual count and bounds an unlimited one.
+  Prints the [[change-report]], or `unchanged` on a no-op.
+  Does nothing, including seeding, when the file sets `:disabled` to `true`."
   ([]
    (fix! nil))
   ([{:keys [seed]}]
-   (let [{:keys [ignore-counts config-counts comment-exempt] :as ratchets} (read-ratchets)
-         occurrences   (scan)
-         seeded        (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
-         actual        (actual-counts occurrences)
-         config-actual (config-suppressions)
-         text          (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)
-                                :config-counts  (lowered-counts config-counts config-actual [])
-                                :comment-exempt (reduce disj comment-exempt (stale-exemptions comment-exempt occurrences))})
-         file          (io/file ratchets-file)
-         old           (when (.exists file) (slurp file))]
-     (run! println (change-report ratchets occurrences config-actual seeded))
-     (if (= old text)
-       (println "unchanged")
-       (do (spit file text)
-           (println (str "wrote " ratchets-file)))))))
+   (let [{:keys [ignore-counts config-counts comment-exempt] :as ratchets} (read-ratchets)]
+     (if (disabled? ratchets)
+       (println (str *ratchets-file* " is disabled -- nothing to do"))
+       (let [known         (known-linters)
+             _             (validate-linters! ratchets known)
+             seeded        (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
+             _             (validate-seed! seeded known)
+             occurrences   (scan)
+             actual        (actual-counts occurrences)
+             config-actual (config-suppressions)
+             text          (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)
+                                    :config-counts  (lowered-counts config-counts config-actual [])
+                                    :comment-exempt comment-exempt})
+             old           (slurp *ratchets-file*)]
+         (run! println (change-report ratchets occurrences config-actual seeded))
+         (if (= old text)
+           (println "unchanged")
+           (do (spit *ratchets-file* text)
+               (println (str "wrote " *ratchets-file*)))))))))
+
+(defn check-report
+  "The lines [[check]] prints when inline ignores or config suppressions (`config-actual`) exceed their
+  budgets, an ignore lacks a required justification comment, or `text` is not normalized.
+  Lower counts are allowed because the shrink workflow records them after the change lands."
+  [{:keys [ignore-counts config-counts comment-exempt] :or {comment-exempt #{}} :as ratchets}
+   occurrences config-actual text]
+  (let [over        (over-budget ignore-counts occurrences)
+        config-over (config-over-budget config-counts config-actual)
+        uncommented (unjustified comment-exempt occurrences)
+        linter-line (fn [[linter {:keys [recorded actual]}]]
+                      (format "  %s: %d recorded, %d actual" linter recorded actual))]
+    (concat
+     (when (seq over)
+       (cons (str "over budget -- remove an ignore, or seed the budget with"
+                  " `./bin/mage kondo-ratchets-shrink --seed <linter>` and explain the increase in the PR:")
+             (mapcat (fn [[_ {:keys [examples]} :as entry]]
+                       (cons (linter-line entry) (map #(str "    " %) examples)))
+                     over)))
+     (when (seq config-over)
+       (cons (str "config suppressions over budget -- remove the entry from " kondo-config-file
+                  ", or raise the budget manually and explain the increase in the PR:")
+             (map linter-line config-over)))
+     (when (seq uncommented)
+       (cons (str "ignores without required comments -- add a `;;` comment above the form or at the end"
+                  " of the same line, explaining why the suppression is necessary:")
+             (map (fn [{:keys [file line linters]}]
+                    (format "  %s:%d %s" file line (vec linters)))
+                  uncommented)))
+     (when (not= text (render ratchets))
+       [(str *ratchets-file* " is not normalized -- run `./bin/mage kondo-ratchets-shrink`"
+             " to fix the formatting")]))))
+
+(defn- exit!
+  "Fail the babashka task with `message`, without mage's default stack trace."
+  [message]
+  (throw (ex-info message {:babashka/exit 1, :mage/quiet true})))
+
+(defn- fail!
+  "[[exit!]], for a `message` the run has not already printed."
+  [message]
+  (println message)
+  (exit! message))
+
+(defn check
+  "Fail the babashka task when the ratchets file is missing, a policy names an unknown linter, inline
+  ignores or config suppressions exceed a bounded budget, an ignore lacks a required justification
+  comment, or the file is not normalized.
+  Only an explicit `{:disabled true}` opts out of enforcement.
+  Unused `:unlimited` policies and stale `:comment-exempt` entries are reported but do not fail the check."
+  []
+  (if-not (.exists (io/file *ratchets-file*))
+    (fail! (str *ratchets-file* " is missing -- only {:disabled true} opts out of enforcement"))
+    ;; read-ratchets, validate-linters! and scan all throw on malformed input; without this they reach
+    ;; the user as a babashka stack dump.
+    (try
+      (let [ratchets (read-ratchets)]
+        (if (disabled? ratchets)
+          (println (str *ratchets-file* " is disabled -- nothing to check"))
+          (do
+            (validate-linters! ratchets (known-linters))
+            (let [occurrences (scan)
+                  lines       (check-report ratchets occurrences (config-suppressions) (slurp *ratchets-file*))]
+              (some-> (unexercised-unlimited-warning (:ignore-counts ratchets) (actual-counts occurrences)) println)
+              (some-> (stale-exemptions-warning (:comment-exempt ratchets) occurrences) println)
+              (if (empty? lines)
+                (println (format "ok -- %d ignore forms within %d policies"
+                                 (count occurrences) (count (:ignore-counts ratchets))))
+                (do (run! println lines)
+                    (exit! (str *ratchets-file* " drifted from the source tree"))))))))
+      (catch clojure.lang.ExceptionInfo e
+        (if (:babashka/exit (ex-data e))
+          (throw e)
+          (fail! (ex-message e)))))))

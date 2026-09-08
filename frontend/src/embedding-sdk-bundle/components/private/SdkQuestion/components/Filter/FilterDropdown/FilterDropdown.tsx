@@ -7,7 +7,7 @@ import {
   MultiStepPopover,
   type MultiStepState,
 } from "embedding-sdk-bundle/components/private/util/MultiStepPopover";
-import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
+import type { UpdateQueryHookProps } from "metabase/query_builder";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import type { PopoverProps } from "metabase/ui";
 

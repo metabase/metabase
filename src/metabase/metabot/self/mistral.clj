@@ -34,7 +34,7 @@
       500 (tru "Mistral returned an internal server error")
       (tru "Mistral API error (HTTP {0})" status))))
 
-(def ^:private supported-models
+(def supported-models
   "Mistral models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog."
   {"mistral-medium-3-5" {:display-name "Mistral Medium 3.5" :context-window 262144}})

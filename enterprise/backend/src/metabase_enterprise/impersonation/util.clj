@@ -1,10 +1,10 @@
 (ns metabase-enterprise.impersonation.util
   (:require
+   [metabase-enterprise.impersonation.db :as impersonation.db]
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
    [metabase.api.common :refer [*current-user-id* *is-superuser?*]]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [tru]]))
 
 (defenterprise impersonation-enforced-for-db?
   "Returns a boolean if the current user has a connection impersonation policy which should be enforced for the provided
@@ -30,10 +30,10 @@
   (boolean
    (when-not *is-superuser?*
      (if *current-user-id*
-       (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id *current-user-id*)]
+       (let [group-ids (impersonation.db/group-ids-for-user *current-user-id*)]
          (seq
           (when (seq group-ids)
-            (t2/select :model/ConnectionImpersonation :group_id [:in group-ids]))))
+            (impersonation.db/impersonations-for-groups group-ids))))
        ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
        ;; returning `false` for users who should actually be using impersonation.
        (throw (ex-info (str (tru "No current user found"))

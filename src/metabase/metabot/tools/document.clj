@@ -16,9 +16,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private chart-type-enum
-  [:enum "table" "bar" "line" "pie" "sunburst" "area" "combo"
-   "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
-   "smartscalar" "gauge" "progress" "funnel" "object" "map"])
+  (into [:enum] shared/chart-types))
 
 (defn- parse-reference
   [[k v]]
@@ -118,7 +116,8 @@
                                "</result>\n"
                                "<instructions>\n"
                                "NEXT: construct a SQL query based on the user's instructions and this schema.\n"
-                               "THEN: call `document_construct_sql_chart` with SQL and chart settings.\n"
+                               "THEN: call `document_construct_sql_chart` with SQL and chart settings, passing "
+                               "database_id=" database-id " (the id of the database above).\n"
                                "SQL engine: " (:engine db) ".\n"
                                "</instructions>")]
           {:output output

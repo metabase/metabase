@@ -143,7 +143,7 @@
     body
     (-> body
         (dissoc :metrics :dimensions)
-        (assoc :blocks [{:type "metric" :metrics metrics :dimensions dimensions}]))))
+        (assoc :blocks [{:metrics metrics :dimensions dimensions}]))))
 
 (defn- create-exploration!
   "POST a new exploration as `user`, then synchronously run the query planner for
@@ -369,8 +369,8 @@
         (is (= "Releases" (-> timelines first :timeline :name))
             "nested :timeline is hydrated for the picker")))))
 
-(deftest exploration-block-naming-by-type-test
-  (testing "GET builds block headings + page names from the block :type"
+(deftest exploration-block-naming-test
+  (testing "GET builds block headings (the metric name) + dimension-named pages"
     (mt/with-temp [:model/User u {:email "group-naming@example.com"}
                    :model/Card revenue (assoc (valid-metric-card (:id u)) :name "Revenue")
                    :model/Card signups (assoc (valid-metric-card (:id u)) :name "Signups")]
@@ -381,69 +381,26 @@
                         :card_id card-id}])
             dims    [{:dimension_id (duid "d1") :display_name "Price" :effective_type "type/Number"}]
             body    {:name   "Naming"
-                     :blocks [;; metric-anchored: one metric crossed with a dimension
-                              {:type       "metric"
-                               :metrics    [{:card_id (:id revenue)
+                     :blocks [{:metrics    [{:card_id (:id revenue)
                                              :dimension_mappings (mapping (:id revenue))}]
                                :dimensions dims}
-                              ;; dimension-anchored: one dimension crossed with two metrics
-                              {:type       "dimension"
-                               :metrics    [{:card_id (:id revenue)
-                                             :dimension_mappings (mapping (:id revenue))}
-                                            {:card_id (:id signups)
+                              {:metrics    [{:card_id (:id signups)
                                              :dimension_mappings (mapping (:id signups))}]
                                :dimensions dims}]}
             resp    (create-exploration! u body)
             blocks  (-> resp :threads first :blocks)
-            metric-block    (first (filter #(= "metric" (:type %)) blocks))
-            dimension-block (first (filter #(= "dimension" (:type %)) blocks))
+            revenue-block (first (filter #(= "Revenue" (:name %)) blocks))
+            signups-block (first (filter #(= "Signups" (:name %)) blocks))
             page-names (fn [block] (set (map :name (:pages block))))
             long-names (fn [block] (set (map :long_name (:pages block))))]
-        (testing "metric-anchored block: heading is the metric, pages are the dimension"
-          (is (= "Revenue" (:name metric-block)))
-          (is (= #{"Price"} (page-names metric-block)))
-          (testing "long_name is self-describing (carries the metric the heading drops)"
-            (is (= #{"Revenue by Price"} (long-names metric-block)))))
-        (testing "dimension-anchored block: heading is By <dimension>, pages are the metrics"
-          (is (= "By Price" (:name dimension-block)))
-          (is (= #{"Revenue" "Signups"} (page-names dimension-block)))
-          (testing "long_name is self-describing (carries the dimension the heading drops)"
-            (is (= #{"Revenue by Price" "Signups by Price"} (long-names dimension-block)))))))))
-
-(deftest exploration-dimension-group-heading-uses-curated-name-test
-  (testing "GET uses each dimension's curated display_name for dimension-anchored headings"
-    (let [users-created  "00000000-0000-0000-0000-0000000a1111"
-          orders-created "00000000-0000-0000-0000-0000000b2222"]
-      (mt/with-temp
-        [:model/User u {:email "dim-heading@example.com"}
-         :model/Card revenue (assoc (valid-metric-card (:id u))
-                                    :name "Revenue"
-                                    :dimensions
-                                    [{:id users-created  :name "CREATED_AT" :display-name "Created At"
-                                      :group {:id "g-users"  :type "main"       :display-name "Users"}}
-                                     {:id orders-created :name "CREATED_AT" :display-name "Created At"
-                                      :group {:id "g-orders" :type "connection" :display-name "Orders"}}])]
-        (let [mapping  (fn [dim-id field-id]
-                         [{:dimension_id dim-id :table_id 1 :target ["field" {} field-id]}])
-              dim-grp  (fn [dim-id field-id]
-                         {:type       "dimension"
-                          :metrics    [{:card_id (:id revenue)
-                                        :dimension_mappings (mapping dim-id field-id)}]
-                          :dimensions [{:dimension_id dim-id :display_name "Created At"}]})
-              headings (fn [body]
-                         (->> (create-exploration! u body) :threads first :blocks
-                              (filter #(= "dimension" (:type %)))
-                              (map :name)
-                              set))]
-          (testing "two dimension blocks sharing a display_name keep the curated heading (no group prefix)"
-            (is (= #{"By Created At"}
-                   (headings {:name   "ambig-headings"
-                              :blocks [(dim-grp users-created 1)
-                                       (dim-grp orders-created 2)]}))))
-          (testing "a single dimension group uses the curated heading"
-            (is (= #{"By Created At"}
-                   (headings {:name   "single-heading"
-                              :blocks [(dim-grp users-created 1)]})))))))))
+        (is (some? revenue-block))
+        (is (some? signups-block))
+        (testing "pages are named after the dimension"
+          (is (= #{"Price"} (page-names revenue-block)))
+          (is (= #{"Price"} (page-names signups-block))))
+        (testing "long_name is self-describing (carries the metric the heading drops)"
+          (is (= #{"Revenue by Price"} (long-names revenue-block)))
+          (is (= #{"Signups by Price"} (long-names signups-block))))))))
 
 (deftest exploration-create-persists-blocks-verbatim-test
   (testing "POST / persists each :blocks entry as its own ExplorationBlock row — no dedup across blocks"
@@ -453,19 +410,16 @@
       (let [mapping [{:dimension_id (duid "d1")
                       :table_id (mt/id :venues)
                       :target ["field" {} (mt/id :venues :price)]}]
-            ;; Two blocks sharing the same metric: a metric block (metric + d1) and a
-            ;; dimension block (the same metric, with d2). Timelines are thread-scoped,
-            ;; sent once at the top level. Each block is stored verbatim — the shared
-            ;; metric is NOT deduped across blocks.
+            ;; Two blocks sharing the same metric: one with d1, one with d2. Timelines are
+            ;; thread-scoped, sent once at the top level. Each block is stored verbatim — the
+            ;; shared metric is NOT deduped across blocks.
             body {:name         "Blocked create"
                   :prompt       "via blocks"
                   :timeline_ids [(:id tl)]
-                  :blocks       [{:type       "metric"
-                                  :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
+                  :blocks       [{:metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                                   :dimensions [{:dimension_id (duid "d1") :display_name "Price"
                                                 :effective_type "type/Number"}]}
-                                 {:type       "dimension"
-                                  :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
+                                 {:metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                                   :dimensions [{:dimension_id (duid "d2") :display_name "Category"
                                                 :effective_type "type/Text"}]}]}
             resp   (mt/user-http-request u :post 200 "exploration" body)
@@ -474,7 +428,6 @@
                               :exploration_thread_id tid {:order-by [[:position :asc]]})]
         (is (= "Blocked create" (:name resp)))
         (is (= 2 (count blocks)) "one row per block, no dedup")
-        (is (= ["metric" "dimension"] (map :type blocks)) "anchor type stored in payload order")
         (is (= [0 1] (map :position blocks)))
         (testing "each block keeps its own metrics + dimensions selection"
           (is (= [(:id metric) (:id metric)] (map #(-> % :metrics first :card_id) blocks)))
@@ -688,12 +641,24 @@
             "the users-table segment doesn't apply, so no segment fan-out")))))
 
 (defn- products-monthly-metric-card
-  "Metric Card with a default `:month` temporal breakout on `products.created_at`. Used to
-  exercise the time-facet variant, which fires only when the metric carries a temporal breakout."
+  "Metric Card with a curated default `:month` time dimension on `products.created_at` (and the
+  matching temporal breakout in its query). Used to exercise the time-facet variant, which fires
+  only when the metric's curated default dimension is temporal — the query breakout alone is not
+  enough."
   [user-id]
-  {:type          :metric
-   :creator_id    user-id
-   :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/aggregate (lib/count)) (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :products :created_at)) :month)))))})
+  {:type               :metric
+   :creator_id         user-id
+   :dataset_query      (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/aggregate (lib/count)) (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :products :created_at)) :month)))))
+   :dimensions         [{:id                    (duid "prod-created")
+                         :display-name          "Created At"
+                         :effective-type        :type/DateTime
+                         :status                :status/active
+                         :default               true
+                         :default-temporal-unit :month}]
+   :dimension_mappings [{:type         :table
+                         :table-id     (mt/id :products)
+                         :dimension-id (duid "prod-created")
+                         :target       [:field {} (mt/id :products :created_at)]}]})
 
 (defn- query-types
   [queries]
@@ -1420,9 +1385,8 @@
           (is (nil? (:source_page_id orig))))
         (is (= "Number of venues → Price: 2" (:name new))
             "thread name uses Metric → Column: Value for top-level follow-ups")
-        (testing "new block copies type/dimensions and appends explore_filters onto metrics"
+        (testing "new block copies dimensions and appends explore_filters onto metrics"
           (let [persisted (t2/select-one :model/ExplorationBlock :exploration_thread_id (:id new))]
-            (is (= "metric" (:type new-block)))
             (is (= [(duid "category") (duid "price")] (mapv :dimension-id (:dimensions persisted))))
             (let [persisted-filters (:explore_filters (first (:metrics persisted)))]
               (is (= 1 (count persisted-filters)))
@@ -1964,10 +1928,9 @@
           p->     (page-by-id tree)]
       (is (= [1 2] (mapv :id tree)) "one node per block, in authoring order")
       (is (= [0 1] (mapv :position tree)) ":position reifies block order")
-      (testing "block headings come from the metric card name; all metric-anchored here"
+      (testing "block headings come from the metric card name"
         (is (= "Revenue block" (:name (by-id 1))))
-        (is (= "Count block"   (:name (by-id 2))))
-        (is (every? #(= "metric" (:type %)) tree)))
+        (is (= "Count block"   (:name (by-id 2)))))
       (testing "pages nest under their block (score-sorted)"
         (is (= [100 101] (mapv :id (:pages (by-id 1)))) "page 100 (max 0.7) before page 101 (0.4)")
         (is (= [200]     (mapv :id (:pages (by-id 2))))))
@@ -2095,11 +2058,10 @@
             pages     (mapcat :pages blocks)]
         (is (= 9 (count queries))
             "category (default+top-n-other) × 3 + price (default) × 3 = 9 queries")
-        (testing "one metric-anchored block"
+        (testing "one block"
           (is (= 1 (count blocks)))
           (let [[b] blocks]
-            (is (= "Revenue" (:name b)) "metric-anchored heading is the metric name")
-            (is (= "metric" (:type b)))
+            (is (= "Revenue" (:name b)) "heading is the metric name")
             (is (= block-id (:id b)) "block node id is the persisted block PK")
             (is (= 0 (:position b)))))
         (testing "pages partition the queries by (card, dim, query_type)"
@@ -2131,11 +2093,9 @@
       (let [dims [{:dimension_id (duid "category") :display_name "Category"}
                   {:dimension_id (duid "price")    :display_name "Price"}]
             body {:name "multi"
-                  :blocks [{:type       "metric"
-                            :metrics    [{:card_id (:id m1) :dimension_mappings (venues-dimension-mappings)}]
+                  :blocks [{:metrics    [{:card_id (:id m1) :dimension_mappings (venues-dimension-mappings)}]
                             :dimensions dims}
-                           {:type       "metric"
-                            :metrics    [{:card_id (:id m2) :dimension_mappings (venues-dimension-mappings)}]
+                           {:metrics    [{:card_id (:id m2) :dimension_mappings (venues-dimension-mappings)}]
                             :dimensions dims}]}
             {eid :id} (create-exploration! u body)
             resp       (mt/user-http-request u :get 200 (format "exploration/%d" eid))
@@ -2143,8 +2103,7 @@
             blocks     (:blocks thread)]
         (is (= 2 (count blocks)) "two blocks → two top-level nodes")
         (is (= #{"Revenue" "Order count"} (set (map :name blocks)))
-            "metric-anchored headings are the metric names")
-        (is (every? #(= "metric" (:type %)) blocks))
+            "headings are the metric names")
         (is (every? #(int? (:id %)) blocks) "block node ids are the persisted block PKs")
         (testing "each block has its own pages (category default+top-n-other + price default = 3)"
           (is (every? #(= 3 (count (:pages %))) blocks)))
@@ -2501,7 +2460,7 @@
                                                       {:exploration_id (:id expl) :name "t" :position 0}))
         block  (first (t2/insert-returning-instances! :model/ExplorationBlock
                                                       {:exploration_thread_id (:id thread)
-                                                       :type "metric" :metrics metrics
+                                                       :metrics metrics
                                                        :dimensions (or dimensions []) :position 0}))
         page   (first (t2/insert-returning-instances! :model/ExplorationPage
                                                       {:exploration_block_id (:id block)
@@ -2759,12 +2718,10 @@
                   :collection_id (:id (collection/user->personal-collection (:id u)))}]
         (testing "an unreadable card id is a 403"
           (mt/user-http-request u :post 403 "exploration"
-                                (assoc base :blocks [{:type    "metric"
-                                                      :metrics [{:card_id (:id secret)}]}])))
+                                (assoc base :blocks [{:metrics [{:card_id (:id secret)}]}])))
         (testing "a nonexistent card id is a 404"
           (mt/user-http-request u :post 404 "exploration"
-                                (assoc base :blocks [{:type    "metric"
-                                                      :metrics [{:card_id Integer/MAX_VALUE}]}])))
+                                (assoc base :blocks [{:metrics [{:card_id Integer/MAX_VALUE}]}])))
         (testing "nothing was persisted by the rejected requests"
           (is (zero? (t2/count :model/Exploration :name "block perm check"))))))))
 

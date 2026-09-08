@@ -63,6 +63,9 @@
                         it is the `thinking` block, sent verbatim. When set it wins over both
                         the derived config and the suppression rules, and :reasoning parts
                         survive into the replayed input.
+    :fast?            - When true, request the provider's fast mode where the model
+                        supports it (Anthropic Opus fast mode); adapters without one
+                        ignore it
     :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
                         provider caches opt-in per key forward it (Mistral), others ignore it"
   [:map
@@ -78,6 +81,7 @@
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
    [:reasoning-config {:optional true} [:maybe :map]]
+   [:fast?            {:optional true} [:maybe :boolean]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
 
 (defn mkid
@@ -949,6 +953,13 @@
   (raw API keys, org/account names, tenant IDs). For these we don't splice a
   body preview into the message the caller sees."
   #{401 403})
+
+(defn decode-error-body
+  "The response map on a provider HTTP exception's ex-data, with its body decoded for
+  inspection. Consumes and closes a streamed body, so a caller that swallows the
+  exception (e.g. to retry) does not leak the connection."
+  [e]
+  (decode-bounded-body (ex-data e)))
 
 (defn rethrow-api-error!
   "Rethrow a provider HTTP exception with a translated, user-facing message.

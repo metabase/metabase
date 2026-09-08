@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.channel.core :as channel]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.impl.email :as channel.email]
    [metabase.channel.impl.http :as channel.http]
    [metabase.channel.impl.slack :as channel.slack]
@@ -18,8 +19,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn- remove-details-if-needed
   "Remove the details field if the current user does not have write permissions for the channel."
@@ -39,8 +39,8 @@
    {:keys [include_inactive]} :- [:map
                                   [:include_inactive {:optional true} [:maybe {:default false} :boolean]]]]
   (->> (if include_inactive
-         (t2/select :model/Channel)
-         (t2/select :model/Channel :active true))
+         (channel.db/channels)
+         (channel.db/active-channels))
        (filter mi/can-read?)
        (map remove-details-if-needed)))
 
@@ -106,10 +106,10 @@
                                        [:type        ChannelType]
                                        [:active      {:optional true} [:maybe {:default true} :boolean]]])]
   (perms/check-has-application-permission :setting)
-  (when (t2/exists? :model/Channel :name channel-name)
+  (when (channel.db/channel-name-exists? channel-name)
     (throw (ex-info "Channel with that name already exists" {:status-code 409
                                                              :errors      {:name "Channel with that name already exists"}})))
-  (u/prog1 (t2/insert-returning-instance! :model/Channel body)
+  (u/prog1 (channel.db/insert-channel! body)
     (events/publish-event! :event/channel-create {:object <> :user-id api/*current-user-id*})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -120,7 +120,7 @@
   "Get a channel"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (-> (t2/select-one :model/Channel id) api/read-check remove-details-if-needed))
+  (-> (channel.db/channel id) api/read-check remove-details-if-needed))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -137,13 +137,13 @@
              [:type        {:optional true} [:maybe ChannelType]]
              [:active      {:optional true} [:maybe :boolean]]]
             :details-optional? true)]
-  (let [channel-before-update (api/write-check (t2/select-one :model/Channel id))]
+  (let [channel-before-update (api/write-check (channel.db/channel id))]
     (when (and (:details body) (nil? (:type body)))
       (when-let [schema (details-schema-for-type (:type channel-before-update))]
         (when-not (mr/validate schema (:details body))
           (throw (ex-info (tru "Invalid channel details") {:status-code 400})))))
-    (t2/update! :model/Channel id body)
-    (u/prog1 (t2/select-one :model/Channel id)
+    (channel.db/update-channel! id body)
+    (u/prog1 (channel.db/channel id)
       (events/publish-event! :event/channel-update {:object          <>
                                                     :user-id         api/*current-user-id*
                                                     :previous-object channel-before-update}))))

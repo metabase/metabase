@@ -124,7 +124,7 @@ describe("scenarios > explorations > new research > manual flow", () => {
           // instead of leaving the research flow (UXW-4832).
           cy.location("pathname").should("eq", "/question/research/plan");
 
-          H.addMetricsAndDimensions({
+          H.addMetricsToExploration({
             metrics: [ORDERS_COUNT_METRIC_NAME],
           });
 
@@ -188,9 +188,8 @@ describe("scenarios > explorations > new research > manual flow", () => {
     H.visitNewExploration();
     H.startManualExploration();
 
-    // --- "+ Data" → Metrics modal search ---
-    cy.findByRole("button", { name: /Data/ }).click();
-    cy.findByRole("menuitem", { name: "Metrics" }).click();
+    // --- "+ Metrics" modal search ---
+    cy.findByRole("button", { name: /Metrics/ }).click();
     // Seeded names are "Count of orders" + "Count of orders over time".
     cy.wait("@getDimensions");
     // Seeded metrics aren't in the library; switch off the default Library tab.
@@ -297,11 +296,19 @@ describe("scenarios > explorations > new research > metabot flow", () => {
         {
           toolCallId: "groups-1",
           toolName: "add_research_groups",
-          result: {
-            metrics: [firstMetric],
-            dimension_groups: [interestingGroup],
-            groups: [{ anchor: "metric", metric_id: firstMetric.id }],
-          },
+          // The tool result is only the LLM's summary of the edit; the picker
+          // hydration rides a `research_plan_update` data part.
+          result: `Added 1 group(s) to the research plan:\n- ${firstMetric.name}, by the automatically-selected dimensions`,
+          dataParts: [
+            {
+              dataType: "research_plan_update",
+              data: {
+                metrics: [firstMetric],
+                dimension_groups: [interestingGroup],
+                groups: [{ metric_id: firstMetric.id }],
+              },
+            },
+          ],
         },
         {
           toolCallId: "name-1",

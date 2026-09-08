@@ -8,10 +8,10 @@ import {
 } from "metabase/common/components/PillTabNavigation";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { getUserIsAdmin, getUserIsAnalyst } from "metabase/current-user";
+import { getMetadata } from "metabase/metadata-store";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";

@@ -87,7 +87,7 @@
 
 (defsetting llm-anthropic-api-base-url
   (deferred-tru "The Anthropic API base URL.")
-  :encryption       :no
+  :encryption       :when-encryption-key-set
   :visibility       :settings-manager
   :default          "https://api.anthropic.com"
   :export?          false
@@ -116,7 +116,7 @@
 
 (defsetting llm-openai-api-base-url
   (deferred-tru "The OpenAI API base URL.")
-  :encryption       :no
+  :encryption       :when-encryption-key-set
   :visibility       :settings-manager
   :default          "https://api.openai.com"
   :export?          false
@@ -139,7 +139,7 @@
 
 (defsetting llm-openrouter-api-base-url
   (deferred-tru "The OpenRouter API base URL used for Chat Completions.")
-  :encryption       :no
+  :encryption       :when-encryption-key-set
   :visibility       :settings-manager
   :default          "https://openrouter.ai/api"
   :export?          false
@@ -162,7 +162,7 @@
 
 (defsetting llm-zai-api-base-url
   (deferred-tru "The Z.AI API base URL used for Chat Completions.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default    "https://api.z.ai/api/paas/v4"
   :export?    false
@@ -185,7 +185,7 @@
 
 (defsetting llm-mistral-api-base-url
   (deferred-tru "The Mistral API base URL used for Chat Completions.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default    "https://api.mistral.ai/v1"
   :export?    false
@@ -206,7 +206,7 @@
 
 (defsetting llm-moonshot-api-base-url
   (deferred-tru "The Moonshot AI API base URL used for Chat Completions. Repoint this to use the `.cn` platform; keys are not interchangeable between the two.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default    "https://api.moonshot.ai/v1"
   :export?    false
@@ -227,7 +227,7 @@
 
 (defsetting llm-deepseek-api-base-url
   (deferred-tru "The DeepSeek API base URL. Both the Anthropic-compatible Messages surface (`/anthropic/v1/messages`) and the model catalog (`/models`) are served off this root, so do not include `/anthropic` or `/v1`.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default    "https://api.deepseek.com"
   :export?    false
@@ -322,7 +322,7 @@
 
 (defsetting llm-google-api-base-url
   (deferred-tru "The Gemini Enterprise Agent Platform API base URL. Leave unset to derive it from the location.")
-  :encryption  :no
+  :encryption  :when-encryption-key-set
   :visibility  :settings-manager
   :default     google-global-api-base-url
   :export?     false
@@ -333,7 +333,7 @@
 ;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
 
 (defsetting llm-bedrock-access-key-id
-  (deferred-tru "The AWS Access Key ID for Amazon Bedrock.")
+  (deferred-tru "The AWS Access Key ID for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the secret access key to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required.")
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
@@ -342,7 +342,7 @@
   :doc         "Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-bedrock-secret-access-key
-  (deferred-tru "The AWS Secret Access Key for Amazon Bedrock.")
+  (deferred-tru "The AWS Secret Access Key for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the access key ID to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required.")
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
@@ -367,7 +367,7 @@
   :export?     false
   :getter      (connection-field-getter :llm-bedrock-region)
   :setter      (connection-field-setter :llm-bedrock-region)
-  :doc         "Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+  :doc         "Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection. On a self-hosted Metabase, setting only the region enables Bedrock with the AWS default credentials chain, with no access keys configured.")
 
 ;;; ----------------------------------------------- Microsoft Azure ---------------------------------------------
 
@@ -383,7 +383,7 @@
 
 (defsetting llm-azure-api-base-url
   (deferred-tru "The base URL of the Azure resource''s OpenAI- or Anthropic-compatible surface, e.g. `https://<resource>.services.ai.azure.com/openai`.")
-  :encryption  :no
+  :encryption  :when-encryption-key-set
   :visibility  :settings-manager
   :export?     false
   :getter      (connection-field-getter :llm-azure-api-base-url)
@@ -412,7 +412,7 @@
 
 (defsetting llm-vllm-api-base-url
   (deferred-tru "The base URL of your vLLM server''s OpenAI-compatible API, e.g. `http://vllm.internal:8000/v1`.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :export?    false
   :getter     (connection-field-getter :llm-vllm-api-base-url)
@@ -464,7 +464,7 @@ Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_
   :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
                          (premium-features/has-feature? :offer-metabase-ai-managed)
                          (premium-features/has-feature? :metabot-v3))
-  :encryption       :no
+  :encryption       :when-encryption-key-set
   :visibility       :internal
   :default          nil
   :export?          false
@@ -474,7 +474,7 @@ Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_
   (deferred-tru "Base URL for the managed Metabase AI service.")
   :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
                          (premium-features/has-feature? :metabot-v3))
-  :encryption       :no
+  :encryption       :when-encryption-key-set
   :visibility       :internal
   :default          nil
   :export?          false

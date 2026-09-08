@@ -5,7 +5,7 @@
 .columnName {
   display: flex;
   align-items: center;
-  gap: var(--mantine-spacing-xs);
+  gap: var(--mantine-spacing-xxs);
 }
 
 .descriptionIcon {

@@ -6,10 +6,10 @@ import {
   useGetCardQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getMetadata } from "metabase/metadata-store";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Flex, Stack } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 
@@ -74,7 +74,7 @@ export const NotificationDetailSidebar = ({
         bg="background_page-primary"
         data-testid="notification-detail-sidebar"
       >
-        <Stack h="100%" p="lg" gap="lg" style={{ overflowY: "auto" }}>
+        <Stack h="100%" p="xl" gap="xl" style={{ overflowY: "auto" }}>
           <SidebarHeader
             isBulkLoading={isBulkLoading}
             notificationId={notificationId}

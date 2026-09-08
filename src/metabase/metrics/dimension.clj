@@ -6,13 +6,13 @@
    [malli.util :as mut]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lm.schema]
+   [metabase.metrics.db :as metrics.db]
    [metabase.parameters.core :as parameters]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; ------------------------------------------------- API Shape -------------------------------------------------
 ;;; Convert internal (kebab) dimensions to the snake_case shape the frontend expects, and back.
@@ -219,9 +219,9 @@
                          metrics)
         field-ids  (into #{} (comp cat (keep second)) dims+fids)
         field->row (when (seq field-ids)
-                     (t2/select-pk->fn #(update-keys (select-keys % field-cols) u/->kebab-case-en)
-                                       (into [:model/Field :id] field-cols)
-                                       :id [:in field-ids]))
+                     (into {}
+                           (map (juxt :id #(update-keys (select-keys % field-cols) u/->kebab-case-en)))
+                           (metrics.db/fields-with-columns field-cols field-ids)))
         nil-cols   (zipmap (map u/->kebab-case-en field-cols) (repeat nil))]
     (mapv (fn [metric pairs]
             (cond-> metric
@@ -239,7 +239,7 @@
    dimension-mappings :- [:maybe [:sequential :map]]
    dimension-id       :- :string]
   (let [field-id (lib-metric/resolve-dimension-to-field-id dimensions dimension-mappings dimension-id)
-        field    (t2/select-one :model/Field :id field-id)]
+        field    (metrics.db/field field-id)]
     (parameters/field->values field)))
 
 (mu/defn dimension-search-values :- [:sequential [:vector :string]]
@@ -259,11 +259,11 @@
    dimension-id       :- :string
    value              :- :string]
   (let [field-id        (lib-metric/resolve-dimension-to-field-id dimensions dimension-mappings dimension-id)
-        field           (t2/select-one :model/Field :id field-id)
+        field           (metrics.db/field field-id)
         parsed-value    (parameters/parse-query-param-value-for-field field value)
         remapped-fid    (parameters/remapped-field-id field-id)]
     (if remapped-fid
-      (let [remapped-field (t2/select-one :model/Field :id remapped-fid)]
+      (let [remapped-field (metrics.db/field remapped-fid)]
         (parameters/remapped-value field remapped-field parsed-value))
       ;; No remapping - return the value as-is
       [parsed-value])))

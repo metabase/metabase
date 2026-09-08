@@ -7,8 +7,12 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json])
+  (:import
+   (software.amazon.awssdk.core.exception SdkClientException SdkException)
+   (software.amazon.awssdk.identity.spi AwsSessionCredentialsIdentity)))
 
 (set! *warn-on-reflection* true)
 
@@ -70,19 +74,100 @@
       (is (= {:models [{:id "anthropic.claude-sonnet-5" :display_name "Claude Sonnet 5"}]}
              (bedrock/list-models {:credentials credentials}))))))
 
-(deftest list-models-missing-credentials-test
-  (testing "a connection with no credentials fails rather than picking up the single-provider settings"
+(deftest list-models-missing-credentials-uses-default-chain-test
+  (testing "a connection with no credentials signs with the AWS default chain rather than picking up the single-provider settings"
     (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                        llm.settings/llm-bedrock-secret-access-key "wJalrXUtnFEMI"]
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [bedrock/chain-credentials
+                                    (constantly (AwsSessionCredentialsIdentity/create
+                                                 "AKIACHAINCHAINCHAIN1" "chain-secret" "chain-token"))]
+          (with-redefs [http/request (fn [req] (reset! captured req) {:body {:data fake-catalog}})]
+            (is (=? {:models [{:id "anthropic.claude-fable-5"}
+                              {:id "anthropic.claude-haiku-4-5"}
+                              {:id "anthropic.claude-opus-4-8"}
+                              {:id "openai.gpt-5.4"}
+                              {:id "openai.gpt-5.5"}]}
+                    (bedrock/list-models)))
+            (is (=? {:url     "https://bedrock-mantle.us-east-1.api.aws/v1/models"
+                     :headers {"Authorization"        #".*Credential=AKIACHAINCHAINCHAIN1/.*"
+                               "X-Amz-Security-Token" "chain-token"}}
+                    @captured))))))))
+
+(deftest list-models-empty-default-chain-test
+  (testing "no configured credentials and nothing in the default chain surface a provider-friendly error"
+    (mt/with-dynamic-fn-redefs [bedrock/chain-credentials
+                                (fn [] (throw (SdkClientException/create "Unable to load credentials")))]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"AWS Bedrock credentials are not configured"
-           (bedrock/list-models)))))
-  (deftest list-models-requires-both-keys-test
+           #"got no credentials from the AWS default credentials chain"
+           (bedrock/list-models))))))
+
+(deftest list-models-chain-refresh-failure-test
+  (testing "a refresh that throws on its own, rather than through the chain's own report, is not called a missing
+            key pair, which would send an operator off to create long-lived keys"
+    (mt/with-dynamic-fn-redefs [bedrock/chain-credentials
+                                (fn [] (throw (-> (SdkException/builder)
+                                                  (.message "User: arn:aws:sts::123456789012:assumed-role/x is not authorized")
+                                                  (.build))))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"could not refresh its AWS credentials"
+           (bedrock/list-models)))
+      (is (= :credentials-unavailable
+             (try (bedrock/list-models)
+                  (catch clojure.lang.ExceptionInfo e (:error-code (ex-data e)))))))))
+
+(deftest list-models-session-token-without-pair-test
+  (testing "a session token without its key pair throws instead of silently signing as the ambient identity"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"AWS Bedrock credentials are not configured"
-         (bedrock/list-models)))))
+         #"session token without its access key pair"
+         (bedrock/list-models {:credentials {:session-token "FwoGZXIvYXdzEXAMPLE"}})))))
+
+(deftest list-models-hosted-keyless-rejected-test
+  (testing "a hosted deployment rejects a keyless connection before the credentials chain is touched"
+    (mt/with-premium-features #{:hosting}
+      (let [chain-calls (atom 0)
+            requests    (atom 0)]
+        (mt/with-dynamic-fn-redefs [bedrock/chain-credentials (fn [] (swap! chain-calls inc) nil)]
+          (with-redefs [http/request (fn [_] (swap! requests inc) {:body {:data fake-catalog}})]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Metabase Cloud requires an access key pair"
+                 (bedrock/list-models)))
+            (is (zero? @chain-calls))
+            (is (zero? @requests))))))))
+
+(deftest list-models-unconfirmed-hosting-keyless-rejected-test
+  (testing "a token status the token service could not confirm is treated as hosted, so a Cloud instance that
+            cannot reach it does not fall back to the operator identity"
+    (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly nil)]
+      (let [chain-calls (atom 0)
+            requests    (atom 0)]
+        (mt/with-dynamic-fn-redefs [bedrock/chain-credentials (fn [] (swap! chain-calls inc) nil)]
+          (with-redefs [http/request (fn [_] (swap! requests inc) {:body {:data fake-catalog}})]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Metabase Cloud requires an access key pair"
+                 (bedrock/list-models)))
+            (is (zero? @chain-calls))
+            (is (zero? @requests))))))))
+
+(deftest list-models-hosted-explicit-pair-works-test
+  (testing "a hosted deployment still signs with an explicit customer key pair"
+    (mt/with-premium-features #{:hosting}
+      (let [captured (atom nil)]
+        (with-redefs [http/request (fn [req] (reset! captured req) {:body {:data fake-catalog}})]
+          (is (=? {:models [{:id "anthropic.claude-fable-5"}
+                            {:id "anthropic.claude-haiku-4-5"}
+                            {:id "anthropic.claude-opus-4-8"}
+                            {:id "openai.gpt-5.4"}
+                            {:id "openai.gpt-5.5"}]}
+                  (bedrock/list-models {:credentials {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                      :secret-access-key "wJalrXUtnFEMI"}})))
+          (is (=? {:headers {"Authorization" #".*Credential=AKIAIOSFODNN7EXAMPLE/.*"}}
+                  @captured)))))))
 
 (deftest list-models-accepts-credentials-override-test
   (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     nil
@@ -105,10 +190,10 @@
                   @captured)))))))
 
 (deftest list-models-credentials-override-must-be-complete-test
-  (testing "an override missing the secret access key throws without falling back to saved settings"
+  (testing "an override missing the secret access key throws without falling back to saved settings or the chain"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"AWS Bedrock credentials are not configured"
+         #"AWS Bedrock needs both an access key ID and a secret access key"
          (bedrock/list-models {:credentials {:access-key-id "AKIAOVERRIDEOVERRID1"}})))))
 
 (deftest list-models-credentials-override-region-validated-test
@@ -241,6 +326,14 @@
                                                :input [{:role :user :content "hi"}]})))]
       (is (not (contains? body :reasoning)))
       (is (not (contains? body :include))))))
+
+(deftest fast-mode-is-disabled-test
+  (testing "a fast-mode request is stripped before the anthropic body is built"
+    (let [body (json/decode+kw
+                (:body (captured-raw-request! {:model "anthropic.claude-opus-4-8"
+                                               :fast? true
+                                               :input [{:role :user :content "hi"}]})))]
+      (is (not (contains? body :speed))))))
 
 (deftest unsupported-model-throws-test
   (is (thrown-with-msg?

@@ -54,7 +54,7 @@ export function MetabotChatHistory() {
       flex={1}
       gap={0}
       style={{ overflowY: "auto" }}
-      p="md"
+      p="lg"
       className={S.chatHistory}
     >
       {hasMessages ? (

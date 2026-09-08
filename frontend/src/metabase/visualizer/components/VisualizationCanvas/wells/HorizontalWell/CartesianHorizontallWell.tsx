@@ -5,7 +5,6 @@ import { useMemo } from "react";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Flex, type FlexProps, Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import { getDefaultDimensionFilter } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";
 import {
@@ -16,6 +15,7 @@ import {
   getVisualizerRawSettings,
 } from "metabase/visualizer/selectors";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
+import { getDefaultDimensionFilter } from "metabase/viz-core";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 

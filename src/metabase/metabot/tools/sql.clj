@@ -126,10 +126,10 @@
                {:database-id database_id
                 :sql sql_query})
               {:keys [valid? dialect error-message]} validation-result
-              {:keys [query-id query-content]} action-result]
+              {:keys [query-content]} action-result]
           (if valid?
             (let [structured (assoc action-result :result-type :query)
-                  instr      (instructions/query-created-instructions-for query-id)]
+                  instr      instructions/query-loaded-in-editor-instructions]
               {:output (format-query-output structured instr {:preamble? true})
                :structured-output structured
                :instructions instr
@@ -171,9 +171,9 @@
           {:keys [valid? error-message dialect]} validation-result
           {:keys [query-id query query-content]} action-result]
       (if valid?
-        (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/edit-sql-query-instructions-for query-id)
-              buffer-id  (first-code-editor-buffer-id)]
+        (let [structured (assoc action-result :result-type :query)
+              buffer-id  (first-code-editor-buffer-id)
+              instr      (instructions/edit-sql-query-instructions-for query-id (some? buffer-id))]
           {:output (format-query-output structured instr)
            :structured-output structured
            :instructions instr
@@ -220,9 +220,9 @@
           {:keys [valid? dialect error-message]} validation-result
           {:keys [query-id query query-content]} action-result]
       (if valid?
-        (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/replace-sql-query-instructions-for query-id)
-              buffer-id  (first-code-editor-buffer-id)]
+        (let [structured (assoc action-result :result-type :query)
+              buffer-id  (first-code-editor-buffer-id)
+              instr      (instructions/replace-sql-query-instructions-for query-id (some? buffer-id))]
           {:output (format-query-output structured instr)
            :structured-output structured
            :instructions instr

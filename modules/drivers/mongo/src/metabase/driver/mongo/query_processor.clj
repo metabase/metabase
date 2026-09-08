@@ -609,6 +609,7 @@ function(bin) {
           :quarter
           (if supports-dateTrunc?
             (truncate :quarter)
+            ;; mongo-let vars are referenced via :$$parts.* keywords, which kondo can't see
             (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column :timezone (driver-api/results-timezone-id)}}]
               {:$dateFromParts {:year  :$$parts.year
                                 :month {$subtract [:$$parts.month
@@ -2285,14 +2286,18 @@ function(bin) {
 ;;; values added by add-alias-info.
 (defn- HACK-update-aliases-in-field-refs
   [query]
-  (letfn [(prepend-nfc-path [{nfc-path      driver-api/qp.add.nfc-path,
+  (letfn [(raw-mongo-path [id-or-name]
+            (when (pos-int? id-or-name)
+              (field->name query (driver-api/field query id-or-name))))
+          (prepend-nfc-path [raw-path
+                             {nfc-path      driver-api/qp.add.nfc-path,
                               source-alias  driver-api/qp.add.source-alias
                               desired-alias driver-api/qp.add.desired-alias
                               :as           opts}]
             (when (seq nfc-path)
               (let [nfc-path-str (str/join \. nfc-path)]
                 (-> opts
-                    (assoc driver-api/qp.add.source-alias  (str nfc-path-str \. source-alias)
+                    (assoc driver-api/qp.add.source-alias  (or raw-path (str nfc-path-str \. source-alias))
                            driver-api/qp.add.desired-alias (str nfc-path-str \. desired-alias))
                     (dissoc driver-api/qp.add.nfc-path)))))
           (update-name [{field-name :name, source-alias driver-api/qp.add.source-alias, :as opts}]
@@ -2308,20 +2313,20 @@ function(bin) {
                        source-table
                        (not= join-alias source-table))
               (assoc opts :join-alias source-table)))
-          (update-opts [opts]
+          (update-opts [raw-path opts]
             (reduce
              (fn
                [opts f]
                (or (f opts)
                    opts))
              opts
-             [prepend-nfc-path
+             [(partial prepend-nfc-path raw-path)
               update-join-alias
               update-name
               remove-bad-join-alias
               update-join-alias]))
           (update-field-ref [[_tag {source-alias driver-api/qp.add.source-alias, :as _opts} id-or-name, :as field-ref]]
-            (let [field-ref' (lib/update-options field-ref update-opts)]
+            (let [field-ref' (lib/update-options field-ref (partial update-opts (raw-mongo-path id-or-name)))]
               (cond-> field-ref'
                 (and (string? id-or-name)
                      source-alias)

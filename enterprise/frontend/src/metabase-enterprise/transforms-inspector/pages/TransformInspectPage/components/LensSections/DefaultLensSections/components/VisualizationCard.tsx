@@ -2,7 +2,7 @@ import { memo } from "react";
 
 import { useGetAdhocQueryMetadataQuery } from "metabase/api";
 import { useSnapshotSelector } from "metabase/common/hooks";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/metadata-store";
 import { Box, Card, Loader, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -69,7 +69,7 @@ export const VisualizationCard = memo(
       : undefined;
 
     return (
-      <Card p="md" shadow="none" withBorder>
+      <Card p="lg" shadow="none" withBorder>
         <Stack gap="sm">
           {isLoading || !rawSeries ? (
             <Stack gap="sm" align="center" justify="center" h={height}>

@@ -1,4 +1,10 @@
-import { getEmbeddingColorPalette } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import {
+  getEmbeddingColorPalette,
+  setGlobalEmbeddingColors,
+} from "metabase/embedding-sdk/theme/embedding-color-palette";
+import { colors } from "metabase/ui/colors";
+import { getSeriesColors } from "metabase/viz-core";
+import type { SeriesSettings } from "metabase-types/api";
 
 describe("Embedding Color Palette", () => {
   it("transforms chart color overrides into accent colors", () => {
@@ -24,5 +30,42 @@ describe("Embedding Color Palette", () => {
     for (const key in expected) {
       expect(palette[key]).toBe(expected[key]);
     }
+  });
+
+  describe("chart series colors", () => {
+    const THEME_CHARTS = ["#111111", "#222222", "#333333"];
+
+    const getCountSeriesColor = (series: SeriesSettings) =>
+      getSeriesColors(["count"], { series_settings: { count: series } }, [
+        undefined,
+      ]).count;
+
+    afterEach(() => {
+      setGlobalEmbeddingColors();
+    });
+
+    it("follows the theme when the series records a palette color", () => {
+      setGlobalEmbeddingColors({ charts: THEME_CHARTS });
+
+      expect(
+        getCountSeriesColor({ color: "#123456", color_name: "accent2" }),
+      ).toBe(THEME_CHARTS[2]);
+    });
+
+    it("leaves a series that only has a stored color untouched", () => {
+      const pickedColor = colors.accent2;
+
+      setGlobalEmbeddingColors({ charts: THEME_CHARTS });
+
+      expect(getCountSeriesColor({ color: pickedColor })).toBe(pickedColor);
+    });
+
+    it("leaves a series alone when the theme sets no chart colors", () => {
+      setGlobalEmbeddingColors({ brand: "#123456" });
+
+      expect(
+        getCountSeriesColor({ color: "#123456", color_name: "accent2" }),
+      ).toBe(colors.accent2);
+    });
   });
 });

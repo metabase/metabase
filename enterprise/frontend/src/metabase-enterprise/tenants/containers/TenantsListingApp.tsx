@@ -55,7 +55,7 @@ export const TenantsListingApp = () => {
   return (
     // Make the layout narrow when there are no tenants
     <Box maw={hasNoTenants ? "700px" : undefined} mx="auto">
-      <Group justify="space-between" w="100%" mb="lg">
+      <Group justify="space-between" w="100%" mb="xl">
         <Title order={1}>{t`Tenants`}</Title>
 
         <Group gap="sm">
@@ -68,7 +68,7 @@ export const TenantsListingApp = () => {
         <Tabs
           value={status}
           onChange={handleTabChange}
-          pl="md"
+          pl="lg"
           listBorder={false}
         >
           <Tabs.List>

@@ -2,12 +2,12 @@
   (:require
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.example-question-generator :as native-generator]
    [metabase.metabot.tools.entity-details :as metabot.tools.entity-details]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.metabot.usage :as metabot.usage]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -97,9 +97,9 @@
                 model-prompts  (vec (mapcat ->prompt table_questions models))
                 total          (+ (count metric-prompts) (count model-prompts))]
             (when (seq metric-prompts)
-              (t2/insert! :model/MetabotPrompt metric-prompts))
+              (metabot.db/insert-prompts! metric-prompts))
             (when (seq model-prompts)
-              (t2/insert! :model/MetabotPrompt model-prompts))
+              (metabot.db/insert-prompts! model-prompts))
             (if (zero? total)
               {:status :ai-produced-no-prompts}
               {:status :generated :prompt_count total})))))))
@@ -107,4 +107,4 @@
 (defn delete-all-metabot-prompts
   "Drop suggested prompts for instance of Metabot."
   [metabot-id]
-  (t2/delete! :model/MetabotPrompt {:where [:= :metabot_id metabot-id]}))
+  (metabot.db/delete-prompts-for-metabot! metabot-id))

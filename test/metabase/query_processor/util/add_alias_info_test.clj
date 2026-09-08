@@ -16,12 +16,16 @@
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.lib.test-util.uuid-dogs-metadata-provider :as lib.tu.uuid-dogs-metadata-provider]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.match :as match]))
 
 (comment h2/keep-me)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- remove-source-metadata
   "This is mostly to make the test failure diffs sane."

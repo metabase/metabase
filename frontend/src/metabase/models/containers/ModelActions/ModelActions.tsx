@@ -10,13 +10,13 @@ import {
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { getMetadata } from "metabase/metadata-store";
 import ModelActionsView from "metabase/models/components/ModelActions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { fetchTableForeignKeys } from "metabase/redux/tables";
 import { Outlet, useNavigate, useParams } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

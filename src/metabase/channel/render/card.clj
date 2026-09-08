@@ -1,6 +1,7 @@
 (ns metabase.channel.render.card
   (:require
    [hiccup.core :refer [h]]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.png :as png]
@@ -15,8 +16,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.markdown :as markdown]
-   [toucan2.core :as t2]))
+   [metabase.util.markdown :as markdown]))
 
 ;;; I gave these keys below namespaces to make them easier to find usages for but didn't use `metabase.channel.render` so
 ;;; we can keep this as an internal namespace you don't need to know about outside of the module.
@@ -367,5 +367,5 @@
 (mu/defn defaulted-timezone :- :string
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
   [card]
-  (or (some->> card :database_id (t2/select-one :model/Database :id) qp.timezone/results-timezone-id)
+  (or (some->> card :database_id channel.db/database qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))

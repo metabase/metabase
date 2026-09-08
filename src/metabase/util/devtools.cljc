@@ -23,12 +23,12 @@
      (defonce unload-handler-set? (atom false))
      (defn- ^:dev/after-load on-reload []
        (when (compare-and-set! unload-handler-set? false true)
-         (js/console.log "CLJS code hot loaded; setting up webpack invalidation on unload")
+         (js/console.log "CLJS code hot loaded; setting up rspack invalidation on unload")
          (.addEventListener js/window "beforeunload"
                             (fn [_event]
-                              (js/console.log "invalidating webpack build")
-                              (js/fetch (str "http://localhost:" (frontend-dev-port) "/webpack-dev-server/invalidate"))
-                              ;; HACK: Spin-lock to buy time for webpack to actually start rebuilding. Without this
+                              (js/console.log "invalidating rspack build")
+                              (js/fetch (str "http://localhost:" (frontend-dev-port) "/rspack-dev-server/invalidate"))
+                              ;; HACK: Spin-lock to buy time for rspack to actually start rebuilding. Without this
                               ;; there's a race between the invalidation and the refreshed page loading the bundles.
                               (let [target (+ (js/performance.now) 500)]
                                 (loop []

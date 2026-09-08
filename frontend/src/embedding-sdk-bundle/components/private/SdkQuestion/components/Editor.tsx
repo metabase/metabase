@@ -2,13 +2,13 @@ import { useMemo } from "react";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { useListDatabasesQuery } from "metabase/api";
+import { getMetadata } from "metabase/metadata-store";
 import {
   isQuestionDirty,
   isQuestionRunnable,
 } from "metabase/querying/common/utils/question";
 import { Notebook as QBNotebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/settings";
 import { ScrollArea } from "metabase/ui";
 import * as Lib from "metabase-lib";

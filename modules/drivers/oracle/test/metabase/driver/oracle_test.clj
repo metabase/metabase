@@ -25,6 +25,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.order-by-test :as qp-test.order-by-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]

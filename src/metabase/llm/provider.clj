@@ -19,9 +19,11 @@
   (:require
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -171,11 +173,17 @@
     :default-model "google/gemini-3.5-flash"
     ;; The Gemini Enterprise Agent Platform has no listing endpoint we can trust — the one it exposes reports models
     ;; that are not really available and omits ones that are — so the models Metabot is known to work with are fixed
-    ;; here, and connecting validates the credentials against the model chosen in the connection form with a free
-    ;; `countTokens` probe. Which of them a project can actually reach depends on its location.
-    :models        [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
-                    {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
-                    {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}]
+    ;; here, and connecting validates the credentials against the model chosen in the connection form with a probe.
+    ;; Which of them a project can actually reach depends on its location.
+    :models        [{:id "google/gemini-3.5-flash"             :display_name "Gemini 3.5 Flash"}
+                    {:id "google/gemini-3.6-flash"             :display_name "Gemini 3.6 Flash"}
+                    {:id "google/gemini-3.7-flash"             :display_name "Gemini 3.7 Flash"}
+                    {:id "anthropic/claude-fable-5"            :display_name "Claude Fable 5"}
+                    {:id "anthropic/claude-opus-5"             :display_name "Claude Opus 5"}
+                    {:id "anthropic/claude-opus-4-6"           :display_name "Claude Opus 4.6"}
+                    {:id "anthropic/claude-sonnet-5"           :display_name "Claude Sonnet 5"}
+                    {:id "anthropic/claude-sonnet-4-6"         :display_name "Claude Sonnet 4.6"}
+                    {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
     ;; A service account key authenticates on its own (it can carry the project); an OAuth token needs the project
     ;; named beside it.
     :required-any  [[:service-account-key] [:oauth-access-token :project-id]]
@@ -264,16 +272,25 @@
     :label         (deferred-tru "Amazon Bedrock")
     :default-model "anthropic.claude-opus-4-8"
     :mini-model    "anthropic.claude-haiku-4-5"
-    :fields        [{:key         :access-key-id
-                     :label       (deferred-tru "Access key ID")
-                     :type        :password
-                     :required?   true
-                     :placeholder "AKIA..."
-                     :docs-url    "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html"}
-                    {:key       :secret-access-key
-                     :label     (deferred-tru "Secret access key")
-                     :type      :password
-                     :required? true}
+    ;; Both keys together select explicit credentials, neither selects the AWS default credentials chain, and one
+    ;; without the other authenticates nothing. A session token only extends the pair.
+    :requires      {:access-key-id     [:secret-access-key]
+                    :secret-access-key [:access-key-id]
+                    :session-token     [:access-key-id :secret-access-key]}
+    :fields        [{:key              :access-key-id
+                     :label            (deferred-tru "Access key ID")
+                     :type             :password
+                     :placeholder      "AKIA..."
+                     :help             (deferred-tru "Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile).")
+                     ;; The default chain resolves the instance's own AWS identity, which on Metabase Cloud belongs
+                     ;; to the operator rather than the tenant, so hosted deployments must bring explicit keys.
+                     :hosted-required? true
+                     :hosted-help      (deferred-tru "On Metabase Cloud, Bedrock always authenticates with your own AWS keys.")
+                     :docs-url         "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html"}
+                    {:key              :secret-access-key
+                     :label            (deferred-tru "Secret access key")
+                     :type             :password
+                     :hosted-required? true}
                     {:key     :region
                      :label   (deferred-tru "Region")
                      :type    :select
@@ -316,15 +333,35 @@
 (def ^:private provider-type-by-name
   (into {} (map (juxt :type identity)) provider-type-registry))
 
+(defn- hosted-provider-type
+  "`entry` adjusted for a hosted deployment: a field's `:hosted-required?` makes it required and its `:hosted-help`
+  replaces its `:help`. Everything downstream (validation, completeness, the connection form) reads the entry
+  through [[provider-type]], so this is the one place hosted policy is applied."
+  [entry]
+  (update entry :fields
+          (partial mapv (fn [{:keys [hosted-help hosted-required?] :as field}]
+                          (cond-> field
+                            hosted-help      (assoc :help hosted-help)
+                            hosted-required? (assoc :required? true))))))
+
+(defn hosted?
+  "Whether hosted credential policy applies. [[premium-features/is-hosted?]] reads the `:hosting` license feature,
+  which reads as absent while the token service is unreachable, so an indeterminate token status counts as hosted
+  too: on Cloud a keyless Bedrock connection would otherwise sign as the operator."
+  []
+  (or (premium-features/is-hosted?)
+      (nil? (premium-features/canonically-has-feature? :hosting))))
+
 (defn provider-type
   "The registry entry for `type-name`, or nil when it is not a known provider type."
   [type-name]
-  (get provider-type-by-name type-name))
+  (when-let [entry (get provider-type-by-name type-name)]
+    (cond-> entry (hosted?) hosted-provider-type)))
 
 (defn provider-types
   "Every registered provider type."
   []
-  provider-type-registry)
+  (mapv (comp provider-type :type) provider-type-registry))
 
 (defn managed-type?
   "Whether `type-name` is the Metabase-managed provider, which authenticates with the instance token through the LLM
@@ -421,8 +458,8 @@
   [type-name config]
   (let [{:keys [required-any fields]} (provider-type type-name)
         label-for                     (into {} (map (juxt :key :label)) fields)
-        carried?                      (fn [group] (every? #(u/trimmed-string (get config %)) group))]
-    (when (and (seq required-any) (not-any? carried? required-any))
+        group-carried?                (fn [group] (every? #(u/trimmed-string (get config %)) group))]
+    (when (and (seq required-any) (not-any? group-carried? required-any))
       (throw (ex-info (tru "{0} needs one of: {1}."
                            type-name
                            (str/join (str " " (tru "or") " ")
@@ -430,17 +467,34 @@
                                           required-any)))
                       {:status-code 400 :required-any required-any})))))
 
+(defn- validate-requires!
+  "Throw a 400 when `config` carries a field without the fields its `:requires` entry names: for Bedrock, half an
+  access key pair, or a session token without the pair."
+  [type-name config]
+  (let [{:keys [requires fields]} (provider-type type-name)
+        label-for                 (into {} (map (juxt :key :label)) fields)
+        carried?                  #(u/trimmed-string (get config %))]
+    (doseq [[field-key deps] requires]
+      (when (and (carried? field-key) (not-every? carried? deps))
+        (throw (ex-info (tru "{0} takes {1} only together with {2}."
+                             type-name
+                             (str (label-for field-key))
+                             (str/join " + " (map (comp str label-for) deps)))
+                        {:status-code 400 :requires {field-key deps}}))))))
+
 (defn validate-config!
   "Check a connection's `:config` against its provider type's field descriptors: required fields are present, fields
   that declare a `:prefix` start with it, `:options` values are among the options, per-field `:validate` hooks pass,
-  and one of the type's `:required-any` credential groups is carried. Throws a 400 on the first problem."
+  one of the type's `:required-any` credential groups is carried, and no field is carried without the fields its
+  `:requires` entry names. Throws a 400 on the first problem."
   [type-name config]
   (when-not (provider-type type-name)
     (throw (ex-info (tru "Unknown provider type {0}." (pr-str type-name))
                     {:status-code 400 :type type-name})))
   (doseq [field (:fields (provider-type type-name))]
     (validate-field! type-name field config))
-  (validate-required-any! type-name config))
+  (validate-required-any! type-name config)
+  (validate-requires! type-name config))
 
 (defn credentials-complete?
   "Whether `config` carries the credentials a request needs.
@@ -448,24 +502,31 @@
   A required field the registry gives a `:default` counts as carried: [[with-field-defaults]] supplies it when the
   connection is resolved, so leaving it untouched is the admin accepting the value its form showed. A type with
   `:required-any` groups additionally needs one of them carried in full — Google's fields are individually optional
-  because either credential will do, which without the groups would make an empty config count as complete.
+  because either credential will do, which without the groups would make an empty config count as complete. A field
+  with a `:requires` entry needs the fields it names: Bedrock's key pair is optional because a keyless connection
+  signs with the AWS default credentials chain, but half a pair authenticates nothing.
 
   [[model-fields]] are exempt: they name what to call, not what authenticates the call, and a connection can
   legitimately take its model from the `connection-key/model` reference instead — which is where an Azure
   deployment configured before the connection list existed still lives. [[validate-config!]] still requires them
   of anything saved through the API, so only the environment and a hand-written `llm-providers` can omit them."
   [type-name config]
-  (let [{:keys [fields required-any]} (provider-type type-name)
-        model-keys                    (set (model-fields type-name))]
+  (let [{:keys [fields required-any requires]} (provider-type type-name)
+        model-keys                              (set (model-fields type-name))
+        carried?                                #(u/trimmed-string (get config %))]
     (and (every? (fn [{:keys [key required? default]}]
                    (or (not required?)
                        default
                        (contains? model-keys key)
-                       (u/trimmed-string (get config key))))
+                       (carried? key)))
                  fields)
          (or (empty? required-any)
-             (boolean (some (fn [group] (every? #(u/trimmed-string (get config %)) group))
-                            required-any))))))
+             (boolean (some (fn [group] (every? carried? group))
+                            required-any)))
+         (every? (fn [[field-key deps]]
+                   (or (not (carried? field-key))
+                       (every? carried? deps)))
+                 requires))))
 
 (defn config-complete?
   "Whether a connection of `type-name` can make requests: [[credentials-complete?]], or for the Metabase-managed
@@ -525,15 +586,32 @@
                             :model-family    {:setting :llm-azure-model-family}
                             :deployment-name {:setting :llm-azure-deployment-name}}}
    "bedrock"    {:type     "bedrock"
+                 ;; the region counts as a credential here: with no key pair the AWS default credentials chain
+                 ;; signs the requests, so the region alone brings a usable connection into existence
                  :settings {:access-key-id     {:setting :llm-bedrock-access-key-id :credential? true}
                             :secret-access-key {:setting :llm-bedrock-secret-access-key :credential? true}
                             :session-token     {:setting :llm-bedrock-session-token}
-                            :region            {:setting :llm-bedrock-region}}}
+                            :region            {:setting :llm-bedrock-region :credential? true}}}
    "vllm"       {:type     "vllm"
                  ;; the base URL is the credential here, unlike Azure's: a server started without --api-key takes
                  ;; no key, so the URL alone brings a usable connection into existence
                  :settings {:base-url {:setting :llm-vllm-api-base-url :credential? true}
                             :api-key  {:setting :llm-vllm-api-key}}}})
+
+(defn connection-env-vars
+  "The environment variables that configure a connection of `type-name`, as `{config-field \"MB_LLM_...\"}`.
+
+  Returns nil for a type no per-provider variable configures — the managed provider, which holds no credentials of
+  its own, is the only one today. Setting these is the supported way to configure a single connection without writing
+  JSON into [[metabase.llm.settings/llm-providers]]."
+  [type-name]
+  (when-let [{:keys [settings]} (get single-provider-settings type-name)]
+    (not-empty
+     (into {}
+           (keep (fn [{field-key :key}]
+                   (when-let [setting-kw (get-in settings [field-key :setting])]
+                     [field-key (setting/env-var-name setting-kw)])))
+           (:fields (provider-type type-name))))))
 
 (defn- env-supplied-fields
   "The `:config` fields the environment supplies for one [[single-provider-settings]] group:
@@ -789,18 +867,23 @@
         stored           (stored-connections)
         idx              (first (keep-indexed (fn [i conn] (when (= conn-key (:key conn)) i)) stored))]
     ;; a client echoing back the mask [[metabase.settings.core/obfuscate-value]] handed it is not entering a new
-    ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings
-    (when-not (setting/obfuscated-value? value)
-      (when value
-        (validate-config-field! group-type field {field value}))
-      (cond
-        idx   (set-connections! (update-in stored [idx :config]
-                                           (fn [config]
-                                             (if value (assoc config field value) (dissoc config field)))))
-        value (set-connections! (conj stored {:key    conn-key
-                                              :type   group-type
-                                              :name   (str (:label (provider-type group-type)))
-                                              :config {field value}}))))))
+    ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings. Both forms are checked: the
+    ;; mask of a newline-terminated secret (a JSON key file) matches only untrimmed, while a mask that picked up
+    ;; padding in transit matches only trimmed
+    (if (or (setting/obfuscated-value? new-value)
+            (setting/obfuscated-value? value))
+      (log/infof "Attempted to set %s to an obfuscated value. Ignoring change." (name setting-kw))
+      (do
+        (when value
+          (validate-config-field! group-type field {field value}))
+        (cond
+          idx   (set-connections! (update-in stored [idx :config]
+                                             (fn [config]
+                                               (if value (assoc config field value) (dissoc config field)))))
+          value (set-connections! (conj stored {:key    conn-key
+                                                :type   group-type
+                                                :name   (str (:label (provider-type group-type)))
+                                                :config {field value}})))))))
 
 ;;; -------------------------------------------------- Redaction ----------------------------------------------------
 

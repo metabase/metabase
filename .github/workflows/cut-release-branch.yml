@@ -59,6 +59,12 @@ jobs:
       # Pushing the new branch triggers set-milestone.yml, which does the
       # full milestone backfill and then dispatches release-notes-preview
       # to upload the markdown to #writing.
+      #
+      # Kondo ignore ratchets apply only to master. The cut commit replaces the
+      # budgets with an explicit opt-out so future budget changes are not applied
+      # to the release branch. Keeping the opt-out in the canonical file avoids
+      # introducing a separate marker that could drift out of sync, and the
+      # backport helper writes the same opt-out so both paths stay identical.
       - name: Cut the branch
         id: cut
         run: |
@@ -66,6 +72,9 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git checkout -b "$BRANCH"
+          source .github/actions/create-backport/kondo-ratchets.sh
+          write_disabled_ratchets
+          git add --sparse .clj-kondo/ratchets.edn
           git commit --allow-empty --no-verify -m "Cut $BRANCH branch"
           git push -u origin "$BRANCH"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"

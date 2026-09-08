@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 
 import { skipToken, useGetPublicDocumentCardQueryQuery } from "metabase/api";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import type { UseCardDataResult } from "metabase/rich_text_editing/tiptap/EditorHost";
-import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, Dataset, RawSeries } from "metabase-types/api";
 

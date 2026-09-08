@@ -1,9 +1,9 @@
 (ns metabase-enterprise.impersonation.api
   (:require
+   [metabase-enterprise.impersonation.db :as impersonation.db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -22,8 +22,8 @@
                                 [:db_id    {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (if (and group_id db_id)
-    (t2/select-one :model/ConnectionImpersonation :group_id group_id :db_id db_id)
-    (t2/select :model/ConnectionImpersonation {:order-by [[:id :asc]]})))
+    (impersonation.db/impersonation-for-group-and-database group_id db_id)
+    (impersonation.db/all-impersonations)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -34,6 +34,6 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/ConnectionImpersonation :id id))
-  (t2/delete! :model/ConnectionImpersonation :id id)
+  (api/check-404 (impersonation.db/impersonation id))
+  (impersonation.db/delete-impersonation! id)
   api/generic-204-no-content)
