@@ -595,10 +595,12 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       });
     });
 
+    // The slice's bounding box center can be covered by an echarts label
+    // element, which real pointers ignore but Cypress actionability does not.
     H.pieSliceWithColor("#88BF4D")
       .first()
       .as("doohickeyChart")
-      .trigger("mousemove");
+      .trigger("mousemove", { force: true });
 
     H.assertEChartsTooltip({
       header: "Category",
@@ -626,7 +628,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       ],
     });
 
-    cy.get("@doohickeyChart").click();
+    cy.get("@doohickeyChart").click({ force: true });
     cy.location("pathname").should("eq", "/question/42");
   });
 

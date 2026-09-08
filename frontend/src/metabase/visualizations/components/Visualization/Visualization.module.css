@@ -1,3 +1,11 @@
+/* Kept in a class so callers can override e.g. the height with an inline
+   style, like the notebook step preview does. */
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .header {
   padding: 0.625rem 0.5rem 0.375rem 0.5rem;
 }

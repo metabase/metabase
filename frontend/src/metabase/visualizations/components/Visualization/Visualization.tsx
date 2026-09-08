@@ -851,10 +851,8 @@ class Visualization extends PureComponent<
         onError={this.onErrorBoundaryError}
         ref={this.props.forwardedRef}
       >
-        <Flex
-          direction="column"
-          h="100%"
-          className={className}
+        <Box
+          className={cx(S.root, className)}
           style={style}
           data-testid="visualization-root"
           // `getUiName` should be defined (and is a required field on the TS type), but because we have javascript
@@ -1051,7 +1049,7 @@ class Visualization extends PureComponent<
               onUpdateVisualizationSettings={onUpdateVisualizationSettings}
             />
           )}
-        </Flex>
+        </Box>
       </ErrorBoundary>
     );
   }

@@ -145,7 +145,7 @@ describe("scenarios > visualizations > legend", () => {
           col: 0,
           row: 24,
           size_x: 24,
-          size_y: 5,
+          size_y: 6,
         },
       ],
     }).then(({ dashboard }) => H.visitDashboard(dashboard.id));
@@ -264,9 +264,12 @@ describe("scenarios > visualizations > legend", () => {
 
     H.getDashboardCard(1).within(() => {
       H.echartsContainer().findByText("500").should("exist"); // max y-axis value
-      cy.findByText("And 39 more").click();
+      cy.findByText(/And \d+ more/).click();
     });
-    H.popover().within(() => hideSeries(29)); // TX (Texas);
+    H.popover()
+      .contains('[data-testid="legend-item"]', "TX")
+      .findByLabelText("Hide series")
+      .click();
     H.getDashboardCard(1).click(); // click outside of popover to close it
     H.getDashboardCard(1).within(() =>
       H.echartsContainer().findByText("500").should("not.exist"),
