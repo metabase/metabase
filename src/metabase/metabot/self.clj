@@ -23,6 +23,7 @@
    [metabase.metabot.self.google :as google]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
+   [metabase.metabot.self.ollama :as ollama]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.vllm :as vllm]
@@ -46,6 +47,7 @@
     "google"     google/google
     "mistral"    mistral/mistral
     "moonshot"   moonshot/moonshot
+    "ollama"     ollama/ollama
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
     "vllm"       vllm/vllm
@@ -63,6 +65,7 @@
     "google"     google/list-models
     "mistral"    mistral/list-models
     "moonshot"   moonshot/list-models
+    "ollama"     ollama/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
     "vllm"       vllm/list-models
@@ -86,8 +89,9 @@
 
   This is the allow-list [[list-models]] intersects with the provider's live catalog, so a model listed here is
   available only if the connection's credentials can actually reach it. Returns nil for the provider types that have
-  no allow-list: `azure`, whose model is the deployment name the admin gives it, `vllm`, which serves whatever the
-  operator loaded, and `google` and `metabase`, whose catalogs are fixed in [[metabase.llm.provider]] instead."
+  no allow-list: `azure`, whose model is the deployment name the admin gives it, `vllm` and `ollama`, which serve
+  whatever the operator loaded, and `google` and `metabase`, whose catalogs are fixed in
+  [[metabase.llm.provider]] instead."
   [provider]
   ;; a `case` like [[resolve-adapter]], so a new adapter that forgets to register here throws rather than reading as
   ;; a provider that simply has no models
@@ -100,7 +104,7 @@
                       "openai"     openai/supported-models
                       "openrouter" openrouter/supported-models
                       "zai"        zai/supported-models
-                      ("azure" "google" "metabase" "vllm") nil
+                      ("azure" "google" "metabase" "ollama" "vllm") nil
                       (throw (ex-info (str "Unknown LLM provider: " provider)
                                       {:provider provider})))]
     (into {}

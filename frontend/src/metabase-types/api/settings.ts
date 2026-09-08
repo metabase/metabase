@@ -545,6 +545,8 @@ interface SettingsManagerSettings {
   "llm-bedrock-session-token"?: string | null;
   "llm-vllm-api-base-url"?: string | null;
   "llm-vllm-api-key"?: string | null;
+  "llm-ollama-api-base-url"?: string | null;
+  "llm-ollama-api-key"?: string | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;

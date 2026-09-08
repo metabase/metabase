@@ -310,6 +310,34 @@
                      ;; not required: a server started without --api-key takes no key, and a base URL on its own
                      ;; is a complete configuration
                      :help     (deferred-tru "Only needed if you started your server with --api-key.")}]}
+   {:type          "ollama"
+    :label         (deferred-tru "Ollama")
+    ;; Like vLLM, an Ollama server serves whatever the operator pulled, so the model a new connection
+    ;; starts on comes from the catalog that connecting fetches (see
+    ;; [[metabase.metabot.self.ollama/list-models]]).
+    :default-model nil
+    ;; Ollama comes in two deployments that need opposite things. Cloud is the one Ollama endpoint whose address we know, and it
+    ;; needs a key; a self-hosted server is at an address only the admin knows, and might need no
+    ;; key at all.
+    :required-any  [[:base-url] [:api-key]]
+    :fields        [{:key       :hosting
+                     :label     (deferred-tru "Where Ollama runs")
+                     :type      :segmented
+                     :required? true
+                     :options   [{:value "self-hosted" :label (deferred-tru "Self-hosted")}
+                                 {:value "cloud" :label (deferred-tru "Cloud")}]
+                     :default   "self-hosted"}
+                    {:key         :base-url
+                     :normalize   strip-trailing-slashes
+                     :label       (deferred-tru "API base URL")
+                     :type        :text
+                     :show-when   {:field :hosting :value "self-hosted"}
+                     :placeholder "http://ollama.your.company:11434/v1"
+                     :help        (deferred-tru "Where Ollama is listening, ending in /v1. It has to be reachable from the Metabase server, not from your browser.")}
+                    {:key   :api-key
+                     :label (deferred-tru "API key")
+                     :type  :password
+                     :help  (deferred-tru "The key your Ollama endpoint expects. Leave empty if it doesn''t need one.")}]}
    {:type          "metabase"
     :label         (deferred-tru "Metabase AI service")
     :managed?      true
@@ -540,7 +568,16 @@
                  ;; the base URL is the credential here, unlike Azure's: a server started without --api-key takes
                  ;; no key, so the URL alone brings a usable connection into existence
                  :settings {:base-url {:setting :llm-vllm-api-base-url :credential? true}
-                            :api-key  {:setting :llm-vllm-api-key}}}})
+                            :api-key  {:setting :llm-vllm-api-key}}}
+   "ollama"     {:type     "ollama"
+                 ;; both are credentials, because either deployment can be configured on its own: a base
+                 ;; URL alone is a self-hosted server, which needs no key, and a key alone is Ollama
+                 ;; Cloud, whose address the adapter already knows
+                 ;; `:hosting` is not a credential — on its own it configures nothing — but it has to be
+                 ;; settable, or an env-configured Cloud connection could not say that is what it is.
+                 :settings {:base-url {:setting :llm-ollama-api-base-url :credential? true}
+                            :api-key  {:setting :llm-ollama-api-key :credential? true}
+                            :hosting  {:setting :llm-ollama-hosting}}}})
 
 (defn connection-env-vars
   "The environment variables that configure a connection of `type-name`, as `{config-field \"MB_LLM_...\"}`.

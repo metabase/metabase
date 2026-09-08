@@ -205,7 +205,7 @@ Credentials:
 
 - **Project ID**. The Google Cloud project to use. Optional if the service account key provides it. [Where do I find this?](https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects) You can also set it with the environment variable `MB_LLM_GOOGLE_PROJECT_ID`.
 - **Location**. Optional. Defaults to global. You can also set it with the environment variable `MB_LLM_GOOGLE_LOCATION`.
-- **Authentication method** (required). Authenticate with a service account key or an OAuth access token. One of: `Service account key`, `OAuth token`. Defaults to `Service account key`.
+- **Authentication method** (required). Authenticate with a service account key or an OAuth access token. One of: `service-account-key`, `oauth-token`. Defaults to `service-account-key`.
 - **Service account key file**. Only when **Authentication method** is **Service account key**. Upload a service account key file to authenticate with. [Where do I find this?](https://docs.cloud.google.com/iam/docs/keys-create-delete) You can also set it with the environment variable `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`.
 - **OAuth access token**. Only when **Authentication method** is **OAuth token**. A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing. You can also set it with the environment variable `MB_LLM_GOOGLE_OAUTH_ACCESS_TOKEN`.
 - **API base URL** (advanced). Derived from the location when left at the global host. Defaults to `https://aiplatform.googleapis.com`. You can also set it with the environment variable `MB_LLM_GOOGLE_API_BASE_URL`.
@@ -224,7 +224,7 @@ Credentials:
 
 - **API key** (required). [Where do I find this?](https://ai.azure.com) You can also set it with the environment variable `MB_LLM_AZURE_API_KEY`.
 - **API base URL** (required). You can also set it with the environment variable `MB_LLM_AZURE_API_BASE_URL`.
-- **Model provider** (required). Whether your deployment serves an Anthropic or an OpenAI model. One of: `OpenAI`, `Anthropic`. Defaults to `OpenAI`. You can also set it with the environment variable `MB_LLM_AZURE_MODEL_FAMILY`.
+- **Model provider** (required). Whether your deployment serves an Anthropic or an OpenAI model. One of: `openai`, `anthropic`. Defaults to `openai`. You can also set it with the environment variable `MB_LLM_AZURE_MODEL_FAMILY`.
 - **Deployment name** (required). The name of the model deployment on your Azure resource. We recommend naming deployments after the model they serve. You can also set it with the environment variable `MB_LLM_AZURE_DEPLOYMENT_NAME`.
 
 ## Amazon Bedrock
@@ -261,12 +261,28 @@ Credentials:
 
 Supported models:
 
-Metabase lists whichever models your vLLM server is serving, so what you can pick depends on how you started it.
+Metabase lists whichever models your vLLM server has available, so what you can pick depends on how you set it up.
 
 Credentials:
 
 - **API base URL** (required). Your server's OpenAI-compatible API. It should end in /v1. You can also set it with the environment variable `MB_LLM_VLLM_API_BASE_URL`.
 - **API key**. Only needed if you started your server with --api-key. You can also set it with the environment variable `MB_LLM_VLLM_API_KEY`.
+
+## Ollama
+
+- Provider key: `ollama`
+
+Supported models:
+
+Metabase lists whichever models your Ollama server has available, so what you can pick depends on how you set it up.
+
+Credentials:
+
+- **Where Ollama runs** (required). One of: `self-hosted`, `cloud`. Defaults to `self-hosted`. You can also set it with the environment variable `MB_LLM_OLLAMA_HOSTING`.
+- **API base URL**. Only when **Where Ollama runs** is **Self-hosted**. Where Ollama is listening, ending in /v1. It has to be reachable from the Metabase server, not from your browser. You can also set it with the environment variable `MB_LLM_OLLAMA_API_BASE_URL`.
+- **API key**. The key your Ollama endpoint expects. Leave empty if it doesn't need one. You can also set it with the environment variable `MB_LLM_OLLAMA_API_KEY`.
+
+Ollama needs either **API base URL**, or **API key**.
 
 ## Metabase AI service
 

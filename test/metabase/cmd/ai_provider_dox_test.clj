@@ -68,8 +68,9 @@
     (is (nil? (#'ai-provider-dox/field-qualifier {})))))
 
 (deftest ^:parallel field-options-sentence-test
-  (testing "a short list of choices is spelled out"
-    (is (= "One of: `OpenAI`, `Anthropic`."
+  (testing "a short list of choices is spelled out as the values that get stored — this sentence sits
+           next to the environment variable that can supply one, and that variable carries the value"
+    (is (= "One of: `openai`, `anthropic`."
            (#'ai-provider-dox/field-options-sentence
             {:options [{:value "openai" :label "OpenAI"} {:value "anthropic" :label "Anthropic"}]}))))
   (testing "a long list is pointed at instead — but still says the field is a picker"
@@ -84,8 +85,9 @@
 (deftest ^:parallel field-default-sentence-test
   (testing "a plain default is shown as stored"
     (is (= "Defaults to `https://example.com`." (#'ai-provider-dox/field-default-sentence base-url-field))))
-  (testing "a default with `:options` is shown as the label the form displays, not the stored value"
-    (is (= "Defaults to `OpenAI`."
+  (testing "a default with `:options` is shown as the stored value, which is what an environment
+           variable or a config file has to carry"
+    (is (= "Defaults to `openai`."
            (#'ai-provider-dox/field-default-sentence
             {:default "openai"
              :options [{:value "openai" :label "OpenAI"} {:value "anthropic" :label "Anthropic"}]}))))
@@ -189,7 +191,7 @@
     (is (str/includes? (#'ai-provider-dox/models-markdown (registry-entry "google"))
                        "| Model "))
     (is (str/includes? (#'ai-provider-dox/models-markdown (registry-entry "vllm"))
-                       "whichever models your vLLM server is serving")))
+                       "whichever models your vLLM server has available")))
   (testing "Azure explains that the model comes from the deployment instead, naming the fields by their labels"
     ;; answer first: the block sits under a "Supported models:" label, so it leads with what you get rather than
     ;; with the catalog it hasn't got

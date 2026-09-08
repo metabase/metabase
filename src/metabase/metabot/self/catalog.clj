@@ -6,6 +6,7 @@
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.google :as google]
+   [metabase.metabot.self.ollama :as ollama]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.vllm :as vllm]))
 
@@ -14,9 +15,9 @@
 (defn streams-reasoning?
   "Whether a model reference names a model that streams its reasoning back to us.
 
-  Anthropic and OpenAI answer from the model name, because thinking is requested in the request body. vLLM answers
-  from what its connect-time probe observed and recorded on the connection — the flag depends on the operator's
-  `--reasoning-parser` as well as on the model, so the name cannot settle it."
+  Anthropic and OpenAI answer from the model name, because thinking is requested in the request body. vLLM and
+  Ollama answer from what their connect-time probe observed and recorded on the connection — the flag depends on how
+  the operator started the server or built the model as well as on the model itself, so the name cannot settle it."
   [model-ref]
   (let [{:keys [type model credentials]} (llm.provider/resolve-model-ref model-ref)]
     (case type
@@ -25,6 +26,7 @@
       "openai"    (openai/reasoning-model? model)
       "google"    (google/reasoning-model? model)
       "vllm"      (vllm/reasoning-connection? credentials)
+      "ollama"    (ollama/reasoning-connection? credentials)
       false)))
 
 (defn supports-fast-mode?
