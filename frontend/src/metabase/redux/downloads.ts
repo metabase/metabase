@@ -124,7 +124,7 @@ const getResourceType = ({
   if (documentId != null || documentUuid != null) {
     return "document-card";
   }
-  if (cardId != null) {
+  if (typeof cardId === "number") {
     return "question";
   }
   return "ad-hoc-question";
