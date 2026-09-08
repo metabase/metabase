@@ -1262,17 +1262,20 @@
         (is (= [{:id 500 :database_id 1}] @checked)
             "the resolved card row is handed to api/read-check")))))
 
-(deftest numeric-source-card-denied-surfaces-403-test
-  (testing "a numeric `source-card:` the user cannot read surfaces the 403, never the database id"
+(deftest numeric-source-card-denied-never-yields-database-id-test
+  (testing "a numeric `source-card:` the user cannot read never yields the database id"
     (with-v2-surface
       (with-stubbed-card! (fn [_] (throw (ex-info "You don't have permissions to do that."
                                                   {:status-code 403})))
         (fn []
           (try
             (construct/resolve-database-id-from-first-stage (numeric-card-source 500))
-            (is false "expected a 403 throw, got a resolved database id (permission bypass)")
+            (is false "expected a throw, got a resolved database id (permission bypass)")
             (catch clojure.lang.ExceptionInfo e
-              (is (= 403 (:status-code (ex-data e)))))))))))
+              ;; Collapsed to not-found, not 403: an unreadable card and an absent one must be
+              ;; indistinguishable, or the status code probes for hidden cards. The check still
+              ;; runs — that is what this test guards.
+              (is (= :unknown-card-id (:error (ex-data e)))))))))))
 
 (deftest numeric-source-card-read-checked-without-current-user-test
   (testing (str "the read check does not depend on `api/*current-user-id*` being bound.\n"
@@ -1286,9 +1289,11 @@
           (fn []
             (try
               (construct/resolve-database-id-from-first-stage (numeric-card-source 500))
-              (is false "expected a 403 throw, got a resolved database id (permission bypass)")
+              (is false "expected a throw, got a resolved database id (permission bypass)")
               (catch clojure.lang.ExceptionInfo e
-                (is (= 403 (:status-code (ex-data e))))))))))))
+                ;; The point here is that the check RUNS with no bound user; the denial is
+                ;; collapsed to not-found like every other one.
+                (is (= :unknown-card-id (:error (ex-data e))))))))))))
 
 (deftest numeric-source-card-unknown-id-surfaces-agent-error-test
   (testing (str "a numeric `source-card:` naming no card surfaces `:unknown-card-id`, not a 404 — "

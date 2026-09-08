@@ -27,11 +27,23 @@
 (defn- maybe-read-check
   "Apply `api/read-check` when `*current-user-id*` is bound; otherwise return the row
   unchanged. Returning `nil` propagates through (no row → nothing to check; the
-  per-model resolver functions translate `nil` into a clean `:unknown-…` agent error)."
+  per-model resolver functions translate `nil` into a clean `:unknown-…` agent error).
+
+  A denial also returns `nil` rather than letting `read-check`'s 403 escape, so \"exists but
+  you may not read it\" and \"does not exist\" reach the caller as the same `:unknown-…` error.
+  Letting the two diverge is an existence oracle: content ids are sequential and easy to guess,
+  so a caller could tell a hidden object from an absent one by the status code alone. The
+  numeric-id surface makes that trivial to probe, which is why the collapse lives here — at the
+  one chokepoint every content lookup passes through — rather than in each resolver."
   [row]
   (cond
     (nil? row)              nil
-    api/*current-user-id*   (api/read-check row)
+    api/*current-user-id*   (try
+                              (api/read-check row)
+                              (catch clojure.lang.ExceptionInfo e
+                                (if (= 403 (:status-code (ex-data e)))
+                                  nil
+                                  (throw e))))
     :else                   row))
 
 (defn read-checked

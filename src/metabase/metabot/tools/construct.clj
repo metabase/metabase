@@ -219,9 +219,14 @@
     (and (vector? node)
          (not (map-entry? node))
          (= "field" (nth node 0 nil)))
+    ;; Both slots, for both forms. Repair inserts the options map later, so an LLM-authored
+    ;; `["field", 42]` still carries its target in slot 1 when this pass runs — checking the
+    ;; numeric form in slot 2 only (as this did) let that shape through uncollected, and so
+    ;; unchecked. The portable form already looked at both slots; the numeric one has to match.
     (keep identity [(or (portable-field-fk-table (nth node 2 nil))
                         (portable-field-fk-table (nth node 1 nil))
-                        (numeric-field-id-ref (nth node 2 nil)))])))
+                        (numeric-field-id-ref (nth node 2 nil))
+                        (numeric-field-id-ref (nth node 1 nil)))])))
 
 (defn- referenced-table-fks
   "Every table reference in the query: portable `[db schema table]` FKs, plus bare table ids on the
@@ -264,21 +269,56 @@
                (not (contains? #{:hidden :technical :cruft} (:visibility-type table))))
       table)))
 
+(def ^:private hidden-field-visibility-types
+  "Field visibility types the warehouse marks as not for querying."
+  #{:sensitive :retired})
+
+(defn- field-itself-visible?
+  "The per-field half of [[visible-field]]: active, and not marked unqueryable. Says nothing
+  about the field's table or its ancestors."
+  [field]
+  (and (some? field)
+       (not (false? (:active field)))
+       (not (contains? hidden-field-visibility-types (:visibility-type field)))))
+
+(defn- fetch-field
+  "`field-id` from `metadata-provider`, or nil. Catch-all for the same reason as
+  [[visible-table]]: fail closed, diagnose elsewhere."
+  [metadata-provider field-id]
+  (try
+    (lib.metadata.protocols/field metadata-provider field-id)
+    (catch Exception _ nil)))
+
+(def ^:private max-parent-chain-depth
+  "Depth bound for the `:parent-id` walk. JSON-unfolded columns nest a handful deep at most; the
+  bound is here so a cyclic or corrupt chain cannot spin, not because real data approaches it."
+  50)
+
 (defn- visible-field
   "The field `field-id` names, as seen from `metadata-provider`, or nil when it is not a field
   this query may reference — same rules as [[visible-table]], plus the field-level visibility
   types. `:sensitive` and `:retired` columns are excluded: the warehouse marks them as not for
   querying, and the portable dialect cannot name them because they are absent from the by-name
-  fetch."
+  fetch.
+
+  Walks the whole `:parent-id` chain, not just the named field. A JSON column unfolds into child
+  fields that carry their own visibility, so a perfectly ordinary-looking child of a `:sensitive`
+  parent would otherwise be referenceable by id — reaching inside a column the warehouse marked
+  unqueryable. Hiding a parent has to hide everything under it."
   [metadata-provider field-id]
-  ;; Catch-all, for the same reason as [[visible-table]]: fail closed, diagnose elsewhere.
-  (when-let [field (try
-                     (lib.metadata.protocols/field metadata-provider field-id)
-                     (catch Exception _ nil))]
-    (when (and (not (false? (:active field)))
-               (not (contains? #{:sensitive :retired} (:visibility-type field)))
+  (when-let [field (fetch-field metadata-provider field-id)]
+    (when (and (field-itself-visible? field)
                ;; the field's own table has to be referenceable too
-               (visible-table metadata-provider (:table-id field)))
+               (visible-table metadata-provider (:table-id field))
+               ;; …as does every ancestor, for its own sake
+               (loop [parent-id (:parent-id field)
+                      depth     0]
+                 (cond
+                   (nil? parent-id)                 true
+                   (>= depth max-parent-chain-depth) false
+                   :else (when-let [parent (fetch-field metadata-provider parent-id)]
+                           (when (field-itself-visible? parent)
+                             (recur (:parent-id parent) (inc depth)))))))
       field)))
 
 (defn- resolve-field-id->table-id
@@ -445,9 +485,21 @@
                          :entity-id    source-card-eid})))
 
       numeric-card
-      (let [card-id numeric-card
-            card    (metabot.db/card card-id)]
-        (when-not card
+      (let [card-id  numeric-card
+            card     (metabot.db/card card-id)
+            ;; Read-check here rather than let the 403 escape: an unreadable card and an absent
+            ;; one must be reported identically, or the status code tells a caller whether a
+            ;; hidden card exists. Same collapse the read-checked content store applies to every
+            ;; other content lookup, and the same one the numeric table branch already had.
+            readable (when card
+                       (try
+                         (api/read-check card)
+                         true
+                         (catch clojure.lang.ExceptionInfo e
+                           (if (= 403 (:status-code (ex-data e)))
+                             false
+                             (throw e)))))]
+        (when-not readable
           (throw (ex-info (tru "No saved question or model found with id {0}."
                                (str card-id))
                           {:agent-error? true
@@ -456,7 +508,6 @@
                            ;; miss and a portable-entity_id miss want different recovery advice
                            :error        :unknown-card-id
                            :card-id      card-id})))
-        (api/read-check card)
         (:database_id card))
 
       :else

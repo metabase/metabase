@@ -17,8 +17,10 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.permissions.core :as perms]
@@ -103,8 +105,9 @@
                                     :fields      [["field" {} "zzz_not_a_column"]]}]})]
            (is (= :threw (:outcome result))
                "an unreadable card must not resolve")
-           (is (= 403 (:status result))
-               "the denial is a permission error, not a repair error")
+           (is (= 400 (:status result))
+               "denied as a plain not-found — see unreadable-and-missing-card-are-indistinguishable-test")
+           (is (= :unknown-card-id (:error result)))
            (testing "no column of the unreadable card is reported, in ex-data or in the message"
              (is (nil? (:available result)))
              (doseq [leaked ["SecretMargin" "CATEGORY_ID" "count"]]
@@ -127,7 +130,8 @@
                                     :source-card  victim-id
                                     :fields       [["field" {} "zzz_not_a_column"]]}]})]
            (is (= :threw (:outcome result)))
-           (is (= 403 (:status result)))
+           (is (= 400 (:status result)))
+           (is (= :unknown-card-id (:error result)))
            (is (nil? (:available result)))))))))
 
 (deftest numeric-source-card-readable-resolves-through-the-store-test
@@ -158,9 +162,9 @@
        (fn [victim-id]
          (mt/with-current-user (mt/user->id :rasta)
            (binding [serdes.resolve/*numeric-ids-allowed?* true]
-             (is (thrown? clojure.lang.ExceptionInfo
-                          (resolve.mp/card-by-id shared.content-store/default-store victim-id))
-                 "an unreadable card must be denied by the store"))))))))
+             (is (nil? (resolve.mp/card-by-id shared.content-store/default-store victim-id))
+                 (str "an unreadable card must come back as nil from the read-checked store — "
+                      "the denial is collapsed there so callers cannot tell it from a missing id")))))))))
 
 ;;; ============================================================
 ;;; Numeric ids must denote something this query may reference
@@ -302,3 +306,103 @@
             (testing "and they are indistinguishable — same status, and neither names the table"
               (is (= (:status nonexistent) (:status forbidden)))
               (is (not (re-find #"SECRET_TBL" (or (:message forbidden) "")))))))))))
+
+;;; ============================================================
+;;; Follow-ups from review (crisptrutski)
+;;; ============================================================
+
+(deftest numeric-field-id-in-two-element-form-is-checked-test
+  (testing (str "a numeric field id written as `[\"field\", 42]` — no options map — must be\n"
+                "collected and checked like the three-element form. Repair inserts the options map\n"
+                "later, so at collection time the target is still in slot 1; checking only slot 2\n"
+                "let this shape reach resolution unchecked.")
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Field sensitive {:table_id        (mt/id :venues)
+                                             :name            "SSN_TWO_SLOT"
+                                             :base_type       :type/Text
+                                             :database_type   "VARCHAR"
+                                             :visibility_type "sensitive"
+                                             :active          true}]
+        (let [result (attempt-as-rasta
+                      {:lib/type "mbql/query"
+                       :database (db-name)
+                       :stages   [{:lib/type     "mbql.stage/mbql"
+                                   :source-table (mt/id :venues)
+                                   :fields       [["field" (:id sensitive)]]}]})]
+          (is (= :threw (:outcome result))
+              "the two-element form must not slip past the referenceability check")
+          (is (not (re-find #"SSN_TWO_SLOT" (or (:message result) "")))
+              "and the rejection must not echo the column name"))))))
+
+(deftest sensitive-parent-hides-its-children-test
+  (testing (str "a visible child of a `:sensitive` parent must not be referenceable. A JSON column\n"
+                "unfolds into children carrying their own visibility, so checking only the named\n"
+                "field would let an ordinary-looking child reach inside a column the warehouse\n"
+                "marked unqueryable.")
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Field parent {:table_id        (mt/id :venues)
+                                          :name            "PAYLOAD"
+                                          :base_type       :type/JSON
+                                          :database_type   "JSON"
+                                          :visibility_type "sensitive"
+                                          :active          true}
+                     :model/Field child  {:table_id      (mt/id :venues)
+                                          :parent_id     (:id parent)
+                                          :name          "ssn"
+                                          :base_type     :type/Text
+                                          :database_type "VARCHAR"
+                                          :active        true}]
+        (let [result (attempt-as-rasta
+                      {:lib/type "mbql/query"
+                       :database (db-name)
+                       :stages   [{:lib/type     "mbql.stage/mbql"
+                                   :source-table (mt/id :venues)
+                                   :fields       [["field" {} (:id child)]]}]})]
+          (is (= :threw (:outcome result))
+              "a child of a sensitive parent must be refused even though the child itself is visible")
+          (is (not (re-find #"PAYLOAD|ssn" (or (:message result) "")))
+              "and neither the parent nor the child is named back"))))))
+
+(deftest unreadable-and-missing-card-are-indistinguishable-test
+  (testing (str "a numeric `source-card` the caller cannot read must be reported exactly as one\n"
+                "that does not exist. Content ids are sequential and easy to guess, so a status-code\n"
+                "difference (403 for hidden vs 400 for absent) is an existence oracle. The collapse\n"
+                "lives in the read-checked store, so it covers cards, measures and segments at once.")
+    (mt/with-premium-features #{}
+      (unreadable-card-thunk
+       (fn [victim-id]
+         (let [forbidden (attempt-as-rasta
+                          {:lib/type "mbql/query"
+                           :database (db-name)
+                           :stages   [{:lib/type "mbql.stage/mbql" :source-card victim-id}]})
+               missing   (attempt-as-rasta
+                          {:lib/type "mbql/query"
+                           :database (db-name)
+                           :stages   [{:lib/type "mbql.stage/mbql" :source-card 999999999}]})]
+           (testing "both are refused"
+             (is (= :threw (:outcome forbidden)))
+             (is (= :threw (:outcome missing))))
+           (testing "with the same status and the same error key"
+             (is (= (:status missing) (:status forbidden))
+                 (str "status differed: missing=" (:status missing) " forbidden=" (:status forbidden)))
+             (is (= (:error missing) (:error forbidden))
+                 (str "error key differed: missing=" (:error missing) " forbidden=" (:error forbidden))))))))))
+
+(deftest readable-table-lookup-passes-a-full-row-to-can-read-test
+  (testing (str "`readable-active-table-database-id` must hand `mi/can-read?` the whole Table row.\n\n"
+                "`can-read?` for a Table is polymorphic over the instance: its published-collection\n"
+                "branch reads `:is_published` and `:collection_id` (warehouse_schema/models/table.clj,\n"
+                "via `perms/can-access-via-collection?`). Selecting only `:id`/`:db_id` — as this fn\n"
+                "first did — makes that branch evaluate against absent keys, so a user whose access\n"
+                "comes through a published collection is told the table does not exist. Asserting on\n"
+                "the row the predicate receives pins the bug directly, without needing the EE\n"
+                "implementation (OSS `can-access-via-collection?` is a constant `false`).")
+    (mt/with-premium-features #{}
+      (let [seen (atom nil)]
+        (with-redefs [mi/can-read? (fn [row] (reset! seen row) true)]
+          (metabot.db/readable-active-table-database-id (mt/id :venues)))
+        (is (some? @seen) "can-read? should have been called")
+        (doseq [k [:id :db_id :is_published :collection_id]]
+          (is (contains? @seen k)
+              (str "the row handed to can-read? is missing " k
+                   ", so any permission branch reading it silently fails")))))))
