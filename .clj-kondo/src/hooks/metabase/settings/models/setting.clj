@@ -4,7 +4,7 @@
    [hooks.common :as common]))
 
 (defn lint-defsetting-namespace [node context]
-  (when-not (re-matches #"^metabase(?:-enterprise)?\.[^\.]+\.settings$" (name (:ns context)))
+  (when-not (re-matches #"^metabase(?:-enterprise)?\.([^\.]+\.)+settings$" (name (:ns context)))
     (hooks/reg-finding! (assoc (meta node)
                                :message "All defsettings should live in metabase[-enterprise].<module>.settings namespaces"
                                :type :metabase/defsetting-namespace))))
