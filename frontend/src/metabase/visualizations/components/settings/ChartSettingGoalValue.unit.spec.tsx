@@ -17,15 +17,13 @@ const DATA = createMockDatasetData({
 
 const DYNAMIC_TRIGGER = { name: "Pick a dynamic value" };
 
-function setup({
-  isDynamic,
-  showSelfColumns,
-  value = 5,
-}: {
+type SetupOpts = {
   isDynamic?: boolean;
   showSelfColumns?: boolean;
   value?: GoalValue | null;
-}) {
+};
+
+function setup({ isDynamic, showSelfColumns, value = 5 }: SetupOpts) {
   const onChange = jest.fn();
 
   renderWithProviders(
