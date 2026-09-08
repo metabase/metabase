@@ -101,8 +101,9 @@ path: ./dist/index.js"))))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not contain"
                           (parse "name: X\npath: dist/../../escape.js"))))
   (testing "a directory whose name collides with an API sub-route is rejected"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reserved slug"
-                          (parse "name: X\npath: dist/index.js" "data_apps/repo-status")))))
+    (doseq [slug ["repo-status" "sandbox-host"]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reserved slug"
+                            (parse "name: X\npath: dist/index.js" (str "data_apps/" slug)))))))
 
 (deftest parse-errors-carry-400-test
   (try

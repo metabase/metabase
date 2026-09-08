@@ -38,7 +38,7 @@
   "Slugs that collide with literal `/api/apps/*` sub-routes (see the API's
    `slug-regex`). An app with one of these would sync but be unreachable, so we
    reject it during parsing."
-  #{"repo-status"})
+  #{"repo-status" "sandbox-host"})
 
 (defn- normalize-path
   "Trim and drop a leading `./` so the path is relative to the app directory."
