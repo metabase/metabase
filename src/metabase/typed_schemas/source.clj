@@ -50,9 +50,8 @@
   (questions [source database-ids collection-ids]
     "Question schema entities.")
   (models [source database-ids]
-    "Model schemas as `{:models [...] :errors [...]}`: `:models` holds the entities
-    for models with executable actions; `:errors` describes models that could not
-    be built, so one broken model does not fail the whole response.")
+    "Model schemas as `{:models [...] :errors [...]}`: entities for models with
+    executable actions, plus errors for models that could not be built.")
   (metrics [source database-ids collection-ids]
     "Metric schema entities.")
   (tables [source database-ids table-ids]
