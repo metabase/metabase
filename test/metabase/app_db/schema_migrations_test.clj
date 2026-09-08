@@ -2853,13 +2853,14 @@
       (migrate!)
       (is (nil? (t2/select-one :setting :key "encryption-check")))))
   (testing "an encrypted sentinel is left alone"
-    (encryption-test/with-secret-key "encryption-check-marker-key-1234"
-      (impl/test-migrations "v58.2026-09-03T00:00:03" [migrate!]
-        (let [sentinel (encryption/encrypt (str (random-uuid)))]
-          (t2/query {:delete-from :setting :where [:= :key "encryption-check"]})
-          (t2/query {:insert-into :setting :values [{:key "encryption-check" :value sentinel}]})
-          (migrate!)
-          (is (= sentinel (t2/select-one-fn :value :setting :key "encryption-check"))))))))
+    (mt/with-empty-h2-app-db!
+      (encryption-test/with-secret-key "encryption-check-marker-key-1234"
+        (impl/test-migrations "v58.2026-09-03T00:00:03" [migrate!]
+          (let [sentinel (encryption/encrypt (str (random-uuid)))]
+            (t2/query {:delete-from :setting :where [:= :key "encryption-check"]})
+            (t2/query {:insert-into :setting :values [{:key "encryption-check" :value sentinel}]})
+            (migrate!)
+            (is (= sentinel (t2/select-one-fn :value :setting :key "encryption-check")))))))))
 
 (deftest workspace-input-normalization-migration-test
   (testing "Migrations v60.2026-02-09T12:00:00 through v60.2026-02-09T12:00:14:
