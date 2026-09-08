@@ -1,5 +1,6 @@
 import { Api } from "metabase/api";
 import { idTag, invalidateTags, listTag } from "metabase/api/tags";
+import type { MetabotMessage } from "metabase/metabot/state/types";
 import type {
   Card,
   DeleteSuggestedMetabotPromptRequest,
@@ -14,6 +15,7 @@ import type {
   MetabotInfo,
   MetabotSlackSettings,
   MetabotSourceFeedback,
+  MetabotStateContext,
   RegenerateSuggestedMetabotPromptsResponse,
   SaveMetabotEntityRequest,
   SuggestedMetabotPromptsRequest,
@@ -21,7 +23,15 @@ import type {
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
 
-import type { MetabotConversationDetail } from "./utils/normalize-fetched-chat-messages";
+export type MetabotConversationDetail = {
+  conversation_id: string;
+  created_at: string;
+  title: string | null;
+  user_id: number | null;
+  forked_from_conversation_id: string | null;
+  state?: MetabotStateContext;
+  messages: MetabotMessage[];
+};
 
 export const metabotApi = Api.injectEndpoints({
   endpoints: (builder) => ({
