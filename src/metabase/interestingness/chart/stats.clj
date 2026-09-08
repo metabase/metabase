@@ -1,8 +1,6 @@
 (ns metabase.interestingness.chart.stats
   "Chart type detection and statistics routing."
   (:require
-   [malli.core :as mc]
-   [malli.transform :as mtx]
    [metabase.interestingness.chart.categorical :as categorical]
    [metabase.interestingness.chart.histogram :as histogram]
    [metabase.interestingness.chart.scatter :as scatter]
@@ -173,16 +171,9 @@
 
 ;;; --------------------------------------------- Serialization ------------------------------------------------------
 
-(def ^:private json-transformer
-  (mtx/json-transformer))
-
-(defn chart-stats->json-safe
-  "Rewrite a [[compute-chart-stats]] result into a value JSON can carry, without flattening the shape
-  callers rely on."
-  [stats]
-  (mc/encode ::stats.types/chart-stats stats json-transformer))
-
-(defn json-safe->chart-stats
-  "Inverse of [[chart-stats->json-safe]]: put the keywords back, given the JSON-decoded value."
-  [decoded]
-  (mc/decode ::stats.types/chart-stats decoded json-transformer))
+(def chart-stats-schema
+  "Registry key for a [[compute-chart-stats]] result. Exported so a storage codec can drive the JSON round
+  trip from the schema (see [[metabase.models.interface/transform-json-with-schema]]) -- the stats carry
+  keywords in `:chart-type`, a trend's `:direction`, a volatility `:level`, a pattern's `:type` and a
+  correlation's `:strength`/`:direction`, and JSON cannot carry those on its own."
+  ::stats.types/chart-stats)

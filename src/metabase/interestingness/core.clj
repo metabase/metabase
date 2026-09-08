@@ -25,6 +25,5 @@
   generate-representation
   temporal-context]
  [metabase.interestingness.chart.stats
-  chart-stats->json-safe
-  compute-chart-stats
-  json-safe->chart-stats])
+  chart-stats-schema
+  compute-chart-stats])

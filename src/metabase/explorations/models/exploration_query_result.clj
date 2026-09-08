@@ -8,10 +8,7 @@
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -25,46 +22,14 @@
 (doto :model/ExplorationQueryResult
   (derive :metabase/model))
 
-(defn- chart-stats-in
-  "Encode a `compute-chart-stats` result as JSON.
-
-  [[interestingness/chart-stats->json-safe]] does the shape work, driven by the stats schema, so
-  these stats keep their keywords instead of the storage format dictating the data model."
-  [v]
-  (cond
-    (nil? v)    nil
-    (string? v) v
-    :else       (json/encode (interestingness/chart-stats->json-safe v))))
-
-(defn- chart-stats-out
-  "Inverse of [[chart-stats-in]]: decode the JSON, then let the schema put the keywords back.
-
-  Recovers `nil` (with a warning) on failure rather than crashing the whole `t2/select` — a
-  malformed blob must never break a read."
-  [s]
-  (when (string? s)
-    (try
-      (interestingness/json-safe->chart-stats (json/decode+kw s))
-      (catch Throwable e
-        (log/warn e "Failed to parse an exploration_query_result chart_stats column; returning nil")
-        nil))))
-
-(def ^:private transform-chart-stats
-  "[[metabase.models.interface/transform-encrypted-json]] with a schema-aware codec in place of the
-  bare JSON one. Wrapped in [[mi/decrypt-error-context]] like the columns beside it, so a decrypt
-  failure names the column in the message rather than surfacing as a bare \"Expected an encrypted
-  value\" with no way back to the row."
-  {:in  (comp encryption/maybe-encrypt chart-stats-in)
-   :out (comp chart-stats-out
-              (mi/decrypt-error-context "exploration_query_result.chart_stats" encryption/maybe-decrypt))})
-
 ;; Every column here is encrypted at rest, and for one reason: each holds warehouse values, or prose
 ;; derived from them, produced under the creator's data-access lens. That is the same material as the
 ;; row blob in `stored_result.result_data`, which is encrypted too. `chart_stats` is easy to read as
 ;; mere shape and is not — the categorical stats carry each top category's `:name` straight from the
 ;; result rows (see [[metabase.interestingness.chart.categorical]]).
 (t2/deftransforms :model/ExplorationQueryResult
-  {:chart_stats        transform-chart-stats
+  {:chart_stats        (mi/transform-encrypted-json-with-schema "exploration_query_result.chart_stats"
+                                                                interestingness/chart-stats-schema)
    :metric_description (mi/transform-encrypted-text "exploration_query_result.metric_description")
    :chart_description  (mi/transform-encrypted-text "exploration_query_result.chart_description")})
 

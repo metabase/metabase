@@ -34,11 +34,8 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
-   [malli.core :as mc]
-   [malli.transform :as mtx]
+   [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -131,29 +128,11 @@
    [:impersonation {:optional true} [:map-of :int :string]]
    [:routing       {:optional true} [:map-of :int :string]]])
 
-(def ^:private json-transformer
-  (mtx/json-transformer))
-
-(defn- token-in
-  "Serialize a token as JSON. `nil` is stored as SQL NULL rather than the string \"null\"."
-  [v]
-  (when (some? v)
-    (json/encode (mc/encode ::token v json-transformer))))
-
-(defn- token-out
-  "Read a token back. An unreadable blob decodes to `nil`, which every gate built on
-  [[data-access-compatible?]] denies to non-superusers: fail closed, never widen access on a parse
-  error. Logged at ERROR because a write path that persisted an unreadable token is a bug, and the
-  denial it causes is otherwise hard to trace."
-  [s]
-  (when (string? s)
-    (try
-      (mc/decode ::token (json/decode+kw s) json-transformer)
-      (catch Throwable e
-        (log/error e "Failed to parse a stored data_access_token; the read gate will deny non-admins")
-        nil))))
-
 (def data-access-token-transform
   "Toucan transform for a persisted [[data-access-token]]. Used by every table that stamps the lens
-  its content was produced under."
-  {:in token-in :out token-out})
+  its content was produced under.
+
+  Logged at ERROR rather than the default WARN: a write path that persisted an unreadable token is a
+  bug, and the denial it causes -- an unreadable blob reads as `nil`, which every gate built on
+  [[data-access-compatible?]] denies to non-superusers -- is otherwise hard to trace."
+  (mi/transform-json-with-schema "stored_result.data_access_token" ::token {:log-level :error}))

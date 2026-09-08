@@ -14,6 +14,8 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [medley.core :as m]
    ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -346,6 +348,68 @@
   [source]
   {:in  encrypted-json-in
    :out (decrypt-error-context source cached-encrypted-json-out)})
+
+(def ^:private json-schema-transformer
+  "Carries a schema's keywords -- and anything else JSON cannot represent -- across the JSON boundary.
+  Deliberately the same [[malli.transform/json-transformer]] that [[metabase.api.macros]] decodes request
+  bodies with, so a value has one JSON shape rather than one for the wire and another for the app DB."
+  (mtx/json-transformer))
+
+(defn- json-schema-encoder [schema]
+  (mr/cached ::json-schema-encoder schema #(mc/encoder schema json-schema-transformer)))
+
+(defn- json-schema-decoder [schema]
+  (mr/cached ::json-schema-decoder schema #(mc/decoder schema json-schema-transformer)))
+
+(defn transform-json-with-schema
+  "Like [[transform-json]], but drives the round trip with `schema`, so a column can hold the keywords (and
+  anything else JSON cannot carry on its own) the data model uses, instead of the storage format getting to
+  decide that model. `source` is a \"table.column\" string, named in the log message when a blob cannot be
+  read.
+
+  The two halves do not pull equal weight. `:in` is nearly what the JSON encoder does unaided -- it already
+  writes keywords and integer map keys as strings -- and exists to make the boundary explicit and to cover a
+  `:set`, `inst?` or `uuid` field. `:out` is the half doing the work: malli's json-transformer is what puts
+  keywords back, decodes `:map-of` keys, and infers coders for `:enum` / `:=` children.
+
+  A value is passed to `schema` unconditionally, with no string passthrough: an already-encoded string would
+  skip the schema, which is exactly the shape mismatch this transform exists to prevent.
+
+  An unreadable blob reads as `nil` rather than throwing -- one bad row must not break the whole `t2/select`.
+  It is logged at `:log-level` (`:warn` by default); nothing legitimately writes an unreadable value, so
+  callers whose column carries a security consequence pass `:error`."
+  ([source schema]
+   (transform-json-with-schema source schema nil))
+
+  ([source schema {:keys [log-level] :or {log-level :warn}}]
+   {:in  (fn [v]
+           (when (some? v)
+             (json/encode ((json-schema-encoder schema) v))))
+    :out (fn [s]
+           (when (string? s)
+             (try
+               ((json-schema-decoder schema) (json/decode+kw s))
+               (catch Throwable e
+                 (if (= log-level :error)
+                   (log/errorf e "Failed to parse %s; returning nil" source)
+                   (log/warnf e "Failed to parse %s; returning nil" source))
+                 nil))))}))
+
+(defn transform-encrypted-json-with-schema
+  "[[transform-json-with-schema]] for a column that is also encrypted at rest. Wrapped in
+  [[decrypt-error-context]] so a decrypt failure names the column rather than surfacing as a bare
+  \"Expected an encrypted value\" with no way back to the row.
+
+  Unlike [[transform-encrypted-json]], the decrypt is not memoized: that cache holds both the ciphertext and
+  the decoded value for an hour, which is the right trade for a small column and the wrong one for the
+  unbounded blobs a schema-driven column tends to hold."
+  ([source schema]
+   (transform-encrypted-json-with-schema source schema nil))
+
+  ([source schema opts]
+   (let [{:keys [in out]} (transform-json-with-schema source schema opts)]
+     {:in  (comp encryption/maybe-encrypt in)
+      :out (comp out (decrypt-error-context source encryption/maybe-decrypt))})))
 
 (defn transform-encrypted-text
   "Whole-column encrypted text transform for the column named by `source` (a \"table.column\" string, used in decrypt
