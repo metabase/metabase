@@ -397,6 +397,24 @@ describe("DashboardApp ad-hoc dashboards", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders a blank Metabot dashboard as an empty dashboard that can still be saved", async () => {
+    setupAdhoc({
+      name: "Enterprise Sales Dashboard (test)",
+      tiles: [],
+      metabot: { conversation_id: "convo-1", dashboard_id: "dash-blank" },
+    });
+
+    expect(
+      await screen.findByText("Enterprise Sales Dashboard (test)"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("dashboard-empty-state"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("save-adhoc-dashboard-button"),
+    ).toBeInTheDocument();
+  });
+
   it("offers to save a Metabot-generated dashboard and opens the saved dashboard", async () => {
     fetchMock.post(
       "express:/api/metabot/conversations/:id/saved-dashboard",
