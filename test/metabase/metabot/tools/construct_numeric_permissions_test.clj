@@ -15,6 +15,8 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.models.serialization.resolve :as serdes.resolve]
@@ -27,6 +29,28 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- count-query
+  "A trivial `venues` count, built with Lib rather than the deprecated `mt/mbql-query`."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
+
+(defn- victim-query
+  "The unreadable card's query. The named expression and the aggregation are the point: both
+  produce result columns whose names appear nowhere in the caller's own request, so a leak of
+  this card's columns is unmistakable in an assertion."
+  []
+  (let [mp       (mt/metadata-provider)
+        base     (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        price    (lib.metadata/field mp (mt/id :venues :price))
+        category (lib.metadata/field mp (mt/id :venues :category_id))]
+    (-> base
+        (lib/expression "SecretMargin" (lib/* (lib/ref price) 3))
+        (lib/aggregate (lib/count))
+        (lib/breakout (lib/ref category))
+        (as-> q (lib/breakout q (lib/expression-ref q "SecretMargin"))))))
+
 (defn- unreadable-card-thunk
   "Run `f` with a card in crowberto's personal collection — which rasta cannot read — bound to
   its id. The card carries a named expression and an aggregation so a column-name leak is
@@ -35,10 +59,7 @@
   (let [victim-coll-id (:id (collection/user->personal-collection (mt/user->id :crowberto)))]
     (mt/with-temp [:model/Card victim {:collection_id victim-coll-id
                                        :database_id   (mt/id)
-                                       :dataset_query (mt/mbql-query venues
-                                                        {:expressions {"SecretMargin" [:* $price 3]}
-                                                         :aggregation [[:count]]
-                                                         :breakout    [$category_id [:expression "SecretMargin"]]})}]
+                                       :dataset_query (victim-query)}]
       (f (:id victim)))))
 
 (defn- attempt-as-rasta
@@ -122,7 +143,7 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card readable {:collection_id nil
                                            :database_id   (mt/id)
-                                           :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                                           :dataset_query (count-query)}]
         (mt/with-current-user (mt/user->id :rasta)
           (binding [serdes.resolve/*numeric-ids-allowed?* true]
             (is (some? (resolve.mp/card-by-id shared.content-store/default-store (:id readable)))
