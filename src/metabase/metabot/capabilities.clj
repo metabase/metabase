@@ -46,9 +46,9 @@
     (let [{:keys [can-create-queries can-create-native-queries]}
           (perms/query-creation-capabilities api/*current-user-id*)]
       (cond-> #{}
-        can-create-queries        (conj :permission-save-questions)
-        can-create-native-queries (conj :permission-write-sql-queries)
-        api/*is-data-analyst?*    (conj :permission-write-transforms)))))
+        can-create-queries            (conj :permission-save-questions)
+        can-create-native-queries     (conj :permission-write-sql-queries)
+        (api/entitled-data-analyst?)  (conj :permission-write-transforms)))))
 
 (defn enforce-permissions
   "Drop every client-claimed `permission:*` capability the current user has not been granted."

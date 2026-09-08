@@ -27,14 +27,14 @@
 
 (defmethod mi/can-read? :model/TransformJob
   ([_instance]
-   (api/is-data-analyst?))
+   (api/entitled-data-analyst?))
   ([_model _pk]
-   (api/is-data-analyst?)))
+   (api/entitled-data-analyst?)))
 
 (defmethod mi/can-write? :model/TransformJob
   ([instance]
    (or api/*is-superuser?*
-       (and api/*is-data-analyst?*
+       (and (api/entitled-data-analyst?)
             (let [transforms (or (:transforms instance)
                                  (when-let [tag-ids (seq (:tag_ids instance))]
                                    (transform/transforms-with-tags tag-ids)))]
@@ -48,7 +48,7 @@
 (defmethod mi/can-create? :model/TransformJob
   [_model instance]
   (or api/*is-superuser?*
-      (and api/*is-data-analyst?*
+      (and (api/entitled-data-analyst?)
            ;; Support batch hydration: check pre-hydrated :transforms first,
            ;; then fall back to looking up transforms from :tag_ids
            (let [transforms (or (:transforms instance)

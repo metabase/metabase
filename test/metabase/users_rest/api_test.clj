@@ -92,29 +92,32 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :lucky :get 403 "user" :query "rasta")))))))
 
-(deftest user-list-for-data-analysts-test
-  (testing "GET /api/user"
-    (testing "A data analyst can get a list of all active users"
-      (mt/with-temp [:model/User {analyst-id :id :as analyst} {:first_name "Analyst"
-                                                               :last_name  "Testuser"
-                                                               :email      "analyst-list@metabase.com"
-                                                               :is_data_analyst true}]
-        (let [result (->> (:data (mt/user-http-request analyst :get 200 "user"))
-                          (filter #(or (mt/test-user? %) (= (:id %) analyst-id))))]
-          (is (= #{"crowberto@metabase.com"
-                   "lucky@metabase.com"
-                   "rasta@metabase.com"
-                   "analyst-list@metabase.com"}
-                 (set (map :email result)))))))
-    (testing "A sandboxed data analyst only sees themselves"
-      (mt/with-temp [:model/User {_ :id :as analyst} {:first_name "Sandboxed"
-                                                      :last_name  "Analyst"
-                                                      :email      "sandboxed-analyst@metabase.com"
-                                                      :is_data_analyst true}]
-        (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
-          (let [result (:data (mt/user-http-request analyst :get 200 "user"))]
-            (is (= ["sandboxed-analyst@metabase.com"]
-                   (map :email result)))))))))
+(mt/when-ee-evailable
+ (deftest user-list-for-data-analysts-test
+   (testing "GET /api/user"
+     ;; data analysts may list users only while advanced-permissions is available
+     (mt/with-premium-features #{:advanced-permissions}
+       (testing "A data analyst can get a list of all active users"
+         (mt/with-temp [:model/User {analyst-id :id :as analyst} {:first_name "Analyst"
+                                                                  :last_name  "Testuser"
+                                                                  :email      "analyst-list@metabase.com"
+                                                                  :is_data_analyst true}]
+           (let [result (->> (:data (mt/user-http-request analyst :get 200 "user"))
+                             (filter #(or (mt/test-user? %) (= (:id %) analyst-id))))]
+             (is (= #{"crowberto@metabase.com"
+                      "lucky@metabase.com"
+                      "rasta@metabase.com"
+                      "analyst-list@metabase.com"}
+                    (set (map :email result)))))))
+       (testing "A sandboxed data analyst only sees themselves"
+         (mt/with-temp [:model/User {_ :id :as analyst} {:first_name "Sandboxed"
+                                                         :last_name  "Analyst"
+                                                         :email      "sandboxed-analyst@metabase.com"
+                                                         :is_data_analyst true}]
+           (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
+             (let [result (:data (mt/user-http-request analyst :get 200 "user"))]
+               (is (= ["sandboxed-analyst@metabase.com"]
+                      (map :email result)))))))))))
 
 (deftest user-list-for-group-managers-test
   (testing "Group Managers"
@@ -1405,6 +1408,37 @@
             (is (not (contains? result-ids analyst-id))))
           (testing "non-analyst is included"
             (is (contains? result-ids non-analyst-id))))))))
+
+(deftest data-analyst-user-list-access-follows-the-advanced-permissions-feature-test
+  (testing "GET /api/user is open to a data analyst only while advanced-permissions is available"
+    (mt/with-temp [:model/User {analyst-id :id} {:email           "list-analyst@metabase.com"
+                                                 :is_data_analyst true}]
+      (mt/when-ee-evailable
+       (mt/with-premium-features #{:advanced-permissions}
+         (is (map? (mt/user-http-request analyst-id :get 200 "user")))))
+      (mt/with-premium-features #{}
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request analyst-id :get 403 "user")))))))
+
+(deftest filter-by-can-access-data-studio-test
+  (testing "GET /api/user"
+    (mt/with-temp [:model/User {analyst-id :id} {:email           "data-studio-analyst@metabase.com"
+                                                 :is_data_analyst true}
+                   :model/User {plain-id :id}   {:email "data-studio-plain@metabase.com"}]
+      (letfn [(matching-ids [can-access?]
+                (set (map :id (:data (mt/user-http-request :crowberto :get 200 "user"
+                                                           :can_access_data_studio can-access?)))))]
+        (mt/when-ee-evailable
+         (testing "a data analyst can access Data Studio while advanced-permissions is available"
+           (mt/with-premium-features #{:advanced-permissions}
+             (is (contains? (matching-ids true) analyst-id))
+             (is (not (contains? (matching-ids true) plain-id))))))
+        (testing "but not once the feature is gone"
+          (mt/with-premium-features #{}
+            (is (not (contains? (matching-ids true) analyst-id)))
+            (is (contains? (matching-ids false) analyst-id))
+            (testing "while superusers still can"
+              (is (contains? (matching-ids true) (mt/user->id :crowberto))))))))))
 
 (deftest update-permissions-test
   (testing "PUT /api/user/:id"

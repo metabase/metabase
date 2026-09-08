@@ -18,7 +18,7 @@ const UserCanAccessDataModel = createRedirectGuard(
   "/unauthorized",
 );
 
-// Must be in sync with canAccessDataStudio in frontend/src/metabase/data-studio/selectors.ts
+// Must be in sync with canAccessDataStudio in frontend/src/metabase/common/data-studio/selectors.ts
 export const CanAccessDataStudio = () => (
   <MetabaseIsSetup>
     <UserIsAuthenticated>

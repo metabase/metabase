@@ -299,6 +299,7 @@
            events
            lib
            models
+           premium-features
            settings
            util}
    :model-imports #{:model/Action

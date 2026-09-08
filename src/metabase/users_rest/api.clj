@@ -185,7 +185,7 @@
                                                    [:enum :all :internal :external]]]
        [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]]]
   (or api/*is-superuser?*
-      api/*is-data-analyst?*
+      (api/entitled-data-analyst?)
       (if group_id
         (perms/check-manager-of-group group_id)
         (perms/check-group-manager)))

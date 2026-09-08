@@ -117,18 +117,25 @@
                     (t2/select-one :model/Glossary :id gid)))))
         (testing "regular users can still read the glossary"
           (is (mt/user-http-request :rasta :get 200 "glossary")))))
-    (testing "data analysts can mutate the glossary"
+    (testing "data analysts can mutate the glossary with advanced-permissions"
       (mt/with-model-cleanup [:model/Glossary]
         (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}
                        :model/PermissionsGroupMembership _ {:user_id  analyst-id
                                                             :group_id (:id (perms-group/data-analyst))}]
-          (let [{gid :id} (mt/user-http-request analyst-id :post 200 "glossary"
-                                                {:term "Analyst" :definition "Created by analyst"})]
-            (is (pos-int? gid))
-            (is (=? {:definition "Edited by analyst"}
-                    (mt/user-http-request analyst-id :put 200 (str "glossary/" gid)
-                                          {:term "Analyst" :definition "Edited by analyst"})))
-            (is (nil? (mt/user-http-request analyst-id :delete 204 (str "glossary/" gid))))))))))
+          (mt/when-ee-evailable
+           (mt/with-premium-features #{:advanced-permissions}
+             (let [{gid :id} (mt/user-http-request analyst-id :post 200 "glossary"
+                                                   {:term "Analyst" :definition "Created by analyst"})]
+               (is (pos-int? gid))
+               (is (=? {:definition "Edited by analyst"}
+                       (mt/user-http-request analyst-id :put 200 (str "glossary/" gid)
+                                             {:term "Analyst" :definition "Edited by analyst"})))
+               (is (nil? (mt/user-http-request analyst-id :delete 204 (str "glossary/" gid)))))))
+          (mt/with-premium-features #{}
+            (testing "without advanced-permissions the data analyst is refused"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request analyst-id :post 403 "glossary"
+                                           {:term "Gated" :definition "Refused"}))))))))))
 
 (deftest glossary-search-escapes-like-wildcards-test
   (testing "GET /api/glossary?search= matches % and _ literally rather than as LIKE wildcards"

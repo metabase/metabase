@@ -5,7 +5,9 @@
    [clojure.test :refer :all]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
-   [metabase.transforms.test-util :refer [parse-instant utc-timestamp]]
+   [metabase.transforms.test-util :refer [parse-instant
+                                          utc-timestamp
+                                          with-transforms-api-users!]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -60,16 +62,16 @@
   [[binding] & body]
   `(do-with-runs-fixture! (fn [~binding] ~@body)))
 
-(defn- get-runs [& params]
+(defn- get-runs [user & params]
   ;; a large limit so fixture rows can't be pushed off the page by rows other tests created
-  (apply mt/user-http-request :lucky :get 200 "transform/runs" :limit 1000 params))
+  (apply mt/user-http-request user :get 200 "transform/runs" :limit 1000 params))
 
 (deftest unified-runs-listing-test
   (testing "GET /api/transform/runs"
-    (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic}
+      (with-transforms-api-users! [user]
         (with-runs-fixture! [{:keys [ta-id tb-id job-id job-run-id dag-run-id member-a-id member-b-id standalone-id]}]
-          (let [response (get-runs)
+          (let [response (get-runs user)
                 rows     (rows-by-type response)]
             (testing "returns all three kinds of root run"
               (is (contains? rows ["job" job-run-id]))
@@ -112,70 +114,70 @@
 
 (deftest unified-runs-filters-test
   (testing "GET /api/transform/runs filters"
-    (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic}
+      (with-transforms-api-users! [user]
         (with-runs-fixture! [{:keys [ta-id tb-id job-run-id dag-run-id standalone-id]}]
           (testing "types= restricts the kinds returned"
-            (let [response (get-runs :types ["job"])]
+            (let [response (get-runs user :types ["job"])]
               (is (every? #(= "job" (:run_type %)) (:data response)))
               (is (contains? (rows-by-type response) ["job" job-run-id])))
-            (let [response (get-runs :types ["dag" "transform"])
+            (let [response (get-runs user :types ["dag" "transform"])
                   rows     (rows-by-type response)]
               (is (every? #(contains? #{"dag" "transform"} (:run_type %)) (:data response)))
               (is (contains? rows ["dag" dag-run-id]))
               (is (contains? rows ["transform" standalone-id]))))
           (testing "statuses= filters across all kinds, matching any of the given statuses"
-            (let [rows (rows-by-type (get-runs :statuses ["failed"]))]
+            (let [rows (rows-by-type (get-runs user :statuses ["failed"]))]
               (is (contains? rows ["dag" dag-run-id]))
               (is (not (contains? rows ["job" job-run-id])))
               (is (not (contains? rows ["transform" standalone-id]))))
-            (let [rows (rows-by-type (get-runs :statuses ["failed" "succeeded"]))]
+            (let [rows (rows-by-type (get-runs user :statuses ["failed" "succeeded"]))]
               (is (contains? rows ["dag" dag-run-id]))
               (is (contains? rows ["job" job-run-id]))
               (is (contains? rows ["transform" standalone-id]))))
           (testing "run-methods= filters by trigger"
-            (let [rows (rows-by-type (get-runs :run-methods ["cron"]))]
+            (let [rows (rows-by-type (get-runs user :run-methods ["cron"]))]
               (is (contains? rows ["job" job-run-id]))
               (is (not (contains? rows ["dag" dag-run-id])))
               (is (not (contains? rows ["transform" standalone-id]))))
-            (let [rows (rows-by-type (get-runs :run-methods ["manual"]))]
+            (let [rows (rows-by-type (get-runs user :run-methods ["manual"]))]
               (is (contains? rows ["dag" dag-run-id]))
               (is (contains? rows ["transform" standalone-id]))
               (is (not (contains? rows ["job" job-run-id])))))
           (testing "transform-ids= returns runs that ran any of the transforms"
             (testing "job runs with a member run of it, plus its standalone runs"
-              (let [rows (rows-by-type (get-runs :transform-ids [ta-id]))]
+              (let [rows (rows-by-type (get-runs user :transform-ids [ta-id]))]
                 (is (contains? rows ["job" job-run-id]))
                 (is (contains? rows ["transform" standalone-id]))
                 (is (not (contains? rows ["dag" dag-run-id])))))
             (testing "DAG runs with a member run of it"
-              (let [rows (rows-by-type (get-runs :transform-ids [tb-id]))]
+              (let [rows (rows-by-type (get-runs user :transform-ids [tb-id]))]
                 (is (contains? rows ["dag" dag-run-id]))
                 (is (not (contains? rows ["job" job-run-id])))
                 (is (not (contains? rows ["transform" standalone-id])))))
             (testing "multiple ids match as a logical OR"
-              (let [rows (rows-by-type (get-runs :transform-ids [ta-id tb-id]))]
+              (let [rows (rows-by-type (get-runs user :transform-ids [ta-id tb-id]))]
                 (is (contains? rows ["job" job-run-id]))
                 (is (contains? rows ["dag" dag-run-id]))
                 (is (contains? rows ["transform" standalone-id])))))
           (testing "start-time= filters by run start"
-            (let [rows (rows-by-type (get-runs :start-time "2025-09-03"))]
+            (let [rows (rows-by-type (get-runs user :start-time "2025-09-03"))]
               (is (contains? rows ["transform" standalone-id]))
               (is (not (contains? rows ["job" job-run-id])))
               (is (not (contains? rows ["dag" dag-run-id])))))
           (testing "end-time= filters by run end"
-            (let [rows (rows-by-type (get-runs :end-time "2025-09-01"))]
+            (let [rows (rows-by-type (get-runs user :end-time "2025-09-01"))]
               (is (contains? rows ["job" job-run-id]))
               (is (not (contains? rows ["dag" dag-run-id])))
               (is (not (contains? rows ["transform" standalone-id]))))))))))
 
 (deftest unified-runs-sorting-and-pagination-test
   (testing "GET /api/transform/runs sorting and pagination"
-    (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic}
+      (with-transforms-api-users! [user]
         (with-runs-fixture! [{:keys [job-run-id dag-run-id standalone-id]}]
           (testing "sort-column=start_time asc keeps our rows in chronological order"
-            (let [response (get-runs :sort-column "start_time" :sort-direction "asc")
+            (let [response (get-runs user :sort-column "start_time" :sort-direction "asc")
                   ours     (filter (comp #{["job" job-run-id] ["dag" dag-run-id] ["transform" standalone-id]}
                                          (juxt :run_type :id))
                                    (:data response))]
@@ -183,7 +185,7 @@
               (is (= [["job" job-run-id] ["dag" dag-run-id] ["transform" standalone-id]]
                      (map (juxt :run_type :id) ours)))))
           (testing "limit/offset are honored"
-            (let [response (mt/user-http-request :lucky :get 200 "transform/runs" :limit 1 :offset 0)]
+            (let [response (mt/user-http-request user :get 200 "transform/runs" :limit 1 :offset 0)]
               (is (= 1 (count (:data response))))
               (is (= 1 (:limit response)))
               (is (= 0 (:offset response)))
@@ -191,8 +193,8 @@
 
 (deftest unified-runs-deleted-entities-test
   (testing "GET /api/transform/runs keeps rows for deleted jobs/transforms, naming them from the run-start snapshot"
-    (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic}
+      (with-transforms-api-users! [user]
         (mt/with-temp [:model/Transform {ta-id :id} {:name "Doomed Transform"}
                        :model/Transform {tb-id :id} {:name "Doomed Seed"}
                        :model/TransformJob {job-id :id} {:name "Doomed Job" :schedule "0 0 0 * * ?"}
@@ -213,7 +215,7 @@
                                                                 :start_time     (parse-instant "2025-09-03T10:00:00")}]
           (t2/delete! :model/TransformJob :id job-id)
           (t2/delete! :model/Transform :id [:in [ta-id tb-id]])
-          (let [rows (rows-by-type (get-runs))]
+          (let [rows (rows-by-type (get-runs user))]
             (testing "job run survives (job_id has no FK) with its snapshot name"
               (let [row (rows ["job" job-run-id])]
                 (is (some? row))
@@ -237,19 +239,19 @@
 (deftest get-run-by-id-test
   (testing "GET /api/transform/run/:run-id returns the run when the caller can read its transform"
     ;; :hosting so the transforms-enabled setting defaults to true, as in create-transform-test
-    (mt/with-premium-features #{:transforms-basic :hosting}
-      (mt/with-data-analyst-role! (mt/user->id :lucky)
+    (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
+      (with-transforms-api-users! [user]
         ;; native access on the test DB makes the default (native-source) temp transform readable
         (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/create-queries :query-builder-and-native}
           (mt/with-temp [:model/Transform {transform-id :id} {:name "Readable Transform"}
                          :model/TransformRun {run-id :id} {:transform_id transform-id}]
-            (let [response (mt/user-http-request :lucky :get 200 (str "transform/run/" run-id))]
+            (let [response (mt/user-http-request user :get 200 (str "transform/run/" run-id))]
               (is (= run-id (:id response)))
               (is (= transform-id (get-in response [:transform :id]))))))))))
 
 (deftest get-run-by-id-requires-transform-read-test
   (testing "GET /api/transform/run/:run-id read-checks the run's transform (SEC-1180)"
-    (mt/with-premium-features #{:transforms-basic :hosting}
+    (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
       (mt/with-data-analyst-role! (mt/user->id :lucky)
         (mt/with-temp [:model/Database {db-id :id} {}
                        :model/Transform {transform-id :id} {:name   "Hidden Transform"
