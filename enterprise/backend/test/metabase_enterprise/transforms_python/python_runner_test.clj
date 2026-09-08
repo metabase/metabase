@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -432,8 +433,8 @@
                   result)))))))
 
 (deftest transform-type-roundtrip-test
-  (mt/test-drivers (filter #(driver/database-supports? % :test/dynamic-dataset-loading nil)
-                           #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver :clickhouse})
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+                                     #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver :clickhouse})
     (mt/with-empty-db
       (let [driver       driver/*driver*
             db-id        (mt/id)

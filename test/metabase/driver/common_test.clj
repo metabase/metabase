@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.common-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.common-test]}}}}}}
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -110,8 +111,8 @@
           [3 nil nil nil nil nil]]})
 
 (deftest insert-from-source!-test
-  (mt/test-drivers (filter #(driver/database-supports? % :test/dynamic-dataset-loading nil)
-                           #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver :mongo :clickhouse})
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+                                     #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver :mongo :clickhouse})
     (mt/with-empty-db
       (let [driver       driver/*driver*
             db-id        (mt/id)
@@ -142,8 +143,8 @@
 
 (deftest insert-from-jsonl-file-test
   ;; TODO: give this driver set a name, or use features here. what are we selecting for?
-  (mt/test-drivers (filter #(driver/database-supports? % :test/dynamic-dataset-loading nil)
-                           #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :sqlserver :mongo :clickhouse})
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+                                     #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :sqlserver :mongo :clickhouse})
     (mt/with-empty-db
       (let [driver       driver/*driver*
             db-id        (mt/id)
