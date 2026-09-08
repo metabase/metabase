@@ -131,6 +131,19 @@
         (is (=? {:ai_context {:instructions "just the instructions"}}
                 (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id)))))))
 
+(deftest forward-compatible-ai-context-round-trip-test
+  (testing "unknown ai_context keys from a newer export survive import"
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/OsiAiContext _ {:entity_type "metric" :entity_local_id card-id
+                                          :ai_context {:instructions "known"}}]
+      (let [extracted (assoc-in (extract-for "card" card-id) [:ai_context :future-key]
+                                {:nested ["value"]})]
+        (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)
+        (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
+        (is (= {:instructions "known" :future-key {:nested ["value"]}}
+               (:ai_context (t2/select-one :model/OsiAiContext
+                                           :entity_type "card" :entity_local_id card-id))))))))
+
 (deftest disk-round-trip-card-context-test
   (testing "a card-backed ai_context survives a real on-disk store/ingest/load (storage-path handles a non-table parent)"
     (mt/with-temp [:model/Card {card-id :id} {}
@@ -148,15 +161,16 @@
 (deftest osi-ai-context-excluded-from-default-export-test
   (testing "OsiAiContext is kept out of the default export set"
     ;; it's a top-level model extracted unfiltered, so auto-exporting it orphans rows whose entity is in an
-    ;; omitted (personal/analytics) collection — leaked curator text + dangling deps. Excluded until
-    ;; reverse-dependency export lands (BOT-1759), so its row travels with its entity instead.
+    ;; omitted (personal/analytics) collection — leaked curator text + dangling deps. It stays excluded
+    ;; until reverse-dependency export exists, so its row travels with its entity instead.
     (is (not (contains? (#'extract/model-set {}) "OsiAiContext")))
     (is (not (contains? (#'extract/model-set {:targets [["Collection" 1]]}) "OsiAiContext")))))
 
 (deftest excluded-from-default-disk-export-test
   (testing "a real default export omits OsiAiContext while still exporting its parent entity"
     ;; End-to-end guard through extract/model-set that we don't accidentally re-include it and leak orphans
-    ;; (rows whose entity is in an omitted personal/analytics collection). Re-include via BOT-1759.
+    ;; (rows whose entity is in an omitted personal/analytics collection). Re-include only once export can
+    ;; follow reverse dependencies safely.
     (ts/with-dbs [source-db]
       (ts/with-db source-db
         (let [db (ts/create! :model/Database :name "Prompt DB")
@@ -168,3 +182,68 @@
                                  (serdes/with-cache (into [] (extract/extract {})))))]
             (is (contains? models "Table") "the parent entity is exported")
             (is (not (contains? models "OsiAiContext")) "but its ai_context is not")))))))
+
+;;; ------------------------------------------- Generation metadata -------------------------------------------
+
+(deftest data-source-exported-test
+  (testing "an export carries the approval bit and none of the local generation state"
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/OsiAiContext _ {:entity_type "metric" :entity_local_id card-id
+                                          :ai_context {:instructions "generated"}
+                                          :data_source :metabot
+                                          :generated_at (java.time.OffsetDateTime/now)
+                                          :invalidated_at (java.time.OffsetDateTime/now)
+                                          :basis_invalidated_at (java.time.OffsetDateTime/now)
+                                          :basis {:name "Card"}
+                                          :rewrite_requested_at (java.time.OffsetDateTime/now)
+                                          :generator_version "prompt:model"}]
+      (let [extracted (extract-for "card" card-id)]
+        (is (= "metabot" (:data_source extracted)))
+        (is (empty? (select-keys extracted
+                                 [:generated_at :invalidated_at :basis_invalidated_at :basis
+                                  :rewrite_requested_at :generator_version])))))))
+
+(deftest import-invalidates-local-generation-state-test
+  (testing "changed imported content cannot retain generation claims from the target's previous content"
+    ;; Truncate to microseconds: the appdb stores timestamps at microsecond precision, so a
+    ;; nanosecond-precision `now` (as CI's clock produces) would not survive the round-trip `=`-equal.
+    (let [now (.truncatedTo (java.time.OffsetDateTime/now) java.time.temporal.ChronoUnit/MICROS)]
+      (mt/with-temp [:model/Card {card-id :id} {}
+                     :model/OsiAiContext _ {:entity_type "metric" :entity_local_id card-id
+                                            :ai_context {:instructions "local"}
+                                            :data_source :metabot
+                                            :generated_at now :invalidated_at now
+                                            :basis_invalidated_at now :basis {:name "local"}
+                                            :rewrite_requested_at now :generator_version "v1"}]
+        (let [extracted (-> (extract-for "card" card-id)
+                            (assoc :ai_context {:instructions "imported"})
+                            (assoc :data_source "human"))]
+          (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
+          (is (= {:ai_context {:instructions "imported"}
+                  :data_source :human
+                  :generated_at nil :invalidated_at now :basis_invalidated_at nil :basis nil
+                  :rewrite_requested_at nil :generator_version nil}
+                 (select-keys (t2/select-one :model/OsiAiContext
+                                             :entity_type "card" :entity_local_id card-id)
+                              [:ai_context :data_source :generated_at :invalidated_at
+                               :basis_invalidated_at :basis :rewrite_requested_at
+                               :generator_version]))))))))
+
+(deftest import-without-data-source-defaults-to-human-test
+  (testing "an export taken before generation metadata existed imports as human-approved"
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/OsiAiContext _ {:entity_type "metric" :entity_local_id card-id
+                                          :ai_context {:instructions "legacy"}
+                                          :data_source :metabot}]
+      (let [legacy (dissoc (extract-for "card" card-id) :data_source)]
+        (testing "new row"
+          (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)
+          (serdes.load/load-metabase! (ingestion-in-memory [legacy]))
+          (is (= :human (:data_source (t2/select-one :model/OsiAiContext
+                                                     :entity_type "card" :entity_local_id card-id)))))
+        (testing "existing machine-owned row"
+          (t2/update! :model/OsiAiContext :entity_type "card" :entity_local_id card-id
+                      {:data_source :metabot})
+          (serdes.load/load-metabase! (ingestion-in-memory [legacy]))
+          (is (= :human (:data_source (t2/select-one :model/OsiAiContext
+                                                     :entity_type "card" :entity_local_id card-id)))))))))

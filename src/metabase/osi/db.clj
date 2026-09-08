@@ -6,16 +6,20 @@
 
 (defn ai-context
   "The OsiAiContext of the entity with `entity-type` and `entity-local-id`, or nil."
-  [entity-type entity-local-id]
-  (t2/select-one :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id))
+  ([entity-type entity-local-id]
+   (ai-context :model/OsiAiContext entity-type entity-local-id))
+  ([model entity-type entity-local-id]
+   (t2/select-one model :entity_type entity-type :entity_local_id entity-local-id)))
 
 (defn ai-contexts-page
   "Up to `limit` OsiAiContexts from `offset`, ordered by entity type and local id."
-  [limit offset]
-  (t2/select :model/OsiAiContext
-             {:order-by [[:entity_type :asc] [:entity_local_id :asc]]
-              :limit    limit
-              :offset   offset}))
+  ([limit offset]
+   (ai-contexts-page :model/OsiAiContext limit offset))
+  ([model limit offset]
+   (t2/select model
+              {:order-by [[:entity_type :asc] [:entity_local_id :asc]]
+               :limit    limit
+               :offset   offset})))
 
 (defn ai-context-count
   "The number of OsiAiContexts."
