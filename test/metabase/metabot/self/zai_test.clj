@@ -98,11 +98,47 @@
   (testing "pre-4.5 models tolerate the disable (probed 2026-09-03) and do not think anyway"
     (is (= {:type "disabled"}
            (:thinking (zai/zai-request-body {:model "glm-4-32b-0414-128k"
-                                             :input [{:role :user :content "hi"}]})))))
-  (testing "thinking-only models reject the disable (error 1210) and get no directive at all"
-    (is (not (contains? (zai/zai-request-body {:model "glm-5.3"
-                                               :input [{:role :user :content "hi"}]})
-                        :thinking)))))
+                                             :input [{:role :user :content "hi"}]}))))))
+
+(deftest ^:parallel request-body-thinking-only-models-test
+  (let [input [{:role :user :content "hi"}]]
+    (testing "thinking-only models reject the disable (error 1210): no directive, reasoning_effort instead"
+      (let [body (zai/zai-request-body {:model "glm-5.3" :input input})]
+        (is (not (contains? body :thinking)))
+        (is (= "max" (:reasoning_effort body)))
+        (is (not (contains? body :max_tokens)))))
+    (testing "a schema drops the effort to low and raises a title-sized cap to the floor"
+      (is (=? {:reasoning_effort "low"
+               :max_tokens       2048}
+              (zai/zai-request-body {:model      "glm-5.3"
+                                     :input      input
+                                     :schema     {:type "object"}
+                                     :max-tokens 512}))))
+    (testing ":reasoning? false also drops the effort to low — a floor, not an off switch"
+      (is (= "low" (:reasoning_effort (zai/zai-request-body {:model      "glm-5.3"
+                                                             :input      input
+                                                             :reasoning? false})))))
+    (testing "tool_choice \"required\" keeps max effort but still gets the floor"
+      (is (=? {:reasoning_effort "max"
+               :max_tokens       2048}
+              (zai/zai-request-body {:model       "glm-5.3"
+                                     :input       input
+                                     :tools       [(metabot.tu/get-time-tool)]
+                                     :tool_choice "required"
+                                     :max-tokens  512}))))
+    (testing "the floor only raises: a larger cap and an unforced cap are left alone"
+      (are [opts expected] (= expected
+                              (:max_tokens (zai/zai-request-body (assoc opts :model "glm-5.3" :input input))))
+        {:schema {:type "object"} :max-tokens 4096} 4096
+        {:max-tokens 512}                           512))
+    (testing "models that can switch thinking off get neither effort nor floor"
+      (let [body (zai/zai-request-body {:model      "glm-5.2"
+                                        :input      input
+                                        :schema     {:type "object"}
+                                        :max-tokens 512})]
+        (is (= {:type "disabled"} (:thinking body)))
+        (is (not (contains? body :reasoning_effort)))
+        (is (= 512 (:max_tokens body)))))))
 
 (deftest ^:parallel reasoning-model?-test
   (are [model expected] (= expected (zai/reasoning-model? model))

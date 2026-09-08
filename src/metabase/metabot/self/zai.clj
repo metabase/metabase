@@ -103,15 +103,27 @@
                  (mapv (fn [{:keys [id] :as model}]
                          {:id id :display_name (or (:name model) (get-in supported-models [id :display-name]))})))}))
 
+(def ^:private forced-tool-call-token-floor
+  "Smallest `max_tokens` a forced tool call on a thinking-only model may be capped at.
+
+  glm-5.3 cannot stop thinking, and its thinking and tool call draw on one `max_tokens` budget — undocumented by
+  Z.AI, but probed 2026-09-08: a title-shaped structured call capped at 16 finished `length` on reasoning alone, with
+  no tool call. A small caller cap (the conversation-title path sends 512) therefore risks a `length` finish before
+  the tool call is emitted. At effort max the same calls spent 102–173 completion tokens, so 512 holds today but
+  leaves no margin for longer session content. Same floor as Moonshot (which documents the shared budget for
+  kimi-k3, https://platform.kimi.ai/docs/guide/use-thinking-models) and vLLM."
+  2048)
+
 (mu/defn zai-request-body
   "Build the Chat Completions request body for an LLM request.
 
   Z.AI's Chat Completions dialect matches what [[chat-completions/request-body]] emits, so this delegates to it,
   adding Z.AI's `thinking` directive: enabled only where a whitelisted model's reasoning renders, disabled
-  otherwise — except [[thinking-only-models]], which reject the directive and are sent none. Z.AI documents only
-  `tool_choice \"auto\"`, but `\"required\"` — which the structured-output path relies on — is accepted and honored
-  in practice, with thinking on."
-  [{:keys [model reasoning? schema] :as opts
+  otherwise. [[thinking-only-models]] reject the directive and get `reasoning_effort` instead — \"max\" where
+  reasoning renders, \"low\" otherwise — plus a `max_tokens` floor on forced tool calls (see
+  [[forced-tool-call-token-floor]]). Z.AI documents only `tool_choice \"auto\"`, but `\"required\"` — which the
+  structured-output path relies on — is accepted and honored in practice, with thinking on."
+  [{:keys [model reasoning? schema tool_choice] :as opts
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
   ;; Thinking is on by default server-side, at reasoning_effort "max"
   ;; (https://docs.z.ai/api-reference/llm/chat-completion), so "enabled" only makes the default
@@ -120,12 +132,23 @@
   ;; stream matching the settings gate answering false: glm-4.7 "will think compulsorily" by
   ;; default and the xf forwards reasoning unconditionally. Probed 2026-09-03: the disable is
   ;; accepted and honored on glm-4.7, tolerated by pre-4.5 models (which do not think), and
-  ;; rejected only by [[thinking-only-models]], which therefore get no directive at all.
-  (cond-> (chat-completions/request-body (assoc opts :model model))
-    (not (thinking-only-models (str model)))
-    (assoc :thinking {:type (if (and (reasoning-model? model) reasoning? (not schema))
-                              "enabled"
-                              "disabled")})))
+  ;; rejected only by [[thinking-only-models]]. Those take `reasoning_effort` low|high|max only
+  ;; (same docs page), so "low" is a best-effort floor on their spend, not an off switch — the
+  ;; docs say thinking cannot be turned off, though probed 2026-09-08 a title-shaped call at "low"
+  ;; streamed no reasoning at all (16 completion tokens, the tool call only) against 102–173 at "max".
+  (let [thinking-only? (contains? thinking-only-models (str model))
+        forced?        (or (some? schema) (= "required" (some-> tool_choice name)))
+        thinking?      (and (reasoning-model? model) reasoning? (not schema))
+        body           (chat-completions/request-body (assoc opts :model model))]
+    (cond-> body
+      thinking-only?
+      (assoc :reasoning_effort (if thinking? "max" "low"))
+
+      (and thinking-only? forced? (:max_tokens body))
+      (update :max_tokens max forced-tool-call-token-floor)
+
+      (not thinking-only?)
+      (assoc :thinking {:type (if thinking? "enabled" "disabled")}))))
 
 (mu/defn zai-raw
   "Perform a streaming request to the Z.AI Chat Completions API.
