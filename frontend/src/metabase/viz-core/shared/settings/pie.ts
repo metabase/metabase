@@ -5,7 +5,6 @@ import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { checkNotNull, checkNumber, isNumber } from "metabase/utils/types";
 import {
   type DatasetColumn,
-  type MaybeTranslatedSeries,
   type PieRow,
   type RawSeries,
   type RowValue,
@@ -17,6 +16,7 @@ import { SLICE_THRESHOLD } from "../../echarts/pie/constants";
 import { getPieColumns } from "../../echarts/pie/model";
 import type { ShowWarning } from "../../echarts/types";
 import { getHexColor } from "../../lib/color";
+import { getChartColor } from "../../lib/color-name";
 import { getNumberOr } from "../../lib/settings/row-values";
 import { getDefaultDimensionsAndMetrics } from "../../lib/utils";
 import { unaggregatedDataWarningPie } from "../../lib/warnings";
@@ -185,7 +185,9 @@ export function getColors(
   if (currentSettings["pie.rows"]) {
     for (const row of currentSettings["pie.rows"]) {
       if (!row.defaultColor && row.color) {
-        existingColorMapping[row.key] = getHexColor(row.color);
+        existingColorMapping[row.key] = getHexColor(
+          getChartColor(row.color, row.color_name),
+        );
       }
     }
   }
@@ -213,7 +215,7 @@ export function getColors(
 }
 
 export function getPieRows(
-  rawSeries: MaybeTranslatedSeries,
+  rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
   formatter: Formatter,
 ) {

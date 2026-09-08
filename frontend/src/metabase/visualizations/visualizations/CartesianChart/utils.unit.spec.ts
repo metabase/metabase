@@ -67,6 +67,7 @@ describe("getHoveredFromHighlighted", () => {
           [CARD_ID]: categoryColumn,
           [OTHER_CARD_ID]: categoryColumn,
         },
+        columns: [categoryColumn, categoryColumn],
       },
       cardsColumns,
     });
@@ -348,6 +349,7 @@ describe("getHoveredFromHighlighted", () => {
         column: createdAtColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: createdAtColumn },
+        columns: [createdAtColumn],
       },
       cardsColumns: [
         {

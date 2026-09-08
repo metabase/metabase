@@ -3,8 +3,8 @@
   (:require
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
-   [metabase.models.interface :as mi]
-   [toucan2.core :as t2]))
+   [metabase.metabot.db :as metabot.db]
+   [metabase.models.interface :as mi]))
 
 (set! *warn-on-reflection* true)
 
@@ -14,11 +14,9 @@
   Throws 404 if the message is missing, the conversation is missing, or the
   current user cannot read the conversation (superuser / originator / participant)."
   [external-id]
-  (let [message      (t2/select-one [:model/MetabotMessage :id :conversation_id]
-                                    :external_id external-id)
+  (let [message      (metabot.db/message-by-external-id external-id)
         _            (api/check-404 message)
-        conversation (t2/select-one [:model/MetabotConversation :id :user_id]
-                                    :id (:conversation_id message))
+        conversation (metabot.db/conversation-id-and-user-id (:conversation_id message))
         _            (api/check-404 conversation)
         _            (api/check-404 (mi/can-read? conversation))]
     (assoc message :conversation conversation)))

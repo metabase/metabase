@@ -111,7 +111,7 @@ export function MonitorLayout() {
         <AreaTabGroup
           label={t`Content management`}
           showLabel={isNavbarOpened}
-          mb="md"
+          mb="lg"
         >
           {canAccessDependencyDiagnosticsPage && (
             <AreaTab
@@ -162,7 +162,7 @@ export function MonitorLayout() {
         <AreaTabGroup
           label={t`Logs and activity`}
           showLabel={isNavbarOpened}
-          mb="md"
+          mb="lg"
         >
           <AreaTab
             label={t`Background tasks`}

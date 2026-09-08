@@ -16,6 +16,7 @@ import type {
 import { AutoWidthSelect } from "./AutoWidthSelect";
 import { AM, PM } from "./constants";
 import { hourTo24HourFormat, hourToTwelveHourFormat } from "./cron";
+import type { ScheduleValueType } from "./domain";
 import {
   type Weekday,
   getHours,
@@ -23,7 +24,7 @@ import {
   getScheduleStrings,
   minutes,
 } from "./strings";
-import type { AmPm, ScheduleValueType, UpdateSchedule } from "./types";
+import type { AmPm, UpdateSchedule } from "./types";
 
 export type SelectFrameProps = {
   schedule_frame: ScheduleSettings["schedule_frame"];
@@ -109,7 +110,7 @@ export const SelectTime = ({
   const applicationName = useSelector(getApplicationName);
   const timezoneTooltipText = t`Your ${applicationName} timezone`;
   return (
-    <Group gap={isClock12Hour ? "xs" : "sm"} style={{ rowGap: ".5rem" }}>
+    <Group gap={isClock12Hour ? "xxs" : "sm"} style={{ rowGap: ".5rem" }}>
       {/* Select the hour */}
       <AutoWidthSelect
         value={value}
@@ -134,7 +135,7 @@ export const SelectTime = ({
         {isClock12Hour && (
           <SegmentedControl<AmPm>
             lh="1rem"
-            radius="sm"
+            radius="xs"
             value={amPm}
             onChange={(value) => {
               setPendingAmPm(value);
@@ -230,12 +231,14 @@ export const SelectMinute = ({
   updateSchedule: UpdateSchedule;
   range?: typeof minutes;
 }) => {
-  // Unjustified type cast. FIXME
-  const minuteOfHour = isNaN(schedule_minute as number) ? 0 : schedule_minute;
+  const minuteOfHour =
+    isNotNull(schedule_minute) && !Number.isNaN(schedule_minute)
+      ? schedule_minute
+      : 0;
   const label = useMemo(() => getScheduleComponentLabel("minute"), []);
   return (
     <AutoWidthSelect
-      value={(minuteOfHour || 0).toString()}
+      value={minuteOfHour.toString()}
       data={range}
       onChange={(value: string) =>
         updateSchedule("schedule_minute", Number(value))

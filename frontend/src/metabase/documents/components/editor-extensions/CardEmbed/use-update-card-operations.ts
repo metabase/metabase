@@ -9,7 +9,11 @@ import {
 } from "metabase/rich_text_editing/tiptap/EditorHost";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
-import type { Card, Document, VisualizationSettings } from "metabase-types/api";
+import type {
+  Document,
+  SeriesCard,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 export const useUpdateCardOperations = ({
   document,
@@ -43,13 +47,7 @@ export const useUpdateCardOperations = ({
 
   // Handle drill-through navigation
   const handleChangeCardAndRun = useCallback(
-    ({
-      nextCard,
-    }: {
-      nextCard: Card;
-      previousCard?: Card;
-      objectId?: number;
-    }) => {
+    ({ nextCard }: { nextCard: SeriesCard }) => {
       if (!metadata) {
         console.warn("Metadata not available for drill-through navigation");
         return;

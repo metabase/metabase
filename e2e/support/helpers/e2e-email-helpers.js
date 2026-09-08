@@ -11,10 +11,11 @@ const INBOX_INTERVAL = 100;
 const { WEB_PORT, SMTP_PORT } = WEBMAIL_CONFIG;
 
 /**
- * Make sure you have webmail Docker image running locally:
- * `docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:2.0.5`
+ * `bun run test-cypress` starts maildev for you via
+ * e2e/test/scenarios/docker-compose.yml. To start it manually instead:
+ * `docker run -d -p 1180:1080 -p 1125:1025 maildev/maildev:2.2.1`
  * or
- * `npx maildev -s 1025 -w 1080`
+ * `npx maildev -s 1125 -w 1180`
  */
 export const setupSMTP = () => {
   cy.log("Set up Webmail SMTP server");

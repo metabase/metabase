@@ -5,8 +5,8 @@ import {
   useGetCardQuery,
   useGetCollectionQuery,
 } from "metabase/api";
+import { CollectionBadge } from "metabase/common/collections/components/CollectionBadge";
 import { Breadcrumb } from "metabase/common/components/Breadcrumb";
-import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
 import { Group, type GroupProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";

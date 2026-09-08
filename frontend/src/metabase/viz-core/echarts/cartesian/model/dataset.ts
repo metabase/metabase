@@ -100,7 +100,7 @@ const aggregateColumnValuesForDatum = (
   datum: Record<DataKey, RowValue>,
   columns: DatasetColumnInfo[],
   row: RowValue[],
-  cardId: number,
+  cardId: number | undefined,
   dimensionIndex: number,
   breakoutIndex: number | undefined,
   untranslatedBreakoutValue: RowValue | undefined,

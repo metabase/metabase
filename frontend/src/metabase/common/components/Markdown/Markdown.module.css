@@ -61,7 +61,7 @@
 
 .markdownRoot :where(ul, ol) {
   margin: 0;
-  padding-left: var(--mantine-spacing-lg);
+  padding-left: var(--mantine-spacing-xl);
 }
 
 .markdownRoot :where(ul) {
@@ -78,7 +78,7 @@
 }
 
 .markdownRoot :where(input[type="checkbox"]) {
-  margin-right: var(--mantine-spacing-xs);
+  margin-right: var(--mantine-spacing-xxs);
 }
 
 .markdownRoot:where(:not([data-custom-code])) {
@@ -87,7 +87,7 @@
     font-size: 0.875em;
     background-color: var(--markdown-surface-color);
     border: 1px solid var(--markdown-border-color);
-    border-radius: var(--mantine-radius-xs);
+    border-radius: var(--mantine-radius-xxs);
     padding: 0.125rem 0.25rem;
   }
 
@@ -104,12 +104,12 @@
   overflow-x: auto;
   background-color: var(--markdown-surface-color);
   border: 1px solid var(--markdown-border-color);
-  border-radius: var(--mantine-radius-sm);
+  border-radius: var(--mantine-radius-xs);
 }
 
 .markdownRoot :where(blockquote) {
   margin: 0;
-  padding-left: var(--mantine-spacing-md);
+  padding-left: var(--mantine-spacing-lg);
   border-left: 2px solid var(--markdown-border-color);
 }
 
@@ -123,7 +123,7 @@
 }
 
 .markdownRoot :where(th, td) {
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-sm);
   border: 1px solid var(--markdown-border-color);
   text-align: left;
   vertical-align: top;
@@ -148,20 +148,20 @@
 }
 
 .markdownRoot :where(li:not(:last-child)) {
-  margin-bottom: var(--mantine-spacing-xs);
+  margin-bottom: var(--mantine-spacing-xxs);
 }
 
 .markdownRoot :where(li > ul, li > ol) {
-  margin-top: var(--mantine-spacing-xs);
+  margin-top: var(--mantine-spacing-xxs);
 }
 
 .markdownRoot[data-compact] > :where(:not(:last-child)),
 .markdownRoot[data-compact] :where(p:not(:last-child)) {
-  margin-bottom: var(--mantine-spacing-xs);
+  margin-bottom: var(--mantine-spacing-xxs);
 }
 
 .markdownRoot[data-compact] :where(ul, ol) {
-  padding-left: var(--mantine-spacing-md);
+  padding-left: var(--mantine-spacing-lg);
 }
 
 .markdownRoot[data-compact] :where(li:not(:last-child)) {
@@ -169,5 +169,5 @@
 }
 
 .markdownRoot[data-compact] :where(pre) {
-  padding: var(--mantine-spacing-xs);
+  padding: var(--mantine-spacing-xxs);
 }

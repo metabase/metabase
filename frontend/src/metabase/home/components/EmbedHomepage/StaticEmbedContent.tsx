@@ -27,7 +27,7 @@ export const StaticEmbedContent = ({
       color="text-secondary"
       id="static-embed-title"
     >{t`Guest embedding`}</Text>
-    <Text mb="md">
+    <Text mb="lg">
       {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
       {t`Embed a dashboard in a 'Powered by Metabase' iframe with interactivity limited to filters and tooltips, and a few customization options. The iframe loads a Metabase URL secured with a signed JSON Web Token (JWT). Appears with "Powered by Metabase", on Open Source and Starter plans, with the option to remove on Pro and Enterprise. As the simplest form of embedding, you can add a dashboard into your app in a few minutes with just a snippet.`}
     </Text>
@@ -37,7 +37,7 @@ export const StaticEmbedContent = ({
         alt="Static embedding example"
       />
     )}
-    <Group gap="md">
+    <Group gap="lg">
       {exampleDashboardLink && (
         <Link
           to={exampleDashboardLink}

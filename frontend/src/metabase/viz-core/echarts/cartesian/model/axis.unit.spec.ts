@@ -74,6 +74,7 @@ describe("getXAxisModel", () => {
       column: dateColumn,
       columnIndex: 0,
       columnByCardId: { 1: dateColumn },
+      columns: [dateColumn],
     };
 
     const dataset = [
@@ -101,6 +102,7 @@ describe("getXAxisModel", () => {
       column: dateColumn,
       columnIndex: 0,
       columnByCardId: { 1: dateColumn },
+      columns: [dateColumn],
     };
 
     const settings = createMockVisualizationSettings({

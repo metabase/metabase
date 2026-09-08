@@ -29,7 +29,7 @@ export const SecretKeyModal = ({
     title={t`Copy and save this API key`}
     data-testid="secret-key-modal"
   >
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Text c="text-secondary">{t`Store this key somewhere safe. For security reasons, we can't show it to you again.`}</Text>
       <TextInput
         aria-label={t`The API key`}

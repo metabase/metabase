@@ -10,6 +10,7 @@
   check driven by [[metabase.models.serialization/serialization-dependencies]]."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.serialization.db :as serialization.db]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -24,7 +25,7 @@
     "[no collection]"))
 
 (defn- entity-label [{:keys [model id]}]
-  (let [entity (t2/select-one [model :collection_id] :id id)]
+  (let [entity (serialization.db/collection-id-row model id)]
     (format "%s %d (from collection %s)" (name model) id (collection-label (:collection_id entity)))))
 
 (defn- resize-batch
@@ -72,7 +73,7 @@
   (into #{}
         (comp (distinct)
               (partition-all serdes/query-batch-size)
-              (mapcat #(t2/select-pks-set (keyword "model" model) {:where [:in :id %]})))
+              (mapcat #(serialization.db/existing-ids (keyword "model" model) %)))
         ids))
 
 (def ^:private structural-content-models

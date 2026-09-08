@@ -23,7 +23,7 @@
 (defn prefix
   "Prefer it when the given value is a completion of a specific (non-null) value"
   [column value]
-  [:coalesce [:case [:like column (str (str/replace value "%" "%%") "%")] [:inline 1] :else [:inline 0]] [:inline 0]])
+  [:coalesce [:case [:like column (h2x/like-prefix value)] [:inline 1] :else [:inline 0]] [:inline 0]])
 
 (defn normalize-text-expr
   "Wrap a string column/value SQL expr with the normalization the text scorers compare on:
