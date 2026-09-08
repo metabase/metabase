@@ -350,6 +350,7 @@
            metabase.app-db.transient-error}
    :uses #{auth-provider
            connection-pool
+           task
            util
            util.classloader
            util.config}
@@ -2427,7 +2428,7 @@
            segments
            util
            xrays}
-   :model-imports #{:model/Segment :model/Table}}
+   :model-imports #{:model/Segment}}
 
   server
   {:team "UX West"
@@ -2683,7 +2684,7 @@
   task
   {:team "UX West"
    :module-exports #{task.history}
-   :api  #{metabase.task.core}
+   :api  #{metabase.task.core metabase.task.secure-delegate}
    :uses #{app-db
            tracing
            util
