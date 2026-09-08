@@ -12,6 +12,7 @@
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
@@ -165,9 +166,19 @@
                 (jdbc/execute! db-conn
                                [(format "DELETE FROM %s WHERE id = ?" table) id])))))))))
 
-;; `delete!` below is ok in a parallel test since it's not actually executing anything
+(defn- fresh-settings-cache!
+  "Refresh the settings cache and reset its check throttle, so that nothing in the tests below reads a setting from
+  the DB: the read-only-mode guard on every DML `build` reads a setting, and inside `t2/build` a settings read that
+  goes to the DB gets a built query back instead of a value. Not parallel for the same reason: another test's cache
+  reset must not land in between."
+  []
+  (mt/initialize-if-needed! :db)
+  (setting.cache/restore-cache-if-needed! :force-check? true))
+
+;; `delete!` below is ok since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(deftest ^:parallel build-query-dont-add-delete-from-when-query-contains-delete-test
+(deftest build-query-dont-add-delete-from-when-query-contains-delete-test
+  (fresh-settings-cache!)
   (testing "Workaround for https://github.com/camsaul/toucan2/issues/202"
     (is (= {:delete    [:field]
             :from      [[:metabase_field :field]]
@@ -181,9 +192,10 @@
                                       [:= :field.table_id :table.id]]
                           :where     [:= :table.db_id [:inline 0]]}))))))
 
-;; `delete!` below is ok in a parallel test since it's not actually executing anything
+;; `delete!` below is ok since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(deftest ^:parallel build-before-delete-query-test
+(deftest build-before-delete-query-test
+  (fresh-settings-cache!)
   (testing "before-delete's select query should remove `:delete`/`:delete-from` (workaround for https://github.com/camsaul/toucan2/issues/203)"
     (is (= {:select [:*], :from [[:metabase_field :field]], :where [:= :field.id 0]}
            (t2/build
