@@ -294,7 +294,7 @@ export function hasFailedGoalReferences(
 }
 
 // Unanswered or failed. Once no further fetch will happen, either means the goal can't be resolved.
-export function hasUnresolvedGoalValues(
+export function hasUnresolvedGoalReferences(
   data: GoalData,
   values: ReadonlyArray<GoalValue | null | undefined>,
 ): boolean {
@@ -374,7 +374,7 @@ function hasGoalReferencesWhere(
 }
 
 // Skips failed references so dashboards don't re-run a failing query on every render.
-export function hasUnansweredGoalReferences(
+export function cardHasUnansweredGoalReferences(
   card: GoalCard,
   data: GoalData | undefined,
 ): boolean {
@@ -382,7 +382,7 @@ export function hasUnansweredGoalReferences(
 }
 
 // Includes failed references so a user action in the query builder retries them.
-export function hasUnresolvedGoalReferences(
+export function cardHasUnresolvedGoalReferences(
   card: GoalCard,
   data: GoalData | undefined,
 ): boolean {

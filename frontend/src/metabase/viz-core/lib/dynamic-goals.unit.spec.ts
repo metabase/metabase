@@ -12,14 +12,14 @@ import {
 
 import type { GoalCard } from "./dynamic-goals";
 import {
+  cardHasUnansweredGoalReferences,
+  cardHasUnresolvedGoalReferences,
   getGoalSegmentBounds,
   getGoalValues,
   getReferencedEntities,
   getUnansweredGoalEntities,
   hasFailedGoalReferences,
-  hasUnansweredGoalReferences,
   hasUnresolvedGoalReferences,
-  hasUnresolvedGoalValues,
   isDynamicGoalSetting,
   isGraphGoalReference,
   resolveGoalSegments,
@@ -658,7 +658,7 @@ describe("getUnansweredGoalEntities", () => {
   });
 });
 
-describe("hasUnansweredGoalReferences", () => {
+describe("cardHasUnansweredGoalReferences", () => {
   const settings: VisualizationSettings = {
     "gauge.segments": [
       { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
@@ -679,15 +679,15 @@ describe("hasUnansweredGoalReferences", () => {
       visualization_settings: settings,
     };
 
-    expect(hasUnansweredGoalReferences(card, undefined)).toBe(false);
+    expect(cardHasUnansweredGoalReferences(card, undefined)).toBe(false);
   });
 
   it("returns true without any result data", () => {
-    expect(hasUnansweredGoalReferences(gauge, undefined)).toBe(true);
+    expect(cardHasUnansweredGoalReferences(gauge, undefined)).toBe(true);
   });
 
   it("returns true when the result lacks the referenced entity", () => {
-    expect(hasUnansweredGoalReferences(gauge, baseData)).toBe(true);
+    expect(cardHasUnansweredGoalReferences(gauge, baseData)).toBe(true);
   });
 
   it("returns false when the reference resolved", () => {
@@ -703,7 +703,7 @@ describe("hasUnansweredGoalReferences", () => {
       },
     });
 
-    expect(hasUnansweredGoalReferences(gauge, data)).toBe(false);
+    expect(cardHasUnansweredGoalReferences(gauge, data)).toBe(false);
   });
 
   it("returns false for a failed reference: the result answered it", () => {
@@ -714,7 +714,7 @@ describe("hasUnansweredGoalReferences", () => {
       },
     });
 
-    expect(hasUnansweredGoalReferences(gauge, data)).toBe(false);
+    expect(cardHasUnansweredGoalReferences(gauge, data)).toBe(false);
   });
 
   it("returns false without foreign references", () => {
@@ -725,11 +725,11 @@ describe("hasUnansweredGoalReferences", () => {
       },
     };
 
-    expect(hasUnansweredGoalReferences(card, undefined)).toBe(false);
+    expect(cardHasUnansweredGoalReferences(card, undefined)).toBe(false);
   });
 });
 
-describe("hasUnresolvedGoalReferences", () => {
+describe("cardHasUnresolvedGoalReferences", () => {
   const gauge: GoalCard = {
     display: "gauge",
     visualization_settings: {
@@ -757,11 +757,11 @@ describe("hasUnresolvedGoalReferences", () => {
       },
     };
 
-    expect(hasUnresolvedGoalReferences(card, undefined)).toBe(false);
+    expect(cardHasUnresolvedGoalReferences(card, undefined)).toBe(false);
   });
 
   it("is true without any result data", () => {
-    expect(hasUnresolvedGoalReferences(gauge, undefined)).toBe(true);
+    expect(cardHasUnresolvedGoalReferences(gauge, undefined)).toBe(true);
   });
 
   it("is true for a failed reference, so it gets retried", () => {
@@ -772,7 +772,7 @@ describe("hasUnresolvedGoalReferences", () => {
       },
     });
 
-    expect(hasUnresolvedGoalReferences(gauge, data)).toBe(true);
+    expect(cardHasUnresolvedGoalReferences(gauge, data)).toBe(true);
   });
 
   it("is true when the referenced column is missing from the entity's answer", () => {
@@ -788,7 +788,7 @@ describe("hasUnresolvedGoalReferences", () => {
       },
     });
 
-    expect(hasUnresolvedGoalReferences(gauge, data)).toBe(true);
+    expect(cardHasUnresolvedGoalReferences(gauge, data)).toBe(true);
   });
 
   it("is false when every reference resolved", () => {
@@ -804,7 +804,7 @@ describe("hasUnresolvedGoalReferences", () => {
       },
     });
 
-    expect(hasUnresolvedGoalReferences(gauge, data)).toBe(false);
+    expect(cardHasUnresolvedGoalReferences(gauge, data)).toBe(false);
   });
 });
 
@@ -830,8 +830,8 @@ describe("dynamic goal settings per display", () => {
     };
 
     expect(getReferencedEntities(card)).toEqual([]);
-    expect(hasUnansweredGoalReferences(card, undefined)).toBe(false);
-    expect(hasUnresolvedGoalReferences(card, undefined)).toBe(false);
+    expect(cardHasUnansweredGoalReferences(card, undefined)).toBe(false);
+    expect(cardHasUnresolvedGoalReferences(card, undefined)).toBe(false);
   });
 });
 
@@ -981,7 +981,7 @@ describe("goal value references", () => {
 
   it("reports unanswered and failed references alike as unresolved", () => {
     expect(
-      hasUnresolvedGoalValues(data, [
+      hasUnresolvedGoalReferences(data, [
         100,
         "value",
         { type: "card", id: 1, column: "sum" },
@@ -989,18 +989,20 @@ describe("goal value references", () => {
       ]),
     ).toBe(false);
     expect(
-      hasUnresolvedGoalValues(data, [
+      hasUnresolvedGoalReferences(data, [
         { type: "measure", id: 3, column: "avg" },
       ]),
     ).toBe(true);
     expect(
-      hasUnresolvedGoalValues(data, [{ type: "card", id: 2, column: "sum" }]),
+      hasUnresolvedGoalReferences(data, [
+        { type: "card", id: 2, column: "sum" },
+      ]),
     ).toBe(true);
     expect(
-      hasUnresolvedGoalValues(data, [
+      hasUnresolvedGoalReferences(data, [
         { type: "card", id: 1, column: "missing" },
       ]),
     ).toBe(true);
-    expect(hasUnresolvedGoalValues(data, ["missing"])).toBe(true);
+    expect(hasUnresolvedGoalReferences(data, ["missing"])).toBe(true);
   });
 });
