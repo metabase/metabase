@@ -1,5 +1,19 @@
+.root {
+  --stepper-content-padding: var(--mantine-spacing-lg);
+  --stepper-spacing: var(--mantine-spacing-lg);
+}
+
 .step {
+  --separator-spacing: calc(var(--mantine-spacing-xxs) / 2);
+
   width: 100%;
+
+  &:not(:last-of-type) {
+    min-height: calc(
+      var(--stepper-icon-size) + var(--mantine-spacing-xxl) +
+        var(--separator-spacing)
+    );
+  }
 }
 
 .stepLabel {

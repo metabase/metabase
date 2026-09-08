@@ -7,6 +7,7 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.database-routing.core :as database-routing]
    [metabase.eid-translation.core :as eid-translation]
+   [metabase.embedding-rest.db :as embedding-rest.db]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -27,8 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -311,15 +311,13 @@
        (eid-translation/->id :model/Card)))
 
 (defn card-for-unsigned-token
-  "Return the info needed for embedding about Card specified in `token`. Additional `constraints` can be passed to the
-  `public-card` function that fetches the Card."
-  [unsigned-token & {:keys [embedding-params constraints]}]
-  {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
+  "Return the info needed for embedding about Card specified in `token`."
+  [unsigned-token & {:keys [embedding-params enable-embedding?]}]
   (let [card-id      (unsigned-token->card-id unsigned-token)
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         resolved-embedding-params (or embedding-params
-                                      (t2/select-one-fn :embedding_params :model/Card :id card-id))]
-    (-> (apply api.public/public-card card-id constraints)
+                                      (embedding-rest.db/card-embedding-params card-id))]
+    (-> (api.public/public-card card-id :enable-embedding? enable-embedding?)
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
         (enabled-params resolved-embedding-params)
@@ -424,15 +422,13 @@
        (eid-translation/->id :model/Dashboard)))
 
 (mu/defn dashboard-for-unsigned-token :- ::dashboards.schema/dashboard
-  "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to
-  the `public-dashboard` function that fetches the Dashboard."
-  [unsigned-token & {:keys [embedding-params constraints]}]
-  {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
+  "Return the info needed for embedding about Dashboard specified in `token`."
+  [unsigned-token & {:keys [embedding-params enable-embedding?]}]
   (let [dashboard-id (unsigned-token->dashboard-id unsigned-token)
         embedding-params (or embedding-params
-                             (t2/select-one-fn :embedding_params :model/Dashboard, :id dashboard-id))
+                             (embedding-rest.db/dashboard-embedding-params dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (-> (apply api.public/public-dashboard dashboard-id constraints)
+    (-> (api.public/public-dashboard dashboard-id :enable-embedding? enable-embedding?)
         (substitute-token-parameters-in-text token-params)
         (remove-locked-parameters embedding-params)
         (remove-token-parameters token-params)
@@ -478,8 +474,8 @@
   the embed tiles endpoints. Callers select each entity exactly once and thread it here. Returns a Ring response."
   [dashboard dashcard card parameters zoom x y lat-field lon-field]
   (database-routing/with-database-routing-off
-    (api.tiles/process-tiles-query-for-dashcard dashboard dashcard card
-                                                parameters zoom x y lat-field lon-field)))
+    (api.public/process-tiles-query-for-dashcard dashboard dashcard card
+                                                 parameters zoom x y lat-field lon-field)))
 
 (defn card-param-values
   "Search for card parameter values. Does security checks to ensure the parameter is on the card and then gets param
@@ -584,7 +580,7 @@
    & {:keys [preview] :or {preview false}}]
   (let [unsigned-token                                 (embed/unsign token)
         dashboard-id                                   (unsigned-token->dashboard-id unsigned-token)
-        dashboard                                      (t2/select-one :model/Dashboard :id dashboard-id)
+        dashboard                                      (embedding-rest.db/dashboard dashboard-id)
         _                                              (when-not preview (check-embedding-enabled-for-dashboard dashboard))
         slug-token-params                              (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         {parameters                 :parameters
@@ -639,7 +635,7 @@
   ([token param-key value {:keys [preview] :or {preview false}}]
    (let [unsigned-token             (embed/unsign token)
          dashboard-id               (unsigned-token->dashboard-id unsigned-token)
-         dashboard                  (t2/select-one :model/Dashboard :id dashboard-id)
+         dashboard                  (embedding-rest.db/dashboard dashboard-id)
          _                          (when-not preview (check-embedding-enabled-for-dashboard dashboard))
          slug-token-params          (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
          parameters                 (:parameters dashboard)

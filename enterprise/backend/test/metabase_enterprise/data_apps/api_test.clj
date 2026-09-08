@@ -245,18 +245,19 @@
             "the bad config neither aborts nor prunes its sibling apps, and doesn't materialize itself")))))
 
 (deftest sync-from-snapshot!-never-throws-test
-  (testing "a malformed data_app.yaml is isolated into :config-errors; the app just doesn't appear, the sync doesn't throw"
-    (mt/with-model-cleanup [:model/DataApp]
-      (let [result (data-app.sync/sync-from-snapshot!
-                    (snapshot {"data_apps/x/data_app.yaml" "name: [unterminated"}))]
-        (is (seq (:config-errors result)))
-        (is (empty? (t2/select-fn-set :name :model/DataApp))))))
-  (testing "a clean sync materializes the app with no config errors"
-    (mt/with-model-cleanup [:model/DataApp]
-      (let [result (data-app.sync/sync-from-snapshot!
-                    (snapshot (app-files "a" {:name "A" :path "index.js" :bundle "A"})))]
-        (is (empty? (:config-errors result)))
-        (is (= #{"a"} (t2/select-fn-set :name :model/DataApp)))))))
+  (mt/with-premium-features #{:data-apps-preview}
+    (testing "a malformed data_app.yaml is isolated into :config-errors; the app just doesn't appear, the sync doesn't throw"
+      (mt/with-model-cleanup [:model/DataApp]
+        (let [result (data-app.sync/sync-from-snapshot!
+                      (snapshot {"data_apps/x/data_app.yaml" "name: [unterminated"}))]
+          (is (seq (:config-errors result)))
+          (is (empty? (t2/select-fn-set :name :model/DataApp))))))
+    (testing "a clean sync materializes the app with no config errors"
+      (mt/with-model-cleanup [:model/DataApp]
+        (let [result (data-app.sync/sync-from-snapshot!
+                      (snapshot (app-files "a" {:name "A" :path "index.js" :bundle "A"})))]
+          (is (empty? (:config-errors result)))
+          (is (= #{"a"} (t2/select-fn-set :name :model/DataApp))))))))
 
 ;;; ----------------------------------------------------- API -----------------------------------------------------
 

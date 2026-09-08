@@ -46,7 +46,7 @@ export const ScalarTitle = ({
     <Flex
       align="center"
       justify="center"
-      gap="xs"
+      gap="xxs"
       maw="100%"
       data-testid="scalar-title"
     >

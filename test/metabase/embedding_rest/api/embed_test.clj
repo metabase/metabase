@@ -10,7 +10,6 @@
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.common :as api.embed.common]
    [metabase.lib.core :as lib]
@@ -28,6 +27,7 @@
    [metabase.test.http-client :as client]
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.random :as u.random]
    [toucan2.core :as t2])
   (:import
@@ -953,8 +953,7 @@
                  :data     {:rows [[1]]}}
                 (mt/user-http-request :rasta :get 202 (dashcard-url dashcard {:params {:venue_id 100}}))))
         (is (= {}
-               (binding [api/*current-user-id* (mt/user->id :rasta)]
-                 (:last_used_param_values (t2/hydrate (t2/select-one :model/Dashboard (:dashboard_id dashcard)) :last_used_param_values)))))))))
+               (public-test/last-used-param-values :rasta (:dashboard_id dashcard))))))))
 
 (deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-shouldn-t-be-subject-to-the-default-query-constraints
   (testing (str "Downloading CSV/JSON/XLSX results from the dashcard endpoint shouldn't be subject to the default "
@@ -2195,6 +2194,31 @@
                                                  card-id)
                      :latField (tiles.api-test/encoded-lat-field-ref)
                      :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
+
+(deftest dashcard-tile-query-does-not-save-last-used-parameters-test
+  (testing "GET api/embed/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
+    (testing "must not persist the URL's parameters as a signed-in visitor's last used parameter values"
+      (mt/with-temporary-setting-values [dashboards-save-last-used-parameters true]
+        (with-embedding-enabled-and-new-secret-key!
+          (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true
+                                                                  :embedding_params {:state "enabled"}
+                                                                  :parameters       [{:id   "_STATE_", :name "State"
+                                                                                      :slug "state",   :type "string/="}]}
+                         :model/Card          {card-id :id}      {:dataset_query (venues-query)}
+                         :model/DashboardCard {dashcard-id :id}  {:card_id            card-id
+                                                                  :dashboard_id       dashboard-id
+                                                                  :parameter_mappings [{:parameter_id "_STATE_"
+                                                                                        :card_id      card-id
+                                                                                        :target       [:dimension [:field (mt/id :people :state) nil]]}]}]
+            (let [token (dash-token dashboard-id)]
+              (is (png? (mt/user-http-request
+                         :rasta :get 200 (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                                                 token dashcard-id card-id)
+                         :latField (tiles.api-test/encoded-lat-field-ref)
+                         :lonField (tiles.api-test/encoded-lon-field-ref)
+                         :parameters (json/encode [{:id "_STATE_", :value ["CA"]}]))))
+              (is (= {}
+                     (public-test/last-used-param-values :rasta dashboard-id))))))))))
 
 (deftest card-tile-query-implicit-join-ref-test
   (testing "GET api/embed/tiles/card/:uuid/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join"

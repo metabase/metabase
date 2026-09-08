@@ -54,7 +54,7 @@ export function TrendComparisonList({
             key={index}
             align="center"
             justify="space-between"
-            gap="md"
+            gap="lg"
             className={S.row}
             data-testid="scalar-previous-value"
           >

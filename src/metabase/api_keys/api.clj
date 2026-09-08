@@ -3,6 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase.api-keys.core :as-alias api-keys]
+   [metabase.api-keys.db :as api-keys.db]
    [metabase.api-keys.models.api-key :as api-key]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.api.common :as api]
@@ -55,7 +56,7 @@
   "Get the count of API keys in the DB with the default scope."
   []
   (api/check-superuser)
-  (t2/count :model/ApiKey :scope nil))
+  (api-keys.db/unscoped-api-key-count))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -70,10 +71,10 @@
                                             [:group_id {:optional true} [:maybe ms/PositiveInt]]
                                             [:name     {:optional true} [:maybe ::api-keys.schema/name]]]]
   (api/check-superuser)
-  (api/let-404 [api-key-before (t2/select-one :model/ApiKey id)]
+  (api/let-404 [api-key-before (api-keys.db/api-key id)]
     (-> api-key-before
         (m/assoc-some ::api-keys/group-id group-id, :name key-name)
-        t2/save!
+        api-keys.db/save-api-key!
         present-api-key)))
 
 (api.macros/defendpoint :put "/:id/regenerate" :- [:map
@@ -85,7 +86,7 @@
   [{:keys [id]} :- [:map
                     [:id ::api-keys.schema/id]]]
   (api/check-superuser)
-  (api/check-404 (t2/exists? :model/ApiKey id))
+  (api/check-404 (api-keys.db/api-key-exists? id))
   (let [regenerated (api-key/regenerate! id)]
     {:id           id
      :unmasked_key (u.secret/expose (:unmasked-key regenerated))
@@ -100,7 +101,7 @@
   "Get a list of API keys with the default scope. Non-paginated."
   []
   (api/check-superuser)
-  (let [api-keys (t2/hydrate (t2/select :model/ApiKey :scope nil) :group :updated_by)]
+  (let [api-keys (t2/hydrate (api-keys.db/unscoped-api-keys) :group :updated_by)]
     (map present-api-key api-keys)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -112,8 +113,8 @@
   [{:keys [id]} :- [:map
                     [:id ::api-keys.schema/id]]]
   (api/check-superuser)
-  (api/check-404 (t2/exists? :model/ApiKey id))
-  (t2/delete! :model/ApiKey id)
+  (api/check-404 (api-keys.db/api-key-exists? id))
+  (api-keys.db/delete-api-key! id)
   api/generic-204-no-content)
 
 (comment

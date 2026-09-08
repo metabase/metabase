@@ -166,6 +166,7 @@ import lock_filled_component from "./lock_filled.svg?component";
 import mail_component from "./mail.svg?component";
 import mail_at_component from "./mail_at.svg?component";
 import mail_filled_component from "./mail_filled.svg?component";
+import map_component from "./map.svg?component";
 import mcp_component from "./mcp.svg?component";
 import medallion_component from "./medallion.svg?component";
 import message_circle_component from "./message_circle.svg?component";
@@ -467,6 +468,7 @@ export const Icons: Record<IconName, React.VFC> = {
   mail: mail_component,
   mail_at: mail_at_component,
   mail_filled: mail_filled_component,
+  map: map_component,
   mcp: mcp_component,
   medallion: medallion_component,
   message_circle: message_circle_component,

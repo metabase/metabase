@@ -204,7 +204,6 @@
     "frontend/src/metabase/visualizations/components/EChartsRenderer/EChartsRenderer.tsx": "global",
     "frontend/src/metabase/visualizations/components/LeafletChoropleth.tsx": "self",
     "frontend/src/metabase/visualizations/components/LeafletMap.tsx": "self",
-    "frontend/src/metabase/visualizations/lib/open-url.ts": "self",
     "frontend/src/metabase/visualizations/visualizations/Map/Map.tsx": "self",
     "frontend/src/metabase/visualizations/visualizations/ObjectDetail/ObjectDetail.ts": "self",
     "frontend/src/metabase/visualizations/visualizations/PivotTable/PivotTable.tsx": "self",

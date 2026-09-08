@@ -9,17 +9,20 @@
 (set! *warn-on-reflection* true)
 
 (defn- occurrences
-  "One single-linter ignore form per unit in `linter->count`, all in `f.clj` on successive lines."
+  "Create the specified number of justified, single-linter ignores for each linter in `linter->count`."
   [linter->count]
   (for [[linter n] linter->count
         i          (range n)]
-    {:file "f.clj", :line (inc i), :linters [linter]}))
+    {:file "f.clj", :line (inc i), :linters [linter], :justified? true}))
 
 (defn- report-lines
+  "Return [[kondo-ratchet/check-report]] output for `ratchets`. Supply the defaults that
+  [[kondo-ratchet/read-ratchets]] adds to a partial file."
   ([ratchets occurrences text]
    (report-lines ratchets occurrences {} text))
   ([ratchets occurrences config-actual text]
-   (vec (kondo-ratchet/check-report ratchets occurrences config-actual text))))
+   (vec (kondo-ratchet/check-report (merge {:config-counts {}, :comment-exempt #{}} ratchets)
+                                    occurrences config-actual text))))
 
 (deftest ^:parallel clean-test
   (let [ratchets {:ignore-counts {:a 2, :b 1}}]
@@ -28,7 +31,7 @@
 
 (deftest ^:parallel over-budget-test
   (let [ratchets {:ignore-counts {:a 1}}]
-    (is (= ["over budget -- remove an ignore, or seed the budget with `./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR:"
+    (is (= ["over budget -- remove an ignore, or seed the budget with `./bin/mage kondo-ratchets-shrink --seed <linter>` and explain the increase in the PR:"
             "  :a: 1 recorded, 3 actual"
             "    f.clj:1"
             "    f.clj:2"
@@ -46,9 +49,21 @@
                          (kondo-ratchet/render ratchets)))
         "unlimited linters do not fail the CI report, even when their actual count reaches zero")))
 
+(deftest ^:parallel unjustified-test
+  (let [ratchets    {:ignore-counts {:a 3, :b 1, :grandfathered 1}, :comment-exempt #{:grandfathered}}
+        occurrences [{:file "f.clj", :line 7,  :linters [:a],             :justified? false}
+                     {:file "g.clj", :line 12, :linters [:a :b],          :justified? false}
+                     {:file "g.clj", :line 20, :linters [:a],             :justified? true}
+                     {:file "h.clj", :line 3,  :linters [:grandfathered], :justified? false}]]
+    (is (= ["ignores without required comments -- add a `;;` comment above the form or at the end of the same line, explaining why the suppression is necessary:"
+            "  f.clj:7 [:a]"
+            "  g.clj:12 [:a :b]"]
+           (report-lines ratchets occurrences (kondo-ratchet/render ratchets)))
+        "a commented ignore passes, and so does an uncommented one whose every linter is exempt")))
+
 (deftest ^:parallel config-over-budget-test
   (let [ratchets {:ignore-counts {}, :config-counts {:a 1, :b 2}}]
-    (is (= ["config suppressions over budget -- remove the entry from .clj-kondo/config.edn, or raise the budget by hand and defend it in the PR:"
+    (is (= ["config suppressions over budget -- remove the entry from .clj-kondo/config.edn, or raise the budget manually and explain the increase in the PR:"
             "  :a: 1 recorded, 2 actual"
             "  :new: 0 recorded, 1 actual"]
            (report-lines ratchets [] {:a 2, :b 1, :new 1} (kondo-ratchet/render ratchets)))
@@ -84,7 +99,7 @@
            (check-with! ratchets (occurrences {:free 1, :over 1})))
         "the warning comes first, sorted, and does not fail the check")
     (is (= {:lines   ["WARNING: :unlimited policies with no ignores left: :a-empty, :z-empty -- delete an entry by hand once its linter no longer needs one"
-                      "over budget -- remove an ignore, or seed the budget with `./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR:"
+                      "over budget -- remove an ignore, or seed the budget with `./bin/mage kondo-ratchets-shrink --seed <linter>` and explain the increase in the PR:"
                       "  :over: 1 recorded, 2 actual"
                       "    f.clj:1"
                       "    f.clj:2"]
@@ -96,6 +111,17 @@
            (check-with! ratchets (occurrences {:z-empty 1, :a-empty 1, :free 1, :over 1})))
         "no warning when every unlimited policy is in use")))
 
+(deftest check-reports-stale-exemptions-test
+  (let [ratchets    {:ignore-counts  {:grandfathered 1, :none-left 1, :still-needed 1}
+                     :comment-exempt #{:grandfathered :none-left :still-needed}}
+        occurrences [{:file "f.clj", :line 1, :linters [:grandfathered], :justified? true}
+                     {:file "g.clj", :line 1, :linters [:still-needed], :justified? false}]]
+    (is (= {:lines   ["WARNING: :comment-exempt is no longer needed for these linters: :grandfathered, :none-left -- delete the stale entries by hand"
+                      "ok -- 2 ignore forms within 3 policies"]
+            :thrown? false}
+           (check-with! ratchets occurrences))
+        "exemptions with only commented ignores or no ignores are named, and do not fail the check")))
+
 (deftest ^:parallel stale-test
   (let [ratchets {:ignore-counts {:a 5, :gone 2}}]
     (is (= []
@@ -104,7 +130,7 @@
 (deftest ^:parallel not-normalized-test
   (let [ratchets {:ignore-counts {:a 1}}
         text     (kondo-ratchet/render ratchets)]
-    (is (= [(str kondo-ratchet/*ratchets-file* " is not normalized -- run `./bin/mage fix-kondo-ratchets`"
+    (is (= [(str kondo-ratchet/*ratchets-file* " is not normalized -- run `./bin/mage kondo-ratchets-shrink`"
                  " to fix the formatting")]
            (report-lines ratchets (occurrences {:a 1}) (str/replace text "{:a 1}" "{:a  1}")))
         "same data, different whitespace")))
@@ -112,11 +138,11 @@
 (deftest ^:parallel combined-test
   (testing "over-budget and formatting problems are reported together"
     (let [ratchets {:ignore-counts {:over 1, :stale 2}}]
-      (is (= ["over budget -- remove an ignore, or seed the budget with `./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR:"
+      (is (= ["over budget -- remove an ignore, or seed the budget with `./bin/mage kondo-ratchets-shrink --seed <linter>` and explain the increase in the PR:"
               "  :over: 1 recorded, 2 actual"
               "    f.clj:1"
               "    f.clj:2"
-              (str kondo-ratchet/*ratchets-file* " is not normalized -- run `./bin/mage fix-kondo-ratchets`"
+              (str kondo-ratchet/*ratchets-file* " is not normalized -- run `./bin/mage kondo-ratchets-shrink`"
                    " to fix the formatting")]
              (report-lines ratchets (occurrences {:over 2, :stale 1}) "{:ignore-counts {}}\n"))))))
 

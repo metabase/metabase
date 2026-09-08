@@ -6,7 +6,7 @@
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
-   [honey.sql.helpers :as sql.helpers]
+   [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -49,6 +49,12 @@
   {:metadata/card   ::lib.schema.metadata/card
    :metadata/column ::lib.schema.metadata/column})
 
+;; TODO (Cam 2026-08-27) Consider whether we should just have this be the normal behavior for normalizing
+;; application-database-style metadata to Lib-style metadata, e.g. why can't we just use
+;;
+;;    (metabase.lib.core/normalize :metabase.lib.schema.metadata/table table-metadata)
+;;
+;; to do this? Seems like these rules can be rolled into the schemas themselves
 (mu/defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a Lib style
   metadata instance with `:lib/type` and `kebab-case` keys."
@@ -153,6 +159,7 @@
    {:select    [:field/active
                 :field/base_type
                 :field/coercion_strategy
+                :field/data_sensitivity
                 :field/database_partitioned
                 :field/database_type
                 :field/description
@@ -429,120 +436,26 @@
                             `lib.metadata.protocols/database
                             `UncachedApplicationDatabaseMetadataProvider)
                     {})))
-  (t2/select-one :metadata/database database-id))
-
-(defn- db-id-key [metadata-type]
-  (case metadata-type
-    :metadata/table                :db_id
-    :metadata/column               :table/db_id
-    :metadata/card                 :card/database_id
-    :metadata/metric               :database_id
-    :metadata/segment              :table/db_id
-    :metadata/measure              :table/db_id
-    :metadata/native-query-snippet nil
-    :metadata/transform            nil))
-
-(defn- id-key [metadata-type]
-  (case metadata-type
-    :metadata/table                :id
-    :metadata/column               :field/id
-    :metadata/card                 :card/id
-    :metadata/metric               :id
-    :metadata/segment              :segment/id
-    :metadata/measure              :measure/id
-    :metadata/native-query-snippet :id
-    :metadata/transform            :id))
-
-(defn- name-key [metadata-type]
-  (case metadata-type
-    :metadata/table                :name
-    :metadata/column               :field/name
-    :metadata/card                 :card/name
-    :metadata/metric               :name
-    :metadata/segment              :segment/name
-    :metadata/measure              :measure/name
-    :metadata/native-query-snippet :name
-    :metadata/transform            :name))
-
-(defn- table-id-key [metadata-type]
-  ;; types not in the case statement do not support Table ID
-  (case metadata-type
-    :metadata/column  :field/table_id
-    :metadata/metric  :table_id
-    :metadata/segment :segment/table_id
-    :metadata/measure :measure/table_id))
-
-(defn- card-id-key [metadata-type]
-  ;; types not in the case statement do not support Card ID
-  (case metadata-type
-    :metadata/metric :source_card_id))
-
-(defn- active-only-honeysql-filter [metadata-type {:keys [include-sensitive?]}]
-  (case metadata-type
-    :metadata/table
-    [:and
-     [:= :active true]
-     [:or
-      [:= :visibility_type nil]
-      [:not-in :visibility_type ["hidden" "technical" "cruft"]]]]
-
-    :metadata/column
-    (let [excluded-visibility-types (cond-> ["retired"]
-                                      (not include-sensitive?) (conj "sensitive"))]
-      [:and
-       [:= :field/active true]
-       [:or
-        [:= :field/visibility_type nil]
-        [:not-in :field/visibility_type excluded-visibility-types]]])
-
-    :metadata/card
-    [:= :card/archived false]
-
-    :metadata/metric
-    [:= :archived false]
-
-    :metadata/segment
-    [:= :segment/archived false]
-
-    :metadata/measure
-    [:= :measure/archived false]
-
-    #_else
-    nil))
-
-(mu/defn- metadata-spec->honey-sql :- [:map
-                                       {:closed true}
-                                       [:where {:optional true} vector?]]
-  "This should match [[metabase.lib.metadata.protocols/default-spec-filter-xform]] as closely as possible."
-  [database-id                                                                                                             :- ::lib.schema.id/database
-   {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-ids card-ids include-sensitive?], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
-  (let [database-id-key (db-id-key metadata-type)
-        active-only?    (not (or id-set name-set))
-        metric?         (= metadata-type :metadata/metric)
-        where-clauses   (cond-> []
-                          database-id-key         (conj [:= database-id-key database-id])
-                          id-set                  (conj [:in (id-key metadata-type) id-set])
-                          name-set                (conj [:in (name-key metadata-type) name-set])
-                          table-ids               (conj [:in (table-id-key metadata-type) table-ids])
-                          card-ids                (conj [:in (card-id-key metadata-type) card-ids])
-                          active-only?            (conj (active-only-honeysql-filter metadata-type {:include-sensitive? include-sensitive?}))
-                          metric?                 (conj [:= :type "metric"])
-                          (and metric? table-ids) (conj [:= :source_card_id nil]))]
-    (reduce
-     sql.helpers/where
-     {}
-     where-clauses)))
+  (lib-be.db/database database-id))
 
 (mu/defn- metadatas
   [database-id                                  :- ::lib.schema.id/database
    {metadata-type :lib/type, :as metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
-  (let [query (metadata-spec->honey-sql database-id metadata-spec)]
-    (lib.util/recover
-     (fn [] (t2/select metadata-type query))
-     (fn [e]
-       (throw (ex-info "Error fetching metadata with spec"
-                       {:metadata-spec metadata-spec, :query query}
-                       e))))))
+  (lib.util/recover
+   (fn []
+     (case metadata-type
+       :metadata/table                (lib-be.db/tables database-id metadata-spec)
+       :metadata/column               (lib-be.db/columns database-id metadata-spec)
+       :metadata/card                 (lib-be.db/cards database-id metadata-spec)
+       :metadata/metric               (lib-be.db/metrics database-id metadata-spec)
+       :metadata/segment              (lib-be.db/segments database-id metadata-spec)
+       :metadata/measure              (lib-be.db/measures database-id metadata-spec)
+       :metadata/native-query-snippet (lib-be.db/native-query-snippets database-id metadata-spec)
+       :metadata/transform            (lib-be.db/transforms database-id metadata-spec)))
+   (fn [e]
+     (throw (ex-info "Error fetching metadata with spec"
+                     {:metadata-spec metadata-spec}
+                     e)))))
 
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider

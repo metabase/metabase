@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.embedding-rest.db :as embedding-rest.db]
    [metabase.embedding.settings :as embedding.settings]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
@@ -27,14 +28,13 @@
   []
   ; settings field is used for theme card previews.
   ; we can optimize this by only selecting the preview colors needed.
-  (t2/select :model/EmbeddingTheme {:order-by [[:created_at :asc]]
-                                    :select [:id :entity_id :name :settings :created_at :updated_at]}))
+  (embedding-rest.db/embedding-themes))
 
 (api.macros/defendpoint :get "/:id" :- ::EmbeddingTheme
   "Fetch a single embedding theme by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
-  (t2/select-one :model/EmbeddingTheme :id id))
+  (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
+  (embedding-rest.db/embedding-theme id))
 
 (api.macros/defendpoint :post "/" :- ::EmbeddingTheme
   "Create a new embedding theme."
@@ -43,9 +43,8 @@
    {:keys [name settings]} :- [:map
                                [:name     ms/NonBlankString]
                                [:settings ms/Map]]]
-  (t2/insert-returning-instance! :model/EmbeddingTheme
-                                 {:name name
-                                  :settings settings}))
+  (embedding-rest.db/insert-embedding-theme! {:name name
+                                              :settings settings}))
 
 (api.macros/defendpoint :put "/:id" :- ::EmbeddingTheme
   "Update an embedding theme."
@@ -54,28 +53,27 @@
    {:keys [name settings]} :- [:map
                                [:name {:optional true} [:maybe ms/NonBlankString]]
                                [:settings {:optional true} [:maybe ms/Map]]]]
-  (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
-  (t2/update! :model/EmbeddingTheme id
-              (cond-> {}
-                name (assoc :name name)
-                settings (assoc :settings settings)))
-  (t2/select-one :model/EmbeddingTheme :id id))
+  (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
+  (embedding-rest.db/update-embedding-theme! id
+                                             (cond-> {}
+                                               name (assoc :name name)
+                                               settings (assoc :settings settings)))
+  (embedding-rest.db/embedding-theme id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete an embedding theme."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
-  (t2/delete! :model/EmbeddingTheme :id id)
+  (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
+  (embedding-rest.db/delete-embedding-theme! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/copy" :- ::EmbeddingTheme
   "Copy an embedding theme."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
-  (let [source-theme (t2/select-one :model/EmbeddingTheme :id id)]
-    (t2/insert-returning-instance! :model/EmbeddingTheme
-                                   {:name (tru "Copy of {0}" (:name source-theme))
-                                    :settings (:settings source-theme)})))
+  (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
+  (let [source-theme (embedding-rest.db/embedding-theme id)]
+    (embedding-rest.db/insert-embedding-theme! {:name (tru "Copy of {0}" (:name source-theme))
+                                                :settings (:settings source-theme)})))
 
 (api.macros/defendpoint :post "/seed-defaults" :- :nil
   "Seed default embedding themes on first call, using the payloads built by the frontend from the
@@ -92,6 +90,6 @@
   (locking seed-defaults-lock
     (t2/with-transaction [_conn]
       (when-not (embedding.settings/default-embedding-themes-seeded)
-        (t2/insert! :model/EmbeddingTheme themes)
+        (embedding-rest.db/insert-embedding-themes! themes)
         (embedding.settings/default-embedding-themes-seeded! true))))
   nil)

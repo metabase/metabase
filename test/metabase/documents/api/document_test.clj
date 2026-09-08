@@ -295,9 +295,9 @@
                                :parameters [{:id "pid" :name "p" :slug "p" :type "category"
                                              :target [:dimension [:field (mt/id :venues :name) nil]]}]}]
                 (testing "the Card endpoint refuses it — the control"
-                  (is (re-find #"VENUES"
-                               (:message (mt/user-http-request :rasta :post 403 "card"
-                                                               (assoc card-body :collection_id coll-id))))))
+                  (is (= "You must have data permissions to add a parameter referencing this Field."
+                         (mt/user-http-request :rasta :post 403 "card"
+                                               (assoc card-body :collection_id coll-id)))))
                 (testing "the Document endpoint must refuse it too"
                   (mt/user-http-request :rasta :post 403 "document/"
                                         {:name "d"

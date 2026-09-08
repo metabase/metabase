@@ -57,7 +57,7 @@ export function ResetCheckpointSection({
     : t`Last processed record`;
 
   return (
-    <Group gap="md" align="center">
+    <Group gap="lg" align="center">
       <Box c="text-secondary" role="group" aria-labelledby={labelId}>
         <span id={labelId}>{label}: </span>
         <Text component="span" fw="bold" c="text-primary">

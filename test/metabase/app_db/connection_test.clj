@@ -11,7 +11,7 @@
    [toucan2.jdbc.options :as t2.jdbc.options])
   (:import
    (com.mchange.v2.c3p0 DataSources PoolBackedDataSource WrapperConnectionPoolDataSource)
-   (java.sql Connection SQLException)
+   (java.sql Connection SQLException Savepoint)
    (java.util.concurrent Semaphore)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
@@ -436,6 +436,143 @@
           ;; The original exception should be thrown, not the setAutoCommit exception
           (is (= msg (ex-message e))))
         (is (true? @autocommit-reset-called))))))
+
+(defn- recording-connection
+  "Mock connection recording savepoint, rollback, and commit calls in `calls`."
+  [calls]
+  (let [sp-count (atom 0)
+        auto?    (atom true)]
+    (reify Connection
+      (setAutoCommit [_ v] (reset! auto? v))
+      (getAutoCommit [_] @auto?)
+      (setSavepoint [_]
+        (let [n (swap! sp-count inc)]
+          (swap! calls conj [:set n])
+          (reify Savepoint
+            (getSavepointId [_] n))))
+      (releaseSavepoint [_ savepoint]
+        (swap! calls conj [:release (.getSavepointId ^Savepoint savepoint)]))
+      (rollback [_ savepoint]
+        (swap! calls conj [:rollback (.getSavepointId ^Savepoint savepoint)]))
+      (rollback [_]
+        (swap! calls conj [:rollback-connection]))
+      (commit [_]
+        (swap! calls conj [:commit])))))
+
+(deftest nested-transaction-savepoint-lifecycle-test
+  (let [calls (atom [])]
+    (binding [t2.connection/*current-connectable* (recording-connection calls)]
+      (testing "a successful nested transaction releases its savepoint; the outermost commits without releasing"
+        (t2/with-transaction [_]
+          (t2/with-transaction [_]))
+        (is (= [[:set 1] [:set 2] [:release 2] [:commit]]
+               @calls))))
+    (let [calls (atom [])]
+      (binding [t2.connection/*current-connectable* (recording-connection calls)]
+        (testing "a failed nested transaction rolls back to its savepoint without releasing it"
+          (t2/with-transaction [_]
+            (is (thrown-with-msg?
+                 Exception #"boom"
+                 (t2/with-transaction [_]
+                   (throw (ex-info "boom" {}))))))
+          (is (= [[:set 1] [:set 2] [:rollback 2] [:commit]]
+                 @calls)))))
+    (let [calls (atom [])]
+      (binding [t2.connection/*current-connectable* (recording-connection calls)]
+        (testing "deeper nesting releases innermost first"
+          (t2/with-transaction [_]
+            (t2/with-transaction [_]
+              (t2/with-transaction [_])))
+          (is (= [[:set 1] [:set 2] [:set 3] [:release 3] [:release 2] [:commit]]
+                 @calls)))))))
+
+(defn- await-step
+  [p]
+  (let [v (deref p 10000 ::timeout)]
+    (is (not= ::timeout v) "sibling thread did not reach the expected step")
+    v))
+
+;; A `future` started inside a transaction inherits its bindings and runs nested scopes on the same connection.
+(deftest concurrent-nested-transaction-savepoint-test
+  (testing "a scope that finishes while a later sibling is still running leaves its savepoint until the sibling finishes"
+    (let [calls  (atom [])
+          t1-in  (promise)
+          t2-in  (promise)
+          t1-out (promise)]
+      (binding [t2.connection/*current-connectable* (recording-connection calls)]
+        (t2/with-transaction [_]
+          (let [t1 (future
+                     (t2/with-transaction [_]
+                       (deliver t1-in true)
+                       (await-step t2-in))
+                     (deliver t1-out true))
+                t2 (future
+                     (await-step t1-in)
+                     (t2/with-transaction [_]
+                       (deliver t2-in true)
+                       (await-step t1-out)))]
+            (await-step t1)
+            (await-step t2))))
+      (is (= [[:set 1] [:set 2] [:set 3] [:release 2] [:commit]]
+             @calls))))
+  (testing "a sibling that rolls back destroys later savepoints, so their scopes no longer try to release them"
+    (let [calls  (atom [])
+          t1-in  (promise)
+          t2-in  (promise)
+          t1-out (promise)]
+      (binding [t2.connection/*current-connectable* (recording-connection calls)]
+        (t2/with-transaction [_]
+          (let [t1 (future
+                     (try
+                       (t2/with-transaction [_]
+                         (deliver t1-in true)
+                         (await-step t2-in)
+                         (throw (ex-info "boom" {})))
+                       (catch Exception _)
+                       (finally
+                         (deliver t1-out true))))
+                t2 (future
+                     (await-step t1-in)
+                     (t2/with-transaction [_]
+                       (deliver t2-in true)
+                       (await-step t1-out)))]
+            (await-step t1)
+            (await-step t2))))
+      (is (= [[:set 1] [:set 2] [:set 3] [:rollback 2] [:commit]]
+             @calls)))))
+
+(deftest released-savepoint-preserves-rollback-semantics-test
+  (let [user-1       (mt/random-email)
+        user-2       (mt/random-email)
+        user-exists? (fn [email] (t2/exists? :model/User :email email))
+        create-user! (fn [email] (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email)))
+        ;; toucan2 rebuilds ExceptionInfos to attach its context trace (preserving ex-data but not identity
+        ;; or the cause chain), so detect our abort by an ex-data marker rather than identity
+        outer-abort  (ex-info "(Abort the outer transaction)" {::outer-abort true})
+        outer-abort? (fn outer-abort? [e]
+                       (boolean (or (::outer-abort (ex-data e))
+                                    (some-> (ex-cause e) outer-abort?))))]
+    (try
+      (t2/with-transaction [conn]
+        (t2/with-transaction [_ conn]
+          (create-user! user-1))
+        (testing "work from a successful nested transaction is visible in the outer transaction after release"
+          (is (user-exists? user-1)))
+        (is (thrown-with-msg?
+             Exception #"Abort the sibling"
+             (t2/with-transaction [_ conn]
+               (create-user! user-2)
+               (throw (ex-info "(Abort the sibling)" {})))))
+        (testing "a later sibling nested transaction rolls back only its own work"
+          (is (user-exists? user-1))
+          (is (not (user-exists? user-2))))
+        (throw outer-abort))
+      (catch Exception e
+        (when-not (outer-abort? e)
+          (throw e))))
+    (testing "rolling back the outer transaction undoes work from a released nested transaction"
+      (is (not (user-exists? user-1)))
+      (is (not (user-exists? user-2))))))
 
 ;;; ------------------------------ before-commit + transaction-state ------------------------------
 ;;; The mq transactional outbox relies on this machinery: it inserts its rows from a before-commit

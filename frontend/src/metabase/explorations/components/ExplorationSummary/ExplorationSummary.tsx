@@ -123,7 +123,7 @@ export function ExplorationSummary({
         <Box
           bg="background-primary"
           bd="1px solid border"
-          bdrs="md"
+          bdrs="sm"
           h="100%"
           style={{ overflow: "hidden" }}
         >
@@ -131,7 +131,7 @@ export function ExplorationSummary({
             <Stack
               h="100%"
               flex={1}
-              p="lg"
+              p="xl"
               pr={sidebarMode != null ? "5rem" : "lg"}
               pt="3rem"
               gap={0}
