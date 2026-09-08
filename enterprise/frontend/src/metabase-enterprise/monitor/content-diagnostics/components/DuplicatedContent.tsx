@@ -13,7 +13,6 @@ import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import type { ContentDiagnosticsDuplicatedSortColumn } from "metabase-types/api";
 
 import {
-  getChangedFilterDimension,
   trackContentDiagnosticsFiltersChanged,
   trackContentDiagnosticsFindingSelected,
   trackContentDiagnosticsTabViewed,
@@ -35,6 +34,7 @@ import type {
   ContentDiagnosticsParamsOptions,
   DuplicatedContentFilterOptions,
 } from "./types";
+import { getChangedFilterDimension } from "./utils";
 
 type DuplicatedContentProps = {
   params: Urls.DuplicatedContentParams;
@@ -186,6 +186,9 @@ export function DuplicatedContent({
               isLoading={isLoading}
               rowSelection={rowSelection}
               onSelect={(finding) => {
+                if (finding.id === selectedFindingId) {
+                  return;
+                }
                 trackContentDiagnosticsFindingSelected({
                   tab: "duplicated",
                   entityId: finding.entity_id,
@@ -216,6 +219,7 @@ export function DuplicatedContent({
         )}
       </Flex>
       <ContentDiagnosticsBulkTrashBar
+        tab="duplicated"
         selectedFindings={selectedFindings}
         onSettled={handleTrashSettled}
       />

@@ -16,7 +16,6 @@ import type {
 } from "metabase-types/api";
 
 import {
-  getChangedFilterDimension,
   trackContentDiagnosticsFiltersChanged,
   trackContentDiagnosticsFindingSelected,
   trackContentDiagnosticsTabViewed,
@@ -39,6 +38,7 @@ import type {
   ContentDiagnosticsParamsOptions,
   ImbalancedContentFilterOptions,
 } from "./types";
+import { getChangedFilterDimension } from "./utils";
 
 type ImbalancedContentProps = {
   mode: ContentDiagnosticsImbalancedFindingType;
@@ -196,6 +196,9 @@ export function ImbalancedContent({
               enableSelection={enableBulkTrash}
               rowSelection={rowSelection}
               onSelect={(finding) => {
+                if (finding.id === selectedFindingId) {
+                  return;
+                }
                 trackContentDiagnosticsFindingSelected({
                   tab: mode,
                   entityId: finding.entity_id,
@@ -228,6 +231,7 @@ export function ImbalancedContent({
       </Flex>
       {enableBulkTrash && (
         <ContentDiagnosticsBulkTrashBar
+          tab={mode}
           selectedFindings={selectedFindings}
           onSettled={handleTrashSettled}
         />

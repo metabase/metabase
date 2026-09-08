@@ -13,7 +13,6 @@ import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import type { ContentDiagnosticsStaleSortColumn } from "metabase-types/api";
 
 import {
-  getChangedFilterDimension,
   trackContentDiagnosticsFiltersChanged,
   trackContentDiagnosticsFindingSelected,
   trackContentDiagnosticsTabViewed,
@@ -35,6 +34,7 @@ import type {
   ContentDiagnosticsParamsOptions,
   StaleContentFilterOptions,
 } from "./types";
+import { getChangedFilterDimension } from "./utils";
 
 type StaleContentProps = {
   params: Urls.StaleContentParams;
@@ -183,6 +183,9 @@ export function StaleContent({
               isLoading={isLoading}
               rowSelection={rowSelection}
               onSelect={(finding) => {
+                if (finding.id === selectedFindingId) {
+                  return;
+                }
                 trackContentDiagnosticsFindingSelected({
                   tab: "stale",
                   entityId: finding.entity_id,
@@ -213,6 +216,7 @@ export function StaleContent({
         )}
       </Flex>
       <ContentDiagnosticsBulkTrashBar
+        tab="stale"
         selectedFindings={selectedFindings}
         onSettled={handleTrashSettled}
       />

@@ -35,6 +35,7 @@ function setup(selectedFindings: ContentDiagnosticsBaseFinding[]) {
   const onSettled = jest.fn();
   const { store } = renderWithProviders(
     <ContentDiagnosticsBulkTrashBar
+      tab="stale"
       selectedFindings={selectedFindings}
       onSettled={onSettled}
     />,
@@ -47,6 +48,10 @@ function hasUndo(store: ReturnType<typeof setup>["store"], message: string) {
 }
 
 describe("ContentDiagnosticsBulkTrashBar", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   it("uses recoverable trash wording for archivable-only selections", async () => {
     setup([card({ id: 1, entity_id: 1 }), card({ id: 2, entity_id: 2 })]);
 

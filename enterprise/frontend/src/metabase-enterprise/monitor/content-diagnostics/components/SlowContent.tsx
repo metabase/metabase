@@ -16,7 +16,6 @@ import type {
 } from "metabase-types/api";
 
 import {
-  getChangedFilterDimension,
   trackContentDiagnosticsFiltersChanged,
   trackContentDiagnosticsFindingSelected,
   trackContentDiagnosticsTabViewed,
@@ -38,6 +37,7 @@ import type {
   ContentDiagnosticsParamsOptions,
   SlowContentFilterOptions,
 } from "./types";
+import { getChangedFilterDimension } from "./utils";
 
 const NO_FINDINGS: ContentDiagnosticsSlowFinding[] = [];
 
@@ -188,6 +188,9 @@ export function SlowContent({
               isLoading={isLoading}
               rowSelection={rowSelection}
               onSelect={(finding) => {
+                if (finding.id === selectedFindingId) {
+                  return;
+                }
                 trackContentDiagnosticsFindingSelected({
                   tab: "slow",
                   entityId: finding.entity_id,
@@ -218,6 +221,7 @@ export function SlowContent({
         )}
       </Flex>
       <ContentDiagnosticsBulkTrashBar
+        tab="slow"
         selectedFindings={selectedFindings}
         onSettled={handleTrashSettled}
       />

@@ -15,6 +15,11 @@ import {
   type IconName,
 } from "metabase-types/api";
 
+import type {
+  ContentDiagnosticsBaseFilterOptions,
+  ContentDiagnosticsFilterDimension,
+} from "./types";
+
 export const ALL_NON_COLLECTION_FILTER_TYPES: ContentDiagnosticsNonCollectionFilterType[] =
   [...CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES];
 
@@ -210,4 +215,47 @@ export function areEntityTypesEqual(
   }
   const setB = new Set(b);
   return a.every((type) => setB.has(type));
+}
+
+const ENTITY_TYPES_KEY = "entityTypes";
+const PERSONAL_COLLECTIONS_KEY = "includePersonalCollections";
+
+function getThresholds(options: object): Map<string, unknown> {
+  return new Map(
+    Object.entries(options).filter(
+      ([key]) => key !== ENTITY_TYPES_KEY && key !== PERSONAL_COLLECTIONS_KEY,
+    ),
+  );
+}
+
+export function getChangedFilterDimension<
+  T extends ContentDiagnosticsBaseFilterOptions<ContentDiagnosticsFilterType>,
+>(
+  previousOptions: T,
+  nextOptions: T,
+): ContentDiagnosticsFilterDimension | null {
+  if (
+    !areEntityTypesEqual(previousOptions.entityTypes, nextOptions.entityTypes)
+  ) {
+    return "entity_type";
+  }
+
+  if (
+    previousOptions.includePersonalCollections !==
+    nextOptions.includePersonalCollections
+  ) {
+    return "personal_collections";
+  }
+
+  const previousThresholds = getThresholds(previousOptions);
+  const nextThresholds = getThresholds(nextOptions);
+  const thresholdKeys = new Set([
+    ...previousThresholds.keys(),
+    ...nextThresholds.keys(),
+  ]);
+  const hasThresholdChange = [...thresholdKeys].some(
+    (key) => previousThresholds.get(key) !== nextThresholds.get(key),
+  );
+
+  return hasThresholdChange ? "threshold" : null;
 }
