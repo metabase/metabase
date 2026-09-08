@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (connection and transaction handling still use `toucan2.core`)."
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.app-db.core :as mdb]
    [metabase.search.appdb.specialization.api :as specialization]
    [toucan2.core :as t2]))
 
@@ -10,6 +11,24 @@
   "The rows matching the Honey SQL `query` built from a search model's spec by `metabase.search.ingestion`."
   [query]
   (t2/query query))
+
+(defn spec-index-reducible-rows
+  "A reducible of the rows matching the Honey SQL `query` built from a search model's spec by
+  `metabase.search.ingestion`."
+  [query]
+  (mdb/streaming-reducible-query query))
+
+(defn in-place-model-set-rows
+  "The rows matching the Honey SQL `query` built by `metabase.search.in-place.legacy` to find the distinct set of
+  models with results."
+  [query]
+  (mdb/query query))
+
+(defn in-place-search-reducible
+  "A reducible of the rows matching the full in-place search Honey SQL `query` built by
+  `metabase.search.in-place.legacy`."
+  [query]
+  (mdb/streaming-reducible-query query))
 
 (defn scored-search-rows
   "The rows matching the scored, filtered search Honey SQL `query` built by `metabase.search.appdb.core`."

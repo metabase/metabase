@@ -2,6 +2,7 @@
   "Application database queries for the security-center module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
+   [metabase.app-db.core :as mdb]
    [toucan2.core :as t2]))
 
 (defn advisory
@@ -13,6 +14,12 @@
   "The SecurityAdvisory with the external `advisory-id`, or nil."
   [advisory-id]
   (t2/select-one :model/SecurityAdvisory :advisory_id advisory-id))
+
+(defn max-advisory-updated-at
+  "The latest `updated_at` across every SecurityAdvisory, or nil when there are none."
+  []
+  (:updated_at (t2/query-one {:select [[[:max :updated_at] :updated_at]]
+                              :from   [:security_advisory]})))
 
 (defn advisories-newest-first
   "Every SecurityAdvisory, newest first."
@@ -43,6 +50,18 @@
   "Apply `changes` to the SecurityAdvisory with `id`."
   [id changes]
   (t2/update! :model/SecurityAdvisory id changes))
+
+(defn upsert-advisory!
+  "Insert or update a SecurityAdvisory by `:advisory_id`. On insert, `:match_status` starts as `:unknown` until the
+  matching engine evaluates it. On update, sets `advisory`'s columns, leaving `:match_status`, `:last_evaluated_at`,
+  and acknowledgement fields (which `advisory` doesn't include) untouched."
+  [advisory]
+  (mdb/update-or-insert! :model/SecurityAdvisory
+                         {:advisory_id (:advisory_id advisory)}
+                         (fn [existing]
+                           (if existing
+                             advisory
+                             (assoc advisory :match_status :unknown)))))
 
 (defn user-summaries-by-id
   "A map of ID to the ID, names, and email of the Users with `user-ids`."

@@ -6,7 +6,36 @@
   first, and while rows are being re-encrypted a setting row can be plaintext under a key, or ciphertext under a key
   not yet in effect, which that model's strict read rejects."
   (:require
+   [honey.sql :as sql]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
+
+(defn current-timestamp-string
+  "The application DB's own current timestamp, as a string, for app DB type `db-type`."
+  ^String [db-type]
+  ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
+  (let [cast-form (h2x/cast (if (= db-type :mysql) :char :text) (h2x/current-datetime-honeysql-form db-type))]
+    (:timestamp (t2/query-one {:select [[cast-form :timestamp]]}))))
+
+;;; ------------------------------------------------ Liquibase ------------------------------------------------
+
+(defn changelog-by-id
+  "The Liquibase changelog row with `changelog-id` in the app DB of type `db-type`, or nil."
+  [db-type changelog-id]
+  (let [table-name (case db-type
+                     (:postgres :h2) "databasechangelog"
+                     :mysql          "DATABASECHANGELOG")]
+    (t2/query-one [(format "select * from %s where id = ?" table-name) changelog-id])))
+
+(defn changelog-ids
+  "The ids among `changelog-ids` still present in the Liquibase changelog table `changelog-table-name`, read on
+  `conn`."
+  [conn changelog-table-name changelog-ids]
+  (map :id (t2/query conn (sql/format {:select [:id]
+                                       :from   [(keyword changelog-table-name)]
+                                       :where  [:in :id changelog-ids]}))))
+
+;;; ------------------------------------------------ Settings ------------------------------------------------
 
 (def ^:private unmigrated-settings-where
   [:and [:= :value_with_aad nil] [:not= :value nil] [:not= :value ""]])
