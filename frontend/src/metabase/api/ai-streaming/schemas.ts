@@ -96,12 +96,7 @@ export type GeneratedCard = {
   display?: CardDisplayType;
 };
 
-export type GeneratedDashboardTile = Omit<
-  SaveMetabotDashboardTile,
-  "dataset_query"
-> & {
-  query: DatasetQuery;
-};
+export type GeneratedDashboardTile = SaveMetabotDashboardTile;
 
 export type GeneratedXrayDashboard = {
   type: "dashboard";
@@ -129,14 +124,16 @@ export type SavedEntityDestination =
   | { type: "dashboard"; id: number }
   | { type: "document"; id: number };
 
-export type EntitySavedValue = {
+type EntitySavedBase = {
   chart_id: string;
-  card_id?: number;
-  dashboard_id?: number;
   destination: SavedEntityDestination;
   tool_call_id?: string;
   title?: string;
 };
+
+export type EntitySavedValue =
+  | (EntitySavedBase & { card_id: number })
+  | (EntitySavedBase & { dashboard_id: number });
 
 export type ToolTitleData = {
   tool_call_id: string;
