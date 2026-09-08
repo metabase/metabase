@@ -87,27 +87,27 @@ const setup = ({
   timelineEventsVisibility,
   timelines = [TIMELINE],
   series = getSeries(savedSettings),
+  settings = getComputedSettingsForSeries(series),
   onTimelineEventsShown,
 }: {
   savedSettings?: VisualizationSettings;
   timelineEvents?: TimelineEvent[];
-  timelineEventsVisibility?: TimelineEventsVisibility | null;
+  timelineEventsVisibility?: TimelineEventsVisibility;
   timelines?: Timeline[];
   series?: RawSeries;
+  settings?: VisualizationProps["settings"];
   onTimelineEventsShown?: VisualizationProps["onTimelineEventsShown"];
 } = {}) => {
   setupTimelinesEndpoints(timelines);
-  const settings = getComputedSettingsForSeries(series);
   return renderHookWithProviders(
-    (props: Pick<VisualizationProps, "series">) =>
+    (props: Pick<VisualizationProps, "series" | "settings">) =>
       useTimelineEvents({
         timelineEvents,
         timelineEventsVisibility,
-        settings,
         onTimelineEventsShown,
         ...props,
       }),
-    { initialProps: { series } },
+    { initialProps: { series, settings } },
   );
 };
 
@@ -177,8 +177,10 @@ describe("useTimelineEvents", () => {
     expect(getTimelineRequests()).toHaveLength(0);
   });
 
-  it("loads nothing when the host turns events off", () => {
-    const { result } = setup({ timelineEventsVisibility: null });
+  it("loads nothing when the host selects no timelines", () => {
+    const { result } = setup({
+      timelineEventsVisibility: { "timeline.selected_timeline_ids": [] },
+    });
 
     expect(result.current.timelineEvents).toEqual([]);
     expect(getTimelineRequests()).toHaveLength(0);
@@ -216,6 +218,46 @@ describe("useTimelineEvents", () => {
     setup({ savedSettings: {}, onTimelineEventsShown });
 
     expect(onTimelineEventsShown).not.toHaveBeenCalled();
+  });
+
+  it("keeps the same events and reports once when rerendered with the same inputs", async () => {
+    const onTimelineEventsShown = jest.fn();
+    const series = getSeries(SAVED_VISIBILITY);
+    const settings = getComputedSettingsForSeries(series);
+    const { result, rerender } = setup({
+      series,
+      settings,
+      onTimelineEventsShown,
+    });
+
+    await waitFor(() => {
+      expect(result.current.timelineEvents).toEqual([SHOWN_EVENT]);
+    });
+    const events = result.current.timelineEvents;
+
+    rerender({ series, settings });
+
+    expect(result.current.timelineEvents).toBe(events);
+    expect(onTimelineEventsShown).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops the events when the settings turn the chart into a non-timeseries one", async () => {
+    const series = getSeries(SAVED_VISIBILITY);
+    const { result, rerender } = setup({ series });
+
+    await waitFor(() => {
+      expect(result.current.timelineEvents).toEqual([SHOWN_EVENT]);
+    });
+
+    rerender({
+      series,
+      settings: {
+        ...getComputedSettingsForSeries(series),
+        "graph.x_axis.scale": "ordinal",
+      },
+    });
+
+    expect(result.current.timelineEvents).toEqual([]);
   });
 
   it.each([

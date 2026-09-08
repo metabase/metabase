@@ -12,6 +12,7 @@ import {
   SET_SIDEBAR,
   fetchCardDataAction,
   fetchDashboard,
+  markTimelineEventsShown,
   selectTimelineEvents,
   setDashCardTimelineEventsVisibility,
 } from "./actions";
@@ -495,6 +496,27 @@ describe("dashboard reducers", () => {
       });
       expect(state.overrides).toEqual({});
       expect(state.selection).toEqual({ dashcardId: 1, eventIds: [100] });
+    });
+  });
+
+  describe("timelineEvents tracking", () => {
+    const trackedState = () => reducer(undefined, markTimelineEventsShown());
+
+    it("remembers that the shown events were tracked", () => {
+      expect(trackedState().timelineEvents.hasTrackedEventsShown).toBe(true);
+    });
+
+    it("keeps the tracking across dashboard editing", () => {
+      const state = reducer(trackedState(), {
+        type: SET_EDITING_DASHBOARD,
+        payload: TEST_DASHBOARD,
+      });
+      expect(state.timelineEvents.hasTrackedEventsShown).toBe(true);
+    });
+
+    it("forgets the tracking when another dashboard is opened", () => {
+      const state = reducer(trackedState(), { type: INITIALIZE });
+      expect(state.timelineEvents.hasTrackedEventsShown).toBe(false);
     });
   });
 });

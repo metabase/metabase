@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useMount } from "react-use";
 
 import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -65,12 +65,9 @@ const DATASET = createMockDataset({
   }),
 });
 
-// plays the chart: a chart reports the events it drew
 const DashCardChart = ({ dashcard }: { dashcard: DashboardCard }) => {
   const { onTimelineEventsShown } = useDashCardTimelineEvents(dashcard);
-  useEffect(() => {
-    onTimelineEventsShown?.();
-  }, [onTimelineEventsShown]);
+  useMount(() => onTimelineEventsShown?.());
   return null;
 };
 

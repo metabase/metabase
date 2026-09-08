@@ -175,7 +175,7 @@ type VisualizationOwnProps = {
   hideLegend?: boolean;
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
-  timelineEventsVisibility?: TimelineEventsVisibility | null;
+  timelineEventsVisibility?: TimelineEventsVisibility;
   onTimelineEventsShown?: () => void;
   tc?: ContentTranslationFunction;
   zoomedRowIndex?: number;

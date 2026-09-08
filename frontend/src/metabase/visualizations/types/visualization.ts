@@ -94,7 +94,7 @@ export interface VisualizationProps {
   clicked?: ClickObject | null;
   className?: string;
   timelineEvents?: TimelineEvent[];
-  timelineEventsVisibility?: TimelineEventsVisibility | null;
+  timelineEventsVisibility?: TimelineEventsVisibility;
   selectedTimelineEventIds?: TimelineEventId[];
   queryBuilderMode?: QueryBuilderMode;
 

@@ -9,6 +9,7 @@ import type {
   DashboardCard,
   TimelineEvent,
   TimelineEventId,
+  TimelineEventsVisibility,
 } from "metabase-types/api";
 
 import {
@@ -52,9 +53,13 @@ type DashCardTimelineEvents = {
   isEnabled: boolean;
 } & DashCardTimelineEventsProps;
 
+const NO_TIMELINE_EVENTS: TimelineEventsVisibility = {
+  "timeline.selected_timeline_ids": [],
+};
+
 const DISABLED: DashCardTimelineEvents = {
   isEnabled: false,
-  timelineEventsVisibility: null,
+  timelineEventsVisibility: NO_TIMELINE_EVENTS,
 };
 
 export const useDashCardTimelineEvents = (
@@ -70,7 +75,9 @@ export const useDashCardTimelineEvents = (
   );
 
   const timelineEventsVisibility = useSelector((state) =>
-    isEnabled ? getDashCardTimelineEventsVisibility(state, dashcardId) : null,
+    isEnabled
+      ? getDashCardTimelineEventsVisibility(state, dashcardId)
+      : NO_TIMELINE_EVENTS,
   );
   const selectedTimelineEventIds = useSelector((state) =>
     isEnabled

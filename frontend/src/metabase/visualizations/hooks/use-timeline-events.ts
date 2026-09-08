@@ -44,9 +44,7 @@ export function useTimelineEvents({
   series,
   onTimelineEventsShown,
 }: UseTimelineEventsProps): UseTimelineEventsResult {
-  // null is the host opting out; undefined falls back to the card settings
-  const isEnabled =
-    timelineEventsVisibility !== null && isTimelineEventsEnabled(settings);
+  const isEnabled = isTimelineEventsEnabled(settings);
   const visibility = isEnabled
     ? (timelineEventsVisibility ??
       getRecordedTimelineEventsVisibility(settings))
