@@ -124,7 +124,9 @@ x.com")
   :encryption :when-encryption-key-set
   :export?    false
   :audit      :no-value
-  :sensitive? true)
+  :sensitive? true
+  ;; used to verify inbound Slack requests; never sent anywhere
+  :audience   {})
 
 (defn unobfuscated-metabot-slack-signing-secret
   "Get the unobfuscated value of [[metabot-slack-signing-secret]]."

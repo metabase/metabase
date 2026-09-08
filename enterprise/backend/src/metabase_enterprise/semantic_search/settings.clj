@@ -108,6 +108,7 @@
   (deferred-tru (str "API key for authenticating with the embedding service. Leave empty for proxying thorugh"
                      " ai-service. In that case premium-embedding-token is used for authentication."))
   :sensitive? true
+  :audience {:ee-embedding-service-base-url :string}
   :visibility :settings-manager
   :export?    false
   :doc        false)

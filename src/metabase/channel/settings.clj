@@ -14,7 +14,9 @@
         "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
   :encryption :when-encryption-key-set
   :visibility :settings-manager
-  :sensitive? true)
+  :sensitive? true
+  ;; Slack's API endpoint is fixed, so there is no destination setting that could redirect this
+  :audience   {})
 
 (defn unobfuscated-slack-app-token
   "Get the unobfuscated value of [[slack-app-token]]."

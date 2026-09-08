@@ -19,6 +19,8 @@
   :encryption :when-encryption-key-set
   :visibility :internal
   :sensitive? true
+  ;; signs and verifies our own tokens locally; never presented to a peer
+  :audience {}
   :base       setting/uuid-nonce-base
   :export?    false
   :audit      :no-value

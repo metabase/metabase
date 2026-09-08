@@ -55,6 +55,7 @@
   (deferred-tru "Token for premium features. Go to the MetaStore to get yours!")
   :audit :never
   :sensitive? true
+  :audience {:store-api-url :string}
   :setter (fn [new-value]
             ((requiring-resolve 'metabase.premium-features.token-check/-set-premium-embedding-token!) new-value)))
 

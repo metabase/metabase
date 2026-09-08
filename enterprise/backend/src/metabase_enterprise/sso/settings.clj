@@ -105,6 +105,8 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :encryption :when-encryption-key-set
   :default    "changeit"
   :sensitive? true
+  ;; the password unlocks one specific keystore; another path is a different audience
+  :audience {:saml-keystore-path :string}
   :feature    :sso-saml
   :audit      :getter)
 
@@ -220,6 +222,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
                      " "
                      "A hexadecimal-encoded 256-bit key (i.e., a 64-character string) is strongly recommended."))
   :sensitive? true
+  :audience {:jwt-identity-provider-uri :string}
   :encryption :when-encryption-key-set
   :type       :string
   :feature    :sso-jwt
@@ -328,6 +331,8 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
                   (codecs/bytes->b64-str ba)))
   :export?    false
   :sensitive? true
+  ;; validates signatures locally; never presented to a peer
+  :audience {}
   :visibility :internal
   :audit      :no-value)
 
@@ -374,7 +379,10 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :visibility  :settings-manager
   :export?     false
   :audit       :no-value
-  :sensitive?  true)
+  :sensitive?  true
+  ;; each provider carries its own issuer-uri and client-secret; the coupling between them is enforced per provider
+  ;; in [[metabase-enterprise.sso.api.oidc]], not at the level of this whole list
+  :audience    {})
 
 (defn get-oidc-provider
   "Look up an OIDC provider by key from the `oidc-providers` setting."

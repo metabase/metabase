@@ -169,7 +169,9 @@
   :encryption :when-encryption-key-set
   :export?    false
   :audit      :no-value
-  :sensitive? true)
+  :sensitive? true
+  ;; see [[metabase.channel.settings/slack-app-token]] -- Slack's endpoint is not configurable
+  :audience   {})
 
 (defn unobfuscated-slack-connect-client-secret
   "Get the unobfuscated value of [[slack-connect-client-secret]]."
