@@ -21,6 +21,13 @@
 
 ;;; ---------------------------------------- sync-data-analyst-group-for-oss! tests ----------------------------------------
 
+(defn- add-member!
+  "Put a user in a group. Adding to the Data Analysts group needs `:advanced-permissions`; these tests are about what
+  the OSS sync routine does to an *already populated* group, so they grant the feature just for the setup."
+  [user-id group-id]
+  (mt/with-premium-features #{:advanced-permissions}
+    (perms/add-user-to-group! user-id group-id)))
+
 (defmacro with-reset-data-analyst-group! [& body]
   `(let [original-group# (t2/select-one :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
      (try
@@ -37,7 +44,7 @@
     (mt/with-dynamic-fn-redefs [token-check/canonically-has-feature? (constantly true)]
       (let [data-analyst-group-id (:id (perms-group/data-analyst))]
         (mt/with-temp [:model/User {user-id :id} {}]
-          (perms/add-user-to-group! user-id data-analyst-group-id)
+          (add-member! user-id data-analyst-group-id)
           (let [member-count-before (t2/count :model/PermissionsGroupMembership :group_id data-analyst-group-id)]
             (perms-group/sync-data-analyst-group-for-oss!)
             ;; Group should still have same members
@@ -53,7 +60,7 @@
       (with-reset-data-analyst-group!
         (let [original-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
           (mt/with-temp [:model/User {user-id :id} {}]
-            (perms/add-user-to-group! user-id original-group-id)
+            (add-member! user-id original-group-id)
             (perms-group/sync-data-analyst-group-for-oss!)
             (testing "Original group should be renamed and demoted"
               (let [original-group (t2/select-one :model/PermissionsGroup :id original-group-id)]
@@ -79,7 +86,7 @@
           (with-bindings {(var perms-group/*allow-modifying-magic-groups*) true}
             (t2/update! :model/PermissionsGroup original-group-id {:name "Metabase Data Analysts"}))
           (mt/with-temp [:model/User {user-id :id} {}]
-            (perms/add-user-to-group! user-id original-group-id)
+            (add-member! user-id original-group-id)
             (perms-group/sync-data-analyst-group-for-oss!)
             (testing "Converted group should use the magic group's name as its base"
               (let [converted-group (t2/select-one :model/PermissionsGroup :id original-group-id)]
@@ -117,7 +124,7 @@
         (with-reset-data-analyst-group!
           (let [original-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
             (mt/with-temp [:model/User {user-id :id} {}]
-              (perms/add-user-to-group! user-id original-group-id)
+              (add-member! user-id original-group-id)
               ;; sync-data-analyst-group-for-oss! will spawn a future since first call returns nil
               (let [result (perms-group/sync-data-analyst-group-for-oss!)]
                 ;; Wait for the future to complete

@@ -5,6 +5,7 @@
    [metabase.events.core :as events]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -18,6 +19,12 @@
 (def fail-to-remove-last-admin-msg
   "Exception message when try to remove the last admin."
   (deferred-tru "You cannot remove the last member of the ''Admin'' group!"))
+
+(def fail-to-add-data-analyst-msg
+  "Exception message when trying to add a member to the Data Analysts group without the `:advanced-permissions`
+  premium feature."
+  (deferred-tru (str "Adding people to the ''Data Analysts'' group requires the Advanced Permissions feature, "
+                     "which is not enabled on this instance.")))
 
 (def ^:dynamic *allow-changing-all-users-group-members*
   "Should we allow people to be added to or removed from the All Users permissions group? By default, this is `false`,
@@ -58,6 +65,15 @@
     (when-not *allow-changing-all-external-users-group-members*
       (throw (ex-info (tru "You cannot add or remove users to/from the ''All tenant users'' group.")
                       {:status-code 400})))))
+
+(defn- check-can-add-to-data-analyst-group
+  "Throw a 402 if we're trying to *add* a user to the Data Analysts group without the `:advanced-permissions` premium
+  feature. Removals are never gated."
+  [group-id]
+  (when (and (= group-id (:id (perms-group/data-analyst)))
+             (not (premium-features/enable-advanced-permissions?)))
+    (throw (ex-info (str fail-to-add-data-analyst-msg)
+                    {:status-code 402}))))
 
 (defn throw-if-last-admin!
   "Throw an Exception if there are no admins left besides this one. The assumption is that the one admin is about to be
@@ -160,7 +176,8 @@
                                                :group-is-tenant? (group-id->tenant? group-id)}))))
           _ (doseq [group-id group-ids]
               (check-not-all-users-group group-id)
-              (check-not-all-external-users-group group-id))
+              (check-not-all-external-users-group group-id)
+              (check-can-add-to-data-analyst-group group-id))
           _ (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
               (when (and is-group-manager? (user-id->tenant? user-id))
                 (throw (ex-info (tru "Tenant users cannot be made group managers")
