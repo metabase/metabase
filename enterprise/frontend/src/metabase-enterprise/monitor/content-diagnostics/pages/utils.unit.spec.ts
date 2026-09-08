@@ -77,7 +77,7 @@ describe("parseStaleUrlParams", () => {
   it("drops sort values that are not allowed", () => {
     const params = parseStaleUrlParams(
       createSearchParams({
-        "sort-column": "collection",
+        "sort-column": "unsupported",
         "sort-direction": "up",
       }),
     );

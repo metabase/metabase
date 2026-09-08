@@ -6,7 +6,7 @@ import type { ContentDiagnosticsImbalancedFinding } from "metabase-types/api";
 import { getCommonColumns } from "../common-columns";
 
 export function getColumns(): TreeTableColumnDef<ContentDiagnosticsImbalancedFinding>[] {
-  const { name, entityType, collection, createdBy, createdAt } =
+  const { name, entityType, collectionName, createdBy, createdAt } =
     getCommonColumns<ContentDiagnosticsImbalancedFinding>();
   const contentCountColumn: TreeTableColumnDef<ContentDiagnosticsImbalancedFinding> =
     {
@@ -27,7 +27,7 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsImbalancedFin
   return [
     name,
     entityType,
-    collection,
+    collectionName,
     contentCountColumn,
     createdBy,
     createdAt,
