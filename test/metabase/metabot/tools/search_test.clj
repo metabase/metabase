@@ -15,6 +15,7 @@
    [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -806,15 +807,20 @@
     ;; environment is what made this test pass on H2 while failing on the MySQL/MariaDB EE shards —
     ;; there the positive control failed, so every assertion here was proving nothing.
     ;;
-    ;; 1. `transforms-enabled`: its getter falls back to a cloud-token check when unset. The in-place
-    ;;    engine drops transform for EVERYONE when `enabled-transform-source-types` is empty
-    ;;    ((empty? enabled-types) (disj "transform") in search/in_place/filter.clj) — a gate the appdb
-    ;;    path has no equivalent of.
+    ;; 1. The transform source types: the in-place engine drops transform for EVERYONE when
+    ;;    `enabled-transform-source-types` is empty ((empty? enabled-types) (disj "transform") in
+    ;;    search/in_place/filter.clj) — a gate the appdb path has no equivalent of. This is pinned by
+    ;;    redefining `transforms.gating/enabled-source-types`, the single seam search/impl.clj reads it
+    ;;    from, rather than by writing the `transforms-enabled` setting. Writing that setting would
+    ;;    outlive this test: `with-temporary-setting-values` restores by writing back whatever
+    ;;    `setting/get` returned at capture time, so a setting that was UNSET on entry comes back
+    ;;    explicitly set, permanently defeating the `if-some` fallback in its getter for every later
+    ;;    test in the JVM.
     ;; 2. The engine: appdb and in-place gate transforms by different code, and MySQL/MariaDB fall
     ;;    back to in-place because the app DB cannot hold the search index. Running both here means
     ;;    the shard's engine choice can no longer decide whether this test means anything.
-    (mt/with-temporary-setting-values [transforms-enabled true]
-      (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-dynamic-fn-redefs [transforms.gating/enabled-source-types (constantly #{"native" "mbql" "python"})]
         (search.tu/with-appdb-search-and-legacy-search
           ;; `api/*is-superuser?*` is bound explicitly rather than inferred from the test user, which
           ;; resolves it through a SELECT on the shared user row. Both engines read exactly this var
