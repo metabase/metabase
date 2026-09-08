@@ -2,11 +2,11 @@ import * as Yup from "yup";
 
 import type {
   AddResearchGroupsResponse,
+  AdhocDashboardTile,
   CardDisplayType,
   DatasetQuery,
   MetabotCodeEdit,
   MetabotTodoItem,
-  SaveMetabotDashboardTile,
   SuggestedTransform,
 } from "metabase-types/api";
 
@@ -96,7 +96,7 @@ export type GeneratedCard = {
   display?: CardDisplayType;
 };
 
-export type GeneratedDashboardTile = SaveMetabotDashboardTile;
+export type GeneratedDashboardTile = AdhocDashboardTile;
 
 export type GeneratedXrayDashboard = {
   type: "dashboard";
@@ -125,15 +125,17 @@ export type SavedEntityDestination =
   | { type: "document"; id: number };
 
 type EntitySavedBase = {
-  chart_id: string;
   destination: SavedEntityDestination;
   tool_call_id?: string;
   title?: string;
 };
 
 export type EntitySavedValue =
-  | (EntitySavedBase & { card_id: number })
-  | (EntitySavedBase & { dashboard_id: number });
+  | (EntitySavedBase & { chart_id: string; card_id: number })
+  | (EntitySavedBase & {
+      generated_dashboard_id: string;
+      dashboard_id: number;
+    });
 
 export type ToolTitleData = {
   tool_call_id: string;

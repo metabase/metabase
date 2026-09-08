@@ -206,8 +206,8 @@
                          :collection-id (:collection_id dashboard)
                          :destination   saved-destination}
      :data-parts        [(streaming/entity-saved-part
-                          {:chart_id     generated-dashboard-id
-                           :dashboard_id (:id dashboard)
+                          {:generated_dashboard_id generated-dashboard-id
+                           :dashboard_id           (:id dashboard)
                            :destination  saved-destination
                            :title        (te/link dashboard-name link)})]}))
 
