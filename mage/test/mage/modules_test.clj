@@ -199,8 +199,7 @@
         (is (= "ci:run-all-cloud-drivers label" (:reason result)))))))
 
 (deftest modules-can-trigger-cloud-drivers
-  (doseq [module '#{query-processor transforms
-                    enterprise/transforms enterprise/transforms-python}
+  (doseq [module @mage.modules/modules-triggering-cloud-drivers
           driver [:athena :bigquery :databricks :redshift :snowflake]]
     (testing (format "Cloud driver runs when %s module is updated" module)
       (let [result (mage.modules/driver-decision driver
@@ -320,7 +319,7 @@
     ;; note in the future, this won't be all dependent modules see
     ;; https://linear.app/metabase/issue/DEV-1487/treat-changed-test-namespaces-as-module-only-changes
     (let [changed-file "enterprise/backend/test/metabase_enterprise/transforms_python/api_test.clj"]
-      (is (= '#{enterprise/transforms-python}
+      (is (= '#{enterprise/transforms.python}
              (mage.modules/updated-files->updated-modules [changed-file])))
       (is (-> [changed-file]
               mage.modules/updated-files->updated-modules
