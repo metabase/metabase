@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 
 import { skipToken, useListTimelinesQuery } from "metabase/api";
 import {
@@ -8,12 +8,12 @@ import {
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   getRecordedTimelineEventsVisibility,
+  isTimelineEventsEnabled,
   resolveVisibleTimelineEvents,
-  sortByTimestamp,
 } from "metabase/visualizations/lib/timeline-events-visibility";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { getTimeseriesXAxis, isTimelineEventInRange } from "metabase/viz-core";
-import type { TimelineEvent } from "metabase-types/api";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 type UseTimelineEventsProps = Pick<
   VisualizationProps,
@@ -30,18 +30,12 @@ interface UseTimelineEventsResult {
   isError: boolean;
 }
 
-// stable reference to avoid triggering re-renders
+// stable references to avoid triggering re-renders
 const EMPTY_EVENTS: TimelineEvent[] = [];
+const NO_TIMELINES: Timeline[] = [];
 
 const canLoadTimelineEvents = () =>
   !isPublicEmbedding() && !isStaticEmbedding() && !isEmbeddingSdk();
-
-// dashcards render before their datasets arrive, despite the series type
-const hasSeriesData = (series: VisualizationProps["series"]) =>
-  series.length > 0 && series.every((single) => single.data != null);
-
-const getEventIdsKey = (events: TimelineEvent[]) =>
-  events.map((event) => event.id).join(",");
 
 export function useTimelineEvents({
   timelineEvents: explicitEvents,
@@ -50,9 +44,9 @@ export function useTimelineEvents({
   series,
   onTimelineEventsShown,
 }: UseTimelineEventsProps): UseTimelineEventsResult {
+  // null is the host opting out; undefined falls back to the card settings
   const isEnabled =
-    timelineEventsVisibility !== null &&
-    settings["timeline_events.enabled"] !== false;
+    timelineEventsVisibility !== null && isTimelineEventsEnabled(settings);
   const visibility = isEnabled
     ? (timelineEventsVisibility ??
       getRecordedTimelineEventsVisibility(settings))
@@ -64,20 +58,18 @@ export function useTimelineEvents({
     isEnabled && !explicitEvents && hasSelection && canLoadTimelineEvents();
 
   const {
-    data: timelines = [],
+    data: timelines = NO_TIMELINES,
     isLoading,
     isError,
   } = useListTimelinesQuery(shouldFetch ? { include: "events" } : skipToken);
 
   const timelineEvents = useMemo(() => {
-    const candidates = !isEnabled
-      ? EMPTY_EVENTS
-      : explicitEvents
-        ? sortByTimestamp(explicitEvents.filter((event) => !event.archived))
-        : shouldFetch
-          ? resolveVisibleTimelineEvents({ timelines, visibility })
-          : EMPTY_EVENTS;
-    if (candidates.length === 0 || !hasSeriesData(series)) {
+    if (!isEnabled) {
+      return EMPTY_EVENTS;
+    }
+    const candidates =
+      explicitEvents ?? resolveVisibleTimelineEvents({ timelines, visibility });
+    if (candidates.length === 0) {
       return EMPTY_EVENTS;
     }
     const xAxis = getTimeseriesXAxis(series, settings);
@@ -89,25 +81,11 @@ export function useTimelineEvents({
       isTimelineEventInRange(event, domain, xAxis.interval),
     );
     return events.length > 0 ? events : EMPTY_EVENTS;
-  }, [
-    isEnabled,
-    explicitEvents,
-    shouldFetch,
-    timelines,
-    visibility,
-    series,
-    settings,
-  ]);
+  }, [isEnabled, explicitEvents, timelines, visibility, series, settings]);
 
-  const shownEventIdsKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    const eventIdsKey = getEventIdsKey(timelineEvents);
-    if (
-      timelineEvents.length > 0 &&
-      eventIdsKey !== shownEventIdsKeyRef.current
-    ) {
-      shownEventIdsKeyRef.current = eventIdsKey;
-      onTimelineEventsShown?.(timelineEvents);
+    if (timelineEvents.length > 0) {
+      onTimelineEventsShown?.();
     }
   }, [timelineEvents, onTimelineEventsShown]);
 

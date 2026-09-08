@@ -143,7 +143,7 @@ describe("useTimelineEvents", () => {
 
   it("uses the events it is given instead of loading them", () => {
     const { result } = setup({
-      timelineEvents: [OUT_OF_RANGE_EVENT, SHOWN_EVENT, ARCHIVED_EVENT],
+      timelineEvents: [OUT_OF_RANGE_EVENT, SHOWN_EVENT],
     });
 
     expect(result.current.timelineEvents).toEqual([SHOWN_EVENT]);
@@ -202,25 +202,20 @@ describe("useTimelineEvents", () => {
     expect(result.current.timelineEvents).toEqual([]);
   });
 
-  it("reports the shown events", async () => {
+  it("reports when events are shown", async () => {
     const onTimelineEventsShown = jest.fn();
     setup({ onTimelineEventsShown });
 
     await waitFor(() => {
-      expect(onTimelineEventsShown).toHaveBeenCalledWith([SHOWN_EVENT]);
+      expect(onTimelineEventsShown).toHaveBeenCalled();
     });
   });
 
-  it("reports the shown events once when the chart data is refreshed", async () => {
+  it("does not report when no events are shown", () => {
     const onTimelineEventsShown = jest.fn();
-    const { rerender } = setup({ onTimelineEventsShown });
-    await waitFor(() => {
-      expect(onTimelineEventsShown).toHaveBeenCalledTimes(1);
-    });
+    setup({ savedSettings: {}, onTimelineEventsShown });
 
-    rerender({ series: getSeries(SAVED_VISIBILITY) });
-
-    expect(onTimelineEventsShown).toHaveBeenCalledTimes(1);
+    expect(onTimelineEventsShown).not.toHaveBeenCalled();
   });
 
   it.each([

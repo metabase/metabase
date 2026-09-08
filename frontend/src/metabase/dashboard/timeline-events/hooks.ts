@@ -21,7 +21,7 @@ import {
 import {
   getDashCardSelectedTimelineEventIds,
   getDashCardTimelineEventsVisibility,
-  getIsTimelineEventsDashCard,
+  getDashCardTimeseriesXAxis,
   getTimelineEventsDashCardIds,
 } from "./selectors";
 
@@ -65,7 +65,8 @@ export const useDashCardTimelineEvents = (
   const dashcardId: DashCardId = dashcard.id;
   const isEnabled = useSelector(
     (state) =>
-      withTimelineEvents && getIsTimelineEventsDashCard(state, dashcardId),
+      withTimelineEvents &&
+      getDashCardTimeseriesXAxis(state, dashcardId) != null,
   );
 
   const timelineEventsVisibility = useSelector((state) =>

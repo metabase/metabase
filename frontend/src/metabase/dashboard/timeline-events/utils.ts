@@ -1,4 +1,5 @@
 import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { isTimelineEventsEnabled } from "metabase/visualizations/lib/timeline-events-visibility";
 import {
   type TimeseriesXAxis,
   canDisplayTimelineEvents,
@@ -21,7 +22,7 @@ export const shouldDashCardDisplayTimelineEvents = (
   isQuestionDashCard(dashcard) &&
   !isVisualizerDashboardCard(dashcard) &&
   canDisplayTimelineEvents(dashcard.card.display) &&
-  dashcard.card.visualization_settings?.["timeline_events.enabled"] !== false;
+  isTimelineEventsEnabled(dashcard.card.visualization_settings);
 
 export const computeDashCardTimeseriesXAxis = (
   dashcard: DashboardCard,

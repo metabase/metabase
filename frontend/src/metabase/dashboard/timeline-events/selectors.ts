@@ -94,11 +94,6 @@ export const getDashCardTimeseriesXAxis = (
     : null;
 };
 
-export const getIsTimelineEventsDashCard = (
-  state: State,
-  dashcardId: DashCardId,
-) => getDashCardTimeseriesXAxis(state, dashcardId) != null;
-
 export const getDashCardVisibleTimelineEventIds = createCachedSelector(
   [getTransformedTimelines, getDashCardTimelineEventsVisibility],
   (timelines, visibility): TimelineEventId[] => {

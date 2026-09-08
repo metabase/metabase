@@ -176,7 +176,7 @@ type VisualizationOwnProps = {
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
   timelineEventsVisibility?: TimelineEventsVisibility | null;
-  onTimelineEventsShown?: (timelineEvents: TimelineEvent[]) => void;
+  onTimelineEventsShown?: () => void;
   tc?: ContentTranslationFunction;
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;
@@ -324,10 +324,6 @@ class Visualization extends PureComponent<
       !_.isEqual(props.settings, state._lastProps?.settings) ||
       !_.isEqual(props.timelineEvents, state._lastProps?.timelineEvents) ||
       !_.isEqual(
-        props.timelineEventsVisibility,
-        state._lastProps?.timelineEventsVisibility,
-      ) ||
-      !_.isEqual(
         props.selectedTimelineEventIds,
         state._lastProps?.selectedTimelineEventIds,
       ) ||
@@ -347,7 +343,6 @@ class Visualization extends PureComponent<
           "rawSeries",
           "settings",
           "timelineEvents",
-          "timelineEventsVisibility",
           "selectedTimelineEventIds",
           "enableEntityNavigation",
         ]),

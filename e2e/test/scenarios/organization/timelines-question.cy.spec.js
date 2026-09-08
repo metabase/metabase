@@ -366,20 +366,15 @@ describe("scenarios > organization > timelines > question", () => {
 
         // its timeline, visible but having one hidden event
         // should display its checkbox in an indeterminate state
-        cy.findByTestId("sidebar-content")
-          .findByText("Releases")
-          .closest("[aria-label='Timeline card header']")
-          .within(() => {
-            cy.findByRole("checkbox").should(
-              "have.prop",
-              "indeterminate",
-              true,
-            );
+        H.timelineVisibility("Releases").should(
+          "have.prop",
+          "indeterminate",
+          true,
+        );
 
-            // Hide the timeline then show it again
-            cy.findByRole("checkbox").click();
-            cy.findByRole("checkbox").click();
-          });
+        // Hide the timeline then show it again
+        H.timelineVisibility("Releases").click();
+        H.timelineVisibility("Releases").click();
 
         // once timeline is visible, all its events should be visible
         H.timelineEventChip("RC2").should("be.visible");
@@ -400,10 +395,7 @@ describe("scenarios > organization > timelines > question", () => {
 
         // making a hidden timeline visible
         // should make its events automatically visible
-        cy.findByTestId("sidebar-content")
-          .findByText("Timeline for collection")
-          .closest("[aria-label='Timeline card header']")
-          .within(() => cy.findByRole("checkbox").click());
+        H.timelineVisibility("Timeline for collection").click();
 
         H.timelineEventChip("TC1").should("be.visible");
 

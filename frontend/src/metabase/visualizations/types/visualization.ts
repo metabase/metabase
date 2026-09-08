@@ -128,7 +128,7 @@ export interface VisualizationProps {
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSeeAllEvents?: (timelineEvents: TimelineEvent[]) => void;
-  onTimelineEventsShown?: (timelineEvents: TimelineEvent[]) => void;
+  onTimelineEventsShown?: () => void;
 
   canToggleSeriesVisibility?: boolean;
   onUpdateWarnings?: any;

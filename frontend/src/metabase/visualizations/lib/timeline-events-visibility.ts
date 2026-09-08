@@ -46,6 +46,10 @@ export const isSameTimelineEventsVisibility = (
   b: TimelineEventsVisibility | undefined,
 ) => _.isEqual(fromSets(toSets(a)), fromSets(toSets(b)));
 
+export const isTimelineEventsEnabled = (
+  settings: VisualizationSettings | undefined,
+) => settings?.["timeline_events.enabled"] !== false;
+
 export const getRecordedTimelineEventsVisibility = (
   settings: VisualizationSettings | undefined,
 ): TimelineEventsVisibility | undefined =>
@@ -54,7 +58,7 @@ export const getRecordedTimelineEventsVisibility = (
 const getActiveEvents = (timeline: Timeline) =>
   (timeline.events ?? []).filter((event) => !event.archived);
 
-export const sortByTimestamp = (events: TimelineEvent[]) =>
+const sortByTimestamp = (events: TimelineEvent[]) =>
   _.sortBy(events, (event) => dayjs(event.timestamp).valueOf());
 
 export const resolveVisibleTimelineEvents = ({

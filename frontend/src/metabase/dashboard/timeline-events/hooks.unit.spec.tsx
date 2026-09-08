@@ -69,7 +69,7 @@ const DATASET = createMockDataset({
 const DashCardChart = ({ dashcard }: { dashcard: DashboardCard }) => {
   const { onTimelineEventsShown } = useDashCardTimelineEvents(dashcard);
   useEffect(() => {
-    onTimelineEventsShown?.([EVENT]);
+    onTimelineEventsShown?.();
   }, [onTimelineEventsShown]);
   return null;
 };
@@ -108,6 +108,7 @@ function setup({
       dashboardId={DASHBOARD_ID}
       withTimelineEvents={withTimelineEvents}
     >
+      {/* two charts report, the dashboard is tracked once */}
       <DashCardChart dashcard={dashcard} />
       <DashCardChart dashcard={dashcard} />
       {withSidebar && <DashboardWideEventsSidebar />}
