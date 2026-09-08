@@ -12,12 +12,11 @@ import {
 
 import type { GoalCard } from "./dynamic-goals";
 import {
+  getGoalSegmentBounds,
   getGoalValues,
   getReferencedEntities,
   getUnansweredGoalEntities,
-  getUnansweredGoalEntitiesForValues,
   hasFailedGoalReferences,
-  hasFailedGoalReferencesForValues,
   hasUnansweredGoalReferences,
   hasUnresolvedGoalReferences,
   hasUnresolvedGoalValues,
@@ -388,12 +387,17 @@ describe("hasFailedGoalReferences", () => {
 
   it("is false when every bound resolves", () => {
     expect(
-      hasFailedGoalReferences(DATA, [{ min: 0, max: 100, color: "red" }]),
+      hasFailedGoalReferences(
+        DATA,
+        getGoalSegmentBounds([{ min: 0, max: 100, color: "red" }]),
+      ),
     ).toBe(false);
   });
 
   it("is false while a reference is still unanswered", () => {
-    expect(hasFailedGoalReferences(DATA, SEGMENTS)).toBe(false);
+    expect(hasFailedGoalReferences(DATA, getGoalSegmentBounds(SEGMENTS))).toBe(
+      false,
+    );
   });
 
   it("is false when a foreign answer lacks the column: it gets re-asked", () => {
@@ -409,7 +413,9 @@ describe("hasFailedGoalReferences", () => {
       },
     });
 
-    expect(hasFailedGoalReferences(data, SEGMENTS)).toBe(false);
+    expect(hasFailedGoalReferences(data, getGoalSegmentBounds(SEGMENTS))).toBe(
+      false,
+    );
   });
 
   it("is true when the referenced query failed", () => {
@@ -420,7 +426,9 @@ describe("hasFailedGoalReferences", () => {
       },
     });
 
-    expect(hasFailedGoalReferences(data, SEGMENTS)).toBe(true);
+    expect(hasFailedGoalReferences(data, getGoalSegmentBounds(SEGMENTS))).toBe(
+      true,
+    );
   });
 
   it("is true when the referenced value is not a number", () => {
@@ -436,12 +444,17 @@ describe("hasFailedGoalReferences", () => {
       },
     });
 
-    expect(hasFailedGoalReferences(data, SEGMENTS)).toBe(true);
+    expect(hasFailedGoalReferences(data, getGoalSegmentBounds(SEGMENTS))).toBe(
+      true,
+    );
   });
 
   it("is true for a self-column reference to a missing column: nothing re-asks it", () => {
     expect(
-      hasFailedGoalReferences(DATA, [{ min: 0, max: "missing", color: "red" }]),
+      hasFailedGoalReferences(
+        DATA,
+        getGoalSegmentBounds([{ min: 0, max: "missing", color: "red" }]),
+      ),
     ).toBe(true);
   });
 });
@@ -530,8 +543,12 @@ describe("malformed persisted segments", () => {
     const segments = settings["gauge.segments"];
 
     expect(resolveGoalSegments(data, segments)).toEqual([]);
-    expect(hasFailedGoalReferences(data, segments)).toBe(false);
-    expect(getUnansweredGoalEntities(data, segments)).toEqual([]);
+    expect(hasFailedGoalReferences(data, getGoalSegmentBounds(segments))).toBe(
+      false,
+    );
+    expect(
+      getUnansweredGoalEntities(data, getGoalSegmentBounds(segments)),
+    ).toEqual([]);
     expect(getReferencedEntities(gaugeCard(settings))).toEqual([]);
   });
 
@@ -567,7 +584,9 @@ describe("getUnansweredGoalEntities", () => {
   ];
 
   it("returns the distinct entities the dataset has no answer for", () => {
-    expect(getUnansweredGoalEntities(DATA, SEGMENTS)).toEqual([
+    expect(
+      getUnansweredGoalEntities(DATA, getGoalSegmentBounds(SEGMENTS)),
+    ).toEqual([
       { type: "card", id: 9 },
       { type: "measure", id: 4 },
     ]);
@@ -592,9 +611,9 @@ describe("getUnansweredGoalEntities", () => {
       },
     });
 
-    expect(getUnansweredGoalEntities(data, SEGMENTS)).toEqual([
-      { type: "measure", id: 4 },
-    ]);
+    expect(
+      getUnansweredGoalEntities(data, getGoalSegmentBounds(SEGMENTS)),
+    ).toEqual([{ type: "measure", id: 4 }]);
   });
 
   it("includes entities whose answer is missing a referenced column", () => {
@@ -619,9 +638,9 @@ describe("getUnansweredGoalEntities", () => {
       },
     });
 
-    expect(getUnansweredGoalEntities(data, SEGMENTS)).toEqual([
-      { type: "card", id: 9 },
-    ]);
+    expect(
+      getUnansweredGoalEntities(data, getGoalSegmentBounds(SEGMENTS)),
+    ).toEqual([{ type: "card", id: 9 }]);
   });
 
   it("skips entities that failed: the dataset answered them", () => {
@@ -633,7 +652,9 @@ describe("getUnansweredGoalEntities", () => {
       },
     });
 
-    expect(getUnansweredGoalEntities(data, SEGMENTS)).toEqual([]);
+    expect(
+      getUnansweredGoalEntities(data, getGoalSegmentBounds(SEGMENTS)),
+    ).toEqual([]);
   });
 });
 
@@ -928,7 +949,7 @@ describe("goal value references", () => {
 
   it("collects the entities the data has no answer for, once each", () => {
     expect(
-      getUnansweredGoalEntitiesForValues(data, [
+      getUnansweredGoalEntities(data, [
         100,
         "value",
         { type: "card", id: 1, column: "sum" },
@@ -946,18 +967,16 @@ describe("goal value references", () => {
   });
 
   it("reports failed references but not unanswered ones", () => {
-    expect(hasFailedGoalReferencesForValues(data, [100, "value"])).toBe(false);
+    expect(hasFailedGoalReferences(data, [100, "value"])).toBe(false);
     expect(
-      hasFailedGoalReferencesForValues(data, [
+      hasFailedGoalReferences(data, [
         { type: "measure", id: 3, column: "avg" },
       ]),
     ).toBe(false);
     expect(
-      hasFailedGoalReferencesForValues(data, [
-        { type: "card", id: 2, column: "sum" },
-      ]),
+      hasFailedGoalReferences(data, [{ type: "card", id: 2, column: "sum" }]),
     ).toBe(true);
-    expect(hasFailedGoalReferencesForValues(data, ["missing"])).toBe(true);
+    expect(hasFailedGoalReferences(data, ["missing"])).toBe(true);
   });
 
   it("reports unanswered and failed references alike as unresolved", () => {

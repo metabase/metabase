@@ -9,6 +9,7 @@ import {
 } from "metabase/visualizations/visualizations/Gauge/utils";
 import {
   type GoalData,
+  getGoalSegmentBounds,
   getUnansweredGoalEntities,
   hasFailedGoalReferences,
   resolveGoalSegments,
@@ -58,8 +59,8 @@ export default function GaugeContainer({
     populateDefaultColumnSettings(Object.values(settings.column_settings)[0]);
   const goalSegments = settings["gauge.segments"];
   const isUnresolvable =
-    getUnansweredGoalEntities(data, goalSegments).length > 0 ||
-    hasFailedGoalReferences(data, goalSegments);
+    getUnansweredGoalEntities(data, getGoalSegmentBounds(goalSegments)).length >
+      0 || hasFailedGoalReferences(data, getGoalSegmentBounds(goalSegments));
 
   if (isUnresolvable) {
     throw new Error("Couldn't resolve one of this gauge's ranges");

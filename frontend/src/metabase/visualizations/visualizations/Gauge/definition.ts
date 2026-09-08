@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { color as colorHex } from "metabase/ui/colors";
 import {
+  getGoalSegmentBounds,
   hasFailedGoalReferences,
   resolveGoalSegments,
 } from "metabase/viz-core";
@@ -32,7 +33,12 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       throw new Error(t`Gauge visualization requires a number.`);
     }
 
-    if (hasFailedGoalReferences(data, settings["gauge.segments"])) {
+    if (
+      hasFailedGoalReferences(
+        data,
+        getGoalSegmentBounds(settings["gauge.segments"]),
+      )
+    ) {
       throw new Error(
         t`Couldn't load a value one of this gauge's ranges depends on.`,
       );

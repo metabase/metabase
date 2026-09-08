@@ -1,5 +1,5 @@
 import {
-  getUnansweredGoalEntitiesForValues,
+  getUnansweredGoalEntities,
   hasUnresolvedGoalValues,
 } from "metabase/viz-core";
 import type { DatasetData, DatasetQuery, GoalValue } from "metabase-types/api";
@@ -21,7 +21,7 @@ export function useAnsweredGoalDataForValues(
   const answered = useAnsweredGoalData(
     datasetQuery,
     data,
-    getUnansweredGoalEntitiesForValues(data, values),
+    getUnansweredGoalEntities(data, values),
   );
 
   if (answered.status !== "resolved") {

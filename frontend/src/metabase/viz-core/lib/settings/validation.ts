@@ -12,7 +12,7 @@ import type {
 
 import {
   getUnresolvedGoalMessage,
-  hasFailedGoalReferencesForValues,
+  hasFailedGoalReferences,
   isGraphGoalReference,
 } from "../dynamic-goals";
 import { ChartSettingsError, MinRowsError } from "../errors";
@@ -112,7 +112,7 @@ export const validateGoalReferences = (
 
   if (
     isGraphGoalReference(card.display, settings) &&
-    hasFailedGoalReferencesForValues(data, [settings["graph.goal_value"]])
+    hasFailedGoalReferences(data, [settings["graph.goal_value"]])
   ) {
     throw new Error(getUnresolvedGoalMessage());
   }

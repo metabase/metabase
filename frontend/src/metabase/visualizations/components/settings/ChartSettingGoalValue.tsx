@@ -1,6 +1,6 @@
 import {
   type ChartSettingGoalValueProps,
-  getUnansweredGoalEntitiesForValues,
+  getUnansweredGoalEntities,
 } from "metabase/viz-core";
 import type { GoalValue } from "metabase-types/api";
 import { isGoalStaticValue } from "metabase-types/guards";
@@ -48,7 +48,7 @@ export const ChartSettingGoalValue = ({
       datasetQuery={datasetQuery}
       id={id}
       placeholder={placeholder}
-      referencedEntities={getUnansweredGoalEntitiesForValues(data, [value])}
+      referencedEntities={getUnansweredGoalEntities(data, [value])}
       showSelfColumns={showSelfColumns}
       value={value ?? null}
       onChange={handleChange}

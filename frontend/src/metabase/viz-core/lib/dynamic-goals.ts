@@ -286,7 +286,7 @@ export function getSegmentColor(
   return segment.color ?? getColor("text-secondary");
 }
 
-export function hasFailedGoalReferencesForValues(
+export function hasFailedGoalReferences(
   data: GoalData,
   values: ReadonlyArray<GoalValue | null | undefined>,
 ): boolean {
@@ -301,14 +301,7 @@ export function hasUnresolvedGoalValues(
   return values.some((value) => isUnresolved(resolveGoalValue(data, value)));
 }
 
-export function hasFailedGoalReferences(
-  data: GoalData,
-  segments: GoalSegment[] | undefined,
-): boolean {
-  return hasFailedGoalReferencesForValues(data, getGoalSegmentBounds(segments));
-}
-
-export function getUnansweredGoalEntitiesForValues(
+export function getUnansweredGoalEntities(
   data: GoalData,
   values: ReadonlyArray<GoalValue | null | undefined>,
 ): ReferencedEntity[] {
@@ -323,16 +316,6 @@ export function getUnansweredGoalEntitiesForValues(
   );
 
   return Array.from(entities.values());
-}
-
-export function getUnansweredGoalEntities(
-  data: GoalData,
-  segments: GoalSegment[] | undefined,
-): ReferencedEntity[] {
-  return getUnansweredGoalEntitiesForValues(
-    data,
-    getGoalSegmentBounds(segments),
-  );
 }
 
 export function toReferencedEntity({

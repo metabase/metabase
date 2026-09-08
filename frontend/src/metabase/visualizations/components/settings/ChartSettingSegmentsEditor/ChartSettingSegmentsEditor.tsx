@@ -16,7 +16,11 @@ import {
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
-import { getSegmentColor, getUnansweredGoalEntities } from "metabase/viz-core";
+import {
+  getGoalSegmentBounds,
+  getSegmentColor,
+  getUnansweredGoalEntities,
+} from "metabase/viz-core";
 import type { GoalSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
@@ -41,7 +45,9 @@ export const ChartSettingSegmentsEditor = ({
   const canRemove = segments.length > 1 || canRemoveAll;
 
   const referencedEntities =
-    data != null ? getUnansweredGoalEntities(data, segments) : [];
+    data != null
+      ? getUnansweredGoalEntities(data, getGoalSegmentBounds(segments))
+      : [];
 
   return (
     <Stack gap="lg">
