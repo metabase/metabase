@@ -188,12 +188,6 @@ function toNumberOrNull(raw: RowValue | undefined): number | null {
   return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
 }
 
-export function supportsDynamicGoals(
-  display: VisualizationDisplay | undefined,
-): boolean {
-  return getDynamicGoalSettingKeys(display).length > 0;
-}
-
 export function isDynamicGoalSetting(
   display: VisualizationDisplay | undefined,
   key: GoalSettingKey,

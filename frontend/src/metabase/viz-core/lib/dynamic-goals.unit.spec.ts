@@ -24,7 +24,6 @@ import {
   isGraphGoalReference,
   resolveGoalSegments,
   resolveGoalValue,
-  supportsDynamicGoals,
 } from "./dynamic-goals";
 
 const cols = [
@@ -810,14 +809,8 @@ describe("cardHasUnresolvedGoalReferences", () => {
 
 describe("dynamic goal settings per display", () => {
   it("knows which settings a display resolves", () => {
-    expect(supportsDynamicGoals("gauge")).toBe(true);
     expect(isDynamicGoalSetting("gauge", "gauge.segments")).toBe(true);
     expect(isDynamicGoalSetting("gauge", "graph.goal_value")).toBe(false);
-  });
-
-  it("treats displays without dynamic goals, and no display, as unsupported", () => {
-    expect(supportsDynamicGoals("table")).toBe(false);
-    expect(supportsDynamicGoals(undefined)).toBe(false);
     expect(isDynamicGoalSetting(undefined, "graph.goal_value")).toBe(false);
   });
 

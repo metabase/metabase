@@ -234,7 +234,6 @@ export {
   needsAnswer,
   resolveGoalSegments,
   resolveGoalValue,
-  supportsDynamicGoals,
   toReferencedEntity,
 } from "./lib/dynamic-goals";
 export type {
