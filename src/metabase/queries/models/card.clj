@@ -683,12 +683,18 @@
 ;; its `card_schema` is bumped to current and this upgrade no longer runs, so removals stay sticky.
 (defmethod upgrade-card-schema-to 24
   [card _schema-version]
-  (if (and (= :metric (keyword (:type card)))
-           (nil? (:dimensions card))
-           (seq (:dataset_query card)))
+  (cond
+    (not= :metric (keyword (:type card))) card   ; Ignore non-:metric cards
+    (empty? (:dataset_query card))        card   ; And those without real queries
+
+    ;; If the `:dimensions` are populated, modernize the representation to the current form.
+    (:dimensions card)                    (update card :dimensions metrics/modernize-early-dimensions)
+
+    ;; If the `:dimensions` are unset, populate them with the present representation but with legacy semantics:
+    ;; all implicitly joinable columns become dimensions, not just "available" dimensions.
+    :else
     (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set (:dataset_query card))]
-      (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))
-    card))
+      (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))))
 
 (defn- schema-governed-select?
   "Whether `card` is a Card row SELECTed with any [[card-schema/schema-governed-columns]], and therefore holds a
