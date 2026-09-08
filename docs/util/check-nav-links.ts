@@ -61,6 +61,7 @@ interface Resolved {
 const stats = { checked: 0, resolved: 0, skipped: 0 };
 const problems: Problem[] = [];
 let navText = "";
+const lineLookups = new Map<string, number>();
 
 function main() {
   if (typeof Bun?.YAML?.parse !== "function") {
@@ -416,11 +417,15 @@ function relToRepo(file: string): string {
   return path.relative(REPO_ROOT, file);
 }
 
-/** Bun.YAML has no source positions, so locate the first raw line containing the needle. */
+/** Bun.YAML has no source positions. The walk follows document order, so the k-th lookup is the k-th occurrence. */
 function findLine(needle: string): number | undefined {
+  const n = lineLookups.get(needle) ?? 0;
+  lineLookups.set(needle, n + 1);
+
   const lines = navText.split("\n");
+  let seen = 0;
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes(needle)) return i + 1;
+    if (lines[i].includes(needle) && seen++ === n) return i + 1;
   }
   return undefined;
 }
