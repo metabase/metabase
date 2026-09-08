@@ -204,24 +204,10 @@ describe("theme scales", () => {
 
       const expectedCssElevations = [
         {
-          componentName: "ActionIcon",
-          slot: "root",
-          file: "frontend/src/metabase/ui/components/buttons/ActionIcon/ActionIcon.module.css",
-          selector: '.root[data-variant="filled"]',
-          shadow: "xs",
-        },
-        {
-          componentName: "Button",
-          slot: "root",
-          file: "frontend/src/metabase/ui/components/buttons/Button/Button.module.css",
-          selector: '.root[data-variant="filled"]',
-          shadow: "xs",
-        },
-        {
           componentName: "Alert",
           slot: "root",
           file: "frontend/src/metabase/ui/components/feedback/Alert/Alert.module.css",
-          selector: ".root",
+          selector: '.root[data-variant="default"][data-color="default"]',
           shadow: "xs",
         },
         {
@@ -258,13 +244,6 @@ describe("theme scales", () => {
           file: "frontend/src/metabase/ui/components/inputs/Radio/Radio.module.css",
           selector: ".card",
           shadow: "xs",
-        },
-        {
-          componentName: "SegmentedControl",
-          slot: "root",
-          file: "frontend/src/metabase/ui/components/inputs/SegmentedControl/SegmentedControl.module.css",
-          selector: ".SegmentedControl",
-          shadow: "xs_outline",
         },
         {
           componentName: "Switch",

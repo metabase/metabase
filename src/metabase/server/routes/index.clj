@@ -9,6 +9,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.users.settings :as users-settings]
@@ -127,4 +128,16 @@
 (def public "/public index.html entrypoint." (partial entrypoint "public" :embeddable))
 (def embed  "/embed index.html entrypoint."  (partial entrypoint "embed"  :embeddable))
 (def embed-sdk  "/embed/sdk/v1 index.html entrypoint."  (partial entrypoint "embed-sdk"  :embeddable))
-(def data-app   "/embed/apps/:name iframe entrypoint." (partial entrypoint "data-app"   :embeddable))
+(def ^:private data-app-shell
+  "Raw `/embed/apps/:name` iframe HTML entrypoint, before feature gating."
+  (partial entrypoint "data-app" :embeddable))
+
+(defn data-app
+  "`/embed/apps/:name` iframe entrypoint. Served only when the `:data-apps-preview` feature is
+   enabled; without it, responds nil so routing falls through to the generic embed handler — the
+   instance then behaves exactly as if data apps did not exist, keeping the feature gate with the
+   data-app entrypoint rather than in the top-level route table."
+  [request respond raise]
+  (if (premium-features/enable-data-apps?)
+    (data-app-shell request respond raise)
+    (respond nil)))

@@ -171,7 +171,6 @@ export function AdminAuthCard() {
           label={t`Allow two-factor authentication`}
           checked={enforcement !== "off"}
           onChange={(event) => handleEnable(event.currentTarget.checked)}
-          size="sm"
           disabled={enforcement === "off" && hasNoPasswordLogin}
           w="fit-content"
         />
