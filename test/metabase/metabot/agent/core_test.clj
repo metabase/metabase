@@ -1138,6 +1138,26 @@
               (testing "and the request itself goes to the connection it named"
                 (is (= ["anthropic/claude-sonnet-4-6"] @models-called))))))))))
 
+(deftest cancellation-during-the-fallback-notice-stops-before-inference-test
+  (mt/as-admin
+    (mt/with-premium-features #{:ai-controls}
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (llm.health/record-failure! "openrouter" "invalid api key" true)
+        (testing "a consumer gone by the time the fallback notice is written must not cost an LLM request"
+          (mt/with-dynamic-fn-redefs [self/call-llm
+                                      (fn [& _]
+                                        (throw (ex-info "inference must not start after cancellation" {})))]
+            (is (vector? (reduce (fn [acc part]
+                                   (if (= "model_fallback" (:data-type part))
+                                     (reduced acc)
+                                     (conj acc part)))
+                                 []
+                                 (agent/run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                                        :state      {}
+                                                        :profile-id :embedding_next
+                                                        :context    {}}))))))))))
+
 (deftest error-part-tags-provider-errors-test
   (testing "an exception the adapters tagged :api-error carries a code, so the client can show its message and
             offer a retry — which resolves to the fallback provider, the failure having just been recorded"
