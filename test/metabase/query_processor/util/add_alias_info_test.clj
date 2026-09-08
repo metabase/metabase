@@ -20,9 +20,12 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.match :as match]))
 
 (comment h2/keep-me)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- remove-source-metadata
   "This is mostly to make the test failure diffs sane."

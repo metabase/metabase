@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
   and transactions."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
@@ -260,6 +261,15 @@
   [rows]
   (t2/insert! :model/Permissions rows))
 
+(defn permission-objects-for-user
+  "The Permissions objects granted, via group membership, to the User with `user-id`."
+  [user-id]
+  (map :object (mdb/query {:select [:p.object]
+                           :from   [[:permissions_group_membership :pgm]]
+                           :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
+                                    [:permissions :p]        [:= :p.group_id :pg.id]]
+                           :where  [:= :pgm.user_id user-id]})))
+
 ;;; --------------------------------------------- PermissionsGroup ---------------------------------------------
 
 (defn magic-group
@@ -342,6 +352,19 @@
   "Apply `changes` to the PermissionsGroup with `group-id`."
   [group-id changes]
   (t2/update! :model/PermissionsGroup group-id changes))
+
+(defn group-member-counts
+  "A map of PermissionsGroup ID to number of active members in the group. Groups with no active members have no
+  entry."
+  []
+  (let [results (mdb/query {:select    [[:pgm.group_id :group_id] [[:count :pgm.id] :members]]
+                            :from      [[:permissions_group_membership :pgm]]
+                            :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
+                            :where     [:= :user.is_active true]
+                            :group-by  [:pgm.group_id]})]
+    (zipmap
+     (map :group_id results)
+     (map :members results))))
 
 ;;; ---------------------------------------- PermissionsGroupMembership ----------------------------------------
 

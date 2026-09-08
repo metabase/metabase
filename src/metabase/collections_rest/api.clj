@@ -1112,7 +1112,7 @@
   [rows rows-query offset]
   (or (some-> rows first :total_count)
       (when (pos? (or offset 0))
-        (some-> (mdb/query (assoc rows-query :limit 1)) first :total_count))
+        (some-> (collections-rest.db/collection-children-rows (assoc rows-query :limit 1)) first :total_count))
       0))
 
 (defn- collection-children*
@@ -1155,7 +1155,7 @@
                                :limit  (if (zero? limit) 1 limit)
                                :offset offset))
         rows          (tracing/with-span :db-app "db-app.collection-items-query" {:collection/id (:id collection)}
-                        (mdb/query limit-query))
+                        (collections-rest.db/collection-children-rows limit-query))
         res           {:total  (total-count rows rows-query offset)
                        :data   (if (= limit 0)
                                  []
@@ -1217,7 +1217,7 @@
                         :permission-level          (if archived? :write :read)
                         :include-trash-collection? archived?}
             row        (first
-                        (mdb/query
+                        (collections-rest.db/collection-filter-metadata-rows
                          {:with   [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
                           :select (vec
                                    (for [model candidates]
