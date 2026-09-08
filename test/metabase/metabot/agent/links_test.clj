@@ -70,17 +70,33 @@
         (is (map? (:query legacy)))
         (is (some? (:database legacy)))))))
 
-(deftest ^:parallel ->legacy-mbql-stripped-query-with-aggregation-ref-falls-back-test
-  (testing "falls back to the raw query instead of throwing when the stripped query's positional aggregation ref can't be resolved after normalize"
-    ;; Regression: `strip-lib-keys` drops the aggregation's `:lib/uuid`, but an
-    ;; `[:aggregation {} <uuid>]` ref elsewhere in the query (e.g. an order-by on the
-    ;; query's own aggregation) still points at the old uuid. `normalize` mints a fresh
-    ;; uuid, the ref lookup misses, and conversion throws — this used to take down the
-    ;; whole agent turn instead of just producing a broken link.
+(deftest ^:parallel ->legacy-mbql-stripped-query-with-aggregation-ref-test
+  (testing "rebinds the orphaned aggregation ref in a stripped query so it converts to legacy MBQL"
+    ;; Regression (BOT-1880): `strip-lib-keys` drops the aggregation's `:lib/uuid`, but the
+    ;; order-by's `[:aggregation {} <uuid>]` ref keeps the same uuid as a value. `normalize` mints a
+    ;; fresh uuid, orphaning the ref. Conversion then threw and we emitted raw MBQL 5, which the
+    ;; frontend posted to `/api/dataset` for an "Invalid :aggregation reference" 400.
     (let [q        (-> (lib.tu/venues-query) (lib/aggregate (lib/count)))
           q2       (lib/order-by q (lib/aggregation-ref q 0) :desc)
-          stripped (strip-lib-keys q2)]
+          stripped (strip-lib-keys q2)
+          legacy   (links/->legacy-mbql stripped)]
       (is (not (contains? stripped :lib/type)))
+      (testing "converts rather than falling back to the raw MBQL 5"
+        (is (= :query (:type legacy)))
+        (is (not (contains? legacy :stages))))
+      (testing "the order-by is restored as a positional ref to the query's own aggregation"
+        (is (= [[:desc [:aggregation 0]]]
+               (get-in legacy [:query :order-by])))))))
+
+(deftest ^:parallel ->legacy-mbql-stripped-query-ambiguous-aggregation-ref-test
+  (testing "leaves an unrecoverable aggregation ref alone rather than guessing which aggregation it meant"
+    ;; With several aggregations nothing records which one the ref named, so the raw-query fallback
+    ;; still applies.
+    (let [q        (-> (lib.tu/venues-query)
+                       (lib/aggregate (lib/count))
+                       (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
+          q2       (lib/order-by q (lib/aggregation-ref q 1) :desc)
+          stripped (strip-lib-keys q2)]
       (is (= stripped (links/->legacy-mbql stripped))))))
 
 (deftest ^:parallel resolve-chart-link-lib-type-less-query-test
