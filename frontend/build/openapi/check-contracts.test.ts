@@ -75,6 +75,23 @@ describe("contract checker CLI", () => {
     assert.match(result.stderr, /\$\.owner\.email/);
   });
 
+  it("fails the gate for an optional frontend field absent from the backend", () => {
+    write(
+      "frontend/src/api.ts",
+      `
+      declare const builder: { query<R, A>(definition: { query: (args: A) => unknown }): unknown };
+      type User = { owner: { email: string | null; nickname?: string } };
+      const endpoints = { example: builder.query<User, void>({ query: () => ({ url: "/api/user" }) }) };
+    `,
+    );
+    const result = run();
+    assert.equal(result.status, 1);
+    assert.match(
+      result.stderr,
+      /\$\.owner\.nickname.*not declared in the backend/,
+    );
+  });
+
   it("rejects an explanation filter that matches no endpoints", () => {
     const result = run("--explain", "missingEndpoint");
     assert.equal(result.status, 1);

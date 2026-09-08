@@ -173,6 +173,140 @@ function operations(
   return result;
 }
 
+function responseFieldProblem(
+  checker: ts.TypeChecker,
+  backend: ts.Type,
+  frontend: ts.Type,
+  at: ts.Node,
+): { status: "mismatch" | "unverified"; message: string } | undefined {
+  const seen = new Map<ts.Type, ts.Type[][]>();
+  const variants = (type: ts.Type): ts.Type[] =>
+    type.isUnion() ? type.types.flatMap(variants) : [type];
+  const visit = (
+    backendTypes: ts.Type[],
+    frontend: ts.Type,
+    path: string,
+    depth: number,
+  ): ReturnType<typeof responseFieldProblem> => {
+    for (const type of backendTypes) {
+      if (!checker.isTypeAssignableTo(type, frontend)) {
+        return {
+          status: "mismatch",
+          message: `${path}: ${checker.typeToString(type)} is not assignable to ${checker.typeToString(frontend)}`,
+        };
+      }
+    }
+    for (const variant of variants(frontend)) {
+      if (!(variant.flags & ts.TypeFlags.Object) && !variant.isIntersection()) {
+        continue;
+      }
+      const candidates = [...new Set(backendTypes.flatMap(variants))].filter(
+        (type) => checker.isTypeAssignableTo(type, variant),
+      );
+      const previous = seen.get(variant) ?? [];
+      if (
+        previous.some(
+          (group) =>
+            group.length === candidates.length &&
+            group.every((type) => candidates.includes(type)),
+        )
+      ) {
+        continue;
+      }
+      seen.set(variant, [...previous, candidates]);
+      if (depth >= 64 || !candidates.length) {
+        return {
+          status: "unverified",
+          message: `${path}: cannot establish frontend field coverage ${depth >= 64 ? "beyond 64 levels" : "for this union variant"}.`,
+        };
+      }
+      if (checker.isArrayType(variant)) {
+        const element = checker.getIndexTypeOfType(
+          variant,
+          ts.IndexKind.Number,
+        );
+        const elements = candidates.flatMap((type) => {
+          const value = checker.getIndexTypeOfType(type, ts.IndexKind.Number);
+          return value ? [value] : [];
+        });
+        if (element) {
+          const problem = visit(elements, element, `${path}[]`, depth + 1);
+          if (problem) {
+            return problem;
+          }
+        }
+        continue;
+      }
+      const tuple = checker.isTupleType(variant);
+      for (const property of variant.getProperties()) {
+        if (tuple && !/^\d+$/.test(property.name)) {
+          continue;
+        }
+        const field = tuple
+          ? `${path}[${property.name}]`
+          : `${path}.${property.name}`;
+        const values = candidates.flatMap((type) => {
+          const declared = propertyType(checker, type, property.name, at);
+          if (declared) {
+            return [declared];
+          }
+          const key = checker.getStringLiteralType(property.name);
+          const numeric = String(Number(property.name)) === property.name;
+          return checker
+            .getIndexInfosOfType(type)
+            .filter(
+              (index) =>
+                checker.isTypeAssignableTo(key, index.keyType) ||
+                (numeric &&
+                  checker.isTypeAssignableTo(
+                    checker.getNumberLiteralType(Number(property.name)),
+                    index.keyType,
+                  )),
+            )
+            .map((index) => index.type);
+        });
+        if (!values.length) {
+          return {
+            status: "mismatch",
+            message: `${field}: frontend field is not declared in the backend schema.`,
+          };
+        }
+        const problem = visit(
+          values,
+          checker.getTypeOfSymbolAtLocation(property, at),
+          field,
+          depth + 1,
+        );
+        if (problem) {
+          return problem;
+        }
+      }
+      for (const index of checker.getIndexInfosOfType(variant)) {
+        const values = candidates.flatMap((type) =>
+          checker
+            .getIndexInfosOfType(type)
+            .filter((backendIndex) =>
+              checker.isTypeAssignableTo(index.keyType, backendIndex.keyType),
+            )
+            .map((backendIndex) => backendIndex.type),
+        );
+        if (!values.length) {
+          return {
+            status: "mismatch",
+            message: `${path}[key]: frontend index signature is not declared in the backend schema.`,
+          };
+        }
+        const problem = visit(values, index.type, `${path}[key]`, depth + 1);
+        if (problem) {
+          return problem;
+        }
+      }
+    }
+    return undefined;
+  };
+  return visit([backend], frontend, "$", 0);
+}
+
 function looseType(
   checker: ts.TypeChecker,
   type: ts.Type,
@@ -375,7 +509,13 @@ export function checkContracts(
         if (gap) {
           add(part, "unverified", gap);
         } else if (checker.isTypeAssignableTo(from, to)) {
-          add(part, "pass", "Compatible");
+          const problem =
+            response && responseFieldProblem(checker, from, to, node);
+          if (problem) {
+            add(part, problem.status, problem.message);
+          } else {
+            add(part, "pass", "Compatible");
+          }
         } else {
           add(part, "mismatch", mismatchDetail(checker, from, to, node));
         }

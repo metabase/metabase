@@ -179,6 +179,183 @@ describe("API contract checks", () => {
       "pass",
     );
   });
+  for (const sample of [
+    {
+      name: "rejects optional frontend fields absent from the backend schema",
+      frontend: "{ id: number; email?: string }",
+      backend: "{ id: number }",
+      missing: "$.email",
+    },
+    {
+      name: "checks optional nested fields through nullable aliases and readonly arrays",
+      frontend:
+        "{ nodes: ReadonlyArray<{ owner?: { email: string; nickname?: string } | null }> }",
+      backend: "{ nodes: { owner: { email: string } | null }[] }",
+      missing: "$.nodes[].owner.nickname",
+    },
+    {
+      name: "allows the frontend to omit backend fields at every level",
+      frontend: "{ nodes: { owner: { email?: string } }[] }",
+      backend:
+        "{ nodes: { id: number; owner: { email: string; name: string } }[]; count: number }",
+    },
+    {
+      name: "allows an optional field declared in one compatible backend union variant",
+      frontend: '{ kind: "ok" | "error"; data?: { id: number } }',
+      backend:
+        '{ kind: "ok"; data: { id: number; name: string } } | { kind: "error" }',
+    },
+    {
+      name: "does not borrow an optional field from a different discriminated variant",
+      frontend:
+        '{ kind: "ok"; error?: string } | { kind: "error"; error: string }',
+      backend: '{ kind: "ok" } | { kind: "error"; error: string }',
+      missing: "$.error",
+    },
+    {
+      name: "accepts independently named discriminated unions with nested subsets",
+      frontend:
+        '{ kind: "ok"; data: { id: number } } | { kind: "error"; message: string }',
+      backend:
+        '{ kind: "ok"; data: { id: number; name: string } } | { kind: "error"; message: string; code: number }',
+    },
+    {
+      name: "checks tuple fields at their own positions",
+      frontend: "[{ id: number; email?: string }, { email: string }]",
+      backend: "[{ id: number }, { email: string }]",
+      missing: "$[0].email",
+    },
+    {
+      name: "accepts a named optional property supported by a backend index signature",
+      frontend: "{ users: { alice?: { id: number } } }",
+      backend: "{ users: Record<string, { id: number; name: string }> }",
+    },
+    {
+      name: "checks nested fields in dictionaries",
+      frontend: "{ users: Record<string, { id: number; nickname?: string }> }",
+      backend: "{ users: Record<string, { id: number }> }",
+      missing: "$.users[key].nickname",
+    },
+    {
+      name: "rejects a frontend dictionary unsupported by the backend schema",
+      frontend: "{ users: Record<string, { id: number }> }",
+      backend: "{ users: { alice: { id: number } } }",
+      missing: "$.users[key]",
+    },
+    {
+      name: "checks whether named properties match backend template index signatures",
+      frontend: '{ metadata: { "x-id"?: string; other?: string } }',
+      backend: "{ metadata: { [key: `x-${string}`]: string } }",
+      missing: "$.metadata.other",
+    },
+    {
+      name: "does not use numeric index signatures to justify nonnumeric properties",
+      frontend: "{ values: { 0?: string; extra?: string } }",
+      backend: "{ values: { [key: number]: string } }",
+      missing: "$.values.extra",
+    },
+  ]) {
+    it(sample.name, () => {
+      const results = check({
+        frontend: `type ErdResponse = ${sample.frontend};`,
+        backend: backend.replace(
+          '{ "2XX": { nodes: Node[] } }',
+          `{ "2XX": ${sample.backend} }`,
+        ),
+        endpoint,
+      });
+      const response = results.find((r) => r.id.endsWith("response.2XX"));
+      assert.equal(
+        response?.status,
+        sample.missing ? "mismatch" : "pass",
+        response?.message,
+      );
+      if (sample.missing) {
+        assert.ok(
+          response?.message.includes(sample.missing),
+          response?.message,
+        );
+        assert.match(response?.message ?? "", /not declared in the backend/);
+      }
+    });
+  }
+
+  it("checks optional field values supplied by a backend index signature", () => {
+    const results = check({
+      frontend: 'type ErdResponse = { metadata: { "x-id"?: string } };',
+      backend: backend.replace(
+        '{ "2XX": { nodes: Node[] } }',
+        '{ "2XX": { metadata: { [key: `x-${string}`]: number } } }',
+      ),
+      endpoint,
+    });
+    const response = results.find((r) => r.id.endsWith("response.2XX"));
+    assert.equal(response?.status, "mismatch", response?.message);
+    assert.match(
+      response?.message ?? "",
+      /metadata.x-id.*number.*not assignable/,
+    );
+  });
+
+  it("checks separate occurrences of a shared frontend alias against their own backend shapes", () => {
+    const results = check({
+      frontend:
+        "type Shared = { id: number; name?: string }; type ErdResponse = { first: Shared; second: Shared };",
+      backend: backend.replace(
+        '{ "2XX": { nodes: Node[] } }',
+        '{ "2XX": { first: { id: number; name: string }; second: { id: number } } }',
+      ),
+      endpoint,
+    });
+    const response = results.find((r) => r.id.endsWith("response.2XX"));
+    assert.equal(response?.status, "mismatch", response?.message);
+    assert.match(response?.message ?? "", /second.name.*not declared/);
+  });
+
+  it("checks fields after revisiting recursive aliases", () => {
+    const results = check({
+      frontend:
+        "type Tree = { id: number; children: Tree[]; name?: string }; type ErdResponse = Tree;",
+      backend: backend.replace(
+        'export type GetApiErdResponses = { "2XX": { nodes: Node[] } };',
+        'type Branch = { id: number; children: Branch[] }; export type GetApiErdResponses = { "2XX": Branch };',
+      ),
+      endpoint,
+    });
+    const response = results.find((r) => r.id.endsWith("response.2XX"));
+    assert.equal(response?.status, "mismatch", response?.message);
+    assert.match(response?.message ?? "", /name.*not declared/);
+  });
+
+  it("keeps unmatched frontend object variants unverified", () => {
+    const results = check({
+      frontend:
+        'type ErdResponse = { kind: "ok" } | { kind: "error"; message?: string };',
+      backend: backend.replace(
+        '{ "2XX": { nodes: Node[] } }',
+        '{ "2XX": { kind: "ok" } }',
+      ),
+      endpoint,
+    });
+    const response = results.find((r) => r.id.endsWith("response.2XX"));
+    assert.equal(response?.status, "unverified", response?.message);
+    assert.match(response?.message ?? "", /union variant/);
+  });
+
+  it("terminates when recursive backend variants share the same child types", () => {
+    const results = check({
+      frontend:
+        'type Tree = { kind: "a" | "b"; children: Tree[] }; type ErdResponse = Tree;',
+      backend: backend.replace(
+        'export type GetApiErdResponses = { "2XX": { nodes: Node[] } };',
+        'type Branch = { kind: "a"; children: Branch[] } | { kind: "b"; children: Branch[] }; export type GetApiErdResponses = { "2XX": Branch };',
+      ),
+      endpoint,
+    });
+    const response = results.find((r) => r.id.endsWith("response.2XX"));
+    assert.equal(response?.status, "pass", response?.message);
+  });
+
   it("resolves differently named nested entities without importing generated types into the frontend", () => {
     const results = check({ frontend, backend, endpoint });
     assert.deepEqual(
