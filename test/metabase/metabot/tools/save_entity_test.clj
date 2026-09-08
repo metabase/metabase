@@ -286,6 +286,26 @@
               (is (= {:type "collection" :id (:id coll)}
                      (get-in part [:data :destination]))))))))))
 
+(deftest save-blank-generated-dashboard-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Dashboard]
+      (mt/with-temp [:model/Collection coll {:name "Ops"}]
+        (let [memory  (doto (dashboard-memory)
+                        (swap! assoc-in [:state :dashboards "d-blank"]
+                               {:dashboard_id "d-blank" :name "Blank" :tiles []}))
+              result  (binding [shared/*memory-atom* memory]
+                        (save-entity/save-entity-tool
+                         {:chart_id    "d-blank"
+                          :name        "Enterprise Sales Dashboard (test)"
+                          :description "Start here."
+                          :destination {:target_type "collection" :collection_id (:id coll)}}))
+              dash-id (get-in result [:structured-output :dashboard-id])]
+          (testing "a blank generated dashboard saves as an empty dashboard"
+            (is (= {:name "Enterprise Sales Dashboard (test)" :collection_id (:id coll)}
+                   (t2/select-one [:model/Dashboard :name :collection_id] :id dash-id)))
+            (is (zero? (t2/count :model/DashboardCard :dashboard_id dash-id)))
+            (is (= dash-id (get-in result [:data-parts 0 :data :dashboard_id])))))))))
+
 (deftest save-generated-dashboard-with-saved-card-tile-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/Card :model/Dashboard]
