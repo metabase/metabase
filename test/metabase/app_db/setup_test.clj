@@ -6,11 +6,13 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.db :as mdb.db]
+   [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
@@ -164,9 +166,19 @@
                 (jdbc/execute! db-conn
                                [(format "DELETE FROM %s WHERE id = ?" table) id])))))))))
 
-;; `delete!` below is ok in a parallel test since it's not actually executing anything
+(defn- fresh-settings-cache!
+  "Refresh the settings cache and reset its check throttle, so that nothing in the tests below reads a setting from
+  the DB: the read-only-mode guard on every DML `build` reads a setting, and inside `t2/build` a settings read that
+  goes to the DB gets a built query back instead of a value. Not parallel for the same reason: another test's cache
+  reset must not land in between."
+  []
+  (mt/initialize-if-needed! :db)
+  (setting.cache/restore-cache-if-needed! :force-check? true))
+
+;; `delete!` below is ok since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(deftest ^:parallel build-query-dont-add-delete-from-when-query-contains-delete-test
+(deftest build-query-dont-add-delete-from-when-query-contains-delete-test
+  (fresh-settings-cache!)
   (testing "Workaround for https://github.com/camsaul/toucan2/issues/202"
     (is (= {:delete    [:field]
             :from      [[:metabase_field :field]]
@@ -180,9 +192,10 @@
                                       [:= :field.table_id :table.id]]
                           :where     [:= :table.db_id [:inline 0]]}))))))
 
-;; `delete!` below is ok in a parallel test since it's not actually executing anything
+;; `delete!` below is ok since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(deftest ^:parallel build-before-delete-query-test
+(deftest build-before-delete-query-test
+  (fresh-settings-cache!)
   (testing "before-delete's select query should remove `:delete`/`:delete-from` (workaround for https://github.com/camsaul/toucan2/issues/203)"
     (is (= {:select [:*], :from [[:metabase_field :field]], :where [:= :field.id 0]}
            (t2/build
@@ -224,6 +237,49 @@
                 (filter #(re-find #"older version" (:message %)) (messages)))))
       (is (not (mdb.db/unmigrated-settings?)))
       (is (= "Sad Can" (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))
+
+(deftest setup-fresh-db-with-legacy-encryption-disabled-test
+  (testing "with MB_DISABLE_LEGACY_STARTUP_ENCRYPTION and a key, a fresh database starts: nothing is legacy, so nothing is refused or warned about"
+    (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]
+      (mt/with-temp-empty-app-db [_conn :h2]
+        (encryption-test/with-secret-key "ABCDEFGH12345678"
+          (is (mdb.encryption/legacy-startup-encryption-disabled?))
+          (mt/with-log-messages-for-level [messages :warn]
+            (is (= :done (mdb/setup-db! :create-sample-content? true)))
+            (mdb/encrypt-plaintext-columns!)
+            (is (empty? (filter #(re-find #"older version|legacy values" (:message %)) (messages)))))
+          (is (= :valid (mdb/encryption-check-status)))
+          (is (not (mdb.db/unmigrated-settings?)))
+          (is (= ["E-commerce Insights"] (t2/select-fn-vec :name :report_dashboard)) "sample content was created"))))))
+
+(deftest setup-db-refuses-settings-from-an-older-version-when-legacy-encryption-disabled-test
+  (testing "with MB_DISABLE_LEGACY_STARTUP_ENCRYPTION and a key, a setting row without value_with_aad refuses startup"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+        (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
+        (is (mdb.db/unmigrated-settings?))
+        (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]
+          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"Some settings were saved by an older version of Metabase .* MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is set"
+                                (mdb/setup-db! :create-sample-content? false)))
+          (is (mdb.db/unmigrated-settings?) "nothing was converted"))
+        (testing "unset again, setup converts them"
+          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+          (is (= :done (mdb/setup-db! :create-sample-content? false)))
+          (is (not (mdb.db/unmigrated-settings?))))))
+    (testing "without a key there is nothing to encrypt, so the setting is converted with a warning as usual"
+      (mt/with-temp-empty-app-db [_conn :h2]
+        (mdb/setup-db! :create-sample-content? false)
+        (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
+        (is (mdb.db/unmigrated-settings?))
+        (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]
+          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+          (is (= :done (mdb/setup-db! :create-sample-content? false)))
+          (is (not (mdb.db/unmigrated-settings?)))
+          (is (= "Sad Can" (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))))
 
 (deftest migrate-settings-decides-by-decrypting-test
   (testing "the value_with_aad backfill treats a value as encrypted only if it decrypts, and copes with one that encrypts to nothing"

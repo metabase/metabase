@@ -179,9 +179,16 @@
   [db-state]
   (when (#{:encrypted :unencrypted :fresh :pre-sentinel} db-state)
     (when (mdb.db/unmigrated-settings?)
-      (log/warn (str "Some settings were saved by an older version of Metabase and are being converted to the current "
-                     "storage format" (when (encryption/default-encryption-enabled?) ", encrypted with MB_ENCRYPTION_SECRET_KEY")
-                     ". This is expected once after an upgrade.")))
+      (if (and (encryption/default-encryption-enabled?)
+               (mdb.encryption/legacy-startup-encryption-disabled?))
+        (throw (ex-info (str "Some settings were saved by an older version of Metabase and would be converted to the "
+                             "current storage format, encrypted with MB_ENCRYPTION_SECRET_KEY, but "
+                             "MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is set. Unset it to let Metabase convert them on "
+                             "startup.")
+                        {}))
+        (log/warn (str "Some settings were saved by an older version of Metabase and are being converted to the current "
+                       "storage format" (when (encryption/default-encryption-enabled?) ", encrypted with MB_ENCRYPTION_SECRET_KEY")
+                       ". This is expected once after an upgrade."))))
     (mdb.setting/migrate-settings!)))
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
