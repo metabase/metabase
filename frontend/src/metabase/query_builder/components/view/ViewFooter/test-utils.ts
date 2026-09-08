@@ -1,10 +1,10 @@
 import { mockSettings } from "__support__/settings";
-import { createMockEntitiesState } from "__support__/store";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
 import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,

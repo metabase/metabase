@@ -150,7 +150,7 @@ produces the same result as
 datetimeAdd([Opened On], 14, "day")
 ```
 
-Most spreadsheet tools require use different functions for different time units (for example, you'd use a different function to add "months" to a date). `datetimeAdd` makes it easy for you to convert all of those functions to a single consistent syntax.
+Most spreadsheet tools require you to use different functions for different time units (for example, you'd use a different function to add "months" to a date). `datetimeAdd` makes it easy for you to convert all of those functions to a single consistent syntax.
 
 ### Python
 

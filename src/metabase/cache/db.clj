@@ -2,6 +2,7 @@
   "Application database queries for the cache module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as app-db]
    [toucan2.core :as t2]))
 
 (defn database-with-ids
@@ -102,6 +103,12 @@
   "The CacheConfig for `model` and `model-id` locked for update, or nil."
   [model model-id]
   (t2/select-one :model/CacheConfig :model model :model_id model-id {:for :update}))
+
+(defn upsert-cache-config!
+  "Insert or replace the CacheConfig for `model` and `model-id` with `data`."
+  [model model-id data]
+  (app-db/update-or-insert! :model/CacheConfig {:model model :model_id model-id}
+                            (constantly data)))
 
 (defn cache-configs-for
   "The CacheConfigs for `model` and `model-ids`."

@@ -1,4 +1,4 @@
-import type { VisualizerState } from "../visualizer";
+import type { VisualizerState } from "metabase/redux/store/visualizer";
 
 export const createMockVisualizerState = (
   opts?: Partial<VisualizerState>,

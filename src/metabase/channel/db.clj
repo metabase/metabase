@@ -2,6 +2,7 @@
   "Application database queries for the channel module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as app-db]
    [toucan2.core :as t2]))
 
 (defn channels
@@ -55,6 +56,20 @@
   (t2/select-fn-set :email :model/User {:where [:and
                                                 [:= :is_active true]
                                                 [:in :id user-ids]]}))
+
+(defn user-ids-with-permission
+  "The ids of the Users belonging to a PermissionsGroup that holds `permission-path`."
+  [permission-path]
+  (app-db/query {:select   [:pgm.user_id]
+                 :from     [[:permissions_group_membership :pgm]]
+                 :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
+                 :where    [:exists ^:allow-subquery
+                            {:select [1]
+                             :from   [[:permissions :p]]
+                             :where  [:and
+                                      [:= :p.group_id :pg.id]
+                                      [:= :p.object permission-path]]}]
+                 :group-by [:pgm.user_id]}))
 
 (defn delete-pulse-channels-for-channel!
   "Delete the PulseChannels of the Channel with `channel-id`."
