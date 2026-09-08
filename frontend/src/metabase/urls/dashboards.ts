@@ -8,15 +8,13 @@ import MetabaseSettings from "metabase/utils/settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  AdhocDashboardTile,
   DashCardId,
   DashboardId,
   DashboardTabId,
-  SaveMetabotDashboardTile,
 } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
-
-export type AdhocDashboardTile = SaveMetabotDashboardTile;
 
 export type AdhocDashboardMetabotOrigin = {
   conversation_id: string;

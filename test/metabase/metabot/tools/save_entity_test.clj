@@ -281,7 +281,7 @@
           (testing "emits an entity_saved data part pointing at the saved dashboard"
             (let [part (first (:data-parts result))]
               (is (= "entity_saved" (:data-type part)))
-              (is (= "d-1" (get-in part [:data :chart_id])))
+              (is (= "d-1" (get-in part [:data :generated_dashboard_id])))
               (is (= dash-id (get-in part [:data :dashboard_id])))
               (is (= {:type "collection" :id (:id coll)}
                      (get-in part [:data :destination]))))))))))

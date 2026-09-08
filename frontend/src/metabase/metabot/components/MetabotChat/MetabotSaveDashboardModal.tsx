@@ -20,9 +20,9 @@ import {
 import { Button, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type {
+  AdhocDashboardTile,
   CollectionId,
   SaveMetabotDashboardResponse,
-  SaveMetabotDashboardTile,
 } from "metabase-types/api";
 
 import { useSaveMetabotDashboardMutation } from "../../api";
@@ -56,7 +56,7 @@ export function MetabotSaveDashboardModal({
   dashboardId: string;
   name: string;
   description?: string;
-  tiles: SaveMetabotDashboardTile[];
+  tiles: AdhocDashboardTile[];
   onSaved: (saved: SaveMetabotDashboardResponse) => void;
   onClose: () => void;
 }) {

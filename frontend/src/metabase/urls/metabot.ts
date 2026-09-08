@@ -1,11 +1,12 @@
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import type {
+  AdhocDashboardTile,
   CardDisplayType,
   DatasetQuery,
   UnsavedCard,
 } from "metabase-types/api";
 
-import { type AdhocDashboardTile, adhocDashboard } from "./dashboards";
+import { adhocDashboard } from "./dashboards";
 import { serializedQuestion } from "./questions";
 
 export function newMetabotConversation({ prompt }: { prompt: string }) {

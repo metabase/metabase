@@ -788,7 +788,7 @@ describe("metabot reducer", () => {
           messages: [],
           savedEntities: [
             { chart_id: "chart-1", card_id: 99 },
-            { chart_id: "dash-1", dashboard_id: 7 },
+            { generated_dashboard_id: "dash-1", dashboard_id: 7 },
             { chart_id: null, card_id: 100 },
           ],
         }),
