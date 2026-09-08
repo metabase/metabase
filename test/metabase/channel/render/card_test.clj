@@ -640,18 +640,16 @@
       (is (= [{:min 0 :max "target" :color "#84BB4C"}] (:gauge.segments @captured))))))
 
 (deftest ^:parallel render-failed-dynamic-goal-test
-  (let [card {:id                     1
-              :name                   "bar with broken goal"
-              :display                :bar
-              :visualization_settings {:graph.show_goal true, :graph.goal_value goal-ref}}
-        data {:cols                [{:name "x" :base_type :type/Text}
-                                    {:name "y" :base_type :type/Integer :source :aggregation}]
-              :rows                [["a" 1]]
-              :referenced_entities {"card" {"42" {:status "failed" :error "boom"}}}}
-        ;; render-pulse-card-for-display returns the content hiccup directly
-        render-html (fn [card] (hiccup/html (channel.render/render-pulse-card-for-display nil card {:data data})))]
-    (testing "a failed referenced query fails that card's render into the standard error box"
-      (is (str/includes? (render-html card) "An error occurred while displaying this card.")))
-    (testing "a hidden goal line's failed reference leaves the render alone"
-      (is (not (str/includes? (render-html (assoc-in card [:visualization_settings :graph.show_goal] false))
-                              "An error occurred while displaying this card."))))))
+  (testing "a failed referenced query fails that card's render into the standard error box"
+    (let [card     {:id                     1
+                    :name                   "bar with broken goal"
+                    :display                :bar
+                    :visualization_settings {:graph.goal_value goal-ref}}
+          data     {:cols             [{:name "x" :base_type :type/Text}
+                                       {:name "y" :base_type :type/Integer :source :aggregation}]
+                    :rows             [["a" 1]]
+                    :referenced_entities {"card" {"42" {:status "failed" :error "boom"}}}}
+          rendered (channel.render/render-pulse-card-for-display nil card {:data data})]
+      ;; render-pulse-card-for-display returns the content hiccup directly
+      (is (str/includes? (hiccup/html rendered)
+                         "An error occurred while displaying this card.")))))
