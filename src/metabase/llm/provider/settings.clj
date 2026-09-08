@@ -14,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (java.net MalformedURLException URL)
@@ -239,6 +240,13 @@
   "Whether a trusted provider API operation may persist [[llm-providers]] during an HTTP request."
   false)
 
+(defn- raw-connections
+  "Parse a raw settings-cache value of [[llm-providers]] into the connection list. The cache holds the serialized
+  string already decrypted — rows are decrypted as they are read into it — so this is only JSON."
+  [raw]
+  (when (string? raw)
+    (json/decode+kw raw)))
+
 (defn- connection-configurations
   "How each connection in `conns` is set up, keyed by connection key: everything but its display name and its
   position in the list, which is what decides whether a write leaves it the same connection."
@@ -268,10 +276,12 @@
                                    :api-error   true
                                    :error-code  :llm-providers-direct-write-forbidden})))
                 ((requiring-resolve 'metabase.llm.provider/validate-changed-connections!) new-value)
-                (llm.health/forget-superseded! (connection-configurations
-                                                (setting/get-value-of-type :json :llm-providers))
-                                               (connection-configurations new-value))
                 (setting/set-value-of-type! :json :llm-providers new-value))
+  ;; Hung on `:on-change` rather than done in the setter: the settings cache fires it on every node, so the ones
+  ;; that did not run the write drop their record too instead of skipping a repaired connection until restart.
+  :on-change  (fn [old new]
+                (llm.health/forget-superseded! (connection-configurations (raw-connections old))
+                                               (connection-configurations (raw-connections new))))
   :doc        "Connections are normally managed from the admin AI settings page. Setting this environment variable puts the whole list under environment control and makes it read-only in the UI.
 
 Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) is equally supported, and is the simpler option when you only need one connection per provider and would rather not hand-write JSON. Each such provider becomes a read-only connection whose key is the provider type, resolved from the environment on every read, so editing one of those variables is picked up on the next restart. A provider configured this way takes precedence over a stored connection with the same key.")
