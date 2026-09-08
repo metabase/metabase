@@ -5,7 +5,7 @@ import { isGraphGoalReference } from "metabase/viz-core";
 import type { Card, DatasetData } from "metabase-types/api";
 
 import type { GoalResolutionStatus } from "./use-answered-goal-data";
-import { useGoalValueResolution } from "./use-goal-value-resolution";
+import { useResolvedGoalValue } from "./use-resolved-goal-value";
 
 // Not a `GoalResolution`: the chart model is built while the goal still
 // resolves, so the settings are always present, with `graph.goal_value` a
@@ -26,7 +26,7 @@ export function useResolvedGoalSettings(
 ): GoalSettingsResolution {
   const needsResolving = isGraphGoalReference(card.display, settings);
 
-  const goal = useGoalValueResolution(
+  const goal = useResolvedGoalValue(
     card.dataset_query,
     data,
     needsResolving ? settings["graph.goal_value"] : null,
