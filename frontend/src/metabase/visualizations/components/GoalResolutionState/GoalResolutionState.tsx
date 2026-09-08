@@ -1,4 +1,5 @@
 import { Center, Loader, Text } from "metabase/ui";
+import type { GoalResolutionStatus } from "metabase/visualizations/hooks/use-answered-goal-data";
 import {
   type GoalSettingKind,
   getUnresolvedGoalMessage,
@@ -8,7 +9,7 @@ type GoalResolutionStateProps = {
   className?: string;
   height: number;
   kind: GoalSettingKind;
-  status: "resolving" | "failed";
+  status: Exclude<GoalResolutionStatus, "resolved">;
 };
 
 export function GoalResolutionState({
