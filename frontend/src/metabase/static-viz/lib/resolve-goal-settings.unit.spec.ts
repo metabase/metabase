@@ -7,7 +7,7 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
-import { resolveGoalSettingsForStaticViz } from "./resolve-goal-settings";
+import { resolveGoalSettings } from "./resolve-goal-settings";
 
 const REFERENCED_SETTINGS: ComputedVisualizationSettings = {
   "graph.show_goal": true,
@@ -26,22 +26,17 @@ function data(referenced_entities: DatasetData["referenced_entities"]) {
   });
 }
 
-describe("resolveGoalSettingsForStaticViz", () => {
+describe("resolveGoalSettings", () => {
   it("passes static and unset goals through", () => {
     const settings = { "graph.goal_value": 10 };
 
-    expect(resolveGoalSettingsForStaticViz(series(data({})), settings)).toBe(
-      settings,
-    );
-    expect(resolveGoalSettingsForStaticViz(series(data({})), {})).toEqual({});
+    expect(resolveGoalSettings(series(data({})), settings)).toBe(settings);
+    expect(resolveGoalSettings(series(data({})), {})).toEqual({});
   });
 
   it("passes references through for a display that does not resolve graph goals", () => {
     expect(
-      resolveGoalSettingsForStaticViz(
-        series(data({}), "scalar"),
-        REFERENCED_SETTINGS,
-      ),
+      resolveGoalSettings(series(data({}), "scalar"), REFERENCED_SETTINGS),
     ).toBe(REFERENCED_SETTINGS);
   });
 
@@ -51,9 +46,7 @@ describe("resolveGoalSettingsForStaticViz", () => {
     it("passes a hidden goal line through", () => {
       const settings = { ...REFERENCED_SETTINGS, "graph.show_goal": false };
 
-      expect(resolveGoalSettingsForStaticViz(series(data({})), settings)).toBe(
-        settings,
-      );
+      expect(resolveGoalSettings(series(data({})), settings)).toBe(settings);
     });
 
     it("substitutes the referenced value", () => {
@@ -67,13 +60,13 @@ describe("resolveGoalSettingsForStaticViz", () => {
       });
 
       expect(
-        resolveGoalSettingsForStaticViz(series(answered), REFERENCED_SETTINGS),
+        resolveGoalSettings(series(answered), REFERENCED_SETTINGS),
       ).toEqual({ ...REFERENCED_SETTINGS, "graph.goal_value": 250 });
     });
 
     it("throws for an unanswered reference", () => {
       expect(() =>
-        resolveGoalSettingsForStaticViz(series(data({})), REFERENCED_SETTINGS),
+        resolveGoalSettings(series(data({})), REFERENCED_SETTINGS),
       ).toThrow("Couldn't load the value this chart's goal line depends on.");
     });
 
@@ -81,7 +74,7 @@ describe("resolveGoalSettingsForStaticViz", () => {
       const failed = data({ card: { 9: { status: "failed", error: "boom" } } });
 
       expect(() =>
-        resolveGoalSettingsForStaticViz(series(failed), REFERENCED_SETTINGS),
+        resolveGoalSettings(series(failed), REFERENCED_SETTINGS),
       ).toThrow("Couldn't load the value this chart's goal line depends on.");
     });
   });

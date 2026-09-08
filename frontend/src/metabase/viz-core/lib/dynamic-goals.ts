@@ -215,8 +215,8 @@ function isGoalSettingActive(
   return key !== "graph.goal_value" || settings["graph.show_goal"] === true;
 }
 
-// A `graph.goal_value` the chart has to resolve before rendering.
-export function isGraphGoalReference(
+// Whether `graph.goal_value` is a reference the chart has to resolve before rendering.
+export function needsGraphGoalResolution(
   display: VisualizationDisplay | undefined,
   settings: VisualizationSettings,
 ): boolean {
@@ -290,7 +290,7 @@ export function getSegmentColor(
   return segment.color ?? getColor("text-secondary");
 }
 
-export function hasFailedGoalReferences(
+export function hasFailedGoalValues(
   data: GoalData,
   values: ReadonlyArray<GoalValue | null | undefined>,
 ): boolean {
@@ -298,7 +298,7 @@ export function hasFailedGoalReferences(
 }
 
 // Unanswered or failed. Once no further fetch will happen, either means the goal can't be resolved.
-export function hasUnresolvedGoalReferences(
+export function hasUnresolvedGoalValues(
   data: GoalData,
   values: ReadonlyArray<GoalValue | null | undefined>,
 ): boolean {

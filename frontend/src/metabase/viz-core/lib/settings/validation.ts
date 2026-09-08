@@ -17,7 +17,7 @@ import {
 import {
   getGoalValues,
   getUnresolvedGoalMessage,
-  hasFailedGoalReferences,
+  hasFailedGoalValues,
 } from "../dynamic-goals";
 import { ChartSettingsError, MinRowsError } from "../errors";
 import { getCartesianChartColumns } from "../graph/columns";
@@ -114,7 +114,7 @@ export const validateGoalReferences = (
   const [{ card, data }] = getRawSeries(series);
 
   getDynamicGoalSettingKeys(card.display).forEach((key) => {
-    if (hasFailedGoalReferences(data, getGoalValues(settings, [key]))) {
+    if (hasFailedGoalValues(data, getGoalValues(settings, [key]))) {
       throw new Error(getUnresolvedGoalMessage(GOAL_SETTINGS[key]));
     }
   });

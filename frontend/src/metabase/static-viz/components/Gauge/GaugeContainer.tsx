@@ -11,7 +11,7 @@ import {
   type GoalData,
   getGoalSegmentBounds,
   getUnresolvedGoalMessage,
-  hasUnresolvedGoalReferences,
+  hasUnresolvedGoalValues,
   resolveGoalSegments,
 } from "metabase/viz-core";
 import { truncateText } from "metabase/viz-core";
@@ -58,7 +58,7 @@ export default function GaugeContainer({
     settings.column_settings &&
     populateDefaultColumnSettings(Object.values(settings.column_settings)[0]);
   const goalSegments = settings["gauge.segments"];
-  if (hasUnresolvedGoalReferences(data, getGoalSegmentBounds(goalSegments))) {
+  if (hasUnresolvedGoalValues(data, getGoalSegmentBounds(goalSegments))) {
     throw new Error(getUnresolvedGoalMessage("segments"));
   }
 

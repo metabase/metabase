@@ -2,7 +2,7 @@ import {
   type ResolvedGoalSegment,
   getGoalSegmentBounds,
   getUnansweredGoalEntities,
-  hasUnresolvedGoalReferences,
+  hasUnresolvedGoalValues,
   resolveGoalSegments,
 } from "metabase/viz-core";
 import type {
@@ -37,7 +37,7 @@ export function useResolvedGoalSegments(
   }
 
   // No further fetch happens past this point, so an unanswered bound counts as failed.
-  if (hasUnresolvedGoalReferences(answered.data, bounds)) {
+  if (hasUnresolvedGoalValues(answered.data, bounds)) {
     return { status: "failed" };
   }
 

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import { isGraphGoalReference } from "metabase/viz-core";
+import { needsGraphGoalResolution } from "metabase/viz-core";
 import type { Card, DatasetData } from "metabase-types/api";
 
 import type { GoalResolutionStatus } from "./use-answered-goal-data";
@@ -24,7 +24,7 @@ export function useResolvedGoalSettings(
   data: DatasetData,
   settings: ComputedVisualizationSettings,
 ): GoalSettingsResolution {
-  const needsResolving = isGraphGoalReference(card.display, settings);
+  const needsResolving = needsGraphGoalResolution(card.display, settings);
 
   const goal = useResolvedGoalValue(
     card.dataset_query,
