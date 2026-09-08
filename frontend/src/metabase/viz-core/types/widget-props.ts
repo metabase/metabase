@@ -50,15 +50,15 @@ export type ChartSettingGoalInputProps = {
 };
 
 export type ChartSettingGoalValueProps = {
-  id: string;
-  value: GoalValue | null | undefined;
-  onChange: (value: GoalValue | undefined) => void;
   data: DatasetData;
   datasetQuery?: DatasetQuery;
+  id: string;
   // false for visualizations that don't support dynamic goals yet
   isDynamic?: boolean;
   placeholder?: string;
   showSelfColumns?: boolean;
+  value: GoalValue | null | undefined;
+  onChange: (value: GoalValue | undefined) => void;
 };
 
 export type AggregationFunction = Exclude<

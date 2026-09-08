@@ -6,14 +6,14 @@ import { ChartSettingInputNumeric } from "./ChartSettingInputNumeric";
 import { GoalValueInput } from "./GoalValueInput";
 
 export const ChartSettingGoalValue = ({
-  id,
-  value,
-  onChange,
   data,
   datasetQuery,
+  id,
   isDynamic = false,
   placeholder,
   showSelfColumns = true,
+  value,
+  onChange,
 }: ChartSettingGoalValueProps) => {
   // Clearing unsets the goal so the default applies, like the numeric input does.
   const handleChange = (newValue: GoalValue | null | undefined) =>
