@@ -242,6 +242,19 @@
       :keyDisambiguator id
       :actions          (common/keyed-map action-schemas)})))
 
+(defn- interrupted-exception?
+  "Returns true when `exception`, or one of its causes, is an InterruptedException."
+  [exception]
+  (or (instance? InterruptedException exception)
+      (some-> (ex-cause exception) interrupted-exception?)))
+
+(defn- rethrow-if-interrupted!
+  "Rethrows `exception` when it signals thread interruption, so the per-model
+  error handling below never swallows a cancellation or timeout."
+  [exception]
+  (when (interrupted-exception? exception)
+    (throw exception)))
+
 (defn- model-error-entry
   "Returns a schema error entry describing a model that could not be built, so a
   single broken model surfaces as data instead of failing the whole response."
@@ -249,7 +262,7 @@
   (m/assoc-some
    {:type    "modelError"
     :modelId (:id model)
-    :message (ex-message exception)}
+    :message (or (ex-message exception) "unknown error")}
    :modelName (:name model)))
 
 (defn- bulk-action-schema-builder
@@ -267,7 +280,8 @@
         (model-action-schemas model
                               (get action-rows-by-model-id (:id model))
                               (get action-details-by-model-id (:id model)))))
-    (catch Exception _
+    (catch Exception exception
+      (rethrow-if-interrupted! exception)
       nil)))
 
 (defn- collect-model-schema
@@ -278,6 +292,7 @@
         (try
           {:schema (model-schema model (build-action-schemas model))}
           (catch Exception exception
+            (rethrow-if-interrupted! exception)
             {:error (model-error-entry model exception)}))]
     (cond-> acc
       schema (update :models conj schema)

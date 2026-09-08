@@ -102,6 +102,26 @@
                   :message   #".*Broken model.*action lookup failed.*"}]
                 errors))))))
 
+(deftest model-schemas-does-not-swallow-interruption-test
+  (testing "an interruption while bulk-resolving actions propagates instead of collecting an error"
+    (with-redefs [schema.common/select-schema-cards
+                  (constantly [{:id 42 :name "Model 42"}])
+                  schema.model/action-rows (constantly [])
+                  actions/select-actions-non-http-for-models
+                  (fn [& _] (throw (InterruptedException. "cancelled")))]
+      (let [thrown (is (thrown? clojure.lang.ExceptionInfo
+                                (schema.model/model-schemas #{1} nil)))]
+        (is (instance? InterruptedException (ex-cause thrown))))))
+  (testing "an interruption while building one model's schema propagates instead of collecting an error"
+    (with-redefs [schema.common/select-schema-cards
+                  (constantly [{:id 42 :name "Model 42"}])
+                  schema.model/action-rows (constantly [])
+                  actions/select-actions-non-http-for-models (constantly [])
+                  schema.model/model-action-schemas
+                  (fn [& _] (throw (InterruptedException. "cancelled")))]
+      (is (thrown? InterruptedException
+                   (schema.model/model-schemas #{1} nil))))))
+
 (deftest model-schema-surfaces-action-selection-errors-test
   (with-redefs [schema.model/action-rows (constantly [])
                 actions/select-actions (fn [& _]
