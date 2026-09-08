@@ -614,6 +614,28 @@
           (is (= :PII (field)))
           (is (= :PII (mirror))))))))
 
+(deftest data-sensitivity-classifier-respects-user-label-test
+  (testing "a user-set data_sensitivity wins over the classifier's inference while sibling fields get labeled"
+    (mt/with-temp-test-data [["app_users"
+                              [{:field-name "email", :base-type :type/Text}
+                               {:field-name "ssn", :base-type :type/Text}
+                               {:field-name "notes", :base-type :type/Text}]
+                              [["ngoc@metabase.com" "123-45-6789" "called back twice"]]]]
+      (let [field  #(t2/select-one-fn :data_sensitivity :model/Field :id (mt/id :app_users %))
+            mirror #(t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id (mt/id :app_users %))]
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :app_users :email)) {:data_sensitivity "PUBLIC"})
+        (is (nil? (field :ssn)))
+        (mt/with-temporary-setting-values [data-sensitivity-scan-enabled true]
+          (sync/sync-database! (mt/db)))
+        (testing "the user's PUBLIC on email survives even though the rules say PII"
+          (is (= :PUBLIC (field :email)))
+          (is (= :PUBLIC (mirror :email))))
+        (testing "the classifier labels the unlabeled siblings without creating mirror rows"
+          (is (= :PII (field :ssn)))
+          (is (= :PUBLIC (field :notes)))
+          (is (nil? (mirror :ssn)))
+          (is (nil? (mirror :notes))))))))
+
 (deftest data-sensitivity-survives-column-drop-and-readd-test
   (testing "a user-set data_sensitivity survives the warehouse column being dropped and added back"
     (mt/with-temp-test-data [["readd_table"

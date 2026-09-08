@@ -310,8 +310,9 @@
 
 (def column-data-sensitivity-types
   "Possible values for column `:data-sensitivity`, most severe first. The order is the precedence an automated
-  classifier uses when several categories match a single column. `nil` means the column has never been classified;
-  `:PUBLIC` means it was reviewed and found not sensitive."
+  classifier uses when several categories match a single column. `nil` means the column has never been scanned or
+  labeled; `:PUBLIC` means it was scanned or reviewed and nothing sensitive was found. Whether a person made the call
+  is recorded by the presence of a value in `metabase_field_user_settings`, not by the value itself."
   [:SEC_KEY       ; Security Credentials & Secrets
    :SYS_TELEMETRY ; Infrastructure & System Secrets
    :PHI           ; Protected Health Information

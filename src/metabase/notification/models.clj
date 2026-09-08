@@ -618,14 +618,14 @@
    (hydrated-notification-schema handler-schema {:with-id? true}))
   ([handler-schema {:keys [with-id? update-input?] :as opts}]
    (let [entries (into (notification-entries opts)
-                       [;; the hydrated User, echoed back by clients on update; `:creator_id` is what gets read
-                        [:creator       {:optional true} [:maybe ms/Map]]
-                        [:creator_id    {:optional true} [:maybe int?]]
-                        [:payload_id    {:optional true} [:maybe int?]]
-                        [:subscriptions {:optional true} [:sequential [:ref (if with-id?
-                                                                              ::NotificationSubscription
-                                                                              ::CreateNotificationSubscriptionParams)]]]
-                        [:handlers      {:optional true} [:sequential handler-schema]]])
+                       (cond->> [;; the hydrated User, echoed back by clients on update; `:creator_id` is what gets read
+                                 [:creator       {:optional true} [:maybe ms/Map]]
+                                 [:creator_id    {:optional true} [:maybe int?]]
+                                 [:subscriptions {:optional true} [:sequential [:ref (if with-id?
+                                                                                       ::NotificationSubscription
+                                                                                       ::CreateNotificationSubscriptionParams)]]]
+                                 [:handlers      {:optional true} [:sequential handler-schema]]]
+                         with-id? (into [[:payload_id {:optional true} [:maybe int?]]])))
          entries (cond-> entries
                    update-input? (update-input-entries notification-update-spec))]
      [:merge
