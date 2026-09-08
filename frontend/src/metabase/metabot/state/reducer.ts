@@ -457,10 +457,10 @@ export const metabot = createSlice({
         contextWindowTokens,
       } = action.payload;
 
-      savedEntities.forEach(({ chart_id, card_id, dashboard_id }) => {
-        const savedId = card_id ?? dashboard_id;
-        if (chart_id != null && savedId != null) {
-          state.savedEntityIds[chart_id] = savedId;
+      savedEntities.forEach((entity) => {
+        if (entity.chart_id != null) {
+          state.savedEntityIds[entity.chart_id] =
+            "card_id" in entity ? entity.card_id : entity.dashboard_id;
         }
       });
 
