@@ -1043,7 +1043,9 @@
         (let [schema-name (sql.tx/session-schema driver/*driver*)
               db-id       (mt/id)]
           (upload-test/with-upload-table! [table (upload-test/create-upload-table! :schema-name schema-name)]
-            (mt/with-temp [:model/Table {} {:db_id db-id :schema "some_schema"}]
+            ;; a second table in the upload schema keeps a table-level grant distinct from a schema-level one
+            (mt/with-temp [:model/Table {} {:db_id db-id :schema "some_schema"}
+                           :model/Table {} {:db_id db-id :schema schema-name}]
               (doseq [[schema-perms can-upload?] {:query-builder               true
                                                   :no                          false
                                                   {(:id table) :query-builder} false}]
