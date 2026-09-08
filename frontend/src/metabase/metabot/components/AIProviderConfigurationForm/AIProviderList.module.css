@@ -4,3 +4,9 @@
   cursor: grab;
   touch-action: none;
 }
+
+.grabber:focus-visible {
+  outline: 2px solid var(--mb-color-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
