@@ -36,7 +36,6 @@ export function ProviderFallbackSettings() {
           checked={!!isFallbackEnabled}
           disabled={isEnvSetting || isLoading}
           onChange={(event) => handleChange(event.target.checked)}
-          size="sm"
           w="auto"
         />
       </Group>
