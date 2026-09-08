@@ -4,6 +4,7 @@ import {
   createSlice,
 } from "@reduxjs/toolkit";
 import { type WritableDraft, castDraft } from "immer";
+import { match } from "ts-pattern";
 import _ from "underscore";
 
 import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
@@ -458,14 +459,19 @@ export const metabot = createSlice({
       } = action.payload;
 
       savedEntities.forEach((entity) => {
-        if ("card_id" in entity) {
-          if (entity.chart_id != null) {
-            state.savedEntityIds[entity.chart_id] = entity.card_id;
-          }
-        } else {
-          state.savedEntityIds[entity.generated_dashboard_id] =
-            entity.dashboard_id;
-        }
+        match(entity)
+          .with({ type: "card" }, ({ chart_id, card_id }) => {
+            if (chart_id != null) {
+              state.savedEntityIds[chart_id] = card_id;
+            }
+          })
+          .with(
+            { type: "dashboard" },
+            ({ generated_dashboard_id, dashboard_id }) => {
+              state.savedEntityIds[generated_dashboard_id] = dashboard_id;
+            },
+          )
+          .exhaustive();
       });
 
       const convo =

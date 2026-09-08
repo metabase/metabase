@@ -620,7 +620,7 @@
                    (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id :display]
                                   :id (:id created))))
             (testing "the conversation detail lists the saved entity"
-              (is (= [{:card_id (:id created) :chart_id "chart-1"}]
+              (is (= [{:type "card" :card_id (:id created) :chart_id "chart-1"}]
                      (:saved_entities
                       (mt/user-http-request :crowberto :get 200
                                             (str "metabot/conversations/" convo-id))))))
@@ -666,7 +666,7 @@
               (is (= {:metabot_conversation_id convo-id :metabot_dashboard_id "d-1"}
                      (t2/select-one [:model/Dashboard :metabot_conversation_id :metabot_dashboard_id]
                                     :id (:id created))))
-              (is (some #{{:dashboard_id (:id created) :generated_dashboard_id "d-1"}}
+              (is (some #{{:type "dashboard" :dashboard_id (:id created) :generated_dashboard_id "d-1"}}
                         (:saved_entities
                          (mt/user-http-request :crowberto :get 200
                                                (str "metabot/conversations/" convo-id))))))

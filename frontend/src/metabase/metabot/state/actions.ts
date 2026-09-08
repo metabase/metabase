@@ -597,15 +597,19 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "data-entity_saved" }, (part) => {
                 dispatch(
                   markEntitySaved(
-                    "card_id" in part.data
-                      ? {
-                          entityId: part.data.chart_id,
-                          savedId: part.data.card_id,
-                        }
-                      : {
-                          entityId: part.data.generated_dashboard_id,
-                          savedId: part.data.dashboard_id,
-                        },
+                    match(part.data)
+                      .with({ type: "card" }, ({ chart_id, card_id }) => ({
+                        entityId: chart_id,
+                        savedId: card_id,
+                      }))
+                      .with(
+                        { type: "dashboard" },
+                        ({ generated_dashboard_id, dashboard_id }) => ({
+                          entityId: generated_dashboard_id,
+                          savedId: dashboard_id,
+                        }),
+                      )
+                      .exhaustive(),
                   ),
                 );
                 const { tool_call_id, title } = part.data;

@@ -206,7 +206,8 @@
                          :collection-id (:collection_id dashboard)
                          :destination   saved-destination}
      :data-parts        [(streaming/entity-saved-part
-                          {:generated_dashboard_id generated-dashboard-id
+                          {:type                   "dashboard"
+                           :generated_dashboard_id generated-dashboard-id
                            :dashboard_id           (:id dashboard)
                            :destination  saved-destination
                            :title        (te/link dashboard-name link)})]}))
@@ -294,7 +295,8 @@
                              :collection-id (:collection_id card)
                              :destination   saved-destination}
          :data-parts        [(streaming/entity-saved-part
-                              {:chart_id    chart_id
+                              {:type        "card"
+                               :chart_id    chart_id
                                :card_id     (:id card)
                                :destination saved-destination
                                ;; markdown entity link the chain-of-thought renders
