@@ -1,0 +1,14 @@
+diff --git a/node_modules/eslint-plugin-import-x/lib/utils/import-type.js b/node_modules/eslint-plugin-import-x/lib/utils/import-type.js
+--- a/node_modules/eslint-plugin-import-x/lib/utils/import-type.js
++++ b/node_modules/eslint-plugin-import-x/lib/utils/import-type.js
+@@ -123,6 +123,9 @@
+     return 'unknown';
+ }
+ export function importType(name, context) {
++    // import/order: only these groups are independent of the resolved path.
++    const group = typeTest(name, context, null);
++    if (['internal', 'absolute', 'parent', 'index', 'sibling'].includes(group)) return group;
+     return typeTest(name, context, typeof name === 'string' ? resolve(name, context) : null);
+ }
+ //# sourceMappingURL=import-type.js.map
+\ No newline at end of file
