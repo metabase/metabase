@@ -141,10 +141,7 @@
   are not hydrated (they read `api/*current-user-id*`, which a non-request caller has not bound),
   and the ordering breaks ties on `:id` where the endpoint leaves them undetermined."
   [document-id]
-  (let [comments     (t2/select :model/Comment
-                                :target_type "document"
-                                :target_id document-id
-                                {:order-by [[:created_at :asc] [:id :asc]]})
+  (let [comments     (comments.db/document-comments document-id)
         has-replies? (into #{} (map :parent_comment_id) comments)]
     (-> (into []
               ;; `content_html` is the deprecated pre-render of `:content`. Nothing clears it on
@@ -166,10 +163,5 @@
   comment threads. Read access to the document is the caller's job to check first — the same
   check-the-target-once pattern the comments REST endpoint uses."
   [document-id]
-  (->> (t2/select [:model/Comment :child_target_id [:%count.id :comment_count]]
-                  :target_type "document"
-                  :target_id document-id
-                  :child_target_id [:not= nil]
-                  :deleted_at nil
-                  {:group-by [:child_target_id]})
+  (->> (comments.db/document-child-target-counts document-id)
        (mapv #(select-keys % [:child_target_id :comment_count]))))
