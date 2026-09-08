@@ -526,27 +526,33 @@
   (lib-be/with-metadata-provider-cache
     (let [all          (mapv with-candidate-dimensions (catalog-metrics {}))
           metric-by-id (u/index-by :id all)]
+      ;; Metric-level checks run against the cheap catalog — they need no query build.
       (doseq [g groups]
-        (let [metric-id (:metric_id g)
-              metric    (get metric-by-id metric-id)]
-          (when-not metric
+        (let [metric-id (:metric_id g)]
+          (when-not (contains? metric-by-id metric-id)
             (throw (ex-info (format "Unknown or inaccessible metric id %s" metric-id)
                             {:metric_id metric-id})))
           (when (and (:replace_default_dimensions g) (empty? (:dimension_ids g)))
             (throw (ex-info "replace_default_dimensions requires at least one dimension_id"
-                            {:metric_id metric-id})))
-          (let [valid (set (map :id (:dimensions metric)))]
-            (doseq [d (:dimension_ids g)]
-              (when-not (contains? valid d)
-                (throw (ex-info (format "Dimension %s is not a candidate of metric %s" d metric-id)
-                                {:metric_id metric-id :dimension_id d})))))))
+                            {:metric_id metric-id})))))
       (let [relevant         (into #{} (map :metric_id) groups)
-            ;; Only the referenced metrics pay [[resolve-metric-queries]] — validation above runs
-            ;; against the cheap catalog. `all` is already candidate-filtered and resolution only
-            ;; drops dimensions further, so no second [[with-candidate-dimensions]] pass is needed.
+            ;; Only the referenced metrics pay [[resolve-metric-queries]]. `all` is already
+            ;; candidate-filtered and resolution only drops dimensions further, so no second
+            ;; [[with-candidate-dimensions]] pass is needed.
             relevant-metrics (->> all
                                   (filterv #(contains? relevant (:id %)))
-                                  resolve-metric-queries)]
+                                  resolve-metric-queries)
+            resolved-by-id   (u/index-by :id relevant-metrics)]
+        ;; Dimension ids are checked against the *resolved* metrics: a saved dimension whose
+        ;; target no longer resolves is dropped by [[resolve-metric-queries]], and accepting it
+        ;; would hand the FE a picker block for a dimension that isn't in the payload.
+        (doseq [g groups
+                :let [metric-id (:metric_id g)
+                      valid     (set (map :id (:dimensions (get resolved-by-id metric-id))))]
+                d (:dimension_ids g)]
+          (when-not (contains? valid d)
+            (throw (ex-info (format "Dimension %s is not a candidate of metric %s" d metric-id)
+                            {:metric_id metric-id :dimension_id d}))))
         {:metrics          (mapv slim-metric relevant-metrics)
          :dimension_groups (group-dimensions relevant-metrics)
          :groups           (vec groups)}))))
