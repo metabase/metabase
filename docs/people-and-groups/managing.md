@@ -202,6 +202,8 @@ Other than the fixed access listed above, you can assign data, collection, and a
 
 By default, a person in a Data Analysts group will have only read-only access to [Transforms](../data-modeling/transforms/transforms-overview.md) that use tables which the person otherwise can view. To give a Data Analyst the ability to _create_ and _run_ transforms, you'll need to give them [transform permissions](../permissions/data.md#transform-permissions) on appropriate tables.
 
+Everyone stays in the Data Analysts group, with the permissions you assigned, when your plan changes and you lose the feature. Data Studio access pauses for the group's members. You can still remove people from the group, but you can't add anyone new, and the group disappears once you've removed the last person. Returning to a plan that includes the feature brings the group back with your permissions intact, and resumes Data Studio access.
+
 ## Creating a group
 
 Go to **Admin** > **People** > **Groups**, and click the **Add a group** button.
