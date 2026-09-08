@@ -97,8 +97,11 @@
 (mr/def ::client-message
   "One persisted message as the client models it."
   [:map
-   [:id         :string]
-   [:externalId {:optional true} :string]
-   [:role       [:enum "user" "agent"]]
-   [:parts      [:sequential ::client-message-part]]
-   [:status     ::client-message-status]])
+   [:id            :string]
+   [:externalId    {:optional true} :string]
+   [:role          [:enum "user" "agent"]]
+   [:parts         [:sequential ::client-message-part]]
+   [:status        ::client-message-status]
+   ;; how much of the window the conversation occupied once this message was
+   ;; produced; absent on all user rows and legacy agent records
+   [:contextTokens {:optional true} :int]])

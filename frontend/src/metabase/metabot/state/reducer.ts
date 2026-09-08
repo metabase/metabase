@@ -441,6 +441,7 @@ export const metabot = createSlice({
         conversationId: string;
         title?: string;
         forkedFromConversationId?: string;
+        contextWindowTokens?: number;
       }>,
     ) => {
       const {
@@ -450,6 +451,7 @@ export const metabot = createSlice({
         conversationId,
         title,
         forkedFromConversationId,
+        contextWindowTokens,
       } = action.payload;
 
       const convo =
@@ -463,7 +465,7 @@ export const metabot = createSlice({
       convo.activeToolCalls = activeToolCalls ?? [];
       convo.title = title;
       convo.forkedFromConversationId = forkedFromConversationId;
-      convo.lastTokenUsage = undefined;
+      convo.contextWindowTokens = contextWindowTokens;
       convo.isProcessing = hasInProgressMessage(messages);
       if (convo.isProcessing) {
         ensureChain(convo); // resuming mid-response
@@ -502,25 +504,31 @@ export const metabot = createSlice({
             convo.state = { ...action.payload.state };
           }
 
+          closeChain(convo);
+          const message = openAgentMessage(convo);
+
           const metadata = action.payload?.processedResponse.messageMetadata;
-          if (metadata?.contextTokens && metadata.contextWindowTokens) {
-            convo.lastTokenUsage = {
-              contextTokens: metadata.contextTokens,
-              contextWindowTokens: metadata.contextWindowTokens,
-            };
-          }
+          const contextUsage =
+            metadata?.contextTokens && metadata.contextWindowTokens
+              ? {
+                  contextTokens: metadata.contextTokens,
+                  contextWindowTokens: metadata.contextWindowTokens,
+                }
+              : undefined;
+          message.contextTokens = contextUsage?.contextTokens;
+          convo.contextWindowTokens =
+            contextUsage?.contextWindowTokens ?? convo.contextWindowTokens;
 
           const finishReason = action.payload?.processedResponse.finishReason;
           const isResumableFinishReason =
             finishReason && finishReason !== "stop" && finishReason !== "error";
-          closeChain(convo);
-          openAgentMessage(convo).status = isResumableFinishReason
+          message.status = isResumableFinishReason
             ? {
                 type: "incomplete",
                 finishReason,
                 contextWindowFull:
                   finishReason === "length" &&
-                  isContextWindowFull(convo.lastTokenUsage),
+                  isContextWindowFull(contextUsage),
               }
             : { type: "done" };
 

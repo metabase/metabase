@@ -128,6 +128,19 @@
    {}
    parts))
 
+(defn extract-context-tokens
+  "Prompt + completion tokens of the turn's final LLM call — the conversation's size
+  once the turn finished. Nil when the turn observed no usage."
+  [parts]
+  (let [usages (filterv #(= :usage (:type %)) parts)]
+    (when-let [{:keys [model usage]} (peek usages)]
+      (let [prev (->> (pop usages)
+                      (filter #(= model (:model %)))
+                      last
+                      :usage)]
+        (+ (- (:promptTokens usage 0) (:promptTokens prev 0))
+           (- (:completionTokens usage 0) (:completionTokens prev 0)))))))
+
 (defn throwable->error-payload
   "Coerce a `Throwable` into the same JSON-encodable map shape a streamed
   `:error` part carries, so a turn that fails by *throwing* persists in the
@@ -396,14 +409,15 @@
                         {:profile-id (or profile-id "unknown")}
                         (u/string-byte-count (json/encode content)))
     (metabot.db/update-message! assistant-msg-id
-                                (cond-> {:data         content
-                                         :data_version schema.v2/current-data-version
-                                         :usage        usage
-                                         :total_tokens (->> (vals usage)
-                                                            (map #(+ (:prompt %) (:completion %)))
-                                                            (reduce + 0))
-                                         :finished     (boolean finished?)
-                                         :error        (safe-encode-error error)}
+                                (cond-> {:data           content
+                                         :data_version   schema.v2/current-data-version
+                                         :usage          usage
+                                         :total_tokens   (->> (vals usage)
+                                                              (map #(+ (:prompt %) (:completion %)))
+                                                              (reduce + 0))
+                                         :context_tokens (extract-context-tokens parts)
+                                         :finished       (boolean finished?)
+                                         :error          (safe-encode-error error)}
                                   turn-state   (assoc :state turn-state)
                                   slack-msg-id (assoc :slack_msg_id slack-msg-id)
                                   channel-id   (assoc :channel_id channel-id)))
@@ -681,7 +695,8 @@
                        []
                        (message->parts row))
              :status status}
-      (:external_id row) (assoc :externalId (:external_id row)))))
+      (:external_id row)    (assoc :externalId (:external_id row))
+      (:context_tokens row) (assoc :contextTokens (:context_tokens row)))))
 
 (defn messages->client-messages
   "Convert a seq of `MetabotMessage` model instances into their client shape, one
@@ -753,7 +768,8 @@
   double-counts tokens in the analytics views. `forked_from_message_id` records
   the source row so the copied prefix can be told apart from messages added after
   the fork."
-  [new-conversation-id user-id {:keys [id data data_version role profile_id ai_proxied finished error state]}]
+  [new-conversation-id user-id {:keys [id data data_version role profile_id ai_proxied finished error state
+                                       context_tokens]}]
   (cond-> {:conversation_id        new-conversation-id
            :data                   data
            :data_version           data_version
@@ -762,6 +778,7 @@
            :external_id            (str (random-uuid))
            :total_tokens           0
            :usage                  nil
+           :context_tokens         context_tokens
            :ai_proxied             (boolean ai_proxied)
            :user_id                user-id
            :forked_from_message_id id}

@@ -468,6 +468,7 @@
                      :model/MetabotMessage _a1 {:conversation_id convo-id :user_id user-id :role "assistant"
                                                 :external_id a1 :finished true :total_tokens 100
                                                 :usage {"gpt" {:prompt 60 :completion 40}}
+                                                :context_tokens 60
                                                 :data [{:type "text" :text "hello"}]
                                                 :created_at (seconds-ago 50)}
                      :model/MetabotMessage _u2 {:conversation_id convo-id :user_id user-id :role "user"
@@ -504,7 +505,10 @@
                   (is (every? #(t/after? (t/instant (:created_at %)) (t/instant orig-a1-at)) rows))))
               (testing "token usage is zeroed so forks don't double-count in analytics"
                 (is (every? #(zero? (:total_tokens %)) rows))
-                (is (every? #(nil? (:usage %)) rows))))
+                (is (every? #(nil? (:usage %)) rows)))
+              (testing "context size carries over so the fork is as full as the thread it copied"
+                (is (= [nil 60] (mapv :context_tokens rows)))
+                (is (= [nil 60] (mapv :contextTokens (:messages response))))))
             (testing "the original conversation is untouched"
               (is (= 4 (count (metabot.persistence/live-messages convo-id)))))
             (finally

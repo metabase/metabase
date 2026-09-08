@@ -478,6 +478,41 @@
             (is (= [{:type "text" :text "Hello" :state "done"}] (:data row)))
             (is (= 15 (:total_tokens row)))))))))
 
+(deftest finalize-assistant-turn-stores-context-tokens-test
+  (testing "finalize-assistant-turn! stores the final call's context size"
+    (with-rasta-tx
+      (let [conversation-id (str (random-uuid))
+            {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                        conversation-id "internal"
+                                        {:role "user" :content "hi"})]
+        (metabot-persistence/finalize-assistant-turn!
+         assistant-msg-id
+         ;; usage snapshots are cumulative, so the final call alone is 150 prompt + 10 completion
+         [{:type :usage :model "claude" :usage {:promptTokens 100 :completionTokens 20}}
+          {:type :text :text "Hello"}
+          {:type :usage :model "claude" :usage {:promptTokens 250 :completionTokens 30}}])
+        (is (=? {:context_tokens 160 :total_tokens 280}
+                (t2/select-one :model/MetabotMessage assistant-msg-id))))))
+  (testing "a turn that observed no usage stores no context size"
+    (with-rasta-tx
+      (let [conversation-id (str (random-uuid))
+            {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                        conversation-id "internal"
+                                        {:role "user" :content "hi"})]
+        (metabot-persistence/finalize-assistant-turn!
+         assistant-msg-id [{:type :text :text "Hello"}])
+        (is (nil? (:context_tokens (t2/select-one :model/MetabotMessage assistant-msg-id))))))))
+
+(deftest ^:parallel messages->client-messages-context-tokens-test
+  (testing "a message reports the context it occupied, and omits it when the turn observed no usage"
+    (is (= 520 (:contextTokens (client-message {:role :assistant :data []
+                                                :context_tokens 520}))))
+    (testing "no usage observed"
+      (is (not (contains? (client-message {:role :assistant :data []}) :contextTokens))))
+    (testing "user rows never carry it"
+      (is (not (contains? (client-message {:role :user :data [{:type "text" :text "hi"}]})
+                          :contextTokens))))))
+
 (deftest finalize-assistant-turn-passes-through-aborted-and-errored-test
   (testing "finalize-assistant-turn! preserves :finished? false and JSON-encodes :error"
     (with-rasta-tx
