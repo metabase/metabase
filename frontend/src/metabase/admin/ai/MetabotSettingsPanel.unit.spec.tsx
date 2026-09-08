@@ -18,6 +18,7 @@ import {
   setupMetabotsEndpoints,
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
+import { createMockSettingsState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -31,7 +32,6 @@ import {
   FIXED_METABOT_IDS,
 } from "metabase/metabot/constants";
 import { reinitialize } from "metabase/plugins";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { MetabotId, MetabotInfo, RecentItem } from "metabase-types/api";
 import {
   createMockCollection,

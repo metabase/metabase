@@ -1,4 +1,4 @@
-import type { FileUpload } from "../upload";
+import type { FileUpload } from "metabase/redux/store/upload";
 
 export const createMockUploadState = (uploads = {}) => {
   return { ...uploads };

@@ -4,6 +4,11 @@ import { HttpResponse, http } from "msw";
 import _ from "underscore";
 
 import { getPublicStore } from "__support__/entities-store";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
@@ -14,11 +19,6 @@ import {
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
 import { MetabaseReduxProvider } from "metabase/redux";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { stableStringify } from "metabase/utils/objects";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";

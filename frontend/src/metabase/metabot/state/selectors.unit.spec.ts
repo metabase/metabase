@@ -2,8 +2,8 @@ import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetabotMessage } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 
 import { CONTEXT_WINDOW_WARNING_PERCENT } from "../constants";
 

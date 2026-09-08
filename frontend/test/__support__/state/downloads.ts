@@ -1,4 +1,4 @@
-import type { Download } from "../downloads";
+import type { Download } from "metabase/redux/store";
 
 export const createMockDownload = (props: Partial<Download> = {}): Download => {
   return {
