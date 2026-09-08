@@ -108,8 +108,7 @@
   set-has-full-permissions?]
  [metabase.permissions.models.permissions-group
   non-magic-groups
-  all-users-magic-group-type
-  sync-data-analyst-group-for-oss!]
+  all-users-magic-group-type]
  [metabase.permissions.models.permissions-group-membership
   add-users-to-groups!
   add-user-to-groups!
