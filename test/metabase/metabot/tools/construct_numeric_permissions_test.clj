@@ -406,3 +406,73 @@
           (is (contains? @seen k)
               (str "the row handed to can-read? is missing " k
                    ", so any permission branch reading it silently fails")))))))
+
+;;; ============================================================
+;;; Second review round: the oracle via query-check, and scoped content
+;;; ============================================================
+
+(deftest metadata-only-table-is-not-an-oracle-via-query-check-test
+  (testing (str "GHY-4410: `mi/can-read?` is strictly weaker than `mi/can-query?` for a Table —\n"
+                "only `can-read?` has the `manage-table-metadata :yes` disjunct. So a metadata-only\n"
+                "user passes `visible-table` and the first-stage lookup, then lands on\n"
+                "`api/query-check`. A bare 403 there confirms the table exists, is active, and is in\n"
+                "this database — the same oracle the first-stage lookup already closes, one step\n"
+                "further along. The denial must look like a missing id instead.")
+    (mt/with-premium-features #{}
+      (let [deny-query-check (fn deny
+                               ([obj] obj)
+                               ([entity id] (deny entity id nil))
+                               ([entity id & _]
+                                (if (= entity :model/Table)
+                                  (throw (ex-info "You don't have permissions to do that."
+                                                  {:status-code 403}))
+                                  {:model entity :id id})))]
+        (with-redefs [api/query-check deny-query-check]
+          (let [forbidden   (attempt-as-rasta
+                             {:lib/type "mbql/query"
+                              :database (db-name)
+                              :stages   [{:lib/type "mbql.stage/mbql" :source-table (mt/id :venues)}]})
+                nonexistent (attempt-as-rasta
+                             {:lib/type "mbql/query"
+                              :database (db-name)
+                              :stages   [{:lib/type "mbql.stage/mbql" :source-table 999999999}]})]
+            (testing "both refused"
+              (is (= :threw (:outcome forbidden)))
+              (is (= :threw (:outcome nonexistent))))
+            (testing "and indistinguishable — same status and same error key"
+              (is (= 400 (:status forbidden))
+                  (str "a query-check denial on a numeric ref must not surface as 403: "
+                       (pr-str forbidden)))
+              (is (= (:status nonexistent) (:status forbidden)))
+              (is (= (:error nonexistent) (:error forbidden))))))))))
+
+(deftest numeric-measure-and-segment-reach-query-check-test
+  (testing (str "GHY-4410: a `[\"segment\" {} 43]` clause names neither a table nor a field, so\n"
+                "before this fix it matched no branch of `node-table-fks` and the table it is scoped\n"
+                "to never reached `api/query-check` at all. Read-check alone is not equivalent:\n"
+                "`mi/can-read?` on Segment delegates to the Table's `can-read?`, which is weaker than\n"
+                "`can-query?`.\n\n"
+                "The segment lives on a DIFFERENT table than the stage's `source-table`, so the\n"
+                "assertion cannot be satisfied by the source table's own check — that is what makes\n"
+                "this test able to fail.")
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :checkins)
+                                                      :definition {}}]
+        (let [checked (atom [])
+              record  (fn rec
+                        ([obj] obj)
+                        ([entity id] (rec entity id nil))
+                        ([entity id & _] (swap! checked conj [entity id]) {:model entity :id id}))]
+          (with-redefs [api/query-check record]
+            (attempt-as-rasta
+             {:lib/type "mbql/query"
+              :database (db-name)
+              :stages   [{:lib/type     "mbql.stage/mbql"
+                          :source-table (mt/id :venues)
+                          :filters      [["segment" {} segment-id]]}]}))
+          (let [seen (set (map second @checked))]
+            (is (contains? seen (mt/id :checkins))
+                (str "the segment's own table (checkins) must reach query-check; saw "
+                     (pr-str @checked)))
+            (is (not= seen #{(mt/id :venues)})
+                "seeing only the source table means the segment ref was never collected")))))))

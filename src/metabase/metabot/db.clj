@@ -367,11 +367,6 @@
   [table-id]
   (t2/select-one-fn :db_id :model/Table :id table-id))
 
-(defn active-table-database-id
-  "The Database ID of the active Table with `table-id`, or nil."
-  [table-id]
-  (t2/select-one-fn :db_id :model/Table :id table-id :active true))
-
 (defn readable-active-table-database-id
   "The Database ID of the active Table with `table-id`, or nil when there is no such table *or*
   the current user cannot read it.

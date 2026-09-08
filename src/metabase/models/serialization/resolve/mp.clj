@@ -482,7 +482,9 @@
   The numeric dialect's counterpart to [[import-card-by-entity-id]]. It resolves to the id it
   was handed, so the return value is not the point — routing the lookup through `content-store`
   is: the agent-facing store is `read-checked`, so this is where a card the caller cannot read
-  becomes a 403 instead of flowing on into repair. Without it a numeric id skips the store
+  is turned away instead of flowing on into repair. The store collapses that denial to `nil`,
+  which the `(nil? card)` branch below reports as the same not-found error an absent id gets —
+  deliberately, so the response cannot be used to tell a hidden card from a missing one. Without it a numeric id skips the store
   entirely (`portable-id?` matches strings only), and the repair pass's column-name inference
   would name the card's columns back to a caller who cannot read it.
 

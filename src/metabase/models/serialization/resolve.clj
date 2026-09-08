@@ -54,15 +54,14 @@
   "Whether bare numeric table/field/card ids are accepted alongside portable references inside
   a query body being resolved.
 
-  False — the default and today's only live value: this PR lands the flag ahead of its readers,
-  so current behavior is unchanged. The agent-lib dialect rework (a later PR in this stack)
-  adds the schema predicate that consults it, and the v2 MCP query pipeline is the first binder
-  (it binds true for the duration of a resolve). False stays the safe direction: a numeric id
-  is rejected with a teaching error rather than resolved against whatever row happens to carry
-  that id.
+  False is the default, and the safe direction: a numeric id is rejected with a teaching error
+  rather than resolved against whatever row happens to carry that id. True means the caller has
+  established that its surface may author bare ids, and accepts that every id it passes is an
+  untrusted integer — so the readers gated on this flag re-derive, explicitly, the guarantees a
+  portable reference gets for free from resolving a name (in this database, visible, readable).
 
-  It is ambient rather than a parameter because its eventual reader is a registered Malli
-  schema predicate, which has no call site to thread a value through."
+  It is ambient rather than a parameter because one of its readers is a registered Malli schema
+  predicate, which has no call site to thread a value through."
   false)
 
 ;;; ============================================================
@@ -90,8 +89,10 @@
   (and (pos-int? x) *numeric-ids-allowed?*))
 
 (defn- content-ref?
-  "True for any reference to Metabase content (a card, metric, segment, measure, snippet) that
-  this surface may author: a portable entity_id, or — on the numeric-id surface — a bare id.
+  "True for any reference to Metabase content the numeric dialect covers — a card, metric,
+  segment, or measure — that this surface may author: a portable entity_id, or, on the
+  numeric-id surface, a bare id. Snippets are deliberately not included; see the `snippet-id`
+  branch below.
 
   Every `import-mbql` branch that resolves content goes through this one predicate rather than
   matching `portable-id?` and gaining a numeric twin. The numeric form needs no translation, but
@@ -189,7 +190,11 @@
         (assoc :source-card (import-fk resolver id 'Card))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
-    {:snippet-id (id :guard content-ref?)}
+    ;; Portable only, deliberately. The numeric dialect does not cover snippets: no resolver
+    ;; implements `NativeQuerySnippet`, so a numeric one would fall through `import-fk`'s model
+    ;; tests to `not-implemented!` and surface as a bare 501 with no `:agent-error?` — never
+    ;; reaching the read-checked store. Widening this needs a store-backed snippet branch first.
+    {:snippet-id (id :guard portable-id?)}
     (-> &match
         (assoc :snippet-id (import-fk resolver id 'NativeQuerySnippet))
         (->> (mbql-fully-qualified-names->ids* resolver)))))

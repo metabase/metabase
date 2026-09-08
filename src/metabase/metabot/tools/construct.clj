@@ -207,6 +207,35 @@
   (when (and serdes.resolve/*numeric-ids-allowed?* (pos-int? x))
     [::field-id x]))
 
+(defn- numeric-scoped-content-ref
+  "A bare numeric measure / segment id, tagged with the model it names so
+  [[resolve-table-fk]] can resolve it to the table it is scoped to.
+
+  Measures and segments live on a table, and that table is the thing a query permission is
+  about — but a `[\"measure\" {} 44]` clause names neither a table nor a field, so without this
+  the sweep never sees it and `api/query-check` never runs for it. They do get `api/read-check`
+  through the content store, but `mi/can-read?` on both models delegates to the Table's
+  `can-read?`, which is strictly weaker than `can-query?` (only `can-read?` has the
+  `manage-table-metadata` disjunct). Metric refs are Cards and are deliberately not covered:
+  a card pulls in whatever tables its own query names, which this pre-flight sweep cannot see,
+  and the QP re-checks them at execution."
+  [model x]
+  (when (and serdes.resolve/*numeric-ids-allowed?* (pos-int? x))
+    [::scoped-content model x]))
+
+(defn- node-scoped-content-ref
+  "The tagged ref for a `[\"measure\" {} 44]` / `[\"segment\" {} 43]` clause, or nil."
+  [node]
+  (when (and (vector? node) (not (map-entry? node)))
+    (let [op (nth node 0 nil)]
+      (when-let [model (case op
+                         ("measure" :measure) :model/Measure
+                         ("segment" :segment) :model/Segment
+                         nil)]
+        ;; the id sits in slot 2 (`[op {} id]`) or slot 1 (`[op id]`, pre-repair)
+        (or (numeric-scoped-content-ref model (nth node 2 nil))
+            (numeric-scoped-content-ref model (nth node 1 nil)))))))
+
 (defn- node-table-fks
   [node]
   (cond
@@ -215,6 +244,9 @@
                     (numeric-table-id (get node "source-table"))
                     (portable-field-fk-table (get node "source-field"))
                     (numeric-field-id-ref (get node "source-field"))])
+
+    (node-scoped-content-ref node)
+    [(node-scoped-content-ref node)]
 
     (and (vector? node)
          (not (map-entry? node))
@@ -304,7 +336,12 @@
   Walks the whole `:parent-id` chain, not just the named field. A JSON column unfolds into child
   fields that carry their own visibility, so a perfectly ordinary-looking child of a `:sensitive`
   parent would otherwise be referenceable by id — reaching inside a column the warehouse marked
-  unqueryable. Hiding a parent has to hide everything under it."
+  unqueryable. Hiding a parent has to hide everything under it.
+
+  The walk checks each ancestor's own visibility, not its `:table-id`. Sync is the only writer
+  of `parent_id` and always threads a field's table and parent together; there is no API that
+  sets it, so a cross-table chain would take direct app-DB manipulation. The leaf's table is
+  checked, which is the reference the query actually names."
   [metadata-provider field-id]
   (when-let [field (fetch-field metadata-provider field-id)]
     (when (and (field-itself-visible? field)
@@ -348,6 +385,20 @@
     (and (vector? table-fk) (= ::field-id (nth table-fk 0 nil)))
     (resolve-field-id->table-id metadata-provider (nth table-fk 1))
 
+    ;; A numeric measure / segment id: same idea, via the table it is scoped to. The lookup goes
+    ;; through the read-checked store, so an unreadable one resolves to nil and is skipped —
+    ;; `assert-numeric-ids-are-referenceable!` is what turns that into the caller-facing error.
+    (and (vector? table-fk) (= ::scoped-content (nth table-fk 0 nil)))
+    (let [[_ model id] table-fk
+          row (try
+                (case model
+                  :model/Measure (resolve.mp/measure-by-id permission-aware-content-store id)
+                  :model/Segment (resolve.mp/segment-by-id permission-aware-content-store id)
+                  nil)
+                (catch Exception _ nil))]
+      (when-let [table-id (or (:table-id row) (:table_id row))]
+        (:id (visible-table metadata-provider table-id))))
+
     :else
     (try
       (serdes.resolve/import-table-fk resolver table-fk)
@@ -387,7 +438,54 @@
                              :error        :unknown-field-id
                              :field-id     field-id}))))
 
+        (and (vector? ref) (= ::scoped-content (nth ref 0 nil)))
+        (let [[_ model id] ref]
+          (when-not (resolve-table-fk metadata-provider nil ref)
+            (throw (ex-info (if (= model :model/Measure)
+                              (tru "No measure found with id {0}." (str id))
+                              (tru "No segment found with id {0}." (str id)))
+                            {:agent-error? true
+                             :status-code  400
+                             :error        (if (= model :model/Measure)
+                                             :unknown-measure-id
+                                             :unknown-segment-id)
+                             :content-id   id}))))
+
         :else nil))))
+
+(defn- numeric-ref?
+  "Was this collected reference authored as a bare id rather than a portable one? Numeric refs
+  are the raw table id, or the `[::field-id n]` tag [[numeric-field-id-ref]] produces."
+  [table-fk]
+  (or (pos-int? table-fk)
+      (and (vector? table-fk)
+           (contains? #{::field-id ::scoped-content} (nth table-fk 0 nil)))))
+
+(defn- query-check-table!
+  "`api/query-check` the table, translating a denial on a *numeric* reference into the same
+  not-found error an absent id produces.
+
+  `mi/can-read?` (which gates [[visible-table]] and the first-stage lookup) is strictly weaker
+  than `mi/can-query?`: only `can-read?` has the `manage-table-metadata :yes` disjunct. So a
+  metadata-only user passes every earlier gate and lands here, and a bare 403 would confirm the
+  table exists, is active, and is in this database — the oracle the numeric path exists to
+  close, one step further along than the first-stage lookup that already closes it.
+
+  The portable path keeps its 403: its references are unguessable names, so there is nothing to
+  enumerate, and callers there benefit from the accurate status."
+  [table-fk table-id]
+  (if (numeric-ref? table-fk)
+    (try
+      (api/query-check :model/Table table-id)
+      (catch clojure.lang.ExceptionInfo e
+        (if (= 403 (:status-code (ex-data e)))
+          (throw (ex-info (tru "No table found with id {0}." (str table-id))
+                          {:agent-error? true
+                           :status-code  400
+                           :error        :unknown-table-id
+                           :table-id     table-id}))
+          (throw e))))
+    (api/query-check :model/Table table-id)))
 
 (defn- check-source-table-query-permissions!
   ([metadata-provider portable-query]
@@ -400,7 +498,7 @@
                  (if-let [table-id (resolve-table-fk metadata-provider resolver table-fk)]
                    (if (contains? checked table-id)
                      checked
-                     (do (api/query-check :model/Table table-id)
+                     (do (query-check-table! table-fk table-id)
                          (conj checked table-id)))
                    checked))
                already-checked

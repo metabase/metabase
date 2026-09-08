@@ -1223,9 +1223,13 @@
                             "source-table" 10
                             "aggregation"  [["count" {}]]
                             "breakout"     [["field" {} 201]]}]}))
-            (is false "expected a 403 throw, got a resolved query (permission bypass)")
+            (is false "expected a throw, got a resolved query (permission bypass)")
             (catch clojure.lang.ExceptionInfo e
-              (is (= 403 (:status-code (ex-data e)))))))))))
+              ;; Numeric refs collapse a query-check denial to the same not-found a missing id
+              ;; gets, so the status cannot be used to probe for tables. What this test guards is
+              ;; unchanged: the denial stops resolution before repair's implicit-join auto-wire.
+              (is (= 400 (:status-code (ex-data e))))
+              (is (= :unknown-table-id (:error (ex-data e)))))))))))
 
 ;;; ----- numeric `source-card:` -----------------------------------------------------------
 
@@ -1318,7 +1322,7 @@
                 "distinct from the portable form's `:unknown-table` — the two want different\n"
                 "recovery vocabulary, so the keys must not be collapsed.")
     (with-v2-surface
-      (with-redefs [metabot.db/active-table-database-id (fn [_] nil)]
+      (with-redefs [metabot.db/readable-active-table-database-id (fn [_] nil)]
         (try
           (construct/resolve-database-id-from-first-stage
            {"lib/type" "mbql/query"
