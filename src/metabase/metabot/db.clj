@@ -234,6 +234,12 @@
   [conversation]
   (t2/insert! :model/MetabotConversation conversation))
 
+(defn upsert-conversation!
+  "Insert or update the MetabotConversation with `conversation-id`. `update-fn` receives the existing row (or nil on
+  insert) and must return the fields to write."
+  [conversation-id update-fn]
+  (mdb/update-or-insert! :model/MetabotConversation {:id conversation-id} update-fn))
+
 (defn set-conversation-title-if-missing!
   "Set the title of the MetabotConversation with `conversation-id` if it has none."
   [conversation-id title]
@@ -309,6 +315,29 @@
   "Insert the MetabotUsedTable `rows`."
   [rows]
   (t2/insert! :model/MetabotUsedTable rows))
+
+;;; --------------------------------------------------- Feedback ---------------------------------------------------
+
+(defn upsert-feedback!
+  "Insert or update the MetabotFeedback row for the MetabotMessage with `message-id` and the User with
+  `submitter-user-id`. `update-fn` receives the existing row (or nil on insert) and must return the fields to
+  write."
+  [message-id submitter-user-id update-fn]
+  (mdb/update-or-insert! :model/MetabotFeedback
+                         {:message_id message-id :user_id submitter-user-id}
+                         update-fn))
+
+(defn upsert-source-feedback!
+  "Insert or update the MetabotSourceFeedback row for the MetabotMessage with `message-id`, the User with
+  `submitter-user-id`, and the source with `source-id`/`source-type`. `update-fn` receives the existing row (or nil
+  on insert) and must return the fields to write."
+  [message-id submitter-user-id source-id source-type update-fn]
+  (mdb/update-or-insert! :model/MetabotSourceFeedback
+                         {:message_id  message-id
+                          :user_id     submitter-user-id
+                          :source_id   source-id
+                          :source_type source-type}
+                         update-fn))
 
 ;;; ------------------------------------------------ Databases ------------------------------------------------
 

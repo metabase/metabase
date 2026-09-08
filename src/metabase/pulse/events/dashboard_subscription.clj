@@ -1,7 +1,6 @@
 (ns metabase.pulse.events.dashboard-subscription
   (:require
    [clojure.set :as set]
-   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
@@ -17,20 +16,9 @@
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"
   [_ {dashboard :object}]
   (let [dashboard-id (u/the-id dashboard)
-        affected     (app-db/query
-                      {:select-distinct [[:p.id :pulse-id] [:pc.card_id :card-id]]
-                       :from            [[:pulse :p]]
-                       :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
-                       :where           [:= :p.dashboard_id dashboard-id]})]
+        affected     (pulse.db/pulse-card-pairs-for-dashboard dashboard-id)]
     (when-let [pulse-ids (seq (distinct (map :pulse-id affected)))]
-      (let [correct-card-ids     (->> (app-db/query
-                                       {:select-distinct [:dc.card_id]
-                                        :from            [[:report_dashboardcard :dc]]
-                                        :where           [:and
-                                                          [:= :dc.dashboard_id dashboard-id]
-                                                          [:not= :dc.card_id nil]]})
-                                      (map :card_id)
-                                      set)
+      (let [correct-card-ids     (set (pulse.db/dashboard-card-ids-for-dashboard dashboard-id))
             stale-card-ids       (->> affected
                                       (keep :card-id)
                                       set)

@@ -608,6 +608,40 @@
   [entity-type entity-id]
   (t2/delete! :model/DependencyStatus :entity_type entity-type :entity_id entity-id))
 
+(defn mark-dependency-status-stale!
+  "Mark the DependencyStatus of `entity-type` `entity-id` as stale for dependency recalculation, creating it if it
+  doesn't exist. Resets retry state so previously-failed entities get a fresh chance."
+  [entity-type entity-id]
+  (mdb/update-or-insert!
+   :model/DependencyStatus
+   {:entity_type entity-type :entity_id entity-id}
+   (fn [existing]
+     (if existing
+       {:stale true :fail_count 0 :next_retry_at nil :terminal false}
+       {:stale true :dependency_analysis_version 0}))))
+
+(defn upsert-dependency-status!
+  "Upsert the DependencyStatus of `entity-type` `entity-id`, setting stale=false, `dependency_analysis_version` to
+  `current-version`, and clearing any failure state."
+  [entity-type entity-id current-version]
+  (mdb/update-or-insert!
+   :model/DependencyStatus
+   {:entity_type entity-type :entity_id entity-id}
+   (fn [_existing]
+     {:dependency_analysis_version current-version
+      :stale false
+      :fail_count 0
+      :next_retry_at nil})))
+
+(defn record-dependency-status-failure!
+  "Upsert the DependencyStatus of `entity-type` `entity-id`, creating it if needed. `update-fn` receives the
+  existing DependencyStatus row (or nil if none exists) and must return the columns to set."
+  [entity-type entity-id update-fn]
+  (mdb/update-or-insert!
+   :model/DependencyStatus
+   {:entity_type entity-type :entity_id entity-id}
+   update-fn))
+
 (defn pending-retry-exists?
   "Whether a non-terminal DependencyStatus is waiting for a retry."
   []

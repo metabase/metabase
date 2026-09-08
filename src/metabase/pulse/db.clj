@@ -2,6 +2,7 @@
   "Application database queries for the pulse module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as app-db]
    [toucan2.core :as t2]))
 
 (defn card
@@ -29,6 +30,24 @@
   `card-ids`."
   [dashboard-id card-ids]
   (t2/select-fn->pk :card_id :model/DashboardCard :dashboard_id dashboard-id :card_id [:in card-ids]))
+
+(defn pulse-card-pairs-for-dashboard
+  "Distinct `:pulse-id`/`:card-id` pairs for the Pulses (subscriptions) attached to the Dashboard with
+  `dashboard-id`."
+  [dashboard-id]
+  (app-db/query {:select-distinct [[:p.id :pulse-id] [:pc.card_id :card-id]]
+                 :from            [[:pulse :p]]
+                 :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
+                 :where           [:= :p.dashboard_id dashboard-id]}))
+
+(defn dashboard-card-ids-for-dashboard
+  "The distinct, non-nil Card ids shown by the DashboardCards of the Dashboard with `dashboard-id`."
+  [dashboard-id]
+  (map :card_id (app-db/query {:select-distinct [:dc.card_id]
+                               :from            [[:report_dashboardcard :dc]]
+                               :where           [:and
+                                                 [:= :dc.dashboard_id dashboard-id]
+                                                 [:not= :dc.card_id nil]]})))
 
 (defn channel
   "The Channel with `channel-id`, or nil."
