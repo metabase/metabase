@@ -240,7 +240,8 @@
             (if (provider-client-error? e)
               ;; Keep offering config-models, otherwise admin has no way to select a different model to fix "model not
               ;; served in given region" errors.
-              {:models (or config-models []) :error (.getMessage e)}
+              (let [{:keys [status status-code]} (ex-data e)]
+                {:models (or config-models []) :error (.getMessage e) :status (or status status-code)})
               (throw e))))))))
 
 (def ^:private models-cache-ttl-ms
@@ -273,11 +274,16 @@
   Called on the way into the cache rather than on every read, so an error being served from the cache does not keep
   pushing back the moment a transient failure expires. Only the managed type is left out: it is answered from the
   registry without a request, so it proves nothing about the connection. Google's catalog is fixed too, but its
-  listing still verifies the credentials against the provider, so what it finds counts."
-  [{conn-key :key :keys [type]} {:keys [error transient?] :as result}]
+  listing still verifies the credentials against the provider, so what it finds counts.
+
+  Fatality follows the HTTP status with the same classification inference uses, so a rate-limited listing — 429
+  when an admin page load fans out — expires like any transient failure instead of pinning the connection on the
+  fallback after the limit clears."
+  [{conn-key :key :keys [type]} {:keys [error transient? status] :as result}]
   (when (and error (not (llm.provider/managed-type? type)))
-    (llm.health/record-failure! conn-key error (not transient?)))
-  result)
+    (llm.health/record-failure! conn-key error (and (not transient?)
+                                                    (or (nil? status) (llm.health/fatal-status? status)))))
+  (dissoc result :status))
 
 (defn- connection-models-response
   "List `conn`'s models for the client, reporting a failure to [[metabase.llm.health]]."
@@ -546,6 +552,9 @@
           merged                   (update merged :config merge learned-config)
           effective                (merge effective learned-config)]
       (llm.provider/set-connections! (assoc stored idx merged))
+      ;; even when nothing changed: re-saving is the admin's explicit ask to try the connection again, the recovery
+      ;; lever for a failure fixed on the provider's side (restored credit, regained model access)
+      (llm.health/forget! conn-key)
       (follow-edited-connection-model! (assoc merged :config effective) model)
       (seed-models-cache! (assoc merged :config effective) listed)
       (connection-response (assoc (merge live merged) :config effective)))))
@@ -583,6 +592,7 @@
    _query-params
    {:keys [order]} :- [:map [:order [:sequential connection-key-schema]]]]
   (perms/check-has-application-permission :setting)
+  (refresh-settings!)
   (check-connections-not-env-managed!)
   (let [stored    (llm.provider/stored-connections)
         by-key    (into {} (map (juxt :key identity)) stored)
@@ -613,6 +623,7 @@
   has happened."
   []
   (perms/check-has-application-permission :setting)
+  (refresh-settings!)
   {:default (active-model-response (metabot.settings/metabot-model-selection))
    :mini    (active-model-response (metabot.settings/mini-model-selection))})
 

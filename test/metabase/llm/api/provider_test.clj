@@ -1477,6 +1477,17 @@
         (is (false? (llm.provider/connection-serviceable? "anthropic"))
             "so the connection stays out of the fallback rotation")))))
 
+(deftest rate-limited-listing-is-recorded-as-transient-test
+  (testing "a 429 from a listing — an admin page load fanning out — expires like any transient failure instead of
+            pinning the connection on the fallback after the limit clears"
+    (mt/with-temporary-setting-values [llm-providers [(connection "throttled-anthropic" "anthropic" {:api-key "sk-t"})]]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [& _]
+                                    (throw (ex-info "rate limited" {:api-error true :status-code 429})))]
+        (mt/user-http-request :crowberto :get 200 "llm/models")
+        (is (= {:message "rate limited" :fatal? false}
+               (select-keys (llm.health/failure "throttled-anthropic") [:message :fatal?])))))))
+
 (deftest editing-a-connection-clears-its-failure-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-old"})]]
     (llm.health/record-failure! "anthropic" "invalid x-api-key" true)
@@ -1484,6 +1495,27 @@
       (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic" {:config {:api-key "sk-ant-new"}}))
     (testing "new credentials start from nothing rather than from what the old ones did"
       (is (nil? (llm.health/failure "anthropic"))))))
+
+(deftest re-saving-a-connection-unchanged-clears-its-failure-test
+  (testing "re-saving is the admin's explicit ask to try again — the recovery lever for a failure fixed on the
+            provider's side, like restored credit, that no credential change would ever clear"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-same"})]]
+      (llm.health/record-failure! "anthropic" "credit balance too low" true)
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+        (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic" {:config {:api-key "sk-ant-same"}}))
+      (is (nil? (llm.health/failure "anthropic"))))))
+
+(deftest another-instances-edit-clears-the-failure-here-test
+  (testing "fixing credentials on one node must not leave this one skipping the repaired connection: picking the
+            change up through the settings cache drops the record too"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-old"})]]
+      (with-another-instances-write! [(connection "anthropic" "anthropic" {:api-key "sk-ant-rotated"})]
+        ;; recorded after the write: in this simulation the write ran in-process too, so recording here isolates
+        ;; what the test is about — the cache refresh alone, with no local write, dropping the record
+        (llm.health/record-failure! "anthropic" "invalid x-api-key" true)
+        (mt/user-http-request :crowberto :get 200 "llm/providers")
+        (is (nil? (llm.health/failure "anthropic"))
+            "reading through the refreshed cache is enough — no local write ran")))))
 
 (deftest provider-order-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-1"})
@@ -1555,9 +1587,9 @@
                             :connection_name    "openai"
                             :selected_model_ref "anthropic/claude-sonnet-4-6"
                             :is_fallback        true}
-                  :mini    {:model_ref          "openai/gpt-5.4"
-                            :model              "gpt-5.4"
-                            :model_name         "GPT-5.4"
+                  :mini    {:model_ref          "openai/gpt-5.4-mini"
+                            :model              "gpt-5.4-mini"
+                            :model_name         "GPT-5.4 Mini"
                             :connection_key     "openai"
                             :connection_name    "openai"
                             :selected_model_ref "anthropic/claude-haiku-4-5-20251001"
