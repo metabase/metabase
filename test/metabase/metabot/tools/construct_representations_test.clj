@@ -1291,7 +1291,9 @@
                 (is (= 403 (:status-code (ex-data e))))))))))))
 
 (deftest numeric-source-card-unknown-id-surfaces-agent-error-test
-  (testing "a numeric `source-card:` naming no card surfaces `:unknown-card`, not a 404"
+  (testing (str "a numeric `source-card:` naming no card surfaces `:unknown-card-id`, not a 404 — "
+                "the numeric-specific key, since a numeric miss and a portable-entity_id miss want "
+                "different recovery advice")
     (with-v2-surface
       (with-stubbed-card! allow-read-check
         (fn []
@@ -1301,7 +1303,7 @@
             (catch clojure.lang.ExceptionInfo e
               (let [d (ex-data e)]
                 (is (true? (:agent-error? d)))
-                (is (= :unknown-card (:error d)))
+                (is (= :unknown-card-id (:error d)))
                 (is (= 999 (:card-id d)))))))))))
 
 ;;; ----- numeric `source-table:` that resolves to nothing ----------------------------------

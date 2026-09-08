@@ -89,6 +89,19 @@
   [x]
   (and (pos-int? x) *numeric-ids-allowed?*))
 
+(defn- content-ref?
+  "True for any reference to Metabase content (a card, metric, segment, measure, snippet) that
+  this surface may author: a portable entity_id, or — on the numeric-id surface — a bare id.
+
+  Every `import-mbql` branch that resolves content goes through this one predicate rather than
+  matching `portable-id?` and gaining a numeric twin. The numeric form needs no translation, but
+  it must still reach `import-fk`, because that is what consults the content store — and on
+  agent paths the store is `read-checked`, so the lookup *is* the permission check. A branch
+  that matched only the portable form would silently let a numeric id past it unchecked."
+  [x]
+  (or (portable-id? x)
+      (numeric-source-id? x)))
+
 (defn serialized-query-source-table
   "Given a serialized query (with portable references), returns the portable reference of the table it is based
   on. Measures and segments use this to omit the table_id property when it is derivable from the query. This should be
@@ -128,31 +141,31 @@
                            (import-fk-keyed resolver fully-qualified-name :model/Database :name)))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
-    {:card-id (entity-id :guard portable-id?)}
+    {:card-id (entity-id :guard content-ref?)}
     (-> &match
         (assoc :card-id (import-fk resolver entity-id 'Card))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
-    [#{:metric "metric"} opts (entity-id :guard portable-id?)]
+    [#{:metric "metric"} opts (entity-id :guard content-ref?)]
     [:metric (mbql-fully-qualified-names->ids* resolver opts)
      (import-fk resolver entity-id 'Card)]
 
-    [#{:segment "segment"} opts (entity-id :guard portable-id?)]
+    [#{:segment "segment"} opts (entity-id :guard content-ref?)]
     [:segment (mbql-fully-qualified-names->ids* resolver opts)
      (import-fk resolver entity-id 'Segment)]
 
-    [#{:measure "measure"} opts (entity-id :guard portable-id?)]
+    [#{:measure "measure"} opts (entity-id :guard content-ref?)]
     [:measure (mbql-fully-qualified-names->ids* resolver opts)
      (import-fk resolver entity-id 'Measure)]
 
     ;; support legacy MBQL 4 refs for things like the serialized Audit v2 queries
-    [#{:metric "metric"} (entity-id :guard portable-id?)]
+    [#{:metric "metric"} (entity-id :guard content-ref?)]
     [:metric (import-fk resolver entity-id 'Card)]
 
-    [#{:segment "segment"} (entity-id :guard portable-id?)]
+    [#{:segment "segment"} (entity-id :guard content-ref?)]
     [:segment (import-fk resolver entity-id 'Segment)]
 
-    [#{:measure "measure"} (entity-id :guard portable-id?)]
+    [#{:measure "measure"} (entity-id :guard content-ref?)]
     [:measure (import-fk resolver entity-id 'Measure)]
 
     {:source-table (_ :guard vector?)}
@@ -171,22 +184,12 @@
         (assoc :source-table (str "card__" (import-fk resolver id 'Card)))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
-    {:source-card (id :guard portable-id?)}
+    {:source-card (id :guard content-ref?)}
     (-> &match
         (assoc :source-card (import-fk resolver id 'Card))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
-    ;; A bare numeric `source-card`, which only the numeric-id surface may author. It needs no
-    ;; translation, but it must still go through `import-fk` so the read-checked content store
-    ;; sees it: `portable-id?` matches strings only, so without this branch a numeric id would
-    ;; reach repair having never been permission-checked. Matching here rather than at the
-    ;; first stage covers every stage and every join, because this walk recurses.
-    {:source-card (id :guard numeric-source-id?)}
-    (-> &match
-        (assoc :source-card (import-fk resolver id 'Card))
-        (->> (mbql-fully-qualified-names->ids* resolver)))
-
-    {:snippet-id (id :guard portable-id?)}
+    {:snippet-id (id :guard content-ref?)}
     (-> &match
         (assoc :snippet-id (import-fk resolver id 'NativeQuerySnippet))
         (->> (mbql-fully-qualified-names->ids* resolver)))))

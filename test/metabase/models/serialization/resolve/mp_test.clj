@@ -826,3 +826,38 @@
               (is (true? (:agent-error? d)))
               (is (= :cross-database-card (:error d)))
               (is (= 999 (:card-database-id d))))))))))
+
+(deftest ^:parallel import-fk-numeric-consults-store-for-every-content-model-test
+  (testing (str "GHY-4410 follow-up: the numeric branch must cover EVERY content model, not just\n"
+                "Card. A numeric metric / segment / measure ref reaches the resolver by the same\n"
+                "route a numeric `source-card` does, and the store lookup is the permission check —\n"
+                "so a model that skipped it would let an unreadable one through unchecked.\n"
+                "An empty store stands in for what `read-checked` returns when the caller may not\n"
+                "read the row.")
+    (binding [resolve/*numeric-ids-allowed?* true]
+      (let [ir (resolve.mp/import-resolver mp-simple (map-content-store {}))]
+        (testing "Card (also the model metric refs resolve through)"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No saved question or model found with id"
+                                (resolve/import-fk ir 4242 'Card))))
+        (testing "Measure"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No measure found with id"
+                                (resolve/import-fk ir 4242 'Measure))))
+        (testing "Segment"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No segment found with id"
+                                (resolve/import-fk ir 4242 'Segment))))))))
+
+(deftest ^:parallel import-mbql-routes-numeric-content-refs-through-the-store-test
+  (testing (str "the same, one level up: `import-mbql`'s clause branches matched `portable-id?`,\n"
+                "which is string-only, so a numeric metric / segment / measure ref fell through\n"
+                "every branch and was never resolved at all — never reaching the store, never\n"
+                "read-checked. They now share one `content-ref?` guard, so no branch can be\n"
+                "forgotten.")
+    (binding [resolve/*numeric-ids-allowed?* true]
+      (let [ir (resolve.mp/import-resolver mp-simple (map-content-store {}))]
+        (doseq [[label clause] {"metric"  [:metric {} 4242]
+                                "segment" [:segment {} 4242]
+                                "measure" [:measure {} 4242]}]
+          (testing (str "a numeric " label " ref is resolved (and so permission-checked)")
+            (is (thrown? clojure.lang.ExceptionInfo
+                         (resolve/import-mbql ir {:stages [{:aggregation [clause]}]}))
+                (str "a numeric " label " ref must not pass through unresolved"))))))))

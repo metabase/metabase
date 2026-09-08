@@ -372,7 +372,7 @@
       by that `db` name. Unknown / ambiguous names surface `:unknown-database` / `:ambiguous-database-name`
       agent-errors.
     * On a surface that accepts numeric ids, a numeric `stages[0].source-table` resolves through
-      the table row's `:db_id`. Unknown / inactive ids surface `:unknown-table`.
+      the table row's `:db_id`. Unknown / inactive / unreadable ids surface `:unknown-table-id`.
     * Otherwise, if `stages[0].source-card` is an entity_id string, look up the card by entity_id
       and use its `:database_id`. Unknown entity_id surfaces `:unknown-card`. On a numeric-id
       surface a numeric `source-card` resolves the same way, behind a read check.
@@ -448,7 +448,9 @@
                                (str card-id))
                           {:agent-error? true
                            :status-code  400
-                           :error        :unknown-card
+                           ;; the numeric-specific key, matching `export-card-by-id` — a numeric
+                           ;; miss and a portable-entity_id miss want different recovery advice
+                           :error        :unknown-card-id
                            :card-id      card-id})))
         (api/read-check card)
         (:database_id card))
@@ -596,7 +598,7 @@
 (defn- with-recovery-hint
   "Return `e` with the caller's recovery sentence appended to its message, or unchanged when
   `recovery-hint` is absent or has nothing to say about this error."
-  [^clojure.lang.ExceptionInfo e recovery-hint]
+  [e recovery-hint]
   (if-let [hint (when recovery-hint (recovery-hint (ex-data e)))]
     (ex-info (str (ex-message e) " " hint) (ex-data e) e)
     e))
