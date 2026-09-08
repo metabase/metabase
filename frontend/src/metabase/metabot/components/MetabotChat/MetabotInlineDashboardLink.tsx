@@ -121,10 +121,7 @@ function SaveDashboardAction({
           dashboardId={dashboard.id}
           name={dashboard.title}
           description={dashboard.description}
-          tiles={dashboard.tiles.map(({ query, ...tile }) => ({
-            ...tile,
-            dataset_query: query,
-          }))}
+          tiles={dashboard.tiles}
           onSaved={handleSaved}
           onClose={closeSaveModal}
         />
