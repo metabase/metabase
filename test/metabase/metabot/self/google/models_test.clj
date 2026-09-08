@@ -23,3 +23,9 @@
                 (filter #(str/starts-with? % "google/"))
                 set)
            (set (keys models/catalog))))))
+
+(deftest ^:parallel catalog-rows-carry-context-windows-test
+  (testing "every catalog row records the model's input context window: google/context-window-tokens reads it here"
+    (doseq [[model {:keys [context-window]}] models/catalog]
+      (testing model
+        (is (pos-int? context-window))))))
