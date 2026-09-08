@@ -147,11 +147,13 @@ const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
   const { destination } = value;
 
   const { data: card, isLoading: isCardLoading } = useGetCardQuery(
-    "card_id" in value ? { id: value.card_id, ignore_error: true } : skipToken,
+    value.type === "card"
+      ? { id: value.card_id, ignore_error: true }
+      : skipToken,
   );
   const { data: savedDashboard, isLoading: isSavedDashboardLoading } =
     useGetDashboardQuery(
-      "dashboard_id" in value
+      value.type === "dashboard"
         ? { id: value.dashboard_id, ignore_error: true }
         : skipToken,
     );

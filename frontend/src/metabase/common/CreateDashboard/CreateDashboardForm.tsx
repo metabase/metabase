@@ -54,6 +54,9 @@ export interface CreateDashboardProperties {
 export interface CreateDashboardFormOwnProps {
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
   targetCollection?: CollectionId | null;
+  initialValues?: Partial<CreateDashboardProperties>;
+  submitLabel?: string;
+  onSubmit?: (values: CreateDashboardProperties) => Promise<void>;
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
 }
@@ -61,6 +64,9 @@ export interface CreateDashboardFormOwnProps {
 export function CreateDashboardForm({
   collectionId,
   targetCollection,
+  initialValues,
+  submitLabel,
+  onSubmit,
   onCreate,
   onCancel,
 }: CreateDashboardFormOwnProps) {
@@ -72,20 +78,30 @@ export function CreateDashboardForm({
   const computedInitialValues = useMemo(() => {
     return {
       ...DASHBOARD_SCHEMA.getDefault(),
+      ...initialValues,
       collection_id: hasTargetCollection
         ? targetCollection
         : initialCollectionId,
     };
-  }, [hasTargetCollection, initialCollectionId, targetCollection]);
+  }, [
+    hasTargetCollection,
+    initialCollectionId,
+    initialValues,
+    targetCollection,
+  ]);
 
   const handleCreate = useCallback(
     async (values: CreateDashboardProperties) => {
+      if (onSubmit) {
+        await onSubmit(values);
+        return;
+      }
       const dashboard = await handleCreateDashboard(values).unwrap();
       if (dashboard) {
         onCreate?.(dashboard);
       }
     },
-    [handleCreateDashboard, onCreate],
+    [handleCreateDashboard, onCreate, onSubmit],
   );
 
   return (
@@ -128,7 +144,10 @@ export function CreateDashboardForm({
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
-            <FormSubmitButton label={t`Create`} variant="filled" />
+            <FormSubmitButton
+              label={submitLabel ?? t`Create`}
+              variant="filled"
+            />
           </FormFooter>
         </Form>
       )}
