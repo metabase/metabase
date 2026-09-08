@@ -14,6 +14,7 @@ import type { ContentDiagnosticsDuplicatedSortColumn } from "metabase-types/api"
 
 import {
   trackContentDiagnosticsFiltersChanged,
+  trackContentDiagnosticsFiltersReset,
   trackContentDiagnosticsFindingSelected,
   trackContentDiagnosticsTabViewed,
 } from "../analytics";
@@ -134,6 +135,7 @@ export function DuplicatedContent({
   };
 
   const handleReset = () => {
+    trackContentDiagnosticsFiltersReset("duplicated");
     clearRowSelection();
     onParamsChange(
       {

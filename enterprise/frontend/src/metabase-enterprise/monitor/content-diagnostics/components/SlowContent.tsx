@@ -17,6 +17,7 @@ import type {
 
 import {
   trackContentDiagnosticsFiltersChanged,
+  trackContentDiagnosticsFiltersReset,
   trackContentDiagnosticsFindingSelected,
   trackContentDiagnosticsTabViewed,
 } from "../analytics";
@@ -136,6 +137,7 @@ export function SlowContent({
   };
 
   const handleReset = () => {
+    trackContentDiagnosticsFiltersReset("slow");
     clearRowSelection();
     onParamsChange(
       {

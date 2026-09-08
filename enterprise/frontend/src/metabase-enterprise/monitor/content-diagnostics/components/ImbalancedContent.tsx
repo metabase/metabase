@@ -17,6 +17,7 @@ import type {
 
 import {
   trackContentDiagnosticsFiltersChanged,
+  trackContentDiagnosticsFiltersReset,
   trackContentDiagnosticsFindingSelected,
   trackContentDiagnosticsTabViewed,
 } from "../analytics";
@@ -142,6 +143,7 @@ export function ImbalancedContent({
   };
 
   const handleReset = () => {
+    trackContentDiagnosticsFiltersReset(mode);
     clearRowSelection();
     onParamsChange(
       {

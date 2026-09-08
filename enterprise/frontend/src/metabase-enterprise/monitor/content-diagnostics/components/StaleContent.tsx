@@ -14,6 +14,7 @@ import type { ContentDiagnosticsStaleSortColumn } from "metabase-types/api";
 
 import {
   trackContentDiagnosticsFiltersChanged,
+  trackContentDiagnosticsFiltersReset,
   trackContentDiagnosticsFindingSelected,
   trackContentDiagnosticsTabViewed,
 } from "../analytics";
@@ -131,6 +132,7 @@ export function StaleContent({
   };
 
   const handleReset = () => {
+    trackContentDiagnosticsFiltersReset("stale");
     clearRowSelection();
     onParamsChange(
       {

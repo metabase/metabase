@@ -526,9 +526,14 @@ describe("StaleContentPage", () => {
       expect(getUrlQuery(router)).toEqual({});
     });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Search" })).toHaveValue("");
     const searchParams = getLastRequestUrl().searchParams;
     expect(searchParams.get("query")).toBeNull();
     expect(searchParams.getAll("entity-types")).toEqual([]);
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "content_diagnostics_filters_reset",
+      triggered_from: "stale",
+    });
   });
 
   it("offers nothing to reset while the filters and search are untouched", async () => {
