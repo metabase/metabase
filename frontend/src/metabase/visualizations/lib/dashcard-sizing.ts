@@ -59,11 +59,21 @@ export const getSizeTierTitleGap = (sizeTier: DashcardSizeTier) =>
 export const getSizeTierHeaderPadding = (sizeTier: DashcardSizeTier) =>
   `${pxToRem(sizeTier.yPadding)} ${pxToRem(sizeTier.xPadding)} ${pxToRem(sizeTier.titleGap)}`;
 
+// Non-cartesian chart bodies (pie, gauge, maps, ...) keep a fixed bottom
+// padding at every tier; their content already reads as bottom-heavy, so the
+// larger tier paddings would overstate the spacing.
+const CHART_BODY_BOTTOM_PADDING = 12;
+
 /** Chart body inset below a header, or the full card padding without one. */
 export const getSizeTierBodyPadding = (
   sizeTier: DashcardSizeTier,
   hasHeader: boolean,
-) =>
-  hasHeader
-    ? `0 ${pxToRem(sizeTier.xPadding)} ${pxToRem(sizeTier.yPadding)}`
-    : getSizeTierPadding(sizeTier);
+) => {
+  const bottomPadding = pxToRem(CHART_BODY_BOTTOM_PADDING);
+
+  if (hasHeader) {
+    return `0 ${pxToRem(sizeTier.xPadding)} ${bottomPadding}`;
+  }
+
+  return `${pxToRem(sizeTier.yPadding)} ${pxToRem(sizeTier.xPadding)} ${bottomPadding}`;
+};

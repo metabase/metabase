@@ -57,8 +57,12 @@ describe("size tier style helpers", () => {
     expect(getSizeTierHeaderPadding(LARGE_TIER)).toBe("2.375rem 2.5rem 2rem");
   });
 
-  it("skips the top body padding only when a header is present", () => {
-    expect(getSizeTierBodyPadding(MEDIUM_TIER, true)).toBe("0 1.5rem 1.375rem");
-    expect(getSizeTierBodyPadding(MEDIUM_TIER, false)).toBe("1.375rem 1.5rem");
+  it("keeps a fixed bottom padding and skips the top only under a header", () => {
+    expect(getSizeTierBodyPadding(SMALL_TIER, true)).toBe("0 1rem 0.75rem");
+    expect(getSizeTierBodyPadding(MEDIUM_TIER, true)).toBe("0 1.5rem 0.75rem");
+    expect(getSizeTierBodyPadding(LARGE_TIER, true)).toBe("0 2.5rem 0.75rem");
+    expect(getSizeTierBodyPadding(MEDIUM_TIER, false)).toBe(
+      "1.375rem 1.5rem 0.75rem",
+    );
   });
 });

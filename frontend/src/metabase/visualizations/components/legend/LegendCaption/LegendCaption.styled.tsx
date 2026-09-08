@@ -6,21 +6,29 @@ import { Box, type BoxProps, Icon, type IconProps } from "metabase/ui";
 
 import { LegendLabel as BaseLegendLabel } from "../LegendLabel";
 
-export const LegendCaptionRoot = styled.div`
-  display: flex;
-  align-items: center;
-  min-width: 0;
-`;
-
 export const LEGEND_LABEL_FONT_SIZE = "0.875rem";
 export const LEGEND_LABEL_FONT_WEIGHT = 700;
 
-const LEGEND_LABEL_FONT_SIZES = {
-  sm: "0.75rem",
-  md: LEGEND_LABEL_FONT_SIZE,
+const LEGEND_LABEL_SIZES = {
+  sm: { fontSize: "0.75rem", lineHeight: "0.875rem" },
+  md: { fontSize: LEGEND_LABEL_FONT_SIZE, lineHeight: "1.0625rem" },
 } as const;
 
-export type LegendCaptionTitleSize = keyof typeof LEGEND_LABEL_FONT_SIZES;
+export type LegendCaptionTitleSize = keyof typeof LEGEND_LABEL_SIZES;
+
+/**
+ * With an explicit title size the row is capped at the title line-height, so
+ * icons and action buttons overflow-center instead of stretching the caption.
+ */
+export const LegendCaptionRoot = styled.div<{
+  titleSize?: LegendCaptionTitleSize;
+}>`
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: ${({ titleSize }) =>
+    titleSize ? LEGEND_LABEL_SIZES[titleSize].lineHeight : "auto"};
+`;
 
 export const LegendLabel = styled(BaseLegendLabel)<{
   titleSize?: LegendCaptionTitleSize;
@@ -31,8 +39,15 @@ export const LegendLabel = styled(BaseLegendLabel)<{
   display: flex;
   flex-direction: row;
   align-items: center;
-  font-size: ${({ titleSize = "md" }) => LEGEND_LABEL_FONT_SIZES[titleSize]};
+  font-size: ${({ titleSize = "md" }) =>
+    LEGEND_LABEL_SIZES[titleSize].fontSize};
   font-weight: ${LEGEND_LABEL_FONT_WEIGHT};
+
+  /* Doubled selector outranks the shared LegendLabel link line-height. */
+  && {
+    line-height: ${({ titleSize = "md" }) =>
+      LEGEND_LABEL_SIZES[titleSize].lineHeight};
+  }
 `;
 
 export const LegendLabelIcon = styled(Icon)`
@@ -54,6 +69,12 @@ export const LegendDescriptionIcon = styled(
 )`
   color: var(--mb-color-text-disabled);
   margin: 0 0.25rem;
+
+  /* Zero-height box keeps the icon from stretching the caption row past the
+     title line-height; the icon still renders, centered on the row middle. */
+  display: flex;
+  align-items: center;
+  height: 0;
 
   &:hover {
     color: var(--mb-color-text-secondary);

@@ -119,7 +119,11 @@ export const LegendCaption = ({
   );
 
   return (
-    <LegendCaptionRoot className={className} data-testid="legend-caption">
+    <LegendCaptionRoot
+      className={className}
+      titleSize={titleSize}
+      data-testid="legend-caption"
+    >
       {icon && <LegendLabelIcon {...icon} />}
       {hasTitleMenuItems ? (
         <Menu>
@@ -144,7 +148,6 @@ export const LegendCaption = ({
           <LegendDescriptionIcon
             name="info"
             className={cx(CS.hoverChild, CS.hoverChildSmooth)}
-            mt="3px"
             mr="lg"
           />
         </Tooltip>
