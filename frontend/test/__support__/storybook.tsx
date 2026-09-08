@@ -18,7 +18,7 @@ import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { RawSeries } from "metabase-types/api";
 
-import { getStore } from "./entities-store";
+import { getMainStore, getStore } from "./entities-store";
 import { TestWrapper } from "./ui";
 
 export const ReduxProvider = ({
@@ -44,7 +44,13 @@ export const VisualizationWrapper = ({
   displayTheme?: "light" | "dark";
   initialStore?: State;
 }) => {
-  const store = getStore(mainReducers, initialStore);
+  // `getMainStore` adds the RTK Query `Api` reducer and its middleware, which
+  // the bare `getStore(mainReducers, ...)` omits. Visualizations reach the API
+  // through hooks now — `CartesianChart` calls `useTimelineEvents`, which calls
+  // `useListTimelinesQuery` — and without the middleware RTK warns that the
+  // "metabase-api" reducer is missing from the store. It went unnoticed because
+  // the bar/line/combo stories that would have hit it are `loki: { skip: true }`.
+  const store = getMainStore(initialStore);
 
   return (
     <TestWrapper

@@ -1,5 +1,7 @@
 import _ from "underscore";
 
+import type { RowValue } from "metabase-types/api";
+
 import type {
   ComputedVisualizationSettings,
   Padding,
@@ -15,10 +17,12 @@ import {
 import type {
   AxisFormatter,
   ChartDataset,
+  LabelFormatter,
   NumericAxisScaleTransforms,
   SeriesFormatters,
   SeriesModel,
   StackModel,
+  StackedSeriesFormatters,
   XAxisModel,
   YAxisModel,
 } from "../model/types";
@@ -37,6 +41,7 @@ export interface ChartLayoutInput {
   seriesModels?: SeriesModel[];
   stackModels?: StackModel[];
   seriesLabelsFormatters?: SeriesFormatters;
+  stackedLabelsFormatters?: StackedSeriesFormatters;
 }
 
 // Cartesian charts use `transformedDataset` (scaled/transformed values) while simpler
@@ -877,6 +882,259 @@ const getStackedBarTicksRotation = (
     : "vertical";
 };
 
+// Row charts put the categories on the vertical axis, so the label gutter is
+// capped as a share of chart *width* — otherwise a few long product names
+// leave no room for bars.
+const ROW_CHART_LABEL_MAX_WIDTH_RATIO = 0.5;
+
+/**
+ * Tick measurements for a rotated chart.
+ *
+ * Deliberately fills the same `TicksDimensions` shape as the vertical path, but
+ * with the roles swapped: `yTicksWidthLeft` measures the *category* labels and
+ * `xTicksHeight` the *metric* ticks. That lets `getCartesianChartPadding` and
+ * `getChartBounds` be reused verbatim instead of growing an orientation branch.
+ *
+ * `xTickWidthCap` is likewise reused: `buildCategoricalDimensionAxis` already
+ * turns a finite cap into `axisLabel.width` + `overflow: "truncate"`, which is
+ * exactly the ellipsis behaviour the legacy renderer had.
+ *
+ * Note the settings are *not* swapped. A row chart stores the category axis
+ * under `graph.x_axis.*` and the metric axis under `graph.y_axis.*` — the
+ * reverse of every other cartesian chart — so reading them straight through is
+ * what preserves saved questions.
+ */
+const getRowChartTicksDimensions = (
+  input: ChartLayoutInput,
+  settings: ComputedVisualizationSettings,
+  chartWidth: number,
+  renderingContext: RenderingContext,
+): TicksDimensions => {
+  const { measureText, fontFamily, theme } = renderingContext;
+  const fontStyle = {
+    ...CHART_STYLE.axisTicks,
+    family: fontFamily,
+    size: theme.cartesian.label.fontSize,
+  };
+
+  const hasCategoryTicks = settings["graph.x_axis.axis_enabled"] !== false;
+  const hasMetricTicks = settings["graph.y_axis.axis_enabled"] !== false;
+
+  const formatter = input.xAxisModel.formatter;
+  const widestLabel = hasCategoryTicks
+    ? getDataset(input).reduce((widest, datum) => {
+        const label = String(formatter(datum[X_AXIS_DATA_KEY]));
+        return Math.max(widest, measureText(label, fontStyle));
+      }, 0)
+    : 0;
+
+  const cap = chartWidth * ROW_CHART_LABEL_MAX_WIDTH_RATIO;
+  const isCapped = widestLabel > cap;
+
+  return {
+    yTicksWidthLeft: hasCategoryTicks
+      ? Math.min(widestLabel, cap) + CHART_STYLE.axisTicksMarginY
+      : 0,
+    yTicksWidthRight: 0,
+    xTicksHeight: hasMetricTicks ? theme.cartesian.label.fontSize : 0,
+    xTickWidthCap: isCapped ? cap : Infinity,
+    firstXTickWidth: 0,
+    lastXTickWidth: 0,
+    getXTickWidth: (text: string) => measureText(text, fontStyle),
+  };
+};
+
+/**
+ * Layout for a rotated chart.
+ *
+ * A sibling of `getChartLayout` rather than a branch inside it: row charts need
+ * strictly less (no tick rotation, no edge-tick overflow, no split panels), and
+ * keeping them apart means the shared vertical path — which every other
+ * cartesian chart depends on — is untouched by this migration.
+ */
+/**
+ * Width to reserve for data labels on a rotated chart.
+ *
+ * A vertical bar's label sits above its end, so the shared padding code
+ * reserves one line of *height* at the top. A rotated bar's label sits past
+ * its end, so what has to be reserved is the *width* of the longest label at
+ * the right — otherwise the labels on the longest bars render outside the plot
+ * and are clipped.
+ */
+const getRowChartDataLabelsWidth = (
+  input: ChartLayoutInput,
+  settings: ComputedVisualizationSettings,
+  { measureText, fontFamily, theme }: RenderingContext,
+): number => {
+  if (!settings["graph.show_values"]) {
+    return 0;
+  }
+
+  const fontStyle = {
+    family: fontFamily,
+    weight: CHART_STYLE.seriesLabels.weight,
+    size: theme.cartesian.label.fontSize,
+  };
+
+  const dataset = getDataset(input);
+  const measure = (value: RowValue, formatter: LabelFormatter) =>
+    value == null ? 0 : measureText(String(formatter(value)), fontStyle);
+
+  const seriesKeys = (input.seriesModels ?? [])
+    .filter((series) => series.visible)
+    .map((series) => series.dataKey);
+
+  // A stacked chart labels the stack total, not each segment, so that is what
+  // has to be measured — and it is always the widest label on the row.
+  const stackedFormatter = Object.values(
+    input.stackedLabelsFormatters ?? {},
+  ).find((formatter) => formatter != null);
+
+  const widest = dataset.reduce((widestSoFar, datum) => {
+    if (stackedFormatter != null) {
+      const total = seriesKeys.reduce((sum, dataKey) => {
+        const value = datum[dataKey];
+        return typeof value === "number" ? sum + value : sum;
+      }, 0);
+      return Math.max(widestSoFar, measure(total, stackedFormatter));
+    }
+
+    return Object.entries(input.seriesLabelsFormatters ?? {}).reduce(
+      (widestForDatum, [dataKey, formatter]) =>
+        formatter == null
+          ? widestForDatum
+          : Math.max(widestForDatum, measure(datum[dataKey], formatter)),
+      widestSoFar,
+    );
+  }, 0);
+
+  return widest === 0 ? 0 : widest + CHART_STYLE.seriesLabels.offset;
+};
+
+/**
+ * How far the first and last metric ticks stick out past the plot.
+ *
+ * ECharts centres a tick label on its tick, and on the metric axis the first
+ * and last ticks sit exactly on the plot edges — so half of each label hangs
+ * outside. Upright charts already account for this (see `getTicksOverflow`);
+ * a rotated chart has the *metric* axis running horizontally, so the same
+ * overhang lands on the left and right edges of the chart and gets clipped
+ * when the labels are wide (billions, currency, a non-zero axis minimum).
+ *
+ * Returns the amount to add beyond whatever padding already exists, capped the
+ * same way the upright path caps it so one enormous label cannot eat the plot.
+ */
+const getRowChartMetricTickOverflow = (
+  input: ChartLayoutInput,
+  settings: ComputedVisualizationSettings,
+  padding: Padding,
+  chartWidth: number,
+  { measureText, fontFamily, theme }: RenderingContext,
+): { left: number; right: number } => {
+  const axisModel = input.leftAxisModel ?? input.rightAxisModel;
+  if (axisModel == null || settings["graph.y_axis.axis_enabled"] === false) {
+    return { left: 0, right: 0 };
+  }
+
+  const fontStyle = {
+    ...CHART_STYLE.axisTicks,
+    family: fontFamily,
+    size: theme.cartesian.label.fontSize,
+  };
+
+  const [min, max] = getYAxisExtentToMeasure(
+    axisModel,
+    settings,
+    input.yAxisScaleTransforms,
+  );
+
+  const halfWidth = (value: number) =>
+    measureText(axisModel.formatter(value), fontStyle) / 2;
+
+  const maxOverflow = chartWidth * MAX_OVERFLOW_PERCENTAGE;
+  const clamp = (overhang: number, existing: number) =>
+    Math.min(
+      Math.max(overhang - existing + TICK_OVERFLOW_BUFFER, 0),
+      maxOverflow,
+    );
+
+  return {
+    left: clamp(halfWidth(min), padding.left),
+    right: clamp(halfWidth(max), padding.right),
+  };
+};
+
+const getRowChartLayout = (
+  input: ChartLayoutInput,
+  settings: ComputedVisualizationSettings,
+  width: number,
+  height: number,
+  renderingContext: RenderingContext,
+): ChartLayout => {
+  const ticksDimensions = getRowChartTicksDimensions(
+    input,
+    settings,
+    width,
+    renderingContext,
+  );
+
+  const basePadding = getCartesianChartPadding(
+    input,
+    settings,
+    ticksDimensions,
+    settings["graph.x_axis.axis_enabled"],
+    width,
+    renderingContext,
+  );
+
+  // The shared padding put the data-label reserve at the top, where a vertical
+  // bar's label goes. Move it to the right, where a rotated bar's actually
+  // lands, and size it by label width rather than one line of text.
+  const verticalLabelReserve = settings["graph.show_values"]
+    ? renderingContext.theme.cartesian.label.fontSize +
+      CHART_STYLE.seriesLabels.offset
+    : 0;
+
+  const withLabelReserve = {
+    ...basePadding,
+    top: basePadding.top - verticalLabelReserve,
+    right:
+      basePadding.right +
+      getRowChartDataLabelsWidth(input, settings, renderingContext),
+  };
+
+  const tickOverflow = getRowChartMetricTickOverflow(
+    input,
+    settings,
+    withLabelReserve,
+    width,
+    renderingContext,
+  );
+
+  const padding = {
+    ...withLabelReserve,
+    left: withLabelReserve.left + tickOverflow.left,
+    right: withLabelReserve.right + tickOverflow.right,
+  };
+
+  const bounds = getChartBounds(width, height, padding, ticksDimensions);
+
+  return {
+    isRowChart: true,
+    ticksDimensions,
+    padding,
+    bounds,
+    // For a rotated chart the categorical band runs vertically, so the space a
+    // bar has to share is the plot height, not its width.
+    boundaryWidth:
+      height - padding.top - padding.bottom - ticksDimensions.xTicksHeight,
+    outerHeight: height,
+    outerWidth: width,
+    axisEnabledSetting: settings["graph.x_axis.axis_enabled"],
+    panelGap: 0,
+  };
+};
+
 export const getChartLayout = (
   input: ChartLayoutInput,
   settings: ComputedVisualizationSettings,
@@ -884,6 +1142,7 @@ export const getChartLayout = (
   width: number,
   height: number,
   renderingContext: RenderingContext,
+  isRowChart = false,
 ): ChartLayout => {
   const visibleSeries =
     input.seriesModels?.filter((series) => series.visible) ?? [];
@@ -899,6 +1158,10 @@ export const getChartLayout = (
       height,
       renderingContext,
     );
+  }
+
+  if (isRowChart) {
+    return getRowChartLayout(input, settings, width, height, renderingContext);
   }
 
   const { ticksDimensions, axisEnabledSetting } = getTicksDimensions(
@@ -933,6 +1196,7 @@ export const getChartLayout = (
   );
 
   return {
+    isRowChart,
     ticksDimensions,
     padding,
     bounds,
@@ -1025,6 +1289,8 @@ const computeSplitPanelLayout = (
   }
 
   return {
+    // Split panels are not offered on row charts.
+    isRowChart: false,
     ticksDimensions,
     padding,
     bounds,

@@ -6,6 +6,7 @@ import { readAllPointsOutOfRange } from "metabase/static-viz/lib/data-visibility
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { getChartHeight } from "metabase/static-viz/lib/utils";
 import {
+  foldRowChartModel,
   getCartesianChartModel,
   getCartesianChartOption,
   getChartLayout,
@@ -34,14 +35,22 @@ export const ComboChart = ({
   hasDevWatermark = false,
   fitWithinBounds = false,
 }: StaticChartProps) => {
-  const chartModel = getCartesianChartModel(
+  // Row charts render through this same ECharts path, rotated. Only the axes
+  // and the fold differ; everything below — legend, SSR, watermark — is shared.
+  const isRowChart = rawSeries[0]?.card.display === "row";
+
+  const baseChartModel = getCartesianChartModel(
     rawSeries,
     settings,
     [],
     renderingContext,
   );
 
-  const legendItems = getLegendItems(chartModel.seriesModels);
+  // Static row charts always carry a legend, even for a single series — the
+  // visx renderer they replace did, and a subscription email has no hover or
+  // axis title to fall back on for naming the metric. Every other static chart
+  // keeps the default, which drops the legend when there is only one series.
+  const legendItems = getLegendItems(baseChartModel.seriesModels, isRowChart);
   const isReversed = settings["legend.is_reversed"];
   const { height: legendHeight, items: legendLayoutItems } =
     calculateLegendRows({
@@ -53,6 +62,13 @@ export const ComboChart = ({
     });
 
   const chartHeight = getChartHeight({ fitWithinBounds, legendHeight, height });
+
+  // Fold before layout, and off the same plot height the interactive path uses,
+  // so a chart folds identically on screen and in a subscription email. The two
+  // legacy renderers disagreed here; see `model/row-fold.ts`.
+  const chartModel = isRowChart
+    ? foldRowChartModel(baseChartModel, chartHeight, settings)
+    : baseChartModel;
 
   const chart = init(null, null, {
     renderer: "svg",
@@ -68,6 +84,7 @@ export const ComboChart = ({
     width,
     chartHeight,
     renderingContext,
+    isRowChart,
   );
 
   const option = getCartesianChartOption(

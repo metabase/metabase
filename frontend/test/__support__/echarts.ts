@@ -22,6 +22,7 @@ export const createMockChartLayout = (
 ): ChartLayout => {
   const { ticksDimensions, padding, bounds, ...rest } = opts;
   return {
+    isRowChart: false,
     boundaryWidth: 0,
     outerHeight: 0,
     outerWidth: 800,

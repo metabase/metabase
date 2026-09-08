@@ -10,6 +10,7 @@ import {
   type ScatterPlotModel,
   type WaterfallChartModel,
   extractRemappings,
+  foldRowChartModel,
   getCartesianChartModel,
   getCartesianChartOption,
   getChartLayout,
@@ -61,7 +62,7 @@ export function useModelsAndOption(
     ? timelineEvents.length !== 0
     : false;
 
-  const chartModel = useMemo(() => {
+  const baseChartModel = useMemo(() => {
     let getModel;
 
     settings["graph.x_axis.title_text"] = tc(
@@ -107,6 +108,24 @@ export function useModelsAndOption(
     tc,
   ]);
 
+  // Row charts fold the rows that will not fit before anything is measured:
+  // the fold changes which category labels exist, which changes the label
+  // gutter, which changes the plot box. Budgeting off the container height
+  // keeps that ordering acyclic and matches what the legacy renderer did.
+  const chartModel = useMemo(
+    () =>
+      card.display === "row"
+        ? foldRowChartModel(
+            // The row branch only runs for `display: "row"`, which always
+            // produces a plain cartesian model — never a waterfall or scatter.
+            baseChartModel as CartesianChartModel,
+            height,
+            settings,
+          )
+        : baseChartModel,
+    [baseChartModel, card.display, height, settings],
+  );
+
   const chartLayout = useMemo(
     () =>
       getChartLayout(
@@ -116,8 +135,17 @@ export function useModelsAndOption(
         width,
         height,
         renderingContext,
+        card.display === "row",
       ),
-    [chartModel, settings, width, height, hasTimelineEvents, renderingContext],
+    [
+      chartModel,
+      settings,
+      width,
+      height,
+      hasTimelineEvents,
+      renderingContext,
+      card.display,
+    ],
   );
 
   const timelineEventsModel = useMemo(

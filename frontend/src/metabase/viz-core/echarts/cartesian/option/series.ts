@@ -163,12 +163,14 @@ export function getDataLabelFormatter(
   settings?: ComputedVisualizationSettings,
   chartDataDensity?: ChartDataDensity,
   accessor?: (datum: Datum) => RowValue,
+  isRowChart = false,
 ) {
   const getShowLabel = getShowLabelFn(
     chartWidth,
     dataKey,
     chartDataDensity,
     settings,
+    isRowChart,
   );
 
   return (params: CallbackDataParams) => {
@@ -189,8 +191,16 @@ function getShowLabelFn(
   dataKey: DataKey,
   chartDataDensity?: ChartDataDensity,
   settings?: ComputedVisualizationSettings,
+  isRowChart = false,
 ): (params: CallbackDataParams) => boolean {
   if (!settings || !chartDataDensity) {
+    return () => true;
+  }
+  // This thins labels by how many fit side by side across the chart's *width*.
+  // On a rotated chart labels stack one per row, so width says nothing about
+  // whether they fit — and the row fold has already capped how many rows exist,
+  // which is the density control that actually applies here.
+  if (isRowChart) {
     return () => true;
   }
   if (settings["graph.label_value_frequency"] === "all") {
@@ -292,6 +302,7 @@ export const buildEChartsLabelOptions = (
   settings?: ComputedVisualizationSettings,
   chartDataDensity?: ChartDataDensity,
   position?: LabelOption["position"],
+  isRowChart = false,
 ): SeriesLabelOption => {
   const { fontSize } = renderingContext.theme.cartesian.label;
 
@@ -315,6 +326,8 @@ export const buildEChartsLabelOptions = (
         chartWidth,
         settings,
         chartDataDensity,
+        undefined,
+        isRowChart,
       ),
   };
 };
@@ -516,6 +529,24 @@ function getDataLabelSeriesOption(
 ) {
   const stackName = seriesOption.stack;
 
+  // Data labels ride on a companion series, which has to be mapped to the axes
+  // the same way its parent is. Reading the parent's own encode keeps the two
+  // in step without threading orientation down here — and getting it wrong is
+  // not subtle: the metric values land on the categorical axis and show up as
+  // phantom category rows.
+  // ECharts types `encode` as a broad union; only the `y` mapping is needed to
+  // tell which way round the parent series was built.
+  const parentEncode = seriesOption.encode as { y?: string } | undefined;
+  const isRotated = parentEncode?.y === X_AXIS_DATA_KEY;
+
+  // Callers name the position in vertical terms ("top" for a positive value,
+  // "bottom" for a negative). Rotating turns those into "right" and "left";
+  // doing it here means every caller — bar labels, stack totals — is corrected
+  // once, at the point that already knows the orientation.
+  const rotatedPosition =
+    position === "top" ? "right" : position === "bottom" ? "left" : position;
+  const labelPosition = isRotated ? rotatedPosition : position;
+
   const dataLabelSeriesOption = {
     xAxisIndex: seriesOption.xAxisIndex,
     yAxisIndex: seriesOption.yAxisIndex,
@@ -526,14 +557,13 @@ function getDataLabelSeriesOption(
     },
     id: `${stackName}_${dataKey}`,
     stack: stackName,
-    encode: {
-      y: dataKey,
-      x: X_AXIS_DATA_KEY,
-    },
+    encode: isRotated
+      ? { x: dataKey, y: X_AXIS_DATA_KEY }
+      : { y: dataKey, x: X_AXIS_DATA_KEY },
     label: {
       ...seriesOption.label,
       show: true,
-      position,
+      position: labelPosition,
       formatter,
       fontFamily: renderingContext.fontFamily,
       fontWeight: CHART_STYLE.seriesLabels.weight,
@@ -603,7 +633,8 @@ const buildEChartsBarSeries = (
     xAxisIndex,
     yAxisIndex,
     barGap: 0,
-    barMinHeight: 1,
+    // A rotated bar grows along x, so the "don't vanish" floor swaps too.
+    ...(chartLayout.isRowChart ? { barMinWidth: 1 } : { barMinHeight: 1 }),
     stack,
     barWidth: computeBarWidth(
       xAxisModel,
@@ -612,10 +643,9 @@ const buildEChartsBarSeries = (
       isStacked,
       settings["graph.x_axis.scale"],
     ),
-    encode: {
-      y: seriesModel.dataKey,
-      x: X_AXIS_DATA_KEY,
-    },
+    encode: chartLayout.isRowChart
+      ? { x: seriesModel.dataKey, y: X_AXIS_DATA_KEY }
+      : { y: seriesModel.dataKey, x: X_AXIS_DATA_KEY },
     label: isStacked
       ? buildEChartsStackLabelOptions(
           seriesModel,
@@ -633,25 +663,31 @@ const buildEChartsBarSeries = (
           labelFormatter,
           settings,
           chartDataDensity,
-          ["50%", 0],
+          // A vertical bar's label sits centred above its end; a rotated one
+          // sits just past it. `"right"` lets ECharts place it, which also
+          // means the custom vertical `labelLayout` below must not run.
+          chartLayout.isRowChart ? "right" : ["50%", 0],
+          chartLayout.isRowChart,
         ),
-    labelLayout: isStacked
-      ? getBarInsideLabelLayout(
-          dataset,
-          settings,
-          seriesModel.dataKey,
-          chartLayout.stackedBarTicksRotation,
-        )
-      : getBarLabelLayout({
-          settings,
-          getNegativeBarYOffset: ({ rect }) => rect.height,
-          getBarDirection: ({ dataIndex }) => {
-            if (dataIndex == null) {
-              return null;
-            }
-            return dataset[dataIndex][seriesModel.dataKey];
-          },
-        }),
+    labelLayout: chartLayout.isRowChart
+      ? undefined
+      : isStacked
+        ? getBarInsideLabelLayout(
+            dataset,
+            settings,
+            seriesModel.dataKey,
+            chartLayout.stackedBarTicksRotation,
+          )
+        : getBarLabelLayout({
+            settings,
+            getNegativeBarYOffset: ({ rect }) => rect.height,
+            getBarDirection: ({ dataIndex }) => {
+              if (dataIndex == null) {
+                return null;
+              }
+              return dataset[dataIndex][seriesModel.dataKey];
+            },
+          }),
     itemStyle: {
       color: seriesModel.color,
     },
@@ -685,16 +721,25 @@ const buildEChartsBarSeries = (
               const isZero = value === null && datum[labelDataKey] != null;
               return isZero ? 0 : value;
             },
+            chartLayout.isRowChart,
           ),
-          ["50%", 0],
+          // Rotated bars put the label past the bar's end rather than above
+          // it; a negative bar grows leftward, so its label goes on the left.
+          chartLayout.isRowChart
+            ? sign === "+"
+              ? "right"
+              : "left"
+            : ["50%", 0],
           renderingContext,
           false,
         ),
-        labelLayout: getBarLabelLayout({
-          settings,
-          getBarDirection: () => (sign === "+" ? 1 : -1),
-          getNegativeBarYOffset: () => 0,
-        }),
+        labelLayout: chartLayout.isRowChart
+          ? undefined
+          : getBarLabelLayout({
+              settings,
+              getBarDirection: () => (sign === "+" ? 1 : -1),
+              getNegativeBarYOffset: () => 0,
+            }),
         type: "bar", // ensure type is bar for typescript
       };
     },

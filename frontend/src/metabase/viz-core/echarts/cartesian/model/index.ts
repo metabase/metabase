@@ -121,7 +121,11 @@ export const getChartSeriesModels = (
   const hasMultipleCards = rawSeries.length > 1;
   const sortedSeriesModels = hasMultipleCards
     ? unsortedSeriesModels
-    : getSortedSeriesModels(unsortedSeriesModels, settings);
+    : getSortedSeriesModels(
+        unsortedSeriesModels,
+        settings,
+        rawSeries[0]?.card.display === "row",
+      );
 
   const { ungroupedSeriesModels: seriesModels, groupedSeriesModels } =
     groupSeriesIntoOther(sortedSeriesModels, settings);

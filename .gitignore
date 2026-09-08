@@ -218,3 +218,12 @@ dependency-graph.json
 
 # mage modules-tree --html output
 /modules.html
+
+# TEMPORARY: row chart -> ECharts migration regression suite.
+# Remove these four entries together with the suite once the migration ships;
+# see frontend/src/metabase/visualizations/__row-chart-migration__/README.md
+frontend/src/metabase/visualizations/__row-chart-migration__/
+e2e/test/__row-chart-migration__/
+.loki/reference/chrome_laptop_RowChartMigration_*
+.loki/current/
+.loki/difference/

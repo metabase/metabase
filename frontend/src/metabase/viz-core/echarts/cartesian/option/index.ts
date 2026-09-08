@@ -32,7 +32,12 @@ import type { SplitPanelYExtent } from "../timeline-events/option";
 import { getTimelineEventsSelectionSeries } from "../timeline-events/option";
 import type { TimelineEventsModel } from "../timeline-events/types";
 
-import { buildAxes, buildDimensionAxis, buildMetricAxis } from "./axis";
+import {
+  buildAxes,
+  buildDimensionAxis,
+  buildMetricAxis,
+  getAxisNameGap,
+} from "./axis";
 import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
 import { buildEChartsSeries } from "./series";
 import { getTrendLinesOption } from "./trend-line";
@@ -166,7 +171,7 @@ export function buildGridAndSeriesOption(
   const isSplitPanels = chartLayout.panelHeight != null;
 
   const baseGoalSeriesOption = getGoalLineSeriesOption(
-    getGoalLineParams(chartModel),
+    { ...getGoalLineParams(chartModel), isRowChart: chartLayout.isRowChart },
     settings,
     renderingContext,
   );
@@ -295,8 +300,50 @@ export const getCartesianChartOption = (
       chartLayout,
       dataSeriesOptions,
     );
-    xAxis = axes.xAxis;
-    yAxis = axes.yAxis;
+    if (chartLayout.isRowChart) {
+      // The rotation, in one place: ECharts infers a horizontal bar from which
+      // axis is categorical, so the metric axes become x and the dimension
+      // axis becomes y. `inverse` keeps the first row at the top, matching the
+      // legacy renderer and the way a table reads.
+      //
+      // Axis *names* do not come along for free. Each was positioned for the
+      // axis it used to be — gap measured against the wrong tick dimension and
+      // the metric name rotated upright — so both are re-sited here against the
+      // dimension they now run along.
+      const { ticksDimensions } = chartLayout;
+
+      // The metric axes were built as YAXisOption and the dimension axis as
+      // XAXisOption; rotating swaps which slot they occupy. The option shapes
+      // are structurally compatible, but the two ECharts types do not overlap,
+      // so the reassignment has to be spelled out.
+      xAxis = (axes.yAxis as unknown as XAXisOption[]).map((axis) => ({
+        ...axis,
+        nameRotate: 0,
+        nameGap: getAxisNameGap(ticksDimensions.xTicksHeight),
+        // The metric axis hard-codes `axisLine: { show: false }`, because
+        // upright it is the vertical axis and convention there is split lines
+        // only. Rotated it runs along the bottom, where the legacy renderer
+        // drew a line (visx `AxisBottom`, gated on the same setting), so it has
+        // to be put back.
+        axisLine: {
+          show: !!settings["graph.y_axis.axis_enabled"],
+          lineStyle: {
+            color: renderingContext.getColor("border-neutral"),
+          },
+        },
+      }));
+      // Same swap in the other direction; see above.
+      const rotatedDimensionAxis = {
+        ...axes.xAxis,
+        inverse: true,
+        nameRotate: 90,
+        nameGap: getAxisNameGap(ticksDimensions.yTicksWidthLeft),
+      } as unknown as YAXisOption;
+      yAxis = [rotatedDimensionAxis];
+    } else {
+      xAxis = axes.xAxis;
+      yAxis = axes.yAxis;
+    }
   }
 
   return {

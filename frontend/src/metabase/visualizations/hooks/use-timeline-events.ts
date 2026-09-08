@@ -6,7 +6,7 @@ import type { TimelineEvent } from "metabase-types/api";
 
 type UseTimelineEventsProps = Pick<
   VisualizationProps,
-  "timelineEvents" | "settings"
+  "timelineEvents" | "settings" | "card"
 >;
 
 interface UseTimelineEventsResult {
@@ -21,12 +21,20 @@ const EMPTY_EVENTS: TimelineEvent[] = [];
 export function useTimelineEvents({
   timelineEvents: timelineEventsProp,
   settings,
+  card,
 }: UseTimelineEventsProps): UseTimelineEventsResult {
   const selectedTimelineIds = settings["timeline.selected_timeline_ids"];
   const excludedTimelineEventIds =
     settings["timeline.excluded_timeline_event_ids"];
 
+  // Timeline events are not a row chart feature (UXW-4833). Row charts render
+  // through the shared cartesian path, so without this they would fetch — and,
+  // where the query builder hands them events directly, draw — a band they do
+  // not offer a way to turn on.
+  const isSupported = card.display !== "row";
+
   const shouldFetch =
+    isSupported &&
     !timelineEventsProp &&
     selectedTimelineIds != null &&
     selectedTimelineIds.length > 0;
@@ -44,6 +52,10 @@ export function useTimelineEvents({
   );
 
   const timelineEvents = useMemo(() => {
+    if (!isSupported) {
+      return EMPTY_EVENTS;
+    }
+
     if (timelineEventsProp) {
       return timelineEventsProp;
     }
@@ -64,6 +76,7 @@ export function useTimelineEvents({
       );
     });
   }, [
+    isSupported,
     timelineEventsProp,
     timelines,
     selectedTimelineIds,
