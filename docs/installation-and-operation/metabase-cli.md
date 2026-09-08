@@ -17,7 +17,7 @@ The Metabase CLI (`mb`) is a command-line client for Metabase. `mb` logs in to a
 
 ## Install the CLI
 
-```
+```sh
 npm install -g @metabase/cli
 ```
 
@@ -25,7 +25,7 @@ The binary is `mb`.
 
 For commands, run:
 
-```
+```sh
 mb --help
 ```
 
@@ -35,7 +35,7 @@ To update to the latest version later, run `mb upgrade`.
 
 Log in once per Metabase instance:
 
-```
+```sh
 mb auth login --url https://metabase.example.com
 ```
 
@@ -47,25 +47,25 @@ On older versions of Metabase, the CLI skips the browser and asks for an [API ke
 
 To log in from a script or CI, give the CLI an API key without putting the key on the command line, so it stays out of your shell history. Either set the `MB_API_KEY` environment variable (for example, from your CI provider's secret store) and run:
 
+```sh
+mb auth login --url https://metabase.example.com --profile default
 ```
-mb auth login --url https://metabase.example.com
-```
+
+Set the `MB_API_KEY` variable from a secret store or a file, not inline on the command line, or the key still ends up in your history. Pass `--profile` (or set `MB_PROFILE`) here (you can call the profile whatever you want). Without the profile flag, the CLI asks you for a profile name when you run it from a terminal, even though it already has the key.
 
 Or pipe the key on stdin from a file or a secrets manager:
 
-```
-mb auth login --url https://metabase.example.com < api-key.txt
+```sh
+mb auth login --url https://metabase.example.com --profile default < api-key.txt
 ```
 
-The key must be a Metabase [API key](../people-and-groups/api-keys.md#create-an-api-key). If the CLI gets an empty key, it stops with "interactive login requires a TTY" rather than prompting.
-
-You can set `MB_URL` instead of passing `--url`. There's also an `--api-key` flag, but the key ends up in your shell history, so prefer the environment variable or stdin.
+The key must be a Metabase [API key](../people-and-groups/api-keys.md#create-an-api-key). If stdin isn't a terminal and no key arrives from the flag, stdin, or the environment variable, the CLI stops with "interactive login requires a TTY" rather than prompting
 
 ### Check or clear your login
 
 To see whether you're logged in, which login method you used, and which Metabase version you're talking to, run:
 
-```
+```sh
 mb auth status
 ```
 
@@ -75,7 +75,7 @@ To remove stored credentials, run `mb auth logout`.
 
 Credentials are stored per profile, so you can manage more than one Metabase (like dev and prod Metabases):
 
-```
+```sh
 mb auth login --profile prod --url https://prod.example.com
 mb auth list
 ```
@@ -111,7 +111,7 @@ Pair the CLI with version control to build content with an agent in a developmen
 
 ## Further reading
 
-- [Metabase CLI command reference](https://github.com/metabase/mb-cli#readme)
+- [Metabase CLI command reference](https://github.com/metabase/metabase-cli#readme)
 - [CLI analytics](../monitor/cli-analytics.md)
 - [@metabase/cli on npm](https://www.npmjs.com/package/@metabase/cli)
 - [Agent-driven development](../ai/file-based-development.md)
