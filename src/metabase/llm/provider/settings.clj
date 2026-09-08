@@ -1,4 +1,4 @@
-(ns metabase.llm.providers.settings
+(ns metabase.llm.provider.settings
   "Where LLM provider connections are stored, and the vocabulary the provider type registry validates their
   credential fields against.
 
