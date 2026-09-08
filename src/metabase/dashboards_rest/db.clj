@@ -2,6 +2,8 @@
   "Application database queries for the dashboards REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.app-db.core :as app-db]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (defn dashboards
@@ -69,6 +71,37 @@
   "The Card ids of the DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id]
   (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id dashboard-id))
+
+(defn dashboard-item-cards
+  "The card items of the Dashboard with `dashboard-id`, for the `/:id/items` endpoint: id, name, description, entity
+  id, collection position, display, collection preview, last-used-at, collection id, archived flags, database id,
+  and moderated status. Paged by `limit`/`offset` when `paged?`."
+  [dashboard-id paged? limit offset]
+  (app-db/query
+   (cond-> {:select [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                     :last_used_at :c.collection_id :c.archived_directly :c.archived :c.database_id
+                     :c.dashboard_id
+                     [nil :location]
+                     [(h2x/literal "card") :model]
+                     [^:allow-subquery {:select   [:status]
+                                        :from     [:moderation_review]
+                                        :where    [:and
+                                                   [:= :moderated_item_type "card"]
+                                                   [:= :moderated_item_id :c.id]
+                                                   [:= :most_recent true]]
+                                        ;; limit 1 to ensure that there is only one result but this invariant should
+                                        ;; hold true, just protecting against potential bugs
+                                        :order-by [[:id :desc]]
+                                        :limit    1}
+                      :moderated_status]]
+            :from  [[:report_card :c]]
+            :where [:and
+                    [:= :c.dashboard_id dashboard-id]
+                    [:exists ^:allow-subquery {:select 1
+                                               :from   [[:report_dashboardcard :dc]]
+                                               :where  [:and [:= :c.id :dc.card_id] [:= :c.dashboard_id :dc.dashboard_id]]}]
+                    [:= :c.archived false]]}
+     paged? (merge {:limit limit :offset offset}))))
 
 (defn dashboard-series-card-ids
   "The Card ids of the DashboardCardSeries of the Dashboard with `dashboard-id`."

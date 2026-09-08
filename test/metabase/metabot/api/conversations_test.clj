@@ -491,7 +491,8 @@
                 (is (= convo-id (:forked_from_conversation_id response))))
               (is (= user-id (:user_id response))))
             (testing "only the thread up to and including the target is copied"
-              (is (= ["hi" "hello"] (mapv :message (:messages response)))))
+              (is (= ["hi" "hello"]
+                     (mapv #(-> % :parts first :message) (:messages response)))))
             (let [rows        (metabot.persistence/live-messages new-id)
                   orig-a1-at  (t2/select-one-fn :created_at :model/MetabotMessage :external_id a1)]
               (testing "cloned rows are fresh copies"

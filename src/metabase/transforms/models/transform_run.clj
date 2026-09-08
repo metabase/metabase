@@ -38,7 +38,7 @@
        (boolean (when-let [transform-id (:transform_id instance)]
                   (mi/can-read? :model/Transform transform-id)))))
   ([_model pk]
-   (when-let [run (t2/select-one :model/TransformRun :id pk)]
+   (when-let [run (transforms.db/run pk)]
      (mi/can-read? run))))
 
 (mi/define-simple-hydration-method add-transform-runs

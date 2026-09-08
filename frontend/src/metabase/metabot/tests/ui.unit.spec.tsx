@@ -5,6 +5,7 @@ import { assocIn } from "icepick";
 
 import {
   createMockMetabotConversationDetail,
+  createMockMetabotTextMessage,
   setupGetMetabotConversationEndpoint,
   setupGetMetabotConversationEndpointError,
 } from "__support__/server-mocks";
@@ -649,18 +650,8 @@ describe("metabot > ui", () => {
           conversation_id: PAST_CONVERSATION_ID,
           title: "Orders by month",
           messages: [
-            {
-              id: "u1",
-              role: "user",
-              type: "text",
-              message: "How many orders?",
-            },
-            {
-              id: "a1",
-              role: "agent",
-              type: "text",
-              message: "There are 42 orders.",
-            },
+            createMockMetabotTextMessage("user", "How many orders?"),
+            createMockMetabotTextMessage("agent", "There are 42 orders."),
           ],
         }),
       );
@@ -715,12 +706,7 @@ describe("metabot > ui", () => {
           metabotActions.setConversationSnapshot({
             conversationId: "current-conversation",
             messages: [
-              {
-                id: "current-user",
-                role: "user",
-                type: "text",
-                message: "Current question",
-              },
+              createMockMetabotTextMessage("user", "Current question"),
             ],
             activeToolCalls: [],
           }),

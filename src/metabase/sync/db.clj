@@ -513,6 +513,85 @@
   (t2/query-one (mark-fk-statement db-id fk-table-schema fk-table-name fk-column-name
                                    pk-table-schema pk-table-name pk-column-name)))
 
+;;; ------------------------------------------ Field data sensitivity ------------------------------------------
+
+(defn- data-sensitivity-to-scan-clause
+  "Honey SQL clause matching Fields the data-sensitivity classifier still has to scan: unlabeled ones, plus those it
+  labeled `PUBLIC` when `rescan-public?`."
+  [rescan-public?]
+  (if rescan-public?
+    [:or [:= :data_sensitivity nil] [:= :data_sensitivity "PUBLIC"]]
+    [:= :data_sensitivity nil]))
+
+(defn fields-to-scan-for-data-sensitivity
+  "The active, non-retired Fields of the Table with `table-id` that the data-sensitivity classifier still has to scan
+  (see [[data-sensitivity-to-scan-clause]]), ordered by ID."
+  [table-id rescan-public?]
+  (t2/select :model/Field
+             {:where    [:and
+                         [:= :table_id table-id]
+                         [:= :active true]
+                         [:not= :visibility_type "retired"]
+                         (data-sensitivity-to-scan-clause rescan-public?)]
+              :order-by [[:id :asc]]}))
+
+(defn table-ids-with-fields-to-scan-for-data-sensitivity
+  "The IDs of the active Tables of the Database with `database-id` that have active, non-retired Fields the
+  data-sensitivity classifier still has to scan (see [[data-sensitivity-to-scan-clause]])."
+  [database-id rescan-public?]
+  (t2/select-fn-set :table_id :model/Field
+                    {:select   [[:metabase_field.table_id :table_id]]
+                     :from     [:metabase_field]
+                     :join     [[:metabase_table] [:= :metabase_field.table_id :metabase_table.id]]
+                     :where    [:and
+                                [:= :metabase_table.db_id database-id]
+                                [:= :metabase_table.active true]
+                                [:= :metabase_field.active true]
+                                [:not= :metabase_field.visibility_type "retired"]
+                                (data-sensitivity-to-scan-clause rescan-public?)]
+                     :group-by [:metabase_field.table_id]}))
+
+(defn tables-by-schema-and-name-reducible
+  "Reducible Tables with `table-ids`, ordered by schema and name."
+  [table-ids]
+  (t2/reducible-select :model/Table :id [:in table-ids] {:order-by [[:schema :asc] [:name :asc]]}))
+
+(defn update-field-data-sensitivity!
+  "Set the `data_sensitivity` of the Field with `field-id` to `data-sensitivity`."
+  [field-id data-sensitivity]
+  (t2/update! :model/Field field-id {:data_sensitivity data-sensitivity}))
+
+(def ^:private classifier-data-sensitivity-clause
+  "Honey SQL clause matching Fields whose non-null `data_sensitivity` has no value in the `FieldUserSettings` mirror,
+  i.e. was written by the data-sensitivity classifier rather than a user."
+  [:and
+   [:not= :data_sensitivity nil]
+   [:not [:exists ^:allow-subquery {:select [1]
+                                    :from   [[:metabase_field_user_settings :s]]
+                                    :where  [:and
+                                             [:= :s.field_id :metabase_field.id]
+                                             [:not= :s.data_sensitivity nil]]}]]])
+
+(defn reset-classifier-data-sensitivity-for-table!
+  "Clear the classifier-written `data_sensitivity` (see [[classifier-data-sensitivity-clause]]) of the Fields of the
+  Table with `table-id`. Returns the number of Fields cleared."
+  [table-id]
+  (t2/query-one {:update :metabase_field
+                 :set    {:data_sensitivity nil}
+                 :where  [:and [:= :table_id table-id] classifier-data-sensitivity-clause]}))
+
+(defn reset-classifier-data-sensitivity-for-database!
+  "Clear the classifier-written `data_sensitivity` (see [[classifier-data-sensitivity-clause]]) of the Fields of every
+  Table of the Database with `database-id`. Returns the number of Fields cleared."
+  [database-id]
+  (t2/query-one {:update :metabase_field
+                 :set    {:data_sensitivity nil}
+                 :where  [:and
+                          [:in :table_id ^:allow-subquery {:select [:id]
+                                                           :from   [:metabase_table]
+                                                           :where  [:= :db_id database-id]}]
+                          classifier-data-sensitivity-clause]}))
+
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
 
 (defn field-values-exist?

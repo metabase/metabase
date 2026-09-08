@@ -3,6 +3,7 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [java-time.api :as t]
+   [metabase.app-db.core :as app-db]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -71,3 +72,12 @@
   "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."
   [card-ids]
   (t2/select [:model/Card :id :database_id :card_schema] :id [:in card-ids]))
+
+(defn upsert-cache-entry!
+  "Insert or update the QueryCache entry for `query-hash`, setting `:results` to `results` and `:updated_at` to
+  `timestamp`, and clearing `:refresh_started_at`."
+  [query-hash timestamp results]
+  (app-db/update-or-insert! :model/QueryCache {:query_hash query-hash}
+                            (constantly {:updated_at         timestamp
+                                         :results            results
+                                         :refresh_started_at nil})))

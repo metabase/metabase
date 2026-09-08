@@ -11,8 +11,10 @@ import {
 import { makeMockSelection } from "metabase/explorations/test-utils";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type {
-  MetabotChatMessage,
+  MetabotAgentDataPartMessage,
   MetabotDebugToolCallMessage,
+  MetabotMessage,
+  MetabotMessagePart,
 } from "metabase/metabot/state";
 import { createMockState } from "metabase/redux/store/mocks";
 import type {
@@ -100,7 +102,7 @@ const metricChurn: GetExplorationDataResponse["metrics"][number] = {
   dimensions: [customerSegmentDimension],
 };
 
-const userMessage: MetabotChatMessage = {
+const userMessage: MetabotMessagePart = {
   id: "user-1",
   role: "user",
   type: "text",
@@ -148,13 +150,14 @@ const addResearchGroupsResponse: AddResearchGroupsResponse = {
   ],
 };
 
-const addResearchGroupsToolCallMessage: MetabotDebugToolCallMessage = {
-  id: "tool-call-2",
+const researchPlanUpdateMessage: MetabotAgentDataPartMessage = {
+  id: "data-part-2",
   role: "agent",
-  type: "tool_call",
-  name: "add_research_groups",
-  status: "ended",
-  result: JSON.stringify(addResearchGroupsResponse),
+  type: "data_part",
+  part: {
+    type: "data-research_plan_update",
+    data: addResearchGroupsResponse,
+  },
 };
 
 const setNameToolCallMessage: MetabotDebugToolCallMessage = {
@@ -177,12 +180,33 @@ const removeFromResearchPlanToolCallMessage: MetabotDebugToolCallMessage = {
   }),
 };
 
-const agentMessage: MetabotChatMessage = {
+const agentMessage: MetabotMessagePart = {
   id: "agent-1",
   role: "agent",
   type: "text",
   message: "I selected these metrics because they are related to revenue.",
 };
+
+/**
+ * Group the fixture parts the way a stream would: each user prompt is its own
+ * message, and the agent parts that follow belong to one reply.
+ */
+function toMessages(parts: MetabotMessagePart[]): MetabotMessage[] {
+  return parts.reduce<MetabotMessage[]>((messages, part) => {
+    const open = messages.at(-1);
+    if (open && part.role === "agent" && open.role === "agent") {
+      open.parts.push(part);
+      return messages;
+    }
+    messages.push({
+      id: `message-${messages.length}`,
+      role: part.role,
+      parts: [part],
+      status: { type: "done" },
+    });
+    return messages;
+  }, []);
+}
 
 function mockMetabotAgentState({
   messages,
@@ -191,18 +215,19 @@ function mockMetabotAgentState({
   submitInput = jest.fn(),
   retryMessage = jest.fn(),
 }: {
-  messages: MetabotChatMessage[];
+  messages: MetabotMessagePart[];
   isDoingScience: boolean;
   prompt?: string;
   submitInput?: jest.Mock;
   retryMessage?: jest.Mock;
 }) {
+  const groupedMessages = toMessages(messages);
   // Unjustified type cast. FIXME
   jest.mocked(useMetabotAgent).mockReturnValue({
     prompt,
     setPrompt: jest.fn(),
-    conversation: { messages },
-    messages,
+    conversation: { messages: groupedMessages },
+    messages: groupedMessages,
     errorMessages: [],
     retryMessage,
     isDoingScience,
@@ -220,7 +245,7 @@ function setup({
   isDoingScience = true,
   prompt = "",
 }: {
-  messages?: MetabotChatMessage[];
+  messages?: MetabotMessagePart[];
   isDoingScience?: boolean;
   prompt?: string;
 } = {}) {
@@ -259,7 +284,7 @@ function setup({
     messages,
     isDoingScience,
   }: {
-    messages: MetabotChatMessage[];
+    messages: MetabotMessagePart[];
     isDoingScience: boolean;
   }) => {
     mockMetabotAgentState({
@@ -302,7 +327,7 @@ describe("NewExplorationChat", () => {
     });
   });
 
-  it("adds groups from an add_research_groups tool call response", async () => {
+  it("adds groups from a research_plan_update data part", async () => {
     const { selection, rerender } = setup();
 
     rerender({
@@ -310,11 +335,7 @@ describe("NewExplorationChat", () => {
       isDoingScience: true,
     });
     rerender({
-      messages: [
-        userMessage,
-        searchToolCallMessage,
-        addResearchGroupsToolCallMessage,
-      ],
+      messages: [userMessage, searchToolCallMessage, researchPlanUpdateMessage],
       isDoingScience: true,
     });
 
@@ -324,7 +345,7 @@ describe("NewExplorationChat", () => {
       messages: [
         userMessage,
         searchToolCallMessage,
-        addResearchGroupsToolCallMessage,
+        researchPlanUpdateMessage,
         agentMessage,
       ],
       isDoingScience: false,
@@ -370,19 +391,22 @@ describe("NewExplorationChat", () => {
   it("forwards replace_default_dimensions to addMetric", async () => {
     const { selection, rerender } = setup();
 
-    const message: MetabotDebugToolCallMessage = {
-      ...addResearchGroupsToolCallMessage,
-      id: "tool-call-replace",
-      result: JSON.stringify({
-        ...addResearchGroupsResponse,
-        groups: [
-          {
-            metric_id: metricRevenue.id,
-            dimension_ids: [revenueDateDimension.id],
-            replace_default_dimensions: true,
-          },
-        ],
-      }),
+    const message: MetabotAgentDataPartMessage = {
+      ...researchPlanUpdateMessage,
+      id: "data-part-replace",
+      part: {
+        type: "data-research_plan_update",
+        data: {
+          ...addResearchGroupsResponse,
+          groups: [
+            {
+              metric_id: metricRevenue.id,
+              dimension_ids: [revenueDateDimension.id],
+              replace_default_dimensions: true,
+            },
+          ],
+        },
+      },
     };
 
     rerender({ messages: [userMessage, message], isDoingScience: true });
@@ -535,13 +559,13 @@ describe("NewExplorationChat", () => {
   it("does not re-apply tool calls that survive a conversation rewind/retry", async () => {
     const { selection, rerender } = setup();
 
-    const secondUserMessage: MetabotChatMessage = {
+    const secondUserMessage: MetabotMessagePart = {
       id: "user-2",
       role: "user",
       type: "text",
       message: "Remove the churn block",
     };
-    const secondAgentMessage: MetabotChatMessage = {
+    const secondAgentMessage: MetabotMessagePart = {
       id: "agent-2",
       role: "agent",
       type: "text",
@@ -580,7 +604,7 @@ describe("NewExplorationChat", () => {
       id: "tool-call-4-retry",
       result: JSON.stringify({ block_ids: ["metric:1"] }),
     };
-    const retriedSecondAgentMessage: MetabotChatMessage = {
+    const retriedSecondAgentMessage: MetabotMessagePart = {
       ...secondAgentMessage,
       id: "agent-2-retry",
     };

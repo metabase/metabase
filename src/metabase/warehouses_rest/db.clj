@@ -287,3 +287,33 @@
   "The ids of the Collections named `collection-name`, or nil."
   [collection-name]
   (t2/select-pks-set :model/Collection :name collection-name))
+
+(defn- card-usage-count-subquery
+  [database-id model type-str]
+  ^:allow-subquery {:select [[:%count.* model]]
+                    :from   [:report_card]
+                    :where  [:and
+                             [:= :database_id database-id]
+                             [:= :type type-str]]})
+
+(defn database-usage-counts
+  "A single row with the count of Questions (`:question`), Models (`:dataset`), Metrics (`:metric`), Segments
+  (`:segment`), and Transforms (`:transform`) that use the Database with `database-id`."
+  [database-id]
+  (mdb/query
+   {:select [:*]
+    :from   [[(card-usage-count-subquery database-id :question "question") :question]
+             [(card-usage-count-subquery database-id :dataset "model") :dataset]
+             [(card-usage-count-subquery database-id :metric "metric") :metric]
+             [^:allow-subquery {:select [[:%count.* :segment]]
+                                :from   [:segment]
+                                :where  [:in :table_id ^:allow-subquery {:select [:id]
+                                                                         :from   [:metabase_table]
+                                                                         :where  [:= :db_id database-id]}]}
+              :segment]
+             [^:allow-subquery {:select [[:%count.* :transform]]
+                                :from   [:transform]
+                                :where  [:or
+                                         [:= :source_database_id database-id]
+                                         [:= :target_db_id database-id]]}
+              :transform]]}))
