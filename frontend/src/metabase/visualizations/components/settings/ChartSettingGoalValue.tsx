@@ -15,17 +15,19 @@ export const ChartSettingGoalValue = ({
   value,
   onChange,
 }: ChartSettingGoalValueProps) => {
-  // Clearing unsets the goal so the default applies, like the numeric input does.
-  const handleChange = (newValue: GoalValue | null | undefined) =>
+  const handleChange = (newValue: GoalValue | null | undefined) => {
+    // Clearing unsets the goal so the default applies, like in ChartSettingInputNumeric
     onChange(newValue ?? undefined);
+  };
 
   if (!isDynamic) {
-    // The numeric input shows a reference as empty, so its blur must not erase it.
     const hasReference = value != null && !isGoalStaticValue(value);
     const handleNumericChange = (newValue: number | null | undefined) => {
       if (newValue == null && hasReference) {
+        // The numeric input shows a reference as empty, so its blur must not erase it
         return;
       }
+
       handleChange(newValue);
     };
 
