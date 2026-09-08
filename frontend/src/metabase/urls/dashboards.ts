@@ -29,7 +29,9 @@ export type AdhocDashboardDefinition = {
 };
 
 export function adhocDashboard(definition: AdhocDashboardDefinition) {
-  return getAdhocDashboardId(utf8_to_b64url(JSON.stringify(definition)));
+  return getAdhocDashboardId(
+    utf8_to_b64url(JSON.stringify(definition)).replace(/=+$/, ""),
+  );
 }
 
 type DashboardUrlBuilderOpts = {
