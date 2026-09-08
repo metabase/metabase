@@ -40,6 +40,10 @@
                                  "test/metabase/sso/test_helpers.clj")))
     (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase-enterprise.remote-sync.test-helpers
                                  "/repo/enterprise/backend/test/metabase_enterprise/remote_sync/test_helpers.clj"))))
+  (testing "app-db wrappers around Toucan 2 are reported the same way"
+    (is (=? [{:type    :metabase/t2-query-namespace
+              :message #".*`mdb/update-or-insert!`.*"}]
+            (lint-query-call '(mdb/update-or-insert! :model/Foo {:id 1}) 'metabase.foo.models.foo))))
   (testing "fully-qualified calls are reported by their written name"
     (is (=? [{:type    :metabase/t2-query-namespace
               :message #".*`toucan2.core/insert!`.*"}]

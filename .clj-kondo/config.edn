@@ -634,6 +634,16 @@
    metabase.lib.schema.mbql-clause/define-tuple-mbql-clause                                                                  hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    methodical.core/defmethod                                                                                                 hooks.metabase.toucan.table-name/lint-defmethod
    methodical.macros/defmethod                                                                                               hooks.metabase.toucan.table-name/lint-defmethod
+   metabase.app-db.core/query                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/streaming-reducible-query                                                                            hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/select-or-insert!                                                                                    hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/update-or-insert!                                                                                    hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/current-timestamp-string                                                                             hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/query                                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/streaming-reducible-query                                                                           hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/select-or-insert!                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/update-or-insert!                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/current-timestamp-string                                                                            hooks.metabase.toucan.db-ns/lint-query-call
    toucan2.core/count                                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
    toucan2.core/delete!                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
    toucan2.core/exists?                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call

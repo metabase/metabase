@@ -6,7 +6,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
@@ -504,52 +503,6 @@
     :include-editable-data-model? include_editable_data_model
     :exclude-uneditable-details? exclude_uneditable_details}))
 
-(def ^:private database-usage-models
-  "List of models that are used to report usage on a database."
-  [:question :dataset :metric :segment :transform]) ; TODO -- rename `:dataset` to `:model`?
-
-(defmulti ^:private database-usage-query
-  "Query that will returns the number of `model` that use the database with id `database-id`.
-  The query must returns a scalar, and the method could return `nil` in case no query is available."
-  {:arglists '([model database-id])}
-  (fn [model _database-id] (keyword model)))
-
-(defn- card-query
-  [db-id model type-str]
-  ^:allow-subquery {:select [[:%count.* model]]
-                    :from   [:report_card]
-                    :where  [:and
-                             [:= :database_id db-id]
-                             [:= :type type-str]]})
-
-(defmethod database-usage-query :question
-  [_ db-id]
-  (card-query db-id :question "question"))
-
-(defmethod database-usage-query :dataset
-  [_ db-id]
-  (card-query db-id :dataset "model"))
-
-(defmethod database-usage-query :metric
-  [_ db-id]
-  (card-query db-id :metric "metric"))
-
-(defmethod database-usage-query :segment
-  [_ db-id]
-  ^:allow-subquery {:select [[:%count.* :segment]]
-                    :from   [:segment]
-                    :where  [:in :table_id ^:allow-subquery {:select [:id]
-                                                             :from   [:metabase_table]
-                                                             :where  [:= :db_id db-id]}]})
-
-(defmethod database-usage-query :transform
-  [_ db-id]
-  ^:allow-subquery {:select [[:%count.* :transform]]
-                    :from   [:transform]
-                    :where  [:or
-                             [:= :source_database_id db-id]
-                             [:= :target_db_id db-id]]})
-
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -564,12 +517,7 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-database-exists id)
-  (first (mdb/query
-          {:select [:*]
-           :from   (for [model database-usage-models
-                         :let [query (database-usage-query model id)]
-                         :when query]
-                     [query model])})))
+  (first (warehouses-rest.db/database-usage-counts id)))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 

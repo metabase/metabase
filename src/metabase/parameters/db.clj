@@ -138,3 +138,24 @@
   "The `columns` of the Fields with `field-ids`."
   [columns field-ids]
   (t2/select (into [:model/Field] columns) :id [:in field-ids]))
+
+(defn fk-relationships-for-database
+  "Rows describing FK -> PK Field relationships (`:f1`/`:t1` FK Field/Table ids, `:f2`/`:t2` PK Field/Table ids)
+  for active Fields in the Database with `database-id`."
+  [database-id]
+  (mdb/query {:select    [[:fk-field.id :f1]
+                          [:fk-table.id :t1]
+                          [:pk-field.id :f2]
+                          [:pk-field.table_id :t2]]
+              :from      [[:metabase_field :fk-field]]
+              :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
+                                                          :fk-table.active]
+                          [:metabase_database :database] [:= :fk-table.db_id :database.id]
+                          [:metabase_field :pk-field]    [:and [:= :fk-field.fk_target_field_id :pk-field.id]
+                                                          :pk-field.active]]
+              :where     [:and
+                          [:= :database.id database-id]
+                          [:not= :fk-field.fk_target_field_id nil]
+                          :fk-field.active]
+              :order-by  [[:fk-field.id :desc]
+                          [:pk-field.id :desc]]}))
