@@ -595,12 +595,15 @@ export const sendAgentRequest = createAsyncThunk<
                 navigate(path);
               })
               .with({ type: "data-entity_saved" }, (part) => {
-                const savedId = part.data.card_id ?? part.data.dashboard_id;
-                if (savedId != null) {
-                  dispatch(
-                    markEntitySaved({ entityId: part.data.chart_id, savedId }),
-                  );
-                }
+                dispatch(
+                  markEntitySaved({
+                    entityId: part.data.chart_id,
+                    savedId:
+                      "card_id" in part.data
+                        ? part.data.card_id
+                        : part.data.dashboard_id,
+                  }),
+                );
                 const { tool_call_id, title } = part.data;
                 if (tool_call_id && title) {
                   dispatch(

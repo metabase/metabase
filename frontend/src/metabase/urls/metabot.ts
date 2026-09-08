@@ -28,9 +28,7 @@ type GeneratedAdhocDashboardLink = {
   id: string;
   title: string;
   description?: string;
-  tiles: Array<
-    Omit<AdhocDashboardTile, "dataset_query"> & { query: DatasetQuery }
-  >;
+  tiles: AdhocDashboardTile[];
 };
 
 type GeneratedDashboardLink =
@@ -59,10 +57,7 @@ export function generatedDashboard(
   return adhocDashboard({
     name: dashboard.title,
     description: dashboard.description,
-    tiles: dashboard.tiles.map(({ query, ...tile }) => ({
-      ...tile,
-      dataset_query: query,
-    })),
+    tiles: dashboard.tiles,
     metabot:
       conversationId != null
         ? { conversation_id: conversationId, dashboard_id: dashboard.id }
