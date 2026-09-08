@@ -1735,7 +1735,10 @@
         (is (not (str/includes? html2 "refreshTool")))))))
 
 (deftest mcp-ui-credential-validation-test
-  (testing "an app-only refresh tool provides the scoped UI request surface, but not general API access"
+  (testing "an app-only refresh tool provides the scoped UI request surface, but not general API access.
+            GHY-4400 narrowed that surface: the general endpoints the iframe used to boot from are off it,
+            and `/api/embed-mcp/bootstrap` replaced them. v1 mints `:legacy` credentials, which both scope
+            gates exempt, so this is also where a legacy credential's reach is pinned."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (oauth-server/reset-provider!)
@@ -1752,8 +1755,13 @@
                 credential  (get-in tool-result [:body :result :_meta :com.metabase/mcp-apps :credential])
                 headers     {"x-metabase-mcp-ui-auth" credential}]
             (is (string? credential))
-            (is (= 200 (:status (client/client-full-response :get 200 "user/current"
-                                                             {:request-options {:headers headers}}))))
+            (is (= 200 (:status (client/client-full-response
+                                 :get 200 "embed-mcp/bootstrap"
+                                 {:request-options {:headers (assoc headers "mcp-session-id" session-id)}})))
+                "the iframe boots from the endpoint built for it")
+            (is (= 401 (:status (client/client-full-response :get 401 "user/current"
+                                                             {:request-options {:headers headers}})))
+                "and no longer from the general one, which is the escalation GHY-4400 closed")
             (is (= 401 (:status (client/client-full-response :get 401 "collection"
                                                              {:request-options {:headers headers}}))))))))))
 
