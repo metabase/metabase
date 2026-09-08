@@ -323,7 +323,9 @@ export function hasDatabaseActionsEnabled(database: Database) {
   return database.settings?.["database-enable-actions"] ?? false;
 }
 
-export async function fetchDataOrError<T>(dataPromise: Promise<T>) {
+export async function fetchDataOrError<T>(
+  dataPromise: Promise<T>,
+): Promise<T | { error: unknown }> {
   try {
     return await dataPromise;
   } catch (error) {
@@ -340,8 +342,9 @@ export async function fetchDataOrError<T>(dataPromise: Promise<T>) {
       "data" in error &&
       typeof error.data === "object"
     ) {
-      // Return the error data as if it were a successful response
-      return error.data;
+      // Return the error data as if it were a successful response: a 4xx body
+      // from a query endpoint is the dataset-shaped error the caller renders
+      return error.data as T;
     }
     // For 5xx errors or other errors, maintain the original behavior
     return { error };
