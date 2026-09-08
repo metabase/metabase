@@ -66,13 +66,27 @@
       (collection/archive-or-unarchive-collection! collection
                                                    {:archived false, :parent_id nil}))))
 
+(defn- apply-collection-permissions!
+  "Gives the group read access. Preserves permission grants that are already correct."
+  [group collection]
+  (let [read-path (perms/collection-read-path collection)
+        write-path (perms/collection-readwrite-path collection)
+        permissions-by-group (group-by :group_id
+                                       (t2/select [:model/Permissions :group_id :object]
+                                                  :object [:in ["/" read-path write-path]]
+                                                  :group_id [:not= (:id (perms/admin-group))]))
+        app-read-only? (= #{read-path} (set (map :object (get permissions-by-group (:id group)))))]
+    ;; Remove write grants and access from other groups
+    (doseq [group-id (keys permissions-by-group)
+            :when (not (and (= group-id (:id group)) app-read-only?))]
+      (perms/revoke-collection-permissions! group-id collection))
+    (when-not app-read-only?
+      (perms/grant-collection-read-permissions! group collection))))
+
 (defn- apply-resource-permissions!
   [group collection]
   (block-view-data! group)
-  (doseq [permission-group (t2/select :model/PermissionsGroup)
-          :when (not= (:id permission-group) (:id (perms/admin-group)))]
-    (perms/revoke-collection-permissions! permission-group collection))
-  (perms/grant-collection-read-permissions! group collection))
+  (apply-collection-permissions! group collection))
 
 (defn- create-resource-collection! [app]
   (let [collection (t2/insert-returning-instance! :model/Collection
