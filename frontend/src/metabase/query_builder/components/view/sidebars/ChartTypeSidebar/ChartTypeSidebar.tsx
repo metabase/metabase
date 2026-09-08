@@ -8,7 +8,7 @@ import CS from "metabase/css/core/index.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
-import { cardHasUnresolvedGoalReferences } from "metabase/viz-core";
+import { hasUnresolvedGoalReferences } from "metabase/viz-core";
 import {
   type GetSensibleVisualizationsProps,
   getSensibleVisualizations,
@@ -80,7 +80,7 @@ export const ChartTypeSidebar = ({
         updateQuestion(newQuestion, {
           run:
             isEditable &&
-            cardHasUnresolvedGoalReferences(newQuestion.card(), result?.data),
+            hasUnresolvedGoalReferences(newQuestion.card(), result?.data),
           shouldUpdateUrl: isEditable,
         }),
       );

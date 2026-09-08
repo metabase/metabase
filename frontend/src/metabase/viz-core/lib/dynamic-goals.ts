@@ -395,7 +395,7 @@ export function cardHasUnansweredGoalReferences(
 }
 
 // Includes failed references so a user action in the query builder retries them.
-export function cardHasUnresolvedGoalReferences(
+export function hasUnresolvedGoalReferences(
   card: GoalCard,
   data: GoalData | undefined,
 ): boolean {

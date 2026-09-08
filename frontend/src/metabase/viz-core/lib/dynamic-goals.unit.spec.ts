@@ -13,13 +13,13 @@ import {
 import type { GoalCard } from "./dynamic-goals";
 import {
   cardHasUnansweredGoalReferences,
-  cardHasUnresolvedGoalReferences,
   getGoalSegmentBounds,
   getGoalValues,
   getNumericGoalValue,
   getReferencedEntities,
   getUnansweredGoalEntities,
   hasFailedGoalValues,
+  hasUnresolvedGoalReferences,
   hasUnresolvedGoalValues,
   isDynamicGoalSetting,
   needsGraphGoalResolution,
@@ -729,7 +729,7 @@ describe("cardHasUnansweredGoalReferences", () => {
   });
 });
 
-describe("cardHasUnresolvedGoalReferences", () => {
+describe("hasUnresolvedGoalReferences", () => {
   const gauge: GoalCard = {
     display: "gauge",
     visualization_settings: {
@@ -757,11 +757,11 @@ describe("cardHasUnresolvedGoalReferences", () => {
       },
     };
 
-    expect(cardHasUnresolvedGoalReferences(card, undefined)).toBe(false);
+    expect(hasUnresolvedGoalReferences(card, undefined)).toBe(false);
   });
 
   it("is true without any result data", () => {
-    expect(cardHasUnresolvedGoalReferences(gauge, undefined)).toBe(true);
+    expect(hasUnresolvedGoalReferences(gauge, undefined)).toBe(true);
   });
 
   it("is true for a failed reference, so it gets retried", () => {
@@ -772,7 +772,7 @@ describe("cardHasUnresolvedGoalReferences", () => {
       },
     });
 
-    expect(cardHasUnresolvedGoalReferences(gauge, data)).toBe(true);
+    expect(hasUnresolvedGoalReferences(gauge, data)).toBe(true);
   });
 
   it("is true when the referenced column is missing from the entity's answer", () => {
@@ -788,7 +788,7 @@ describe("cardHasUnresolvedGoalReferences", () => {
       },
     });
 
-    expect(cardHasUnresolvedGoalReferences(gauge, data)).toBe(true);
+    expect(hasUnresolvedGoalReferences(gauge, data)).toBe(true);
   });
 
   it("is false when every reference resolved", () => {
@@ -804,7 +804,7 @@ describe("cardHasUnresolvedGoalReferences", () => {
       },
     });
 
-    expect(cardHasUnresolvedGoalReferences(gauge, data)).toBe(false);
+    expect(hasUnresolvedGoalReferences(gauge, data)).toBe(false);
   });
 });
 
@@ -825,7 +825,7 @@ describe("dynamic goal settings per display", () => {
 
     expect(getReferencedEntities(card)).toEqual([]);
     expect(cardHasUnansweredGoalReferences(card, undefined)).toBe(false);
-    expect(cardHasUnresolvedGoalReferences(card, undefined)).toBe(false);
+    expect(hasUnresolvedGoalReferences(card, undefined)).toBe(false);
   });
 });
 
