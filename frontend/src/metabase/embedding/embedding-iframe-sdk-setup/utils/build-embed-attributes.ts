@@ -1,5 +1,12 @@
 import { match } from "ts-pattern";
 
+import type {
+  SdkIframeDashboardEmbedSettings,
+  SdkIframeEmbedSetupExperience,
+  SdkIframeEmbedSetupSettings,
+  SdkIframeQuestionEmbedSettings,
+} from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import { getVisibleParameters } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-visible-parameters";
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP,
@@ -11,13 +18,6 @@ import type {
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
-import type {
-  SdkIframeDashboardEmbedSettings,
-  SdkIframeEmbedSetupExperience,
-  SdkIframeEmbedSetupSettings,
-  SdkIframeQuestionEmbedSettings,
-} from "metabase/embedding/embedding-iframe-sdk-setup/types";
-import { getVisibleParameters } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-visible-parameters";
 import type { EntityToken } from "metabase-types/api/entity";
 
 export const buildEmbedAttributes = ({

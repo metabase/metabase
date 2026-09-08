@@ -1,12 +1,12 @@
 import _ from "underscore";
 
 import { trackSimpleEvent } from "metabase/analytics";
+import { getAuthSubTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-sub-type-for-settings";
+import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
 import type {
   SdkIframeEmbedSettingKey,
   SdkIframeEmbedSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
-import { getAuthSubTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-sub-type-for-settings";
-import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
 import { countEmbeddingParameterOptions } from "metabase/embedding/lib/count-embedding-parameter-options";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import type { Card, Dashboard, EmbeddingParameters } from "metabase-types/api";

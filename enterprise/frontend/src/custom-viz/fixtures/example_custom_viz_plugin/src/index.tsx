@@ -3,6 +3,7 @@ import type {
   BaseWidgetProps,
   CreateCustomVisualization,
 } from "../../../src/types/viz";
+
 import { Visualization } from "./Visualization";
 
 type Settings = {
