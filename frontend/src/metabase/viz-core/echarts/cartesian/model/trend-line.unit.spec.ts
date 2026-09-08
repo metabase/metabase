@@ -31,7 +31,15 @@ const yAxisScaleTransforms: NumericAxisScaleTransforms = {
   fromEChartsAxisValue: (value) => value,
 };
 
-const setup = ({ trendlineColor }: { trendlineColor?: string } = {}) => {
+const SERIES_COLORS: Record<string, string> = {
+  count: "#509EE3",
+  avg: "#88BF4D",
+};
+
+const setup = ({
+  trendlineColor,
+  metrics = ["count", "avg"],
+}: { trendlineColor?: string; metrics?: string[] } = {}) => {
   const rawSeries: RawSeries = [
     createMockSingleSeries(
       {
@@ -44,32 +52,24 @@ const setup = ({ trendlineColor }: { trendlineColor?: string } = {}) => {
         data: createMockDatasetData({
           cols: [
             createMockColumn({ name: "month" }),
-            createMockColumn({ name: "count" }),
-            createMockColumn({ name: "avg" }),
+            ...metrics.map((name) => createMockColumn({ name })),
           ],
-          insights: [
-            createMockInsight({ col: "count", slope: 1, offset: 0 }),
-            createMockInsight({ col: "avg", slope: 2, offset: 0 }),
-          ],
+          insights: metrics.map((name) =>
+            createMockInsight({ col: name, slope: 1, offset: 0 }),
+          ),
         }),
       },
     ),
   ];
 
-  const seriesModels = [
+  const seriesModels = metrics.map((name) =>
     createMockSeriesModel({
-      dataKey: "count",
+      dataKey: name,
       cardId: 1,
-      column: createMockColumn({ name: "count" }),
-      color: "#509EE3",
+      column: createMockColumn({ name }),
+      color: SERIES_COLORS[name],
     }),
-    createMockSeriesModel({
-      dataKey: "avg",
-      cardId: 1,
-      column: createMockColumn({ name: "avg" }),
-      color: "#88BF4D",
-    }),
-  ];
+  );
 
   const chartDataset: ChartDataset = [
     { [X_AXIS_DATA_KEY]: "2024-01-01", count: 1, avg: 2 },
@@ -104,11 +104,22 @@ describe("getTrendLines", () => {
     );
   });
 
-  it("should use the explicitly selected color for all trend lines", () => {
+  it("should use the explicitly selected color for a single trend line", () => {
+    const trendLinesModel = setup({
+      trendlineColor: "#ED6E6E",
+      metrics: ["count"],
+    });
+
+    expect(trendLinesModel?.seriesModels.map((series) => series.color)).toEqual(
+      ["#ED6E6E"],
+    );
+  });
+
+  it("should ignore the selected color and keep per-series shades with multiple trend lines", () => {
     const trendLinesModel = setup({ trendlineColor: "#ED6E6E" });
 
     expect(trendLinesModel?.seriesModels.map((series) => series.color)).toEqual(
-      ["#ED6E6E", "#ED6E6E"],
+      [deriveChartShadeColor("#509EE3"), deriveChartShadeColor("#88BF4D")],
     );
   });
 });

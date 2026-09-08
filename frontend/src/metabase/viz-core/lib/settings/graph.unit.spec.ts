@@ -361,6 +361,29 @@ describe("GRAPH_TREND_SETTINGS", () => {
         }),
       ).toBe(true);
     });
+
+    it("should be hidden when there are multiple trend lines", () => {
+      const series = [
+        createMockSingleSeries(
+          {},
+          {
+            data: createMockDatasetData({
+              insights: [
+                createMockInsight({ col: "FOO" }),
+                createMockInsight({ col: "BAR" }),
+              ],
+            }),
+          },
+        ),
+      ];
+
+      expect(
+        getHidden(series, {
+          "graph.show_trendline": true,
+          "graph.dimensions": ["FOO"],
+        }),
+      ).toBe(true);
+    });
   });
 
   describe("graph.trendline_style", () => {

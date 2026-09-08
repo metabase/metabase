@@ -65,6 +65,12 @@ describe("scenarios > question > trendline", () => {
       cy.findByText("Display").click();
       cy.findByText("Trend line").click();
     });
+
+    cy.log("the color setting is hidden when there are multiple trend lines");
+    H.leftSidebar().within(() => {
+      cy.findByText("Trend line color").should("not.exist");
+      cy.findByText("Trend line style").should("be.visible");
+    });
     H.trendLine().should("have.length", 2);
 
     H.leftSidebar().within(() => {

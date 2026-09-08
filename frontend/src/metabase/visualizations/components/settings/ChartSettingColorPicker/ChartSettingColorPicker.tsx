@@ -13,6 +13,7 @@ interface ChartSettingColorPickerProps {
   value: string;
   title?: string;
   pillSize?: PillSize;
+  bordered?: boolean;
   /**
    * Reports the palette color name of the picked color to onChange. Off by
    * default because the settings widget framework treats the second onChange
@@ -28,6 +29,7 @@ export const ChartSettingColorPicker = ({
   value,
   title,
   pillSize,
+  bordered,
   forwardColorName,
   onChange,
   accentColorOptions = {
@@ -43,7 +45,12 @@ export const ChartSettingColorPicker = ({
   const withinPortal = !isEmbeddingSdk();
 
   return (
-    <Box className={cx(CS.flex, CS.alignCenter, className)}>
+    <Box
+      className={cx(CS.flex, CS.alignCenter, className)}
+      p={bordered ? "sm" : undefined}
+      bd={bordered ? "1px solid var(--mb-color-border-neutral)" : undefined}
+      bdrs={bordered ? "sm" : undefined}
+    >
       <ColorSelector
         value={value}
         colors={getNamedAccentColors(accentColorOptions)}
