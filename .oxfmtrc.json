@@ -1,4 +1,88 @@
 {
   "printWidth": 80,
-  "trailingComma": "all"
+  "trailingComma": "all",
+  "overrides": [
+    {
+      "files": ["**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"],
+      "excludeFiles": [
+        "docs/**",
+        "enterprise/frontend/src/embedding-sdk-package/hooks/public/use-metabase-query/tests/resolve-dataset-query-validation.unit.spec.tsx",
+        "enterprise/frontend/src/embedding-sdk-package/hooks/public/use-metabase-query/tests/resolve-dataset-query.unit.spec.tsx",
+        "enterprise/frontend/src/embedding-sdk-package/hooks/public/use-metabase-query/tests/type-contract-invalid.ts",
+        "enterprise/frontend/src/embedding-sdk-package/hooks/public/use-metabase-query/tests/type-contract-valid.ts",
+        "enterprise/frontend/src/embedding-sdk-package/hooks/public/use-metabase-query/tests/use-metabase-query.unit.spec.tsx",
+        "enterprise/frontend/src/metabase-enterprise/sdk-plugins.ts",
+        "frontend/src/embedding-sdk-bundle/index.ts",
+        "frontend/src/embedding-sdk-bundle/sdk-bundle-exports.ts",
+        "frontend/src/metabase/app-embed-sdk.tsx",
+        "frontend/src/metabase/redux/store/mocks/api.ts",
+        "frontend/src/metabase/static-viz/index.tsx"
+      ],
+      "options": {
+        "sortImports": {
+          "groups": [
+            "builtin",
+            "external",
+            "internal",
+            "parent",
+            "sibling",
+            "index",
+            "unknown"
+          ],
+          "internalPattern": [
+            "build-configs",
+            "build-configs/**",
+            "assets",
+            "assets/**",
+            "img",
+            "img/**",
+            "fonts",
+            "fonts/**",
+            "docs",
+            "docs/**",
+            "metabase",
+            "metabase/**",
+            "metabase-lib",
+            "metabase-lib/**",
+            "metabase-enterprise",
+            "metabase-enterprise/**",
+            "metabase-types",
+            "metabase-types/**",
+            "metabase-dev",
+            "metabase-dev/**",
+            "cljs",
+            "cljs/**",
+            "__support__",
+            "__support__/**",
+            "e2e",
+            "e2e/**",
+            "style",
+            "style/**",
+            "ee-plugins",
+            "ee-plugins/**",
+            "ee-overrides",
+            "ee-overrides/**",
+            "embedding",
+            "embedding/**",
+            "embedding-sdk-package",
+            "embedding-sdk-package/**",
+            "embedding-sdk-bundle",
+            "embedding-sdk-bundle/**",
+            "embedding-sdk-shared",
+            "embedding-sdk-shared/**",
+            "sdk-iframe-embedding-ee-plugins",
+            "sdk-iframe-embedding-ee-plugins/**",
+            "sdk-iframe-embedding-script-ee-plugins",
+            "sdk-iframe-embedding-script-ee-plugins/**",
+            "sdk-ee-plugins",
+            "sdk-ee-plugins/**"
+          ],
+          "newlinesBetween": true,
+          "order": "asc",
+          "ignoreCase": false,
+          "sortSideEffects": false
+        }
+      }
+    }
+  ]
 }

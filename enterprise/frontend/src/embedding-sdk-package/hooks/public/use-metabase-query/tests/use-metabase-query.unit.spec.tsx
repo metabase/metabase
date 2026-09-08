@@ -1,5 +1,3 @@
-/* eslint-disable import-js/order */
-
 import {
   TEST_DATASET_QUERY,
   createDeferred,

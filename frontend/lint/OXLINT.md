@@ -1,8 +1,8 @@
 # JavaScript and TypeScript linting
 
 Oxlint runs the JavaScript/TypeScript checks in `bun run lint`, staged-file checks
-and frontend CI, including module boundaries. Oxfmt owns formatting. Import
-ordering uses the existing import-x policy. ESLint remains installed for retained
+and frontend CI, including module boundaries. Oxfmt owns formatting and import
+statement ordering. Oxlint sorts named import specifiers. ESLint remains installed for retained
 plugins and compatibility tests.
 
 ## Commands
@@ -58,6 +58,19 @@ JS scope view preserve retained rules' behavior.
 
 The optional postcss-modules check loads when installed and either CI or
 `LINT_CSS_MODULES=true` is set. It uses the same conditional hook as ESLint.
+
+## Import ordering
+
+`.oxfmtrc.json` groups imports as builtins, external packages, internal modules,
+parent paths, siblings and index imports. `internalPattern` lists the repository
+aliases and must include new aliases when they are added. Classification uses
+import spelling rather than filesystem resolution.
+
+Bare side-effect imports keep their relative order, but other imports can move
+around them. `excludeFiles` preserves SDK initialization, mock API initialization
+and test-setup import order while still formatting those files. Add an exclusion
+when initialization depends on import order. Ordering failures are fixed with
+`bun run format`.
 
 ## Boundary and resolver contracts
 

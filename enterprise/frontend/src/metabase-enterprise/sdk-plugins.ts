@@ -1,4 +1,3 @@
-/* eslint-disable import-js/order */
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
 import { initializeSdkCustomVizPlugin } from "../embedding-sdk-ee/custom-viz/initialize";
