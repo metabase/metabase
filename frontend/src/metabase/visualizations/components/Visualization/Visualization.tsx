@@ -31,8 +31,6 @@ import { isQuestionCard } from "metabase/utils/dashboard";
 import { formatNumber } from "metabase/utils/formatting";
 import { memoizeClass } from "metabase/utils/memoize";
 import { getVisualizationComponent } from "metabase/visualizations";
-import { Mode } from "metabase/visualizations/click-actions/Mode";
-import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
@@ -45,13 +43,10 @@ import {
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
   type CardSlownessStatus,
-  type ClickActionModeGetter,
   type ClickActionsMode,
   type ClickObject,
   type OnBrush,
-  type QueryClickActionsMode,
   type VisualizationPassThroughProps,
-  isClickActionsMode,
   isRegularClickAction,
 } from "metabase/visualizations/types";
 import {
@@ -163,7 +158,7 @@ type VisualizationOwnProps = {
   /** Shown while a custom viz plugin loads. Documents supply their card-embed loading view here. */
   customVizLoadingView?: ReactNode;
   metadata?: Metadata;
-  mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
+  mode?: ClickActionsMode;
   editSummary?: () => void;
   rawSeries?: VisualizationRawSeries;
   visualizerRawSeries?: RawSeries;
@@ -446,11 +441,7 @@ class Visualization extends PureComponent<
 
   _getClickActionsCached(
     clickedObject: ClickObject | null | undefined,
-    mode:
-      | ClickActionModeGetter
-      | ClickActionsMode
-      | QueryClickActionsMode
-      | undefined,
+    mode: ClickActionsMode | undefined,
     computedSettings: Record<string, string>,
     dashcard?: DashboardCard,
     metadata?: Metadata,
@@ -480,10 +471,9 @@ class Visualization extends PureComponent<
       return [];
     }
     const question = Visualization.getQuestionForCard(metadata, card);
-    const modeInstance = Visualization.getMode(mode, question);
 
-    return modeInstance
-      ? modeInstance.actionsForClick(
+    return mode
+      ? mode.actionsForClick(
           {
             ...clicked,
             extraData: {
@@ -491,37 +481,9 @@ class Visualization extends PureComponent<
               isRawTable,
             },
           },
-          computedSettings,
+          { question, settings: computedSettings },
         )
       : [];
-  }
-
-  private static getMode(
-    modeOrModeGetter:
-      | ClickActionModeGetter
-      | ClickActionsMode
-      | QueryClickActionsMode
-      | undefined,
-    question: Question | undefined,
-  ) {
-    const modeOrQueryMode =
-      typeof modeOrModeGetter === "function"
-        ? question
-          ? modeOrModeGetter({ question })
-          : null
-        : modeOrModeGetter;
-
-    if (isClickActionsMode(modeOrQueryMode)) {
-      return modeOrQueryMode;
-    }
-
-    if (question && modeOrQueryMode) {
-      return new Mode(question, modeOrQueryMode);
-    }
-
-    if (question) {
-      return getMode(question);
-    }
   }
 
   getClickActions(clickedObject?: ClickObject | null) {
@@ -687,6 +649,7 @@ class Visualization extends PureComponent<
       fontFamily,
       getExtraDataForClick,
       getHref,
+      hasColumnReordering,
       hasDevWatermark,
       headerIcon,
       highlighted,
@@ -992,6 +955,7 @@ class Visualization extends PureComponent<
                       getExtraDataForClick={getExtraDataForClick}
                       getHref={getHref}
                       gridSize={gridSize}
+                      hasColumnReordering={hasColumnReordering}
                       headerIcon={hasHeader ? null : headerIcon}
                       height={height}
                       hovered={hovered}

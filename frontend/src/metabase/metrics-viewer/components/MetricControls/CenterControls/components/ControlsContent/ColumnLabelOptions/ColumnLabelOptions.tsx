@@ -36,7 +36,6 @@ export function ColumnLabelOptions(props: ColumnLabelOptionsProps) {
       <Popover.Dropdown p="lg">
         <Switch
           label={t`Show column labels`}
-          size="sm"
           labelPosition="right"
           checked={showColumnLabels}
           onChange={(event) => setShowColumnLabels(event.currentTarget.checked)}
