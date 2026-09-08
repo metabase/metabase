@@ -4,7 +4,6 @@
   The module data is embedded as JSON; everything interactive (tree building, filtering, dependency
   tracing) happens client-side in [[js]]."
   (:require
-   ^:clj-kondo/ignore
    [cheshire.core :as json]
    [clojure.string :as str]))
 
