@@ -71,7 +71,7 @@ const REPO_ROOT = path.resolve(
 // drift/capture-bug signal) — stored shapes stay table-independent so
 // consumers can match them against their own checkout's spec version.
 // Missing file just means no drift log.
-const OPENAPI_FILE = path.join(REPO_ROOT, "resources/openapi/openapi.json");
+const OPENAPI_FILE = path.join(REPO_ROOT, ".tmp/openapi/openapi.json");
 
 const PER_SPEC_DIR = path.join(REPO_ROOT, "e2e/coverage-manifest-raw");
 const OUTPUT_FILE = path.join(
