@@ -1,17 +1,16 @@
 (ns metabase.search.lease
   "An app-db-backed lease for full search reindexes.
 
-  Lease lifecycle operations are short autocommit statements.
-  When a caller already owns an ambient app-db transaction they use a lazy, isolated one-connection pool;
-  otherwise they use the ordinary app-db connection path.
-  Protected mutations fence ownership on their own connection, in the same transaction as the mutation,
-  unless the lease was acquired inside a caller's transaction; then they join that transaction (see
+  Lease state is cross-process signal: lifecycle operations are short autocommit statements, written on the
+  isolated one-connection coordination pool whenever the calling thread owns an ambient app-db transaction,
+  so their commits are always immediately visible to other nodes.
+  Leases refuse to be acquired inside a caller's transaction (see [[do-with-lease]]); leased mutations
+  therefore always fence ownership on their own connection, in the same transaction as the mutation (see
   [[do-with-mutation-connection]])."
   (:require
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
-   [metabase.config.core :as config]
    [metabase.search.db :as search.db]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -295,21 +294,19 @@
 (defn do-with-mutation-connection
   "Run `thunk` with the connection a protected index mutation must use.
 
-  A lease acquired outside any transaction fences each mutation in its own short transaction on a fresh
-  connection.
-  A lease acquired inside a caller's transaction keeps every mutation on that connection (as a nested
-  transaction), so the caller decides when the work becomes visible or is rolled back; the database fence is
-  skipped there because a renewal would otherwise hold the lease row until the caller commits.
-  That trades cross-node fencing for transactional enlistment, which only test fixtures need, so
-  [[do-with-lease]] refuses ambient transactions outside test mode."
+  A leased mutation always runs in its own short transaction on a fresh connection, fenced by renewing the
+  lease row inside that same transaction.
+  Leases cannot be acquired inside a caller's transaction (see [[do-with-lease]]), so a leased mutation
+  never has an ambient transaction to worry about.
+
+  An unleased mutation inside a caller's transaction joins it (as a nested transaction): forced-synchronous
+  test runs need their index writes visible within, and rolled back with, the test's transaction.
+  There is no fence to skip -- unleased runs never had one."
   [thunk]
-  (if (some-> *lease-context* :ambient-transaction?)
-    (do
-      (throw-if-lost!)
-      (assert-coordinate-current!)
-      (t2/with-connection [conn]
-        (t2/with-transaction [conn conn]
-          (thunk conn))))
+  (if (and (nil? *lease-context*) (mdb/in-transaction?))
+    (t2/with-connection [conn]
+      (t2/with-transaction [conn conn]
+        (thunk conn)))
     (t2/with-connection [conn (mdb/app-db)]
       (do-in-fenced-transaction! conn thunk))))
 
@@ -377,11 +374,6 @@
                 (throw e)))
             (recur true)))))))
 
-(defn- ambient-transactions-allowed?
-  "Only test fixtures may acquire a lease inside an ambient app-db transaction; see [[do-with-mutation-connection]]."
-  []
-  config/is-test?)
-
 (defn do-with-lease
   "Acquire `coordinate`, run `thunk` with a heartbeat, and release afterward.
 
@@ -391,7 +383,7 @@
   ([coordinate thunk]
    (do-with-lease coordinate thunk {}))
   ([coordinate thunk {:keys [wait?] :or {wait? true}}]
-   (when (and (mdb/in-transaction?) (not (ambient-transactions-allowed?)))
+   (when (mdb/in-transaction?)
      (record-event! (where-coordinate coordinate) :refused-in-transaction)
      (throw (ex-info (str "Search reindex leases cannot be acquired inside an app-db transaction."
                           " Schedule the reindex with mdb/do-after-commit, or move it outside the transaction.")
@@ -402,13 +394,12 @@
            last-renewal-start-ns (atom (:last-renewal-start-ns claim))
            context               {:claim                 claim
                                   :lost?                 (atom false)
-                                  :last-renewal-start-ns last-renewal-start-ns
-                                  :ambient-transaction?  (mdb/in-transaction?)}
+                                  :last-renewal-start-ns last-renewal-start-ns}
            timer                 (u/start-timer)]
        (try
          (record-event! claim (if (:taken-over? claim) :taken-over :acquired))
-         ;; Never convey a caller-owned connection to the heartbeat thread. Transaction depth is intentionally
-         ;; conveyed: an ambient transaction means this process's isolated coordination pool must be used.
+         ;; Never convey a caller-owned connection to the heartbeat thread. Acquisition is refused inside a
+         ;; transaction, so the heartbeat never inherits transaction state either.
          (vreset! heartbeat (binding [t2.conn/*current-connectable* nil]
                               (future (heartbeat-loop! context stopped))))
          {:acquired? true
