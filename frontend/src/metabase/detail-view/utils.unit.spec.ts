@@ -1,7 +1,7 @@
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
-  ORDERS_ID,
+  createOrdersTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -11,12 +11,15 @@ describe("getTableQuery", () => {
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [createSampleDatabase()] }),
   });
-  const table = state.entities.tables[ORDERS_ID];
+  const table = createOrdersTable();
 
   // The memoisation is what keeps `useSelector` from handing the page a new
   // query on every store action.
   it("keeps one query reference per metadata", () => {
-    expect(getTableQuery(state, table)).toBe(getTableQuery(state, table));
+    const query = getTableQuery(state, table);
+    // Guards the assertion below: two `undefined`s would also compare equal.
+    expect(query).toBeDefined();
+    expect(getTableQuery(state, table)).toBe(query);
   });
 
   it("returns nothing without a table", () => {
