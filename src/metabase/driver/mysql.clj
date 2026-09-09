@@ -1017,7 +1017,7 @@
           ;; where it is not for user-supplied SQL: the driver only sends the server the file named in the statement,
           ;; and this statement names the temp file we just wrote.
           (driver-api/with-metadata-provider db-id
-            (let [details (driver.conn/effective-details (driver-api/database (driver-api/metadata-provider)))]
+            (let [details (:details (driver-api/database (driver-api/metadata-provider)))]
               (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
                 (jdbc/execute! (set-local-infile spec true) sql)))))
         (finally
