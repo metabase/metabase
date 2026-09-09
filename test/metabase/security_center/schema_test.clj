@@ -1,7 +1,7 @@
-(ns metabase-enterprise.security-center.schema-test
+(ns metabase.security-center.schema-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.security-center.schema :as schema]
+   [metabase.security-center.schema :as schema]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
