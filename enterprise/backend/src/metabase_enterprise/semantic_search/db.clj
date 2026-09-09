@@ -85,24 +85,14 @@
    :from   [:search_index]})
 
 (mu/defn appdb-scored-rows
-  "The `:id`/`:model` rows of `search-results` (each `{:id :model}`) augmented with the SELECT expressions of
-  `scorers` (a map of scorer key to Honey SQL SELECT expression, see
-  `metabase-enterprise.semantic-search.scoring/appdb-scorers`) evaluated under `search-ctx`, joining bookmark
-  tables when `:bookmarked` is among `scorers`.
-
-  `search-ctx` is deliberately not a closed schema: it's the same context map threaded through the whole semantic
-  search pipeline, and callers upstream (see `metabase-enterprise.semantic-search.index/query-index`) attach
-  EE-only keys (e.g. `:vector-search-allow-missing-index?`) that aren't part of the shared
-  `metabase.search.config/SearchContext` shape, so only the keys this function (transitively) reads are declared.
-
-  `scorers`' values are Honey SQL expressions built by `metabase-enterprise.semantic-search.scoring` (which already
-  requires this namespace, so that expression-building logic cannot itself move into `db.clj` without a load
-  cycle); `:any` here stands in for that opaque Honey SQL expression shape."
+  "The `:id`/`:model` rows of `search-results` augmented with the SELECT expressions of `scorers` (a map of scorer
+  key to SELECT expression, see `metabase-enterprise.semantic-search.scoring/appdb-scorers`) evaluated under
+  `search-ctx`, joining the bookmark tables when `:bookmarked` is among `scorers`."
   [search-results :- [:sequential [:map {:closed true}
                                    [:id [:or :string ms/PositiveInt]]
                                    [:model :string]]]
    search-ctx     :- [:map
-                      [:current-user-id ms/PositiveInt]
+                      [:current-user-id {:optional true} [:maybe ms/PositiveInt]]
                       [:context {:optional true} [:maybe :keyword]]
                       [:weights {:optional true} [:maybe [:map-of :keyword number?]]]]
    scorers        :- [:map-of :keyword vector?]]
