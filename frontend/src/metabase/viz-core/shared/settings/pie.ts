@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { getColorsForValues } from "metabase/ui/colors/charts";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { checkNotNull, checkNumber, isNumber } from "metabase/utils/types";
 import {
   type DatasetColumn,
@@ -59,7 +59,7 @@ export const getDefaultSliceThreshold = () => SLICE_THRESHOLD * 100;
 
 export function getKeyFromDimensionValue(dimensionValue: RowValue) {
   if (dimensionValue == null) {
-    return NULL_DISPLAY_VALUE;
+    return getNullDisplayValue();
   } else if (typeof dimensionValue === "object") {
     return JSON.stringify(dimensionValue);
   }
@@ -67,7 +67,7 @@ export function getKeyFromDimensionValue(dimensionValue: RowValue) {
 }
 
 export function getValueFromDimensionKey(key: string) {
-  return key === NULL_DISPLAY_VALUE ? null : key;
+  return key === getNullDisplayValue() ? null : key;
 }
 
 export function getAggregatedRows(
@@ -174,8 +174,8 @@ export function getColors(
     existingColorMapping = Object.fromEntries(
       Object.entries(currentSettings["pie.colors"]).map(([key, value]) => [
         // Historically we used String(dimensionValue) in the `pie.colors` setting instead of `getKeyFromDimensionValue`
-        // For compatibility with old charts, we'll transform the strings "null" and "undefined" into NULL_DISPLAY_VALUE
-        key === "null" || key === "undefined" ? NULL_DISPLAY_VALUE : key,
+        // For compatibility with old charts, we'll transform the strings "null" and "undefined" into getNullDisplayValue()
+        key === "null" || key === "undefined" ? getNullDisplayValue() : key,
         getHexColor(value),
       ]),
     );
@@ -192,15 +192,15 @@ export function getColors(
     }
   }
 
-  // historically we used "null" rather than NULL_DISPLAY_VALUE in `getColorsForValues`
-  // to avoid changing existing charts, we'll convert NULL_DISPLAY_VALUE to "null"
+  // historically we used "null" rather than getNullDisplayValue() in `getColorsForValues`
+  // to avoid changing existing charts, we'll convert getNullDisplayValue() to "null"
   const colors = getColorsForValues(
     dimensionValues.map((value) =>
-      value === NULL_DISPLAY_VALUE ? "null" : value,
+      value === getNullDisplayValue() ? "null" : value,
     ),
     Object.fromEntries(
       Object.entries(existingColorMapping).map(([key, value]) => [
-        key === NULL_DISPLAY_VALUE ? "null" : key,
+        key === getNullDisplayValue() ? "null" : key,
         value,
       ]),
     ),
@@ -208,7 +208,7 @@ export function getColors(
   // then flip it back
   return Object.fromEntries(
     Object.entries(colors).map(([key, value]) => [
-      key === "null" ? NULL_DISPLAY_VALUE : key,
+      key === "null" ? getNullDisplayValue() : key,
       getHexColor(value),
     ]),
   );
@@ -244,10 +244,10 @@ export function getPieRows(
 
   const formatDimensionValue = (value: RowValue) => {
     if (value == null) {
-      return NULL_DISPLAY_VALUE;
+      return getNullDisplayValue();
     }
 
-    return formatter(value, dimensionColSettings) ?? NULL_DISPLAY_VALUE;
+    return formatter(value, dimensionColSettings) ?? getNullDisplayValue();
   };
 
   const colors = getColors(rawSeries, settings);

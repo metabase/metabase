@@ -1,5 +1,5 @@
 import { color } from "metabase/ui/colors";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import type { PieRow, RawSeries } from "metabase-types/api";
 import {
   createMockColumn,
@@ -9,8 +9,8 @@ import {
 import { getAggregatedRows, getColors, getKeyFromDimensionValue } from "./pie";
 
 describe("getKeyFromDimensionValue", () => {
-  it("should return NULL_DISPLAY_VALUE for null", () => {
-    expect(getKeyFromDimensionValue(null)).toBe(NULL_DISPLAY_VALUE);
+  it("should return getNullDisplayValue() for null", () => {
+    expect(getKeyFromDimensionValue(null)).toBe(getNullDisplayValue());
   });
 
   it("should return string representation for strings", () => {

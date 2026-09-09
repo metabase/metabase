@@ -2,7 +2,7 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { type Dayjs, dayjs } from "metabase/dayjs";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { formatNumber, removeNewLines } from "metabase/utils/formatting";
 import { parseNumber } from "metabase/utils/number";
 import {
@@ -139,7 +139,7 @@ export function formatValueRaw(
   }
 
   if (value == null) {
-    return options.stringifyNull ? NULL_DISPLAY_VALUE : null;
+    return options.stringifyNull ? getNullDisplayValue() : null;
   } else if (
     options.view_as !== "image" &&
     options.click_behavior &&
