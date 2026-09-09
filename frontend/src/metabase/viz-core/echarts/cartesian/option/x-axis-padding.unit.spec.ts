@@ -169,7 +169,7 @@ describe("getCategoricalAxisLabelPadding", () => {
     expect(getCategoricalAxisLabelPadding(10, layout)).toEqual({
       alignMinLabel: "left",
       alignMaxLabel: "right",
-      padding: [0, 16],
+      padding: [0, 1],
       interval: expect.any(Function),
     });
   });
@@ -194,6 +194,71 @@ describe("getCategoricalAxisLabelPadding", () => {
 });
 
 describe("rendered X-axis labels", () => {
+  it.each([
+    { width: 300, labels: ["Doohickey", "Gadget", "Gizmo", "Widget"] },
+    {
+      width: 470,
+      labels: Array.from(
+        { length: 8 },
+        (_, index) => `${index + 1} – ${index + 2}`,
+      ),
+    },
+  ])(
+    "preserves fitting category labels on a $width px plot (UXW-5182)",
+    ({ width, labels }) => {
+      const measure = (value: string) =>
+        echarts.format.getTextRect(value, "13px Lato").width;
+      const layout = createMockChartLayout({
+        outerWidth: width,
+        ticksDimensions: {
+          firstXTickWidth: measure(labels[0]),
+          lastXTickWidth: measure(labels[labels.length - 1]),
+          xTickWidthCap: Infinity,
+          getXTickWidth: measure,
+        },
+      });
+      const axis = buildCategoricalDimensionAxis(
+        { formatter: String, column: undefined, datasetLength: labels.length },
+        createMockVisualizationSettings({ "graph.x_axis.axis_enabled": true }),
+        layout,
+        renderingContext,
+      );
+      const chart = echarts.init(null, undefined, {
+        renderer: "svg",
+        ssr: true,
+        width,
+        height: 200,
+      });
+      try {
+        chart.setOption({
+          animation: false,
+          grid: {
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 30,
+            outerBoundsMode: "none",
+          },
+          xAxis: { ...axis, data: labels },
+          yAxis: { show: false },
+          series: [{ type: "line", data: labels.map(() => 1) }],
+        });
+        const svg = new DOMParser().parseFromString(
+          chart.renderToSVGString(),
+          "image/svg+xml",
+        );
+        expect(
+          Array.from(svg.querySelectorAll("text"), (node) =>
+            node.textContent?.trim(),
+          ),
+        ).toEqual(labels);
+        expectLabelClearance(chart, getXAxisLabelPadding(width), width);
+      } finally {
+        chart.dispose();
+      }
+    },
+  );
+
   it.each([
     [200, 20],
     [300, 20],

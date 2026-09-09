@@ -6,7 +6,11 @@ import type {
   RenderingContext,
 } from "../../../types";
 import { X_AXIS_DATA_KEY } from "../constants/dataset";
-import { CHART_STYLE, getSplitPanelGap } from "../constants/style";
+import {
+  CHART_STYLE,
+  HORIZONTAL_TICKS_GAP,
+  getSplitPanelGap,
+} from "../constants/style";
 import {
   isCategoryAxis,
   isNumericAxis,
@@ -740,8 +744,6 @@ const getDimensionWidth = (
 
   return boundaryWidth / xValuesCount;
 };
-
-const HORIZONTAL_TICKS_GAP = 6;
 
 const areHorizontalXAxisTicksOverlapping = (
   dataset: ChartDataset,

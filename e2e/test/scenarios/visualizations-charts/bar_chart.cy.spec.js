@@ -538,7 +538,10 @@ describe("scenarios > visualizations > bar chart", () => {
       .contains("[data-testid=dashcard]", "Should split")
       .within(() => {
         // Verify this axis tick exists twice which verifies there are two y-axes
-        H.echartsContainer().findAllByText("3.0k").should("have.length", 2);
+        H.echartsContainer()
+          .findAllByText("21.0k")
+          .should("have.length", 2)
+          .and("be.visible");
       });
 
     cy.findAllByTestId("dashcard")

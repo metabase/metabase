@@ -1,5 +1,6 @@
 import type { XAXisOption } from "echarts/types/dist/shared";
 
+import { HORIZONTAL_TICKS_GAP } from "../constants/style";
 import type { ChartLayout } from "../layout/types";
 
 const MAX_LABEL_PADDING_RATIO = 0.25;
@@ -82,7 +83,7 @@ export function getCategoricalAxisLabelPadding(
   const interval = Math.max(
     1,
     Math.ceil(
-      ((Math.max(firstXTickWidth, lastXTickWidth) + 2 * padding) *
+      ((Math.max(firstXTickWidth, lastXTickWidth) + HORIZONTAL_TICKS_GAP) *
         datasetLength) /
         axisWidth,
     ),
@@ -92,7 +93,7 @@ export function getCategoricalAxisLabelPadding(
   return {
     alignMinLabel: alignMinLabel ? "left" : undefined,
     alignMaxLabel: alignMaxLabel ? "right" : undefined,
-    padding: [0, padding],
+    padding: [0, padding - endpointPosition],
     interval: (index, value) => {
       if (index === 0 || index === datasetLength - 1) {
         return true;
