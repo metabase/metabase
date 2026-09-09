@@ -206,6 +206,7 @@
     "/collection/7/"                                            :collection
     "/execute/"                                                 :execute
     "/application/monitoring/"                                  :non-scoped
+    "/application/remote-sync/"                                 :non-scoped
     "/query/db/0/native/"                                       :query-v2))
 
 (deftest ^:parallel data-permissions-v2-migration-move-test

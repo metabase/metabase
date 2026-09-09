@@ -22,11 +22,13 @@
             (is (partial= {(:id (perms-group/admin))
                            {:monitoring   "yes"
                             :setting      "yes"
-                            :subscription "yes"}
+                            :subscription "yes"
+                            :remote-sync  "yes"}
                            (:id (perms-group/all-users))
                            {:monitoring   "no"
                             :setting      "no"
-                            :subscription "yes"}}
+                            :subscription "yes"
+                            :remote-sync  "no"}}
                           groups))))))))
 
 (deftest application-permissions-test-2
@@ -55,11 +57,13 @@
             (is (partial= {(:id (perms-group/admin))
                            {:monitoring   "yes"
                             :setting      "yes"
-                            :subscription "yes"}
+                            :subscription "yes"
+                            :remote-sync  "yes"}
                            group-id
                            {:monitoring   "no"
                             :setting      "yes"
-                            :subscription "no"}}
+                            :subscription "no"
+                            :remote-sync  "no"}}
                           (:groups (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/application/graph" new-graph)))))
           (testing "force=true skips the revision check, so no revision is needed"
             (is (partial= {group-id {:setting "yes"}}
@@ -79,7 +83,8 @@
               (is (partial= {group-id
                              {:monitoring   "yes"
                               :setting      "yes"
-                              :subscription "no"}}
+                              :subscription "no"
+                              :remote-sync  "no"}}
                             (:groups result)))))
           (testing "omits revision ID check when body :force is true"
             (let [result (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/application/graph"
@@ -90,5 +95,14 @@
               (is (partial= {group-id
                              {:monitoring   "yes"
                               :setting      "yes"
-                              :subscription "yes"}}
-                            (:groups result))))))))))
+                              :subscription "yes"
+                              :remote-sync  "no"}}
+                            (:groups result)))))
+          (testing "granting `remote-sync` to a group is read back from the graph"
+            (let [result (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/application/graph"
+                                               (-> (a-perms/graph)
+                                                   (assoc-in [:groups group-id :remote-sync] "yes")))]
+              (is (partial= {group-id {:remote-sync "yes"}}
+                            (:groups result)))
+              (is (partial= {group-id {:remote-sync "yes"}}
+                            (:groups (mt/user-http-request :crowberto :get 200 "ee/advanced-permissions/application/graph")))))))))))

@@ -31,6 +31,7 @@
           (is (=? {:can_access_setting        true
                    :can_access_subscription   true
                    :can_access_monitoring     true
+                   :can_access_remote_sync    true
                    :can_access_data_model     true
                    :is_group_manager          false
                    :can_access_db_details     true}
@@ -39,10 +40,18 @@
           (is (=? {:can_access_setting        false
                    :can_access_subscription   true
                    :can_access_monitoring     false
+                   :can_access_remote_sync    false
                    :can_access_data_model     false
                    :is_group_manager          false
                    :can_access_db_details     false}
                   (user-permissions :rasta))))
+        (testing "can_access_remote_sync is true once the user's group is granted the `remote-sync` permission"
+          (mt/with-temp [:model/PermissionsGroup group {}
+                         :model/PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)
+                                                              :group_id (:id group)}]
+            (perms/grant-application-permissions! group :remote-sync)
+            (is (partial= {:can_access_remote_sync true}
+                          (user-permissions :rasta)))))
         (testing "can_access_data_model is true if a user has any data model perms"
           (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
             (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted

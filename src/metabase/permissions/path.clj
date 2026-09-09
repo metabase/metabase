@@ -45,4 +45,7 @@
     "/application/monitoring/"
 
     :subscription
-    "/application/subscription/"))
+    "/application/subscription/"
+
+    :remote-sync
+    "/application/remote-sync/"))

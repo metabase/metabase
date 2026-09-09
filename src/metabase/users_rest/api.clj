@@ -349,6 +349,7 @@
    [:can_access_setting        {:optional true} :boolean]
    [:can_access_subscription   {:optional true} :boolean]
    [:can_access_monitoring     {:optional true} :boolean]
+   [:can_access_remote_sync    {:optional true} :boolean]
    [:can_access_data_model     {:optional true} :boolean]
    [:can_access_db_details     {:optional true} :boolean]
    [:can_access_transforms     {:optional true} :boolean]
