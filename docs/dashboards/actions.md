@@ -4,7 +4,7 @@ title: Actions on dashboards
 
 # Actions on dashboards
 
-You can add buttons to dashboards to perform [actions](../actions/start.md) like creating or updating records, and combine them with dashboard [filter](./filters.md).
+You can add buttons to dashboards to perform [actions](../actions/start.md) like creating or updating records, and combine them with dashboard [filters](./filters.md).
 
 ![Dashboard with filter, action button, and detail card view](./images/dashboard-filter-action.png)
 
@@ -14,7 +14,7 @@ To add an action button to a dashboard, you'll first need to create an action on
 
 ## Add an action button to a dashboard
 
-Once you [created an action](../actions/introduction.md), you can add a button to a dashboard to perform that action:
+Once you've [created an action](../actions/introduction.md), you can add a button to a dashboard to perform that action:
 
 1. Visit a dashboard page and click the **pencil** icon to start editing the dashboard.
 2. Click on the **box with a mouse pointer** to add an action.

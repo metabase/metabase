@@ -61,26 +61,19 @@
       (let [card                  (model-persistence.db/card (:card_id persisted-info))
             definition            (persisted-info/metadata->definition (:result_metadata card)
                                                                        (:table_name persisted-info))
-            _                     (model-persistence.db/update-persisted-info! (u/the-id persisted-info)
-                                                                               {:definition      definition,
-                                                                                :query_hash      (persisted-info/query-hash (:dataset_query card))
-                                                                                :active          false,
-                                                                                :refresh_begin   :%now,
-                                                                                :refresh_end     nil,
-                                                                                :state           "refreshing"
-                                                                                :state_change_at :%now})
+            _                     (model-persistence.db/begin-persisted-info-refresh! (u/the-id persisted-info)
+                                                                                      definition
+                                                                                      (persisted-info/query-hash (:dataset_query card)))
             {:keys [state error]} (try
                                     (refresh! refresher database definition card)
                                     (catch Exception e
                                       (log/infof "Error refreshing persisting model with card-id %s: %s"
                                                  (:card_id persisted-info) (ex-message e))
                                       {:state :error :error (ex-message e)}))]
-        (model-persistence.db/update-persisted-info! (u/the-id persisted-info)
-                                                     {:active          (= state :success),
-                                                      :refresh_end     :%now,
-                                                      :state           (if (= state :success) "persisted" "error")
-                                                      :state_change_at :%now
-                                                      :error           (when (= state :error) error)})
+        (model-persistence.db/end-persisted-info-refresh! (u/the-id persisted-info)
+                                                          (= state :success)
+                                                          (if (= state :success) "persisted" "error")
+                                                          (when (= state :error) error))
         (if (= :success state)
           (update stats :success inc)
           (-> stats

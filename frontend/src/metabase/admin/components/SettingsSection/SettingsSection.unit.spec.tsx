@@ -4,17 +4,21 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { CollapsibleSettingsSection } from "./SettingsSection";
 
-const setup = ({ defaultOpened }: { defaultOpened?: boolean } = {}) => {
-  renderWithProviders(
-    <CollapsibleSettingsSection
-      title="Section title"
-      description="Section description"
-      defaultOpened={defaultOpened}
-    >
-      <div>Section content</div>
-    </CollapsibleSettingsSection>,
-  );
-};
+type SetupOptions = { defaultOpened?: boolean; disabled?: boolean };
+
+const getSection = ({ defaultOpened, disabled }: SetupOptions = {}) => (
+  <CollapsibleSettingsSection
+    title="Section title"
+    description="Section description"
+    defaultOpened={defaultOpened}
+    disabled={disabled}
+  >
+    <div>Section content</div>
+  </CollapsibleSettingsSection>
+);
+
+const setup = (options: SetupOptions = {}) =>
+  renderWithProviders(getSection(options));
 
 describe("CollapsibleSettingsSection", () => {
   it("shows the title and description while collapsed", () => {
@@ -59,5 +63,22 @@ describe("CollapsibleSettingsSection", () => {
     setup({ defaultOpened: true });
 
     expect(screen.getByText("Section content")).toBeVisible();
+  });
+
+  it("stays collapsed while disabled and opens once enabled when defaultOpened", async () => {
+    const { rerender } = setup({ defaultOpened: true, disabled: true });
+    const header = screen.getByRole("button", { name: /Section title/ });
+
+    expect(header).toBeDisabled();
+    expect(header).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText("Section content")).not.toBeVisible();
+
+    rerender(getSection({ defaultOpened: true, disabled: false }));
+
+    expect(header).toBeEnabled();
+    expect(header).toHaveAttribute("aria-expanded", "true");
+    await waitFor(() =>
+      expect(screen.getByText("Section content")).toBeVisible(),
+    );
   });
 });

@@ -29,7 +29,7 @@ import { getFont } from "metabase/styled-components/selectors";
 import type { IconProps } from "metabase/ui";
 import { isQuestionCard } from "metabase/utils/dashboard";
 import { formatNumber } from "metabase/utils/formatting";
-import { memoizeClass } from "metabase/utils/memoize";
+import { memoize } from "metabase/utils/memoize";
 import { getVisualizationComponent } from "metabase/visualizations";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
@@ -437,52 +437,56 @@ class Visualization extends PureComponent<
     return !!card && !!metadata ? new Question(card, metadata) : undefined;
   }
 
-  _getClickActionsCached(
-    clickedObject: ClickObject | null | undefined,
-    mode: ClickActionsMode | undefined,
-    computedSettings: Record<string, string>,
-    dashcard?: DashboardCard,
-    metadata?: Metadata,
-    rawSeries: VisualizationRawSeries = [],
-    visualizerRawSeries: RawSeries = [],
-    isRawTable = false,
-    getExtraDataForClick: (
-      clicked: ClickObject | null,
-    ) => Record<string, unknown> = () => ({}),
-    transformClickObject?: (clicked: ClickObject) => ClickObject,
-  ) {
-    if (!clickedObject) {
-      return [];
-    }
+  // Memoized per instance. The cache keys on the arguments, and the object
+  // ones are held weakly, so entries go when the click context does.
+  private _getClickActionsCached = memoize(
+    (
+      clickedObject: ClickObject | null | undefined,
+      mode: ClickActionsMode | undefined,
+      computedSettings: Record<string, string>,
+      dashcard?: DashboardCard,
+      metadata?: Metadata,
+      rawSeries: VisualizationRawSeries = [],
+      visualizerRawSeries: RawSeries = [],
+      isRawTable = false,
+      getExtraDataForClick: (
+        clicked: ClickObject | null,
+      ) => Record<string, unknown> = () => ({}),
+      transformClickObject?: (clicked: ClickObject) => ClickObject,
+    ) => {
+      if (!clickedObject) {
+        return [];
+      }
 
-    const clicked = transformClickObject
-      ? transformClickObject(clickedObject)
-      : clickedObject;
+      const clicked = transformClickObject
+        ? transformClickObject(clickedObject)
+        : clickedObject;
 
-    const card = Visualization.findCardById(
-      clicked.cardId,
-      dashcard,
-      rawSeries,
-      visualizerRawSeries,
-    );
-    if (!isQuestionCard(card)) {
-      return [];
-    }
-    const question = Visualization.getQuestionForCard(metadata, card);
+      const card = Visualization.findCardById(
+        clicked.cardId,
+        dashcard,
+        rawSeries,
+        visualizerRawSeries,
+      );
+      if (!isQuestionCard(card)) {
+        return [];
+      }
+      const question = Visualization.getQuestionForCard(metadata, card);
 
-    return mode
-      ? mode.actionsForClick(
-          {
-            ...clicked,
-            extraData: {
-              ...getExtraDataForClick(clicked),
-              isRawTable,
+      return mode
+        ? mode.actionsForClick(
+            {
+              ...clicked,
+              extraData: {
+                ...getExtraDataForClick(clicked),
+                isRawTable,
+              },
             },
-          },
-          { question, settings: computedSettings },
-        )
-      : [];
-  }
+            { question, settings: computedSettings },
+          )
+        : [];
+    },
+  );
 
   getClickActions(clickedObject?: ClickObject | null) {
     const {
@@ -1032,10 +1036,6 @@ class Visualization extends PureComponent<
   }
 }
 
-const VisualizationMemoized = memoizeClass<Visualization>(
-  "_getClickActionsCached",
-)(Visualization);
-
 // eslint-disable-next-line import/no-default-export
 export default _.compose(
   connect(mapStateToProps),
@@ -1068,7 +1068,7 @@ export default _.compose(
         return <VisualizationRunningState className={cx(CS.spread, CS.z2)} />;
       }
 
-      return <VisualizationMemoized {...props} forwardedRef={ref} />;
+      return <Visualization {...props} forwardedRef={ref} />;
     },
   ),
 ) as ComponentType<VisualizationOwnProps>;

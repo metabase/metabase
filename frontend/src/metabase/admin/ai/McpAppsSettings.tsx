@@ -69,7 +69,6 @@ export const McpAppsSettings = ({ id }: { id?: string }) => {
                 value: event.target.checked,
               })
             }
-            size="sm"
             w="auto"
           />
         </Flex>
@@ -138,7 +137,6 @@ function CommonMcpClientsSection() {
             checked={enabledClients.includes(key)}
             onChange={(e) => handleToggle(key, e.target.checked)}
             label={label}
-            size="sm"
             w="auto"
           />
         ))}
