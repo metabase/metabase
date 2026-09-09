@@ -424,14 +424,6 @@
   []
   (search.db/active-index-created-at (search.spec/index-version-hash) (i18n/site-locale-string)))
 
-(defn search-query
-  "Query fragment for all models corresponding to a query parameter `:search-term`."
-  ([search-term search-ctx]
-   (search-query search-term search-ctx [:model_id :model]))
-  ([search-term search-ctx select-items]
-   (when-let [index-table (active-table)]
-     (specialization/base-query index-table search-term search-ctx select-items))))
-
 (defn search
   "Use the index table to search for records."
   [search-term & [search-ctx]]

@@ -10,6 +10,7 @@
    [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
@@ -40,7 +41,8 @@
   ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
   search-context]
  [search.ingestion
-  bulk-ingest!
+  bulk-ingest!]
+ [search.ingestion.query
   max-searchable-value-length
   searchable-value-trim-sql]
  [search.spec

@@ -4,10 +4,12 @@
   (:require
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
+   [metabase.collections-rest.children-query :as children-query]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn other-users-personal-collection-ids
@@ -184,15 +186,21 @@
   (t2/select :model/Card :collection_id collection-id))
 
 (mu/defn collection-children-rows
-  "The rows matching the collection-children Honey SQL `query`, built by `metabase.collections-rest.api` from the
-  per-model item queries for a Collection's paginated child listing. Follows the same exception as
-  `metabase.search.db` for spec-driven Honey SQL that can't be reduced to plain-data parameters."
-  [query :- :map]
-  (app-db/query query))
+  "The children of `collection` for the item `models` (keywords), filtered and ordered by `options` (see
+  `metabase.collections-rest.children-query/CollectionChildrenOptions`), every row carrying the whole result set's
+  size as `total_count`; `page` is nil for every row, or a map with `:limit` and optionally `:offset`."
+  [collection :- collection/CollectionWithLocationAndIDOrRoot
+   models     :- [:sequential :keyword]
+   options    :- children-query/CollectionChildrenOptions
+   page       :- [:maybe [:map {:closed true}
+                          [:limit ms/IntGreaterThanOrEqualToZero]
+                          [:offset {:optional true} ms/IntGreaterThanOrEqualToZero]]]]
+  (app-db/query (children-query/children-rows-query collection models options page)))
 
 (mu/defn collection-filter-metadata-rows
-  "The rows matching the collection-filter-metadata Honey SQL `query`, built by `metabase.collections-rest.api` to
-  probe which item models have at least one visible child in a Collection. Follows the same exception as
-  `metabase.search.db` for spec-driven Honey SQL that can't be reduced to plain-data parameters."
-  [query :- :map]
-  (app-db/query query))
+  "The single row saying, for each of the item `models` (keywords), whether `collection` has at least one visible child
+  of that model under `options`."
+  [collection :- collection/CollectionWithLocationAndIDOrRoot
+   models     :- [:sequential :keyword]
+   options    :- children-query/CollectionChildrenOptions]
+  (app-db/query (children-query/filter-metadata-query collection models options)))

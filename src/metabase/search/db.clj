@@ -5,51 +5,74 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.search.appdb.query :as appdb.query]
+   [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.api :as specialization]
+   [metabase.search.config :as search.config]
+   [metabase.search.in-place.legacy :as legacy]
+   [metabase.search.ingestion.query :as ingestion.query]
    [metabase.search.schema :as search.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn spec-index-rows
-  "The rows matching the Honey SQL `query` built from a search model's spec by `metabase.search.ingestion`."
-  [query :- :map]
-  (t2/query query))
-
 (mu/defn spec-index-reducible-rows
-  "A reducible of the rows matching the Honey SQL `query` built from a search model's spec by
-  `metabase.search.ingestion`."
-  [query :- :map]
-  (mdb/streaming-reducible-query query))
+  "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)
+  matching `where-clause`: the search-spec generated `:where` fragment of `metabase.search.spec/search-models-to-update`,
+  or nil for every row."
+  [search-model :- :string
+   where-clause :- [:maybe vector?]]
+  (mdb/streaming-reducible-query (ingestion.query/spec-index-query-where search-model where-clause)))
+
+(mu/defn spec-index-row
+  "A probe row when the `search-model` row with the underlying model PK `id` is indexable, or nil."
+  [search-model :- :string
+   id           :- ms/PositiveInt]
+  (t2/query-one (-> (ingestion.query/spec-index-query-where search-model [:= :this.id id])
+                    (assoc :select [[[:inline 1] :one]] :limit 1))))
+
+(mu/defn spec-index-count
+  "The number of indexable rows of `search-model`."
+  [search-model :- :string]
+  (:count (t2/query-one (assoc (ingestion.query/spec-index-query search-model) :select [[:%count.* :count]]))))
 
 (mu/defn in-place-model-set-rows
-  "The rows matching the Honey SQL `query` built by `metabase.search.in-place.legacy` to find the distinct set of
-  models with results."
-  [query :- :map]
-  (mdb/query query))
+  "The `:model` rows of the in-place search engine's model-set query for `search-ctx`, or nil when no model applies."
+  [search-ctx :- search.config/SearchContext]
+  (some-> (legacy/model-set-query search-ctx) mdb/query))
 
 (mu/defn in-place-search-reducible
-  "A reducible of the rows matching the full in-place search Honey SQL `query` built by
-  `metabase.search.in-place.legacy`."
-  [query :- :map]
-  (mdb/streaming-reducible-query query))
+  "A reducible of the in-place (index-free) search results for `search-ctx`."
+  [search-ctx :- search.config/SearchContext]
+  (mdb/streaming-reducible-query (legacy/full-search-query search-ctx)))
 
 (mu/defn scored-search-rows
-  "The rows matching the scored, filtered search Honey SQL `query` built by `metabase.search.appdb.core`."
-  [query :- :map]
-  (t2/query query))
+  "The scored, filtered rows of the search index `index-table` for `search-ctx` and `search-string`, best first.
+  `view-count-percentiles` maps each model to its view-count percentile (see [[view-count-percentile-rows]])."
+  [index-table            :- [:or :keyword :string]
+   search-ctx             :- search.config/SearchContext
+   search-string          :- [:maybe :string]
+   view-count-percentiles :- [:map-of :keyword [:maybe number?]]]
+  (t2/query (search.scoring/with-scores search-ctx
+              (search.scoring/scorers search-ctx view-count-percentiles)
+              (appdb.query/base-filtered-query index-table search-ctx search-string [:legacy_input]))))
 
 (mu/defn distinct-model-rows
-  "The rows matching the Honey SQL `query` built by `metabase.search.appdb.core` to find the distinct search models
-  present in the results."
-  [query :- :map]
-  (t2/query query))
+  "The distinct `:model` rows of the search index `index-table` with at least one visible result for `search-ctx`."
+  [index-table :- [:or :keyword :string]
+   search-ctx  :- search.config/SearchContext]
+  (t2/query (appdb.query/model-set-query index-table search-ctx)))
 
-(mu/defn search-index-probe-rows
-  "The rows matching the Honey SQL `query` built by `metabase.search.appdb.core` to check whether a single row
-  survives a filter."
-  [query :- :map]
-  (t2/query query))
+(mu/defn search-index-probe-row
+  "A probe row when the `model`/`id` row of the search index `index-table` survives the first `layer-count`
+  `metabase.search.appdb.query/filter-layers` (nil = every layer) for `search-ctx` and `search-string`, or nil."
+  [index-table   :- [:or :keyword :string]
+   search-ctx    :- search.config/SearchContext
+   search-string :- [:maybe :string]
+   model         :- :string
+   id            :- [:or :string ms/PositiveInt]
+   layer-count   :- [:maybe nat-int?]]
+  (t2/query-one (appdb.query/probe-query index-table search-ctx search-string model id layer-count)))
 
 (defn- index-search-query
   "The Honey SQL query selecting `select-items` from the search index `table-name`, matching `search-term` (or every
@@ -130,11 +153,6 @@
   [model :- :keyword
    id    :- ms/PositiveInt]
   (t2/exists? model :id id))
-
-(mu/defn any-card
-  "Some Card, or nil."
-  []
-  (t2/select-one :model/Card))
 
 (mu/defn index-metadata-for-engine
   "The SearchIndexMetadata rows of `engine`."
@@ -325,11 +343,6 @@
                                [:and
                                 [:not-in :version keep-versions]
                                 [:< :updated_at updated-before]]]}))
-
-(mu/defn personal-collection-root-id
-  "The id of the root personal Collection of the User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one-pk :model/Collection :personal_owner_id [:= user-id] :location "/"))
 
 (mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, or nil."

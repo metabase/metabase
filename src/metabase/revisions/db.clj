@@ -21,11 +21,11 @@
   (t2/select-one (t2/table-name model) :id id))
 
 (mu/defn update-entity!
-  "Apply `changes` to the `model` row with `id`, returning the number updated. `changes` is a generic map because
-  `model` varies (see [[entity]]) and so its shape can't be pinned to one model's columns."
+  "Apply `changes` to the `model` row with `id`, returning the number updated. `changes` is a column map whose shape
+  can't be pinned to one model because `model` varies (see [[entity]])."
   [model   :- :keyword
    id      :- ms/PositiveInt
-   changes :- :map]
+   changes :- [:map-of :keyword [:maybe :some]]]
   (t2/update! model id changes))
 
 (mu/defn parameter-card-ids

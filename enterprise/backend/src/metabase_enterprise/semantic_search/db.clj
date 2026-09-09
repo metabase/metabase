@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [malli.util :as mut]
+   [metabase-enterprise.semantic-search.appdb-scoring :as appdb-scoring]
    [metabase-enterprise.semantic-search.schema :as semantic-search.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -85,19 +86,19 @@
    :from   [:search_index]})
 
 (mu/defn appdb-scored-rows
-  "The `:id`/`:model` rows of `search-results` augmented with the SELECT expressions of `scorers` (a map of scorer
-  key to SELECT expression, see `metabase-enterprise.semantic-search.scoring/appdb-scorers`) evaluated under
-  `search-ctx`, joining the bookmark tables when `:bookmarked` is among `scorers`."
+  "The `:id`/`:model` rows of `search-results` augmented with the app-DB scorers of `search-ctx` (see
+  `metabase-enterprise.semantic-search.appdb-scoring/appdb-scorers`), joining the bookmark tables when `:bookmarked`
+  is among them."
   [search-results :- [:sequential [:map {:closed true}
                                    [:id [:or :string ms/PositiveInt]]
                                    [:model :string]]]
    search-ctx     :- [:map
                       [:current-user-id {:optional true} [:maybe ms/PositiveInt]]
                       [:context {:optional true} [:maybe :keyword]]
-                      [:weights {:optional true} [:maybe [:map-of :keyword number?]]]]
-   scorers        :- [:map-of :keyword vector?]]
-  (t2/query (cond-> (search.scoring/with-scores search-ctx scorers (search-index-select search-results))
-              (:bookmarked scorers) (search.scoring/join-bookmarks (:current-user-id search-ctx)))))
+                      [:weights {:optional true} [:maybe [:map-of :keyword number?]]]]]
+  (let [scorers (appdb-scoring/appdb-scorers search-ctx)]
+    (t2/query (cond-> (search.scoring/with-scores search-ctx scorers (search-index-select search-results))
+                (:bookmarked scorers) (search.scoring/join-bookmarks (:current-user-id search-ctx))))))
 
 (mu/defn insert-token-tracking!
   "Insert the SemanticSearchTokenTracking `row`."
