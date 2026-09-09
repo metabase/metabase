@@ -1,6 +1,5 @@
-import { getMetadata } from "metabase/metadata-store";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
-import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, TableId } from "metabase-types/api";
@@ -20,8 +19,8 @@ export function QueryDefinition({
   tableId,
   definition,
 }: QueryDefinitionProps) {
-  const metadata = useSelector(getMetadata);
-  const query = getSegmentQuery(definition, tableId, metadata);
+  const metadataProvider = useMetadataProvider(definition?.database ?? null);
+  const query = getSegmentQuery(definition, tableId, metadataProvider);
   if (!query) {
     return null;
   }

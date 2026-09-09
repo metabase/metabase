@@ -1,11 +1,10 @@
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { DatasetQuery, TableId } from "metabase-types/api";
 
 export function getSegmentQuery(
   query: DatasetQuery | undefined,
   tableId: TableId | undefined,
-  metadata: Metadata,
+  metadataProvider: Lib.MetadataProvider,
 ) {
   if (!query) {
     return undefined;
@@ -21,7 +20,6 @@ export function getSegmentQuery(
     return undefined;
   }
 
-  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
   return Lib.fromJsQuery(metadataProvider, query);
 }
 
