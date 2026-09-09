@@ -97,11 +97,7 @@ export function TransformEditor({
       onBlur={onBlur}
       topBarInnerContent={
         showEditButton && (
-          <EditDefinitionButton
-            bg="transparent"
-            size="compact-md"
-            transformId={transform.id}
-          />
+          <EditDefinitionButton size="sm" transformId={transform.id} />
         )
       }
       parametersAreUserVisible={false}

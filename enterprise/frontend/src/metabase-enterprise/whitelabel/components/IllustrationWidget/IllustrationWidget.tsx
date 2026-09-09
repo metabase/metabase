@@ -253,7 +253,7 @@ export function IllustrationWidget({
                   {customIllustrationSource && (
                     <Button
                       leftSection={<Icon name="close" />}
-                      variant="light"
+                      variant="subtle"
                       c="text-primary"
                       ml="lg"
                       onClick={handleRemoveCustomIllustration}

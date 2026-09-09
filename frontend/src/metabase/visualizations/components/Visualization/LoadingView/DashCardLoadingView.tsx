@@ -55,10 +55,7 @@ export const DashCardLoadingView = ({
           <Box style={styles} className={CS.absolute} left={12} bottom={12}>
             <HoverCard width={288} offset={4} position="bottom-start">
               <HoverCard.Target>
-                <Button
-                  size="sm"
-                  leftSection={<Icon name="snail" size={12} />}
-                />
+                <Button size="sm" leftSection={<Icon name="snail" />} />
               </HoverCard.Target>
               <HoverCard.Dropdown ml={-8}>
                 <div className={cx(CS.p2, CS.textCentered)}>

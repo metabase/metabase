@@ -28,7 +28,7 @@ export const ChannelSettingsBlock = ({
           data-testid="remove-channel-button"
           leftSection={<Icon name="close" />}
           color="text-primary"
-          variant="light"
+          variant="subtle"
           size="sm"
           onClick={onRemoveChannel}
         />

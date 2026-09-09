@@ -135,7 +135,7 @@ export function ImageUploadWidget({
                 {!isDefaultImage && (
                   <Button
                     leftSection={<Icon name="close" />}
-                    variant="light"
+                    variant="subtle"
                     c="text-primary"
                     ml="lg"
                     onClick={handleRemove}

@@ -63,11 +63,8 @@ export const ColumnAndSeparatorRow = ({
 
       {showRemove && (
         <Button
-          styles={{
-            root: {
-              border: "none",
-            },
-          }}
+          variant="subtle"
+          c="text-primary"
           aria-label={t`Remove column`}
           size="lg"
           leftSection={<Icon name="close" />}

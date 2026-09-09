@@ -76,10 +76,7 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
       </Group>
 
       <Button
-        c="background_page-secondary-inverse"
         variant="filled"
-        autoContrast
-        radius="0.5rem"
         onClick={() => setShowDetails(true)}
       >{t`More info`}</Button>
     </Group>

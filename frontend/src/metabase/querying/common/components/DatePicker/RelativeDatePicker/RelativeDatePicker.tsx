@@ -66,9 +66,10 @@ export function RelativeDatePicker({
 
   return (
     <Tabs value={direction} onChange={handleTabChange}>
-      <Flex>
+      <Flex align="center">
         <PopoverBackButton
-          p="sm"
+          px="lg"
+          py="sm"
           onClick={onBack}
           disabled={readOnly}
           withArrow={!readOnly}
