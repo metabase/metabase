@@ -139,11 +139,30 @@
 
 ;;; Request body
 
+(def ^:private forced-tool-call-token-floor
+  "Smallest `maxOutputTokens` a forced tool call on a catalog Gemini may be capped at.
+
+  Gemini 3 thinking cannot be turned off
+  (https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/thinking) and is billed against
+  `maxOutputTokens` alongside the answer, so a small caller cap risks a `MAX_TOKENS` finish before the forced tool
+  call is emitted. Probed 2026-09-09 on gemini-3.7-flash at `thinkingLevel LOW`: the spend is bimodal — 0 on most
+  runs, 200–490 when it fires — so the tail is the risk, not the median, and the ceiling across ~100 calls was 490
+  thinking tokens (554 total). [[metabase.metabot.example-question-generator]]'s own prompt, run at a 512 cap, spent
+  the whole budget thinking on one run in six and returned no functionCall; it escapes that in production only
+  because its call site already asks for 4096. The other two structured callers cap at 512
+  ([[metabase.metabot.conversation-title]]) and 1024 ([[metabase.contextual-interestingness.llm]]).
+
+  The Gemini numbers support any floor at or above roughly 768. 2048 is not derived from them: it is the value vLLM
+  proved and Moonshot, Z.AI and OpenRouter share. It carries ~4x margin over the worst spend measured, at no cost —
+  only the tokens actually generated are billed."
+  2048)
+
 (mu/defn request-body
   "Builds the `streamGenerateContent` request body for an LLM request."
   [{:keys [system input tools schema tool_choice temperature max-tokens model reasoning?]
     :or   {reasoning? true}} :- core/LLMRequestOpts]
   (let [fdecls     (when (seq tools) (mapv tool->function-declaration tools))
+        forced?    (or (some? schema) (= "required" (some-> tool_choice name)))
         ;; Thinking is always on for the catalog's Gemini 3 models and has no off switch
         ;; (https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/thinking).
         ;; Off-catalog models get no thinkingConfig at all: non-thinking models reject the
@@ -156,11 +175,20 @@
                        ;; maxOutputTokens budget the forced tool-call answer needs. z.ai disables
                        ;; thinking for the same reason ([[metabase.metabot.self.zai/zai-request-body]]);
                        ;; Gemini has no off switch, so pin the lowest level every catalog model
-                       ;; supports — gemini-3.7-flash has no MINIMAL.
+                       ;; supports — gemini-3.7-flash has no MINIMAL. LOW is a smaller spend, not no
+                       ;; spend, so it is half the defence: the floor below raises the budget itself.
                        schema     {:thinkingLevel "LOW"}
                        ;; The chat path streams to the browser: ask for the thought summaries the
                        ;; chain-of-thought UI renders, and leave the default thinking level alone.
                        reasoning? {:includeThoughts true}))
+        ;; Safety net: the forced tool call must survive the un-disableable thinking spend, which
+        ;; Gemini bills against maxOutputTokens (see [[forced-tool-call-token-floor]]). Only an
+        ;; existing cap is raised, and only where a tool call is actually forced — the chat path
+        ;; sends no cap at all. Independent of :reasoning?, because a catalog model thinks whether
+        ;; or not we asked it to.
+        max-tokens (cond-> max-tokens
+                     (and max-tokens forced? (models/reasoning-model? model))
+                     (max forced-tool-call-token-floor))
         gen-config (cond-> {}
                      max-tokens  (assoc :maxOutputTokens max-tokens)
                      temperature (assoc :temperature temperature)

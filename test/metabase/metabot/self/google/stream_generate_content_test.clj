@@ -372,6 +372,50 @@
     (is (= {:contents [{:role "user" :parts [{:text "hi"}]}]}
            (sgc/request-body {:input [{:role :user :content "hi"}]})))))
 
+(deftest ^:parallel request-body-forced-tool-call-token-floor-test
+  (testing "a catalog model's structured call has its caller cap raised to the floor"
+    (is (=? {:generationConfig {:maxOutputTokens 2048}}
+            (sgc/request-body {:model      "google/gemini-3.7-flash"
+                               :input      [{:role :user :content "hi"}]
+                               :schema     {:type "object"}
+                               :max-tokens 512}))))
+  (testing "a cap already above the floor is left alone"
+    (is (=? {:generationConfig {:maxOutputTokens 8000}}
+            (sgc/request-body {:model      "google/gemini-3.7-flash"
+                               :input      [{:role :user :content "hi"}]
+                               :schema     {:type "object"}
+                               :max-tokens 8000}))))
+  (testing "an uncapped structured call stays uncapped — the floor raises, it never introduces a cap"
+    (is (nil? (get-in (sgc/request-body {:model  "google/gemini-3.7-flash"
+                                         :input  [{:role :user :content "hi"}]
+                                         :schema {:type "object"}})
+                      [:generationConfig :maxOutputTokens]))))
+  (testing "an unforced call keeps the caller's cap"
+    (is (=? {:generationConfig {:maxOutputTokens 512}}
+            (sgc/request-body {:model      "google/gemini-3.7-flash"
+                               :input      [{:role :user :content "hi"}]
+                               :max-tokens 512}))))
+  (testing "an off-catalog model gets no floor, as it gets no thinkingConfig"
+    (is (=? {:generationConfig {:maxOutputTokens 512}}
+            (sgc/request-body {:model      "google/gemini-2.5-flash"
+                               :input      [{:role :user :content "hi"}]
+                               :schema     {:type "object"}
+                               :max-tokens 512}))))
+  (testing "a schema is not the only way to force a call: tool_choice \"required\" gets the floor, \"auto\" does not"
+    (let [body-for (fn [tool-choice]
+                     (sgc/request-body
+                      {:model       "google/gemini-3.7-flash"
+                       :input       [{:role :user :content "hi"}]
+                       :tools       [{:tool-name "t" :doc "d"
+                                      :schema    [:=> [:cat [:map [:x :string]]] :any]
+                                      :fn        identity}]
+                       :tool_choice tool-choice
+                       :max-tokens  512}))]
+      (is (=? {:generationConfig {:maxOutputTokens 2048}}
+              (body-for "required")))
+      (is (=? {:generationConfig {:maxOutputTokens 512}}
+              (body-for "auto"))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming event conversion tests.
 ;;; ──────────────────────────────────────────────────────────────────

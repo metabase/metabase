@@ -111,7 +111,7 @@
   no tool call. A small caller cap (the conversation-title path sends 512) therefore risks a `length` finish before
   the tool call is emitted. At effort max the same calls spent 102–173 completion tokens, so 512 holds today but
   leaves no margin for longer session content. Same floor as Moonshot (which documents the shared budget for
-  kimi-k3, https://platform.kimi.ai/docs/guide/use-thinking-models) and vLLM."
+  kimi-k3, https://platform.kimi.ai/docs/guide/use-thinking-models), vLLM and Google."
   2048)
 
 (mu/defn zai-request-body
