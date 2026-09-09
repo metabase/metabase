@@ -885,7 +885,7 @@ describe("getGoalValues", () => {
       { min: null, max: 50, color: "blue" },
     ],
     "scalar.segments": [{ min: 10, max: null, color: "green" }],
-  } satisfies VisualizationSettings;
+  };
 
   it("reads single-value settings, skipping absent ones", () => {
     expect(
