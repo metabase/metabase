@@ -533,6 +533,8 @@
 (defmethod apply-op "move_parameter"
   [state idx {:keys [parameter_id index dashcard_id] :as op}]
   (resolve-parameter! state idx parameter_id)
+  (when (and (contains? op :index) (contains? op :dashcard_id))
+    (op-error! idx "move_parameter): pass exactly one of `index` or `dashcard_id`."))
   (cond
     (contains? op :dashcard_id)
     (do (resolve-dashcard! state idx dashcard_id)

@@ -555,6 +555,18 @@
                                 {})]
       (is (= ["c" "a" "b"] (mapv :id parameters))))))
 
+(deftest move-parameter-requires-exactly-one-target-test
+  (testing "GHY-4147: move_parameter with both index and dashcard_id is a teaching error rather than
+            a silent win for dashcard_id — the op documents \"exactly one\", and add_link refuses the
+            same both/neither case"
+    (let [current {:id 1 :tabs [] :parameters [{:id "p1"} {:id "p2"}]
+                   :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}]}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"op 0.*exactly one"
+                            (dashboard-ops/compile-ops
+                             current
+                             [{:op "move_parameter" :parameter_id "p1" :index 0 :dashcard_id 7}]
+                             {}))))))
+
 (deftest move-parameter-onto-a-card-test
   (testing "GHY-4147: move_parameter with a dashcard_id makes it an inline filter on that card"
     (let [current {:id 1 :tabs [] :parameters [{:id "p1"}]
