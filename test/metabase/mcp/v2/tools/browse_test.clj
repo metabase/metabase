@@ -512,31 +512,27 @@
 (deftest ^:parallel assemble-tables-within-budget-test
   (testing "GHY-4138: when every table fits, all are returned whole in request order"
     (let [payloads [(table-payload 1 2 10) (table-payload 2 2 10) (table-payload 3 2 10)]]
-      (is (= {:tables payloads :omitted []}
+      (is (= {:tables payloads}
              (#'tools.browse/assemble-tables payloads nil))))))
 
 (deftest ^:parallel assemble-tables-omits-whole-tables-past-budget-test
-  (testing "GHY-4138: tables past the byte budget are named under :omitted, never silently cut"
+  (testing "GHY-4138: tables past the byte budget are dropped whole, and the tables kept are a
+            prefix of the request — the caller names the dropped ones from its own source rows"
     ;; ~62KB each: the first fits the 100KB budget, the second would blow it.
     (let [payloads (mapv #(table-payload % 60 1000) [1 2 3])
-          {:keys [tables omitted]} (#'tools.browse/assemble-tables payloads nil)]
+          {:keys [tables]} (#'tools.browse/assemble-tables payloads nil)]
       (is (= [1] (map :id tables)))
       (testing "the table that made the cut is whole, not truncated"
         (is (= 60 (count (:fields (first tables)))))
         (is (not (contains? (first tables) :total_fields))
-            "a whole table carries no slice bookkeeping"))
-      (testing "omitted tables are identified by name and steered to a separate call"
-        (is (= [{:id 2 :name "table_2" :reason "response budget — request in a separate call"}
-                {:id 3 :name "table_3" :reason "response budget — request in a separate call"}]
-               omitted))))))
+            "a whole table carries no slice bookkeeping")))))
 
 (deftest ^:parallel assemble-tables-oversized-first-table-slices-test
   (testing "GHY-4138: one table larger than the whole budget degrades to a field slice, not an error"
     (let [payloads [(table-payload 1 200 1000)]
-          {:keys [tables omitted message]} (#'tools.browse/assemble-tables payloads nil)
+          {:keys [tables message]} (#'tools.browse/assemble-tables payloads nil)
           table    (first tables)]
       (is (= 1 (count tables)))
-      (is (= [] omitted))
       (is (= 200 (:total_fields table)))
       (is (= 0 (:offset table)))
       (testing "the slice is cut to fit and steers to the next offset"
@@ -554,8 +550,8 @@
 
 (deftest ^:parallel assemble-tables-empty-test
   (testing "GHY-4138: no readable tables yields an empty result rather than entering the slice path"
-    (is (= {:tables [] :omitted []} (#'tools.browse/assemble-tables [] nil)))
-    (is (= {:tables [] :omitted []} (#'tools.browse/assemble-tables [] 0)))))
+    (is (= {:tables []} (#'tools.browse/assemble-tables [] nil)))
+    (is (= {:tables []} (#'tools.browse/assemble-tables [] 0)))))
 
 (deftest ^:parallel slice-table-payload-always-advances-test
   (testing "GHY-4138: a single field larger than the whole budget is still returned alone, so paging
@@ -585,6 +581,44 @@
       (is (= ["field_2"] (map :name (:fields payload))))
       (is (= 3 (:total_fields payload)))
       (is (nil? message)))))
+
+(deftest get-fields-omitted-entries-name-tables-under-field-projection-test
+  (testing "GHY-4138: a budget-omitted table is named even when the `fields` projection drops `id`
+            and `name` from the payload — without a name the advice to request it separately is
+            unactionable"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {t1 :id}    {:db_id db-id :schema "public" :name "browse_budget_a"}
+                   :model/Table    {t2 :id}    {:db_id db-id :schema "public" :name "browse_budget_b"}]
+      ;; ~84KB per table once projected down to `fields.name`: the first fits the budget whole, the
+      ;; second is dropped.
+      (t2/insert! :model/Field
+                  (for [table-id [t1 t2]
+                        i        (range 400)]
+                    {:table_id      table-id
+                     :name          (str "col_" i "_" (apply str (repeat 190 \x)))
+                     :base_type     :type/Text
+                     :database_type "TEXT"
+                     :position      i}))
+      (mt/with-full-data-perms-for-all-users!
+        (mt/with-test-user :rasta
+          (let [text     (-> (tools.browse/browse-data
+                              {:action "get_fields" :table_ids [t1 t2] :fields ["fields.name"]}
+                              {})
+                             :content first :text)
+                envelope (json/decode+kw (first (str/split-lines text)))]
+            (is (= 1 (count (:tables envelope)))
+                "the byte budget dropped the second table")
+            (is (= [{:id     t2
+                     :name   "browse_budget_b"
+                     :reason "response budget — request in a separate call"}]
+                   (:omitted envelope)))
+            (testing "and the identifiers survive serialization rather than rendering as JSON null"
+              (is (not (str/includes? text "\"id\":null")))
+              (is (not (str/includes? text "\"name\":null")))))
+          (testing "the concise projection, which keeps id and name in the payload, names them too"
+            (let [[envelope] (call! {:action "get_fields" :table_ids [t1 t2]})]
+              (is (= [t2] (map :id (:omitted envelope))))
+              (is (= ["browse_budget_b"] (map :name (:omitted envelope)))))))))))
 
 ;;; ------------------------------------------ Browsable-database filter -------------------------------------------
 

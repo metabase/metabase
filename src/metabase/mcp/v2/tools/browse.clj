@@ -388,12 +388,6 @@
   ^long [x]
   (alength (.getBytes ^String (json/encode x) "UTF-8")))
 
-(defn- budget-omitted
-  [payload]
-  {:id     (:id payload)
-   :name   (:name payload)
-   :reason "response budget — request in a separate call"})
-
 (defn- slice-table-payload
   "The explicit single-table slice: fields in position order from `offset`, as many as fit the
    budget (never fewer than one, so paging always advances), plus counts and — when fields
@@ -417,26 +411,26 @@
      :message message}))
 
 (defn- assemble-tables
-  "Apply the byte budget to `payloads` (in request order): whole tables until the budget runs
-   out, then the rest under `:omitted`. When the first table alone exceeds the budget — or the
-   caller passed an explicit `offset` — it is returned as a single-table slice instead."
+  "Apply the byte budget to `payloads` (in request order): whole tables until the budget runs out.
+   When the first table alone exceeds the budget — or the caller passed an explicit `offset` — it
+   is returned as a single-table slice instead. Returns `{:tables [...] :message ...}`; `:tables`
+   is always a prefix of `payloads`, so the caller names what was dropped from its own source rows."
   [payloads offset]
   (if (and (seq payloads)
            (or (some? offset)
                (> (byte-size (first payloads)) get-fields-byte-budget)))
     (let [{:keys [payload message]} (slice-table-payload (first payloads) (or offset 0))]
       {:tables  [payload]
-       :omitted (mapv budget-omitted (rest payloads))
        :message message})
     (loop [[payload & more :as remaining] payloads
            used   0
            tables []]
       (if (empty? remaining)
-        {:tables tables :omitted []}
+        {:tables tables}
         (let [size (byte-size payload)]
           (if (<= (+ used size) get-fields-byte-budget)
             (recur more (+ used size) (conj tables payload))
-            {:tables tables :omitted (mapv budget-omitted remaining)}))))))
+            {:tables tables}))))))
 
 (defn- get-fields
   [{:keys [table_ids include_hidden offset] :as args}]
@@ -471,12 +465,19 @@
           rows      (cond-> rows detailed? attach-inline-values)
           related   (related-tables-by-requested-table rows)
           payloads  (mapv #(project-table args related %) rows)
-          {:keys [tables omitted message]} (assemble-tables payloads offset)
+          {:keys [tables message]} (assemble-tables payloads offset)
+          ;; `tables` is a prefix of `payloads`, which is index-aligned with `rows`, so the tables
+          ;; the budget dropped are the matching suffix of `rows` — named from the source rows
+          ;; because a `fields` projection can strip `:id`/`:name` off the payloads.
           omitted   (into (mapv (fn [id]
                                   {:id     id
                                    :reason "not found — it may not exist, or you may not have access to it"})
                                 missing)
-                          omitted)
+                          (map (fn [row]
+                                 {:id     (:id row)
+                                  :name   (:name row)
+                                  :reason "response budget — request in a separate call"}))
+                          (drop (count tables) rows))
           body      (cond-> {:tables tables}
                       (seq omitted) (assoc :omitted omitted))]
       (common/success-content (cond-> (json/encode body)
