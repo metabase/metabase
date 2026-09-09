@@ -42,14 +42,8 @@ export const canAccessSettings = createSelector(
   (isAdmin, canAccessSettings) => isAdmin || canAccessSettings,
 );
 
-export const canAccessDataModel = createSelector(
-  [
-    getUserIsAdmin,
-    (state) =>
-      PLUGIN_APPLICATION_PERMISSIONS_SELECTORS.canAccessDataModel(state),
-  ],
-  (isAdmin, canAccessDataModel) => isAdmin || canAccessDataModel,
-);
+export const canAccessDataModel = (state: State): boolean =>
+  PLUGIN_APPLICATION_PERMISSIONS_SELECTORS.canAccessDataModel(state);
 
 export const getUserAttributes = createSelector(
   [getUser],

@@ -1,8 +1,10 @@
 import { definePluginSlot } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 
+import { getUserIsAdmin } from "./selectors";
+
 const getDefaultApplicationPermissionsSelectors = () => ({
-  canAccessDataModel: (_state: State) => false,
+  canAccessDataModel: (state: State) => getUserIsAdmin(state),
   canAccessSettings: (_state: State) => false,
   canManageSubscriptions: (_state: State) => true,
 });
