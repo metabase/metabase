@@ -22,6 +22,7 @@
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
@@ -351,6 +352,23 @@
                                    field)))))
             tables))))
 
+(defn- withhold-restricted-fingerprints
+  "Strips `:fingerprint` from the fields of every table in `tables` whose current user's row access
+   is narrowed by sandboxing, connection impersonation, or database routing. Fingerprints are
+   computed at sync time across every row of the table, so `:min`/`:max`/`:earliest`/`:latest` are
+   literal values from rows the user cannot see and `:global :distinct-count` is whole-table
+   cardinality — there is no safe subset, so the whole map goes. One batched, fail-closed
+   restriction lookup for the request."
+  [tables]
+  (let [restricted (metabot.perms/row-restricted-table-ids (into #{} (keep :id) tables))]
+    (if (empty? restricted)
+      tables
+      (mapv (fn [table]
+              (cond-> table
+                (contains? restricted (:id table))
+                (update :fields (partial mapv #(dissoc % :fingerprint)))))
+            tables))))
+
 (defn- compact
   [m]
   (into {} (remove (comp nil? val)) m))
@@ -462,7 +480,9 @@
           missing   (into (vec missing) (comp (remove browsable?) (map :id)) fetched)
           detailed? (or (contains? args :fields)
                         (= :detailed (common/response-format args)))
-          rows      (cond-> rows detailed? attach-inline-values)
+          rows      (cond-> rows
+                      detailed? attach-inline-values
+                      detailed? withhold-restricted-fingerprints)
           related   (related-tables-by-requested-table rows)
           payloads  (mapv #(project-table args related %) rows)
           {:keys [tables message]} (assemble-tables payloads offset)
