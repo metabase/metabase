@@ -96,6 +96,13 @@
           result-metadata (:result_metadata card-updates)]
       (query-perms/check-result-metadata-data-perms database-id result-metadata))))
 
+(defn check-allowed-to-run-query!
+  "Throw unless the current user has data permission to run `query`."
+  [query]
+  ;; Strip :query-permissions/perms first -- it is populated internally by the QP middleware, so
+  ;; any value already on the incoming query is dropped here.
+  (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms)))
+
 (defn check-allowed-to-create-card!
   "The full pre-write permission/validation stack for creating a card, mirroring `POST /api/card`.
    `card` is the create body (with `:dataset_query`, and `:collection_id` and/or `:dashboard_id`);
@@ -104,9 +111,7 @@
   [card card-type]
   (let [query (:dataset_query card)]
     (check-card-can-be-saved! query card-type)
-    ;; Strip :query-permissions/perms first -- it is populated internally by the QP middleware, so
-    ;; any value already on the incoming query is dropped here.
-    (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
+    (check-allowed-to-run-query! query)
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
     (api/create-check :model/Card {:collection_id (actual-collection-id card)})
     (check-no-save-cycle! ::no-id query)))

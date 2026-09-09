@@ -443,6 +443,40 @@
             (is (not (re-find #"not in the query results" text))
                 "the column-name teaching error must not be reachable without run permission on the query")))))))
 
+(deftest update-column-metadata-only-checks-run-permission-test
+  (testing "GHY-4352: a column_metadata-only update still infers result metadata over the *stored* query, so
+            it must check run permission on that query. `check-allowed-to-update-card!` checks the query
+            only when the query itself changes, so with no `query` in the patch nothing checks it, and the
+            inference teaching error names the query's real columns to a caller who cannot run it."
+    (mt/with-temp [:model/Card card {:name "Mine" :creator_id (mt/user->id :rasta) :dataset_query (orders-query)}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                  {:method          "update"
+                                   :id              (:id card)
+                                   :column_metadata [{:name "NOT_A_COLUMN" :description "guess"}]})
+                text   (-> result :content first :text)]
+            (is (:isError result))
+            (is (not (re-find #"not in the query results" text))
+                "the column-name teaching error must not be reachable without run permission on the query")))))))
+
+(deftest update-column-metadata-only-writes-nothing-without-run-permission-test
+  (testing "GHY-4352: the same update with a column name that really is in the query is refused too, and
+            writes no result_metadata — run permission on the query is what REST checks before accepting
+            result_metadata, and annotating a card is not a way around it."
+    (mt/with-temp [:model/Card card {:name "Mine" :creator_id (mt/user->id :rasta) :dataset_query (orders-query)}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (:isError (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                   {:method          "update"
+                                    :id              (:id card)
+                                    :column_metadata [{:name "TOTAL" :description "the total"}]})))))
+      ;; the card is born with inferred result_metadata (the model's insert hook populates it), so the
+      ;; assertion is that the caller's annotation never landed, not that the column is empty.
+      (is (not-any? #(= "the total" (:description %))
+                    (t2/select-one-fn :result_metadata :model/Card :id (:id card)))
+          "a refused update leaves the card's stored column annotations untouched"))))
+
 (deftest update-archive-restore-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card card {:archived false :dataset_query (orders-query)}]

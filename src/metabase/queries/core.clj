@@ -33,6 +33,7 @@
  [metabase.queries.card-write-checks
   actual-collection-id
   check-allowed-to-create-card!
+  check-allowed-to-run-query!
   check-allowed-to-update-card!
   check-card-can-be-saved!
   check-no-save-cycle!]

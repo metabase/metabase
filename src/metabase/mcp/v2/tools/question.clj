@@ -426,10 +426,15 @@
     (when-some [query (:dataset_query card-updates)]
       (queries/check-no-save-cycle! card-id query))
     (queries/check-allowed-to-update-card! card-before card-updates)
-    ;; Result-metadata inference runs the query's preprocess over whatever tables and cards the new
-    ;; query names, and its teaching errors name the columns it found — so it must come AFTER the
-    ;; permission check above, or a caller could learn the columns of a table (or another user's
-    ;; card) they cannot run, one guessed name at a time.
+    ;; Result-metadata inference runs the query's preprocess over whatever tables and cards the query
+    ;; names, and its teaching errors name the columns it found — so it must come AFTER a permission
+    ;; check on that query, or a caller could learn the columns of a table (or another user's card)
+    ;; they cannot run, one guessed name at a time. The stack above only checks the query when the
+    ;; query itself changes, so a column_metadata-only update needs this check of its own. It also
+    ;; covers what `check-update-result-metadata-data-perms` checks on the REST body: the overrides
+    ;; only annotate columns the inference produced, so the metadata names no table the query doesn't.
+    (when (seq column_metadata)
+      (queries/check-allowed-to-run-query! (or new-query (:dataset_query card-before))))
     (let [card-updates (cond-> card-updates
                          (seq column_metadata) (assoc :result_metadata
                                                       (resolve-result-metadata
