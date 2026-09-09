@@ -78,12 +78,12 @@ describe("scenarios > embedding-sdk > popovers", () => {
 
     getSdkRoot().within(() => {
       cy.log("click on the legend overflow");
-      cy.findByText("And 39 more").click();
+      cy.findByText(/^\+ \d+ more$/).click();
     });
 
     cy.log("check that the popover is showing chart legends");
-    H.popover().findByText("IA").should("be.visible");
-    H.popover().findByText("ID").should("be.visible");
+    H.popover().findByText("WV").should("be.visible");
+    H.popover().findByText("WY").should("be.visible");
   });
 
   it("should prevent closing the ChartNestedSettingsSeriesSingle popover when clicking it", () => {

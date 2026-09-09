@@ -238,6 +238,8 @@ function CartesianChartInner(props: VisualizationProps) {
         hovered={hovered}
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
+        fontFamily={renderingContext.fontFamily}
+        measureText={renderingContext.measureText}
         onSelectSeries={onSelectSeries}
         onToggleSeriesVisibility={
           canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
@@ -245,6 +247,7 @@ function CartesianChartInner(props: VisualizationProps) {
         onHoverChange={onHoverChange}
         width={outerWidth}
         height={outerHeight}
+        chartHeight={chartSize.height || undefined}
       >
         <ResponsiveEChartsRenderer
           ref={containerRef}

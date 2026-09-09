@@ -215,10 +215,13 @@ function BoxPlotInner({
         hovered={hovered}
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
+        fontFamily={renderingContext.fontFamily}
+        measureText={renderingContext.measureText}
         onToggleSeriesVisibility={handleToggleSeriesVisibility}
         onHoverChange={onHoverChange}
         width={width}
         height={height}
+        chartHeight={chartSize.height || undefined}
       >
         <ResponsiveEChartsRenderer
           key={hasValidOption ? "chart" : "measuring"}

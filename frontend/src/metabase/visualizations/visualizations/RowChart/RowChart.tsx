@@ -275,6 +275,8 @@ const RowChartVisualization = ({
         onHoverChange={onHoverChange}
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
+        fontFamily={fontFamily}
+        measureText={textMeasurer}
         onSelectSeries={handleSelectSeries}
       >
         <RowChartRenderer
