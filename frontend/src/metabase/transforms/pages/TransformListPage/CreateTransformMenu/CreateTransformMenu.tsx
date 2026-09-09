@@ -5,13 +5,8 @@ import { useListDatabasesQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import {
-  useMetabotAgent,
-  useUserMetabotPermissions,
-} from "metabase/metabot/hooks";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
-import { useSetting } from "metabase/settings";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
@@ -42,16 +37,6 @@ export const CreateTransformMenu = () => {
   const shouldShowPythonScriptOption =
     hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
   const { remoteSyncReadOnly } = useTransformPermissions();
-
-  const metabot = useMetabotAgent("omnibot");
-  const metabotName = useSetting("metabot-name");
-  const { hasMetabotAccess } = useUserMetabotPermissions();
-
-  const handleMetabotClick = () => {
-    trackTransformCreate({ creationType: "metabot" });
-    metabot.setPrompt(t`Create a transform that `);
-    metabot.setVisible(true);
-  };
 
   const handlePythonClick = () => {
     navigate(Urls.newPythonTransform()); // Route will show upsell modal if feature is not enabled
@@ -98,14 +83,6 @@ export const CreateTransformMenu = () => {
           ) : (
             <>
               <Menu.Label>{t`Create your transform with…`}</Menu.Label>
-              {hasMetabotAccess && (
-                <Menu.Item
-                  leftSection={<Icon name="metabot" />}
-                  onClick={handleMetabotClick}
-                >
-                  {metabotName}
-                </Menu.Item>
-              )}
               <Menu.Item
                 leftSection={<Icon name="notebook" />}
                 onClick={() => {

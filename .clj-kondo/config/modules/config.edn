@@ -1444,7 +1444,6 @@
               task
               timeline
               transforms
-              transforms-base
               util
               warehouses}
    :model-exports #{:model/AiUsageLog
@@ -3359,10 +3358,7 @@
 
   enterprise/dependencies
   {:team "Graphy"
-   :api  #{metabase-enterprise.dependencies.api
-           metabase-enterprise.dependencies.core
-           metabase-enterprise.dependencies.init
-           metabase-enterprise.dependencies.models.dependency}
+   :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
    :uses #{api
            app-db
            collections
@@ -3567,7 +3563,6 @@
               metabot}
    :uses    #{api
               lib
-              lib-be
               llm
               metabot
               models
@@ -3576,14 +3571,8 @@
               settings
               task
               util
-              enterprise/cloud-add-ons
-              enterprise/dependencies
-              enterprise/transforms-python}
-   :model-imports #{:model/AiUsageLog
-                    :model/Card
-                    :model/PermissionsGroup
-                    :model/PermissionsGroupMembership
-                    :model/Transform}}
+              enterprise/cloud-add-ons}
+   :model-imports #{:model/AiUsageLog :model/PermissionsGroup :model/PermissionsGroupMembership}}
 
   enterprise/metabot-analytics
   {:team "Metabot"

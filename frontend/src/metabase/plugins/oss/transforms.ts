@@ -27,15 +27,11 @@ export type PythonTransformEditorUiOptions = {
 
 export type PythonTransformEditorProps = {
   source: PythonTransformSourceDraft;
-  proposedSource?: PythonTransformSourceDraft;
   uiOptions?: PythonTransformEditorUiOptions;
   isEditMode?: boolean;
   transform?: Transform;
   readOnly?: boolean;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
-  onAcceptProposed: () => void;
-  onRejectProposed: () => void;
-  onDryRunErrorChange?: (error: string | undefined) => void;
   onRunTransform?: (result: any) => void;
   onRun?: () => void;
 };

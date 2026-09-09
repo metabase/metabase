@@ -348,7 +348,6 @@ export const resetReactionState = (
   match(agentId)
     .with("omnibot", () => {
       state.reactions.navigateToPath = null;
-      state.reactions.suggestedTransforms = [];
     })
     .with("sql", () => {
       state.reactions.suggestedCodeEdits = {};
@@ -466,8 +465,6 @@ export const getMetabotInitialState = (): MetabotState => {
     reactions: {
       navigateToPath: null,
       suggestedCodeEdits: {},
-      // NOTE: suggestedTransforms should be folded into suggestedCodeEdits eventually
-      suggestedTransforms: [],
     },
     titlePollingConversationIds: [],
     debugMode: false,

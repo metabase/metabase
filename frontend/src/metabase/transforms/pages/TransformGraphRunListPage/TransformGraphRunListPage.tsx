@@ -137,7 +137,7 @@ export function TransformGraphRunListPage() {
       data-testid="transform-graph-run-list"
     >
       <Stack className={S.main} flex={1} px="3.5rem" pb="lg" gap={0}>
-        <TransformsHeader showMetabotButton />
+        <TransformsHeader />
         {isLoading || error != null ? (
           <Center h="100%">
             <LoadingAndErrorWrapper loading={isLoading} error={error} />

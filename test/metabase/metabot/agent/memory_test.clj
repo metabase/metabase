@@ -17,7 +17,7 @@
       (is (= [] (:steps-taken mem)))))
   (testing "defaults the working state when nil"
     (let [mem (memory/initialize [{:role :user :content "Hello"}] nil)]
-      (is (= {:queries {} :charts {} :todos [] :transforms {} :link-registry {}}
+      (is (= {:queries {} :charts {} :todos [] :link-registry {}}
              (memory/get-state mem))))))
 
 (deftest ^:parallel initialize-normalizes-state-registry-keys-test
@@ -25,21 +25,18 @@
         chart          {:chart_id              "c1"
                         :queries               [query]
                         :visualization_settings {:chart_type :bar}}
-        transform      {:name "Transform"}
         chart-config   {:display_type "bar"}
         current-query  {:database 2}
         mem            (memory/initialize
                         []
                         {:queries       {:q1 query, :current current-query, "current" {:database 3}}
                          :charts        {:c1 chart}
-                         :transforms    {:t1 transform}
                          :chart-configs {:cc1 chart-config}
                          :link-registry {(keyword "question/123") "metabase://question/123"}})
         state          (memory/get-state mem)]
     (testing "keywordized entity IDs are restored to strings without changing nested payload keys"
       (is (= query (memory/find-query mem "q1")))
       (is (= chart (memory/find-chart mem "c1")))
-      (is (= transform (memory/find-transform mem "t1")))
       (is (= {"cc1" chart-config} (:chart-configs state)))
       (is (= "preserved" (get-in state [:queries "q1" :nested/value]))))
     (testing "the string-keyed current-context entry wins if both key representations are present"

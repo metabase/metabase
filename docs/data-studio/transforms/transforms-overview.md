@@ -124,8 +124,6 @@ To create a transform:
 
    If you're writing a SQL transform, variables _must_ be wrapped in optional blocks (`[[ ]]`), or given a default value. See [variables in SQL transforms](query-transforms.md#variables-in-sql-transforms) for more details.
 
-   If [Metabot is enabled](../../ai/settings.md#enable-ai-features), you can [use Metabot](#use-metabot-to-generate-code-for-transforms) to generate code for your transform.
-
 6. Click **Save** in the top right corner and fill out the transform information:
 
    - **Name** (required): The name of the transform.
@@ -137,28 +135,6 @@ To create a transform:
      ![Transform settings](../images/transform-settings.png)
 
 7. Optionally, once the transform is saved, assign tags to your transform. Tags are used by [jobs](./jobs-and-runs.md) to run transforms on schedule.
-
-## Use Metabot to generate code for transforms
-
-> Code generation for transforms requires [AI features](../../ai/settings.md#enable-ai-features).
-
-You can ask Metabot to generate a new SQL or Python-based transform, or edit an existing transform.
-
-1. Go to **Data studio > Transforms**. If you want Metabot to edit an existing transform, navigate to the transform.
-2. While in Transforms view, click on the Metabot icon in top right.
-3. Describe the transform that you'd like Metabot to write.
-
-   You can specify which kind of transform you want (Python or SQL) and @-mention specific data sources to help Metabot understand your request.
-
-   ![Create a new transform with codegen](../images/transform-codegen.png)
-
-4. Metabot will create a to-do list for itself that will show its thinking process, and then work through the list.
-
-5. If you asked Metabot to create a new transform, review the code that Metabot offers in the chat window and click on "Create" under the code snippet.
-
-   ![Create snippet](../images/create-transform.png)
-
-You can continue working with Metabot to refine your code. Metabot will suggest code changes, and give you the option of accepting or rejecting the changes.
 
 ## Edit a transform
 
@@ -182,7 +158,7 @@ To edit the transform's query or script:
 2. Find the transform you'd like to edit and click on **Edit definition** above the transform definition.
 3. Edit the query or script.
 
-   See [query-based transforms](query-transforms.md) and [Python transforms](python-transforms.md) for more information. You can [use Metabot](#use-metabot-to-generate-code-for-transforms) to help edit your transform.
+   See [query-based transforms](query-transforms.md) and [Python transforms](python-transforms.md) for more information.
 
 Once you change the transform's query or script, the next transform run (manual or scheduled) will use the updated query and write the results into the target table. If you've changed the table's columns, and you have questions that query the table, they might break. For example, if your new transform query no longer includes a column that a downstream question was relying on, that question will break.
 

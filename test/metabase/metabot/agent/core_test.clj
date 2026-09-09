@@ -1091,10 +1091,6 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :no})))
         (is (nil? (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :yes}))))
-      (testing "transforms_codegen profile"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
-                              (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :no})))
-        (is (nil? (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :yes}))))
       (testing "document-generate-content profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :no})))

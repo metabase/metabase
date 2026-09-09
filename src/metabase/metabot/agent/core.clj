@@ -154,7 +154,7 @@
 
 (mr/def ::profile-id
   "Profile identifier keyword."
-  [:enum :embedding_next :internal :transforms_codegen :sql :nlq :document-generate-content :slackbot :explorations])
+  [:enum :embedding_next :internal :sql :nlq :document-generate-content :slackbot :explorations])
 
 (mr/def ::tracking-opts
   "Options for snowplow and prometheus analytics tracking."
@@ -356,17 +356,9 @@
 
 (defn- extract-query-from-context-item
   "Extract [query-id query] from viewing context item."
-  [{:keys [id type query source] :as _item}]
-  (let [t (normalize-type type)]
-    (cond
-      (and (#{"adhoc" "native"} t) (map? query) id)
-      [(str id) query]
-
-      (and (= "transform" t)
-           (= "query" (normalize-type (:type source)))
-           (map? (:query source))
-           id)
-      [(str id) (:query source)])))
+  [{:keys [id type query]}]
+  (when (and (#{"adhoc" "native"} (normalize-type type)) (map? query) id)
+    [(str id) query]))
 
 (defn- seed-state
   "Seed state with queries from viewing context."
@@ -448,7 +440,6 @@
   to use that profile. Profiles not listed here have no profile-level permission gate."
   {:sql                       :permission/metabot-sql-generation
    :nlq                       :permission/metabot-nlq
-   :transforms_codegen        :permission/metabot-sql-generation
    :document-generate-content :permission/metabot-other-tools
    :explorations              :permission/metabot-nlq})
 

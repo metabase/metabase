@@ -6,8 +6,6 @@
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as tools]
-   [metabase.metabot.tools.transforms :as tools.transforms]
-   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
 
 (deftest get-profile-test
@@ -36,15 +34,6 @@
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "create_sql_query"))
         (is (contains? (tool-names profile) "create_chart"))))
-    (testing "retrieves transforms_codegen profile"
-      (let [profile (profiles/get-profile :transforms_codegen)]
-        (is (some? profile))
-        (is (= :transforms_codegen (:name profile)))
-        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 30 (:max-iterations profile)))
-        (is (vector? (:tools profile)))
-        (is (contains? (tool-names profile) "search"))
-        (is (contains? (tool-names profile) "list_available_fields"))))
     (testing "retrieves sql profile"
       (let [profile (profiles/get-profile :sql)]
         (is (=? {:name :sql
@@ -81,7 +70,7 @@
     (testing "returns nil for unknown profile"
       (is (nil? (profiles/get-profile :unknown-profile))))
     (testing "all profiles have required keys"
-      (doseq [profile-id [:embedding_next :internal :transforms_codegen :sql :nlq :slackbot]]
+      (doseq [profile-id [:embedding_next :internal :sql :nlq :slackbot]]
         (let [profile (profiles/get-profile profile-id)]
           (is (= profile-id (:name profile)))
           (is (contains? profile :model))
@@ -183,52 +172,6 @@
             (is (contains? tools "search")
                 "the general-search fallback keeps the agent from having zero discovery tools")
             (is (contains? tools "construct_notebook_query"))))))))
-
-(deftest transform-feature-capabilities-test
-  (let [orig-has-feature (mt/original-fn #'premium-features/has-feature?)
-        transform-tools #{#'tools.transforms/write-transform-sql-tool
-                          #'tools.transforms/write-transform-python-tool}]
-    (testing "Available with features present"
-      (mt/with-dynamic-fn-redefs [premium-features/has-feature? (fn [feat]
-                                                                  (if (#{:transforms-basic :transforms-python} feat)
-                                                                    true
-                                                                    (orig-has-feature feat)))]
-        (is (= transform-tools
-               (set (#'profiles/filter-by-capabilities transform-tools
-                                                       ["permission:write_transforms"]))))))
-    (testing "Not available with missing features"
-      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)
-                                  premium-features/has-feature? (fn [feat]
-                                                                  (if (#{:transforms-basic :transforms-python} feat)
-                                                                    false
-                                                                    (orig-has-feature feat)))]
-        (is (= #{}
-               (set (#'profiles/filter-by-capabilities transform-tools
-                                                       ["permission:write_transforms"]))))))
-    (testing "Sql tool available on self hosted instances"
-      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)
-                                  premium-features/has-feature? (fn [feat]
-                                                                  (if (#{:transforms-basic :transforms-python} feat)
-                                                                    false
-                                                                    (orig-has-feature feat)))]
-        (is (= #{#'tools.transforms/write-transform-sql-tool}
-               (set (#'profiles/filter-by-capabilities transform-tools
-                                                       ["permission:write_transforms"]))))))
-    (testing "Python transform tools not available when basic transforms are not available"
-      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)
-                                  premium-features/has-feature? (fn [feat]
-                                                                  (cond
-                                                                    (#{:transforms-basic} feat)
-                                                                    false
-
-                                                                    (#{:transforms-python} feat)
-                                                                    true
-
-                                                                    :else
-                                                                    (orig-has-feature feat)))]
-        (is (= #{}
-               (set (#'profiles/filter-by-capabilities transform-tools
-                                                       ["permission:write_transforms"]))))))))
 
 (deftest terminal-tools-test
   (testing "the :sql profile marks its SQL write tools AND clarification terminal"

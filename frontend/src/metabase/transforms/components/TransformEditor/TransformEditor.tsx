@@ -21,12 +21,9 @@ export type TransformEditorProps = {
   source: QueryTransformSource;
   uiState: QueryEditorUiState;
   uiOptions?: QueryEditorUiOptions;
-  proposedSource: QueryTransformSource | undefined;
   databases: Database[];
   onChangeSource: (source: QueryTransformSource) => void;
   onChangeUiState: (state: QueryEditorUiState) => void;
-  onAcceptProposed: () => void;
-  onRejectProposed: () => void;
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onBlur?: () => void;
   transform?: Transform;
@@ -36,14 +33,11 @@ export type TransformEditorProps = {
 
 export function TransformEditor({
   source,
-  proposedSource,
   databases,
   uiState,
   uiOptions,
   onChangeSource,
   onChangeUiState,
-  onAcceptProposed,
-  onRejectProposed,
   onRunQueryStart,
   onBlur,
   transform,
@@ -55,16 +49,6 @@ export function TransformEditor({
     () =>
       Lib.fromJsQuery(getMetadataProvider(source.query.database), source.query),
     [source, getMetadataProvider],
-  );
-  const proposedQuery = useMemo(
-    () =>
-      proposedSource
-        ? Lib.fromJsQuery(
-            getMetadataProvider(proposedSource.query.database),
-            proposedSource.query,
-          )
-        : undefined,
-    [proposedSource, getMetadataProvider],
   );
   const mergedUiOptions = useMemo(
     () => ({ ...getEditorOptions(databases, !isEditMode), ...uiOptions }),
@@ -88,11 +72,8 @@ export function TransformEditor({
       query={query}
       uiState={uiState}
       uiOptions={mergedUiOptions}
-      proposedQuery={proposedQuery}
       onChangeQuery={handleQueryChange}
       onChangeUiState={onChangeUiState}
-      onAcceptProposed={onAcceptProposed}
-      onRejectProposed={onRejectProposed}
       onRunQueryStart={onRunQueryStart}
       onBlur={onBlur}
       topBarInnerContent={

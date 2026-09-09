@@ -7,8 +7,6 @@
    [clojure.string :as str]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.metabot.metadata-perms :as metabot.perms]
-   [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.resources :as resources-tools]
@@ -276,145 +274,6 @@
                                                (map format-entity)
                                                te/lines)))))
 
-(def ^:private exported-table-id-keys
-  [:source-table :source_table])
-
-(def ^:private exported-card-id-keys
-  [:source-card :source_card :card-id :card_id])
-
-(def ^:private exported-field-id-keys
-  [:source-field :metabase.models.visualization-settings/param-mapping-source])
-
-(defn- exported-entity-ids
-  [normalized]
-  (let [ids (fn [ks node] (into #{} (comp (map #(get node %)) (filter pos-int?)) ks))]
-    (reduce
-     (fn [acc node]
-       (cond
-         (map? node)
-         (-> acc
-             (update :table into (ids exported-table-id-keys node))
-             (update :card  into (ids exported-card-id-keys node))
-             (update :field into (ids exported-field-id-keys node)))
-
-         (and (vector? node) (not (map-entry? node)))
-         (case (keyword (first node))
-           (:field :field-id) (update acc :field into (filter pos-int?) [(nth node 1 nil) (nth node 2 nil)])
-           :metric            (update acc :card into (filter pos-int?) [(nth node 1 nil) (nth node 2 nil)])
-           acc)
-
-         :else acc))
-     {:table #{} :card #{} :field #{}}
-     (tree-seq coll? seq normalized))))
-
-(defn- native-stage?
-  [normalized]
-  (boolean (some #(and (map? %) (= :mbql.stage/native (:lib/type %)))
-                 (tree-seq coll? seq normalized))))
-
-(defn- native-sql-table-ids
-  [normalized]
-  (try
-    (into #{}
-          (comp (keep #(or (:table-id %) (:id %))) (filter pos-int?))
-          (:tables (query-analyzer/tables-for-native normalized :all-drivers-trusted? true)))
-    (catch Exception e
-      (log/debugf "Could not analyze a viewing-context native query for permission gating: %s"
-                  (ex-message e))
-      #{})))
-
-(defn- sandbox-visible-fields?
-  [field-id->table-id]
-  (let [restricted (metabot.perms/sandbox-restricted-fields (set (vals field-id->table-id)))]
-    (every? (fn [[field-id table-id]]
-              (if-let [allowed (get restricted table-id)]
-                (contains? allowed field-id)
-                true))
-            field-id->table-id)))
-
-(defn- queryable-normalized-query
-  [query]
-  (let [raw-database-id (and (map? query) (:database query))]
-    (when (pos-int? raw-database-id)
-      (try
-        (let [normalized  (lib-be/normalize-query query)
-              database-id (:database normalized)]
-          (when (and (pos-int? database-id)
-                     (mi/can-query? :model/Database database-id))
-            (let [{:keys [table card field]} (exported-entity-ids normalized)
-                  field-table (metabot.perms/field-id->table-id field)
-                  table-ids   (cond-> (into (set table) (vals field-table))
-                                (native-stage? normalized) (into (native-sql-table-ids normalized)))]
-              (when (and (= table-ids (metabot.perms/queryable-table-ids table-ids))
-                         (sandbox-visible-fields? field-table)
-                         (every? #(mi/can-read? :model/Card %) card))
-                [normalized (lib-be/application-database-metadata-provider database-id)]))))
-        (catch Exception e
-          (log/debugf "Omitting a viewing-context query that could not be permission-checked: %s"
-                      (ex-message e))
-          nil)))))
-
-(defn- transform-query-source-text
-  "Format a transform's `:query` source for the LLM; the rendering and fallback contract
-  lives in [[llm-shape/export-query-for-llm]]."
-  [source]
-  (let [query (:query source)]
-    (when (or (not (and (map? query) (:database query)))
-              (queryable-normalized-query query))
-      (llm-shape/export-query-for-llm query))))
-
-(defn- transform-source-type
-  [source]
-  (normalize-context-type (:type source)))
-
-(defmulti format-transform-source
-  "Format a transform source for LLM representation."
-  {:arglists '([source])}
-  transform-source-type)
-
-(defmethod format-transform-source :default
-  [source]
-  (log/warn "Unknown transform source type:" (:type source))
-  (te/lines "Transform source"
-            (te/field "Type" (transform-source-type source))
-            (te/field "Value" (u/pprint-to-str source))))
-
-(defmethod format-transform-source "query"
-  [source]
-  (let [source-text (transform-query-source-text source)]
-    (te/lines "Transform source"
-              (te/field "Type" (:type source))
-              (te/field "Query type" (:transform-source-type source))
-              (te/field "Source database ID" (or (:source-database source)
-                                                 (get-in source [:query :database])))
-              (te/field "Query" (te/code source-text (when (= "native" (normalize-context-type (:transform-source-type source)))
-                                                       "sql"))))))
-
-(defmethod format-transform-source "python"
-  [source]
-  (te/lines "Transform source"
-            (te/field "Type" (:type source))
-            (te/field "Source database ID" (:source-database source))
-            (te/field "Source tables" (some-> (:source-tables source) u/pprint-to-str))
-            (te/field "Source code" (te/code (:body source) "python"))))
-
-(defmethod format-entity "transform"
-  [item]
-  (te/lines "The user is currently viewing a Transform."
-            (te/field "Transform ID" (:id item))
-            (te/field "Transform name" (:name item))
-            (te/field "Transform description" (:description item))
-            (te/field "Source type" (:source_type item))
-            (te/field "Source" (some-> (:source item)
-                                       (assoc :transform-source-type (:source_type item))
-                                       format-transform-source))
-            (te/field "Transform error" (te/code (:error item)))
-            (te/field "Tables used" (some->> (:used_tables item)
-                                             (map format-entity)
-                                             te/lines))
-            (te/field "Created at" (:created_at item))
-            (te/field "Updated at" (:updated_at item))))
-
 (defmethod format-entity "code_editor"
   [{:keys [buffers]}]
   (if (empty? buffers)
@@ -437,7 +296,6 @@
   Handles different context types:
   - adhoc: Notebook query editor
   - native: SQL editor with schema context
-  - transform: Transform definition and code
   - code_editor: Code editor buffers with cursor position
   - table/model/question/metric/dashboard: Entity details
 
