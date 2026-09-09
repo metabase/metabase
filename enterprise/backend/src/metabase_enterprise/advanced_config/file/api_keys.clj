@@ -61,8 +61,10 @@
       (let [group-id     (case group
                            "admin"     (u/the-id (perms/admin-group))
                            "all-users" (u/the-id (perms/all-users-group)))
-            ;; this check has to run before the key is wrapped: secret-key validates the raw-key schema itself, and
-            ;; would otherwise pre-empt this more specific message (and reject an 11-character key differently)
+            ;; this check runs before the key is wrapped. secret-key carries a malli arg schema for the raw key, and
+            ;; where mu/defn instrumentation is on (dev and test) that schema would otherwise pre-empt this more
+            ;; specific message and reject an 11-character key differently. In prod that instrumentation is off, so
+            ;; this explicit check is the only validation of the key format either way.
             _            (when-not (and (<= 11 (count key) 254)
                                         (re-matches #"mb_[A-Za-z0-9+/=]+" key))
                            (throw (ex-info "Invalid API key format. Key must be between 11-254 characters and start with 'mb_'."
