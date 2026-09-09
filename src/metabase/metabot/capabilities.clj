@@ -6,6 +6,8 @@
   Some capabilities are inferred from backend state rather than sent by the frontend."
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]))
 
 (set! *warn-on-reflection* true)
@@ -28,6 +30,37 @@
         ;; Fallback: keywordize unknown strings so new capabilities degrade
         ;; gracefully without requiring a map update.
         (keyword (-> (str cap) (str/replace ":" "-") (str/replace "_" "-"))))))
+
+(def ^:private permission-capabilities
+  #{:permission-save-questions
+    :permission-write-sql-queries
+    :permission-write-transforms})
+
+(defn- granted-permission-capabilities
+  "Nil user grants everything as a crash guard -- `query-creation-capabilities` throws there under
+  EE with `:library`. Safe because `sql.common/check-native-query-access!` still refuses per
+  database."
+  []
+  (if (or api/*is-superuser?* (nil? api/*current-user-id*))
+    permission-capabilities
+    (let [{:keys [can-create-queries can-create-native-queries]}
+          (perms/query-creation-capabilities api/*current-user-id*)]
+      (cond-> #{}
+        can-create-queries        (conj :permission-save-questions)
+        can-create-native-queries (conj :permission-write-sql-queries)
+        api/*is-data-analyst?*    (conj :permission-write-transforms)))))
+
+(defn enforce-permissions
+  "Drop every client-claimed `permission:*` capability the current user has not been granted."
+  [capabilities]
+  (if (empty? capabilities)
+    capabilities
+    (let [granted (granted-permission-capabilities)]
+      (into #{}
+            (remove #(let [cap (capability->keyword %)]
+                       (and (contains? permission-capabilities cap)
+                            (not (contains? granted cap)))))
+            capabilities))))
 
 (defn- feature-capabilities
   "Return the set of capabilities inferred from BE state rather than sent from the FE.

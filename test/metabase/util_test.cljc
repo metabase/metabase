@@ -716,3 +716,22 @@
       nil    []
       \c     "abc"
       [:b 2] {:a 1 :b 2})))
+
+#?(:clj
+   (deftest https-state-test
+     (testing "a proxy that states the scheme decides it"
+       (is (= :https (u/https-state {:scheme :http :headers {"x-forwarded-proto" "https"}})))
+       (is (= :http  (u/https-state {:scheme :https :headers {"x-forwarded-proto" "http"}})))
+       (is (= :https (u/https-state {:scheme :http :headers {"x-forwarded-ssl" "on"}}))))
+     (testing "otherwise the connection we answered decides it"
+       (is (= :https (u/https-state {:scheme :https :headers {}})))
+       (testing "even when the client sends a plain-HTTP Origin"
+         (is (= :https (u/https-state {:scheme :https :headers {"origin" "http://example.com"}})))))
+     (testing "a plaintext request claiming an https Origin is unknown, not https"
+       (is (= :unknown (u/https-state {:scheme :http :headers {"origin" "https://example.com"}}))))
+     (testing "nothing to go on reads as plain HTTP"
+       (is (= :http (u/https-state {:scheme :http :headers {}})))
+       (is (= :http (u/https-state {:headers {}}))))
+     (testing "the states a caller adding protection accepts, and the one it does not"
+       (is (#{:https :unknown} (u/https-state {:scheme :http :headers {"origin" "https://example.com"}})))
+       (is (nil? (#{:https :unknown} (u/https-state {:scheme :http :headers {}})))))))

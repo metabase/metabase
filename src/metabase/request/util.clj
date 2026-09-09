@@ -51,14 +51,12 @@
         ;; font files are static and should be cached
         (re-matches #"^/app/fonts/.+\.(woff2?|ttf|otf|eot)$" uri))))
 
-(def https?
-  "True if the original request made by the frontend client (i.e., browser) was made over HTTPS.
+(def https-state
+  "Whether the original request reached us over HTTPS: `:https`, `:http`, or `:unknown`. Require `:https` to skip a
+  protection; treat `:unknown` as HTTPS to add one.
 
-  In many production instances, a reverse proxy such as an ELB or nginx will handle SSL termination, and the actual
-  request handled by Jetty will be over HTTP.
-
-  Note: Implementation is in [[metabase.util/https?]]."
-  u/https?)
+  Note: Implementation is in [[metabase.util/https-state]]."
+  u/https-state)
 
 (defn embedded?
   "Whether this frontend client that made this request is embedded inside an `<iframe>`."

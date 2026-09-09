@@ -509,7 +509,9 @@
    ;; run-pivot-query, so binding it here from the query's :info map would be
    ;; redundant and could mis-set it for ad-hoc queries that carry a :card-id in :info.
    (qp.setup/with-qp-setup [query query]
-     (let [query       (qp.middleware.normalize/normalize-preprocessing-middleware query) ; normalize to MBQL 5 if needed.
+     (let [query       (-> query
+                           qp.middleware.normalize/normalize-preprocessing-middleware ; normalize to MBQL 5 if needed.
+                           lib/prepare-after-deserialization)
            rff         (or rff qp.reducible/default-rff)
            pivot-opts  (or
                         (pivot-options query (get query :viz-settings))
@@ -523,4 +525,5 @@
                              (update-in [:constraints :max-results-bare-rows] min pivot-limit))
                            add-canonical-col-info)
            all-queries (generate-queries query pivot-opts)]
-       (process-multiple-queries all-queries rff pivot-limit)))))
+       (binding [qp.pipeline/*pivot?* true]
+         (process-multiple-queries all-queries rff pivot-limit))))))

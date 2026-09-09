@@ -21,7 +21,7 @@
 
 (defsetting uploads-settings
   (deferred-tru "Upload settings")
-  :encryption :when-encryption-key-set ; this doesn't really have an effect as this setting is not stored as a setting model
+  :encryption :no ; this doesn't really have an effect as this setting is not stored as a setting model
   :visibility :authenticated
   :export?    false ; the data is exported with a database export, so we don't need to export a setting
   :type       :json

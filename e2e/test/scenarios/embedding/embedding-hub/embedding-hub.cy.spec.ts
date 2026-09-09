@@ -1216,9 +1216,24 @@ describe("scenarios - embedding hub", () => {
       H.main().findByRole("button", { name: "Next" }).click();
 
       cy.log("wait for sandbox update to complete");
-      cy.wait("@updatePermissionsGraph");
+      // The "Next" click kicks off several sequential metadata fetches
+      // (list tables, list databases, read the permissions-graph revision)
+      // before it issues the PUT we're aliasing here, so under load the
+      // request can take longer than Cypress's default 5s request timeout.
+      cy.wait("@updatePermissionsGraph", { timeout: 15_000 });
 
-      cy.log("error toast should not appear");
+      cy.log("the 'Select data' step should be marked complete");
+      H.main()
+        .findByRole("listitem", {
+          name: "Select data to make available",
+          timeout: 10_000,
+        })
+        .icon("check")
+        .should("exist");
+
+      // Anchor the negative assertion on the positive success signal above so
+      // it can't pass by racing an unrendered page.
+      cy.log("no error toast should appear once the update has settled");
       H.undoToast().should("not.exist");
 
       cy.log("sandbox should be updated and not created");
@@ -1243,14 +1258,6 @@ describe("scenarios - embedding hub", () => {
           });
         });
       });
-
-      H.main()
-        .findByRole("listitem", {
-          name: "Select data to make available",
-          timeout: 10_000,
-        })
-        .icon("check")
-        .should("exist");
     });
 
     it(

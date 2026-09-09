@@ -32,7 +32,6 @@
                                    {:email (sag.settings/support-access-grant-email)
                                     :first_name (sag.settings/support-access-grant-first-name)
                                     :last_name (sag.settings/support-access-grant-last-name)
-                                    :password (str (random-uuid))
                                     :is_superuser true})))
 
 (methodical/defmethod t2/batched-hydrate [:model/SupportAccessGrantLog :user_info]

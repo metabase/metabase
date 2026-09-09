@@ -41,7 +41,7 @@ env:
   # (e.g. "https://conductor.<host>"); each consumer appends the path it needs
   # (the reporter POSTs to "/webhooks/failed-tests"). Callers pass
   # `secrets: inherit`; reporting no-ops when it's unset.
-  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   # Shared secret sent as the `x-internal-secret` header to authenticate.
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
   REPO_ID: ${{ github.event.repository.id }}

@@ -1563,6 +1563,7 @@
   check-measure-cycles
   check-measure-overwrite]
  [metabase.lib.serialize
+  prepare-after-deserialization
   prepare-for-serialization]
  [lib.stage
   append-stage

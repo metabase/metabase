@@ -67,6 +67,12 @@
       :token (tx/db-test-env-var-or-throw :databricks :token)
       :http-path (tx/db-test-env-var-or-throw :databricks :http-path)
       :catalog catalog
+      ;; default behavior inside the databricks driver when receiving a 429
+      ;; (rate limit response) is to retry *immediately* with no backoff and
+      ;; keep going for 120 seconds (basically 120 retries since each takes one
+      ;; second) essentially DOSing the database.
+      ;; https://github.com/databricks/databricks-jdbc/blob/v3.4.2/src/main/java/com/databricks/jdbc/dbclient/impl/http/DatabricksHttpRetryHandler.java#L187
+      :rate-limit-retry 0
       :multi-level-schema multi-level?}
      schema-filters)))
 

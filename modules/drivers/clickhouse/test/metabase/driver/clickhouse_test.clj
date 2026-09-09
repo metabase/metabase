@@ -10,6 +10,7 @@
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
@@ -23,7 +24,10 @@
    [metabase.upload.impl-test :as upload-test]
    [metabase.util.honey-sql-2 :as h2x]
    [taoensso.nippy :as nippy]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (com.clickhouse.jdbc ConnectionImpl)
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -51,6 +55,40 @@
            (let [details (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
                  spec    (sql-jdbc.conn/connection-details->spec :clickhouse details)]
              (driver/db-default-timezone :clickhouse spec))))))
+
+(deftest clickhouse-report-timezone-reaches-server-test
+  ;; Regression for #79671.
+  (mt/test-driver :clickhouse
+    (mt/with-report-timezone-id! "America/Santiago"
+      (is (= [["America/Santiago" "America/Santiago"]]
+             (->> "SELECT timezone() AS tz, getSetting('session_timezone') AS s"
+                  (lib/native-query (mt/metadata-provider))
+                  qp/process-query
+                  mt/rows))))))
+
+(deftest ^:synchronized clickhouse-session-timezone-does-not-leak-across-borrows-test
+  (mt/test-driver :clickhouse
+    (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+    (let [underlying-conn-ids (atom [])
+          observe (fn [opts]
+                    (sql-jdbc.execute/do-with-connection-with-options
+                     :clickhouse (mt/id) opts
+                     (fn [^Connection conn]
+                       (swap! underlying-conn-ids conj
+                              (System/identityHashCode (.unwrap conn ConnectionImpl)))
+                       (with-open [stmt (.createStatement conn)
+                                   rs   (.executeQuery stmt "SELECT getSetting('session_timezone')")]
+                         (.next rs)
+                         (.getString rs 1)))))]
+      (is (= "America/Santiago" (observe {:session-timezone "America/Santiago"})))
+      (let [result (observe nil)]
+        ;; Guard: the leak is only observable when the pool hands us the same underlying
+        ;; ConnectionImpl. With a freshly invalidated pool and back-to-back borrows this holds;
+        ;; if it stops holding, the test has to be fixed.
+        (is (apply = @underlying-conn-ids)
+            (str "expected both borrows to reuse the same underlying connection: " @underlying-conn-ids))
+        (is (= "" result)
+            "a borrow without :session-timezone must not inherit the previous borrow's timezone")))))
 
 (deftest ^:parallel clickhouse-connection-string
   (testing "connection with no additional options"

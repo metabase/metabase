@@ -334,20 +334,19 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
 
     frame.within(() => {
       cy.findByText("Pick your starting data").should("be.visible");
+      H.popover().findByText("Orders").click();
 
-      H.popover().within(() => {
-        cy.findByText("Orders").click();
-      });
-
-      cy.findByRole("button", { name: "Visualize" }).click();
+      // if we don't limit this query, layout shifts can push the first row out of the viewport
+      cy.icon("list").click();
+      cy.findByPlaceholderText("Enter a limit").type("5").blur({ force: true }); // blur hack
+      H.visualize();
 
       cy.log("1. clicking on the filter should drill down");
-      cy.findAllByText("37.65").first().should("be.visible").click();
-      cy.findByText(/Filter by this value/).should("be.visible");
-      cy.findByTestId("click-actions-filter-section")
-        .find("button")
-        .first()
-        .click();
+      cy.findByText("37.65").should("be.visible").click();
+      H.popover().within(() => {
+        cy.findByText(/Filter by this value/).should("be.visible");
+        cy.button("<").click();
+      });
       cy.findAllByText("29.8").first().should("be.visible");
       cy.findByTestId("interactive-question-result-toolbar").should(
         "be.visible",

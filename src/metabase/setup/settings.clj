@@ -10,6 +10,7 @@
   "A token used to signify that an instance has permissions to create the initial User. This is created upon the first
   launch of Metabase, by the first instance; once used, it is cleared out, never to be used again.
   Setter is none so users cannot overwrite or re-set the setup-token from the generated value"
+  :encryption         :when-encryption-key-set
   :visibility         :public
   :setter             :none
   :audit              :never

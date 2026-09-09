@@ -1,5 +1,6 @@
 (ns metabase.metabot.agent.core-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
@@ -12,6 +13,8 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.search :as metabot-search]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -76,6 +79,147 @@
       (is (not (#'agent/terminal-tool-call? #{} success))))
     (testing "finish-reason reports :terminal-tool"
       (is (= :terminal-tool (#'agent/finish-reason 0 20 terminal success))))))
+
+(defn- tools-registered-for-request!
+  ([capabilities] (tools-registered-for-request! :internal capabilities))
+  ([profile-id capabilities]
+   (let [captured (atom nil)]
+     (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+       (mt/with-dynamic-fn-redefs [self/call-llm (fn [_model _system _parts tools _tracking-opts _llm-opts]
+                                                   (reset! captured (set (keys tools)))
+                                                   (mut/mock-llm-response [{:type :text :text "Hello"}]))]
+         (into [] (agent/run-agent-loop
+                   {:messages   [{:role :user :content "Open the SQL editor"}]
+                    :state      {}
+                    :profile-id profile-id
+                    :context    {:capabilities capabilities}}))))
+     @captured)))
+
+(deftest client-claimed-sql-capability-is-clamped-to-actual-permissions-test
+  (mt/with-no-data-perms-for-all-users!
+    (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+    (testing "a query-builder-only user gets no SQL tools even when the request claims the capability"
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [tools (tools-registered-for-request! ["permission:write_sql_queries"])]
+          (is (contains? tools "construct_notebook_query"))
+          (is (not (contains? tools "create_sql_query")))
+          (is (not (contains? tools "edit_sql_query")))
+          (is (not (contains? tools "replace_sql_query"))))))
+    (testing "a user with native permission gets the SQL tools for the same request"
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [tools (tools-registered-for-request! ["permission:write_sql_queries"])]
+          (is (contains? tools "create_sql_query"))
+          (is (contains? tools "edit_sql_query"))
+          (is (contains? tools "replace_sql_query")))))))
+
+(deftest document-sql-chart-tool-requires-native-permission-test
+  (mt/with-no-data-perms-for-all-users!
+    (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+    (testing "a query-builder-only user is offered neither half of the document SQL path"
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [tools (tools-registered-for-request! :document-generate-content ["permission:write_sql_queries"])]
+          (is (contains? tools "document_construct_model_chart"))
+          (is (not (contains? tools "document_construct_sql_chart")))
+          ;; leaving this one registered strands the model: its output tells it to call
+          ;; document_construct_sql_chart, which is not in its tool set, under :required-tool-call?
+          (is (not (contains? tools "document_schema_collect"))))))
+    (testing "a user with native permission is offered both document chart tools"
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [tools (tools-registered-for-request! :document-generate-content ["permission:write_sql_queries"])]
+          (is (contains? tools "document_construct_model_chart"))
+          (is (contains? tools "document_construct_sql_chart"))
+          (is (contains? tools "document_schema_collect")))))))
+
+(deftest terminal-error-message-test
+  (let [denial [{:type :tool-input :id "a" :function "create_sql_query"}
+                {:type :tool-output :id "a" :result {:output "No native permission."
+                                                     :terminal-error? true}}]]
+    (testing "reads the message off a tool result marked terminal"
+      (is (= "No native permission." (#'agent/terminal-error-message denial))))
+    (testing "an ordinary tool failure is not terminal"
+      (is (nil? (#'agent/terminal-error-message
+                 [{:type :tool-output :id "b" :result {:output "syntax error"}}]))))
+    (testing "a terminal marker with no message yields nil so no empty text part is emitted"
+      (is (nil? (#'agent/terminal-error-message
+                 [{:type :tool-output :id "c" :result {:output "" :terminal-error? true}}]))))
+    (testing "the first denial wins when an iteration produces several"
+      (is (= "first" (#'agent/terminal-error-message
+                      [{:type :tool-output :id "a" :result {:output "first" :terminal-error? true}}
+                       {:type :tool-output :id "b" :result {:output "second" :terminal-error? true}}]))))
+    (testing "should-continue? is unaffected — the gate lives in loop-step, per profile"
+      (is (#'agent/should-continue? 0 20 #{} denial)))))
+
+(defn- run-sql-denial-turn!
+  "Run one turn whose first LLM response calls `create_sql_query` against `database-id`."
+  [profile-id database-id]
+  (let [call-count (atom 0)]
+    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+      ;; the tool executor lives inside `call-llm`, so redef the transport to let the tool run
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                          (if (= 1 (swap! call-count inc))
+                                                            (mut/mock-llm-response
+                                                             [{:type      :tool-input
+                                                               :id        "t1"
+                                                               :function  "create_sql_query"
+                                                               :arguments {:database_id database-id
+                                                                           :sql_query   "SELECT 1"}}])
+                                                            (mut/mock-llm-response [{:type :text :text "Sorry."}])))]
+        (let [parts (into [] (agent/run-agent-loop
+                              {:messages   [{:role :user :content "Query that database"}]
+                               :state      {}
+                               :profile-id profile-id
+                               :context    {:capabilities    ["permission:write_sql_queries"]
+                                            :user_is_viewing [{:type    "code_editor"
+                                                               :buffers [{:id "buf-1"}]}]}}))]
+          {:llm-calls @call-count :parts parts})))))
+
+(deftest permission-denial-ends-a-forced-tool-call-turn-test
+  (mt/with-temp [:model/Database {native-db :id}     {:engine :h2}
+                 :model/Database {builder-db :id}    {:engine :h2}
+                 :model/Database {unreadable-db :id} {:engine :h2}]
+    (mt/with-no-data-perms-for-all-users!
+      (doseq [db-id [native-db builder-db unreadable-db]]
+        (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted))
+      ;; native on one database keeps the capability, so the denial can only happen per call
+      (perms/set-database-permission! (perms-group/all-users) native-db :perms/create-queries :query-builder-and-native)
+      (perms/set-database-permission! (perms-group/all-users) builder-db :perms/create-queries :query-builder)
+      (perms/set-database-permission! (perms-group/all-users) unreadable-db :perms/create-queries :no)
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing ":sql forbids the model from answering in text, so the loop stops on the denial"
+          (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql builder-db)]
+            (is (= 1 llm-calls)
+                "one call, not the profile's 20 iterations")
+            (is (some #(and (= :text (:type %))
+                            (str/includes? (:text %) "do not have permission"))
+                      parts)
+                "the refusal is emitted as assistant text — a tool result is not rendered to the user")
+            (is (some #(= :data (:type %)) parts)
+                "state data part still closes the turn")))
+        (testing ":internal lets the model explain the denial itself, so the loop continues"
+          (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :internal builder-db)]
+            (is (= 2 llm-calls))
+            (is (not-any? #(and (= :text (:type %))
+                                (str/includes? (str (:text %)) "do not have permission"))
+                          parts)
+                "no canned text — the model's own wording is used")))
+        (testing "a database the user cannot read at all stops the turn the same way"
+          (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql unreadable-db)]
+            (is (= 1 llm-calls)
+                "the read-check denial is terminal too -- otherwise the stricter permission loops")
+            (is (some #(and (= :text (:type %))
+                            (str/includes? (:text %) "do not have access to this database"))
+                      parts))))
+        (testing "a database the user can query natively is not denied"
+          (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql native-db)]
+            (is (= 1 llm-calls)
+                "create_sql_query is a terminal tool under :sql, so a successful call ends the turn")
+            (is (not-any? #(and (= :text (:type %))
+                                (str/includes? (str (:text %)) "do not have"))
+                          parts))))))))
 
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin

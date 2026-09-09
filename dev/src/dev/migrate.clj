@@ -57,11 +57,11 @@
   [id]
   (->> (t2/query-one {:select [[:%count.* :count]]
                       :from   [databasechangelog-name]
-                      :where  [:> :orderexecuted {:select   [:orderexecuted]
-                                                  :from     [databasechangelog-name]
-                                                  :where    [:like :id (format "%s%%" id)]
-                                                  :order-by [[:orderexecuted :desc]]
-                                                  :limit    1}]
+                      :where  [:> :orderexecuted ^:allow-subquery {:select   [:orderexecuted]
+                                                                   :from     [databasechangelog-name]
+                                                                   :where    [:like :id (format "%s%%" id)]
+                                                                   :order-by [[:orderexecuted :desc]]
+                                                                   :limit    1}]
                       :limit 1})
        :count
        ;; includes the selected id
@@ -83,10 +83,10 @@
       0 ;; don't rollback if there was just one deployment of everything
       (:count (t2/query-one {:select [[:%count.* :count]]
                              :from   [databasechangelog-name]
-                             :where  [:= :deployment_id {:select   [:deployment_id]
-                                                         :from     [databasechangelog-name]
-                                                         :order-by [[:orderexecuted :desc]]
-                                                         :limit    1}]})))))
+                             :where  [:= :deployment_id ^:allow-subquery {:select   [:deployment_id]
+                                                                          :from     [databasechangelog-name]
+                                                                          :order-by [[:orderexecuted :desc]]
+                                                                          :limit    1}]})))))
 
 (defn reset-checksums!
   []
@@ -203,7 +203,7 @@
              ^ChangeSet change-set (first (filter #(= id (.getId ^ChangeSet %)) (.getSeenChangeSets list-visitor)))
              sql-generator-factory (SqlGeneratorFactory/getInstance)]
          (reduce (fn [acc data]
-                  ;; merge all changes in one change set into one single :forward and :rollback
+                   ;; merge all changes in one change set into one single :forward and :rollback
                    (merge-with (fn [x y]
                                  (str x "\n" y)) acc data))
                  {}

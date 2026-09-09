@@ -227,7 +227,8 @@
     :max-age   ttl-seconds}
    ;; Use SameSite=Lax for OIDC since we need the cookie sent on redirect back from IdP
    ;; Secure=true only when using HTTPS
-   (if (u/https? request)
+   ;; `:unknown` counts as HTTPS here: this only decides whether to add `Secure`
+   (if (#{:https :unknown} (u/https-state request))
      {:same-site :lax
       :secure    true}
      {:same-site :lax})))

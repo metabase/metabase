@@ -4,6 +4,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.queries.core :as queries]
@@ -137,10 +139,17 @@
       ;; TODO -- we should be using something like `api/read-check` for this, but unfortunately the impl for Cards
       ;; doesn't actually check important stuff like this.
       (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms)))
-    ;; Segment/Measure re-derive :table_id from the reverted :definition in before-update, so make sure the reverting
-    ;; user may write the destination table before it is relocated there.
-    (when (contains? #{:model/Transform :model/Segment :model/Measure} model)
+    (when (= model :model/Transform)
       (api/check-403 (mi/can-write? (merge instance (:object revision)))))
+    ;; for Segments and Measures `table_id` is re-derived from `definition` on update, so when the restored definition
+    ;; specifies a source table, check write perms against that table rather than the revision's stored `table_id`
+    (when (contains? #{:model/Segment :model/Measure} model)
+      (let [table-id (some-> (get-in revision [:object :definition])
+                             not-empty
+                             lib-be/normalize-query
+                             lib/primary-source-table-id)]
+        (api/check-403 (mi/can-write? (cond-> (merge instance (:object revision))
+                                        table-id (assoc :table_id table-id))))))
     (when (contains? #{:model/Dashboard :model/Card} model)
       (collection/check-allowed-to-change-collection instance (:object revision))
       (when (api/column-will-change? :dashboard_id instance (:object revision))

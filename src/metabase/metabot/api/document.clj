@@ -94,6 +94,8 @@
     (metabot.config/check-metabot-enabled! metabot-id)
     (metabot.usage/check-metabase-managed-free-limit!)
     (let [context      (assoc
+                        ;; a request, not a grant: `enforce-permissions` drops it unless the user
+                        ;; really can write native queries
                         (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}})
                         :references references)
           parts        (into [] (metabot.agent/run-agent-loop

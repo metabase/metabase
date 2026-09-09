@@ -105,7 +105,5 @@
                  (:id user) grant-ends-at)
       (t2/with-transaction [_]
         (t2/update! :model/AuthIdentity (:id auth-identity) (auth-identity/mark-token-consumed auth-identity))
-        (t2/update! :model/AuthIdentity :user_id (:id user) :provider "password"
-                    {:expires_at grant-ends-at
-                     :credentials {:plaintext_password password}}))))
+        (auth-identity/set-password! (:id user) password {:expires-at grant-ends-at}))))
   result)

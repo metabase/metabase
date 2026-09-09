@@ -63,12 +63,20 @@ export const PREDEFINED_FONT_FAMILIES_FALLBACK_MAP: Record<
 };
 
 function isPredefinedFontName(font: string): font is PredefinedFontName {
-  return font in PREDEFINED_FONT_FAMILIES_FALLBACK_MAP;
+  return Object.hasOwn(PREDEFINED_FONT_FAMILIES_FALLBACK_MAP, font);
 }
 
 export function getFontFamilyValue(font: string): string {
-  const fallback = isPredefinedFontName(font)
-    ? PREDEFINED_FONT_FAMILIES_FALLBACK_MAP[font]
-    : "sans-serif";
-  return `"${font}", ${fallback}`;
+  const families = (font ?? "")
+    .split(",")
+    .map((name) => name.replaceAll(/["']/g, "").trim())
+    .filter(Boolean);
+
+  const [firstFamily] = families;
+  const fallback =
+    firstFamily !== undefined && isPredefinedFontName(firstFamily)
+      ? PREDEFINED_FONT_FAMILIES_FALLBACK_MAP[firstFamily]
+      : "sans-serif";
+
+  return [...families.map((name) => JSON.stringify(name)), fallback].join(", ");
 }

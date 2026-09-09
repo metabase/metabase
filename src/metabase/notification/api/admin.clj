@@ -148,23 +148,12 @@
       :left-join [[:core_user :cu] [:= :cu.id :nr.user_id]]
       :where     where-clause})))
 
-(defn- wildcard-string
-  "`%foo%` substring pattern with the input lowercased and LIKE metacharacters (`\\`, `%`, `_`)
-  escaped so they match literally rather than as wildcards. Relies on the default `\\` LIKE escape
-  character, which H2, Postgres, and MySQL all share."
-  [s]
-  (let [escaped (-> (u/lower-case-en s)
-                    (str/replace "\\" "\\\\")
-                    (str/replace "_" "\\_")
-                    (str/replace "%" "\\%"))]
-    (str "%" escaped "%")))
-
 (defn- query-where-clause
   "WHERE clause for the fuzzy `?query=` filter. Substring ILIKE OR'd across card name and creator
   first/last/email. Recipient branches were removed in the design iteration — recipients stay as
   the structured `?recipient_email=` filter."
   [query]
-  (let [wildcard (wildcard-string query)]
+  (let [wildcard (h2x/like-substring query)]
     [:or
      [:like [:lower :c.name]        wildcard]
      [:like [:lower :cu.first_name] wildcard]

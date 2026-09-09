@@ -67,6 +67,15 @@
   (->> (tree-seq :content :content document)
        (keep collector)))
 
+(defn node-entity-id
+  "The referenced entity id carried by a `smartLink` (`:entityId`) or `cardEmbed` (`:id`) node, or nil.
+
+   Returning the id only when it is a positive integer keeps any downstream Toucan lookup parameterized."
+  [{:keys [type attrs]}]
+  (let [id (if (= smart-link-type type) (:entityId attrs) (:id attrs))]
+    (when (pos-int? id)
+      id)))
+
 (defn card-ids
   "Get all card-ids"
   [document]

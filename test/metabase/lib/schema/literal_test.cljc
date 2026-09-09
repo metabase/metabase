@@ -1,7 +1,9 @@
 (ns metabase.lib.schema.literal-test
   (:require
    [clojure.test :refer [are deftest is testing]]
+   [malli.core :as mc]
    [malli.error :as me]
+   [malli.transform :as mtx]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.literal :as literal]
    [metabase.util.malli.registry :as mr]))
@@ -141,3 +143,14 @@
         {:a 1}
         [1 2 3]
         #{1 2}))))
+
+(deftest ^:parallel string-decode-literal-preserves-value-test
+  (are [input] (= input (mc/decode ::literal/literal input (mtx/string-transformer)))
+    "true"
+    "false"
+    "nil"
+    true
+    false
+    nil
+    "123"
+    123))

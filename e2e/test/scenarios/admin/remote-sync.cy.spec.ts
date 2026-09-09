@@ -11,22 +11,26 @@ const LOCAL_GIT_URL = "file://" + H.LOCAL_GIT_PATH + "/.git";
 
 const REMOTE_QUESTION_NAME = "Remote Sync Test Question";
 
-describe("Remote Sync", () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    H.resetSnowplow();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    H.updateSetting("transforms-enabled", true);
-    H.setupGitSync();
-    H.interceptTask();
-  });
+const setup = (snapshot = "default") => {
+  H.restore(snapshot);
+  H.resetSnowplow();
+  cy.signInAsAdmin();
+  H.activateToken("pro-self-hosted");
+  H.setupGitSync();
+  H.interceptTask();
+};
 
+describe("Remote Sync", () => {
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
   });
 
   describe("read-write Mode", () => {
+    beforeEach(() => {
+      setup("postgres-writable");
+      H.updateSetting("transforms-enabled", true);
+    });
+
     it("can push and pull changes", () => {
       H.configureGitWithNewSyncedCollection("read-write").as(
         "syncedCollection",
@@ -441,10 +445,7 @@ describe("Remote Sync", () => {
 
   describe("remote sync admin settings page", () => {
     beforeEach(() => {
-      H.restore();
-      H.activateToken("pro-self-hosted");
-      H.setupGitSync();
-      cy.signInAsAdmin();
+      setup();
     });
 
     it("can set up read-write mode", () => {
@@ -590,24 +591,25 @@ describe("Remote Sync", () => {
 
   describe("read-only mode", () => {
     beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-      H.setupGitSync();
+      setup();
     });
 
-    it("can change branches", () => {
+    it("can change branches", { requestTimeout: 15000 }, () => {
       const UPDATED_REMOTE_QUESTION_NAME = "New Name";
 
       H.copySyncedCollectionFixture();
       H.commitToRepo();
-      H.configureGit("read-only");
+      H.configureGitAndPullChanges("read-only");
 
+      cy.intercept("GET", /\/api\/collection\/\d+\/items/).as(
+        "mainBranchItems",
+      );
       cy.visit("/");
 
       H.navigationSidebar()
         .findByRole("treeitem", { name: /Synced Collection/ })
         .click();
+      cy.wait(["@mainBranchItems", "@mainBranchItems"]);
       H.collectionTable().findByText(REMOTE_QUESTION_NAME);
 
       // Make a change, and commit it to the branch
@@ -617,8 +619,23 @@ describe("Remote Sync", () => {
         return doc;
       });
 
+      cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+      cy.intercept("GET", "/api/setting").as("settingDetails");
+      cy.intercept("GET", "/api/collection/root/items?*").as("rootItems");
+      cy.intercept("GET", "/api/ee/library").as("libraryCollection");
       cy.visit("/admin/settings/remote-sync");
-      cy.findByLabelText("Sync branch").scrollIntoView().clear().type("test");
+      cy.wait([
+        "@sessionProperties",
+        "@settingDetails",
+        "@rootItems",
+        "@libraryCollection",
+      ]);
+
+      cy.findByLabelText("Sync branch")
+        .scrollIntoView()
+        .clear()
+        .type("test")
+        .should("have.value", "test");
       cy.findByTestId("remote-sync-submit-button").click();
 
       cy.findByTestId("admin-layout-content")
@@ -633,22 +650,24 @@ describe("Remote Sync", () => {
 
       cy.findByTestId("remote-sync-submit-button").should("be.disabled");
 
+      H.pollForTask({ taskName: "import" });
+
+      cy.intercept("GET", /\/api\/collection\/\d+\/items/).as(
+        "testBranchItems",
+      );
       cy.visit("/");
 
       H.navigationSidebar()
         .findByRole("treeitem", { name: /Synced Collection/ })
         .click();
+      cy.wait(["@testBranchItems", "@testBranchItems"]);
       H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
     });
   });
 
   describe("shared tenant collections", () => {
     beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-      H.setupGitSync();
-      H.interceptTask();
+      setup();
 
       // Enable tenants feature
       H.enableTenants();
@@ -876,6 +895,9 @@ describe("Remote Sync", () => {
 
   describe("initial pull conflict handling", () => {
     beforeEach(() => {
+      setup("postgres-writable");
+      H.updateSetting("transforms-enabled", true);
+
       // Create a local transform that could be overwritten by the remote
       H.createSqlTransform({
         sourceQuery: "SELECT 1",
@@ -904,13 +926,20 @@ describe("Remote Sync", () => {
     });
 
     it("shows conflict modal with available options when remote would override local", () => {
+      cy.intercept("POST", "/api/ee/remote-sync/import").as("pullImport");
+      cy.intercept("GET", "/api/transform*").as("getTransforms");
+
       H.DataStudio.Transforms.visit();
+      cy.wait("@getTransforms");
 
       cy.findByRole("treegrid").within(() => {
         cy.findByText("Batman's Existing Transform").should("be.visible");
       });
 
       H.clickPullOption();
+
+      cy.wait("@pullImport");
+      H.pollForTask({ taskName: "import", until: "conflict" });
 
       cy.log("make sure conflict modal is displayed");
       H.modal().within(() => {
@@ -930,13 +959,17 @@ describe("Remote Sync", () => {
 
       cy.findByRole("button", { name: "Delete unsynced changes" }).click();
 
+      cy.log("wait for the forced import to replace local state");
+      cy.wait("@pullImport");
+      H.pollForTask({ taskName: "import" });
+
       cy.findByRole("treegrid").within(() => {
+        cy.log("check remote transform was pulled in");
+        cy.findByText("Imported Simple SQL transform").should("be.visible");
         cy.log(
           "check existing transform was removed after pulling from remote",
         );
         cy.findByText("Batman's Existing Transform").should("not.exist");
-        cy.log("check remote transform was pulled in");
-        cy.findByText("Imported Simple SQL transform").should("be.visible");
       });
     });
 

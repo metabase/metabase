@@ -167,6 +167,21 @@
   [group-or-id db-id perm-type value & body]
   `(do-with-db-perm-for-group! ~group-or-id ~db-id ~perm-type ~value (fn [] ~@body)))
 
+(defn do-with-db-perms-for-group!
+  "Implementation of `with-db-perms-for-group!`. Sets several data permissions for the given database to the given
+  values for the given permission group for the duration of the test."
+  [group-or-id db-id perm-type->value thunk]
+  (with-restored-data-perms-for-group! (u/the-id group-or-id)
+    (doseq [[perm-type value] perm-type->value]
+      (data-perms/set-database-permission! group-or-id db-id perm-type value))
+    (thunk)))
+
+(defmacro with-db-perms-for-group!
+  "Runs `body`, and sets several data permissions for the given database to the given values for the given permission
+  group for the duration of the test."
+  [group-or-id db-id perm-type->value & body]
+  `(do-with-db-perms-for-group! ~group-or-id ~db-id ~perm-type->value (fn [] ~@body)))
+
 (defn do-with-data-analyst-role!
   "Implementation of `with-data-analyst-role!`. Sets the `is_data_analyst` column to true for the given user
   for the duration of the test, then restores the original value."

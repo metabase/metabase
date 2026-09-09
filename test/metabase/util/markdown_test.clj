@@ -1,7 +1,9 @@
 (ns metabase.util.markdown-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.test.util :as tu]
+   [metabase.util :as u]
    [metabase.util.markdown :as markdown]))
 
 (defn- slack
@@ -160,21 +162,24 @@
     (is (= "\u00ad_\u00ad" (slack "\\_")))
     (is (= "\u00ad`\u00ad" (slack "\\`")))))
 
-(deftest ^:parallel process-markdown-slack-test-17
+(deftest process-markdown-slack-test-17
   (testing "Images in Markdown are converted to links, with alt text preserved"
-    (is (= "<image.png|[Image]>"           (slack "![](image.png)")))
-    (is (= "<image.png|[Image: alt-text]>" (slack "![alt-text](image.png)")))))
+    (tu/with-temporary-setting-values [site-url "https://example.com"]
+      (is (= "<https://example.com/image.png|[Image]>"           (slack "![](image.png)")))
+      (is (= "<https://example.com/image.png|[Image: alt-text]>" (slack "![alt-text](image.png)"))))))
 
-(deftest ^:parallel process-markdown-slack-test-18
+(deftest process-markdown-slack-test-18
   (testing "Image references are treated the same as normal images"
-    (is (=  "<image.png|[Image]>"           (slack "![][ref]\n\n[ref]: image.png")))
-    (is (=  "<image.png|[Image: alt-text]>" (slack "![alt-text][ref]\n\n[ref]: image.png")))
-    (is (=  "<image.png|[Image]>"           (slack "![][Ref]\n\n[REF]: image.png")))))
+    (tu/with-temporary-setting-values [site-url "https://example.com"]
+      (is (=  "<https://example.com/image.png|[Image]>"           (slack "![][ref]\n\n[ref]: image.png")))
+      (is (=  "<https://example.com/image.png|[Image: alt-text]>" (slack "![alt-text][ref]\n\n[ref]: image.png")))
+      (is (=  "<https://example.com/image.png|[Image]>"           (slack "![][Ref]\n\n[REF]: image.png"))))))
 
-(deftest ^:parallel process-markdown-slack-test-19
+(deftest process-markdown-slack-test-19
   (testing "Linked images include link target in parentheses"
-    (is (= "<image.png|[Image]>\n(https://metabase.com)"  (slack "[![](image.png)](https://metabase.com)")))
-    (is (=  "<image.png|[Image]>\n(https://metabase.com)" (slack "[![][ref]](https://metabase.com)\n\n[ref]: image.png")))))
+    (tu/with-temporary-setting-values [site-url "https://example.com"]
+      (is (= "<https://example.com/image.png|[Image]>\n(https://metabase.com)"  (slack "[![](image.png)](https://metabase.com)")))
+      (is (=  "<https://example.com/image.png|[Image]>\n(https://metabase.com)" (slack "[![][ref]](https://metabase.com)\n\n[ref]: image.png"))))))
 
 (deftest ^:parallel process-markdown-slack-test-20
   (testing "Raw HTML in Markdown is passed through unmodified, aside from angle brackets being
@@ -249,3 +254,59 @@
   (testing "HTML in the source markdown is escaped properly, but HTML entities are retained"
     (is (= "<p>&lt;h1&gt;header&lt;/h1&gt;</p>\n" (html "<h1>header</h1>")))
     (is (= "<p>&amp;</p>\n"                       (html "&amp;")))))
+
+(deftest ^:parallel process-markdown-link-scheme-test
+  (testing "Only links/images with allow-listed URI schemes are rendered"
+    (doseq [markdown ["[x](javascript:alert(1))"
+                      "[x](JaVaScRiPt:alert(1))"
+                      "[x](JAVASCRIPT:alert(1))"
+                      "[x](javascript&#58;alert(1))"
+                      "[x](vbscript:msgbox(1))"
+                      "[x](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)"
+                      "![x](data:text/html;base64,PHNjcmlwdD4=)"]
+            :let     [rendered (u/lower-case-en (html markdown))]
+            scheme   ["javascript" "vbscript" "data:"]]
+      (testing (str markdown " does not render " scheme)
+        (is (not (str/includes? rendered scheme)))))))
+
+(deftest ^:parallel process-markdown-link-scheme-slack-test
+  (testing "Links with non-allow-listed schemes render as their text alone in Slack"
+    (is (= "x" (slack "[x](javascript:alert(1))")))
+    (is (= "x" (slack "[x](DaTa:text/html;base64,PHNjcmlwdD4=)")))
+    (is (= "x" (slack "[x][ref]\n\n[ref]: javascript:alert(1)")))
+    (is (= "[x]" (slack "[x]")) "a bare bracket pair with no reference is still restored"))
+  (testing "Images with non-allow-listed schemes render as their placeholder alone in Slack"
+    (is (= "[Image: x]" (slack "![x](javascript:alert(1))")))
+    (is (= "[Image]"    (slack "![](data:text/html;base64,PHNjcmlwdD4=)")))
+    (is (= "[Image: x]" (slack "![x][ref]\n\n[ref]: javascript:alert(1)"))))
+  (testing "Slack image sources allow inline base64 images"
+    (is (= "<data:image/png;base64,iVBORw0KGgo=|[Image: x]>" (slack "![x](data:image/png;base64,iVBORw0KGgo=)")))))
+
+(deftest process-markdown-slack-image-site-url-test
+  (testing "Slack image sources are resolved against the site URL"
+    (tu/with-temporary-setting-values [site-url "https://example.com"]
+      (is (= "<https://example.com/a.png|[Image: x]>" (slack "![x](/a.png)")))
+      (is (= "<https://example.com/a.png|[Image: x]>" (slack "![x][ref]\n\n[ref]: a.png"))))))
+
+(deftest ^:parallel process-markdown-allowed-scheme-case-test
+  (testing "Scheme allow-listing is case-insensitive for allowed schemes too"
+    (is (= "<p><a href=\"HTTPS://metabase.com\">x</a></p>\n" (html "[x](HTTPS://metabase.com)")))))
+
+(deftest process-markdown-data-image-test
+  (testing "Inline base64 images render like they do in the app's markdown renderer"
+    (tu/with-temporary-setting-values [site-url "https://example.com"]
+      (is (= "<p><img src=\"data:image/png;base64,iVBORw0KGgo=\" alt=\"x\" /></p>\n"
+             (html "![x](data:image/png;base64,iVBORw0KGgo=)")))
+      (is (= "<p><img src=\"data:image/svg+xml;base64,PHN2Zy8+\" alt=\"x\" /></p>\n"
+             (html "![x](data:image/svg+xml;base64,PHN2Zy8+)"))))))
+
+(deftest process-markdown-malformed-uri-test
+  (testing "A link destination that isn't a parseable URI drops the link instead of aborting the render"
+    (tu/with-temporary-setting-values [site-url "https://example.com"]
+      (doseq [markdown ["[x](data:text/html,<b>y</b>)"
+                        "[x](<http://exa mple.com/foo>)"]
+              channel  [:html :slack]
+              :let     [rendered (markdown/process-markdown markdown channel)]]
+        (testing (format "%s via %s" markdown channel)
+          (is (string? rendered))
+          (is (not (str/includes? (u/lower-case-en rendered) "data:text"))))))))

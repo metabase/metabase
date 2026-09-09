@@ -5,7 +5,7 @@
 
 (defsetting map-tile-server-url
   (i18n/deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
   :visibility :public
   :audit      :getter)

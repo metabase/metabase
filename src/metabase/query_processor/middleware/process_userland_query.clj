@@ -89,6 +89,12 @@
       (grouper/submit! @save-execution-metadata-queue execution-info')
       (save-execution-metadata!* [execution-info']))))
 
+(defn flush-execution-metadata!
+  "Block until every `QueryExecution` submitted by [[save-execution-metadata!]] so far has been written. Needed by
+  anything that reads the `query_execution` table back and cannot tolerate the batching lag."
+  []
+  (grouper/flush! @save-execution-metadata-queue))
+
 (defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows]
   (let [qe-map (assoc query-execution
                       :cache_hit       (boolean (:cached cache-details))

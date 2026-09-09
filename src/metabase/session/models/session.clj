@@ -2,13 +2,17 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
+   [buddy.core.mac :as mac]
    [buddy.core.nonce :as nonce]
    [clojure.core.memoize :as memo]
+   [environ.core :as env]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.session.settings :as session.settings]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.string :as string]
    [methodical.core :as methodical]
@@ -20,9 +24,39 @@
   []
   (codecs/bytes->hex (nonce/random-bytes 16)))
 
-(def ^{:arglists '([session-key])} hash-session-key
-  "Hash the session-key for storage in the database"
-  (memo/lru (fn [^String session-key] (codecs/bytes->hex (buddy-hash/sha512 (.getBytes session-key java.nio.charset.StandardCharsets/US_ASCII)))) {} :lru/threshold 100))
+;; validated eagerly at load so a misconfigured secret fails at startup instead of 500ing the first auth request
+(defonce ^:private ^{:tag 'bytes} default-session-hash-secret
+  (encryption/validate-and-hash-secret-key (env/env :mb-session-secret-key) "MB_SESSION_SECRET_KEY"))
+
+(when-not *compile-files*
+  (when-not default-session-hash-secret
+    (log/warn (str "MB_SESSION_SECRET_KEY is not set; session keys are stored without a signature. Anyone with access"
+                   " to the application database can forge a session and impersonate any user. Set it to a random"
+                   " string of at least 16 characters to prevent this. Setting or changing it logs out all active"
+                   " sessions."))))
+
+(defn- session-hash-secret
+  "Secret used to sign session keys before they are stored in or looked up from the app DB. Read from
+  `MB_SESSION_SECRET_KEY`. Nil when it is not set."
+  ^bytes []
+  default-session-hash-secret)
+
+(def ^:private ^{:arglists '([secret session-key])} hash-session-key*
+  (memo/lru (fn [^bytes secret ^String session-key]
+              (let [key-bytes (.getBytes session-key java.nio.charset.StandardCharsets/US_ASCII)]
+                (codecs/bytes->hex
+                 (if secret
+                   (mac/hash key-bytes {:key secret :alg :hmac+sha512})
+                   (buddy-hash/sha512 key-bytes)))))
+            {} :lru/threshold 100))
+
+(defn hash-session-key
+  "Hash the session-key for storage in (and lookup from) the database.
+
+  When `MB_SESSION_SECRET_KEY` is set the stored value is signed with that secret (HMAC-SHA512), so a valid
+  `key_hashed` value cannot be computed with app-db (SQL) access alone. Without it this is a plain SHA-512."
+  [session-key]
+  (hash-session-key* (session-hash-secret) session-key))
 
 (defn generate-session-key
   "Generate a new session key."
