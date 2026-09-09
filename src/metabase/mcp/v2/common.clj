@@ -341,8 +341,10 @@
 ;;; ------------------------------------------------ Shared schemas ------------------------------------------------
 
 (def card-display-values
-  "Visualization types a card (or an MCP Apps visualization) can render as."
-  ["table" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
+  "Visualization types a card (or an MCP Apps visualization) can render as. `list` is the model list
+   view — one of the two displays the model editor offers, so a tool that omits it can neither build
+   a list-view model nor leave one alone when updating it."
+  ["table" "list" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
    "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
 
 (def card-display-enum
