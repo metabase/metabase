@@ -7,6 +7,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { queryBuilderMain } from "e2e/support/helpers";
 import {
   createMockActionParameter,
   createMockDashboardCard,
@@ -2173,11 +2174,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         `Started from ${targetQuestion.name}`,
       );
 
-      // TODO: https://github.com/metabase/metabase/issues/46774
-      // queryBuilderMain()
-      //   .findByText("There was a problem with your question")
-      //   .should("not.exist");
-      // queryBuilderMain().findByText("No results").should("be.visible");
+      queryBuilderMain()
+        .findByText("There was a problem with your question")
+        .should("not.exist");
+      queryBuilderMain().findByText("No results").should("be.visible");
 
       H.openNotebook();
       H.verifyNotebookQuery("Orders", [
