@@ -673,7 +673,7 @@
 (mu/defn instance
   "The instance of `model` (a model keyword, or a `[model & columns]` vector) with `id`, or nil."
   [model :- [:or :keyword [:sequential :keyword]]
-   id    :- ms/PositiveInt]
+   id    :- [:maybe ms/PositiveInt]]
   (t2/select-one model id))
 
 (mu/defn card
