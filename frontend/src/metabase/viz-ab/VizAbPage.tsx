@@ -143,26 +143,22 @@ function CardSummary({
   return <Text size="sm">{parts.join(" · ")}</Text>;
 }
 
-function readString(value: unknown, keys: string[]): string | undefined {
-  if (typeof value !== "object" || value == null) {
+function readValue(value: unknown, key: string): unknown {
+  if (typeof value !== "object" || value == null || !(key in value)) {
     return undefined;
   }
-  const record: Record<string, unknown> = value;
+  // `key in value` proves the property exists, but TS still types `value` as `object`
+  return (value as Record<string, unknown>)[key];
+}
+
+function readString(value: unknown, keys: string[]): string | undefined {
   for (const key of keys) {
-    const candidate = record[key];
+    const candidate = readValue(value, key);
     if (typeof candidate === "string") {
       return candidate;
     }
   }
   return undefined;
-}
-
-function readValue(value: unknown, key: string): unknown {
-  if (typeof value !== "object" || value == null) {
-    return undefined;
-  }
-  const record: Record<string, unknown> = value;
-  return record[key];
 }
 
 function describeError(error: unknown): string {

@@ -1,8 +1,11 @@
-(ns dev.api.viz-eval
-  "Dev-only endpoints backing the throwaway default-visualization A/B evaluation page: pick a random Card to judge,
-  and describe the projection of a native Card's SQL (via sqlglot) enriched with Field metadata."
+(ns metabase.viz-eval.api
+  "Superuser-only endpoints backing the internal default-visualization A/B evaluation page (`/_internal/viz-ab`):
+  pick a random Card to judge, describe the projection of a native Card's SQL (via sqlglot) enriched with Field
+  metadata, and store the judgements. Judgements live in a `viz_eval_judgement` table that is created lazily, so this
+  prototype needs no migration."
   (:require
    [clojure.string :as str]
+   [honey.sql.helpers :as sql.helpers]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -19,20 +22,58 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------------ random card ------------------------------------------------
+;;; -------------------------------------------------- judgements ---------------------------------------------------
 
-(defn- judged-card-ids
-  "IDs of Cards that already have a `viz-judgement` row in the prototype-data table (see [[dev.api.prototype]]), or
-  an empty set when that table has not been created yet."
+(defn- create-table-query []
+  (let [columns (case (mdb/db-type)
+                  :postgres [[:id :serial [:primary-key]]
+                             [:card_id :integer]
+                             [:content :text [:not nil]]]
+                  :mysql    [[:id :bigint [:primary-key] [:auto-increment]]
+                             [:card_id :integer]
+                             [:content :text [:not nil]]]
+                  :h2       [[:id :identity [:primary-key]]
+                             [:card_id :integer]
+                             [:content :text [:not nil]]])]
+    (-> (sql.helpers/create-table :viz_eval_judgement :if-not-exists)
+        (sql.helpers/with-columns columns))))
+
+(def ^:private judgement-table
+  (mdb/memoize-for-application-db
+   (fn []
+     (log/info "Creating viz_eval_judgement table if it does not exist")
+     (t2/query (create-table-query))
+     :viz_eval_judgement)))
+
+(defn- row->judgement [row]
+  (assoc (json/decode+kw (:content row)) :id (:id row)))
+
+(api.macros/defendpoint :get "/judgements" :- [:sequential :map]
+  "All stored judgements, oldest first."
   []
-  (try
-    (into #{}
-          (keep #(get (json/decode (:content %)) "card_id"))
-          (t2/query {:select [:content]
-                     :from   [:dev_prototype_data]
-                     :where  [:= :type "viz-judgement"]}))
-    (catch Exception _
-      #{})))
+  (api/check-superuser)
+  (mapv row->judgement (t2/query {:select   [:id :content]
+                                  :from     [(judgement-table)]
+                                  :order-by [[:id :asc]]})))
+
+(api.macros/defendpoint :post "/judgements" :- :map
+  "Store a judgement. The body is kept as-is (JSON), plus `card_id` as a column for the random-card exclusion."
+  [_route-params
+   _query-params
+   body :- [:map-of :keyword :any]]
+  (api/check-superuser)
+  (let [id (t2/insert-returning-pk! (judgement-table)
+                                    {:card_id (:card_id body)
+                                     :content (json/encode body)})]
+    (assoc body :id id)))
+
+(defn- judged-card-ids []
+  (into #{}
+        (keep :card_id)
+        (t2/query {:select [:card_id]
+                   :from   [(judgement-table)]})))
+
+;;; ------------------------------------------------- random card ---------------------------------------------------
 
 (defn- random-order-by
   "A random `:order-by` clause, using the application database's native random function."
@@ -71,7 +112,7 @@
     {:id        (:id card)
      :remaining remaining}))
 
-;;; ---------------------------------------------- native structure ----------------------------------------------
+;;; ----------------------------------------------- native structure ------------------------------------------------
 
 (defn- raw-native-sql
   "The SQL of a native Card as written, with `{{template tags}}` replaced by `NULL` so it still parses."

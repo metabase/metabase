@@ -52,8 +52,6 @@ export type VizJudgement = {
   created_at: string;
 };
 
-const JUDGEMENT_TYPE = "viz-judgement";
-
 export const vizEvalApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     getRandomVizEvalCard: builder.query<
@@ -62,7 +60,7 @@ export const vizEvalApi = Api.injectEndpoints({
     >({
       query: ({ nonce: _nonce, ...params }) => ({
         method: "GET",
-        url: "/api/dev/viz-eval/random-card",
+        url: "/api/viz-eval/random-card",
         params,
       }),
       keepUnusedDataFor: 0,
@@ -70,18 +68,18 @@ export const vizEvalApi = Api.injectEndpoints({
     getNativeStructure: builder.query<NativeStructure, { card_id: CardId }>({
       query: (body) => ({
         method: "POST",
-        url: "/api/dev/viz-eval/native-structure",
+        url: "/api/viz-eval/native-structure",
         body,
       }),
     }),
     listVizJudgements: builder.query<VizJudgement[], void>({
-      query: () => `/api/dev/prototype/${JUDGEMENT_TYPE}/`,
+      query: () => "/api/viz-eval/judgements",
       providesTags: [{ type: "viz-judgement", id: "LIST" }],
     }),
     createVizJudgement: builder.mutation<VizJudgement, VizJudgement>({
       query: (body) => ({
         method: "POST",
-        url: `/api/dev/prototype/${JUDGEMENT_TYPE}/`,
+        url: "/api/viz-eval/judgements",
         body,
       }),
       invalidatesTags: [{ type: "viz-judgement", id: "LIST" }],

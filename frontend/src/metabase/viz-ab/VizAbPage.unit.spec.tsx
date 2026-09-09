@@ -72,12 +72,12 @@ function setup() {
       }),
     }),
   );
-  fetchMock.get("path:/api/dev/viz-eval/random-card", {
+  fetchMock.get("path:/api/viz-eval/random-card", {
     id: CARD_ID,
     remaining: 1,
   });
-  fetchMock.get("path:/api/dev/prototype/viz-judgement/", []);
-  fetchMock.post("path:/api/dev/prototype/viz-judgement/", async (call) => {
+  fetchMock.get("path:/api/viz-eval/judgements", []);
+  fetchMock.post("path:/api/viz-eval/judgements", async (call) => {
     posted.body = await call.request?.json();
     return { ...posted.body, id: 1 };
   });
