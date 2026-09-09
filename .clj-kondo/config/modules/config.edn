@@ -2820,6 +2820,7 @@
            metabase.timeline.core}
    :uses #{analytics
            api
+           api-scope
            collections
            events
            lib.schema
