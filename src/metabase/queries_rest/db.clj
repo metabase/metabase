@@ -69,7 +69,7 @@
 
 (def ^:private PublicCard
   "Rows returned by [[public-cards]]."
-  (mut/select-keys ::queries.schema/card [:name :id :public_uuid :card_schema :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:name :id :public_uuid :card_schema :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn public-cards :- [:sequential PublicCard]
   "The name, id, public uuid, and schema of the unarchived Cards that are publicly shared."
@@ -78,7 +78,7 @@
 
 (def ^:private EmbeddableCard
   "Rows returned by [[embeddable-cards]]."
-  (mut/select-keys ::queries.schema/card [:name :id :card_schema :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:name :id :card_schema :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn embeddable-cards :- [:sequential EmbeddableCard]
   "The name, id, and schema of the unarchived Cards with embedding enabled."
@@ -115,7 +115,7 @@
 
 (def ^:private CardPublicUuidColumn
   "Rows returned by [[card-public-uuid-columns]]."
-  (mut/select-keys ::queries.schema/card [:public_uuid :card_schema :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:public_uuid :card_schema :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn card-public-uuid-columns :- [:maybe CardPublicUuidColumn]
   "The public uuid and schema of the Card with `card-id`, or nil."
@@ -176,8 +176,7 @@
 
 (def ^:private CardsToMoveToCollection
   "Rows returned by [[cards-to-move-to-collection]]."
-  (mut/select-keys ::queries.schema/card
-                   [:id :collection_id :collection_position :dataset_query :card_schema]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :collection_id :collection_position :dataset_query :card_schema :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn cards-to-move-to-collection :- [:sequential CardsToMoveToCollection]
   "The id, Collection, position, query, and schema of the Cards among `card-ids` not already in

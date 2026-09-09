@@ -300,8 +300,9 @@
   "The ExplorationBlock owning the ExplorationPage with `page-id`, or nil."
   [page-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationBlock
-                 {:join  [[:exploration_page :p] [:= :p.exploration_block_id :exploration_block.id]]
-                  :where [:= :p.id page-id]}))
+                 {:select [:exploration_block.*]
+                  :join   [[:exploration_page :p] [:= :p.exploration_block_id :exploration_block.id]]
+                  :where  [:= :p.id page-id]}))
 
 (mu/defn blocks-for-thread :- [:sequential ::explorations.schema/exploration-block]
   "The ExplorationBlocks of the ExplorationThread with `thread-id`, in position order."
@@ -830,7 +831,7 @@
 
 (def ^:private CardName
   "Rows returned by [[card-names]]."
-  (mut/select-keys ::queries.schema/card [:id :name :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :name :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn card-names :- [:sequential CardName]
   "The ID and name of the Cards with `card-ids`."
@@ -844,7 +845,7 @@
 
 (def ^:private CardPresentation
   "Rows returned by [[card-presentation]]."
-  (mut/select-keys ::queries.schema/card [:name :description :display :visualization_settings :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:name :description :display :visualization_settings :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn card-presentation :- [:maybe CardPresentation]
   "The name, description, display, and visualization settings of the Card with `card-id`, or nil."
@@ -853,7 +854,7 @@
 
 (def ^:private CardQuery
   "Rows returned by [[card-queries]]."
-  (mut/select-keys ::queries.schema/card [:id :card_schema :database_id :dataset_query :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :card_schema :database_id :dataset_query :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn card-queries :- [:sequential CardQuery]
   "The ID, schema, Database, and query of the Cards with `card-ids`."
@@ -862,8 +863,7 @@
 
 (def ^:private MetricCardsById
   "Rows returned by [[metric-cards-by-id]]."
-  (mut/select-keys ::queries.schema/card
-                   [:id :name :description :database_id :dataset_query :card_schema :dimensions :dimension_mappings]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :name :description :database_id :dataset_query :card_schema :dimensions :dimension_mappings :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn metric-cards-by-id :- [:map-of ::lib.schema.id/card MetricCardsById]
   "A map of ID to the planner columns of the Cards with `card-ids`."
@@ -875,7 +875,7 @@
 
 (def ^:private MetricCardId
   "Rows returned by [[metric-card-ids]]."
-  (mut/select-keys ::queries.schema/card [:id :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn metric-card-ids :- [:sequential MetricCardId]
   "The `:id`s of the Cards visible to the current user as metrics, restricted to `metric-ids` when

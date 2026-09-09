@@ -4,6 +4,7 @@
   (:require
    [metabase-enterprise.metabot.schema :as ee-metabot.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.permissions.core :as perms]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.queries.schema :as queries.schema]
@@ -148,7 +149,7 @@
 
 (mu/defn insert-usage-log! :- :int
   "Insert the AiUsageLog `row`."
-  [row :- ::ee-metabot.schema/ai-usage-log.update]
+  [row :- ::metabot.schema/ai-usage-log.update]
   (t2/insert! :model/AiUsageLog row))
 
 (defn- usage-window-expr

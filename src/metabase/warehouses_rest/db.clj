@@ -174,8 +174,7 @@
 
 (def ^:private AutocompleteCard
   "Rows returned by [[autocomplete-cards]]."
-  (mut/merge (mut/select-keys ::queries.schema/card
-                              [:id :type :database_id :name :collection_id :card_schema])
+  (mut/merge (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :type :database_id :name :collection_id :card_schema :query_description :source_card_id]) [:source_card_id])
              [:map [:collection_name [:maybe :string]]]))
 
 (mu/defn autocomplete-cards :- [:sequential AutocompleteCard]

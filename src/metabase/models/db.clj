@@ -42,7 +42,7 @@
   "The primary key of the `model` row whose `field` is `value`, or nil."
   [model :- [:or :keyword symbol?]
    field :- :keyword
-   value :- :some]
+   value :- [:maybe [:or :string :int :boolean :keyword]]]
   (t2/select-one-pk model field value))
 
 (mu/defn after-select-via-identity-query :- [:maybe :map]

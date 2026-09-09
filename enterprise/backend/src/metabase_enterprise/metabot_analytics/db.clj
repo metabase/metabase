@@ -172,7 +172,7 @@
 (mu/defn message-data-for-conversations :- [:sequential MessageDataForConversation]
   "The conversation, data, and data version of the MetabotMessages of the MetabotConversations with
   `conversation-ids`."
-  [conversation-ids :- [:sequential ms/PositiveInt]]
+  [conversation-ids :- [:sequential :string]]
   (t2/select [:model/MetabotMessage :conversation_id :data :data_version] :conversation_id [:in conversation-ids]))
 
 (def ^:private FeedbackForConversation

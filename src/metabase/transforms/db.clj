@@ -512,9 +512,11 @@
   (mut/select-keys ::transforms.schema/transform-run-cancelation [:run_id :time]))
 
 (mu/defn cancelations-requested-before :- [:sequential CancelationsRequestedBefore]
-  "The run ID and request time of the TransformRunCancelations requested before `cutoff`."
-  [cutoff :- ms/TemporalInstant]
-  (t2/select [:model/TransformRunCancelation :run_id :time] :time [:< cutoff]))
+  "The run ID and request time of the TransformRunCancelations requested more than `age` `unit`s ago."
+  [age  :- ms/PositiveInt
+   unit :- :keyword]
+  (t2/select [:model/TransformRunCancelation :run_id :time]
+             :time [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]))
 
 (mu/defn delete-cancelation-for-inactive-run! :- :int
   "Delete the TransformRunCancelation of the TransformRun with `run-id` if that run is no longer active."

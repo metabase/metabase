@@ -31,7 +31,7 @@
 
 (def ^:private CardQueryInfo
   "Rows returned by [[card-query-info]]."
-  (mut/select-keys ::queries.schema/card [:dataset_query :type :result_metadata :card_schema :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:dataset_query :type :result_metadata :card_schema :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn card-query-info :- [:maybe CardQueryInfo]
   "The query, type, result metadata, and schema of the Card with `card-id`."
@@ -74,7 +74,7 @@
 
 (def ^:private CardQuery
   "Rows returned by [[card-queries]]."
-  (mut/select-keys ::queries.schema/card [:id :dataset_query :card_schema :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :dataset_query :card_schema :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn card-queries :- [:sequential CardQuery]
   "The IDs and queries of the Cards with `card-ids`."

@@ -15,13 +15,12 @@
 
 (def ^:private PublicCard
   "Rows returned by [[public-card]]."
-  (mut/select-keys ::queries.schema/card
-                   [:id :dataset_query :description :display :name :parameters :visualization_settings :card_schema]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :dataset_query :description :display :name :parameters :visualization_settings :card_schema :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn public-card :- [:maybe PublicCard]
   "The non-archived Card with `card-id`, restricted to the columns safe to expose publicly, or nil. With
   `:enable-embedding? true`, additionally requires embedding to be enabled."
-  [card-id :- ::lib.schema.id/card
+  [card-id :- [:maybe ::lib.schema.id/card]
    & {:keys [enable-embedding?]} :- [:maybe [:map {:closed true} [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (t2/select-one [:model/Card :id :dataset_query :description :display :name :parameters :visualization_settings
                   :card_schema]
@@ -51,7 +50,7 @@
 (mu/defn public-dashboard :- [:maybe PublicDashboard]
   "The non-archived Dashboard with `dashboard-id`, restricted to the columns safe to expose publicly, or nil. With
   `:enable-embedding? true`, additionally requires embedding to be enabled."
-  [dashboard-id :- ::lib.schema.id/dashboard
+  [dashboard-id :- [:maybe ::lib.schema.id/dashboard]
    & {:keys [enable-embedding?]} :- [:maybe [:map {:closed true} [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (t2/select-one [:model/Dashboard :name :description :id :parameters :auto_apply_filters :width]
                  {:where [:and
@@ -79,7 +78,7 @@
 
 (mu/defn public-document :- [:maybe PublicDocument]
   "The non-archived Document with `document-id`, restricted to the columns safe to expose publicly."
-  [document-id :- ms/PositiveInt]
+  [document-id :- [:maybe ms/PositiveInt]]
   (t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
                  :id document-id, :archived false))
 
@@ -89,5 +88,5 @@
 
 (mu/defn document-content :- [:maybe DocumentContent]
   "The id, content, and content type of the Document with `document-id`, or nil."
-  [document-id :- ms/PositiveInt]
+  [document-id :- [:maybe ms/PositiveInt]]
   (t2/select-one [:model/Document :id :document :content_type] :id document-id))

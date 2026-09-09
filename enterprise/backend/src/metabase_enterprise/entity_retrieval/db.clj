@@ -15,7 +15,7 @@
 
 (def ^:private LibraryCardsInCollection
   "Rows returned by [[library-cards-in-collections]]."
-  (mut/select-keys ::queries.schema/card [:id :name :description :type :card_schema :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :name :description :type :card_schema :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn library-cards-in-collections :- [:sequential LibraryCardsInCollection]
   "The ID, name, description, and type of the unarchived metric and model Cards in the Collections with

@@ -54,7 +54,7 @@
 
 (mu/defn collection-owners-and-locations :- [:sequential CollectionOwnersAndLocation]
   "The ID, owner, and location of the Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select [:model/Collection :id :personal_owner_id :location] :id [:in collection-ids]))
 
 (def ^:private PersonalCollectionOwner

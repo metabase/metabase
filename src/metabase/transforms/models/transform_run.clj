@@ -2,7 +2,6 @@
   (:require
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -12,7 +11,6 @@
    [metabase.transforms.models.transform-run-cancelation :as cancel]
    [metabase.transforms.models.util :as transforms.models.u]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -196,9 +194,8 @@
   the lock set and are not reported."
   [age unit]
   (t2/with-transaction [_conn]
-    (let [cutoff (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)
-          times  (into {} (map (juxt :run_id :time))
-                       (transforms.db/cancelations-requested-before cutoff))
+    (let [times  (into {} (map (juxt :run_id :time))
+                       (transforms.db/cancelations-requested-before age unit))
           locked (when (seq times)
                    (transforms.db/lock-active-runs (keys times)))]
       (when (seq locked)

@@ -179,7 +179,7 @@
 
 (def ^:private CardCollectionId
   "Rows returned by [[card-collection-ids]]."
-  (mut/select-keys ::queries.schema/card [:collection_id :card_schema :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:collection_id :card_schema :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn card-collection-ids :- [:sequential CardCollectionId]
   "The Collection id and schema of the non-internal Cards."

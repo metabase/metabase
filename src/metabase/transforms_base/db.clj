@@ -107,7 +107,9 @@
    [:provider_name               [:maybe :string]]
    [:write_data_details          [:maybe :map]]
    [:admin_details               [:maybe :map]]
-   [:is_stub                     :boolean]])
+   [:is_stub                     :boolean]
+   ;; added by the model's after-select hook
+   [:features {:optional true} [:maybe [:set :keyword]]]])
 
 (mu/defn database :- [:maybe Database]
   "The Database with `database-id`, or nil."

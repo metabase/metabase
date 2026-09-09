@@ -455,8 +455,7 @@
 
 (def ^:private CardsWithModeratedStatus
   "Rows returned by [[cards-with-moderated-status]]."
-  (mut/merge (mut/select-keys ::queries.schema/card
-                              [:id :dataset_query :result_metadata :name :description :collection_id :database_id :type :source_card_id :created_at :entity_id :card_schema])
+  (mut/merge (mut/select-keys ::queries.schema/card [:id :dataset_query :result_metadata :name :description :collection_id :database_id :type :source_card_id :created_at :entity_id :card_schema :query_description])
              [:map [:moderated_status [:maybe [:or :keyword :string]]]]))
 
 (mu/defn cards-with-moderated-status :- [:sequential CardsWithModeratedStatus]

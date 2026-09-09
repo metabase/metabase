@@ -13,14 +13,12 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.view-log.schema :as view-log.schema]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
 (def ^:private RecentCard
   "Rows returned by [[recent-cards]]."
-  (mut/merge (mut/select-keys ::queries.schema/card
-                              [:id :name :collection_id :description :display :dataset_query :type :archived :card_schema :dashboard_id])
+  (mut/merge (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :name :collection_id :description :display :dataset_query :type :archived :card_schema :dashboard_id :query_description :source_card_id]) [:source_card_id])
              [:map
               [:authority_level [:maybe [:or :keyword :string]]]
               [:collection_name [:maybe :string]]
@@ -221,7 +219,7 @@
 
 (mu/defn insert-recent-views! :- :int
   "Insert the RecentViews `rows`."
-  [rows :- [:sequential (mut/select-keys ::view-log.schema/view-log [:id :user_id :model :model_id :timestamp :context])]]
+  [rows :- [:sequential ::activity-feed.schema/recent-views.update]]
   (t2/insert! :model/RecentViews rows))
 
 (mu/defn delete-recent-views! :- :int
@@ -247,8 +245,7 @@
 
 (def ^:private CardsForRecentView
   "Rows returned by [[cards-for-recent-views]]."
-  (mut/merge (mut/select-keys ::queries.schema/card
-                              [:name :description :archived :id :database_id :display :card_schema :result_metadata :dataset_query :entity_id :visualization_settings :dashboard_id :collection_id])
+  (mut/merge (mut/optional-keys (mut/select-keys ::queries.schema/card [:name :description :archived :id :database_id :display :card_schema :result_metadata :dataset_query :entity_id :visualization_settings :dashboard_id :collection_id :query_description :source_card_id]) [:source_card_id])
              [:map
               [:dashboard_name             [:maybe :string]]
               [:entity-coll-id             [:maybe ::lib.schema.id/collection]]

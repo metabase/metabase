@@ -751,7 +751,7 @@
 
 (def ^:private CardType
   "Rows returned by [[card-type-row]]."
-  (mut/select-keys ::queries.schema/card [:id :type :card_schema :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :type :card_schema :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn card-type-row :- [:maybe CardType]
   "The ID, type, and schema of the Card with `card-id`, or nil."
@@ -840,8 +840,7 @@
 
 (def ^:private CardSearch
   "Rows returned by [[card-search-rows]]."
-  (mut/select-keys ::queries.schema/card
-                   [:id :name :description :database_id :collection_id :card_schema :type]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :name :description :database_id :collection_id :card_schema :type :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn card-search-rows :- [:sequential CardSearch]
   "The searchable columns of the Cards with `card-ids`."
@@ -850,8 +849,7 @@
 
 (def ^:private UnarchivedCardSummary
   "Rows returned by [[unarchived-card-summaries]]."
-  (mut/select-keys ::queries.schema/card
-                   [:id :name :type :description :card_schema :collection_id :database_id :table_id]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :name :type :description :card_schema :collection_id :database_id :table_id :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn unarchived-card-summaries :- [:sequential UnarchivedCardSummary]
   "The presentable columns of the unarchived Cards with `card-ids`."
@@ -862,8 +860,7 @@
 
 (def ^:private CardsInCollection
   "Rows returned by [[cards-in-collection]]."
-  (mut/select-keys ::queries.schema/card
-                   [:id :name :type :description :card_schema :collection_id :database_id :table_id]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :name :type :description :card_schema :collection_id :database_id :table_id :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn cards-in-collection :- [:sequential CardsInCollection]
   "The presentable columns of the unarchived Cards in the Collection with `collection-id`, ordered by name."
@@ -874,8 +871,7 @@
 
 (def ^:private CardsForTable
   "Rows returned by [[cards-for-table]]."
-  (mut/select-keys ::queries.schema/card
-                   [:id :name :type :description :card_schema :collection_id :database_id :table_id]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :name :type :description :card_schema :collection_id :database_id :table_id :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn cards-for-table :- [:sequential CardsForTable]
   "The presentable columns of the unarchived Cards on the Table with `table-id`, ordered by name."
@@ -887,8 +883,7 @@
 
 (def ^:private ModelsForDatabase
   "Rows returned by [[models-for-database]]."
-  (mut/select-keys ::queries.schema/card
-                   [:id :name :type :description :card_schema :collection_id :database_id :table_id]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :name :type :description :card_schema :collection_id :database_id :table_id :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn models-for-database :- [:sequential ModelsForDatabase]
   "The presentable columns of the unarchived model Cards on the Database with `database-id`, ordered by name."
@@ -901,7 +896,7 @@
 
 (def ^:private SavedCardsForConversation
   "Rows returned by [[saved-cards-for-conversation]]."
-  (mut/select-keys ::queries.schema/card [:id :metabot_chart_id :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :metabot_chart_id :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn saved-cards-for-conversation :- [:sequential SavedCardsForConversation]
   "The ID and chart ID of the unarchived Cards saved from the MetabotConversation with `conversation-id`, in ID order."
@@ -1139,7 +1134,7 @@
 
 (def ^:private CardCollectionId
   "Rows returned by [[card-collection-ids]]."
-  (mut/select-keys ::queries.schema/card [:id :collection_id :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :collection_id :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn card-collection-ids :- [:sequential CardCollectionId]
   "The ID and Collection ID of the Cards with `ids`."

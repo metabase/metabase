@@ -25,7 +25,7 @@
    [:collection_position [:maybe :int]]
    [:archived            [:maybe :boolean]]
    [:dashboard_id        [:maybe ::lib.schema.id/dashboard]]
-   [:parameters          [:sequential :map]]
+   [:parameters          [:sequential ::pulse.parameter]]
    [:entity_id           :string]
    [:disable_links       [:maybe :boolean]]])
 
@@ -44,7 +44,7 @@
    [:collection_position {:optional true} [:maybe :int]]
    [:archived            {:optional true} [:maybe :boolean]]
    [:dashboard_id        {:optional true} [:maybe ::lib.schema.id/dashboard]]
-   [:parameters          {:optional true} [:maybe [:sequential :map]]]
+   [:parameters          {:optional true} [:maybe [:sequential ::pulse.parameter]]]
    [:entity_id           {:optional true} [:maybe :string]]
    [:disable_links       {:optional true} [:maybe :boolean]]])
 

@@ -121,7 +121,7 @@
    [:target_db_id          [:maybe ::lib.schema.id/database]]
    [:last_checkpoint_value [:maybe :string]]
    [:target_table_id       [:maybe ::lib.schema.id/table]]
-   [:table_dependencies    [:maybe [:sequential :map]]]])
+   [:table_dependencies    [:maybe [:sequential ::transform.table-dependency]]]])
 
 (mr/def ::transform.update
   "What an update (or insert) of a Transform accepts: every column of `:transform` except `id`, all optional, plus `:run_trigger` consumed by the model's hooks."
@@ -142,7 +142,7 @@
    [:target_db_id          {:optional true} [:maybe ::lib.schema.id/database]]
    [:last_checkpoint_value {:optional true} [:maybe :string]]
    [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]
-   [:table_dependencies    {:optional true} [:maybe [:sequential :map]]]
+   [:table_dependencies    {:optional true} [:maybe [:sequential ::transform.table-dependency]]]
    [:run_trigger           {:optional true} [:maybe [:or :keyword :string]]]])
 
 (mr/def ::transform-dag-run

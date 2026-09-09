@@ -44,8 +44,8 @@
    [:created_at         ms/TemporalInstant]
    [:updated_at         ms/TemporalInstant]
    [:entity_id          :string]
-   [:dimensions         [:maybe [:sequential :map]]]
-   [:dimension_mappings [:maybe [:sequential :map]]]])
+   [:dimensions         [:maybe [:sequential ::measure.dimension]]]
+   [:dimension_mappings [:maybe [:sequential ::measure.dimension-mapping]]]])
 
 (mr/def ::measure.update
   "What an update (or insert) of a Measure accepts: every column of `:measure` except `id`, all optional."
@@ -59,5 +59,5 @@
    [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id          {:optional true} [:maybe :string]]
-   [:dimensions         {:optional true} [:maybe [:sequential :map]]]
-   [:dimension_mappings {:optional true} [:maybe [:sequential :map]]]])
+   [:dimensions         {:optional true} [:maybe [:sequential ::measure.dimension]]]
+   [:dimension_mappings {:optional true} [:maybe [:sequential ::measure.dimension-mapping]]]])

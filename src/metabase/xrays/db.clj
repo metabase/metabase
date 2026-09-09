@@ -150,7 +150,7 @@
 (mu/defn other-visible-fields-in-table :- [:sequential ::warehouse-schema.schema/field]
   "The active, normally visible Fields of the Table with `table-id` other than `field-id`."
   [table-id :- [:maybe ::lib.schema.id/table]
-   field-id :- ::lib.schema.id/field]
+   field-id :- [:maybe ::lib.schema.id/field]]
   (t2/select :model/Field
              :table_id        table-id
              :id              [:not= field-id]

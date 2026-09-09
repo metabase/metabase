@@ -148,7 +148,7 @@
 
 (def ^:private CardName
   "Rows returned by [[card-names]]."
-  (mut/select-keys ::queries.schema/card [:id :name :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :name :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn card-names :- [:sequential CardName]
   "The id and name of the Cards with `card-ids`."
@@ -301,7 +301,7 @@
 
 (def ^:private UnarchivedMetricCard
   "Rows returned by [[unarchived-metric-cards]]."
-  (mut/select-keys ::queries.schema/card [:id :database_id :dataset_query :card_schema :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :database_id :dataset_query :card_schema :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn unarchived-metric-cards :- [:sequential UnarchivedMetricCard]
   "The id, Database id, query, and schema of the unarchived metric Cards."

@@ -127,7 +127,7 @@
 
 (def ^:private CardQueryColumn
   "Rows returned by [[card-query-columns]]."
-  (mut/select-keys ::queries.schema/card [:dataset_query :card_schema :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:dataset_query :card_schema :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn card-query-columns :- [:maybe CardQueryColumn]
   "The query and schema of the Card with `card-id`, or nil."
@@ -172,8 +172,7 @@
 
 (def ^:private SeriesCardsForDashcard
   "Rows returned by [[series-cards-for-dashcards]]."
-  (mut/merge (mut/select-keys ::queries.schema/card
-                              [:id :name :description :display :dataset_query :type :database_id :visualization_settings :collection_id :card_schema])
+  (mut/merge (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :name :description :display :dataset_query :type :database_id :visualization_settings :collection_id :card_schema :query_description :source_card_id]) [:source_card_id])
              [:map [:dashboardcard_id [:maybe ::lib.schema.id/dashcard]]]))
 
 (mu/defn series-cards-for-dashcards :- [:sequential SeriesCardsForDashcard]

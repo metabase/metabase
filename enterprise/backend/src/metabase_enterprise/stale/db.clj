@@ -23,7 +23,7 @@
 
 (def ^:private StaleCard
   "Rows returned by [[stale-cards]]."
-  (mut/merge (mut/select-keys ::queries.schema/card [:id :dashboard_id :description :collection_id :name :entity_id :archived :collection_position :display :collection_preview :database_id :dataset_query :card_schema :last_used_at :query_description])
+  (mut/merge (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :dashboard_id :description :collection_id :name :entity_id :archived :collection_position :display :collection_preview :database_id :dataset_query :card_schema :last_used_at :query_description :source_card_id]) [:source_card_id])
              [:map
               [:location         :nil]
               [:moderated_status [:maybe :string]]]))

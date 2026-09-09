@@ -263,7 +263,7 @@
 
 (def ^:private CardArchivedAndType
   "Rows returned by [[card-archived-and-type]]."
-  (mut/select-keys ::queries.schema/card [:archived :type :card_schema :query_description]))
+  (mut/optional-keys (mut/select-keys ::queries.schema/card [:archived :type :card_schema :query_description :source_card_id]) [:source_card_id]))
 
 (mu/defn card-archived-and-type :- [:maybe CardArchivedAndType]
   "The archived flag and type of the Card with `card-id`, or nil."

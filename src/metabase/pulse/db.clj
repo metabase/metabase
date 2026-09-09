@@ -227,8 +227,7 @@
 
 (def ^:private PulseCardsForPulse
   "Rows returned by [[pulse-cards-for-pulses]]."
-  (mut/merge (mut/select-keys ::queries.schema/card
-                              [:id :name :description :collection_id :display :dashboard_id])
+  (mut/merge (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :name :description :collection_id :display :dashboard_id :query_description :source_card_id]) [:source_card_id])
              [:map
               [:include_csv        [:maybe :boolean]]
               [:include_xls        [:maybe :boolean]]
