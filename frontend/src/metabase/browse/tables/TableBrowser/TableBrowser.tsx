@@ -6,18 +6,12 @@ import {
   useListDatabaseSchemaTablesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { DraftQuestionBuilder } from "metabase/metadata-store";
-import { useQuestionFromOpts } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isSyncInProgress } from "metabase/utils/syncing";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
-import {
-  type DatabaseId,
-  type Table,
-  isConcreteTableId,
-} from "metabase-types/api";
+import type { DatabaseId, Table } from "metabase-types/api";
 
 import { RELOAD_INTERVAL } from "../../constants";
 
@@ -60,28 +54,10 @@ const getDatabaseId = (
 const getSchemaName = (props: TableBrowserContainerProps): string | undefined =>
   props.schemaName || props.params?.schemaName || undefined;
 
-export const getTableUrl = (
-  table: Table,
-  buildDraftQuestion: DraftQuestionBuilder,
-): string => {
-  // The Saved Questions virtual database exposes cards as "tables" with virtual
-  // ids (e.g. card__17). Those have no /table/:slug route, so fall back to the
-  // ad-hoc question URL for them.
-  if (!isConcreteTableId(table.id)) {
-    const question = buildDraftQuestion({
-      DEPRECATED_RAW_MBQL_databaseId: table.db_id,
-      DEPRECATED_RAW_MBQL_tableId: table.id,
-    });
-    return Urls.question(question.setDefaultDisplay());
-  }
-  return Urls.table({ id: table.id, name: table.display_name });
-};
-
 export const TableBrowser = (props: TableBrowserContainerProps) => {
   const dbId = getDatabaseId(props, { includeVirtual: true });
   const schemaName = getSchemaName(props);
   const { showSchemaInHeader } = props;
-  const buildDraftQuestion = useQuestionFromOpts();
   const xraysEnabled = useSelector((state) =>
     getSetting(state, "enable-xrays"),
   );
@@ -123,8 +99,6 @@ export const TableBrowser = (props: TableBrowserContainerProps) => {
     <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
       <TableBrowserInner
         tables={tables}
-        getTableUrl={getTableUrl}
-        buildDraftQuestion={buildDraftQuestion}
         dbId={dbId}
         schemaName={schemaName}
         xraysEnabled={xraysEnabled}
